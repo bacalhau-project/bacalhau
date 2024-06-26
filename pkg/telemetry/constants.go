@@ -31,3 +31,8 @@ const (
 
 	otlpProtocolGrpc = "grpc"
 )
+
+const (
+	TracerAttributeNameNodeID = "nodeid"
+	TracerAttributeNameJobID  = "jobid"
+)

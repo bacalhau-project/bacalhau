@@ -15,7 +15,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
@@ -63,8 +63,8 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: models.JobSelectionPolicy{
+				Locality: models.Anywhere,
 			},
 		},
 	}}
@@ -81,8 +81,8 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: models.JobSelectionPolicy{
+				Locality: models.Anywhere,
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),
@@ -102,8 +102,8 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: models.JobSelectionPolicy{
+				Locality: models.Anywhere,
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),
@@ -131,8 +131,8 @@ func TestAdditiveSet(t *testing.T) {
 			ExecutionStore: types.JobStoreConfig{
 				Type: types.BoltDB,
 			},
-			JobSelection: model.JobSelectionPolicy{
-				Locality: model.Anywhere,
+			JobSelection: models.JobSelectionPolicy{
+				Locality: models.Anywhere,
 			},
 			JobTimeouts: types.JobTimeoutConfig{
 				JobNegotiationTimeout: types.Duration(time.Second * 120),

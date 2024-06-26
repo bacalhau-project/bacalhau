@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -66,7 +65,7 @@ type ComputeConfigParams struct {
 	// How many messages to buffer in the log stream channel
 	LogStreamBufferSize int
 
-	FailureInjectionConfig model.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 	BidResourceStrategy bidstrategy.ResourceBidStrategy
@@ -110,7 +109,7 @@ type ComputeConfig struct {
 	// How many messages to buffer in the log stream channel
 	LogStreamBufferSize int
 
-	FailureInjectionConfig model.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionComputeConfig
 
 	BidSemanticStrategy bidstrategy.SemanticBidStrategy
 

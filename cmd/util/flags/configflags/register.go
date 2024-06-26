@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Definition serves as a bridge between Cobra's command-line flags
@@ -104,7 +104,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.StringSlice(def.FlagName, v, def.Description)
 			case map[string]string:
 				fset.StringToString(def.FlagName, v, def.Description)
-			case model.JobSelectionDataLocality:
+			case models.JobSelectionDataLocality:
 				fset.Var(flags.DataLocalityFlag((*semantic.JobSelectionDataLocality)(&v)), def.FlagName, def.Description)
 			case logger.LogMode:
 				fset.Var(flags.LoggingFlag(&v), def.FlagName, def.Description)

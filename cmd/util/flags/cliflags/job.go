@@ -51,7 +51,7 @@ func (j *JobSettings) Count() int {
 }
 
 func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) {
-	return parse.NodeSelectorV2(j.constraints)
+	return parse.NodeSelector(j.constraints)
 }
 
 // TODO(forrest): based on a conversation with walid we should be returning an error here if at anypoint if a label

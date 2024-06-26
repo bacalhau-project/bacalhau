@@ -3,7 +3,6 @@ package telemetry
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/baggage"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -39,8 +38,8 @@ func (l loggingTracer) Start(ctx context.Context, spanName string, opts ...otelt
 		Stringer("trace_id", span.SpanContext().TraceID()).
 		Stringer("span_id", span.SpanContext().SpanID())
 
-	if v := baggage.FromContext(ctx).Member(model.TracerAttributeNameJobID).Value(); v != "" {
-		logger = logger.Str(model.TracerAttributeNameJobID, v)
+	if v := baggage.FromContext(ctx).Member(TracerAttributeNameJobID).Value(); v != "" {
+		logger = logger.Str(TracerAttributeNameJobID, v)
 	}
 
 	ctx = logger.Logger().WithContext(ctx)

@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -26,7 +25,7 @@ type RequesterConfigParams struct {
 	OverAskForBidsFactor               uint
 	JobSelectionPolicy                 JobSelectionPolicy
 	ExternalValidatorWebhook           *url.URL
-	FailureInjectionConfig             model.FailureInjectionRequesterConfig
+	FailureInjectionConfig             models.FailureInjectionRequesterConfig
 
 	// minimum version of compute nodes that the requester will accept and route jobs to
 	MinBacalhauVersion models.BuildVersionInfo

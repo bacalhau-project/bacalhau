@@ -7,8 +7,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -26,17 +24,6 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 	require.NoError(t, err)
 	require.NotNil(t, j, "Failed to get job with ID: %s", out)
 	return j.Job
-}
-
-func MakeJobWithOpts(t testing.TB, opts ...legacy_job.SpecOpt) model.Job {
-	spec, err := legacy_job.MakeSpec(opts...)
-	if err != nil {
-		t.Fatalf("creating job spec: %s", err)
-	}
-
-	j := model.NewJob()
-	j.Spec = spec
-	return *j
 }
 
 // MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.

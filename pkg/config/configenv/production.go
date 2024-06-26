@@ -2,6 +2,7 @@
 package configenv
 
 import (
+	"math"
 	"os"
 	"runtime"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -97,11 +97,11 @@ var ProductionComputeConfig = types.ComputeConfig{
 		JobExecutionTimeoutClientIDBypassList: []string{},
 		JobNegotiationTimeout:                 types.Duration(3 * time.Minute),
 		MinJobExecutionTimeout:                types.Duration(500 * time.Millisecond),
-		MaxJobExecutionTimeout:                types.Duration(model.NoJobTimeout),
+		MaxJobExecutionTimeout:                types.Duration(time.Duration(math.MaxInt64).Truncate(time.Second)),
 		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
 	},
-	JobSelection: model.JobSelectionPolicy{
-		Locality:            model.Anywhere,
+	JobSelection: models.JobSelectionPolicy{
+		Locality:            models.Anywhere,
 		RejectStatelessJobs: false,
 		AcceptNetworkedJobs: false,
 		ProbeHTTP:           "",
@@ -132,8 +132,8 @@ var ProductionComputeConfig = types.ComputeConfig{
 
 var ProductionRequesterConfig = types.RequesterConfig{
 	ExternalVerifierHook: "",
-	JobSelectionPolicy: model.JobSelectionPolicy{
-		Locality:            model.Anywhere,
+	JobSelectionPolicy: models.JobSelectionPolicy{
+		Locality:            models.Anywhere,
 		RejectStatelessJobs: false,
 		AcceptNetworkedJobs: false,
 		ProbeHTTP:           "",
@@ -146,7 +146,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
-	FailureInjectionConfig: model.FailureInjectionRequesterConfig{
+	FailureInjectionConfig: models.FailureInjectionRequesterConfig{
 		IsBadActor: false,
 	},
 	EvaluationBroker: types.EvaluationBrokerConfig{

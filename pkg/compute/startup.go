@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type Startup struct {
@@ -62,7 +62,7 @@ func (s *Startup) ensureLiveJobs(ctx context.Context) error {
 					errs = errors.Join(errs, err)
 				}
 			}
-		case model.JobTypeBatch, models.JobTypeOps:
+		case models.JobTypeBatch, models.JobTypeOps:
 			{
 				// Batch and Ops jobs should be failed as we don't know if they had any
 				// side-effects (particularly for ops jobs).

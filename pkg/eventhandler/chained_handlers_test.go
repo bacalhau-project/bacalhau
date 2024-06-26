@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/google/uuid"
-
-	"github.com/bacalhau-project/bacalhau/pkg/eventhandler/mock_eventhandler"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/eventhandler/mock_eventhandler"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // In order for 'go test' to run this suite, we need to create
@@ -31,7 +31,7 @@ type jobEventHandlerSuite struct {
 	handler2        *mock_eventhandler.MockJobEventHandler
 	contextProvider *mock_eventhandler.MockContextProvider
 	context         context.Context
-	event           model.JobEvent
+	event           models.JobEvent
 }
 
 // Before each test
@@ -42,8 +42,8 @@ func (suite *jobEventHandlerSuite) SetupTest() {
 	suite.contextProvider = mock_eventhandler.NewMockContextProvider(suite.ctrl)
 	suite.chainedHandler = NewChainedJobEventHandler(suite.contextProvider)
 	suite.context = context.WithValue(context.Background(), "test", "test")
-	suite.event = model.JobEvent{
-		EventName:    model.JobEventCreated,
+	suite.event = models.JobEvent{
+		EventName:    models.JobEventCreated,
 		JobID:        uuid.NewString(),
 		SourceNodeID: "nodeA",
 		Status:       "this is a test event",
