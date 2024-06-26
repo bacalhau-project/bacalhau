@@ -10,6 +10,7 @@ import (
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/csv"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
@@ -226,6 +227,7 @@ func WasmHelloWorld(t testing.TB) Scenario {
 					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(noop.Program())).
 						WithEntrypoint("_start").
 						MustBuild(),
+					Publisher: publisher_local.NewSpecConfig(),
 				},
 			},
 		},

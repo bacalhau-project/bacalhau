@@ -34,9 +34,7 @@ type PutJobResponse struct {
 
 type GetJobRequest struct {
 	BaseGetRequest
-	JobID string
-	// TODO may need to include/remove tags s.t. we can provide both history and executions
-	// currently this only allows one or the other, but not both
+	JobID   string
 	Include string `query:"include" validate:"omitempty,oneof=history executions"`
 	Limit   uint32 `query:"limit"`
 }

@@ -71,7 +71,6 @@ func RunTestCase(
 	job.Task().Publisher = publisher_local.NewSpecConfig()
 	job.Count = testNodeCount
 
-	// TODO(forrest) [fixme]: we probably need more randomness in the ID to avoid collisions with other tests
 	now := time.Now().UnixNano()
 	job.ID = fmt.Sprintf("test-job-%d", now)
 	job.Meta = make(map[string]string, 2)
@@ -87,7 +86,6 @@ func RunTestCase(
 	require.NoError(t, job.Validate())
 
 	execution := mock.ExecutionForJob(job)
-	// TODO(forrest) [fixme]: if we are allocating resources based on name, probably need more randomness
 	execution.AllocateResources(job.Task().Name, models.Resources{})
 
 	resultsDirectory := t.TempDir()

@@ -54,7 +54,6 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 	// we are skipping this test because the orchestrator endpoint doesn't require a publisher
-	s.T().Skip("DefaultPublisher was a concept on the Requester endpoint, but not the orchestrator endpoint")
 	stack := scenario.StackConfig{}
 	stack.DefaultPublisher = "local"
 

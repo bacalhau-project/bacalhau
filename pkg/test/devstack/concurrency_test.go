@@ -7,12 +7,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
-
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -35,7 +33,6 @@ func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 		},
 	}
 	testCase.Job.Count = 2
-	testCase.Job.Task().Publisher = publisher_local.NewSpecConfig()
 	testCase.ResultsChecker = scenario.FileEquals(
 		downloader.DownloadFilenameStdout,
 		"Hello, world!\nHello, world!\n",

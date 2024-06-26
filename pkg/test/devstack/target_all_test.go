@@ -35,9 +35,8 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 			NumberOfComputeOnlyNodes:   0,
 		}},
 		Job: &models.Job{
-			Name:  suite.T().Name(),
-			Type:  models.JobTypeOps,
-			Count: 1,
+			Name: suite.T().Name(),
+			Type: models.JobTypeOps,
 			Tasks: []*models.Task{
 				{
 					Name: suite.T().Name(),
@@ -61,9 +60,8 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 			NumberOfHybridNodes: 1,
 		}},
 		Job: &models.Job{
-			Name:  suite.T().Name(),
-			Type:  models.JobTypeOps,
-			Count: 1,
+			Name: suite.T().Name(),
+			Type: models.JobTypeOps,
 			Tasks: []*models.Task{
 				{
 					Name: suite.T().Name(),
@@ -93,9 +91,8 @@ func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 			NumberOfComputeOnlyNodes: 4,
 		}},
 		Job: &models.Job{
-			Name:  suite.T().Name(),
-			Type:  models.JobTypeOps,
-			Count: 1,
+			Name: suite.T().Name(),
+			Type: models.JobTypeOps,
 			Tasks: []*models.Task{
 				{
 					Name: suite.T().Name(),
@@ -145,9 +142,8 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 			},
 		},
 		Job: &models.Job{
-			Name:  suite.T().Name(),
-			Type:  models.JobTypeOps,
-			Count: 1,
+			Name: suite.T().Name(),
+			Type: models.JobTypeOps,
 			Tasks: []*models.Task{
 				{
 					Name: suite.T().Name(),
