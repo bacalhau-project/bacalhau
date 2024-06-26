@@ -6,7 +6,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -16,13 +15,13 @@ import (
 type EndpointParams struct {
 	Router             *echo.Echo
 	NodeStateProvider  models.NodeStateProvider
-	DebugInfoProviders []model.DebugInfoProvider
+	DebugInfoProviders []models.DebugInfoProvider
 }
 
 type Endpoint struct {
 	router             *echo.Echo
 	nodeStateProvider  models.NodeStateProvider
-	debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders []models.DebugInfoProvider
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
