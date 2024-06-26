@@ -114,6 +114,7 @@ gocyclo
 godoc
 godotenv
 gofmt
+goimports
 golangci
 golangcilint
 GOLANGCILINTVER
@@ -141,6 +142,7 @@ icss
 idgen
 ifname
 imagemagick
+ineffassign
 initialisation
 Initialise
 initialised
@@ -235,6 +237,7 @@ nodeid
 noheader
 nohup
 nolint
+nolintlint
 Normalise
 nosec
 notifempty
