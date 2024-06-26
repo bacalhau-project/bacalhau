@@ -92,7 +92,8 @@ func handleRequest(msg *nats.Msg, handler *ComputeHandler) {
 
 // processAndRespond processes the request and sends a response.
 func processAndRespond[Request, Response any](
-	ctx context.Context, conn *nats.Conn, msg *nats.Msg, f handlerWithResponse[Request, Response]) {
+	ctx context.Context, conn *nats.Conn, msg *nats.Msg, f handlerWithResponse[Request, Response],
+) {
 	response, err := processRequest(ctx, msg, f)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err)
@@ -109,7 +110,8 @@ func processAndRespond[Request, Response any](
 
 // processRequest decodes the request, invokes the handler, and returns the response.
 func processRequest[Request, Response any](
-	ctx context.Context, msg *nats.Msg, f handlerWithResponse[Request, Response]) (*Response, error) {
+	ctx context.Context, msg *nats.Msg, f handlerWithResponse[Request, Response],
+) (*Response, error) {
 	request := new(Request)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
@@ -135,7 +137,8 @@ func sendResponse[Response any](conn *nats.Conn, reply string, result *concurren
 }
 
 func processAndStream[Request, Response any](ctx context.Context, streamingClient *stream.ProducerClient, msg *nats.Msg,
-	f handlerWithResponse[Request, <-chan *concurrency.AsyncResult[Response]]) {
+	f handlerWithResponse[Request, <-chan *concurrency.AsyncResult[Response]],
+) {
 	if msg.Reply == "" {
 		log.Ctx(ctx).Error().Msgf("streaming request on %s has no reply subject", msg.Subject)
 		return
@@ -173,7 +176,7 @@ func processAndStream[Request, Response any](ctx context.Context, streamingClien
 		cancel,
 	)
 
-	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.StreamID)
+	defer streamingClient.RemoveStream(streamRequest.ConsumerID, streamRequest.StreamID) //nolint:errcheck
 	if err != nil {
 		_ = writer.CloseWithCode(stream.CloseInternalServerErr,
 			fmt.Sprintf("error in handler %s: %s", reflect.TypeOf(request).Name(), err))

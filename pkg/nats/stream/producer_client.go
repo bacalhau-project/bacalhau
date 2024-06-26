@@ -91,17 +91,17 @@ func (pc *ProducerClient) AddStream(
 	return nil
 }
 
-func (pc *ProducerClient) RemoveStream(consumerID string, streamID string) {
+func (pc *ProducerClient) RemoveStream(consumerID string, streamID string) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
 	activeStreamIdsForConn := pc.activeConsumers[consumerID].ActiveStreamInfo
 	if activeStreamIdsForConn == nil {
-		return
+		return fmt.Errorf("active stream Ids for consumer %s is nil", consumerID)
 	}
 
 	if _, ok := activeStreamIdsForConn[streamID]; !ok {
-		return
+		return fmt.Errorf("no stream with id %s found for consumer %s", streamID, consumerID)
 	}
 
 	delete(activeStreamIdsForConn, streamID)
@@ -109,6 +109,8 @@ func (pc *ProducerClient) RemoveStream(consumerID string, streamID string) {
 	if len(activeStreamIdsForConn) == 0 {
 		delete(pc.activeConsumers, consumerID)
 	}
+
+	return nil
 }
 
 func (pc *ProducerClient) heartBeat(ctx context.Context) {
@@ -142,7 +144,7 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 				msg, err := pc.Conn.Request(v.HeartbeatRequestSub, data, pc.config.HeartBeatRequestTimeout)
 				if err != nil {
 					log.Ctx(ctx).Err(err).Msg("heartbeat request to consumer client timed out")
-					nonActiveStreamIds[c] = append(nonActiveStreamIds[c], v.getActiveStreamIds()...)
+					nonActiveStreamIds[c] = v.getActiveStreamIds()
 					continue
 				}
 
@@ -153,10 +155,7 @@ func (pc *ProducerClient) heartBeat(ctx context.Context) {
 					continue
 				}
 
-				nonActiveStreamIdsFromConsumer := getStringList(heartBeatResponse.NonActiveStreamIds)
-				if len(nonActiveStreamIdsFromConsumer) != 0 {
-					nonActiveStreamIds[c] = append(nonActiveStreamIds[c], nonActiveStreamIdsFromConsumer...)
-				}
+				nonActiveStreamIds[c] = getStringList(heartBeatResponse.NonActiveStreamIds)
 			}
 
 			pc.mu.RUnlock()
