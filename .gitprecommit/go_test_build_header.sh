@@ -45,6 +45,8 @@ main() {
     IFS=$'\n' read -r -d '' -a test_files_array <<< "$test_files"
     local files_without_header
     files_without_header=$(check_missing_headers "${test_files_array[@]}")
+    local check_exit_code=$?
+    echo "check_missing_headers exit code: ${check_exit_code}"
 
     if [[ -n "${files_without_header}" ]]; then
       printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
