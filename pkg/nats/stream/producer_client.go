@@ -95,7 +95,12 @@ func (pc *ProducerClient) RemoveStream(consumerID string, streamID string) error
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	activeStreamIdsForConn := pc.activeConsumers[consumerID].ActiveStreamInfo
+	consumer, ok := pc.activeConsumers[consumerID]
+	if !ok {
+		return fmt.Errorf("consumer %s not found", consumerID)
+	}
+
+	activeStreamIdsForConn := consumer.ActiveStreamInfo
 	if activeStreamIdsForConn == nil {
 		return fmt.Errorf("active stream Ids for consumer %s is nil", consumerID)
 	}
