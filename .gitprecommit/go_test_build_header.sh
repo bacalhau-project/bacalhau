@@ -11,6 +11,9 @@ set -o pipefail
 # Turn on traces, useful while debugging but commented out by default
 #set -o xtrace
 
+# Trap function to catch errors and print the line number
+trap 'echo "Error occurred at line $LINENO, exit code $?"' ERR
+
 # Function to find test files
 find_test_files() {
   grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* || {
