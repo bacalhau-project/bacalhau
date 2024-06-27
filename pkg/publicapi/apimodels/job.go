@@ -59,7 +59,7 @@ type GetJobResponse struct {
 	Executions *ListJobExecutionsResponse `json:"Executions,omitempty"`
 }
 
-// Normalize is used to33 canonicalize fields in the GetJobResponse.
+// Normalize is used to canonicalize fields in the GetJobResponse.
 func (r *GetJobResponse) Normalize() {
 	r.BaseGetResponse.Normalize()
 	if r.Job != nil {

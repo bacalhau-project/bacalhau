@@ -15,11 +15,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
 	"github.com/stretchr/testify/require"
@@ -71,26 +71,27 @@ func runURLTest(
 			scenario.FileEquals(downloader.DownloadFilenameStderr, ""),
 			scenario.FileEquals(downloader.DownloadFilenameStdout, allContent),
 		),
-		JobCheckers: []legacy_job.CheckStatesFunction{
-			legacy_job.WaitForSuccessfulCompletion(),
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
 		},
 
-		Spec: testutils.MakeSpecWithOpts(suite.T(),
-			legacy_job.WithPublisher(
-				model.PublisherSpec{
-					Type: model.PublisherLocal,
+		Job: &models.Job{
+			Name:  suite.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: suite.T().Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+						WithEntrypoint("_start").
+						WithParameters(
+							testCase.mount1,
+							testCase.mount2,
+						).MustBuild(),
+					Publisher: publisher_local.NewSpecConfig(),
 				},
-			),
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						testCase.mount1,
-						testCase.mount2,
-					).
-					Build(),
-			),
-		),
+			},
+		},
 	}
 
 	suite.RunScenario(testScenario)
@@ -243,23 +244,21 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 			scenario.StoredText(rootSourceDir, localContent, path.Join(localMount, localFile)),
 			scenario.URLDownload(svr, urlfile, urlmount),
 		),
-
-		Spec: testutils.MakeSpecWithOpts(s.T(),
-			legacy_job.WithPublisher(
-				model.PublisherSpec{
-					Type: model.PublisherLocal,
+		Job: &models.Job{
+			Name:  s.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: s.T().Name(),
+					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+						WithEntrypoint("_start").
+						WithParameters(urlmount, path.Join(localMount, localFile)).
+						MustBuild(),
+					Publisher: publisher_local.NewSpecConfig(),
 				},
-			),
-			legacy_job.WithEngineSpec(
-				model.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-					WithEntrypoint("_start").
-					WithParameters(
-						urlmount,
-						path.Join(localMount, localFile),
-					).
-					Build(),
-			),
-		),
+			},
+		},
 		ResultsChecker: scenario.FileEquals(downloader.DownloadFilenameStdout, URLContent+localContent),
 		JobCheckers:    scenario.WaitUntilSuccessful(1),
 	}
