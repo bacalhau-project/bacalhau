@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Temporarily disable errexit to allow debugging
-set +o errexit
+# Exit on error. Append || true if you expect an error.
+set -o errexit
 # Exit on error inside any functions or subshells.
 set -o errtrace
 # Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
@@ -15,7 +15,7 @@ set -o pipefail
 find_test_files() {
   grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* || {
     echo "Error: Failed to find test files."
-    return 1
+    exit 1
   }
 }
 
@@ -40,24 +40,13 @@ check_missing_headers() {
 main() {
   local test_files
   test_files=$(find_test_files)
-  local find_exit_code=$?
-  echo "find_test_files exit code: ${find_exit_code}"
-  echo "test_files: ${test_files}"
-
-  if [[ ${find_exit_code} -ne 0 ]]; then
-    echo "find_test_files failed."
-    exit 1
-  fi
 
   if [[ -n "${test_files}" ]]; then
     IFS=$'\n' read -r -d '' -a test_files_array <<< "$test_files"
     local files_without_header
     files_without_header=$(check_missing_headers "${test_files_array[@]}")
-    local check_exit_code=$?
-    echo "check_missing_headers exit code: ${check_exit_code}"
-    echo "files_without_header: ${files_without_header}"
 
-    if [[ ${check_exit_code} -ne 0 ]]; then
+    if [[ -n "${files_without_header}" ]]; then
       printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
       exit 1
     else
