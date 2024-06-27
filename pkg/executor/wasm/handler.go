@@ -160,6 +160,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	instance, err := loader.InstantiateRemoteModule(ctx, entryModule)
 	if err != nil {
 		h.logger.Warn().
+			Err(err).
 			Str("input_source", entryModule.InputSource.Source.Type).
 			Str("input_alias", entryModule.InputSource.Alias).
 			Str("input_target", entryModule.InputSource.Target).
