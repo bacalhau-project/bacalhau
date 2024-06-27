@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.3.2"
+bacalhau_version            = "v1.4.0-rc9"
 bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
 bacalhau_environment        = "staging"
@@ -28,3 +28,4 @@ public_ip_addresses         = ["34.85.228.65", "34.86.73.105", "34.150.138.100",
 log_level                   = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
+web_ui_enabled          = true

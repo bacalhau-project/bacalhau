@@ -3,8 +3,9 @@ package apimodels
 import (
 	"strconv"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type PutJobRequest struct {
@@ -58,7 +59,7 @@ type GetJobResponse struct {
 	Executions *ListJobExecutionsResponse `json:"Executions,omitempty"`
 }
 
-// Normalize is used to33 canonicalize fields in the GetJobResponse.
+// Normalize is used to canonicalize fields in the GetJobResponse.
 func (r *GetJobResponse) Normalize() {
 	r.BaseGetResponse.Normalize()
 	if r.Job != nil {
@@ -89,13 +90,13 @@ func (o *ListJobsRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListJobsResponse struct {
 	BaseListResponse
-	Jobs []*models.Job `json:"Jobs"`
+	Items []*models.Job
 }
 
 // Normalize is used to canonicalize fields in the ListJobsResponse.
 func (r *ListJobsResponse) Normalize() {
 	r.BaseListResponse.Normalize()
-	for _, job := range r.Jobs {
+	for _, job := range r.Items {
 		job.Normalize()
 	}
 }
@@ -130,7 +131,7 @@ func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListJobHistoryResponse struct {
 	BaseListResponse
-	History []*models.JobHistory
+	Items []*models.JobHistory
 }
 
 type ListJobExecutionsRequest struct {
@@ -140,7 +141,7 @@ type ListJobExecutionsRequest struct {
 
 type ListJobExecutionsResponse struct {
 	BaseListResponse
-	Executions []*models.Execution
+	Items []*models.Execution
 }
 
 type ListJobResultsRequest struct {
@@ -150,7 +151,7 @@ type ListJobResultsRequest struct {
 
 type ListJobResultsResponse struct {
 	BaseListResponse
-	Results []*models.SpecConfig
+	Items []*models.SpecConfig
 }
 
 type StopJobRequest struct {

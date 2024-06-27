@@ -19,6 +19,12 @@ import (
 )
 
 const DevelopmentGitVersion = "v0.0.0-xxxxxxx"
+const UnknownGitVersion = "v0.0.0"
+
+var (
+	Development = semver.MustParse(DevelopmentGitVersion)
+	Unknown     = semver.MustParse(UnknownGitVersion)
+)
 
 var (
 	// GITVERSION is the Git tag that Bacalhau was built from. This is expected to be populated via the `ldflags` flag,

@@ -4,24 +4,24 @@ package requester
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
 
@@ -32,8 +32,8 @@ type NodeSelectionSuite struct {
 	compute2      *node.Node
 	compute3      *node.Node
 	computeNodes  []*node.Node
-	client        *client.APIClient
-	stateResolver *legacy_job.StateResolver
+	api           clientv2.API
+	stateResolver *scenario.StateResolver
 }
 
 func (s *NodeSelectionSuite) SetupSuite() {
@@ -78,9 +78,9 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute1 = stack.Nodes[1]
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
-	s.client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.requester.APIServer.Address, s.requester.APIServer.Port)
+	s.api = clientv2.New(fmt.Sprintf("http://%s:%d", s.requester.APIServer.Address, s.requester.APIServer.Port))
 	s.Require().NoError(err)
-	s.stateResolver = legacy.NewStateResolver(s.requester.RequesterNode.JobStore)
+	s.stateResolver = scenario.NewStateResolver(s.api)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 
 	nodeutils.WaitForNodeDiscovery(s.T(), s.requester.RequesterNode, 4)
@@ -156,20 +156,33 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 	for _, tc := range testCase {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
-			j := testutils.MakeNoopJob(s.T())
-			j.Spec.NodeSelectors = s.parseLabels(tc.selector)
-			j.Spec.Deal.Concurrency = math.Max(1, len(tc.expectedNodes))
+			j := &models.Job{
+				Name:  s.T().Name(),
+				Type:  models.JobTypeBatch,
+				Count: math.Max(1, len(tc.expectedNodes)),
+				Tasks: []*models.Task{
+					{
+						Name: s.T().Name(),
+						Engine: &models.SpecConfig{
+							Type:   models.EngineNoop,
+							Params: make(map[string]interface{}),
+						},
+					},
+				},
+			}
+			j.Constraints = s.parseLabels(tc.selector)
+			j.Normalize()
 
-			submittedJob, err := s.client.Submit(ctx, j)
+			putResp, err := s.api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: j})
 			s.NoError(err)
 
-			err = s.stateResolver.WaitUntilComplete(ctx, submittedJob.Metadata.ID)
+			err = s.stateResolver.Wait(ctx, putResp.JobID, scenario.WaitForSuccessfulCompletion())
 			if len(tc.expectedNodes) == 0 {
 				s.Error(err)
 			} else {
 				s.NoError(err)
 			}
-			selectedNodes := s.getSelectedNodes(submittedJob.Metadata.ID)
+			selectedNodes := s.getSelectedNodes(putResp.JobID)
 			s.assertNodesMatch(tc.expectedNodes, selectedNodes)
 		})
 	}
@@ -177,9 +190,9 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 
 func (s *NodeSelectionSuite) getSelectedNodes(jobID string) []*node.Node {
 	ctx := context.Background()
-	jobState, err := s.stateResolver.GetJobState(ctx, jobID)
+	jobState, err := s.stateResolver.JobState(ctx, jobID)
 	s.NoError(err)
-	completedExecutionStates := legacy_job.GetCompletedExecutionStates(jobState)
+	completedExecutionStates := scenario.GetCompletedExecutionStates(jobState)
 
 	nodes := make([]*node.Node, 0, len(completedExecutionStates))
 	for _, executionState := range completedExecutionStates {
@@ -210,8 +223,13 @@ func (s *NodeSelectionSuite) assertNodesMatch(expected, selected []*node.Node) {
 	s.ElementsMatch(expectedNodeNames, selectedNodeNames)
 }
 
-func (s *NodeSelectionSuite) parseLabels(selector string) []model.LabelSelectorRequirement {
+func (s *NodeSelectionSuite) parseLabels(selector string) []*models.LabelSelectorRequirement {
 	requirements, err := labels.ParseToRequirements(selector)
 	s.NoError(err)
-	return model.ToLabelSelectorRequirements(requirements...)
+	tmp := models.ToLabelSelectorRequirements(requirements...)
+	out := make([]*models.LabelSelectorRequirement, 0, len(tmp))
+	for _, r := range tmp {
+		out = append(out, r.Copy())
+	}
+	return out
 }

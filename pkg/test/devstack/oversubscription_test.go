@@ -179,7 +179,7 @@ func (s *OverSubscriptionTestSuite) getJobStates() []models.JobStateType {
 	jobStates := make([]models.JobStateType, 0)
 	res, err := s.client.Jobs().List(context.Background(), &apimodels.ListJobsRequest{})
 	s.Require().NoError(err)
-	for _, j := range res.Jobs {
+	for _, j := range res.Items {
 		jobStates = append(jobStates, j.State.StateType)
 	}
 	return jobStates

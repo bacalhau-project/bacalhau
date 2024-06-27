@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.3.2"
+bacalhau_version            = "v1.4.0"
 bacalhau_port               = "1235"
 bacalhau_environment        = "production"
 ipfs_version                = "v0.12.2"
@@ -31,3 +31,4 @@ public_ip_addresses         = ["35.245.161.250", "34.86.254.26", "35.245.215.155
 log_level                   = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
+web_ui_enabled          = false

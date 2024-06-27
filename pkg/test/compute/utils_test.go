@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 )
@@ -34,16 +33,16 @@ func addResourceUsage(execution *models.Execution, usage models.Resources) *mode
 	return execution
 }
 
-func getResources(c, m, d string) model.ResourceUsageConfig {
-	return model.ResourceUsageConfig{
+func getResources(c, m, d string) *models.ResourcesConfig {
+	return &models.ResourcesConfig{
 		CPU:    c,
 		Memory: m,
 		Disk:   d,
 	}
 }
 
-func getResourcesArray(data [][]string) []model.ResourceUsageConfig {
-	var res []model.ResourceUsageConfig
+func getResourcesArray(data [][]string) []*models.ResourcesConfig {
+	var res []*models.ResourcesConfig
 	for _, d := range data {
 		res = append(res, getResources(d[0], d[1], d[2]))
 	}

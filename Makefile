@@ -338,7 +338,9 @@ integration-test:
 	go test ./... -v --tags=integration -p 1
 
 .PHONY: bash-test
-bash-test: ${BINARY_PATH}
+bash-test: 
+	export REQUESTER_ENDPOINT_USE_DEPRECATED_ENV=true
+	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
 .PHONY: test-debug
@@ -524,7 +526,3 @@ endif
 .PHONY: spellcheck-code
 spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
 	cspell -c .cspell-code.json lint ./pkg/authn/**
-
-.PHONY: spellcheck-docs
-spellcheck-docs:  ## Runs a spellchecker over all documentation - MVP just does one directory
-	cspell -c .cspell-docs.json lint ./docs/docs/dev/**
