@@ -6,7 +6,6 @@ import (
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -95,16 +94,4 @@ func addFieldToBaggage(ctx context.Context, key, value string) context.Context {
 	}
 
 	return baggage.ContextWithBaggage(ctx, b)
-}
-
-func addAttributeToSpanFromBaggage(ctx context.Context, span oteltrace.Span, name string) {
-	b := baggage.FromContext(ctx)
-	log.Ctx(ctx).Trace().Msgf("adding %s from baggage to span as attribute: %+v", name, b)
-	m := b.Member(name)
-	if m.Value() != "" {
-		span.SetAttributes(attribute.String(name, m.Value()))
-	} else {
-		log.Ctx(ctx).Trace().Err(errors.WithStack(errors.New("missing value"))).
-			Str("baggage_key", name).Msg("No value found for baggage key")
-	}
 }
