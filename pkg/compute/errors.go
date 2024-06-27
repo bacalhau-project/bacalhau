@@ -28,6 +28,6 @@ func (e ErrExecTimeout) Retryable() bool {
 
 func (e ErrExecTimeout) Details() map[string]string {
 	return map[string]string{
-		models.DetailsKeyHint: "Try increasing the task timeout or reducing the task size",
+		models.DetailsKeyHint: "Increase the task timeout or allocate more resources",
 	}
 }

@@ -337,6 +337,17 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	result, err := e.Wait(ctx, state)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
+			// TODO(forrest) [correctness]:
+			// The ExecutorBuffer is using a context with a timeout to signal an execution has timed out and should end.
+			//
+			// We don't handle context.Canceled here as it means the node is shutting down. Still we should do a
+			// better job at gracefully shutting down the execution and either reporting that to the requester
+			// or retrying the execution during startup.
+			//
+			// Moving forward we must avoid canceling executions via the context.Context. When pluggable executors
+			// become the default since canceling the context will simply result in the RPC connection closing (I think)
+			// The general solution here is to stop using contexts for canceling jobs and to instead make explicit calls
+			// the an executors `Cancel` method.
 			return NewErrExecTimeout(state.Execution.Job.Task().Timeouts.GetExecutionTimeout())
 		}
 		return err
