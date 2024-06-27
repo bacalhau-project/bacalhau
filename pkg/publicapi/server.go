@@ -86,7 +86,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		"/requester/websocket/events": "/api/v1/requester/websocket/events",
 	}
 
-	// set validator
+	// set custom binders and validators
+	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
 	// enable debug mode to get clearer error messages
