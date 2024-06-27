@@ -11,14 +11,37 @@ set -o pipefail
 # Turn on traces, useful while debugging but commented out by default
 #set -o xtrace
 
-# Check that all test files have the correct build header excluding vendor/
-# and generated files.
-# This is a pre-commit hook, so it only checks staged files.
-# It is not a pre-push hook, so it does not check untracked files.
-# It is not a pre-receive hook, so it does not check pushed files.
-files_without_header=$(grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* | xargs grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' --)
+# Function to find test files
+find_test_files() {
+  grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* || {
+    echo "Error: Failed to find test files."
+    exit 1
+  }
+}
 
-if [[ -n "${files_without_header}"  ]]; then
-  printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
-  exit 1
-fi
+# Function to check for missing build headers
+check_missing_headers() {
+  local test_files="$1"
+  grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' ${test_files} || {
+    echo "Error: Failed to check for missing build headers."
+    exit 1
+  }
+}
+
+# Main script execution
+main() {
+  local test_files
+  test_files=$(find_test_files)
+
+  if [[ -n "${test_files}" ]]; then
+    local files_without_header
+    files_without_header=$(check_missing_headers "${test_files}")
+
+    if [[ -n "${files_without_header}" ]]; then
+      printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
+      exit 1
+    fi
+  fi
+}
+
+main
