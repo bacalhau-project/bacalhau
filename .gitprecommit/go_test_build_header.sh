@@ -30,7 +30,9 @@ check_missing_headers() {
     fi
   done
 
-  echo "${files_without_header[@]}"
+  if [ ${#files_without_header[@]} -ne 0 ]; then
+    printf "%s\n" "${files_without_header[@]}"
+  fi
 }
 
 # Main script execution
@@ -46,7 +48,13 @@ main() {
     if [[ -n "${files_without_header}" ]]; then
       printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
       exit 1
+    else
+      echo "All test files have the required build headers."
+      exit 0
     fi
+  else
+    echo "No test files found."
+    exit 0
   fi
 }
 
