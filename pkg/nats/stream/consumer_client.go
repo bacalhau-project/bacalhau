@@ -345,7 +345,7 @@ func (nc *ConsumerClient) getNotActiveStreamIds(activeStreamIDsAtProducer map[st
 			return time.Since(bucket.createdAt) < nc.config.StreamCancellationBufferDuration
 		})
 
-		// If no non recent buckets, means all are active streams
+		// If no non-recent buckets, means all are active streams
 		if len(nonRecentBuckets) == 0 {
 			continue
 		}
