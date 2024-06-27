@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/rs/zerolog/log"
 )
 
 type bufferTask struct {
@@ -122,6 +121,7 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
+	innerCtx := ctx
 	var timeout time.Duration
 	if !job.IsLongRunning() {
 		timeout = job.Task().Timeouts.GetExecutionTimeout()
@@ -129,29 +129,18 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 			timeout = s.defaultJobExecutionTimeout
 		}
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, timeout)
+		innerCtx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 
 	ch := make(chan error)
 	go func() {
-		ch <- s.delegateService.Run(ctx, task.localExecutionState)
+		ch <- s.delegateService.Run(innerCtx, task.localExecutionState)
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Ctx(ctx).Info().Str("ID", task.localExecutionState.Execution.ID).Dur("Timeout", timeout).Msg("Execution timed out")
-		s.callback.OnCancelComplete(ctx, CancelResult{
-			ExecutionMetadata: NewExecutionMetadata(task.localExecutionState.Execution),
-			RoutingMetadata: RoutingMetadata{
-				SourcePeerID: s.ID,
-				TargetPeerID: task.localExecutionState.RequesterNodeID,
-			},
-		})
-	case <-ch:
-		// no need to check for run errors as they are already handled by the delegate backend.Executor and
-		// to the callback.
-	}
+	// no need to check for run errors as they are already handled by the delegate backend.Executor and
+	// to the callback.
+	<-ch
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

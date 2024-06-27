@@ -31,7 +31,9 @@ const (
 	execFailedMessage                    = "Execution did not complete successfully"
 
 	executionTimeoutMessage = "Execution timed out"
-	timeoutHint             = "Try increasing the task timeout or reducing the task size"
+
+	// TODO: message is duplicated in compute/errors.go. Find a better place for common errors
+	timeoutHint = "Increase the task timeout or allocate more resources"
 )
 
 func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
