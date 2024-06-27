@@ -21,11 +21,16 @@ find_test_files() {
 
 # Function to check for missing build headers
 check_missing_headers() {
-  local test_files="$1"
-  grep --files-without-match -e '//go:build integration || !unit' -e '//go:build unit || !integration' ${test_files} || {
-    echo "Error: Failed to check for missing build headers."
-    exit 1
-  }
+  local test_files=("$@")
+  local files_without_header=()
+
+  for file in "${test_files[@]}"; do
+    if ! grep -q -e '//go:build integration || !unit' -e '//go:build unit || !integration' "$file"; then
+      files_without_header+=("$file")
+    fi
+  done
+
+  echo "${files_without_header[@]}"
 }
 
 # Main script execution
@@ -34,8 +39,9 @@ main() {
   test_files=$(find_test_files)
 
   if [[ -n "${test_files}" ]]; then
+    IFS=$'\n' read -r -d '' -a test_files_array <<< "$test_files"
     local files_without_header
-    files_without_header=$(check_missing_headers "${test_files}")
+    files_without_header=$(check_missing_headers "${test_files_array[@]}")
 
     if [[ -n "${files_without_header}" ]]; then
       printf "Test files missing '//go:build integration || !unit' or '//go:build unit || !integration':\n%s\n" "${files_without_header}"
