@@ -104,7 +104,11 @@ def build_docker_image(docker_client, image: Image):
     docker_image = f"{DOCKER_REGISTRY_URL}/{DOCKER_REPO}/{image['name']}"
     gcr_image = f"{GCR_REGISTRY_URL}/{PROJECT}/{image['name']}"
 
-    new_version = increment_version(image["version"])
+    if image["version"] is None:
+        new_version = "0.0.1"  # Set a default version if None
+    else:
+        new_version = increment_version(image["version"])
+
     version_file_path = os.path.join(image["name"], "VERSION")
     with open(version_file_path, "w") as version_file:
         version_file.write(str(new_version))
@@ -160,32 +164,35 @@ def build_docker_image(docker_client, image: Image):
 async def push_docker_image(docker_client, tag_list, timeout=300):
     async def push_single_image(tag):
         try:
-            if tag.startswith(f"{GCR_REGISTRY_URL}/"):
-                process = await asyncio.create_subprocess_exec(
-                    "docker",
-                    "push",
-                    tag,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                await process.communicate()
-                if process.returncode != 0:
-                    print(f"Error pushing image {tag}")
-                    return False
-            else:
-                for _ in docker_client.api.push(tag, stream=True, decode=True):
-                    pass
+            repository, version = tag.split(":")
+            response = docker_client.images.push(repository, tag=version, stream=True)
+            with alive_bar(
+                title=f"Pushing {tag}", bar="bubbles", unknown="stars"
+            ) as bar:
+                buffer = ""
+                for chunk in response:
+                    buffer += chunk.decode("utf-8")
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        if line:
+                            try:
+                                chunk_data = json.loads(line)
+                                if "error" in chunk_data:
+                                    raise Exception(chunk_data["error"])
+                                if "status" in chunk_data:
+                                    if "progress" in chunk_data:
+                                        bar.text(chunk_data["progress"])
+                                    bar()
+                            except json.JSONDecodeError as e:
+                                print(f"Error decoding JSON for {tag}: {e}")
         except Exception as e:
             print(f"Error pushing image {tag}: {e}")
             return False
         return True
 
     print("Pushing images...")
-    with alive_bar(len(tag_list), title="Pushing", bar="bubbles") as bar:
-        tasks = [push_single_image(tag) for tag in tag_list]
-        results = await asyncio.gather(*tasks)
-        for _ in results:
-            bar()
+    tasks = [push_single_image(tag) for tag in tag_list]
+    results = await asyncio.gather(*tasks)
 
     return all(results)
 

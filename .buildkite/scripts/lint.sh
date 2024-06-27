@@ -18,3 +18,8 @@ just build-webui
 SHELL=$(command -v bash) FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau \
                                                         -t -- \
                                                         pre-commit run --show-diff-on-failure --color=always --all-files
+
+# If no BUILDKITE_JOB_ID then it's not running in CI
+if [ -z "$BUILDKITE_JOB_ID" ]; then
+    buildkite-agent annotate --style "info" --context "lint" --message "Lint passed"
+fi

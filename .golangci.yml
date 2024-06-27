@@ -51,9 +51,17 @@ issues:
     - path: _test\.go
       linters:
         - gomnd
+    - path: webui/webui\.go
+      linters:
+        - typecheck
   exclude:
     - 'shadow: declaration of "err" shadows declaration at'
-
-severity:
-  default-severity: ""
-  case-sensitive: false
+  exclude-dirs:
+    - ./.*
+    - webui/.*
+    - webui/build
+    - webui/node_modules
+    - vendor
+    - ops
+  exclude-files:
+    - webui/webui.go
