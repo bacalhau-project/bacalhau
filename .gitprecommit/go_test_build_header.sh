@@ -11,9 +11,6 @@ set -o pipefail
 # Turn on traces, useful while debugging but commented out by default
 #set -o xtrace
 
-# Trap function to catch errors and print the line number
-trap 'echo "Error occurred at line $LINENO, exit code $?"' ERR
-
 # Function to find test files
 find_test_files() {
   grep --exclude-dir='*vendor*' --include '*_test.go' -lR 'func Test[A-Z].*(t \*testing.T' ./* || {
@@ -45,7 +42,8 @@ main() {
   test_files=$(find_test_files)
 
   if [[ -n "${test_files}" ]]; then
-    IFS=$'\n' read -r -d '' -a test_files_array <<< "$test_files"
+    # Read test files into an array (no null byte expected)
+    IFS=$'\n' read -r -a test_files_array <<< "$test_files"
     local files_without_header
     files_without_header=$(check_missing_headers "${test_files_array[@]}")
     local check_exit_code=$?
