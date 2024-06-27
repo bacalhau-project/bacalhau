@@ -61,8 +61,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			JobDefaults: transformer.JobDefaults{
 				TotalTimeout: testCase.requesterDefaultJobExecutionTimeout,
 			},
-			HousekeepingBackgroundTaskInterval: 10 * time.Millisecond,
-			HousekeepingTimeoutBuffer:          500 * time.Millisecond,
+			HousekeepingBackgroundTaskInterval: 100 * time.Millisecond,
+			// we want compute nodes to fail first instead or requesters to cancel
+			HousekeepingTimeoutBuffer: 2 * time.Second,
 		})
 		suite.Require().NoError(err)
 
