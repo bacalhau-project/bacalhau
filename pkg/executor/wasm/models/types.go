@@ -229,3 +229,11 @@ func (b *WasmEngineBuilder) Build() (*models.SpecConfig, error) {
 		Params: b.spec.ToMap(),
 	}, nil
 }
+
+func (b *WasmEngineBuilder) MustBuild() *models.SpecConfig {
+	spec, err := b.Build()
+	if err != nil {
+		panic(err)
+	}
+	return spec
+}

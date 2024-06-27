@@ -12,7 +12,10 @@ import (
 
 	"github.com/vincent-petithory/dataurl"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	storage_inline "github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
@@ -33,16 +36,16 @@ func CreateSourcePath(rootSourceDir string) (string, error) {
 // of the function to ensure that the data has been set up correctly.
 type SetupStorage func(
 	ctx context.Context,
-) ([]model.StorageSpec, error)
+) ([]*models.InputSource, error)
 
 // StoredText will store the passed string as a file on the local filesystem and
-// return the path to the file in a model.StorageSpec.
+// return the path to the file in a *models.InputSource.
 func StoredText(
 	rootSourceDir string,
 	fileContents string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context) ([]model.StorageSpec, error) {
+	return func(ctx context.Context) ([]*models.InputSource, error) {
 		sourcePath, err := CreateSourcePath(rootSourceDir)
 		if err != nil {
 			return nil, err
@@ -61,12 +64,16 @@ func StoredText(
 			return nil, err
 		}
 
-		return []model.StorageSpec{
+		spec, err := storage_local.NewSpecConfig(sourcePath, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return []*models.InputSource{
 			{
-				StorageSource: model.StorageSourceLocalDirectory,
-				SourcePath:    sourcePath,
-				Path:          mountPath,
-				Name:          mountPath,
+				Source: spec,
+				Target: mountPath,
+				Alias:  mountPath,
 			},
 		}, nil
 	}
@@ -79,7 +86,7 @@ func StoredFile(
 	filePath string,
 	mountPath string,
 ) SetupStorage {
-	return func(ctx context.Context) ([]model.StorageSpec, error) {
+	return func(ctx context.Context) ([]*models.InputSource, error) {
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stat file %s: %w", filePath, err)
@@ -101,12 +108,15 @@ func StoredFile(
 				return nil, fmt.Errorf("failed to copy file %s: %w", filePath, err)
 			}
 		}
-		return []model.StorageSpec{
+		spec, err := storage_local.NewSpecConfig(sourcePath, false)
+		if err != nil {
+			return nil, err
+		}
+		return []*models.InputSource{
 			{
-				StorageSource: model.StorageSourceLocalDirectory,
-				SourcePath:    sourcePath,
-				Path:          mountPath,
-				Name:          mountPath,
+				Source: spec,
+				Target: mountPath,
+				Alias:  mountPath,
 			},
 		}, nil
 	}
@@ -116,10 +126,11 @@ func StoredFile(
 // the other storage set-ups, this function loads the file immediately. This
 // makes it possible to store things deeper into the Spec object without the
 // test system needing to know how to prepare them.
-func InlineData(data []byte) model.StorageSpec {
-	return model.StorageSpec{
-		StorageSource: model.StorageSourceInline,
-		URL:           dataurl.EncodeBytes(data),
+func InlineData(data []byte) *models.InputSource {
+	spec := storage_inline.NewSpecConfig(dataurl.EncodeBytes(data))
+	return &models.InputSource{
+		Source: spec,
+		Target: "/inputs",
 	}
 }
 
@@ -130,13 +141,20 @@ func URLDownload(
 	urlPath string,
 	mountPath string,
 ) SetupStorage {
-	return func(_ context.Context) ([]model.StorageSpec, error) {
+	return func(_ context.Context) ([]*models.InputSource, error) {
 		finalURL, err := url.JoinPath(server.URL, urlPath)
-		return []model.StorageSpec{
+		if err != nil {
+			return nil, err
+		}
+		spec, err := storage_url.NewSpecConfig(finalURL)
+		if err != nil {
+			return nil, err
+		}
+		return []*models.InputSource{
 			{
-				StorageSource: model.StorageSourceURLDownload,
-				URL:           finalURL,
-				Path:          mountPath,
+				Source: spec,
+				Target: mountPath,
+				Alias:  mountPath,
 			},
 		}, err
 	}
@@ -146,8 +164,8 @@ func URLDownload(
 // associated with all of them. If any of them fail, the error from the first to
 // fail will be returned.
 func ManyStores(stores ...SetupStorage) SetupStorage {
-	return func(ctx context.Context) ([]model.StorageSpec, error) {
-		var specs []model.StorageSpec
+	return func(ctx context.Context) ([]*models.InputSource, error) {
+		var specs []*models.InputSource
 		for _, store := range stores {
 			spec, err := store(ctx)
 			if err != nil {

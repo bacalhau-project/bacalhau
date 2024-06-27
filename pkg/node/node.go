@@ -185,6 +185,8 @@ func NewNode(
 			return nil, err
 		}
 
+		// TODO calling `Keys` on the publishers takes ~10 seconds per call
+		// https://github.com/bacalhau-project/bacalhau/issues/4153
 		metrics.NodeInfo.Add(ctx, 1,
 			attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
 			attribute.StringSlice("node_storages", storages.Keys(ctx)),

@@ -13,19 +13,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
 )
 
@@ -78,6 +78,7 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		require.NoError(suite.T(), err, "reading file")
 		suite.T().Log(string(data))
 
+		// TODO our tests will leak files if this statement isn't reached
 		f.Close()
 		//build image
 		cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -268,14 +269,20 @@ func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image stri
 	}
 	testScenario := scenario.Scenario{
 		ResultsChecker: checkResults,
-		Spec: testutils.MakeSpecWithOpts(t,
-			legacy_job.WithEngineSpec(
-				model.NewDockerEngineBuilder(image).
-					WithEntrypoint(entrypoint...).
-					WithParameters(parameters...).
-					Build(),
-			),
-		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Engine: dockmodels.NewDockerEngineBuilder(image).
+						WithEntrypoint(entrypoint...).
+						WithParameters(parameters...).
+						MustBuild(),
+				},
+			},
+		},
 		SubmitChecker: scenario.SubmitJobSuccess(),
 	}
 	if expectError == true {

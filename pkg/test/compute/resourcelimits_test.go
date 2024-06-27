@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
 	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
@@ -60,14 +62,13 @@ type TotalResourceTestCaseCheck struct {
 
 type TotalResourceTestCase struct {
 	// the total list of jobs to throw at the cluster all at the same time
-	jobs        []model.ResourceUsageConfig
-	totalLimits model.ResourceUsageConfig
+	jobs        []*models.ResourcesConfig
+	totalLimits *models.ResourcesConfig
 	wait        TotalResourceTestCaseCheck
 	checkers    []TotalResourceTestCaseCheck
 }
 
 func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
-
 	// for this test we use the transport so the compute_node is calling
 	// the executor in a go-routine and we can test what jobs
 	// look like over time - this test leave each job running for X seconds
@@ -126,7 +127,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return size.Bytes(), err
 		}
 
-		resourcesConfig := legacy.FromLegacyResourceUsageConfig(testCase.totalLimits)
+		resourcesConfig := testCase.totalLimits
 		parsedResources, err := resourcesConfig.ToResources()
 		require.NoError(suite.T(), err)
 
@@ -148,12 +149,24 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
-			j := testutils.MakeNoopJob(suite.T())
-			j.Spec.Resources = jobResources
-			_, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, model.JobCreatePayload{
-				ClientID:   "123",
-				APIVersion: j.APIVersion,
-				Spec:       &j.Spec,
+			j := &models.Job{
+				Name:  suite.T().Name(),
+				Type:  models.JobTypeBatch,
+				Count: 1,
+				Tasks: []*models.Task{
+					{
+						Name: suite.T().Name(),
+						Engine: &models.SpecConfig{
+							Type: models.EngineNoop,
+						},
+						ResourcesConfig: jobResources,
+					},
+				},
+			}
+			j.Normalize()
+			client := clientv2.New(fmt.Sprintf("http://%s:%d", stack.Nodes[0].APIServer.Address, stack.Nodes[0].APIServer.Port))
+			_, err := client.Jobs().Put(ctx, &apimodels.PutJobRequest{
+				Job: j,
 			})
 			require.NoError(suite.T(), err)
 

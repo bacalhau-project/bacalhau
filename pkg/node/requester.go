@@ -233,9 +233,10 @@ func NewRequesterNode(
 		// parse the publisher to generate a models.SpecConfig and add it to each job
 		// which is without a publisher
 		config, err := job.ParsePublisherString(requesterConfig.DefaultPublisher)
-		if err == nil {
-			jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
+		if err != nil {
+			return nil, fmt.Errorf("parsing default publisher spec (%s): %w", requesterConfig.DefaultPublisher, err)
 		}
+		jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
