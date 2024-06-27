@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -73,21 +74,22 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 func registerDeprecatedLegacyMethods(group *echo.Group) {
 	// Legacy API Endpoints
 	// All return status 410 https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/410
-	group.POST("/list", methodGone("https://docs.bacalhau.org/references/api/jobs#list-jobs"))
-	group.GET("/nodes", methodGone("https://docs.bacalhau.org/references/api/nodes#list-nodes"))
-	group.POST("/states", methodGone("https://docs.bacalhau.org/references/api/jobs#describe-job"))
-	group.POST("/results", methodGone("https://docs.bacalhau.org/references/api/jobs#describe-job"))
-	group.POST("/events", methodGone("https://docs.bacalhau.org/references/api/jobs#job-history"))
-	group.POST("/submit", methodGone("https://docs.bacalhau.org/references/api/jobs#create-job"))
-	group.POST("/cancel", methodGone("https://docs.bacalhau.org/references/api/jobs#stop-job"))
-	group.POST("/debug", methodGone("https://docs.bacalhau.org/references/api/nodes#describe-node"))
-	group.GET("/websocket/events", methodGone("https://docs.bacalhau.org/references/api/jobs#job-history"))
+	group.POST("/list", methodGone())
+	group.GET("/nodes", methodGone())
+	group.POST("/states", methodGone())
+	group.POST("/results", methodGone())
+	group.POST("/events", methodGone())
+	group.POST("/submit", methodGone())
+	group.POST("/cancel", methodGone())
+	group.POST("/debug", methodGone())
+	group.GET("/websocket/events", methodGone())
 }
 
-const deprecationMessage = "This endpoint is deprecated and no longer available. Please refer to %s for more information. If you encountered this error using the Bacalhau client or CLI, please update your node by following the instructions here: https://docs.bacalhau.org/getting-started/installation" //nolint:lll
+const migrationGuideURL = deprecated.MigrationURL
+const deprecationMessage = `This endpoint is deprecated. See the migration guide at %s for more information`
 
-func methodGone(docsLink string) func(c echo.Context) error {
+func methodGone() func(c echo.Context) error {
 	return func(c echo.Context) error {
-		return c.JSON(http.StatusGone, fmt.Sprintf(deprecationMessage, docsLink))
+		return c.JSON(http.StatusGone, fmt.Sprintf(deprecationMessage, migrationGuideURL))
 	}
 }
