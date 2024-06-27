@@ -11,9 +11,6 @@ if [ -z "$BUILDKITE_JOB_ID" ]; then
     source <(./.buildkite/scripts/manage_env_secrets.sh get)
 fi
 
-# Need to build webui to check lint
-just build-webui
-
 # shellcheck disable=SC2312
 SHELL=$(command -v bash) FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau \
                                                         -t -- \
