@@ -15,7 +15,7 @@ func TestScenarios(t *testing.T) {
 			name,
 			func(t *testing.T) {
 				t.Log(name)
-				docker.EngineSpecRequiresDocker(t, testCase.Spec.EngineSpec)
+				docker.EngineSpecRequiresDocker(t, testCase.Job.Task().Engine)
 				RunTestCase(t, testCase)
 			},
 		)

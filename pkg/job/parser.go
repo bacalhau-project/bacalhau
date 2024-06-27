@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 )
 
 const (
-	s3Prefix   = "s3"
-	ipfsPrefix = "ipfs"
+	s3Prefix    = "s3"
+	ipfsPrefix  = "ipfs"
+	localPrefix = "local"
 )
 
 // ParsePublisherString parses a publisher string into a SpecConfig without having to
@@ -64,10 +66,10 @@ func ParsePublisherString(publisher string) (*models.SpecConfig, error) {
 		parsedURI.Scheme = parsedURI.Path
 	}
 
-	var res models.SpecConfig
+	var res *models.SpecConfig
 	switch parsedURI.Scheme {
 	case ipfsPrefix:
-		res = models.SpecConfig{
+		res = &models.SpecConfig{
 			Type: models.PublisherIPFS,
 		}
 	case s3Prefix:
@@ -77,13 +79,15 @@ func ParsePublisherString(publisher string) (*models.SpecConfig, error) {
 		if _, ok := options["key"]; !ok {
 			options["key"] = strings.TrimLeft(parsedURI.Path, "/")
 		}
-		res = models.SpecConfig{
+		res = &models.SpecConfig{
 			Type:   models.PublisherS3,
 			Params: options,
 		}
+	case localPrefix:
+		res = publisher_local.NewSpecConfig()
 	default:
 		return nil, fmt.Errorf("unknown publisher type: %s", parsedURI.Scheme)
 	}
 
-	return &res, nil
+	return res, nil
 }
