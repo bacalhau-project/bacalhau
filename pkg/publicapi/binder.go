@@ -9,20 +9,20 @@ type normalizable interface {
 	Normalize()
 }
 
-// CustomBinder is a custom binder that extends the default binder with normalization.
-type CustomBinder struct {
+// NormalizeBinder is a custom binder that extends the default binder with normalization.
+type NormalizeBinder struct {
 	defaultBinder echo.Binder
 }
 
-// NewCustomBinder creates a new CustomBinder with the default binder.
-func NewCustomBinder() *CustomBinder {
-	return &CustomBinder{
+// NewNormalizeBinder creates a new NormalizeBinder with the default binder.
+func NewNormalizeBinder() *NormalizeBinder {
+	return &NormalizeBinder{
 		defaultBinder: &echo.DefaultBinder{},
 	}
 }
 
 // Bind binds and validates the request body, then normalizes if it implements the normalizable interface.
-func (cb *CustomBinder) Bind(i interface{}, c echo.Context) error {
+func (cb *NormalizeBinder) Bind(i interface{}, c echo.Context) error {
 	if err := cb.defaultBinder.Bind(i, c); err != nil {
 		return err
 	}

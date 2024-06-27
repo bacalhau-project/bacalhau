@@ -26,23 +26,23 @@ type mockNonNormalizableRequest struct {
 	Data string `json:"data" validate:"required"`
 }
 
-// TestSuite struct for CustomBinder
-type CustomBinderTestSuite struct {
+// TestSuite struct for NormalizeBinder
+type NormalizeBinderTestSuite struct {
 	suite.Suite
 	e      *echo.Echo
-	binder *CustomBinder
+	binder *NormalizeBinder
 	rec    *httptest.ResponseRecorder
 }
 
 // SetupTest sets up the test environment
-func (s *CustomBinderTestSuite) SetupTest() {
+func (s *NormalizeBinderTestSuite) SetupTest() {
 	s.e = echo.New()
-	s.binder = NewCustomBinder()
+	s.binder = NewNormalizeBinder()
 	s.rec = httptest.NewRecorder()
 }
 
 // TestBindWithNormalization tests binding with normalization
-func (s *CustomBinderTestSuite) TestBindWithNormalization() {
+func (s *NormalizeBinderTestSuite) TestBindWithNormalization() {
 	echoContext := s.mockRequest(`{"data": " some data "}`)
 	mockReq := new(mockNormalizableRequest)
 	err := s.binder.Bind(mockReq, echoContext)
@@ -52,7 +52,7 @@ func (s *CustomBinderTestSuite) TestBindWithNormalization() {
 }
 
 // TestBindWithoutNormalization tests binding without normalization
-func (s *CustomBinderTestSuite) TestBindWithoutNormalization() {
+func (s *NormalizeBinderTestSuite) TestBindWithoutNormalization() {
 	echoContext := s.mockRequest(`{"data": " some data "}`)
 
 	mockReq := new(mockNonNormalizableRequest)
@@ -63,7 +63,7 @@ func (s *CustomBinderTestSuite) TestBindWithoutNormalization() {
 }
 
 // TestBindWithBadJSON tests binding with bad JSON
-func (s *CustomBinderTestSuite) TestBindWithBadJSON() {
+func (s *NormalizeBinderTestSuite) TestBindWithBadJSON() {
 	echoContext := s.mockRequest(`{"data": " some data "`)
 
 	mockReq := new(mockNormalizableRequest)
@@ -74,13 +74,13 @@ func (s *CustomBinderTestSuite) TestBindWithBadJSON() {
 	s.Equal("unexpected EOF", err.(*echo.HTTPError).Message)
 }
 
-func (s *CustomBinderTestSuite) mockRequest(body string) echo.Context {
+func (s *NormalizeBinderTestSuite) mockRequest(body string) echo.Context {
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	return s.e.NewContext(req, s.rec)
 }
 
-// TestCustomBinderSuite runs the test suite
-func TestCustomBinderSuite(t *testing.T) {
-	suite.Run(t, new(CustomBinderTestSuite))
+// TestNormalizeBinderSuite runs the test suite
+func TestNormalizeBinderSuite(t *testing.T) {
+	suite.Run(t, new(NormalizeBinderTestSuite))
 }

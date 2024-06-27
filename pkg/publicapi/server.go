@@ -87,7 +87,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	}
 
 	// set custom binders and validators
-	server.Router.Binder = NewCustomBinder()
+	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
 	// enable debug mode to get clearer error messages
