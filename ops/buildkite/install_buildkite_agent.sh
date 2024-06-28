@@ -17,6 +17,8 @@ GCP_CREDENTIALS_FILE="/etc/bacalhau-buildkite-sa@bacalhau-infra.iam.gserviceacco
 BUILDKITE_CONFIG_FILE="/etc/buildkite-agent/buildkite-agent.cfg"
 SERVICE_ACCOUNT_NAME="bacalhau-buildkite-sa@bacalhau-infra.iam.gserviceaccount.com"
 SECRET_NAME="build-agent-env-file"
+BUILDKITE_AGENT_USER="buildkite-agent"
+GITHUB_REPO="bacalhau-project/bacalhau"
 
 # Function to display debug messages
 debug_mode=0
@@ -88,9 +90,20 @@ start_buildkite_agent() {
 }
 
 # Function to install Docker
+# Function to install Docker and add buildkite-agent to Docker group
 install_docker() {
   echo "Installing Docker..."
   curl -sSL https://get.docker.com/ | sudo bash
+
+  echo "Adding buildkite-agent user to Docker group..."
+  sudo usermod -aG docker ${BUILDKITE_AGENT_USER}
+
+  # Verify the group addition
+  if groups ${BUILDKITE_AGENT_USER} | grep &>/dev/null '\bdocker\b'; then
+    echo "${BUILDKITE_AGENT_USER} successfully added to Docker group"
+  else
+    echo "Warning: Failed to add ${BUILDKITE_AGENT_USER} to Docker group"
+  fi
 }
 
 install_gcloud() {
@@ -177,6 +190,38 @@ move_environment_file() {
   fi
 }
 
+# Function to configure SSH keys for the Buildkite agent
+configure_ssh_keys() {
+  # Install gh
+  sudo apt-get install -y gh
+
+  SSH_KEY_COMMENT="buildkite-agent@bacalhau.io-$(hostname)-$(date +%s)"
+
+  echo "Configuring SSH keys for Buildkite agent..."
+  sudo su buildkite-agent -c "
+    mkdir -p ~/.ssh && cd ~/.ssh
+    if [ ! -f id_rsa ]; then
+      ssh-keygen -t rsa -b 4096 -C '${SSH_KEY_COMMENT}' -N '' -f id_rsa
+      echo 'SSH key generated for Buildkite agent.'
+    else
+      echo 'SSH key already exists for Buildkite agent.'
+    fi
+  "
+}
+
+# Function to add SSH key to GitHub repository
+add_ssh_key_to_github() {
+  echo "Adding SSH key to GitHub repository..."
+  local public_key_path="/var/lib/buildkite-agent/.ssh/id_rsa.pub"
+  if [ -f "${public_key_path}" ]; then
+    gh ssh-key add "${public_key_path}" --title "Buildkite Agent Key"
+    echo "SSH key added to GitHub repository."
+  else
+    echo "Error: Public key not found at ${public_key_path}"
+    exit 1
+  fi
+}
+
 # Main script execution
 main() {
   if [[ -z "${BUILDKITE_AGENT_TOKEN:-}" ]]; then
@@ -210,6 +255,8 @@ main() {
   authenticate_gcloud
   run_gcloud_test
   move_environment_file
+  configure_ssh_keys
+  add_ssh_key_to_github
   start_buildkite_agent
 
   echo "Buildkite agent installation and configuration complete."
