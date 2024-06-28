@@ -9,7 +9,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -85,11 +84,11 @@ func registerDeprecatedLegacyMethods(group *echo.Group) {
 	group.GET("/websocket/events", methodGone())
 }
 
-const migrationGuideURL = deprecated.MigrationURL
+const MigrationGuideURL = "https://docs.bacalhau.org/references/cli-reference/command-migration"
 const deprecationMessage = `This endpoint is deprecated. See the migration guide at %s for more information`
 
 func methodGone() func(c echo.Context) error {
 	return func(c echo.Context) error {
-		return c.JSON(http.StatusGone, fmt.Sprintf(deprecationMessage, migrationGuideURL))
+		return c.JSON(http.StatusGone, fmt.Sprintf(deprecationMessage, MigrationGuideURL))
 	}
 }

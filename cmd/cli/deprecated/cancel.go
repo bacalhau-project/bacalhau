@@ -8,7 +8,7 @@ func NewCancelCmd() *cobra.Command {
 	cancelCmd := &cobra.Command{
 		Use:        "cancel [id]",
 		Short:      "DEPRECATED: Cancel a previously submitted job",
-		Deprecated: "Please use `job stop` to cancel jobs.\n" + migrationMessageSuffix,
+		Deprecated: "Please use `bacalhau job stop` to cancel jobs.\n" + migrationMessageSuffix,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			return nil
 		},

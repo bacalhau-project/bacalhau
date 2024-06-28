@@ -8,7 +8,7 @@ func NewGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:        "get [id]",
 		Short:      "DEPRECATED: Get the results of a job",
-		Deprecated: "Please use `job get` to download results of a job.\n" + migrationMessageSuffix,
+		Deprecated: "Please use `bacalhau job get` to download results of a job.\n" + migrationMessageSuffix,
 		RunE:       func(cmd *cobra.Command, cmdArgs []string) error { return nil },
 	}
 }

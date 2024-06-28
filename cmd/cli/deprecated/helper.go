@@ -2,8 +2,10 @@ package deprecated
 
 import (
 	"fmt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 )
 
-const MigrationURL = "https://docs.bacalhau.org/v/v.1.4.0/references/cli-reference/command-migration"
+const migrationURL = requester.MigrationGuideURL
 
-var migrationMessageSuffix = fmt.Sprintf(`See the migration guide at %s for more information.`, MigrationURL)
+var migrationMessageSuffix = fmt.Sprintf(`See the migration guide at %s for more information.`, migrationURL)
