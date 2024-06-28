@@ -1,15 +1,14 @@
-package cancel
+package deprecated
 
 import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmd() *cobra.Command {
+func NewCancelCmd() *cobra.Command {
 	cancelCmd := &cobra.Command{
 		Use:        "cancel [id]",
 		Short:      "DEPRECATED: Cancel a previously submitted job",
-		Deprecated: "This command has moved! Please use `job stop` to cancel jobs.",
-		Args:       cobra.ExactArgs(1),
+		Deprecated: "Please use `bacalhau job stop` to cancel jobs.\n" + migrationMessageSuffix,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			return nil
 		},
