@@ -11,22 +11,15 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/cancel"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/create"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/describe"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/get"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/id"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/list"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/logs"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/validate"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -99,33 +92,31 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	// ====== Start a job
-
-	// Create job from file
-	RootCmd.AddCommand(create.NewCmd())
+	RootCmd.AddCommand(deprecated.NewCreateCmd())
 
 	// Plumbing commands (advanced usage)
 	RootCmd.AddCommand(docker.NewCmd())
 	RootCmd.AddCommand(wasm.NewCmd())
 
-	RootCmd.AddCommand(validate.NewCmd())
+	RootCmd.AddCommand(deprecated.NewValidateCmd())
 
 	RootCmd.AddCommand(version.NewCmd())
 
 	// ====== Get information or results about a job
 	// Describe a job
-	RootCmd.AddCommand(describe.NewCmd())
+	RootCmd.AddCommand(deprecated.NewDescribeCmd())
 
 	// Get logs
-	RootCmd.AddCommand(logs.NewCmd())
+	RootCmd.AddCommand(deprecated.NewLogsCmd())
 
 	// Get the results of a job
-	RootCmd.AddCommand(get.NewCmd())
+	RootCmd.AddCommand(deprecated.NewGetCmd())
 
 	// Cancel a job
-	RootCmd.AddCommand(cancel.NewCmd())
+	RootCmd.AddCommand(deprecated.NewCancelCmd())
 
 	// List jobs
-	RootCmd.AddCommand(list.NewCmd())
+	RootCmd.AddCommand(deprecated.NewListCmd())
 
 	// Register agent subcommands
 	RootCmd.AddCommand(agent.NewCmd())
@@ -143,7 +134,7 @@ func NewRootCmd() *cobra.Command {
 
 	// Serve commands
 	RootCmd.AddCommand(serve.NewCmd())
-	RootCmd.AddCommand(id.NewCmd())
+	RootCmd.AddCommand(deprecated.NewIDCmd())
 	RootCmd.AddCommand(devstack.NewCmd())
 
 	// config command...obviously
