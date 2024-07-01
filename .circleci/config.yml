@@ -769,6 +769,12 @@ workflows:
               - target_os: windows
                 target_arch: arm64
                 build_tags: integration
+              - target_os: darwin
+                target_arch: amd64
+                build_tags: unit
+              - target_os: darwin
+                target_arch: amd64
+                build_tags: integration
       - test_python_sdk
       - test_python_airflow
       - coverage:
