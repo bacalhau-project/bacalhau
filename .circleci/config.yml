@@ -42,10 +42,6 @@ executors:
     machine:
       image: default
     resource_class: arm.xlarge
-  darwin-amd64:
-    macos:
-      xcode: "14.2.0"
-    resource_class: macos.x86.medium.gen2
   darwin-arm64:
     macos:
       xcode: "14.2.0"
@@ -72,7 +68,6 @@ commands:
           [
             "linux-amd64",
             "linux-arm64",
-            "darwin-amd64",
             "darwin-arm64",
             "windows-amd64",
           ]
@@ -100,7 +95,6 @@ commands:
       - when:
           condition:
             or:
-              - equal: ["darwin-amd64", << parameters.executor >>]
               - equal: ["darwin-arm64", << parameters.executor >>]
               - equal: ["linux-amd64", << parameters.executor >>]
               - equal: ["linux-arm64", << parameters.executor >>]
@@ -509,7 +503,6 @@ jobs:
           [
             "linux-amd64",
             "linux-arm64",
-            "darwin-amd64",
             "darwin-arm64",
             "windows-amd64",
           ]
