@@ -54,7 +54,6 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:                       "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		NodeInfoPublisherInterval:  node.TestNodeInfoPublishConfig,
 		ConfigurationRepo:          "",
 	}
 }

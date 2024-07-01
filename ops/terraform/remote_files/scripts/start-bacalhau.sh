@@ -27,8 +27,8 @@ b43517b5449d383ab00ca1d2b1c558d710ba79f51c800fbf4c35ed4d0198aec5"
 
 # Check if using NATS
 if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
-    # nats related config as set as env vars in main.tf and no need to pass them to serve command
-    bacalhau serve \
+  # nats related config as set as env vars in main.tf and no need to pass them to serve command
+  bacalhau serve \
     --node-type "${BACALHAU_NODE_TYPE}" \
     --job-selection-data-locality anywhere \
     --job-selection-accept-networked \
@@ -45,41 +45,41 @@ if [[ "${BACALHAU_NODE_NETWORK_TYPE}" == "nats" ]]; then
     --local-publisher-address "${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
 
 else
-    function getMultiaddress() {
-        echo -n "/ip4/${1}/tcp/${BACALHAU_PORT}/p2p/${2}"
-    }
+  function getMultiaddress() {
+    echo -n "/ip4/${1}/tcp/${BACALHAU_PORT}/p2p/${2}"
+  }
 
-    export CONNECT_PEER=none
-    # use the BACALHAU_CONNECT_PEER env var if it is set
-    if [[ -n "${BACALHAU_CONNECT_PEER}" ]]; then
-        export CONNECT_PEER=$BACALHAU_CONNECT_PEER
-        # if we are node0 then we do not connect to anything
-        elif [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
-        # if we are in unsafe mode - then we connect to a single node and it's ID
-        # is pre-determined by the $BACALHAU_NODE0_UNSAFE_ID variable
-        if [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]]; then
-            export UNSAFE_NODE0_ID="$BACALHAU_NODE_ID_0"
-            if [[ -z "$UNSAFE_NODE0_ID" ]]; then
-                export UNSAFE_NODE0_ID="$BACALHAU_NODE0_UNSAFE_ID"
-            fi
-            export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$UNSAFE_NODE0_ID")
-            # otherwise we will construct our connect string based on
-            # what node index we are
-        else
-            # we are > node0 so we can connect to node0
-            export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$BACALHAU_NODE_ID_0")
-            # we are > node1 so we can also connect to node1
-            if [[ "${TERRAFORM_NODE_INDEX}" -ge "2" ]]; then
-                export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE1_IP" "$BACALHAU_NODE_ID_1")"
-            fi
-            # we are > node2 so we can also connect to node2
-            if [[ "${TERRAFORM_NODE_INDEX}" -ge "3" ]]; then
-                export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE2_IP" "$BACALHAU_NODE_ID_2")"
-            fi
-        fi
+  export CONNECT_PEER=none
+  # use the BACALHAU_CONNECT_PEER env var if it is set
+  if [[ -n "${BACALHAU_CONNECT_PEER}" ]]; then
+    export CONNECT_PEER=$BACALHAU_CONNECT_PEER
+  # if we are node0 then we do not connect to anything
+  elif [[ "${TERRAFORM_NODE_INDEX}" != "0" ]]; then
+    # if we are in unsafe mode - then we connect to a single node and it's ID
+    # is pre-determined by the $BACALHAU_NODE0_UNSAFE_ID variable
+    if [[ -n "${BACALHAU_UNSAFE_CLUSTER}" ]]; then
+      export UNSAFE_NODE0_ID="$BACALHAU_NODE_ID_0"
+      if [[ -z "$UNSAFE_NODE0_ID" ]]; then
+        export UNSAFE_NODE0_ID="$BACALHAU_NODE0_UNSAFE_ID"
+      fi
+      export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$UNSAFE_NODE0_ID")
+    # otherwise we will construct our connect string based on
+    # what node index we are
+    else
+      # we are > node0 so we can connect to node0
+      export CONNECT_PEER=$(getMultiaddress "$TERRAFORM_NODE0_IP" "$BACALHAU_NODE_ID_0")
+      # we are > node1 so we can also connect to node1
+      if [[ "${TERRAFORM_NODE_INDEX}" -ge "2" ]]; then
+        export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE1_IP" "$BACALHAU_NODE_ID_1")"
+      fi
+      # we are > node2 so we can also connect to node2
+      if [[ "${TERRAFORM_NODE_INDEX}" -ge "3" ]]; then
+        export CONNECT_PEER="$CONNECT_PEER,$(getMultiaddress "$TERRAFORM_NODE2_IP" "$BACALHAU_NODE_ID_2")"
+      fi
     fi
+  fi
 
-    bacalhau serve \
+  bacalhau serve \
     --node-type "${BACALHAU_NODE_TYPE}" \
     --job-selection-data-locality anywhere \
     --job-selection-accept-networked \

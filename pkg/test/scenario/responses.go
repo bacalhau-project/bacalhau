@@ -4,21 +4,24 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
 // A CheckSubmitResponse is a function that will examine and validate submitJob response.
 // Useful when validating that a job should be rejected.
-type CheckSubmitResponse func(job *model.Job, err error) error
+type CheckSubmitResponse func(response *apimodels.PutJobResponse, err error) error
 
 // SubmitJobSuccess returns a CheckSubmitResponse that asserts no error was returned when submitting a job.
 func SubmitJobSuccess() CheckSubmitResponse {
-	return func(job *model.Job, err error) error {
+	return func(response *apimodels.PutJobResponse, err error) error {
 		if err != nil {
 			return fmt.Errorf("expected no error, got %v", err)
 		}
-		if job == nil {
-			return fmt.Errorf("expected job, got nil")
+		if response == nil {
+			return fmt.Errorf("expected job response, got nil")
+		}
+		if len(response.Warnings) > 0 {
+			return fmt.Errorf("unexpted warnings returned when submitting job: %v", response.Warnings)
 		}
 		return nil
 	}
@@ -26,7 +29,7 @@ func SubmitJobSuccess() CheckSubmitResponse {
 
 // SubmitJobFail returns a CheckSubmitResponse that asserts an error was returned when submitting a job.
 func SubmitJobFail() CheckSubmitResponse {
-	return func(_ *model.Job, err error) error {
+	return func(_ *apimodels.PutJobResponse, err error) error {
 		if err == nil {
 			return fmt.Errorf("expected error, got nil")
 		}
@@ -35,8 +38,8 @@ func SubmitJobFail() CheckSubmitResponse {
 }
 
 func SubmitJobErrorContains(msg string) CheckSubmitResponse {
-	return func(job *model.Job, err error) error {
-		e := SubmitJobFail()(job, err)
+	return func(response *apimodels.PutJobResponse, err error) error {
+		e := SubmitJobFail()(response, err)
 		if e != nil {
 			return e
 		}

@@ -1,8 +1,6 @@
 bacalhau_version       = ""
 bacalhau_branch        = "nats"
 bacalhau_port          = "1235"
-bacalhau_node_id_0     = "QmfYBQ3HouX9zKcANNXbgJnpyLpTYS9nKBANw6RUQKZffu"
-bacalhau_node_id_1     = "QmNjEQByyK8GiMTvnZqGyURuwXDCtzp9X6gJRKkpWfai7S"
 bacalhau_environment   = "development"
 ipfs_version           = "v0.12.2"
 gcp_project            = "bacalhau-dev"
@@ -29,4 +27,4 @@ num_gpu_machines       = 0
 log_level              = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
-network_type = "nats"
+web_ui_enabled          = true

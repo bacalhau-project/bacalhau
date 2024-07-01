@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
@@ -19,11 +18,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type DevstackTimeoutSuite struct {
@@ -64,10 +61,17 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			JobDefaults: transformer.JobDefaults{
 				TotalTimeout: testCase.requesterDefaultJobExecutionTimeout,
 			},
-			HousekeepingBackgroundTaskInterval: 10 * time.Millisecond,
-			HousekeepingTimeoutBuffer:          500 * time.Millisecond,
+			HousekeepingBackgroundTaskInterval: 100 * time.Millisecond,
+			// we want compute nodes to fail first instead or requesters to cancel
+			HousekeepingTimeoutBuffer: 2 * time.Second,
 		})
 		suite.Require().NoError(err)
+
+		// required by job_timeout_greater_than_max_but_on_allowed_list
+		namespace := ""
+		if len(testCase.computeJobExecutionBypassList) > 0 {
+			namespace = testCase.computeJobExecutionBypassList[0]
+		}
 
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
@@ -88,17 +92,29 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 					},
 				},
 			},
-			Spec: testutils.MakeSpecWithOpts(suite.T(),
-				legacy_job.WithTimeout(int64(testCase.jobTimeout.Seconds())),
-			),
-			Deal: model.Deal{
-				Concurrency: testCase.concurrency,
+			Job: &models.Job{
+				Name:      suite.T().Name(),
+				Namespace: namespace,
+				Type:      models.JobTypeBatch,
+				Count:     testCase.concurrency,
+				Tasks: []*models.Task{
+					{
+						Name: suite.T().Name(),
+						Engine: &models.SpecConfig{
+							Type:   models.EngineNoop,
+							Params: make(map[string]interface{}),
+						},
+						Timeouts: &models.TimeoutConfig{
+							TotalTimeout: int64(testCase.jobTimeout.Seconds()),
+						},
+					},
+				},
 			},
-			JobCheckers: []legacy_job.CheckStatesFunction{
-				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-					model.ExecutionStateCompleted:         testCase.completedCount,
-					model.ExecutionStateCancelled:         testCase.errorCount,
-					model.ExecutionStateAskForBidRejected: testCase.rejectedCount,
+			JobCheckers: []scenario.StateChecks{
+				scenario.WaitForExecutionStates(map[models.ExecutionStateType]int{
+					models.ExecutionStateCompleted:         testCase.completedCount,
+					models.ExecutionStateFailed:            testCase.errorCount,
+					models.ExecutionStateAskForBidRejected: testCase.rejectedCount,
 				}),
 			},
 		}

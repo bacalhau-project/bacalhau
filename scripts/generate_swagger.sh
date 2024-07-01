@@ -23,12 +23,4 @@ fi
 mv "${SWAGGER_DIR}/swagger.json" "${PUBLIC_PATH}"
 
 echo "swagger.json also copied to ${PUBLIC_PATH}/swagger.json"
-
-# Get the current version from git
-VERSION=$(git describe --tags --always)
-
-# Add version to the swagger.json general info section
-jq --arg version "${VERSION}" '.info.version = $version' "${PUBLIC_PATH}/swagger.json" > "${PUBLIC_PATH}/swagger.json.tmp" \
-&& mv "${PUBLIC_PATH}/swagger.json.tmp" "${PUBLIC_PATH}/swagger.json"
-
 cp "${PUBLIC_PATH}/swagger.json" "${PATH_TO_PROJECT_ROOT}/docs/swagger.json"

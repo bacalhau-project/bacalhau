@@ -27,6 +27,8 @@ import (
 
 const TimeoutMessage = "Server Timeout!"
 
+var minClientVersion = semver.MustParse("v1.4.0")
+
 type ServerParams struct {
 	Router             *echo.Echo
 	Address            string
@@ -84,7 +86,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		"/requester/websocket/events": "/api/v1/requester/websocket/events",
 	}
 
-	// set validator
+	// set custom binders and validators
+	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
 	// enable debug mode to get clearer error messages
@@ -131,6 +134,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		middleware.ServerHeader(params.Headers),
 		// logs request at appropriate error level based on status code
 		middleware.RequestLogger(*middlewareLogger, logLevel),
+		// checks if the client version is supported by the server
+		middleware.VersionCheckMiddleware(*serverVersion, *minClientVersion),
 		// logs requests made by clients with different versions than the server
 		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
 	)

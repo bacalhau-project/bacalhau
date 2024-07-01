@@ -23,7 +23,7 @@ type ManagementClientParams struct {
 	AvailableCapacityTracker capacity.Tracker
 	QueueUsageTracker        capacity.UsageTracker
 	RegistrationFilePath     string
-	HeartbeatClient          *heartbeat.HeartbeatClient
+	HeartbeatClient          heartbeat.Client
 	ControlPlaneSettings     types.ComputeControlPlaneConfig
 }
 
@@ -40,7 +40,7 @@ type ManagementClient struct {
 	availableCapacityTracker capacity.Tracker
 	queueUsageTracker        capacity.UsageTracker
 	registrationFile         *RegistrationFile
-	heartbeatClient          *heartbeat.HeartbeatClient
+	heartbeatClient          heartbeat.Client
 	settings                 types.ComputeControlPlaneConfig
 }
 

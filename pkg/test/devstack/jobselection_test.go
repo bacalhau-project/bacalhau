@@ -8,18 +8,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
-	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 
-	"github.com/stretchr/testify/suite"
-
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 )
 
@@ -61,16 +60,19 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 		if testCase.addFiles {
 			inputs = scenario.StoredText(rootSourceDir, "job selection", "/inputs")
 		} else {
-			inputs = func(ctx context.Context) ([]model.StorageSpec, error) {
+			inputs = func(ctx context.Context) ([]*models.InputSource, error) {
 				sourceFile, err := scenario.CreateSourcePath(rootSourceDir)
 				if err != nil {
 					return nil, err
 				}
-				return []model.StorageSpec{
+				localSource, err := storage_local.NewSpecConfig(sourceFile, false)
+				if err != nil {
+					return nil, err
+				}
+				return []*models.InputSource{
 					{
-						StorageSource: model.StorageSourceLocalDirectory,
-						SourcePath:    sourceFile,
-						Path:          "/inputs",
+						Target: "/inputs",
+						Source: localSource,
 					},
 				}, nil
 			}
@@ -85,12 +87,25 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 				RequesterConfig: requesterConfig,
 			},
 			Inputs: inputs,
-			Spec:   testutils.MakeNoopJob(suite.T()).Spec,
-			JobCheckers: []legacy_job.CheckStatesFunction{
-				legacy_job.WaitForExecutionStates(map[model.ExecutionStateType]int{
-					model.ExecutionStateCompleted:         testCase.completed,
-					model.ExecutionStateAskForBidRejected: testCase.rejected,
-					model.ExecutionStateFailed:            testCase.failed,
+			Job: &models.Job{
+				Name:  suite.T().Name(),
+				Type:  models.JobTypeBatch,
+				Count: 1,
+				Tasks: []*models.Task{
+					{
+						Name: suite.T().Name(),
+						Engine: &models.SpecConfig{
+							Type:   models.EngineNoop,
+							Params: make(map[string]interface{}),
+						},
+					},
+				},
+			},
+			JobCheckers: []scenario.StateChecks{
+				scenario.WaitForExecutionStates(map[models.ExecutionStateType]int{
+					models.ExecutionStateCompleted:         testCase.completed,
+					models.ExecutionStateAskForBidRejected: testCase.rejected,
+					models.ExecutionStateFailed:            testCase.failed,
 				}),
 			},
 		}

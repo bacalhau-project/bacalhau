@@ -10,6 +10,7 @@ import (
 const (
 	EventTopicJobSubmission    models.EventTopic = "Submission"
 	EventTopicJobScheduling    models.EventTopic = "Scheduling"
+	EventTopicJobQueueing      models.EventTopic = "Queueing"
 	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
 	EventTopicJobTimeout       models.EventTopic = "Job Timeout"
 )
@@ -17,6 +18,7 @@ const (
 const (
 	jobSubmittedMessage        = "Job submitted"
 	jobTranslatedMessage       = "Job tasks translated to new type"
+	jobQueuedMessage           = "Job queued"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
 	JobTimeoutMessage          = "Job timed out"
@@ -29,7 +31,9 @@ const (
 	execFailedMessage                    = "Execution did not complete successfully"
 
 	executionTimeoutMessage = "Execution timed out"
-	timeoutHint             = "Try increasing the task timeout or reducing the task size"
+
+	// TODO: message is duplicated in compute/errors.go. Find a better place for common errors
+	timeoutHint = "Increase the task timeout or allocate more resources"
 )
 
 func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
@@ -68,6 +72,14 @@ func JobTimeoutEvent(timeout time.Duration) models.Event {
 		WithHint(timeoutHint).
 		WithFailsExecution(true)
 	return *e
+}
+
+func JobQueueingEvent(reason string) models.Event {
+	message := jobQueuedMessage
+	if reason != "" {
+		message = fmt.Sprintf("%s. %s", message, reason)
+	}
+	return *models.NewEvent(EventTopicJobQueueing).WithMessage(message)
 }
 
 func ExecStoppedByJobStopEvent() models.Event {

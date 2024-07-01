@@ -18,8 +18,7 @@ package scenario
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
@@ -48,13 +47,10 @@ type Scenario struct {
 
 	// Output volumes that must be available to the job. If nil, no output
 	// volumes will be attached to the job.
-	Outputs []model.StorageSpec
+	Outputs []*models.ResultPath
 
 	// The job specification
-	Spec model.Spec
-
-	// The job deal. If nil, concurrency will default to 1.
-	Deal model.Deal
+	Job *models.Job
 
 	// A function that will assert submitJob response is as expected.
 	// if nil, will use SubmitJobSuccess by default.
@@ -67,7 +63,7 @@ type Scenario struct {
 	// A set of checkers that will decide when the job has completed, and maybe
 	// whether it was successful or not. If empty, the job will not be waited
 	// for once it has been submitted.
-	JobCheckers []legacy_job.CheckStatesFunction
+	JobCheckers []StateChecks
 }
 
 // All the information that is needed to uniquely define a devstack.

@@ -2,21 +2,21 @@ package executor
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
@@ -28,7 +28,7 @@ func RunTestCase(
 	testCase scenario.Scenario,
 ) {
 	ctx := context.Background()
-	spec := testCase.Spec
+	job := testCase.Job
 
 	devstackOptions := &devstack.DevStackOptions{}
 	if testCase.Stack != nil && testCase.Stack.DevStackOptions != nil {
@@ -38,69 +38,55 @@ func RunTestCase(
 
 	fsr, c := setup.SetupBacalhauRepoForTesting(t)
 	stack := testutils.Setup(ctx, t, fsr, c, devstackOptions.Options()...)
-	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, spec.EngineSpec.Engine().String())
+	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, job.Task().Engine.Type)
 	require.NoError(t, err)
 
 	isInstalled, err := executor.IsInstalled(ctx)
 	require.NoError(t, err)
 	require.True(t, isInstalled)
 
-	prepareStorage := func(getStorage scenario.SetupStorage) []model.StorageSpec {
+	prepareStorage := func(getStorage scenario.SetupStorage) []*models.InputSource {
 		if getStorage == nil {
-			return []model.StorageSpec{}
+			return []*models.InputSource{}
 		}
 
 		storageList, stErr := getStorage(ctx)
 		require.NoError(t, stErr)
 
-		for _, storageSpec := range storageList {
-			inputSource, err := legacy.FromLegacyStorageSpecToInputSource(storageSpec)
+		for _, input := range storageList {
+			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, input.Source.Type)
 			require.NoError(t, err)
 
-			strger, err := stack.Nodes[0].ComputeNode.Storages.Get(ctx, storageSpec.StorageSource.String())
-			require.NoError(t, err)
-			hasStorage, stErr := strger.HasStorageLocally(ctx, *inputSource)
+			hasStorage, stErr := strger.HasStorageLocally(ctx, *input)
 			require.NoError(t, stErr)
+
 			require.True(t, hasStorage)
 		}
 
 		return storageList
 	}
 
-	spec.Inputs = prepareStorage(testCase.Inputs)
-	spec.Outputs = testCase.Outputs
-	spec.PublisherSpec = model.PublisherSpec{
-		Type: model.PublisherLocal,
-	}
-	spec.Deal = model.Deal{Concurrency: testNodeCount}
+	job.Task().InputSources = prepareStorage(testCase.Inputs)
+	job.Task().ResultPaths = testCase.Outputs
+	job.Task().Publisher = publisher_local.NewSpecConfig()
+	job.Count = testNodeCount
 
-	job := model.Job{
-		Metadata: model.Metadata{
-			ID:        "test-job",
-			ClientID:  "test-client",
-			CreatedAt: time.Now(),
-			Requester: model.JobRequester{
-				RequesterNodeID: "test-owner",
-			},
-		},
-		Spec: spec,
-	}
+	now := time.Now().UnixNano()
+	job.ID = fmt.Sprintf("test-job-%d", now)
+	job.Meta = make(map[string]string, 2)
+	job.Meta[models.MetaRequesterID] = "test-owner"
+	job.Meta[models.MetaClientID] = "test-client"
+	job.State = models.NewJobState(models.JobStateTypeUndefined)
+	job.Version = 1
+	job.Revision = 1
+	job.CreateTime = now
+	job.ModifyTime = now
 
-	newJob, err := legacy.FromLegacyJob(&job)
-	require.NoError(t, err)
-	execution := mock.ExecutionForJob(newJob)
-	execution.AllocateResources(newJob.Task().Name, models.Resources{})
+	job.Normalize()
+	require.NoError(t, job.Validate())
 
-	// Since we are submitting jobs directly to the executor, we need to
-	// transform wasm storage specs, which is currently handled by the
-	// requester's endpoint
-	jobTransformers := []jobtransform.PostTransformer{
-		jobtransform.NewWasmStorageSpecConverter(),
-	}
-	for _, transformer := range jobTransformers {
-		_, err = transformer(ctx, newJob)
-		require.NoError(t, err)
-	}
+	execution := mock.ExecutionForJob(job)
+	execution.AllocateResources(job.Task().Name, models.Resources{})
 
 	resultsDirectory := t.TempDir()
 	strgProvider := stack.Nodes[0].ComputeNode.Storages
@@ -115,7 +101,12 @@ func RunTestCase(
 
 	_, err = executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
-		err = testCase.SubmitChecker(&job, err)
+		// TODO not sure how this behavior should be replicated.
+		err = testCase.SubmitChecker(&apimodels.PutJobResponse{
+			JobID:        job.ID,
+			EvaluationID: "TODO",
+			Warnings:     nil,
+		}, err)
 		require.NoError(t, err)
 	}
 

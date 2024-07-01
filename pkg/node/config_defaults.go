@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -77,6 +76,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
+	NodeInfoStoreTTL:     10 * time.Minute,
 	DefaultApprovalState: models.NodeMembership.APPROVED,
 }
 
@@ -124,26 +124,6 @@ func getRequesterConfigParams() RequesterConfigParams {
 		return TestRequesterConfig
 	}
 	return DefaultRequesterConfig
-}
-
-var DefaultNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
-	Interval:             30 * time.Second,
-	EagerPublishInterval: 5 * time.Second,
-	EagerPublishDuration: 30 * time.Second,
-}
-
-// TestNodeInfoPublishConfig speeds up node announcements for tests
-var TestNodeInfoPublishConfig = routing.NodeInfoPublisherIntervalConfig{
-	Interval:             30 * time.Second,
-	EagerPublishInterval: 10 * time.Millisecond,
-	EagerPublishDuration: 5 * time.Second,
-}
-
-func GetNodeInfoPublishConfig() routing.NodeInfoPublisherIntervalConfig {
-	if system.GetEnvironment() == system.EnvironmentTest {
-		return TestNodeInfoPublishConfig
-	}
-	return DefaultNodeInfoPublishConfig
 }
 
 func NewDefaultJobSelectionPolicy() JobSelectionPolicy {

@@ -2,16 +2,12 @@ package serve
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"time"
 
-	libp2p_crypto "github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/multiformats/go-multiaddr"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -116,6 +112,7 @@ func GetRequesterConfig(ctx context.Context, cfg types.RequesterConfig, createJo
 		TranslationEnabled:             cfg.TranslationEnabled,
 		JobStore:                       jobStore,
 		DefaultPublisher:               cfg.DefaultPublisher,
+		NodeInfoStoreTTL:               time.Duration(cfg.NodeInfoStoreTTL),
 	})
 	if err != nil {
 		return node.RequesterConfig{}, err
@@ -149,7 +146,6 @@ func getNodeType(cfg types.BacalhauConfig) (requester, compute bool, err error) 
 
 func getNetworkConfig(cfg types.NetworkConfig) (node.NetworkConfig, error) {
 	return node.NetworkConfig{
-		Type:                     cfg.Type,
 		Port:                     cfg.Port,
 		AdvertisedAddress:        cfg.AdvertisedAddress,
 		Orchestrators:            cfg.Orchestrators,
@@ -220,36 +216,6 @@ func persistConfigs(repoPath string, cfg types.BacalhauConfig) error {
 		return fmt.Errorf("error writing persisted config: %w", err)
 	}
 	return nil
-}
-
-func loadLibp2pPrivKey(keyPath string) (libp2p_crypto.PrivKey, error) {
-	keyBytes, err := os.ReadFile(keyPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key: %w", err)
-	}
-	// base64 decode keyBytes
-	b64, err := base64.StdEncoding.DecodeString(string(keyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key: %w", err)
-	}
-	// parse the private key
-	key, err := libp2p_crypto.UnmarshalPrivateKey(b64)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-	return key, nil
-}
-
-func parseBootstrapPeers(bootstrappers []string) ([]multiaddr.Multiaddr, error) {
-	peers := make([]multiaddr.Multiaddr, 0, len(bootstrappers))
-	for _, peer := range bootstrappers {
-		parsed, err := multiaddr.NewMultiaddr(peer)
-		if err != nil {
-			return nil, err
-		}
-		peers = append(peers, parsed)
-	}
-	return peers, nil
 }
 
 func parseServerAPIHost(host string) (string, error) {

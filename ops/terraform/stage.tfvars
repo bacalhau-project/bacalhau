@@ -1,9 +1,6 @@
-bacalhau_version            = "v1.3.2"
+bacalhau_version            = "v1.4.0-rc9"
 bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
-bacalhau_node_id_0          = "QmafZ9oCXCJZX9Wt1nhrGS9FVVq41qhcBRSNWCkVhz3Nvv"
-bacalhau_node_id_1          = "QmVHCeiLzhFJPCyCj5S1RTAk1vBEvxd8r5A6E4HyJGQtbJ"
-bacalhau_node_id_2          = "QmRr9qPTe4mU7aS9faKnWgvn1NtXt36FT8YUULRPCn2f3K"
 bacalhau_environment        = "staging"
 ipfs_version                = "v0.12.2"
 gcp_project                 = "bacalhau-stage"
@@ -31,4 +28,4 @@ public_ip_addresses         = ["34.85.228.65", "34.86.73.105", "34.150.138.100",
 log_level                   = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
-network_type            = "nats"
+web_ui_enabled          = true

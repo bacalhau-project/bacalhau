@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type Source struct {
@@ -41,4 +42,13 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 	}
 
 	return c, c.Validate()
+}
+
+func NewSpecConfig(url string) *models.SpecConfig {
+	s := Source{URL: url}
+
+	return &models.SpecConfig{
+		Type:   models.StorageSourceInline,
+		Params: s.ToMap(),
+	}
 }

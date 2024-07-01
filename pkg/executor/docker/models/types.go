@@ -128,3 +128,11 @@ func (b *DockerEngineBuilder) Build() (*models.SpecConfig, error) {
 		Params: b.spec.ToMap(),
 	}, nil
 }
+
+func (b *DockerEngineBuilder) MustBuild() *models.SpecConfig {
+	spec, err := b.Build()
+	if err != nil {
+		panic(err)
+	}
+	return spec
+}

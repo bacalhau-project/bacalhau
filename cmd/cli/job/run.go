@@ -1,10 +1,7 @@
 package job
 
 import (
-	"errors"
 	"fmt"
-	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -12,7 +9,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/template"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
@@ -36,6 +32,8 @@ var (
 
 		# Run a new job from an already executed job
 		bacalhau job describe 6e51df50 | bacalhau job run
+
+		# Download the 
 		`))
 )
 
@@ -95,28 +93,9 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 	ctx := cmd.Context()
 
 	// read the job spec from stdin or file
-	var err error
-	var byteResult []byte
-	if len(args) == 0 {
-		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
-		if err != nil {
-			return fmt.Errorf("unknown error reading from file or stdin: %w", err)
-		}
-	} else {
-		var fileContent *os.File
-		fileContent, err = os.Open(args[0])
-		if err != nil {
-			return fmt.Errorf("error opening file: %w", err)
-		}
-		defer fileContent.Close()
-
-		byteResult, err = io.ReadAll(fileContent)
-		if err != nil {
-			return fmt.Errorf("error reading file: %w", err)
-		}
-	}
-	if len(byteResult) == 0 {
-		return errors.New(userstrings.JobSpecBad)
+	jobBytes, err := util.ReadJobFromUser(cmd, args)
+	if err != nil {
+		return err
 	}
 
 	if !o.NoTemplate {
@@ -127,16 +106,13 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		if err != nil {
 			return fmt.Errorf("failed to create template parser: %w", err)
 		}
-		byteResult, err = parser.ParseBytes(byteResult)
+		jobBytes, err = parser.ParseBytes(jobBytes)
 		if err != nil {
 			return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 		}
 	}
 
-	// Turns out the yaml parser supports both yaml & json (because json is a subset of yaml)
-	// so we can just use that
-	var j *models.Job
-	err = marshaller.YAMLUnmarshalWithMax(byteResult, &j)
+	j, err := marshaller.UnmarshalJob(jobBytes)
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
@@ -172,7 +148,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
+	if err := printer.PrintJobExecution(ctx, j, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

@@ -30,10 +30,10 @@ func (s *ServerSuite) TestJobOperations() {
 	listResponse, err := s.client.Jobs().List(ctx, &apimodels.ListJobsRequest{})
 	s.Require().NoError(err)
 	s.Require().NotNil(listResponse)
-	s.Require().NotEmpty(listResponse.Jobs)
+	s.Require().NotEmpty(listResponse.Items)
 
 	found := false
-	for _, j := range listResponse.Jobs {
+	for _, j := range listResponse.Items {
 		if j.ID == putResponse.JobID {
 			found = true
 			break
@@ -59,8 +59,8 @@ func (s *ServerSuite) TestJobOperations() {
 	historyResponse, err := s.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{JobID: putResponse.JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(historyResponse)
-	s.Require().NotEmpty(historyResponse.History)
-	for _, h := range historyResponse.History {
+	s.Require().NotEmpty(historyResponse.Items)
+	for _, h := range historyResponse.Items {
 		s.Require().Equal(putResponse.JobID, h.JobID)
 	}
 
@@ -69,13 +69,13 @@ func (s *ServerSuite) TestJobOperations() {
 		JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(executionsResponse)
-	s.Require().NotEmpty(executionsResponse.Executions)
+	s.Require().NotEmpty(executionsResponse.Items)
 
 	// list results
 	resultsResponse, err := s.client.Jobs().Results(ctx, &apimodels.ListJobResultsRequest{JobID: putResponse.JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(resultsResponse)
-	s.Require().Empty(resultsResponse.Results, "expected no results as we did not specify a publisher")
+	s.Require().Empty(resultsResponse.Items, "expected no results as we did not specify a publisher")
 
 	// stop the job should fail as it is already complete
 	_, err = s.client.Jobs().Stop(ctx, &apimodels.StopJobRequest{JobID: putResponse.JobID})
