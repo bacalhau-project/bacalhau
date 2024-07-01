@@ -2,17 +2,17 @@
 
 set -euo pipefail
 
-flox_env="aronchick/bacalhau"
+# # Check if $_FLOX_ACTIVE_ENVIRONMENTS is set and equal to the desired environment
+# if [ -z "${FLOX_ENV_DESCRIPTION:-}" ] || [ "$FLOX_ENV_DESCRIPTION" != "$flox_env" ]; then
+#   echo "Activating flox environment: $flox_env"
 
-# Check if $_FLOX_ACTIVE_ENVIRONMENTS is set and equal to the desired environment
-if [ -z "${FLOX_ENV_DESCRIPTION:-}" ] || [ "$FLOX_ENV_DESCRIPTION" != "$flox_env" ]; then
-  echo "Activating flox environment: $flox_env"
+#   # shellcheck disable=SC1090,SC1091,SC2312
+#   . <(FLOX_DISABLE_METRICS=true SHELL=$(command -v bash) flox activate -r aronchick/bacalhau -t;)
+# else
+#   echo "Flox environment $flox_env is already active"
+# fi
 
-  # shellcheck disable=SC1090,SC1091,SC2312
-  . <(FLOX_DISABLE_METRICS=true SHELL=$(command -v bash) flox activate -r aronchick/bacalhau -t;)
-else
-  echo "Flox environment $flox_env is already active"
-fi
+. <(FLOX_DISABLE_METRICS=true SHELL=$(command -v bash) flox activate -vv -r aronchick/bacalhau -t;)
 
 
 # Set up environment variables

@@ -3,12 +3,23 @@ FROM ubuntu:20.04
 # Set environment variable for headless installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install sudo
+RUN apt-get update && apt-get install -y sudo
+
 # Make Bash the default shell
 SHELL ["/bin/bash", "-c"]
 
+ENV USER_ID=1000
+ENV GROUP_ID=1000
+
+RUN groupadd -g $GROUP_ID buildkite-agent && \
+    useradd -u $USER_ID -g buildkite-agent buildkite-agent
+
+# Add buildkite-agent to sudoers
+RUN echo "buildkite-agent ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 # Install required packages
-RUN apt-get update && apt-get install -y \
-    sudo \
+RUN apt-get update && sudo apt-get install -y \
     bash \
     curl \
     xz-utils \
@@ -49,7 +60,9 @@ RUN /bin/bash -c '\
 
 # Copy the startup script
 COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN chmod ugo+x /start.sh
+
+USER buildkite-agent
 
 # Set the entrypoint to our startup script
 ENTRYPOINT ["/start.sh"]

@@ -1,4 +1,6 @@
-FROM docker.io/bacalhauproject/nix-flox-base:0.0.54
+FROM docker.io/bacalhauproject/nix-flox-base:0.0.57
+
+USER buildkite-agent
 
 # Set up environment
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
@@ -11,7 +13,7 @@ RUN export SHELL=$(which bash)
 
 # Activate Flox environment
 RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \
-    bash -c ". <(FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau -t)"
+    bash -c ". <(FLOX_DISABLE_METRICS=true flox activate -vv -r aronchick/bacalhau -t)"
 
 # Set the default command
 CMD ["/nix/var/nix/profiles/default/bin/bash"]

@@ -13,6 +13,7 @@ from alive_progress import alive_bar
 from tabulate import tabulate
 
 import docker
+from docker.errors import DockerException
 
 DOCKER_REGISTRY_URL = "docker.io"
 GCR_REGISTRY_URL = "gcr.io"
@@ -239,8 +240,23 @@ def check_versions(image_dir, dockerfile_path):
     return version, from_image
 
 
+def is_docker_running():
+    try:
+        docker.from_env().ping()
+        return True
+    except DockerException:
+        return False
+
+
 def get_docker_client():
-    return docker.from_env()
+    if not is_docker_running():
+        print("Error: Docker is not running. Please start Docker and try again.")
+        return None
+    try:
+        return docker.from_env()
+    except DockerException as e:
+        print(f"Error connecting to Docker: {e}")
+        return None
 
 
 def main():
@@ -295,13 +311,15 @@ def main():
             try:
                 choice = int(choice) - 1
                 if 0 <= choice < len(all_images):
-                    tag_list = build_docker_image(
-                        get_docker_client(), all_images[choice]
-                    )
-                    if tag_list:
-                        success = push_docker_image_sync(get_docker_client(), tag_list)
-                        if not success:
-                            print("Image push was not completed successfully")
+                    docker_client = get_docker_client()
+                    if docker_client:
+                        tag_list = build_docker_image(docker_client, all_images[choice])
+                        if tag_list:
+                            success = push_docker_image_sync(docker_client, tag_list)
+                            if not success:
+                                print("Image push was not completed successfully")
+                    else:
+                        print("Unable to proceed without a Docker client.")
                 else:
                     print("Invalid selection.")
             except ValueError:
@@ -311,9 +329,13 @@ def main():
                 (img for img in all_images if img["name"] == args.build), None
             )
             if image_to_build:
-                tag_list = build_docker_image(get_docker_client(), image_to_build)
-                if tag_list:
-                    push_docker_image_sync(get_docker_client(), tag_list)
+                docker_client = get_docker_client()
+                if docker_client:
+                    tag_list = build_docker_image(docker_client, image_to_build)
+                    if tag_list:
+                        push_docker_image_sync(docker_client, tag_list)
+                else:
+                    print("Unable to proceed without a Docker client.")
             else:
                 print(f"Image '{args.build}' not found.")
     else:
