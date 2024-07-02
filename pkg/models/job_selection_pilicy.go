@@ -1,7 +1,8 @@
-package model
+package models
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -66,9 +67,8 @@ type JobSelectionPolicy struct {
 	ProbeExec string `json:"probe_exec,omitempty" yaml:"ProbeExec"`
 }
 
-// generate a default empty job selection policy
-func NewDefaultJobSelectionPolicy() JobSelectionPolicy {
-	return JobSelectionPolicy{
-		Locality: Anywhere,
-	}
+func equal(a, b string) bool {
+	a = strings.TrimSpace(a)
+	b = strings.TrimSpace(b)
+	return strings.EqualFold(a, b)
 }

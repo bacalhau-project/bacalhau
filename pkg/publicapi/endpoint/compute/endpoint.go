@@ -1,25 +1,26 @@
 package compute
 
 import (
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
 	Router             *echo.Echo
 	Bidder             compute.Bidder
 	Store              store.ExecutionStore
-	DebugInfoProviders []model.DebugInfoProvider
+	DebugInfoProviders []models.DebugInfoProvider
 }
 
 type Endpoint struct {
 	router             *echo.Echo
 	bidder             compute.Bidder
 	store              store.ExecutionStore
-	debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders []models.DebugInfoProvider
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {

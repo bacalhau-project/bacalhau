@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -32,7 +31,7 @@ type BaseExecutorParams struct {
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
-	FailureInjectionConfig model.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionComputeConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -46,7 +45,7 @@ type BaseExecutor struct {
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
-	failureInjection model.FailureInjectionComputeConfig
+	failureInjection models.FailureInjectionComputeConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {

@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/bacalhau-project/bacalhau/pkg/model"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,7 +41,7 @@ func (m *MockJobEventHandler) EXPECT() *MockJobEventHandlerMockRecorder {
 }
 
 // HandleJobEvent mocks base method.
-func (m *MockJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+func (m *MockJobEventHandler) HandleJobEvent(ctx context.Context, event models.JobEvent) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandleJobEvent", ctx, event)
 	ret0, _ := ret[0].(error)

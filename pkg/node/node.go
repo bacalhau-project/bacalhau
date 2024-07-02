@@ -14,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -136,7 +135,7 @@ func NewNode(
 		return nil, err
 	}
 
-	var debugInfoProviders []model.DebugInfoProvider
+	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
 	var requesterNode *Requester
