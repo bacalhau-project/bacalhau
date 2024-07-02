@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/rs/zerolog/log"
 )
@@ -57,24 +58,24 @@ func (sm *ServerManager) Stop() {
 }
 
 // GetDebugInfo returns the debug info of the NATS server
-func (sm *ServerManager) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
+func (sm *ServerManager) GetDebugInfo(ctx context.Context) (models.DebugInfo, error) {
 	varz, err := sm.Server.Varz(&server.VarzOptions{})
 	if err != nil {
-		return model.DebugInfo{}, err
+		return models.DebugInfo{}, err
 	}
 	connz, err := sm.Server.Connz(&server.ConnzOptions{})
 	if err != nil {
-		return model.DebugInfo{}, err
+		return models.DebugInfo{}, err
 	}
 	routez, err := sm.Server.Routez(&server.RoutezOptions{})
 	if err != nil {
-		return model.DebugInfo{}, err
+		return models.DebugInfo{}, err
 	}
 	subsz, err := sm.Server.Subsz(&server.SubszOptions{})
 	if err != nil {
-		return model.DebugInfo{}, err
+		return models.DebugInfo{}, err
 	}
-	return model.DebugInfo{
+	return models.DebugInfo{
 		Component: "NATSServer",
 		Info: map[string]interface{}{
 			"ID":     sm.Server.ID(),

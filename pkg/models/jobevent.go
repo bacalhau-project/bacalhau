@@ -1,4 +1,4 @@
-package model
+package models
 
 import (
 	"fmt"
@@ -89,6 +89,7 @@ func (je *JobEventType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
+// TODO remove this https://github.com/bacalhau-project/bacalhau/issues/4185
 type JobEvent struct {
 	JobID string `json:"JobID,omitempty" example:"9304c616-291f-41ad-b862-54e133c0149e"`
 	// compute execution identifier

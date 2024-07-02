@@ -10,14 +10,13 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type JobSettings struct {
 	name        string
 	namespace   string
-	jobType     model.TargetingMode
+	jobType     flags.TargetingMode
 	priority    int
 	count       int
 	constraints string
@@ -40,9 +39,9 @@ func (j *JobSettings) Namespace() string {
 
 func (j *JobSettings) Type() string {
 	switch j.jobType {
-	case model.TargetAll:
+	case flags.TargetAll:
 		return models.JobTypeOps
-	case model.TargetAny:
+	case flags.TargetAny:
 		return models.JobTypeBatch
 	default:
 		panic("unreachable")
@@ -66,14 +65,9 @@ func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) 
 		if err != nil {
 			return nil, err
 		}
-		out := make([]*models.LabelSelectorRequirement, 0, len(req))
-		for _, c := range req {
-			tmp := models.LabelSelectorRequirement(c)
-			out = append(out, &tmp)
-		}
-		return out, nil
+		return req, nil
 	}
-	return parse.NodeSelectorV2(j.constraints)
+	return parse.NodeSelector(j.constraints)
 }
 
 // TODO(forrest): based on a conversation with walid we should be returning an error here if at anypoint if a label
@@ -113,7 +107,7 @@ func DefaultJobSettings() *JobSettings {
 	return &JobSettings{
 		name:        "",
 		namespace:   models.DefaultNamespace,
-		jobType:     model.TargetAny,
+		jobType:     flags.TargetAny,
 		priority:    0,
 		count:       1,
 		constraints: "",

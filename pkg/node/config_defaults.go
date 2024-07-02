@@ -8,7 +8,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -24,8 +23,8 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 		JobNegotiationTimeout:      3 * time.Minute,
 		MinJobExecutionTimeout:     500 * time.Millisecond,
-		MaxJobExecutionTimeout:     model.NoJobTimeout,
-		DefaultJobExecutionTimeout: model.NoJobTimeout,
+		MaxJobExecutionTimeout:     models.NoTimeout,
+		DefaultJobExecutionTimeout: models.NoTimeout,
 
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
@@ -43,7 +42,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: model.NoJobTimeout,
+		TotalTimeout: models.NoTimeout,
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,

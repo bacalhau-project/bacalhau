@@ -5,17 +5,17 @@ package eventhandler
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // A job event handler is a component that is notified of events related to jobs.
 type JobEventHandler interface {
-	HandleJobEvent(ctx context.Context, event model.JobEvent) error
+	HandleJobEvent(ctx context.Context, event models.JobEvent) error
 }
 
 // function that implements the JobEventHandler interface
-type JobEventHandlerFunc func(ctx context.Context, event model.JobEvent) error
+type JobEventHandlerFunc func(ctx context.Context, event models.JobEvent) error
 
-func (f JobEventHandlerFunc) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+func (f JobEventHandlerFunc) HandleJobEvent(ctx context.Context, event models.JobEvent) error {
 	return f(ctx, event)
 }

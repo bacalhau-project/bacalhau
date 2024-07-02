@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -9,7 +8,7 @@ type ComputeConfig struct {
 	Capacity             CapacityConfig            `yaml:"Capacity"`
 	ExecutionStore       JobStoreConfig            `yaml:"ExecutionStore"`
 	JobTimeouts          JobTimeoutConfig          `yaml:"JobTimeouts"`
-	JobSelection         model.JobSelectionPolicy  `yaml:"JobSelection"`
+	JobSelection         models.JobSelectionPolicy `yaml:"JobSelection"`
 	Logging              LoggingConfig             `yaml:"Logging"`
 	ManifestCache        DockerCacheConfig         `yaml:"ManifestCache"`
 	LogStreamConfig      LogStreamConfig           `yaml:"LogStream"`

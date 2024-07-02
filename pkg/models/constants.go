@@ -1,5 +1,12 @@
 package models
 
+import (
+	"math"
+	"time"
+)
+
+var NoTimeout = time.Duration(math.MaxInt64).Truncate(time.Second)
+
 const (
 	// DefaultNamespace is the default namespace.
 	DefaultNamespace = "default"
@@ -29,6 +36,11 @@ const (
 	EngineWasm   = "wasm"
 )
 
+var EngineNames = []string{
+	EngineDocker,
+	EngineWasm,
+}
+
 const (
 	StorageSourceNoop           = "noop"
 	StorageSourceIPFS           = "ipfs"
@@ -39,12 +51,28 @@ const (
 	StorageSourceLocalDirectory = "localDirectory"
 )
 
+var StoragesNames = []string{
+	StorageSourceIPFS,
+	StorageSourceInline,
+	StorageSourceLocalDirectory,
+	StorageSourceS3,
+	StorageSourceS3PreSigned,
+	StorageSourceURL,
+}
+
 const (
 	PublisherNoop  = "noop"
 	PublisherIPFS  = "ipfs"
 	PublisherS3    = "s3"
 	PublisherLocal = "local"
 )
+
+var PublisherNames = []string{
+	PublisherNoop,
+	PublisherIPFS,
+	PublisherS3,
+	PublisherLocal,
+}
 
 const (
 	DownloadFilenameStdout   = "stdout"

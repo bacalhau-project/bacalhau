@@ -3,7 +3,6 @@ package planner
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
@@ -30,16 +29,16 @@ func NewEventEmitter(params EventEmitterParams) *EventEmitter {
 
 // Process updates the state of the executions in the plan according to the scheduler's desired state.
 func (s *EventEmitter) Process(ctx context.Context, plan *models.Plan) error {
-	var eventName model.JobEventType
+	var eventName models.JobEventType
 	switch plan.DesiredJobState {
 	case models.JobStateTypeCompleted:
-		eventName = model.JobEventCompleted
+		eventName = models.JobEventCompleted
 	case models.JobStateTypeFailed:
-		eventName = model.JobEventError
+		eventName = models.JobEventError
 	default:
 	}
 	if !eventName.IsUndefined() {
-		s.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
+		s.eventEmitter.EmitEventSilently(ctx, models.JobEvent{
 			SourceNodeID: s.id,
 			JobID:        plan.Job.ID,
 			Status:       plan.Event.Message,

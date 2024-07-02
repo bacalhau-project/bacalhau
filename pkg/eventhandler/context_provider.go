@@ -4,28 +4,18 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 // Interface for a context provider that can be used to generate a context to be used to handle
 // job events.
 type ContextProvider interface {
 	GetContext(ctx context.Context, jobID string) context.Context
-}
-
-// NoopContextProvider is a context provider that does not generate a new context, and
-// simply returns the	ctx passed in.
-type NoopContextProvider struct{}
-
-func NewNoopContextProvider() *NoopContextProvider {
-	return &NoopContextProvider{}
-}
-
-func (t *NoopContextProvider) GetContext(ctx context.Context, _ string) context.Context {
-	return ctx
 }
 
 // TracerContextProvider is a context provider that generates a context along with tracing information.
@@ -50,8 +40,8 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	jobCtx, _ := system.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
 		oteltrace.WithSpanKind(oteltrace.SpanKindInternal),
 		oteltrace.WithAttributes(
-			attribute.String(model.TracerAttributeNameNodeID, t.nodeID),
-			attribute.String(model.TracerAttributeNameJobID, jobID),
+			attribute.String(telemetry.TracerAttributeNameNodeID, t.nodeID),
+			attribute.String(telemetry.TracerAttributeNameJobID, jobID),
 		),
 	)
 
@@ -60,7 +50,7 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	return jobCtx
 }
 
-func (t *TracerContextProvider) HandleJobEvent(ctx context.Context, event model.JobEvent) error {
+func (t *TracerContextProvider) HandleJobEvent(ctx context.Context, event models.JobEvent) error {
 	// If the event is known to be terminal, end the local lifecycle context:
 	if event.EventName.IsTerminal() {
 		t.endJobNodeContext(ctx, event.JobID)

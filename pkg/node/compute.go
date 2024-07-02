@@ -19,7 +19,6 @@ import (
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -41,7 +40,7 @@ type Compute struct {
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
 	labelsProvider     models.LabelsProvider
-	debugInfoProviders []model.DebugInfoProvider
+	debugInfoProviders []models.DebugInfoProvider
 }
 
 //nolint:funlen
@@ -156,7 +155,7 @@ func NewComputeNode(
 	})
 
 	// register debug info providers for the /debug endpoint
-	debugInfoProviders := []model.DebugInfoProvider{
+	debugInfoProviders := []models.DebugInfoProvider{
 		runningInfoProvider,
 		sensors.NewCompletedJobs(executionStore),
 	}
