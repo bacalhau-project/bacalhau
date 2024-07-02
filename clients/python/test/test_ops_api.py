@@ -34,6 +34,13 @@ class TestOpsApi(unittest.TestCase):
         """
         pass
 
+    def test_agentdebug(self):
+        """Test case for agentdebug
+
+        Returns debug information on what the current node is doing.  # noqa: E501
+        """
+        pass
+
     def test_agentnode(self):
         """Test case for agentnode
 

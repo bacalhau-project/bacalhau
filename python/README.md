@@ -54,77 +54,84 @@ These are used to populate a simple python dictionary that will be passed over t
 ```python
 import pprint
 
-from bacalhau_sdk.api import submit
-from bacalhau_sdk.config import get_client_id
-from bacalhau_apiclient.models.storage_spec import StorageSpec
-from bacalhau_apiclient.models.spec import Spec
-from bacalhau_apiclient.models.job_spec_docker import JobSpecDocker
-from bacalhau_apiclient.models.publisher_spec import PublisherSpec
-from bacalhau_apiclient.models.deal import Deal
+from bacalhau_apiclient.models.job import Job
+from bacalhau_apiclient.models.task import Task
+from bacalhau_apiclient.models.all_of_execution_published_result import SpecConfig
+from bacalhau_apiclient.models.api_put_job_request import (
+    ApiPutJobRequest as PutJobRequest,
+)
+from bacalhau_sdk.job_store import JobStore
 
-
-data = dict(
-    APIVersion='V1beta1',
-    ClientID=get_client_id(),
-    Spec=Spec(
-        engine="Docker",
-        publisher_spec=PublisherSpec(type="IPFS"),
-        docker=JobSpecDocker(
-            image="ubuntu",
-            entrypoint=["echo", "Hello World!"],
+task = Task(
+    name="My Main task",
+    engine=SpecConfig(
+        type="docker",
+        params=dict(
+            Image="ubuntu:latest",
+            Entrypoint=["/bin/bash"],
+            Parameters=["-c", "echo Hello World"],
         ),
-        wasm=None,
-        resources=None,
-        timeout=1800,
-        outputs=[
-            StorageSpec(
-                storage_source="IPFS",
-                name="outputs",
-                path="/outputs",
-            )
-        ],
-        deal=Deal(concurrency=1),
-        do_not_track=False,
     ),
+    publisher=SpecConfig(),
 )
 
-pprint.pprint(submit(data))
+job = Job(name="A Simple Docker Job", type="batch", count=1, tasks=[task])
+put_job_request = PutJobRequest(job=job)
+job_store = JobStore()
+
+put_job_response = job_store.put(put_job_request)
+pprint.pprint(put_job_response)
 ```
 
 The script above prints the following object, the `job.metadata.id` value is our newly created job id!
 
 ```python
-{'job': {'api_version': 'V1beta1',
-         'metadata': {'client_id': 'bae9c3b2adfa04cc647a2457e8c0c605cef8ed93bdea5ac5f19f94219f722dfe',
-                      'created_at': '2023-02-01T19:30:21.405209538Z',
-                      'id': '710a0bc2-81d1-4025-8f80-5327ca3ce170'},
-         'spec': {'Deal': {'Concurrency': 1},
-                  'Docker': {'Entrypoint': ['echo', 'Hello World!'],
-                             'Image': 'ubuntu'},
-                  'Engine': 'Docker',
-                  'ExecutionPlan': {'ShardsTotal': 1},
-                  'Language': {'JobContext': {}},
-                  'Network': {'Type': 'None'},
-                  'Publisher': 'IPFS',
-                  'Resources': {'GPU': ''},
-                  'Sharding': {'BatchSize': 1,
-                               'GlobPatternBasePath': '/inputs'},
-                  'Timeout': 1800,
-                  'Wasm': {'EntryModule': {}},
-                  'outputs': [{'Name': 'outputs',
-                               'StorageSource': 'IPFS',
-                               'path': '/outputs'}]},
-         'status': {'JobState': {},
-                    'Requester': {'RequesterNodeID': 'QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL',
-                                  'RequesterPublicKey': 'CAASpgIwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVRKPgCfY2fgfrkHkFjeWcqno+MDpmp8DgVaY672BqJl/dZFNU9lBg2P8Znh8OTtHPPBUBk566vU3KchjW7m3uK4OudXrYEfSfEPnCGmL6GuLiZjLf+eXGEez7qPaoYqo06gD8ROdD8VVse27E96LlrpD1xKshHhqQTxKoq1y6Rx4DpbkSt966BumovWJ70w+Nt9ZkPPydRCxVnyWS1khECFQxp5Ep3NbbKtxHNX5HeULzXN5q0EQO39UN6iBhiI34eZkH7PoAm3Vk5xns//FjTAvQw6wZUu8LwvZTaihs+upx2zZysq6CEBKoeNZqed9+Tf+qHow0P5pxmiu+or+DAgMBAAE='}}}}
+{ 
+    'job': {    
+        'constraints': [],
+         'count': 1,
+         'create_time': 1719930417160015000,
+         'id': 'j-df836f6a-6920-44e4-9683-27f6ec1921e2',
+         'labels': {},
+         'meta': {'bacalhau.org/requester.id': 'node-0'},
+         'modify_time': 1719930417160015000,
+         'name': 'A Simple Docker Job',
+         'namespace': 'default',
+         'priority': 0,
+         'revision': 1,
+         'state': {'message': None, 'state_type': 'Pending'},
+         'tasks': [{'engine': {'params': {'Entrypoint': ['/bin/bash'],
+                                          'Image': 'ubuntu:latest',
+                                          'Parameters': ['-c',
+                                                         'echo Hello World']},
+                               'type': 'docker'},
+                    'env': None,
+                    'input_sources': None,
+                    'meta': None,
+                    'name': 'My Main task',
+                    'network': {'domains': None, 'type': 'None'},
+                    'publisher': {'params': None, 'type': ''},
+                    'resources': {'cpu': None,
+                                  'disk': None,
+                                  'gpu': None,
+                                  'memory': None},
+                    'result_paths': None,
+                    'timeouts': {'execution_timeout': None,
+                                 'queue_timeout': None,
+                                 'total_timeout': 1800}}],
+         'type': 'batch',
+         'version': 0
+    }
+}
 ```
 
 We can then use the `results` method to fetch, among other fields, the output data's CID.
 
 ```python
-from bacalhau_sdk.api import results
+from bacalhau_sdk.job_store import JobStore
 
-print(results(job_id="710a0bc2-81d1-4025-8f80-5327ca3ce170"))
+job_store = JobStore()
+print(results(job_store.results(job_id="710a0bc2-81d1-4025-8f80-5327ca3ce170")))
 ```
 
 The line above prints the following dictionary:

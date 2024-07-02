@@ -1,121 +1,44 @@
 """Submit a job to the server."""
 
-import json
-
-from bacalhau_apiclient.api import job_api
-from bacalhau_apiclient.models.cancel_request import CancelRequest
-from bacalhau_apiclient.models.events_request import EventsRequest
-from bacalhau_apiclient.models.list_request import ListRequest
-from bacalhau_apiclient.models.state_request import StateRequest
-from bacalhau_apiclient.models.submit_request import SubmitRequest
-from bacalhau_apiclient.rest import ApiException
-from bacalhau_sdk.config import (
-    get_client_id,
-    get_client_public_key,
-    init_config,
-    sign_for_client,
+from bacalhau_apiclient.models.job import Job
+from bacalhau_apiclient.models.api_put_job_request import (
+    ApiPutJobRequest as PutJobRequest,
 )
+from bacalhau_sdk.config import (
+    init_config,
+)
+from bacalhau_sdk.orchestrator_service import OrchestratorService
 
 conf = init_config()
-client = job_api.ApiClient(conf)
-api_instance = job_api.JobApi(client)
+orchestrator_service = OrchestratorService(conf)
 
 
-def submit(data: dict):
-    """Submit a job to the server.
-
-    Input `data` object is sanittized and signed before being sent to the server.
-    """
-    sanitized_data = client.sanitize_for_serialization(data)
-    json_data = json.dumps(sanitized_data, indent=None, separators=(", ", ": "))
-    json_bytes = json_data.encode("utf-8")
-    signature = sign_for_client(json_bytes)
-    client_public_key = get_client_public_key()
-    submit_req = SubmitRequest(
-        client_public_key=client_public_key,
-        payload=sanitized_data,
-        signature=signature,
-    )
-    return api_instance.submit(submit_req)
+def submit(job: Job):
+    """Submit a job to the server."""
+    request = PutJobRequest(job=job)
+    return orchestrator_service.put_job(request=request)
 
 
 def cancel(job_id: str):
     """Cancels a job on the server."""
-    payload = dict(
-        ClientID=get_client_id(),
-        JobID=job_id,
-    )
-
-    sanitized_data = client.sanitize_for_serialization(payload)
-    json_data = json.dumps(payload, indent=None, separators=(", ", ": "))
-    json_bytes = json_data.encode("utf-8")
-    signature = sign_for_client(json_bytes)
-    client_public_key = get_client_public_key()
-    cancel_req = CancelRequest(
-        client_public_key=client_public_key,
-        payload=sanitized_data,
-        signature=signature,
-    )
-    return api_instance.cancel(cancel_req)
+    return orchestrator_service.stop_job(job_id, "UserCancelled")
 
 
 def list():
     """List all jobs."""
-    try:
-        # Simply lists jobs.
-        list_request = ListRequest(
-            client_id=get_client_id(),
-            sort_reverse=False,
-            sort_by="created_at",
-            return_all=False,
-            max_jobs=5,
-            exclude_tags=[],
-            include_tags=[],
-        )
-        api_response = api_instance.list(list_request)
-    except ApiException as e:
-        print("Exception when calling JobApi->list: %s\n" % e)
-    return api_response
+    return orchestrator_service.list_jobs()
 
 
 def results(job_id: str):
-    """Get results."""
-    try:
-        # Returns the results of the job-id specified in the body payload.
-        state_request = StateRequest(
-            client_id=get_client_id(),
-            job_id=job_id,
-        )
-        api_response = api_instance.results(state_request)
-    except ApiException as e:
-        print("Exception when calling JobApi->results: %s\n" % e)
-    return api_response
+    """Return Job Results"""
+    return orchestrator_service.job_results(id=job_id)
 
 
 def states(job_id: str):
-    """Get states."""
-    try:
-        # Returns the state of the job-id specified in the body payload.
-        state_request = StateRequest(
-            client_id=get_client_id(),
-            job_id=job_id,
-        )
-        api_response = api_instance.states(state_request)
-    except ApiException as e:
-        print("Exception when calling JobApi->states: %s\n" % e)
-    return api_response
+    """Return Job States"""
+    return orchestrator_service.job_executions(id=job_id)
 
 
 def events(job_id: str):
-    """Get events."""
-    # TODO - add tests
-    try:
-        # Returns the events of the job-id specified in the body payload.
-        state_request = EventsRequest(
-            client_id=get_client_id(),
-            job_id=job_id,
-        )
-        api_response = api_instance.events(state_request)
-    except ApiException as e:
-        print("Exception when calling JobApi->events: %s\n" % e)
-    return api_response
+    """Returns Job Related Events"""
+    return orchestrator_service.job_history(id=job_id)

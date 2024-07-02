@@ -28,7 +28,7 @@ copy-code:
 
 run-linter:
     FROM +copy-code
-    RUN poetry run ruff $SOURCES tests examples
+    RUN poetry run ruff check $SOURCES tests examples
 
 run-unittest:
     FROM +run-linter

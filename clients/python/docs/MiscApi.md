@@ -4,10 +4,10 @@ All URIs are relative to *http://bootstrap.production.bacalhau.org:1234/*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**api_serverversion**](MiscApi.md#api_serverversion) | **POST** /version | Returns the build version running on the server.
+[**api_serverversion**](MiscApi.md#api_serverversion) | **POST** /api/v1/version | Returns the build version running on the server.
 
 # **api_serverversion**
-> VersionResponse api_serverversion(body)
+> SharedVersionResponse api_serverversion(body)
 
 Returns the build version running on the server.
 
@@ -23,7 +23,7 @@ from pprint import pprint
 
 # create an instance of the API class
 api_instance = bacalhau_apiclient.MiscApi()
-body = bacalhau_apiclient.VersionRequest() # VersionRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
+body = bacalhau_apiclient.SharedVersionRequest() # SharedVersionRequest | Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
 
 try:
     # Returns the build version running on the server.
@@ -37,11 +37,11 @@ except ApiException as e:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **body** | [**VersionRequest**](VersionRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. |
+ **body** | [**SharedVersionRequest**](SharedVersionRequest.md)| Request must specify a &#x60;client_id&#x60;. To retrieve your &#x60;client_id&#x60;, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run &#x60;bacalhau describe &lt;job-id&gt;&#x60; and fetch the &#x60;ClientID&#x60; field. | 
 
 ### Return type
 
-[**VersionResponse**](VersionResponse.md)
+[**SharedVersionResponse**](SharedVersionResponse.md)
 
 ### Authorization
 
@@ -53,3 +53,4 @@ No authorization required
  - **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+

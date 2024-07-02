@@ -14,6 +14,19 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
+// godoc for Orchstrator GetNode
+//
+//	@ID				orchestrator/getNode
+//	@Summary		Get an orchestrator node
+//	@Description	Get an orchestrator node
+//	@Tags			Orchestrator
+//	@Produce		json
+//	@Param			id	path		string	true	"ID of the orchestrator node to fetch for."
+//	@Success		200	{object}	apimodels.GetNodeResponse
+//	@Failure		400	{object}	string
+//	@Failure		404	{object}	string
+//	@Failure		500	{object}	string
+//	@Router			/api/v1/orchestrator/nodes/{id} [get]
 func (e *Endpoint) getNode(c echo.Context) error {
 	ctx := c.Request().Context()
 	if c.Param("id") == "" {
@@ -28,6 +41,23 @@ func (e *Endpoint) getNode(c echo.Context) error {
 	})
 }
 
+// godoc for Orchestrator ListNodes
+//
+//	@ID				orchestrator/listNodes
+//	@Summary		Returns a list of orchestrator nodes.
+//	@Description	Returns a list of orchestrator nodes.
+//	@Tags			Orchestrator
+//	@Produce		json
+//	@Param			limit			query		int		false	"Limit the number of node returned"
+//	@Param			next_token		query		string	false	"Token to get the next page of nodes"
+//	@Param			reverse			query		bool	false	"Reverse the order of the nodes"
+//	@Param			order_by		query		string	false	"Order the nodes by given field"
+//	@Param			filter_approval	query		string	false	"Filter Approval"
+//	@Param			filter-status	query		string	false	"Filter Status"
+//	@Success		200				{object}	apimodels.ListNodesResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/nodes [get]
 func (e *Endpoint) listNodes(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.ListNodesRequest
@@ -110,8 +140,10 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 	})
 }
 
-type resourceFunc func(node *models.NodeState) *models.Resources
-type sortFunc func(a, b *models.NodeState) int
+type (
+	resourceFunc func(node *models.NodeState) *models.Resources
+	sortFunc     func(a, b *models.NodeState) int
+)
 
 func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFunc {
 	switch orderBy {
@@ -147,6 +179,20 @@ func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFu
 	return nil
 }
 
+// godoc for Orchestrator updateNode
+//
+//	@ID				orchestrator/updateNode
+//	@Summary		Update an orchestrator node.
+//	@Description	Update an orchestrator node.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string						true	"ID of the orchestrator node."
+//	@Param			putNodeRequest	body		apimodels.PutNodeRequest	true	"Put Node Request"
+//	@Success		200				{object}	apimodels.PutNodeResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/nodes [post]
 func (e *Endpoint) updateNode(c echo.Context) error {
 	ctx := c.Request().Context()
 

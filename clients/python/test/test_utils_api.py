@@ -60,13 +60,6 @@ class TestUtilsApi(unittest.TestCase):
         """
         pass
 
-    def test_peers(self):
-        """Test case for peers
-
-        Returns the peers connected to the host via the transport layer.  # noqa: E501
-        """
-        pass
-
 
 if __name__ == '__main__':
     unittest.main()

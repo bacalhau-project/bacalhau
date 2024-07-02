@@ -2,6 +2,7 @@
 PATH_TO_PROJECT_ROOT=$(git rev-parse --show-toplevel)
 SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/swagger"
 PUBLIC_PATH="${PATH_TO_PROJECT_ROOT}/webui/public/swagger"
+DOCS_PATH="${PATH_TO_PROJECT_ROOT}/docs"
 cd "${PATH_TO_PROJECT_ROOT}" || exit
 
 echo "Currently executing in ${PWD}"
@@ -20,6 +21,8 @@ echo "swagger.json generated - moving from ${SWAGGER_DIR} to ${PUBLIC_PATH}"
 if [[ ! -d "${PUBLIC_PATH}" ]]; then
     mkdir -p "${PUBLIC_PATH}"
 fi
-mv "${SWAGGER_DIR}/swagger.json" "${PUBLIC_PATH}"
+cp "${SWAGGER_DIR}/swagger.json" "${PUBLIC_PATH}"
+cp "${PUBLIC_PATH}/swagger.json" "${DOCS_PATH}"
 
-echo "swagger.json also copied to ${PUBLIC_PATH}/swagger.json"
+echo "swagger.json copied to ${PUBLIC_PATH}/swagger.json"
+echo "swagger.json copied to ${DOCS_PATH}/swagger.json"
