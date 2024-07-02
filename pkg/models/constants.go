@@ -1,5 +1,12 @@
 package models
 
+import (
+	"math"
+	"time"
+)
+
+var NoTimeout = time.Duration(math.MaxInt64).Truncate(time.Second)
+
 const (
 	// DefaultNamespace is the default namespace.
 	DefaultNamespace = "default"

@@ -4,7 +4,6 @@ package serve_test
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -15,7 +14,6 @@ import (
 )
 
 var (
-	noTimeout          = time.Duration(math.MaxInt64).Truncate(time.Second)
 	nonZeroTimeout     = 30 * time.Second
 	halfNonZeroTimeout = nonZeroTimeout / 2
 )
@@ -32,7 +30,7 @@ func (s *ServeSuite) TestNoTimeoutSetOrApplied() {
 		{configuredMax: nil, timeoutSpecified: &nonZeroTimeout, stateExpected: models.JobStateTypeCompleted},
 		{configuredMax: &nonZeroTimeout, timeoutSpecified: nil, stateExpected: models.JobStateTypeCompleted},
 		{configuredMax: &nonZeroTimeout, timeoutSpecified: &halfNonZeroTimeout, stateExpected: models.JobStateTypeCompleted},
-		{configuredMax: &nonZeroTimeout, timeoutSpecified: &noTimeout, stateExpected: models.JobStateTypeFailed},
+		{configuredMax: &nonZeroTimeout, timeoutSpecified: &models.NoTimeout, stateExpected: models.JobStateTypeFailed},
 	}
 
 	for _, tc := range cases {
