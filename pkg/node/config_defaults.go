@@ -1,7 +1,6 @@
 package node
 
 import (
-	"math"
 	"path"
 	"runtime"
 	"time"
@@ -24,8 +23,8 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 		JobNegotiationTimeout:      3 * time.Minute,
 		MinJobExecutionTimeout:     500 * time.Millisecond,
-		MaxJobExecutionTimeout:     time.Duration(math.MaxInt64).Truncate(time.Second),
-		DefaultJobExecutionTimeout: time.Duration(math.MaxInt64).Truncate(time.Second),
+		MaxJobExecutionTimeout:     models.NoTimeout,
+		DefaultJobExecutionTimeout: models.NoTimeout,
 
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
@@ -43,7 +42,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 var DefaultRequesterConfig = RequesterConfigParams{
 	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: time.Duration(math.MaxInt64).Truncate(time.Second),
+		TotalTimeout: models.NoTimeout,
 	},
 
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,

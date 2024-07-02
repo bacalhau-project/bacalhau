@@ -2,7 +2,6 @@
 package configenv
 
 import (
-	"math"
 	"os"
 	"runtime"
 	"time"
@@ -96,7 +95,7 @@ var TestingComputeConfig = types.ComputeConfig{
 		JobExecutionTimeoutClientIDBypassList: []string{},
 		JobNegotiationTimeout:                 types.Duration(3 * time.Minute),
 		MinJobExecutionTimeout:                types.Duration(500 * time.Millisecond),
-		MaxJobExecutionTimeout:                types.Duration(time.Duration(math.MaxInt64).Truncate(time.Second)),
+		MaxJobExecutionTimeout:                types.Duration(models.NoTimeout),
 		DefaultJobExecutionTimeout:            types.Duration(10 * time.Minute),
 	},
 	JobSelection: models.JobSelectionPolicy{
