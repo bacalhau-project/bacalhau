@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
+	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -20,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
@@ -145,7 +147,8 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
 	events jobstore.StoreEventType,
-	options ...jobstore.WatcherOption) *jobstore.Watcher {
+	options ...jobstore.WatcherOption,
+) *jobstore.Watcher {
 	return b.watchersManager.NewWatcher(ctx, types, events, options...)
 }
 
@@ -266,6 +269,35 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 		job = &j
 	}
 
+	var sortFnc func(a, b models.Execution) int
+	switch options.OrderBy {
+	case "modify_time", "":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
+	case "create_time":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	case "id":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[string]{}.Cmp(a.ID, b.ID) }
+	case "state":
+		sortFnc = func(a, b models.Execution) int {
+			return util.Compare[models.ExecutionStateType]{}.Cmp(a.ComputeState.StateType, b.ComputeState.StateType)
+		}
+	default:
+		return nil, fmt.Errorf("invalid order_by")
+	}
+	if options.Reverse {
+		baseSortFnc := sortFnc
+		sortFnc = func(a, b models.Execution) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
+			}
+			if r == 1 {
+				return -1
+			}
+			return 0
+		}
+	}
+
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return nil, err
@@ -284,6 +316,13 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 		execs = append(execs, es)
 		return nil
 	})
+
+	slices.SortFunc(execs, sortFnc)
+
+	// apply limit
+	if options.Limit > 0 && len(execs) > options.Limit {
+		execs = execs[:options.Limit]
+	}
 
 	return execs, err
 }
@@ -587,7 +626,8 @@ func createInProgressIndexKey(job *models.Job) string {
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	options jobstore.JobHistoryFilterOptions,
+) ([]models.JobHistory, error) {
 	var history []models.JobHistory
 	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
@@ -598,7 +638,8 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 }
 
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	options jobstore.JobHistoryFilterOptions,
+) ([]models.JobHistory, error) {
 	var history []models.JobHistory
 
 	jobID, err := b.reifyJobID(tx, jobID)
@@ -621,7 +662,6 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 				history = append(history, item)
 				return nil
 			})
-
 			if err != nil {
 				return nil, err
 			}
@@ -644,7 +684,6 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 				history = append(history, item)
 				return nil
 			})
-
 			if err != nil {
 				return nil, err
 			}
@@ -1096,7 +1135,8 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 }
 
 func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
-	previous models.ExecutionStateType, event models.Event) error {
+	previous models.ExecutionStateType, event models.Event,
+) error {
 	historyEntry := models.JobHistory{
 		Type:        models.JobHistoryTypeExecutionLevel,
 		JobID:       updated.JobID,
