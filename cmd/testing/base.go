@@ -22,7 +22,6 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -31,7 +30,6 @@ import (
 type BaseSuite struct {
 	suite.Suite
 	Node            *node.Node
-	Client          *client.APIClient
 	ClientV2        clientv2.API
 	Config          types.BacalhauConfig
 	Host            string
@@ -78,8 +76,6 @@ func (s *BaseSuite) SetupTest() {
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
 	s.Port = s.Node.APIServer.Port
-	s.Client, err = client.NewAPIClient(client.NoTLS, cfg.User, s.Host, s.Port)
-	s.Require().NoError(err)
 	s.ClientV2 = clientv2.New(fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 }
 

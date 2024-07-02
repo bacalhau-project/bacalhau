@@ -46,14 +46,12 @@ import (
 
 type Requester struct {
 	// Visible for testing
-	Endpoint   requester.Endpoint
-	EndpointV2 *orchestrator.BaseEndpoint
-	JobStore   jobstore.Store
+	Endpoint *orchestrator.BaseEndpoint
+	JobStore jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
 	NodeInfoStore      routing.NodeInfoStore
 	NodeDiscoverer     orchestrator.NodeDiscoverer
 	nodeManager        *manager.NodeManager
-	localCallback      compute.Callback
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []model.DebugInfoProvider
 }
@@ -208,15 +206,6 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
-	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
-		ID:                nodeID,
-		EventEmitter:      eventEmitter,
-		ComputeEndpoint:   computeProxy,
-		Store:             jobStore,
-		DefaultJobTimeout: requesterConfig.JobDefaults.TotalTimeout,
-		DefaultPublisher:  requesterConfig.DefaultPublisher,
-	})
-
 	var translationProvider translation.TranslatorProvider
 	if requesterConfig.TranslationEnabled {
 		translationProvider = translation.NewStandardTranslatorsProvider()
@@ -264,14 +253,8 @@ func NewRequesterNode(
 		discovery.NewDebugInfoProvider(nodeManager),
 	}
 
-	// register requester public http apis
-	requesterAPIServer := requester_endpoint.NewEndpoint(requester_endpoint.EndpointParams{
-		Router:             apiServer.Router,
-		Requester:          endpoint,
-		DebugInfoProviders: debugInfoProviders,
-		JobStore:           jobStore,
-		NodeDiscoverer:     nodeManager,
-	})
+	// TODO: delete this when we are ready to stop serving a deprecation notice.
+	requester_endpoint.NewEndpoint(apiServer.Router)
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:       apiServer.Router,
@@ -305,7 +288,6 @@ func NewRequesterNode(
 		// record the event in a log
 		eventTracer,
 		// dispatches events to listening websockets
-		requesterAPIServer,
 	)
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
@@ -333,14 +315,20 @@ func NewRequesterNode(
 		}
 	}
 
+	// This endpoint implements the protocol formerly known as `bprotocol`.
+	// It provides the compute call back endpoints for interacting with compute nodes.
+	// e.g. bidding, job completions, cancellations, and failures
+	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
+		ID:           nodeID,
+		EventEmitter: eventEmitter,
+		Store:        jobStore,
+	})
 	if err = transportLayer.RegisterComputeCallback(endpoint); err != nil {
 		return nil, err
 	}
 
 	return &Requester{
-		Endpoint:           endpoint,
-		localCallback:      endpoint,
-		EndpointV2:         endpointV2,
+		Endpoint:           endpointV2,
 		NodeDiscoverer:     nodeManager,
 		NodeInfoStore:      nodeManager,
 		JobStore:           jobStore,

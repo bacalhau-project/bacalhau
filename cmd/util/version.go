@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -22,13 +22,22 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api *client.APIClient) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.API) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 
-	versions.ServerVersion, err = api.Version(ctx)
+	resp, err := api.Agent().Version(ctx)
 	if err != nil {
 		return versions, errors.Wrap(err, "error running version command")
+	}
+	versions.ServerVersion = &models.BuildVersionInfo{
+		Major:      resp.Major,
+		Minor:      resp.Minor,
+		GitVersion: resp.GitVersion,
+		GitCommit:  resp.GitCommit,
+		BuildDate:  resp.BuildDate,
+		GOOS:       resp.GOOS,
+		GOARCH:     resp.GOARCH,
 	}
 
 	clientID, err := config.GetClientID(cfg.User.KeyPath)

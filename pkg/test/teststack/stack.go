@@ -4,7 +4,6 @@ package teststack
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -51,9 +49,6 @@ func Setup(
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	if err := os.Setenv(requester.UseDeprecatedEndpointsForTesting, "true"); err != nil {
-		t.Fatal(err)
-	}
 	stack, err := devstack.Setup(ctx, cfg, cm, fsr, append(testDevStackConfig().Options(), opts...)...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)

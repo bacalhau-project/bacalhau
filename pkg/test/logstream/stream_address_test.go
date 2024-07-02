@@ -77,7 +77,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution, models.Event{})
 	require.NoError(s.T(), err)
 
-	ch, err := node.RequesterNode.EndpointV2.ReadLogs(s.ctx, orchestrator.ReadLogsRequest{
+	ch, err := node.RequesterNode.Endpoint.ReadLogs(s.ctx, orchestrator.ReadLogsRequest{
 		JobID:       job.ID,
 		ExecutionID: execution.ID,
 		Tail:        true,

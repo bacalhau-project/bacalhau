@@ -11,43 +11,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
-
-func GetAPIClient(cfg types.BacalhauConfig) (*client.APIClient, error) {
-	tlsCfg := cfg.Node.ClientAPI.ClientTLS
-	apiHost := cfg.Node.ClientAPI.Host
-	apiPort := cfg.Node.ClientAPI.Port
-	tokenPath := cfg.Auth.TokensPath
-
-	if tlsCfg.CACert != "" {
-		if _, err := os.Stat(tlsCfg.CACert); os.IsNotExist(err) {
-			return nil, fmt.Errorf("CA certificate file %q does not exists", tlsCfg.CACert)
-		} else if err != nil {
-			return nil, fmt.Errorf("CA certificate file %q cannot be read: %w", tlsCfg.CACert, err)
-		}
-	}
-
-	apiClient, err := client.NewAPIClient(client.LegacyTLSSupport(tlsCfg), cfg.User, apiHost, uint16(apiPort))
-	if err != nil {
-		return nil, err
-	}
-
-	apiSheme := "http"
-	if tlsCfg.UseTLS {
-		apiSheme = "https"
-	}
-
-	if token, err := ReadToken(tokenPath, fmt.Sprintf("%s://%s:%d", apiSheme, apiHost, apiPort)); err != nil {
-		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
-	} else if token != nil {
-		apiClient.DefaultHeaders["Authorization"] = token.String()
-	}
-
-	return apiClient, nil
-}
 
 func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API, error) {
 	tlsCfg := cfg.Node.ClientAPI.ClientTLS

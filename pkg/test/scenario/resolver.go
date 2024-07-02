@@ -7,6 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -14,14 +15,73 @@ import (
 )
 
 type StateResolver struct {
-	api             client.API
+	loader          JobStateLoader
 	maxWaitAttempts int
 	waitDelay       time.Duration
 }
 
-func NewStateResolver(api client.API) *StateResolver {
+type JobStateLoader interface {
+	GetJob(ctx context.Context, id string) (*JobState, error)
+}
+
+type apiWrapper struct {
+	api client.API
+}
+
+func (a *apiWrapper) GetJob(ctx context.Context, id string) (*JobState, error) {
+	getResp, err := a.api.Jobs().Get(ctx, &apimodels.GetJobRequest{
+		JobID:   id,
+		Include: "executions",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("getting job from api: %w", err)
+	}
+	return &JobState{
+		ID:         getResp.Job.ID,
+		Executions: getResp.Executions.Items,
+		State:      getResp.Job.State,
+	}, nil
+}
+
+type storeWrapper struct {
+	store jobstore.Store
+}
+
+func (s *storeWrapper) GetJob(ctx context.Context, id string) (*JobState, error) {
+	job, err := s.store.GetJob(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting job from store: %w", err)
+	}
+	executions, err := s.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID:      id,
+		IncludeJob: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("getting job executions from store: %w", err)
+	}
+	exe := make([]*models.Execution, 0, len(executions))
+	for _, e := range executions {
+		tmp := e
+		exe = append(exe, &tmp)
+	}
+	return &JobState{
+		ID:         job.ID,
+		Executions: exe,
+		State:      job.State,
+	}, nil
+}
+
+func NewStateResolverFromStore(s jobstore.Store) *StateResolver {
 	return &StateResolver{
-		api:             api,
+		loader:          &storeWrapper{store: s},
+		maxWaitAttempts: 1000,
+		waitDelay:       time.Millisecond * 100,
+	}
+}
+
+func NewStateResolverFromAPI(api client.API) *StateResolver {
+	return &StateResolver{
+		loader:          &apiWrapper{api: api},
 		maxWaitAttempts: 1000,
 		waitDelay:       time.Millisecond * 100,
 	}
@@ -33,22 +93,24 @@ type JobState struct {
 	State      models.State[models.JobStateType]
 }
 
+// GroupExecutionsByState groups the executions by state
+func (s *JobState) GroupExecutionsByState() map[models.ExecutionStateType][]*models.Execution {
+	result := make(map[models.ExecutionStateType][]*models.Execution)
+	for _, execution := range s.Executions {
+		result[execution.ComputeState.StateType] = append(result[execution.ComputeState.StateType], execution)
+	}
+	return result
+}
+
 type StateChecks func(s *JobState) (bool, error)
 
 func (s *StateResolver) JobState(ctx context.Context, id string) (*JobState, error) {
-	resp, err := s.api.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID:   id,
-		Include: "executions",
-	})
+	state, err := s.loader.GetJob(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job (%s): %w", id, err)
 	}
 
-	return &JobState{
-		ID:         resp.Job.ID,
-		Executions: resp.Executions.Items,
-		State:      resp.Job.State,
-	}, nil
+	return state, nil
 }
 
 func (s *StateResolver) Wait(ctx context.Context, id string, until ...StateChecks) error {

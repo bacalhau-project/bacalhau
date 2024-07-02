@@ -339,7 +339,6 @@ integration-test:
 
 .PHONY: bash-test
 bash-test: 
-	export REQUESTER_ENDPOINT_USE_DEPRECATED_ENV=true
 	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
