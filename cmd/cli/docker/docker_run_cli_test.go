@@ -178,6 +178,15 @@ func TestJobFlagParsing(t *testing.T) {
 			expectedError: false,
 		},
 		{
+			name:  "with concurrency",
+			flags: []string{"--concurrency=100", "image:tag"},
+			assertJob: func(t *testing.T, j *models.Job) {
+				assert.EqualValues(t, 100, j.Count)
+				defaultTaskAssertions(t, j.Task())
+			},
+			expectedError: false,
+		},
+		{
 			name:  "with target all",
 			flags: []string{"--target=all", "image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
@@ -244,6 +253,49 @@ func TestJobFlagParsing(t *testing.T) {
 		{
 			name: "with constraints",
 			flags: []string{"--constraints", "scale!=linear,env=prod,region notin (Utumno, Mordor, Isengard),size>42",
+				"image:tag"},
+			assertJob: func(t *testing.T, j *models.Job) {
+				require.Len(t, j.Constraints, 4)
+				// constraints are always alphanumerically sorted.
+				expected := []struct {
+					key      string
+					operator string
+					values   []string
+				}{
+					{
+						"env",
+						"=",
+						[]string{"prod"},
+					},
+					{
+						"region",
+						"notin",
+						[]string{"Isengard", "Mordor", "Utumno"},
+					},
+					{
+						"scale",
+						"!=",
+						[]string{"linear"},
+					},
+					{
+						"size",
+						"gt",
+						[]string{"42"},
+					},
+				}
+				for i, expect := range expected {
+					assert.Equal(t, expect.key, j.Constraints[i].Key)
+					assert.EqualValues(t, expect.operator, j.Constraints[i].Operator)
+					assert.Len(t, j.Constraints[i].Values, len(expect.values))
+					assert.EqualValues(t, expect.values, j.Constraints[i].Values)
+				}
+				defaultTaskAssertions(t, j.Task())
+			},
+			expectedError: false,
+		},
+		{
+			name: "with deprecated selector",
+			flags: []string{"--selector", "scale!=linear,env=prod,region notin (Utumno, Mordor, Isengard),size>42",
 				"image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				require.Len(t, j.Constraints, 4)
