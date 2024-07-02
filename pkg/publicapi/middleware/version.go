@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/Masterminds/semver"
 	"github.com/labstack/echo/v4"
@@ -27,6 +28,17 @@ type VersionCheckError struct {
 	MinVersion    string
 	ClientVersion string
 	ServerVersion string
+}
+
+func parseVersion(versionStr string) (*semver.Version, error) {
+	// Strip build metadata from the version string
+	re := regexp.MustCompile(`^(\d+\.\d+\.\d+)(?:-\d+-g[0-9a-f]+)?$`)
+	matches := re.FindStringSubmatch(versionStr)
+	if len(matches) < 2 {
+		return nil, fmt.Errorf("invalid version format")
+	}
+
+	return semver.NewVersion(matches[1])
 }
 
 func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) echo.MiddlewareFunc {
@@ -64,7 +76,7 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 			}
 
 			// there is a single version header, attempt to parse it.
-			clientVersion, err := semver.NewVersion(cVersion[0])
+			clientVersion, err := parseVersion(cVersion[0])
 			if err != nil {
 				// cannot parse client version, should notify
 				notif.Message = fmt.Sprintf("received request with invalid client version: %s", cVersion[0])
@@ -102,7 +114,7 @@ func VersionCheckMiddleware(serverVersion, minVersion semver.Version) echo.Middl
 				return next(c)
 			}
 
-			clientVersion, err := semver.NewVersion(clientVersionStr)
+			clientVersion, err := parseVersion(clientVersionStr)
 			if err != nil {
 				return c.JSON(http.StatusBadRequest, map[string]string{
 					"Error": "Invalid client version " + clientVersionStr,
