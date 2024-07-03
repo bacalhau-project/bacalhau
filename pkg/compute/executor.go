@@ -392,6 +392,17 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}
 
+	// There can be a scenario where the execution may already have been cancelled
+	// by the user. In such case we should not mark it as completed.
+	currentExecutionState, err := e.store.GetExecution(ctx, execution.ID)
+	if err != nil {
+		return err
+	}
+	if currentExecutionState.State == store.ExecutionStateCancelled {
+		log.Info().Msg("Execution has already been cancelled")
+		return nil
+	}
+
 	// mark the execution as completed
 	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID:    execution.ID,
