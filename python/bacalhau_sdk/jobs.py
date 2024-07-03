@@ -80,7 +80,7 @@ class Jobs:
 
     def results(
         self,
-        id: str,
+        job_id: str,
     ) -> ListJobResultsResponse:
         """_
 
@@ -125,7 +125,7 @@ class Jobs:
         Returns:
             ListJobHistoryResponse: _description_
         """
-        self.orchestrator_service.job_history(
+        return self.orchestrator_service.job_history(
             id=job_id, event_type=event_type, node_id=node_id, execution_id=execution_id
         )
 

@@ -92,15 +92,13 @@ class OrchestratorService:
     def job_history(
         self,
         id: str,
-        namespace: str = "",
-        event_type: str = "",
+        event_type: str = "execution",
         node_id: str = "",
         execution_id: str = "",
     ) -> ListJobHistoryResponse:
         try:
             return self.endpoint.orchestratorjob_history(
                 id=id,
-                namespace=namespace,
                 event_type=event_type,
                 node_id=node_id,
                 execution_id=execution_id,
