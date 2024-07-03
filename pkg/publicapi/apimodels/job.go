@@ -90,7 +90,7 @@ func (o *ListJobsRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListJobsResponse struct {
 	BaseListResponse
-	Items []*models.Job
+	Items []*models.Job `json:"Items"`
 }
 
 // Normalize is used to canonicalize fields in the ListJobsResponse.
@@ -131,7 +131,7 @@ func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListJobHistoryResponse struct {
 	BaseListResponse
-	Items []*models.JobHistory
+	Items []*models.JobHistory `json:"Items"`
 }
 
 type ListJobExecutionsRequest struct {
@@ -141,7 +141,7 @@ type ListJobExecutionsRequest struct {
 
 type ListJobExecutionsResponse struct {
 	BaseListResponse
-	Items []*models.Execution
+	Items []*models.Execution `json:"Items"`
 }
 
 type ListJobResultsRequest struct {
@@ -151,7 +151,7 @@ type ListJobResultsRequest struct {
 
 type ListJobResultsResponse struct {
 	BaseListResponse
-	Items []*models.SpecConfig
+	Items []*models.SpecConfig `json:"Items"`
 }
 
 type StopJobRequest struct {

@@ -35,8 +35,8 @@ import (
 //	@host		localhost:1234
 //	@BasePath	/api/v1
 
-// @externalDocs.description 	Bacalhau Documentation
-// @externalDocs.url			https://docs.bacalhau.org
+//	@externalDocs.description	Bacalhau Documentation
+//	@externalDocs.url			https://docs.bacalhau.org
 
 ////	@securityDefinitions.basic	BasicAuth
 
