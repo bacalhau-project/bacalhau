@@ -60,7 +60,7 @@ from bacalhau_apiclient.models.all_of_execution_published_result import SpecConf
 from bacalhau_apiclient.models.api_put_job_request import (
     ApiPutJobRequest as PutJobRequest,
 )
-from bacalhau_sdk.job_store import JobStore
+from bacalhau_sdk.jobs import Jobs
 
 task = Task(
     name="My Main task",
@@ -77,9 +77,9 @@ task = Task(
 
 job = Job(name="A Simple Docker Job", type="batch", count=1, tasks=[task])
 put_job_request = PutJobRequest(job=job)
-job_store = JobStore()
+jobs = Jobs()
 
-put_job_response = job_store.put(put_job_request)
+put_job_response = jobs.put(put_job_request)
 pprint.pprint(put_job_response)
 ```
 
@@ -128,10 +128,10 @@ The script above prints the following object, the `job.metadata.id` value is our
 We can then use the `results` method to fetch, among other fields, the output data's CID.
 
 ```python
-from bacalhau_sdk.job_store import JobStore
+from bacalhau_sdk.jobs import Jobs
 
-job_store = JobStore()
-print(results(job_store.results(job_id="710a0bc2-81d1-4025-8f80-5327ca3ce170")))
+jobs = Jobs()
+print(results(jobs.results(job_id="710a0bc2-81d1-4025-8f80-5327ca3ce170")))
 ```
 
 The line above prints the following dictionary:

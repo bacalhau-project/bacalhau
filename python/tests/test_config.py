@@ -54,20 +54,20 @@ def test_init_config():
     assert conf.host == "https://bootstrap.production.bacalhau.org:1234"
     del os.environ["BACALHAU_HTTPS"]
 
-    os.environ["BACALHAU_NODE_CLIENTAPI_HOST"] = "1.1.1.1"
-    os.environ["BACALHAU_NODE_CLIENTAPI_PORT"] = "9999"
+    os.environ["BACALHAU_API_HOST"] = "1.1.1.1"
+    os.environ["BACALHAU_API_PORT"] = "9999"
     conf = init_config()
     assert isinstance(conf, Configuration)
     assert conf.host == "http://1.1.1.1:9999"
 
-    del os.environ["BACALHAU_NODE_CLIENTAPI_HOST"]
-    os.environ["BACALHAU_NODE_CLIENTAPI_PORT"] = "4321"
+    del os.environ["BACALHAU_API_HOST"]
+    os.environ["BACALHAU_API_PORT"] = "4321"
     conf = init_config()
     assert isinstance(conf, Configuration)
     assert conf.host == "http://bootstrap.production.bacalhau.org:4321"
 
-    os.environ["BACALHAU_NODE_CLIENTAPI_HOST"] = "mycluster.com"
-    del os.environ["BACALHAU_NODE_CLIENTAPI_PORT"]
+    os.environ["BACALHAU_API_HOST"] = "mycluster.com"
+    del os.environ["BACALHAU_API_PORT"]
     conf = init_config()
     assert isinstance(conf, Configuration)
     assert conf.host == "http://mycluster.com:1234"

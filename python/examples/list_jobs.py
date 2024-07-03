@@ -1,6 +1,6 @@
 """Example of how to list jobs."""
 
-from bacalhau_sdk.job_store import JobStore
+from bacalhau_sdk.jobs import Jobs
 
-job_store = JobStore()
-print(job_store.list())
+jobs = Jobs()
+print(jobs.list())

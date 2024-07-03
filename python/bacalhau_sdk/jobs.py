@@ -28,7 +28,7 @@ from bacalhau_apiclient.models.api_get_job_response import (
 from bacalhau_sdk.config import init_config
 
 
-class JobStore:
+class Jobs:
     def __init__(self):
         self.orchestrator_service = OrchestratorService(config=init_config())
 

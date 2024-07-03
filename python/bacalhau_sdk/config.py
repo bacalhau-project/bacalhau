@@ -50,8 +50,8 @@ def init_config():
     if scheme:
         api_scheme = "https"
 
-    api_host: str = os.getenv("BACALHAU_NODE_CLIENTAPI_HOST", u.hostname)
-    api_port: str = os.getenv("BACALHAU_NODE_CLIENTAPI_PORT", str(u.port))
+    api_host: str = os.getenv("BACALHAU_API_HOST", u.hostname)
+    api_port: str = os.getenv("BACALHAU_API_PORT", str(u.port))
 
     conf.host = "{}://{}:{}".format(api_scheme, api_host, api_port)
     log.debug("Host is set to: %s", conf.host)
