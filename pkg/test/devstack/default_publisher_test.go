@@ -53,7 +53,6 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 }
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
-	// we are skipping this test because the orchestrator endpoint doesn't require a publisher
 	stack := scenario.StackConfig{}
 	stack.DefaultPublisher = "local"
 

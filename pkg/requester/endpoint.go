@@ -2,211 +2,36 @@ package requester
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/requester/jobtransform"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 type BaseEndpointParams struct {
-	ID                     string
-	Store                  jobstore.Store
-	EventEmitter           orchestrator.EventEmitter
-	ComputeEndpoint        compute.Endpoint
-	MinJobExecutionTimeout time.Duration
-	DefaultJobTimeout      time.Duration
-	DefaultPublisher       string
+	ID           string
+	Store        jobstore.Store
+	EventEmitter orchestrator.EventEmitter
 }
 
 // BaseEndpoint base implementation of requester Endpoint
 type BaseEndpoint struct {
-	id             string
-	store          jobstore.Store
-	eventEmitter   orchestrator.EventEmitter
-	computesvc     compute.Endpoint
-	transforms     []jobtransform.Transformer
-	postTransforms []jobtransform.PostTransformer
+	id           string
+	store        jobstore.Store
+	eventEmitter orchestrator.EventEmitter
 }
 
 func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
-	transforms := []jobtransform.Transformer{
-		jobtransform.NewTimeoutApplier(params.MinJobExecutionTimeout, params.DefaultJobTimeout),
-		jobtransform.NewRequesterInfo(params.ID),
-		jobtransform.NewPublisherMigrator(params.DefaultPublisher),
-		jobtransform.NewEngineMigrator(),
-		// jobtransform.DockerImageDigest(),
-	}
-
-	postTransforms := []jobtransform.PostTransformer{
-		jobtransform.NewWasmStorageSpecConverter(),
-	}
-
 	return &BaseEndpoint{
-		id:             params.ID,
-		computesvc:     params.ComputeEndpoint,
-		store:          params.Store,
-		transforms:     transforms,
-		postTransforms: postTransforms,
-		eventEmitter:   params.EventEmitter,
+		id:           params.ID,
+		store:        params.Store,
+		eventEmitter: params.EventEmitter,
 	}
-}
-
-func (e *BaseEndpoint) SubmitJob(ctx context.Context, data model.JobCreatePayload) (*model.Job, error) {
-	jobUUID, err := uuid.NewRandom()
-	if err != nil {
-		return &model.Job{}, fmt.Errorf("error creating job id: %w", err)
-	}
-	jobID := jobUUID.String()
-
-	// Creates a new root context to track a job's lifecycle for tracing. This
-	// should be fine as only one node will call SubmitJob(...) - the other
-	// nodes will hear about the job via events on the transport.
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/requester.BaseEndpoint.SubmitJob",
-		// job lifecycle spans go in their own, dedicated trace
-		trace.WithNewRoot(),
-		trace.WithLinks(trace.LinkFromContext(ctx)), // link to any api traces
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(
-			attribute.String(model.TracerAttributeNameNodeID, e.id),
-			attribute.String(model.TracerAttributeNameJobID, jobID),
-		),
-	)
-	defer span.End()
-
-	// TODO: Should replace the span above, with the below, but I don't understand how/why we're tracing contexts in a variable.
-	// Specifically tracking them all in ctrl.jobContexts
-	// ctx, span := system.NewRootSpan(ctx, system.GetTracer(), "pkg/controller.SubmitJob")
-	// defer span.End()
-
-	now := time.Now().UTC()
-	legacyJob := &model.Job{
-		APIVersion: data.APIVersion,
-		Metadata: model.Metadata{
-			ID:        jobID,
-			ClientID:  data.ClientID,
-			CreatedAt: now,
-		},
-		Spec: *data.Spec,
-	}
-
-	for _, transform := range e.transforms {
-		_, err = transform(ctx, legacyJob)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// convert to new job model
-	job, err := legacy.FromLegacyJob(legacyJob)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, transform := range e.postTransforms {
-		_, err = transform(ctx, job)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	JobsSubmitted.Inc(ctx, job.MetricAttributes()...)
-
-	err = e.store.CreateJob(ctx, *job, orchestrator.JobSubmittedEvent())
-	if err != nil {
-		return nil, err
-	}
-
-	eval := &models.Evaluation{
-		ID:          uuid.NewString(),
-		JobID:       job.ID,
-		TriggeredBy: models.EvalTriggerJobRegister,
-		Type:        job.Type,
-		Status:      models.EvalStatusPending,
-		CreateTime:  job.CreateTime,
-		ModifyTime:  job.CreateTime,
-	}
-
-	// TODO(ross): How can we create this evaluation in the same transaction that the CreateJob
-	// call uses.
-	err = e.store.CreateEvaluation(ctx, *eval)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for job %s", jobID)
-		return nil, err
-	}
-
-	e.eventEmitter.EmitJobCreated(ctx, *job)
-	return legacyJob, nil
-}
-
-func (e *BaseEndpoint) CancelJob(ctx context.Context, request CancelJobRequest) (CancelJobResult, error) {
-	job, err := e.store.GetJob(ctx, request.JobID)
-	if err != nil {
-		return CancelJobResult{}, err
-	}
-	switch job.State.StateType {
-	case models.JobStateTypeStopped:
-		// no need to cancel a job that is already stopped
-		return CancelJobResult{}, nil
-	case models.JobStateTypeCompleted:
-		return CancelJobResult{}, fmt.Errorf("cannot cancel job in state %s", job.State.StateType)
-	}
-
-	// update the job state, except if the job is already completed
-	// we allow marking a failed job as canceled
-	err = e.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
-		JobID: request.JobID,
-		Condition: jobstore.UpdateJobCondition{
-			UnexpectedStates: []models.JobStateType{
-				models.JobStateTypeCompleted,
-			},
-		},
-		NewState: models.JobStateTypeStopped,
-		Event:    orchestrator.JobStoppedEvent("job canceled by user"),
-	})
-	if err != nil {
-		return CancelJobResult{}, err
-	}
-
-	// enqueue evaluation to allow the scheduler to cancel existing executions
-	// if the job is not terminal already, such as failed
-	if !job.IsTerminal() {
-		now := time.Now().UTC().UnixNano()
-		eval := &models.Evaluation{
-			ID:          uuid.NewString(),
-			JobID:       request.JobID,
-			TriggeredBy: models.EvalTriggerJobCancel,
-			Type:        job.Type,
-			Status:      models.EvalStatusPending,
-			CreateTime:  now,
-			ModifyTime:  now,
-		}
-
-		// TODO(ross): How can we create this evaluation in the same transaction that we update the jobstate
-		err = e.store.CreateEvaluation(ctx, *eval)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for cancel job %s", request.JobID)
-			return CancelJobResult{}, err
-		}
-	}
-	e.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
-		JobID:     request.JobID,
-		EventName: model.JobEventCanceled,
-		Status:    request.Reason,
-		EventTime: time.Now(),
-	})
-	return CancelJobResult{}, nil
 }
 
 // /////////////////////////////
@@ -362,5 +187,4 @@ func (e *BaseEndpoint) enqueueEvaluation(ctx context.Context, jobID, operation s
 }
 
 // Compile-time interface check:
-var _ Endpoint = (*BaseEndpoint)(nil)
 var _ compute.Callback = (*BaseEndpoint)(nil)

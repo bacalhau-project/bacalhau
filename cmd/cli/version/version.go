@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -59,7 +59,7 @@ func NewCmd() *cobra.Command {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClient(cfg)
+			api, err := util.GetAPIClientV2(cmd, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
@@ -72,7 +72,7 @@ func NewCmd() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(cmd *cobra.Command, cfg types.BacalhauConfig, api *client.APIClient, oV *VersionOptions) error {
+func runVersion(cmd *cobra.Command, cfg types.BacalhauConfig, api clientv2.API, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
 	err := oV.Run(ctx, cmd, cfg, api)
@@ -103,7 +103,7 @@ var updateMessageColumn = output.TableColumn[util.Versions]{
 	Value:        func(v util.Versions) string { return v.UpdateMessage },
 }
 
-func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command, cfg types.BacalhauConfig, api *client.APIClient) error {
+func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command, cfg types.BacalhauConfig, api clientv2.API) error {
 	var (
 		versions util.Versions
 		columns  []output.TableColumn[util.Versions]

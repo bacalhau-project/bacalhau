@@ -2,7 +2,6 @@ package test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
@@ -74,9 +72,6 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 		NetworkConfig:       networkConfig,
 	}
 
-	if err := os.Setenv(requester.UseDeprecatedEndpointsForTesting, "true"); err != nil {
-		t.Fatal(err)
-	}
 	n, err := node.NewNode(ctx, c, nodeConfig, repo)
 	require.NoError(t, err)
 

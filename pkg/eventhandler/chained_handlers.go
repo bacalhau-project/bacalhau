@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // An event handler implementation that chains multiple event handlers, and accepts a context provider
@@ -26,7 +27,7 @@ func (r *ChainedJobEventHandler) AddHandlers(handlers ...JobEventHandler) {
 	r.eventHandlers = append(r.eventHandlers, handlers...)
 }
 
-func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model.JobEvent) (err error) {
+func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event models.JobEvent) (err error) {
 	startTime := time.Now()
 	defer logEvent(ctx, event, startTime)(&err)
 
@@ -45,7 +46,7 @@ func (r *ChainedJobEventHandler) HandleJobEvent(ctx context.Context, event model
 	return nil
 }
 
-func logEvent(ctx context.Context, event model.JobEvent, startTime time.Time) func(*error) {
+func logEvent(ctx context.Context, event models.JobEvent, startTime time.Time) func(*error) {
 	return func(handlerError *error) {
 		var logMsg *zerolog.Event
 
