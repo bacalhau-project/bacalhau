@@ -24,7 +24,7 @@ export class BacalhauAPI {
   async listJobs(labels?: string[], nextToken?: string): Promise<JobsResponse> {
     try {
       const params: JobListRequest = {
-        order_by: "created_at",
+        order_by: "created_time",
         reverse: true,
         limit: 10,
         labels: labels ? `env in (${labels.join(",")})` : undefined,

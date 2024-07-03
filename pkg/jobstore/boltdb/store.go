@@ -271,10 +271,10 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 
 	var sortFnc func(a, b models.Execution) int
 	switch options.OrderBy {
-	case "modify_time", "":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
-	case "create_time":
+	case "create_time", "":
 		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	case "modify_time":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
 	case "id":
 		sortFnc = func(a, b models.Execution) int { return util.Compare[string]{}.Cmp(a.ID, b.ID) }
 	case "state":
@@ -366,14 +366,14 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	// Sort the jobs according to the query.SortBy and query.SortOrder
 	listSorter := func(i, j int) bool {
 		switch query.SortBy {
-		case "modified_at":
+		case "modified_time":
 			if query.SortReverse {
 				return result[i].ModifyTime > result[j].ModifyTime
 			} else {
 				return result[i].ModifyTime < result[j].ModifyTime
 			}
 		default:
-			// We apply created_at as a default sort so that we can use it for pagination.
+			// We apply create_time as a default sort so that we can use it for pagination.
 			// Without a known default we won't have a stable sort that makes sense for
 			// offsets/limits.
 			if query.SortReverse {
@@ -542,7 +542,7 @@ func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery)
 			} else {
 				return jobs[i].ID < jobs[j].ID
 			}
-		case "created_at":
+		case "create_time":
 			if query.SortReverse {
 				return jobs[i].CreateTime > jobs[j].CreateTime
 			} else {
