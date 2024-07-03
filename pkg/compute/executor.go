@@ -399,7 +399,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		return err
 	}
 	if currentExecutionState.State == store.ExecutionStateCancelled {
-		log.Info().Msg("Execution has already been cancelled")
+		log.Ctx(ctx).Debug().Msgf("Execution has already been cancelled for %s", execution.ID)
 		return nil
 	}
 
