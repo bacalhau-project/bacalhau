@@ -11,7 +11,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -74,19 +73,19 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeState]{
 	},
 	"features": {
 		{
-			ColumnConfig: table.ColumnConfig{Name: "engines", WidthMax: maxLen(model.EngineNames()), WidthMaxEnforcer: text.WrapSoft},
+			ColumnConfig: table.ColumnConfig{Name: "engines", WidthMax: maxLen(models.EngineNames), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
 				return strings.Join(cni.ExecutionEngines, " ")
 			}),
 		},
 		{
-			ColumnConfig: table.ColumnConfig{Name: "inputs from", WidthMax: maxLen(model.StorageSourceNames()), WidthMaxEnforcer: text.WrapSoft},
+			ColumnConfig: table.ColumnConfig{Name: "inputs from", WidthMax: maxLen(models.StoragesNames), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
 				return strings.Join(cni.StorageSources, " ")
 			}),
 		},
 		{
-			ColumnConfig: table.ColumnConfig{Name: "outputs", WidthMax: maxLen(model.PublisherNames()), WidthMaxEnforcer: text.WrapSoft},
+			ColumnConfig: table.ColumnConfig{Name: "outputs", WidthMax: maxLen(models.PublisherNames), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
 				return strings.Join(cni.Publishers, " ")
 			}),

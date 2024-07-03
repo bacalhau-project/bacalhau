@@ -3,7 +3,8 @@ package nats
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+
 	"github.com/nats-io/nats.go"
 )
 
@@ -28,15 +29,15 @@ func (cm *ClientManager) Stop() {
 }
 
 // DebugInfo returns the debug info of the NATS client
-func (cm *ClientManager) GetDebugInfo(ctx context.Context) (model.DebugInfo, error) {
+func (cm *ClientManager) GetDebugInfo(ctx context.Context) (models.DebugInfo, error) {
 	stats := cm.Client.Stats()
 	servers := cm.Client.Servers()
 	buffered, err := cm.Client.Buffered()
 	if err != nil {
-		return model.DebugInfo{}, err
+		return models.DebugInfo{}, err
 	}
 
-	return model.DebugInfo{
+	return models.DebugInfo{
 		Component: "NATSClient",
 		Info: map[string]interface{}{
 			"Name":     cm.Client.Opts.Name,

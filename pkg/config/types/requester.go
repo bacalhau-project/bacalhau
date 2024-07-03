@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type RequesterConfig struct {
@@ -9,13 +9,13 @@ type RequesterConfig struct {
 	// URL where to send external verification requests to.
 	ExternalVerifierHook string `yaml:"ExternalVerifierHook"`
 	// How the node decides what jobs to run.
-	JobSelectionPolicy model.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
-	JobStore           JobStoreConfig           `yaml:"JobStore"`
+	JobSelectionPolicy models.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
+	JobStore           JobStoreConfig            `yaml:"JobStore"`
 
-	HousekeepingBackgroundTaskInterval Duration                              `yaml:"HousekeepingBackgroundTaskInterval"`
-	NodeRankRandomnessRange            int                                   `yaml:"NodeRankRandomnessRange"`
-	OverAskForBidsFactor               uint                                  `yaml:"OverAskForBidsFactor"`
-	FailureInjectionConfig             model.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
+	HousekeepingBackgroundTaskInterval Duration                               `yaml:"HousekeepingBackgroundTaskInterval"`
+	NodeRankRandomnessRange            int                                    `yaml:"NodeRankRandomnessRange"`
+	OverAskForBidsFactor               uint                                   `yaml:"OverAskForBidsFactor"`
+	FailureInjectionConfig             models.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
 
 	TranslationEnabled bool `yaml:"TranslationEnabled"`
 
