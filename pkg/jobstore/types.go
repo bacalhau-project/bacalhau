@@ -192,4 +192,7 @@ type JobHistoryFilterOptions struct {
 type GetExecutionsOptions struct {
 	JobID      string `json:"job_id"`
 	IncludeJob bool   `json:"include_job"`
+	OrderBy    string `json:"order_by"`
+	Reverse    bool   `json:"reverse"`
+	Limit      int    `json:"limit"`
 }
