@@ -1,7 +1,6 @@
 package apimodels
 
-type BaseResponse struct {
-}
+type BaseResponse struct{}
 
 // Normalize normalizes the response
 func (o *BaseResponse) Normalize() {
@@ -22,14 +21,16 @@ type BaseGetResponse struct {
 
 type BaseListResponse struct {
 	BaseGetResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
-	NextToken       string
+	NextToken       string `json:"NextToken"`
 }
 
 func (o *BaseListResponse) GetNextToken() string { return o.NextToken }
 
 // compile time check for interface implementation
-var _ Response = (*BaseResponse)(nil)
-var _ PutResponse = (*BasePutResponse)(nil)
-var _ PostResponse = (*BasePostResponse)(nil)
-var _ GetResponse = (*BaseGetResponse)(nil)
-var _ ListResponse = (*BaseListResponse)(nil)
+var (
+	_ Response     = (*BaseResponse)(nil)
+	_ PutResponse  = (*BasePutResponse)(nil)
+	_ PostResponse = (*BasePostResponse)(nil)
+	_ GetResponse  = (*BaseGetResponse)(nil)
+	_ ListResponse = (*BaseListResponse)(nil)
+)
