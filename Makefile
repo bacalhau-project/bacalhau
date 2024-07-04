@@ -154,7 +154,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 ################################################################################
 .PHONY: release-python-apiclient
 release-python-apiclient: resolve-earthly
-	cd clients && ${EARTHLY} --push +pypi-upload --PYPI_TOKEN=${PYPI_TOKEN}
+	cd clients && ${MAKE} release
 	@echo "Python API client pushed to PyPi."
 
 ################################################################################
