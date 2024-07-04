@@ -6,7 +6,6 @@ set export
 
 install-deps:
 	#!/usr/bin/env bash
-	#!/usr/bin/env bash
 	unset LD_LIBRARY_PATH
 
 	# Install corepack
