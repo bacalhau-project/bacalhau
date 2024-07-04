@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -16,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 // godoc for Orchestrator PutJob
@@ -337,15 +339,51 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 		return err
 	}
 
+	// TODO: move ordering to jobstore
+	// parse order_by
+	var sortFnc func(a, b models.Execution) int
+	switch args.OrderBy {
+	case "modify_time", "":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
+	case "create_time":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	case "id":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[string]{}.Cmp(a.ID, b.ID) }
+	case "state":
+		sortFnc = func(a, b models.Execution) int {
+			return util.Compare[models.ExecutionStateType]{}.Cmp(a.ComputeState.StateType, b.ComputeState.StateType)
+		}
+	default:
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
+	}
+	if args.Reverse {
+		baseSortFnc := sortFnc
+		sortFnc = func(a, b models.Execution) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
+			}
+			if r == 1 {
+				return -1
+			}
+			return 0
+		}
+	}
+
 	// query executions
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:   jobID,
-		OrderBy: args.OrderBy,
-		Reverse: args.Reverse,
-		Limit:   int(args.Limit),
+		JobID: jobID,
 	})
 	if err != nil {
 		return err
+	}
+
+	// sort executions
+	slices.SortFunc(executions, sortFnc)
+
+	// apply limit
+	if args.Limit > 0 && len(executions) > int(args.Limit) {
+		executions = executions[:args.Limit]
 	}
 
 	// prepare result
