@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
@@ -145,7 +147,8 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 func (b *BoltJobStore) Watch(ctx context.Context,
 	types jobstore.StoreWatcherType,
 	events jobstore.StoreEventType,
-	options ...jobstore.WatcherOption) *jobstore.Watcher {
+	options ...jobstore.WatcherOption,
+) *jobstore.Watcher {
 	return b.watchersManager.NewWatcher(ctx, types, events, options...)
 }
 
@@ -266,6 +269,33 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 		job = &j
 	}
 
+	// Sort By Given Order By
+	var sortFnc func(a, b models.Execution) int
+	switch options.OrderBy {
+	// create_time will eventually be deprectated. It is being used for backward compatibility.
+	case "create_time", "created_at", "": //nolint: goconst
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	// modify_time will eventually be deprecated. It is being used for backward compatibility.
+	case "modify_time", "modified_at":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
+	default:
+		return nil, fmt.Errorf("OrderBy %s not supported for getExecutions", options.OrderBy)
+	}
+
+	if options.Reverse {
+		baseSortFnc := sortFnc
+		sortFnc = func(a, b models.Execution) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
+			}
+			if r == 1 {
+				return -1
+			}
+			return 0
+		}
+	}
+
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return nil, err
@@ -284,6 +314,14 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 		execs = append(execs, es)
 		return nil
 	})
+
+	// sort executions
+	slices.SortFunc(execs, sortFnc)
+
+	// apply limit
+	if options.Limit > 0 && len(execs) > options.Limit {
+		execs = execs[:options.Limit]
+	}
 
 	return execs, err
 }
@@ -325,26 +363,30 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	}
 
 	// Sort the jobs according to the query.SortBy and query.SortOrder
-	listSorter := func(i, j int) bool {
-		switch query.SortBy {
-		case "modified_at":
-			if query.SortReverse {
-				return result[i].ModifyTime > result[j].ModifyTime
-			} else {
-				return result[i].ModifyTime < result[j].ModifyTime
+	var sortFunc func(a, b models.Job) int
+	switch query.SortBy {
+	case "created_at", "":
+		sortFunc = func(a, b models.Job) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	case "modified_at":
+		sortFunc = func(a, b models.Job) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
+	default:
+		return nil, fmt.Errorf("OrderBy %s not supported for listJobs", query.SortBy)
+	}
+	if query.SortReverse {
+		baseSortFnc := sortFunc
+		sortFunc = func(a, b models.Job) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
 			}
-		default:
-			// We apply created_at as a default sort so that we can use it for pagination.
-			// Without a known default we won't have a stable sort that makes sense for
-			// offsets/limits.
-			if query.SortReverse {
-				return result[i].CreateTime > result[j].CreateTime
-			} else {
-				return result[i].CreateTime < result[j].CreateTime
+			if r == 1 {
+				return -1
 			}
+			return 0
 		}
 	}
-	sort.Slice(result, listSorter)
+
+	slices.SortFunc(result, sortFunc)
 
 	// If we have a selector, filter the results to only those that match
 	if query.Selector != nil {
@@ -587,7 +629,8 @@ func createInProgressIndexKey(job *models.Job) string {
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	options jobstore.JobHistoryFilterOptions,
+) ([]models.JobHistory, error) {
 	var history []models.JobHistory
 	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
 		history, err = b.getJobHistory(tx, jobID, options)
@@ -598,7 +641,8 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 }
 
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
-	options jobstore.JobHistoryFilterOptions) ([]models.JobHistory, error) {
+	options jobstore.JobHistoryFilterOptions,
+) ([]models.JobHistory, error) {
 	var history []models.JobHistory
 
 	jobID, err := b.reifyJobID(tx, jobID)
@@ -621,7 +665,6 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 				history = append(history, item)
 				return nil
 			})
-
 			if err != nil {
 				return nil, err
 			}
@@ -644,7 +687,6 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 				history = append(history, item)
 				return nil
 			})
-
 			if err != nil {
 				return nil, err
 			}
@@ -1096,7 +1138,8 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 }
 
 func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
-	previous models.ExecutionStateType, event models.Event) error {
+	previous models.ExecutionStateType, event models.Event,
+) error {
 	historyEntry := models.JobHistory{
 		Type:        models.JobHistoryTypeExecutionLevel,
 		JobID:       updated.JobID,
