@@ -13,13 +13,13 @@ ENV USER_ID=1000
 ENV GROUP_ID=1000
 
 RUN groupadd -g $GROUP_ID buildkite-agent && \
-    useradd -u $USER_ID -g buildkite-agent buildkite-agent
+    useradd -m -s /bin/bash -u $USER_ID -g buildkite-agent buildkite-agent
 
 # Add buildkite-agent to sudoers
 RUN echo "buildkite-agent ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Install required packages
-RUN apt-get update && sudo apt-get install -y \
+RUN sudo apt-get update && sudo apt-get install -y \
     bash \
     curl \
     xz-utils \
@@ -46,6 +46,8 @@ RUN curl -L https://nixos.org/nix/install | NIX_BUILD_GROUP_ID=122 bash -s -- --
 # Set up environment
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 
+USER buildkite-agent
+
 RUN /bin/bash -c '. /nix/var/nix/profiles/default/etc/profile.d/nix.sh && nix profile install --impure --profile /nix/var/nix/profiles/default --experimental-features "nix-command flakes" --accept-flake-config github:flox/flox'
 
 
@@ -61,9 +63,6 @@ RUN /bin/bash -c '\
 # Copy the startup script
 COPY start.sh /start.sh
 RUN chmod ugo+x /start.sh
-
-USER buildkite-agent
-
 # Set the entrypoint to our startup script
 ENTRYPOINT ["/start.sh"]
 

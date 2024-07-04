@@ -185,6 +185,7 @@ move_environment_file() {
   echo "Moving the environment file..."
   if [ -f /etc/buildkite-agent/hooks/environment.sample ]; then
     sudo mv /etc/buildkite-agent/hooks/environment.sample /etc/buildkite-agent/hooks/environment
+    sudo chown -R buildkite-agent:buildkite-agent /etc/buildkite-agent
   else
     echo "Warning: /etc/buildkite-agent/hooks/environment.sample does not exist."
   fi

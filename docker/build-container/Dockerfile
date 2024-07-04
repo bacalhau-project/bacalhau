@@ -1,15 +1,31 @@
-FROM docker.io/bacalhauproject/nix-flox-base:0.0.57
+FROM ghcr.io/flox/flox:v1.1.0
 
-USER buildkite-agent
+# ENV USER_ID=1000
+# ENV GROUP_ID=1000
+
+# RUN groupadd -g $GROUP_ID buildkite-agent && \
+#     useradd -m -s /bin/bash -u $USER_ID -g buildkite-agent buildkite-agent
+
+# USER buildkite-agent
 
 # Set up environment
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 ENV NIX_PROFILES="/nix/var/nix/profiles/default"
 
-# Set working directory
-WORKDIR /src
+# RUN ls -al
 
-RUN export SHELL=$(which bash)
+# RUN ls -al /
+
+# RUN whoami
+
+# Set working directory
+WORKDIR /workdir
+
+# Set git safe directory
+RUN git config --global --add safe.directory /workdir
+
+# # Make sure the buildkite-agent has the right permissions
+# RUN sudo chown -R buildkite-agent:buildkite-agent /workdir
 
 # Activate Flox environment
 RUN . /nix/var/nix/profiles/default/etc/profile.d/nix.sh && \

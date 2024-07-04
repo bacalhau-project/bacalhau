@@ -3,7 +3,7 @@
 # Check if nix-daemon is already running
 if ! pgrep -x "nix-daemon" > /dev/null; then
     echo "Starting nix-daemon..."
-    /nix/var/nix/profiles/default/bin/nix-daemon --daemon &
+    sudo /nix/var/nix/profiles/default/bin/nix-daemon --daemon &
 else
     echo "nix-daemon is already running."
 fi

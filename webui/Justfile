@@ -6,8 +6,12 @@ set export
 
 install-deps:
 	#!/usr/bin/env bash
+	#!/usr/bin/env bash
+	unset LD_LIBRARY_PATH
+
+	# Install corepack
 	corepack enable
-	corepack prepare yarn@stable --activate
+	corepack prepare yarn@stable
 	yarn set version berry
 	yarn config set nodeLinker node-modules
 	yarn install
@@ -16,7 +20,7 @@ run-linter: install-deps
 	yarn eslint
 
 build-artifacts: run-linter
-	yarn build
+	yarn build:prod
 
 run-tests: build-artifacts
 	yarn test
