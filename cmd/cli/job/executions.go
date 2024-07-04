@@ -20,7 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
-var executionsOrderByFields = []string{"modify_time", "create_time", "id", "state"}
+var executionsOrderByFields = []string{"modified_at", "created_at"}
 
 var (
 	executionShort = `List executions for a job by id.`
