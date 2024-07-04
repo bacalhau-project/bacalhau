@@ -3,7 +3,6 @@
 package models_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -30,44 +29,44 @@ func (s *PagingTokenTestSuite) TestNew() {
 		{
 			name: "valid unreversed",
 			params: &models.PagingTokenParams{
-				SortBy:      "create_time",
+				SortBy:      "created_at",
 				SortReverse: false,
 				Offset:      0,
 				Limit:       10,
 			},
-			token:     "Y3JlYXRlX3RpbWU6TjoxMDow",
-			decoded:   "create_time:N:10:0",
+			token:     "Y3JlYXRlZF9hdDpOOjEwOjA",
+			decoded:   "created_at:N:10:0",
 			expectErr: false,
 		},
 		{
 			name: "valid reversed",
 			params: &models.PagingTokenParams{
-				SortBy:      "create_time",
+				SortBy:      "created_at",
 				SortReverse: true,
 				Offset:      0,
 				Limit:       10,
 			},
-			token:     "Y3JlYXRlX3RpbWU6WToxMDow",
-			decoded:   "create_time:Y:10:0",
+			token:     "Y3JlYXRlZF9hdDpZOjEwOjA",
+			decoded:   "created_at:Y:10:0",
 			expectErr: false,
 		},
 		{
 			name: "valid with offset",
 			params: &models.PagingTokenParams{
-				SortBy:      "create_time",
+				SortBy:      "created_at",
 				SortReverse: true,
 				Offset:      10,
 				Limit:       10,
 			},
-			token:     "Y3JlYXRlX3RpbWU6WToxMDoxMA",
-			decoded:   "create_time:Y:10:10",
+			token:     "Y3JlYXRlZF9hdDpZOjEwOjEw",
+			decoded:   "created_at:Y:10:10",
 			expectErr: false,
 		},
 		{
 			name:      "invalid token",
 			params:    &models.PagingTokenParams{},
 			token:     "abc",
-			decoded:   "create_time:Y:10:10",
+			decoded:   "created_at:Y:10:10",
 			expectErr: true,
 		},
 	}
@@ -75,8 +74,8 @@ func (s *PagingTokenTestSuite) TestNew() {
 	for i := range testcases {
 		if !testcases[i].expectErr {
 			s.Run(testcases[i].name, func() {
+
 				token := models.NewPagingToken(testcases[i].params)
-				fmt.Printf(token.String())
 				s.Equal(testcases[i].token, token.String())
 				s.Equal(testcases[i].decoded, token.RawString())
 			})
@@ -90,6 +89,8 @@ func (s *PagingTokenTestSuite) TestNew() {
 				s.NoError(err)
 				s.Equal(testcases[i].decoded, token.RawString())
 			}
+
 		})
 	}
+
 }

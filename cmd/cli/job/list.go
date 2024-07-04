@@ -21,7 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
-var orderByFields = []string{"id", "create_time"}
+var orderByFields = []string{"id", "created_at"}
 
 var (
 	listShort = `List submitted jobs.`

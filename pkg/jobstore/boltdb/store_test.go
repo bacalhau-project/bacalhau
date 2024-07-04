@@ -43,73 +43,52 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	jobFixtures := []struct {
-		id         string
-		jobType    string
-		client     string
-		tags       map[string]string
-		jobStates  []models.JobStateType
-		executions map[int][]models.ExecutionStateType
+		id              string
+		jobType         string
+		client          string
+		tags            map[string]string
+		jobStates       []models.JobStateType
+		executionStates []models.ExecutionStateType
 	}{
 		{
-			id:        "110",
-			client:    "client1",
-			jobType:   "batch",
-			tags:      map[string]string{"gpu": "true", "fast": "true"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
-			},
+			id:              "110",
+			client:          "client1",
+			jobType:         "batch",
+			tags:            map[string]string{"gpu": "true", "fast": "true"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:        "120",
-			client:    "client2",
-			jobType:   "batch",
-			tags:      map[string]string{},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
-			},
+			id:              "120",
+			client:          "client2",
+			jobType:         "batch",
+			tags:            map[string]string{},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
 		},
 		{
-			id:        "130",
-			client:    "client3",
-			jobType:   "batch",
-			tags:      map[string]string{"slow": "true", "max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
-			},
+			id:              "130",
+			client:          "client3",
+			jobType:         "batch",
+			tags:            map[string]string{"slow": "true", "max": "10"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 		{
-			id:        "140",
-			client:    "client4",
-			jobType:   "batch",
-			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
-			},
+			id:              "140",
+			client:          "client4",
+			jobType:         "batch",
+			tags:            map[string]string{"max": "10"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 		{
-			id:        "150",
-			client:    "client5",
-			jobType:   "daemon",
-			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
-			},
-		},
-		{
-			id:        "160",
-			client:    "client6",
-			jobType:   "batch",
-			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
-				2: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
-			},
+			id:              "150",
+			client:          "client5",
+			jobType:         "daemon",
+			tags:            map[string]string{"max": "10"},
+			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
 		},
 	}
 
@@ -123,6 +102,15 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.Labels = fixture.tags
 		job.Namespace = fixture.client
 		err := s.store.CreateJob(s.ctx, *job, models.Event{})
+		s.Require().NoError(err)
+
+		s.clock.Add(1 * time.Second)
+		execution := mock.ExecutionForJob(job)
+		execution.ComputeState.StateType = models.ExecutionStateNew
+		// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
+		execution.CreateTime = 0
+		execution.ModifyTime = 0
+		err = s.store.CreateExecution(s.ctx, *execution, models.Event{})
 		s.Require().NoError(err)
 
 		for i, state := range fixture.jobStates {
@@ -146,41 +134,32 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			s.Require().NoError(err)
 		}
 
-		for _, executionStates := range fixture.executions {
+		for i, state := range fixture.executionStates {
 			s.clock.Add(1 * time.Second)
-			execution := mock.ExecutionForJob(job)
-			execution.ComputeState.StateType = models.ExecutionStateNew
-			// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
-			execution.CreateTime = 0
-			execution.ModifyTime = 0
-			err = s.store.CreateExecution(s.ctx, *execution, models.Event{})
-			s.Require().NoError(err)
-			for i, state := range executionStates {
-				s.clock.Add(1 * time.Second)
 
-				oldState := models.ExecutionStateNew
-				if i > 0 {
-					oldState = executionStates[i-1]
-				}
-
-				// We are pretending this is a new execution struct
-				execution.ComputeState.StateType = state
-				execution.ModifyTime = s.clock.Now().UTC().UnixNano()
-
-				request := jobstore.UpdateExecutionRequest{
-					ExecutionID: execution.ID,
-					Condition: jobstore.UpdateExecutionCondition{
-						ExpectedStates:   []models.ExecutionStateType{oldState},
-						ExpectedRevision: uint64(i + 1),
-					},
-					NewValues: *execution,
-					Event:     models.Event{},
-				}
-
-				err = s.store.UpdateExecution(s.ctx, request)
-				s.Require().NoError(err)
+			oldState := models.ExecutionStateNew
+			if i > 0 {
+				oldState = fixture.executionStates[i-1]
 			}
+
+			// We are pretending this is a new execution struct
+			execution.ComputeState.StateType = state
+			execution.ModifyTime = s.clock.Now().UTC().UnixNano()
+
+			request := jobstore.UpdateExecutionRequest{
+				ExecutionID: execution.ID,
+				Condition: jobstore.UpdateExecutionCondition{
+					ExpectedStates:   []models.ExecutionStateType{oldState},
+					ExpectedRevision: uint64(i + 1),
+				},
+				NewValues: *execution,
+				Event:     models.Event{},
+			}
+
+			err = s.store.UpdateExecution(s.ctx, request)
+			s.Require().NoError(err)
 		}
+
 	}
 }
 
@@ -344,8 +323,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 
 	s.T().Run("all records with selectors and paging", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			SortBy: "create_time",
-
+			SortBy:   "created_at",
 			Selector: s.parseLabels("max>1"),
 			Limit:    2,
 		})
@@ -359,27 +337,27 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		require.Equal(t, "140", jobs[1].ID)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
-			SortBy:   "create_time",
+			SortBy:   "created_at",
 			Selector: s.parseLabels("max>1"),
 			Limit:    2,
 			Offset:   2,
 		})
 
 		require.NoError(t, err)
-		require.Equal(t, 2, len(response.Jobs))
+		require.Equal(t, 1, len(response.Jobs))
 	})
 
-	s.T().Run("everything sorted by create_time", func(t *testing.T) {
+	s.T().Run("everything sorted by created_at", func(t *testing.T) {
 		response, err := s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 5, len(jobs))
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160"}, ids)
+		require.EqualValues(t, []string{"110", "120", "130", "140", "150"}, ids)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -387,11 +365,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs = response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 5, len(jobs))
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"160", "150", "140", "130", "120", "110"}, ids)
+		require.EqualValues(t, []string{"150", "140", "130", "120", "110"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -399,7 +377,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 6, len(response.Jobs))
+		require.Equal(t, 5, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
@@ -408,7 +386,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			Offset:    1,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 4, len(response.Jobs))
 		require.Equal(t, uint32(1), response.Offset)
 	})
 
@@ -446,7 +424,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 4, len(response.Jobs))
 	})
 
 	s.T().Run("include/exclude same tag", func(t *testing.T) {
@@ -517,63 +495,6 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.Nil(state[0].Job)
 
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "create_time",
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "create_time",
-		Reverse: true,
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "state",
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].ComputeState.StateType < state[1].ComputeState.StateType, true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "state",
-		Reverse: true,
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].ComputeState.StateType > state[1].ComputeState.StateType, true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "modify_time",
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:   "160",
-		OrderBy: "modify_time",
-		Reverse: true,
-	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 2)
-	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
-
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
 		JobID:      "110",
 		IncludeJob: true,
 	})
@@ -603,17 +524,18 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.Require().Error(err)
 	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
 	s.Require().Nil(state)
+
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx, "")
 	s.Require().NoError(err)
-	s.Require().Equal(4, len(infos))
+	s.Require().Equal(3, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "batch")
 	s.Require().NoError(err)
-	s.Require().Equal(3, len(infos))
+	s.Require().Equal(2, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "daemon")
@@ -740,6 +662,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
+
 	eval := models.Evaluation{
 		ID:    "e1",
 		JobID: "10",
