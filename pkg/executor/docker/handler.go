@@ -44,6 +44,8 @@ type executionHandler struct {
 	waitCh chan bool
 	// true until the run method returns
 	running *atomic.Bool
+	// cancel function
+	cancelFunc context.CancelCauseFunc
 
 	//
 	// results
@@ -89,9 +91,12 @@ func (h *executionHandler) run(ctx context.Context) {
 	select {
 	case <-ctx.Done():
 		// failure case, the context has been canceled. We are aborting this execution
-		reason := fmt.Errorf("context canceled while waiting on container status: %w", ctx.Err())
-		h.logger.Err(reason).Msg("cancel waiting on container status")
-		h.result = executor.NewFailedResult(reason.Error())
+		cause := context.Cause(ctx)
+		if cause == nil {
+			cause = fmt.Errorf("context canceled while waiting on container status: %w", ctx.Err())
+		}
+		h.logger.Err(cause).Msg("cancel waiting on container status")
+		h.result = executor.NewFailedResult(cause.Error())
 		// the context was canceled, bail.
 		return
 	case err := <-errCh:
