@@ -10,4 +10,4 @@ just build-webui
 mkdir -p webui/archive
 
 # Create the build archive
-tar -czf webui/build/archive/webui_build.tar.gz -C webui/build
+tar -czf webui/archive/webui_build.tar.gz -C webui/build .
