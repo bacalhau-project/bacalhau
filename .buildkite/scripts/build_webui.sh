@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-
 unset LD_LIBRARY_PATH
+
+export SHELL=$(command -v bash)
+. <(FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau -t;);
 
 # Download vendor and webui/node_modules artifacts
 buildkite-agent artifact download "vendor.tar.gz" .
@@ -15,8 +17,7 @@ if [ -f webui_node_modules.tar.gz ]; then
     tar -xzf webui_node_modules.tar.gz -C webui/
 fi
 
-shell=$(command -v bash)
-FLOX_DISABLE_METRICS=true SHELL=$shell flox activate -r aronchick/bacalhau -t -- just build-webui
+just build-webui
 
 # Create new artifacts
 tar -czf vendor.tar.gz vendor
