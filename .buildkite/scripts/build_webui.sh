@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 unset LD_LIBRARY_PATH
 
-SHELL=$(command -v bash)
-export SHELL
+# shellcheck disable=SC2155
+export SHELL=$(command -v bash)
 
-# Capture the command's output to a variable
-ACTIVATE_COMMAND="FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau -t"
-
-# Source the captured command
-. <<<"$ACTIVATE_COMMAND"
+# shellcheck disable=SC2312,SC1090
+. <(FLOX_DISABLE_METRICS=true flox activate -r aronchick/bacalhau -t;);
 
 just build-webui
 
