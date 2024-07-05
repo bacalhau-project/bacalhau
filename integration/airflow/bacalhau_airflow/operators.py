@@ -1,6 +1,7 @@
 """
 Airflow operators for Bacalhau.
 """
+
 import time
 
 from airflow.compat.functools import cached_property

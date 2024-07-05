@@ -2,7 +2,6 @@
 
 """Tests for `bacalhau_airflow.hooks` package."""
 
-
 import unittest
 
 from bacalhau_airflow.hooks import BacalhauHook

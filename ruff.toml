@@ -28,6 +28,7 @@ exclude = [
     "venv",
     "clients/python",
     "webui/.yarn",
+    "webui/.yarn/releases/yarn-4.3.1.cjs"
 ]
 
 # Same as Black.
