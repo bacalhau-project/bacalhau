@@ -47,7 +47,7 @@ list_secrets() {
     fourth_column_width=20
 
     # Separator bar "-" should be 4 characters longer than all columns
-    separator_bar=$(printf '%*s' "$(($first_column_width + $second_column_width + $third_column_width + $fourth_column_width + 4))" | tr ' ' '-')
+    separator_bar=$(printf '%*s' "$(($first_column_width + $second_column_width + ${third_column_width} + ${fourth_column_width} + 4))" | tr ' ' '-')
 
     printf "\nListing all secrets with their last updated date, versions, and last updated version:\n\n"
 
