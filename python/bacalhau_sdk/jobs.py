@@ -44,7 +44,7 @@ class Jobs:
         return self.orchestrator_service.put_job(request)
 
     def stop(self, job_id: str, reason: str = None) -> StopJobResponse:
-        return self.orchestrator_service.stop_job(id=job_id, reasone=reason)
+        return self.orchestrator_service.stop_job(id=job_id, reason=reason)
 
     def executions(
         self,
@@ -90,7 +90,7 @@ class Jobs:
         Returns:
             ListJobResultsResponse: A list of job's result(s)
         """
-        return self.orchestrator_service.job_results(id=id)
+        return self.orchestrator_service.job_results(id=job_id)
 
     def get(self, job_id: str, include: str = "", limit: int = 10) -> GetJobResponse:
         """Get Details of a Job
