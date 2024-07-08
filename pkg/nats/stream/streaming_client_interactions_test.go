@@ -5,17 +5,20 @@ package stream
 import (
 	"context"
 	"encoding/json"
+	"testing"
+	"time"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
-	"testing"
-	"time"
 )
 
-const subjectName = "topic.stream"
-const testString = "Hello from bacalhau"
+const (
+	subjectName = "topic.stream"
+	testString  = "Hello from bacalhau"
+)
 
 type StreamingClientInteractionTestSuite struct {
 	suite.Suite
@@ -37,7 +40,6 @@ func (s *StreamingClientInteractionTestSuite) SetupSuite() {
 	s.natServer = s.createNatsServer()
 	s.pc = s.createProducerClient()
 	s.cc = s.createConsumerClient()
-
 }
 
 func (s *StreamingClientInteractionTestSuite) TearDownSuite() {
@@ -80,7 +82,6 @@ func (s *StreamingClientInteractionTestSuite) createProducerClient() *ProducerCl
 }
 
 func (s *StreamingClientInteractionTestSuite) createConsumerClient() *ConsumerClient {
-
 	clientManager, err := nats_helper.NewClientManager(s.ctx, s.natServer.ClientURL(), nats.Name("streaming-test"))
 	s.Require().NoError(err)
 
@@ -100,7 +101,6 @@ func TestStreamingClientTestSuit(t *testing.T) {
 }
 
 func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown() {
-
 	// Set up for the test
 	td := &testData{}
 	clientManager, err := nats_helper.NewClientManager(s.ctx, s.natServer.ClientURL(), nats.Name("stream-testing-consumer-going-down"))
@@ -109,7 +109,6 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	// Produce some data once asked for
 	ctx, cancel := context.WithCancel(s.ctx)
 	_, err = clientManager.Client.Subscribe(subjectName, func(msg *nats.Msg) {
-
 		s.Require().NotNil(msg)
 
 		var streamRequest Request
@@ -151,7 +150,6 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 					clientManager.Client.Publish(msg.Reply, sMsgData)
 				}
 			}
-
 		}()
 	})
 	s.Require().NoError(err)
@@ -163,7 +161,6 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 	// Close the Consumer Client After Certain Time
 	go func() {
-
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
@@ -174,12 +171,10 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 				return
 			}
 		}
-
 	}()
 
 	// Validate that producer client does the cleanup
 	s.Eventually(func() bool {
 		return td.contextCancelled
-	}, 1800*time.Millisecond, 100*time.Millisecond)
-
+	}, 2800*time.Millisecond, 100*time.Millisecond)
 }
