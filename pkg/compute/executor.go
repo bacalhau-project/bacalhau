@@ -302,7 +302,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
 	topic := EventTopicExecutionRunning
 	defer func() {
-		if err.Error() != executor.ErrAlreadyCancelled.Error() {
+		if err != nil && err.Error() != executor.ErrAlreadyCancelled.Error() {
 			e.handleFailure(ctx, state, err, topic)
 		}
 		dur := stopwatch()
@@ -392,17 +392,6 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		if err != nil {
 			return err
 		}
-	}
-
-	// There can be a scenario where the execution may already have been cancelled
-	// by the user. In such case we should not mark it as completed.
-	currentExecutionState, err := e.store.GetExecution(ctx, execution.ID)
-	if err != nil {
-		return err
-	}
-	if currentExecutionState.State == store.ExecutionStateCancelled {
-		log.Ctx(ctx).Debug().Msgf("Execution has already been cancelled for %s", execution.ID)
-		return nil
 	}
 
 	// mark the execution as completed
