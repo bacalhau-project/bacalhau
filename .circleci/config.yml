@@ -438,7 +438,7 @@ jobs:
           steps:
             - run:
                 name: Login to Github Container Registry
-                command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+                command: echo $GHCR_PAT | docker login ghcr.io -u wdbaruni --password-stdin
             - run: make push-bacalhau-image
 
   build_python_packages:
