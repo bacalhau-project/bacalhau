@@ -92,7 +92,8 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			if response.History != nil {
 				continue
 			}
-			history, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryFilterOptions{})
+			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryQuery{})
+			history := jobHistoryQueryResponse.JobHistory
 			if err != nil {
 				return err
 			}
@@ -261,21 +262,22 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 
 // godoc for Orchestrator JobHistory
 //
-//	@ID				orchestrator/jobHistory
-//	@Summary		Returns the history of a job.
-//	@Description	Returns the history of a job.
-//	@Tags			Orchestrator
-//	@Accept			json
-//	@Produce		json
-//	@Param			id				path		string	true	"ID to get the job history for"
-//	@Param			since			query		string	false	"Only return history since this time"
-//	@Param			event_type		query		string	false	"Only return history of this event type"
-//	@Param			execution_id	query		string	false	"Only return history of this execution ID"
-//	@Param			node_id			query		string	false	"Only return history of this node ID"
-//	@Success		200				{object}	apimodels.ListJobHistoryResponse
-//	@Failure		400				{object}	string
-//	@Failure		500				{object}	string
-//	@Router			/api/v1/orchestrator/jobs/{id}/history [get]
+//		@ID				orchestrator/jobHistory
+//		@Summary		Returns the history of a job.
+//		@Description	Returns the history of a job.
+//		@Tags			Orchestrator
+//		@Accept			json
+//		@Produce		json
+//		@Param			id				path		string	true	"ID to get the job history for"
+//		@Param			since			query		string	false	"Only return history since this time"
+//		@Param			event_type		query		string	false	"Only return history of this event type"
+//		@Param			execution_id	query		string	false	"Only return history of this execution ID"
+//		@Param			node_id			query		string	false	"Only return history of this node ID"
+//	 @Param          next_token      query       string  false   "Token to get the next page of the jobs"
+//		@Success		200				{object}	apimodels.ListJobHistoryResponse
+//		@Failure		400				{object}	string
+//		@Failure		500				{object}	string
+//		@Router			/api/v1/orchestrator/jobs/{id}/history [get]
 func (e *Endpoint) jobHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -287,22 +289,43 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		return err
 	}
 
-	options := jobstore.JobHistoryFilterOptions{
+	var limit uint32
+	var offset uint32
+	var err error
+
+	// If the request contains a pagint token then it is decoded and used to replace
+	// any other values provided in the request. This allows for stable sorting to
+	// allow the pagination to work correctly.
+	if args.NextToken != "" {
+		token, err := models.NewPagingTokenFromString(args.NextToken)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
+		// Overwrite any provided values with the ones from the token.
+		limit = token.Limit
+		offset = token.Offset
+	}
+
+	options := jobstore.JobHistoryQuery{
 		Since:                 args.Since,
 		ExcludeExecutionLevel: args.EventType == "job",
 		ExcludeJobLevel:       args.EventType == "execution",
 		ExecutionID:           args.ExecutionID,
 		NodeID:                args.NodeID,
+		Limit:                 limit,
+		Offset:                offset,
 	}
-	history, err := e.store.GetJobHistory(ctx, jobID, options)
+
+	jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, options)
 	if err != nil {
 		return err
 	}
 	res := &apimodels.ListJobHistoryResponse{
-		Items: make([]*models.JobHistory, len(history)),
+		Items: make([]*models.JobHistory, len(jobHistoryQueryResponse.JobHistory)),
 	}
-	for i := range history {
-		res.Items[i] = &history[i]
+	for i := range jobHistoryQueryResponse.JobHistory {
+		res.Items[i] = &jobHistoryQueryResponse.JobHistory[i]
 	}
 
 	return c.JSON(http.StatusOK, res)
