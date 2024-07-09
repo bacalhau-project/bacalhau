@@ -71,9 +71,9 @@ func (s *StreamingClientInteractionTestSuite) createProducerClient() *ProducerCl
 	pc, err := NewProducerClient(s.ctx, ProducerClientParams{
 		Conn: clientManager.Client,
 		Config: StreamProducerClientConfig{
-			HeartBeatIntervalDuration:        100 * time.Millisecond,
-			HeartBeatRequestTimeout:          50 * time.Millisecond,
-			StreamCancellationBufferDuration: 100 * time.Millisecond,
+			HeartBeatIntervalDuration:        200 * time.Millisecond,
+			HeartBeatRequestTimeout:          100 * time.Millisecond,
+			StreamCancellationBufferDuration: 200 * time.Millisecond,
 		},
 	})
 
@@ -88,7 +88,7 @@ func (s *StreamingClientInteractionTestSuite) createConsumerClient() *ConsumerCl
 	cc, err := NewConsumerClient(ConsumerClientParams{
 		Conn: clientManager.Client,
 		Config: StreamConsumerClientConfig{
-			StreamCancellationBufferDuration: 50 * time.Millisecond,
+			StreamCancellationBufferDuration: 100 * time.Millisecond,
 		},
 	})
 
@@ -96,7 +96,7 @@ func (s *StreamingClientInteractionTestSuite) createConsumerClient() *ConsumerCl
 	return cc
 }
 
-func TestStreamingClientTestSuit(t *testing.T) {
+func TestStreamingClientTestSuite(t *testing.T) {
 	suite.Run(t, new(StreamingClientInteractionTestSuite))
 }
 
@@ -126,7 +126,7 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 		td.heartBeatRequestSub = streamRequest.HeartBeatRequestSub
 		go func() {
-			ticker := time.NewTicker(50 * time.Millisecond)
+			ticker := time.NewTicker(100 * time.Millisecond)
 			defer ticker.Stop()
 
 			for {
@@ -176,5 +176,5 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	// Validate that producer client does the cleanup
 	s.Eventually(func() bool {
 		return td.contextCancelled
-	}, 2800*time.Millisecond, 100*time.Millisecond)
+	}, 2800*time.Millisecond, 50*time.Millisecond)
 }
