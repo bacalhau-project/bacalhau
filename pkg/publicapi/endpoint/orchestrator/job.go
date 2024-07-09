@@ -321,8 +321,19 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	var nextToken string
+	if jobHistoryQueryResponse.NextOffset != 0 {
+		nextToken = models.NewPagingToken(&models.PagingTokenParams{
+			Limit:  args.Limit,
+			Offset: jobHistoryQueryResponse.NextOffset,
+		}).String()
+	}
 	res := &apimodels.ListJobHistoryResponse{
 		Items: make([]*models.JobHistory, len(jobHistoryQueryResponse.JobHistory)),
+		BaseListResponse: apimodels.BaseListResponse{
+			NextToken: nextToken,
+		},
 	}
 	for i := range jobHistoryQueryResponse.JobHistory {
 		res.Items[i] = &jobHistoryQueryResponse.JobHistory[i]
