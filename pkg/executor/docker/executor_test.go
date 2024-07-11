@@ -285,6 +285,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 		require.LessOrEqual(s.T(), diff, 4096, "the difference between the container reported memory and the configured limit exceeds the page size")
 	}
 }
+
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	task := mock.TaskBuilder().
 		Network(models.NewNetworkConfigBuilder().
@@ -399,6 +400,47 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 	require.NoError(s.T(), err)
 	require.NotZero(s.T(), result.ExitCode)
 	require.Empty(s.T(), result.STDOUT)
+}
+
+func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
+	resultC := make(chan *models.RunCommandResult, 1)
+	errC := make(chan error, 1)
+	executionID := uuid.New().String()
+	ctx := context.Background()
+
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:latest").
+		WithEntrypoint("bash", "-c", "sleep 10").
+		Build()
+
+	s.Require().NoError(err)
+
+	task := mock.TaskBuilder().
+		Engine(es).
+		BuildOrDie()
+
+	go func() {
+		result, err := s.runJobWithContext(ctx, task, executionID)
+		if err != nil {
+			errC <- err
+		} else {
+			resultC <- result
+		}
+	}()
+
+	// We do eventually here, because the container may take time to spin up
+	// and hence cancel would throw an error, saying that execution does not exist.
+	s.Eventually(func() bool {
+		err = s.executor.Cancel(ctx, executionID)
+		return err == nil
+	}, time.Second*2, time.Millisecond*100)
+
+	select {
+	case err := <-errC:
+		s.Require().Nil(err)
+	case result := <-resultC:
+		s.Require().NotNil(result)
+		s.Require().Equal(result.ErrorMsg, executor.ErrAlreadyCancelled.Error())
+	}
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
