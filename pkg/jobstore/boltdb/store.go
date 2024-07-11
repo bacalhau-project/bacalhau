@@ -14,6 +14,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -21,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -727,7 +731,7 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event mode
 		return err
 	}
 	return b.update(ctx, func(tx *bolt.Tx) (err error) {
-		return b.createJob(tx, job, event)
+		return b.createJob(ctx, tx, job, event)
 	})
 }
 
@@ -799,7 +803,7 @@ func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) e
 	return view(tx)
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
+func (b *BoltJobStore) createJob(ctx context.Context, tx *bolt.Tx, job models.Job, event models.Event) error {
 	if b.jobExists(tx, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
@@ -828,11 +832,17 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event
 		}
 	}
 
+	ctx, span := system.NewSpan(ctx, otel.GetTracerProvider().Tracer("jobstore"), "create_job")
+	system.InjectJobContext(ctx, &job)
+	defer span.End()
+
 	// Write the job to the Job bucket
 	jobData, err := b.marshaller.Marshal(job)
 	if err != nil {
 		return err
 	}
+
+	span.SetAttributes(attribute.String("job", string(jobData)))
 
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
 		return err
@@ -919,11 +929,11 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 // the history at the same time
 func (b *BoltJobStore) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) error {
 	return b.update(ctx, func(tx *bolt.Tx) (err error) {
-		return b.updateJobState(tx, request)
+		return b.updateJobState(ctx, tx, request)
 	})
 }
 
-func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobStateRequest) error {
+func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, request jobstore.UpdateJobStateRequest) error {
 	bucket, err := NewBucketPath(BucketJobs, request.JobID).Get(tx, true)
 	if err != nil {
 		return err
@@ -959,6 +969,16 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	if err != nil {
 		return err
 	}
+
+	jobTraceCtx := system.ExtractJobSpanContext(job)
+	_, span := system.NewSpan(ctx, otel.GetTracerProvider().Tracer("jobstore"), "update_job",
+		trace.WithLinks(trace.Link{
+			SpanContext: jobTraceCtx,
+		}),
+		trace.WithAttributes(
+			attribute.String("job", string(jobStateData)),
+		))
+	defer span.End()
 
 	// Re-write the state
 	err = bucket.Put(SpecKey, jobStateData)

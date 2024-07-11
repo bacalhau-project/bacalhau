@@ -92,4 +92,6 @@ const (
 	// it may have been translated from another job.
 	MetaDerivedFrom  = "bacalhau.org/derivedFrom"
 	MetaTranslatedBy = "bacalhau.org/translatedBy"
+
+	MetaTraceContext = "bacalhau.org/traceContext"
 )
