@@ -6,9 +6,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
@@ -20,38 +18,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
-	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 	"github.com/stretchr/testify/suite"
 )
 
-type CancelJobTestSuite struct {
+type CancelDockerExecution struct {
 	suite.Suite
 }
 
-func TestCancelJobTestSuite(t *testing.T) {
-	suite.Run(t, new(CancelJobTestSuite))
+func TestCancelDockerExecution(t *testing.T) {
+	suite.Run(t, new(CancelDockerExecution))
 }
 
-func (s *CancelJobTestSuite) TestJobCancellation() {
+func (s *CancelDockerExecution) TestJobCancellation() {
 	ctx := context.Background()
 
 	docker.MustHaveDocker(s.T())
 
 	fsr, c := setup.SetupBacalhauRepoForTesting(s.T())
-
-	computeConfig, err := node.NewComputeConfigWith(c.Node.ComputeStoragePath, node.ComputeConfigParams{
-		TotalResourceLimits: models.Resources{
-			CPU:    1,
-			Memory: 1 * 1024 * 1024 * 1024,
-			Disk:   1 * 1024 * 1024 * 1024,
-		},
-		IgnorePhysicalResourceLimits: true,
-		ControlPlaneSettings: types.ComputeControlPlaneConfig{
-			ResourceUpdateFrequency: types.Duration(50 * time.Millisecond),
-		},
-	})
-
-	s.Require().NoError(err)
 
 	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
 		NodeOverSubscriptionFactor: 2,
@@ -61,14 +44,11 @@ func (s *CancelJobTestSuite) TestJobCancellation() {
 	stack := teststack.Setup(ctx, s.T(), fsr, c,
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
-		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 	)
 
-	nodeutils.WaitForNodeDiscovery(s.T(), stack.Nodes[0].RequesterNode, 2)
-
 	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "-c", "sleep 100000").
+		WithEntrypoint("bash", "-c", "sleep 10").
 		Build()
 
 	s.Require().NoError(err)
@@ -92,7 +72,6 @@ func (s *CancelJobTestSuite) TestJobCancellation() {
 	s.Require().NoError(err)
 
 	resolver := scenario.NewStateResolverFromAPI(api)
-	time.Sleep(time.Second * 10)
 	resolver.Wait(ctx, submittedJob.JobID, func(s *scenario.JobState) (bool, error) {
 		if s.State.StateType == models.JobStateTypeRunning {
 			return true, nil
@@ -115,5 +94,4 @@ func (s *CancelJobTestSuite) TestJobCancellation() {
 			return false, nil
 		}
 	})
-
 }
