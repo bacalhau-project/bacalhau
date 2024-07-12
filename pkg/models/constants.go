@@ -85,13 +85,13 @@ const (
 
 const (
 	MetaReservedPrefix = "bacalhau.org/"
-	MetaRequesterID    = "bacalhau.org/requester.id"
-	MetaClientID       = "bacalhau.org/client.id"
+	MetaRequesterID    = MetaReservedPrefix + "requester.id"
+	MetaClientID       = MetaReservedPrefix + "client.id"
 
 	// Job provenance metadata used to track the origin of a job where
 	// it may have been translated from another job.
-	MetaDerivedFrom  = "bacalhau.org/derivedFrom"
-	MetaTranslatedBy = "bacalhau.org/translatedBy"
+	MetaDerivedFrom  = MetaReservedPrefix + "derivedFrom"
+	MetaTranslatedBy = MetaReservedPrefix + "translatedBy"
 
-	MetaTraceContext = "bacalhau.org/traceContext"
+	MetaTraceContext = MetaReservedPrefix + "traceContext"
 )
