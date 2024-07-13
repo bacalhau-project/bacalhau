@@ -304,10 +304,10 @@ func (mr *MockStoreMockRecorder) GetJob(ctx, id interface{}) *gomock.Call {
 }
 
 // GetJobHistory mocks base method.
-func (m *MockStore) GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error) {
+func (m *MockStore) GetJobHistory(ctx context.Context, jobID string, options JobHistoryQuery) (*JobHistoryQueryResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJobHistory", ctx, jobID, options)
-	ret0, _ := ret[0].([]models.JobHistory)
+	ret0, _ := ret[0].(*JobHistoryQueryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

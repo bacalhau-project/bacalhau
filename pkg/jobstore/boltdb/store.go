@@ -407,7 +407,6 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 		Limit:  query.Limit,
 	}
 
-	// If we don't have 'limit' jobs, then there definitely aren't any more
 	if more {
 		response.NextOffset = query.Offset + query.Limit
 	}
@@ -415,7 +414,7 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	return response, nil
 }
 
-// getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
+// getJobsInitialSet returns the initial set of jobs to be considered for GetJobs response.
 // It either returns all jobs, or jobs for a specific client if specified in the query.
 func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (map[string]struct{}, error) {
 	jobSet := make(map[string]struct{})
@@ -629,28 +628,28 @@ func createInProgressIndexKey(job *models.Job) string {
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
-	options jobstore.JobHistoryFilterOptions,
-) ([]models.JobHistory, error) {
-	var history []models.JobHistory
+	query jobstore.JobHistoryQuery,
+) (*jobstore.JobHistoryQueryResponse, error) {
+	var response *jobstore.JobHistoryQueryResponse
 	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
-		history, err = b.getJobHistory(tx, jobID, options)
+		response, err = b.getJobHistory(tx, jobID, query)
 		return
 	})
 
-	return history, err
+	return response, err
 }
 
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
-	options jobstore.JobHistoryFilterOptions,
-) ([]models.JobHistory, error) {
+	query jobstore.JobHistoryQuery,
+) (*jobstore.JobHistoryQueryResponse, error) {
 	var history []models.JobHistory
 
 	jobID, err := b.reifyJobID(tx, jobID)
 	if err != nil {
-		return history, err
+		return nil, err
 	}
 
-	if !options.ExcludeJobLevel {
+	if !query.ExcludeJobLevel {
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
@@ -671,7 +670,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
-	if !options.ExcludeExecutionLevel {
+	if !query.ExcludeExecutionLevel {
 		// 	// Get the executions for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketExecutionHistory).Get(tx, false); err != nil {
 			return nil, err
@@ -696,15 +695,15 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	// Filter out anything before the specified Since time, and anything that doesn't match the
 	// specified ExecutionID or NodeID
 	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
-		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+		if query.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, query.ExecutionID) {
 			return false
 		}
 
-		if options.NodeID != "" && !strings.HasPrefix(event.NodeID, options.NodeID) {
+		if query.NodeID != "" && !strings.HasPrefix(event.NodeID, query.NodeID) {
 			return false
 		}
 
-		if event.Time.Unix() < options.Since {
+		if event.Time.Unix() < query.Since {
 			return false
 		}
 		return true
@@ -712,7 +711,32 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })
 
-	return history, nil
+	if query.Offset >= uint32(len(history)) {
+		return &jobstore.JobHistoryQueryResponse{}, nil
+	}
+
+	historyFiltered := history[query.Offset:]
+	if query.Limit == 0 {
+		return &jobstore.JobHistoryQueryResponse{
+			JobHistory: historyFiltered,
+		}, nil
+	}
+
+	limit := math.Min(uint32(len(historyFiltered)), query.Limit)
+	fileteredLength := uint32(len(historyFiltered))
+	historyFiltered = historyFiltered[:limit]
+
+	response := &jobstore.JobHistoryQueryResponse{
+		JobHistory: historyFiltered,
+		Offset:     query.Offset,
+		Limit:      query.Limit,
+	}
+
+	if fileteredLength > query.Limit {
+		response.NextOffset = query.Offset + query.Limit
+	}
+
+	return response, nil
 }
 
 // CreateJob creates a new record of a job in the data store
