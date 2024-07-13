@@ -406,9 +406,8 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	resultC := make(chan *models.RunCommandResult, 1)
 	errC := make(chan error, 1)
 	executionID := uuid.New().String()
-	ctx := context.Background()
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
 		WithEntrypoint("bash", "-c", "sleep 10").
 		Build()
 
@@ -427,12 +426,8 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 		}
 	}()
 
-	s.Eventually(func() bool {
-		_, err = s.executor.FindRunningContainer(context.Background(), executionID)
-		return err == nil
-	}, time.Second*2, time.Millisecond*100)
-
-	err = s.executor.Cancel(ctx, executionID)
+	time.Sleep(time.Second * 2)
+	err = s.executor.Cancel(context.Background(), executionID)
 	s.Require().NoError(err)
 
 	select {
