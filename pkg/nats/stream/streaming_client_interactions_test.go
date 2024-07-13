@@ -162,18 +162,8 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	s.Require().NoError(err)
 
 	// Close the Consumer Client After Certain Time
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				s.cc.Conn.Close()
-				return
-			}
-		}
-	}()
+	time.Sleep(time.Second * 1)
+	s.cc.Conn.Close()
 
 	// Validate that producer client does the cleanup
 	s.Eventually(func() bool {
