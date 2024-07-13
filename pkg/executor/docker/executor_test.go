@@ -427,19 +427,20 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 		}
 	}()
 
-	// We do eventually here, because the container may take time to spin up
-	// and hence cancel would throw an error, saying that execution does not exist.
 	s.Eventually(func() bool {
-		err = s.executor.Cancel(ctx, executionID)
+		_, err = s.executor.FindRunningContainer(ctx, executionID)
 		return err == nil
 	}, time.Second*2, time.Millisecond*100)
+
+	err = s.executor.Cancel(ctx, executionID)
+	s.Require().NoError(err)
 
 	select {
 	case err := <-errC:
 		s.Require().Nil(err)
 	case result := <-resultC:
 		s.Require().NotNil(result)
-		s.Require().Equal(result.ErrorMsg, executor.ErrAlreadyCancelled.Error())
+		s.Require().Equal(executor.ErrAlreadyCancelled.Error(), result.ErrorMsg)
 	}
 }
 
