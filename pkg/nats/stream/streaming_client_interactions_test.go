@@ -48,7 +48,6 @@ func (s *StreamingClientInteractionTestSuite) TearDownSuite() {
 }
 
 func (s *StreamingClientInteractionTestSuite) createNatsServer() *server.Server {
-	ctx := context.Background()
 	port, err := network.GetFreePort()
 	s.Require().NoError(err)
 
@@ -56,7 +55,7 @@ func (s *StreamingClientInteractionTestSuite) createNatsServer() *server.Server 
 		Port: port,
 	}
 
-	ns, err := nats_helper.NewServerManager(ctx, nats_helper.ServerManagerParams{
+	ns, err := nats_helper.NewServerManager(s.ctx, nats_helper.ServerManagerParams{
 		Options: &serverOpts,
 	})
 	s.Require().NoError(err)
@@ -80,6 +79,9 @@ func (s *StreamingClientInteractionTestSuite) createProducerClient() *ProducerCl
 	})
 
 	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return pc.Conn.IsConnected()
+	}, 500*time.Millisecond, 10*time.Millisecond)
 	return pc
 }
 
@@ -95,6 +97,9 @@ func (s *StreamingClientInteractionTestSuite) createConsumerClient() *ConsumerCl
 	})
 
 	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return cc.Conn.IsConnected()
+	}, 500*time.Millisecond, 10*time.Millisecond)
 	return cc
 }
 
@@ -104,12 +109,13 @@ func TestStreamingClientTestSuite(t *testing.T) {
 
 func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown() {
 	// Set up for the test
+	ctx := context.Background()
 	td := &testData{}
-	clientManager, err := nats_helper.NewClientManager(s.ctx, s.natServer.ClientURL(), nats.Name("stream-testing-consumer-going-down"))
+	clientManager, err := nats_helper.NewClientManager(ctx, s.natServer.ClientURL(), nats.Name("stream-testing-consumer-going-down"))
 	s.Require().NoError(err)
 
 	// Produce some data once asked for
-	ctx, cancel := context.WithCancel(s.ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	_, err = clientManager.Client.Subscribe(subjectName, func(msg *nats.Msg) {
 		s.Require().NotNil(msg)
 

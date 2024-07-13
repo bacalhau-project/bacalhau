@@ -428,7 +428,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	}()
 
 	s.Eventually(func() bool {
-		_, err = s.executor.FindRunningContainer(ctx, executionID)
+		_, err = s.executor.FindRunningContainer(context.Background(), executionID)
 		return err == nil
 	}, time.Second*2, time.Millisecond*100)
 
