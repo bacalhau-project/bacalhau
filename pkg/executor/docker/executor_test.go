@@ -419,7 +419,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 		BuildOrDie()
 
 	go func() {
-		result, err := s.runJobWithContext(ctx, task, executionID)
+		result, err := s.runJobWithContext(context.Background(), task, executionID)
 		if err != nil {
 			errC <- err
 		} else {
