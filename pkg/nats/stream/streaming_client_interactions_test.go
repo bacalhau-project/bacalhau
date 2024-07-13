@@ -31,7 +31,6 @@ type StreamingClientInteractionTestSuite struct {
 
 type testData struct {
 	contextCancelled    bool
-	streamReplySub      string
 	heartBeatRequestSub string
 }
 
@@ -61,6 +60,9 @@ func (s *StreamingClientInteractionTestSuite) createNatsServer() *server.Server 
 		Options: &serverOpts,
 	})
 	s.Require().NoError(err)
+
+	// Wait for server to be ready
+	time.Sleep(1 * time.Second)
 	return ns.Server
 }
 
