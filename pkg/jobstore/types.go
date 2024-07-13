@@ -30,23 +30,6 @@ type JobQueryResponse struct {
 	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
 }
 
-type JobHistoryQuery struct {
-	Since                 int64  `json:"since"`
-	Limit                 uint32 `json:"limit"`
-	Offset                uint32 `json:"offset"`
-	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
-	ExcludeJobLevel       bool   `json:"exclude_job_level"`
-	ExecutionID           string `json:"execution_id"`
-	NodeID                string `json:"node_id"`
-}
-
-type JobHistoryQueryResponse struct {
-	JobHistory []models.JobHistory
-	Offset     uint32
-	Limit      uint32
-	NextOffset uint32
-}
-
 // TxContext is a transactional context that can be used to commit or rollback
 type TxContext interface {
 	context.Context
@@ -90,7 +73,7 @@ type Store interface {
 	// GetJobHistory retrieves the history for the specified job.  The
 	// history returned is filtered by the contents of the provided
 	// [JobHistoryFilterOptions].
-	GetJobHistory(ctx context.Context, jobID string, options JobHistoryQuery) (*JobHistoryQueryResponse, error)
+	GetJobHistory(ctx context.Context, jobID string, options JobHistoryFilterOptions) ([]models.JobHistory, error)
 
 	// CreateJob will create a new job and persist it in the store.
 	CreateJob(ctx context.Context, j models.Job, event models.Event) error
@@ -196,6 +179,14 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 		}
 	}
 	return nil
+}
+
+type JobHistoryFilterOptions struct {
+	Since                 int64  `json:"since"`
+	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
+	ExcludeJobLevel       bool   `json:"exclude_job_level"`
+	ExecutionID           string `json:"execution_id"`
+	NodeID                string `json:"node_id"`
 }
 
 type GetExecutionsOptions struct {
