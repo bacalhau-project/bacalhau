@@ -408,7 +408,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	executionID := uuid.New().String()
 	ctx := context.Background()
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
 		WithEntrypoint("bash", "-c", "sleep 10").
 		Build()
 
