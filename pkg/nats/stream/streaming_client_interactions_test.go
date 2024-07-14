@@ -60,8 +60,6 @@ func (s *StreamingClientInteractionTestSuite) createNatsServer() *server.Server 
 	})
 	s.Require().NoError(err)
 
-	// Wait for server to be ready
-	time.Sleep(1 * time.Second)
 	return ns.Server
 }
 
@@ -166,6 +164,10 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 	_, err = s.cc.OpenStream(s.ctx, subjectName, data)
 	s.Require().NoError(err)
+
+	s.Eventually(func() bool {
+		return td.heartBeatRequestSub != ""
+	}, time.Second*5, time.Millisecond*100, "Streaming request yet not received")
 
 	// Close the Consumer Client After Certain Time
 	time.Sleep(time.Second * 1)
