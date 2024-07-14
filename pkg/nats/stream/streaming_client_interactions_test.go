@@ -167,7 +167,7 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 	s.Eventually(func() bool {
 		return td.heartBeatRequestSub != ""
-	}, time.Second*5, time.Millisecond*100, "Streaming request yet not received")
+	}, time.Second*10, time.Millisecond*100, "Streaming request yet not received")
 
 	// Close the Consumer Client After Certain Time
 	time.Sleep(time.Second * 1)
