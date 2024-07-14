@@ -430,7 +430,13 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	s.Eventually(func() bool {
 		handler, ok := s.executor.handlers.Get(executionID)
 		return ok && handler.active()
-	}, time.Second*60, time.Millisecond*100, "Could not find a running container")
+	}, time.Second*10, time.Millisecond*100, "Could not find a running container")
+
+	// This is important to do. In our docker executor, we set active to true, before calling the docker client with ContainerStart
+	// Hence there is a bit of time before the container actually gets started. The correct way of identifying that whether
+	// a contianer has started or not is via activeCh. We want to make sure that contianer is started before canceling the execution.
+	handler, _ := s.executor.handlers.Get(executionID)
+	<-handler.activeCh
 
 	err = s.executor.Cancel(jobCtx, executionID)
 	s.Require().NoError(err)
