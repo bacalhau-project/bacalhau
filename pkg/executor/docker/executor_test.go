@@ -426,7 +426,11 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 		}
 	}()
 
-	time.Sleep(time.Second * 2)
+	s.Eventually(func() bool {
+		_, err := s.executor.FindRunningContainer(context.Background(), executionID)
+		return err == nil
+	}, time.Second*10, time.Millisecond*100, "Could not find a running container")
+
 	err = s.executor.Cancel(context.Background(), executionID)
 	s.Require().NoError(err)
 
