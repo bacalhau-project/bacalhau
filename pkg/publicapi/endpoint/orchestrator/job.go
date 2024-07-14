@@ -262,22 +262,22 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 
 // godoc for Orchestrator JobHistory
 //
-//		@ID				orchestrator/jobHistory
-//		@Summary		Returns the history of a job.
-//		@Description	Returns the history of a job.
-//		@Tags			Orchestrator
-//		@Accept			json
-//		@Produce		json
-//		@Param			id				path		string	true	"ID to get the job history for"
-//		@Param			since			query		string	false	"Only return history since this time"
-//		@Param			event_type		query		string	false	"Only return history of this event type"
-//		@Param			execution_id	query		string	false	"Only return history of this execution ID"
-//		@Param			node_id			query		string	false	"Only return history of this node ID"
-//	 @Param          next_token      query       string  false   "Token to get the next page of the jobs"
-//		@Success		200				{object}	apimodels.ListJobHistoryResponse
-//		@Failure		400				{object}	string
-//		@Failure		500				{object}	string
-//		@Router			/api/v1/orchestrator/jobs/{id}/history [get]
+//	@ID				orchestrator/jobHistory
+//	@Summary		Returns the history of a job.
+//	@Description	Returns the history of a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string	true	"ID to get the job history for"
+//	@Param			since			query		string	false	"Only return history since this time"
+//	@Param			event_type		query		string	false	"Only return history of this event type"
+//	@Param			execution_id	query		string	false	"Only return history of this execution ID"
+//	@Param			node_id			query		string	false	"Only return history of this node ID"
+//	@Param			next_token		query		string	false	"Token to get the next page of the jobs"
+//	@Success		200				{object}	apimodels.ListJobHistoryResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/history [get]
 func (e *Endpoint) jobHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")

@@ -224,6 +224,26 @@ func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
+func (s *BoltJobstoreTestSuite) TestJobHistoryPagination() {
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit: 1,
+	})
+	require.NoError(s.T(), err, "failed to get job history")
+
+	require.Equal(s.T(), 1, len(jobHistoryQueryResponse.JobHistory))
+	require.Equal(s.T(), uint32(1), jobHistoryQueryResponse.NextOffset)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:  1,
+		Offset: jobHistoryQueryResponse.NextOffset,
+	})
+
+	require.NoError(s.T(), err, "failed to get job history")
+
+	require.Equal(s.T(), 1, len(jobHistoryQueryResponse.JobHistory))
+	require.Equal(s.T(), uint32(2), jobHistoryQueryResponse.NextOffset)
+}
+
 func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 	options := jobstore.JobHistoryQuery{
 		Since: 5,
