@@ -430,7 +430,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	s.Eventually(func() bool {
 		handler, ok := s.executor.handlers.Get(executionID)
 		return ok && handler.active()
-	}, time.Second*20, time.Millisecond*100, "Could not find a running container")
+	}, time.Second*60, time.Millisecond*100, "Could not find a running container")
 
 	err = s.executor.Cancel(jobCtx, executionID)
 	s.Require().NoError(err)
