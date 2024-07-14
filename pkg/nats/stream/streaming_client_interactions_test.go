@@ -109,12 +109,10 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 	// Set up for the test
 	ctx := context.Background()
 	td := &testData{}
-	clientManager, err := nats_helper.NewClientManager(ctx, s.natServer.ClientURL(), nats.Name("stream-testing-consumer-going-down"))
-	s.Require().NoError(err)
 
 	// Produce some data once asked for
 	ctx, cancel := context.WithCancel(ctx)
-	_, err = clientManager.Client.Subscribe(subjectName, func(msg *nats.Msg) {
+	_, err := s.pc.Conn.Subscribe(subjectName, func(msg *nats.Msg) {
 		s.Require().NotNil(msg)
 
 		var streamRequest Request
@@ -132,7 +130,7 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 
 		td.heartBeatRequestSub = streamRequest.HeartBeatRequestSub
 		go func() {
-			ticker := time.NewTicker(100 * time.Millisecond)
+			ticker := time.NewTicker(50 * time.Millisecond)
 			defer ticker.Stop()
 
 			for {
@@ -153,18 +151,23 @@ func (s *StreamingClientInteractionTestSuite) TestStreamConsumerClientGoingDown(
 					sMsgData, err := json.Marshal(sMsg)
 					s.Require().NoError(err)
 
-					clientManager.Client.Publish(msg.Reply, sMsgData)
+					s.pc.Conn.Publish(msg.Reply, sMsgData)
 				}
 			}
 		}()
 	})
 	s.Require().NoError(err)
+
+	// Wait for some time before we publish a request.
+	time.Sleep(1 * time.Second)
+
 	data, err := json.Marshal(testString)
 	s.Require().NoError(err)
 
 	_, err = s.cc.OpenStream(s.ctx, subjectName, data)
 	s.Require().NoError(err)
 
+	// Wait for the message to be received by subscriber above
 	s.Eventually(func() bool {
 		return td.heartBeatRequestSub != ""
 	}, time.Second*10, time.Millisecond*100, "Streaming request yet not received")
