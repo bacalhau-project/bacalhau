@@ -408,7 +408,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	executionID := uuid.New().String()
 
 	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "-c", "sleep 10").
+		WithEntrypoint("bash", "-c", "sleep 30").
 		Build()
 
 	s.Require().NoError(err)
@@ -417,8 +417,9 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 		Engine(es).
 		BuildOrDie()
 
+	jobCtx := context.Background()
 	go func() {
-		result, err := s.runJobWithContext(context.Background(), task, executionID)
+		result, err := s.runJobWithContext(jobCtx, task, executionID)
 		if err != nil {
 			errC <- err
 		} else {
@@ -427,11 +428,11 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	}()
 
 	s.Eventually(func() bool {
-		_, err := s.executor.FindRunningContainer(context.Background(), executionID)
+		_, err := s.executor.FindRunningContainer(jobCtx, executionID)
 		return err == nil
 	}, time.Second*10, time.Millisecond*100, "Could not find a running container")
 
-	err = s.executor.Cancel(context.Background(), executionID)
+	err = s.executor.Cancel(jobCtx, executionID)
 	s.Require().NoError(err)
 
 	select {
