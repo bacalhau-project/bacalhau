@@ -734,6 +734,8 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	if fileteredLength > query.Limit {
 		response.NextOffset = query.Offset + query.Limit
+	} else {
+		response.NextOffset = fileteredLength
 	}
 
 	return response, nil

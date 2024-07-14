@@ -289,7 +289,7 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		return err
 	}
 
-	var limit uint32
+	limit := args.Limit
 	var offset uint32
 	var err error
 
