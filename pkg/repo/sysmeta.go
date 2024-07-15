@@ -95,6 +95,33 @@ func (fsr *FsRepo) updateOrCreateMetadata(updateFunc func(*SystemMetadata)) erro
 	return fsr.writeMetadata(metadata)
 }
 
+// updateExistingMetadata updates an existing metadata file.
+// It fails if the file doesn't exist.
+// The update is applied using the provided updateFunc.
+func (fsr *FsRepo) updateExistingMetadata(updateFunc func(*SystemMetadata)) error {
+	filePath := fsr.join(SystemMetadataFile)
+
+	// Check if the file exists
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("system metadata file does not exist: %w", err)
+	} else if err != nil {
+		return fmt.Errorf("checking system metadata file: %w", err)
+	}
+
+	// File exists, read the current metadata
+	currentMetadata, err := fsr.readMetadata()
+	if err != nil {
+		return fmt.Errorf("reading existing metadata: %w", err)
+	}
+
+	// Apply the update
+	updateFunc(currentMetadata)
+
+	// Write the updated metadata back to the file
+	return fsr.writeMetadata(currentMetadata)
+}
+
 // writeMetadata marshals the provided SystemMetadata to YAML
 // and writes it to the system metadata file.
 func (fsr *FsRepo) writeMetadata(m *SystemMetadata) error {

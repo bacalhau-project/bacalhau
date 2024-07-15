@@ -272,6 +272,7 @@ func NewNode(
 	version.RunUpdateChecker(
 		updateCheckCtx,
 		bacalhauConfig,
+		fsr,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)
