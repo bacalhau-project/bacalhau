@@ -1,50 +1,36 @@
 package repo
 
-import (
-	"encoding/json"
-	"os"
-	"path/filepath"
-
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-)
-
 const (
-	// RepoVersion3 is the current repo versioning.
-	RepoVersion3 = 3
-	// RepoVersion2 is the repo versioning up to v1.2.1
-	RepoVersion2 = 2
-	// RepoVersion1 is the repo versioning for v1-v1.1.4
-	RepoVersion1 = 1
-	// RepoVersionFile is the name of the repo file containing the repo version.
-	RepoVersionFile = "repo.version"
+	// Version1 is the repo versioning for v1-v1.1.4
+	Version1 = iota + 1
+	// Version2 is the repo versioning up to v1.2.1
+	Version2
+	// Version3 is the repo version to (including) v1.4.0
+	Version3
+	// Version4 is the current repo version
+	Version4
+	// Add new versions here
+	// RepoVersion5
+	// RepoVersion6
+	// ...
 )
+
+// VersionFile is the name of the repo file containing the repo version.
+const VersionFile = "repo.version"
 
 // IsValidVersion returns true if the version is valid.
 func IsValidVersion(version int) bool {
-	return version >= RepoVersion1 && version <= RepoVersion3
+	return version >= Version1 && version <= Version4
 }
 
-type RepoVersion struct {
+type Version struct {
 	Version int
 }
 
-func (fsr *FsRepo) writeVersion(version int) error {
-	repoVersion := RepoVersion{Version: version}
-	versionJSON, err := json.Marshal(repoVersion)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(fsr.path, RepoVersionFile), versionJSON, util.OS_USER_RW)
-}
-
 func (fsr *FsRepo) readVersion() (int, error) {
-	versionBytes, err := os.ReadFile(filepath.Join(fsr.path, RepoVersionFile))
+	sysmeta, err := fsr.readMetadata()
 	if err != nil {
 		return -1, err
 	}
-	var version RepoVersion
-	if err := json.Unmarshal(versionBytes, &version); err != nil {
-		return -1, err
-	}
-	return version.Version, nil
+	return sysmeta.RepoVersion, nil
 }

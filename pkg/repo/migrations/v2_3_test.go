@@ -162,7 +162,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 func (suite *V2MigrationsTestSuite) verifyInitialState(nodeID string) {
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
-	suite.Equal(repo.RepoVersion2, repoVersion)
+	suite.Equal(repo.Version2, repoVersion)
 	suite.DirExists(filepath.Join(suite.TempDir, nodeID+"-compute"))
 	suite.DirExists(filepath.Join(suite.TempDir, nodeID+"-requester"))
 }

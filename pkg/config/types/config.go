@@ -20,7 +20,8 @@ type MetricsConfig struct {
 }
 
 type UpdateConfig struct {
-	SkipChecks     bool     `yaml:"SkipChecks"`
+	SkipChecks bool `yaml:"SkipChecks"`
+	// Deprecated: see repo.SystemMetadataFile
 	CheckStatePath string   `yaml:"StatePath"`
 	CheckFrequency Duration `yaml:"CheckFrequency"`
 }

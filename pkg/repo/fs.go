@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,9 +20,6 @@ const (
 	repoPermission         = 0755
 	defaultRunInfoFilename = "bacalhau.run"
 	runInfoFilePermissions = 0755
-
-	// UpdateCheckStatePath is the update check paths.
-	UpdateCheckStatePath = "update.json"
 )
 
 type FsRepoParams struct {
@@ -62,9 +60,14 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	// check if the repo version file is present
-	versionPath := filepath.Join(fsr.path, RepoVersionFile)
-	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
+	// check if the system metadata file is present
+	metaPath := fsr.join(SystemMetadataFile)
+	if _, err := os.Stat(metaPath); os.IsNotExist(err) {
+		if found, err := fsr.legacyVersionExists(); err != nil {
+			return false, nil
+		} else if found {
+			return true, nil
+		}
 		return false, nil
 	} else if err != nil {
 		return false, err
@@ -77,6 +80,43 @@ func (fsr *FsRepo) Exists() (bool, error) {
 		return false, NewUnknownRepoVersionError(version)
 	}
 	return true, nil
+}
+
+func (fsr *FsRepo) legacyVersionExists() (bool, error) {
+	versionPath := fsr.join(VersionFile)
+	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	versionBytes, err := os.ReadFile(versionPath)
+	if err != nil {
+		return false, err
+	}
+	var version Version
+	if err := json.Unmarshal(versionBytes, &version); err != nil {
+		return false, err
+	}
+	if !IsValidVersion(version.Version) {
+		return false, NewUnknownRepoVersionError(version.Version)
+	}
+	return true, nil
+}
+
+func (fsr *FsRepo) readLegacyVersion() (int, error) {
+	versionPath := fsr.join(VersionFile)
+	versionBytes, err := os.ReadFile(versionPath)
+	if err != nil {
+		return -1, err
+	}
+	var version Version
+	if err := json.Unmarshal(versionBytes, &version); err != nil {
+		return -1, err
+	}
+	if !IsValidVersion(version.Version) {
+		return -1, NewUnknownRepoVersionError(version.Version)
+	}
+	return version.Version, nil
 }
 
 // Version returns the version of the repo.
@@ -125,7 +165,7 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.writeVersion(RepoVersion3)
+	return fsr.WriteVersion(Version4)
 }
 
 func (fsr *FsRepo) Open(c config.ReadWriter) error {
@@ -170,11 +210,6 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		ID, _ := config.GetClientID(cfg.User.KeyPath)
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
 		c.Set(types.UserInstallationID, uuidFromUserID.String())
-	}
-
-	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
-	if cfg.Update.CheckStatePath == "" {
-		c.Set(types.UpdateCheckStatePath, fsr.join(UpdateCheckStatePath))
 	}
 
 	// TODO this should be a part of the config.
@@ -247,7 +282,6 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 	// NB(forrest): pay attention to the subtle name difference here
 	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
 
-	c.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(config.UpdateCheckStatePath))
 	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
 	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
 

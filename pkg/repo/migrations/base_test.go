@@ -7,13 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 const (
-	expectedRepoVersion = repo.RepoVersion3
+	expectedRepoVersion = repo.Version3
 )
 
 type BaseMigrationTestSuite struct {
