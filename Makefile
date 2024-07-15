@@ -154,7 +154,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 ################################################################################
 .PHONY: release-python-apiclient
 release-python-apiclient: resolve-earthly
-	cd clients && ${MAKE} pypi-upload
+	cd clients && ${MAKE} release
 	@echo "Python API client pushed to PyPi."
 
 ################################################################################
@@ -339,7 +339,6 @@ integration-test:
 
 .PHONY: bash-test
 bash-test: 
-	export REQUESTER_ENDPOINT_USE_DEPRECATED_ENV=true
 	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 

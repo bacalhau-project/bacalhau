@@ -4,13 +4,15 @@ package devstack
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -18,7 +20,6 @@ import (
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type DevstackSubmitSuite struct {
@@ -47,17 +48,29 @@ func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	)
 
 	apiServer := stack.Nodes[0].APIServer
-	apiClient, err := client.NewAPIClient(client.NoTLS, suite.Config.User, apiServer.Address, apiServer.Port)
-	suite.Require().NoError(err)
+	apiClient := clientv2.New(fmt.Sprintf("http://%s:%d", apiServer.Address, apiServer.Port))
 
-	j := &model.Job{}
-	j.Spec.Deal = model.Deal{Concurrency: 1}
-	_, missingSpecError := apiClient.Submit(ctx, j)
+	j := &models.Job{}
+	j.Count = 1
+	resp, err := apiClient.Jobs().Put(ctx, &apimodels.PutJobRequest{
+		Job: j,
+	})
 
-	require.Error(suite.T(), missingSpecError)
+	suite.Require().Error(err)
+	suite.Require().Empty(resp)
 
-	j = &model.Job{}
-	j.Spec = model.Spec{EngineSpec: model.NewEngineBuilder().WithType(model.EngineDocker.String()).Build()}
-	_, missingDealError := apiClient.Submit(ctx, j)
-	require.Error(suite.T(), missingDealError)
+	j = &models.Job{}
+	j.Tasks = []*models.Task{
+		{
+			Engine: &models.SpecConfig{
+				Type:   models.EngineDocker,
+				Params: make(map[string]interface{}),
+			},
+		},
+	}
+	resp, err = apiClient.Jobs().Put(ctx, &apimodels.PutJobRequest{
+		Job: j,
+	})
+	suite.Require().Error(err)
+	suite.Require().Empty(resp)
 }

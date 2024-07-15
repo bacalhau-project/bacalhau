@@ -42,10 +42,6 @@ executors:
     machine:
       image: default
     resource_class: arm.xlarge
-  darwin-amd64:
-    macos:
-      xcode: "14.2.0"
-    resource_class: macos.x86.medium.gen2
   darwin-arm64:
     macos:
       xcode: "14.2.0"
@@ -72,7 +68,6 @@ commands:
           [
             "linux-amd64",
             "linux-arm64",
-            "darwin-amd64",
             "darwin-arm64",
             "windows-amd64",
           ]
@@ -100,7 +95,6 @@ commands:
       - when:
           condition:
             or:
-              - equal: ["darwin-amd64", << parameters.executor >>]
               - equal: ["darwin-arm64", << parameters.executor >>]
               - equal: ["linux-amd64", << parameters.executor >>]
               - equal: ["linux-arm64", << parameters.executor >>]
@@ -444,7 +438,7 @@ jobs:
           steps:
             - run:
                 name: Login to Github Container Registry
-                command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+                command: echo $GHCR_PAT | docker login ghcr.io -u bacalhau-infra-bot --password-stdin
             - run: make push-bacalhau-image
 
   build_python_packages:
@@ -509,7 +503,6 @@ jobs:
           [
             "linux-amd64",
             "linux-arm64",
-            "darwin-amd64",
             "darwin-arm64",
             "windows-amd64",
           ]
@@ -775,6 +768,12 @@ workflows:
                 build_tags: unit
               - target_os: windows
                 target_arch: arm64
+                build_tags: integration
+              - target_os: darwin
+                target_arch: amd64
+                build_tags: unit
+              - target_os: darwin
+                target_arch: amd64
                 build_tags: integration
       - test_python_sdk
       - test_python_airflow

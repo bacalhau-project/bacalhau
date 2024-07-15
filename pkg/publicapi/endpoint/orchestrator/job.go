@@ -9,7 +9,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -17,22 +16,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
 // godoc for Orchestrator PutJob
 //
-// @ID			orchestrator/putJob
-// @Summary		Submits a job to the orchestrator.
-// @Description	Submits a job to the orchestrator.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			job	body	models.Job	true	"Job to submit"
-// @Success		200	{object}	apimodels.PutJobResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs [put]
+//	@ID				orchestrator/putJob
+//	@Summary		Submits a job to the orchestrator.
+//	@Description	Submits a job to the orchestrator.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			putJobRequest	body		apimodels.PutJobRequest	true	"Job to submit"
+//	@Success		200				{object}	apimodels.PutJobResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/jobs [put]
 func (e *Endpoint) putJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.PutJobRequest
@@ -58,17 +56,19 @@ func (e *Endpoint) putJob(c echo.Context) error {
 
 // godoc for Orchestrator GetJob
 //
-// @ID			orchestrator/getJob
-// @Summary		Returns a job.
-// @Description	Returns a job.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			id	query	string	false	"ID to get the job for"
-// @Success		200	{object}	apimodels.GetJobResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs [get]
+//	@ID				orchestrator/getJob
+//	@Summary		Returns a job.
+//	@Description	Returns a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string	true	"ID to get the job for"
+//	@Param			include	query		string	false	"Takes history and executions as options. If empty will not include anything else."
+//	@Param			limit	query		int		false	"Number of history or executions to fetch. Should be used in conjugation with include"
+//	@Success		200		{object}	apimodels.GetJobResponse
+//	@Failure		400		{object}	string
+//	@Failure		500		{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id} [get]
 func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -127,21 +127,21 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 
 // godoc for Orchestrator ListJobs
 //
-// @ID			orchestrator/listJobs
-// @Summary		Returns a list of jobs.
-// @Description	Returns a list of jobs.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			namespace	query	string	false	"Namespace to get the jobs for"
-// @Param			limit	query	int	false			"Limit the number of jobs returned"
-// @Param			next_token	query	string	false	"Token to get the next page of jobs"
-// @Param			reverse	query	bool	false		"Reverse the order of the jobs"
-// @Param			order_by	query	string	false	"Order the jobs by the given field"
-// @Success		200	{object}	apimodels.ListJobsResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs [get]
+//	@ID				orchestrator/listJobs
+//	@Summary		Returns a list of jobs.
+//	@Description	Returns a list of jobs.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			namespace	query		string	false	"Namespace to get the jobs for"
+//	@Param			limit		query		int		false	"Limit the number of jobs returned"
+//	@Param			next_token	query		string	false	"Token to get the next page of jobs"
+//	@Param			reverse		query		bool	false	"Reverse the order of the jobs"
+//	@Param			order_by	query		string	false	"Order the jobs by the given field"
+//	@Success		200			{object}	apimodels.ListJobsResponse
+//	@Failure		400			{object}	string
+//	@Failure		500			{object}	string
+//	@Router			/api/v1/orchestrator/jobs [get]
 func (e *Endpoint) listJobs(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.ListJobsRequest
@@ -223,18 +223,18 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 
 // godoc for Orchestrator StopJob
 //
-// @ID			orchestrator/stopJob
-// @Summary		Stops a job.
-// @Description	Stops a job.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			id	path	string	true	"ID to stop the job for"
-// @Param			reason	query	string	false	"Reason for stopping the job"
-// @Success		200	{object}	apimodels.StopJobResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs/{id} [delete]
+//	@ID				orchestrator/stopJob
+//	@Summary		Stops a job.
+//	@Description	Stops a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string	true	"ID to stop the job for"
+//	@Param			reason	query		string	false	"Reason for stopping the job"
+//	@Success		200		{object}	apimodels.StopJobResponse
+//	@Failure		400		{object}	string
+//	@Failure		500		{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id} [delete]
 func (e *Endpoint) stopJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -261,21 +261,21 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 
 // godoc for Orchestrator JobHistory
 //
-// @ID			orchestrator/jobHistory
-// @Summary		Returns the history of a job.
-// @Description	Returns the history of a job.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			id	path	string	true	"ID to get the job history for"
-// @Param			since	query	string	false	"Only return history since this time"
-// @Param			event_type	query	string	false	"Only return history of this event type"
-// @Param			execution_id	query	string	false	"Only return history of this execution ID"
-// @Param			node_id	query	string	false	"Only return history of this node ID"
-// @Success		200	{object}	apimodels.ListJobHistoryResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs/{id}/history [get]
+//	@ID				orchestrator/jobHistory
+//	@Summary		Returns the history of a job.
+//	@Description	Returns the history of a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string	true	"ID to get the job history for"
+//	@Param			since			query		string	false	"Only return history since this time"
+//	@Param			event_type		query		string	false	"Only return history of this event type"
+//	@Param			execution_id	query		string	false	"Only return history of this execution ID"
+//	@Param			node_id			query		string	false	"Only return history of this node ID"
+//	@Success		200				{object}	apimodels.ListJobHistoryResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/history [get]
 func (e *Endpoint) jobHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -310,21 +310,22 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 
 // godoc for Orchestrator JobExecutions
 //
-// @ID			orchestrator/jobExecutions
-// @Summary		Returns the executions of a job.
-// @Description	Returns the executions of a job.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			id	path	string	true	"ID to get the job executions for"
-// @Param			limit	query	int	false			"Limit the number of executions returned"
-// @Param			next_token	query	string	false	"Token to get the next page of executions"
-// @Param			reverse	query	bool	false		"Reverse the order of the executions"
-// @Param			order_by	query	string	false	"Order the executions by the given field"
-// @Success		200	{object}	apimodels.ListJobExecutionsResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs/{id}/executions [get]
+//	@ID				orchestrator/jobExecutions
+//	@Summary		Returns the executions of a job.
+//	@Description	Returns the executions of a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id			path		string	true	"ID to get the job executions for"
+//	@Param			namespace	query		string	false	"Namespace to get the jobs for"
+//	@Param			limit		query		int		false	"Limit the number of executions returned"
+//	@Param			next_token	query		string	false	"Token to get the next page of executions"
+//	@Param			reverse		query		bool	false	"Reverse the order of the executions"
+//	@Param			order_by	query		string	true	"Order the executions by the given field"
+//	@Success		200			{object}	apimodels.ListJobExecutionsResponse
+//	@Failure		400			{object}	string
+//	@Failure		500			{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/executions [get]
 func (e *Endpoint) jobExecutions(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -336,51 +337,15 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 		return err
 	}
 
-	// TODO: move ordering to jobstore
-	// parse order_by
-	var sortFnc func(a, b models.Execution) int
-	switch args.OrderBy {
-	case "modify_time", "":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
-	case "create_time":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
-	case "id":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[string]{}.Cmp(a.ID, b.ID) }
-	case "state":
-		sortFnc = func(a, b models.Execution) int {
-			return util.Compare[models.ExecutionStateType]{}.Cmp(a.ComputeState.StateType, b.ComputeState.StateType)
-		}
-	default:
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid order_by")
-	}
-	if args.Reverse {
-		baseSortFnc := sortFnc
-		sortFnc = func(a, b models.Execution) int {
-			r := baseSortFnc(a, b)
-			if r == -1 {
-				return 1
-			}
-			if r == 1 {
-				return -1
-			}
-			return 0
-		}
-	}
-
 	// query executions
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: jobID,
+		JobID:   jobID,
+		OrderBy: args.OrderBy,
+		Reverse: args.Reverse,
+		Limit:   int(args.Limit),
 	})
 	if err != nil {
 		return err
-	}
-
-	// sort executions
-	slices.SortFunc(executions, sortFnc)
-
-	// apply limit
-	if args.Limit > 0 && len(executions) > int(args.Limit) {
-		executions = executions[:args.Limit]
 	}
 
 	// prepare result
@@ -396,21 +361,17 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 
 // godoc for Orchestrator JobResults
 //
-// @ID			orchestrator/jobResults
-// @Summary		Returns the results of a job.
-// @Description	Returns the results of a job.
-// @Tags			Orchestrator
-// @Accept		json
-// @Produce		json
-// @Param			id	path	string	true	"ID to get the job results for"
-// @Param			limit	query	int	false			"Limit the number of results returned"
-// @Param			next_token	query	string	false	"Token to get the next page of results"
-// @Param			reverse	query	bool	false		"Reverse the order of the results"
-// @Param			order_by	query	string	false	"Order the results by the given field"
-// @Success		200	{object}	apimodels.ListJobResultsResponse
-// @Failure		400	{object}	string
-// @Failure		500	{object}	string
-// @Router			/api/v1/orchestrator/jobs/{id}/results [get]
+//	@ID				orchestrator/jobResults
+//	@Summary		Returns the results of a job.
+//	@Description	Returns the results of a job.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		string	true	"ID to get the job results for"
+//	@Success		200	{object}	apimodels.ListJobResultsResponse
+//	@Failure		400	{object}	string
+//	@Failure		500	{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/results [get]
 func (e *Endpoint) jobResults(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
@@ -436,21 +397,21 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 
 // godoc for Orchestrator JobLogs
 //
-// @ID				orchestrator/logs
-// @Summary			Displays the logs for a current job/execution
-// @Description		Shows the output from the job specified by `id`
-// @Description		The output will be continuous until either, the client disconnects or the execution completes.
-// @Tags			Orchestrator
-// @Accept			json
-// @Produce			json
-// @Param			id				path	string	true	"ID to get the job logs for"
-// @Param			execution_id	query 	string	false	"Fetch logs for a specific execution"
-// @Param			tail	query	bool	false	"Fetch historical logs"
-// @Param			follow			query	bool	false	"Follow the logs"
-// @Success		200			{object}	string
-// @Failure		400			{object}	string
-// @Failure		500			{object}	string
-// @Router			/api/v1/orchestrator/jobs/{id}/logs [get]
+//	@ID				orchestrator/logs
+//	@Summary		Displays the logs for a current job/execution
+//	@Description	Shows the output from the job specified by `id`
+//	@Description	The output will be continuous until either, the client disconnects or the execution completes.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string	true	"ID to get the job logs for"
+//	@Param			execution_id	query		string	false	"Fetch logs for a specific execution"
+//	@Param			tail			query		bool	false	"Fetch historical logs"
+//	@Param			follow			query		bool	false	"Follow the logs"
+//	@Success		200				{object}	string
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/logs [get]
 func (e *Endpoint) logs(c echo.Context) error {
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {

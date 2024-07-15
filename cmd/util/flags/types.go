@@ -2,7 +2,6 @@ package flags
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -14,10 +13,7 @@ import (
 	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	legacy_job "github.com/bacalhau-project/bacalhau/pkg/legacyjob"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )
 
@@ -231,64 +227,37 @@ func NewURLStorageSpecArrayFlag(value *[]*models.InputSource) *ArrayValueFlag[*m
 	}
 }
 
-func strStringer(str *string) string {
-	if str == nil {
-		return ""
-	}
-	return *str
-}
+type TargetingMode bool
 
-func strParser(str string) (string, error) {
-	return str, nil
-}
-
-func EngineFlag(value *string) *ValueFlag[string] {
-	return &ValueFlag[string]{
-		value:    value,
-		parser:   strParser,
-		stringer: strStringer,
-		typeStr:  "engine",
-	}
-}
-
-func PublisherFlag(value *string) *ValueFlag[string] {
-	return &ValueFlag[string]{
-		value:    value,
-		parser:   strParser,
-		stringer: strStringer,
-		typeStr:  "publisher",
-	}
-}
-
-func StorageSourceFlag(value *string) *ValueFlag[string] {
-	return &ValueFlag[string]{
-		value:    value,
-		parser:   strParser,
-		stringer: strStringer,
-		typeStr:  "storage-source",
-	}
-}
-
-var (
-	EnginesFlag        = ArrayValueFlagFrom(EngineFlag)
-	PublishersFlag     = ArrayValueFlagFrom(PublisherFlag)
-	StorageSourcesFlag = ArrayValueFlagFrom(StorageSourceFlag)
+const (
+	TargetAny TargetingMode = false
+	TargetAll TargetingMode = true
 )
 
-func NetworkFlag(value *model.Network) *ValueFlag[model.Network] {
-	return &ValueFlag[model.Network]{
-		value:    value,
-		parser:   model.ParseNetwork,
-		stringer: func(n *model.Network) string { return n.String() },
-		typeStr:  "network-type",
+func (t TargetingMode) String() string {
+	if bool(t) {
+		return "all"
+	} else {
+		return "any"
 	}
 }
 
-func TargetingFlag(value *model.TargetingMode) *ValueFlag[model.TargetingMode] {
-	return &ValueFlag[model.TargetingMode]{
+func ParseTargetingMode(s string) (TargetingMode, error) {
+	switch s {
+	case "any":
+		return TargetAny, nil
+	case "all":
+		return TargetAll, nil
+	default:
+		return TargetAny, fmt.Errorf(`expecting "any" or "all", not %q`, s)
+	}
+}
+
+func TargetingFlag(value *TargetingMode) *ValueFlag[TargetingMode] {
+	return &ValueFlag[TargetingMode]{
 		value:    value,
-		parser:   model.ParseTargetingMode,
-		stringer: func(tm *model.TargetingMode) string { return tm.String() },
+		parser:   ParseTargetingMode,
+		stringer: func(tm *TargetingMode) string { return tm.String() },
 		typeStr:  "all|any",
 	}
 }
@@ -320,59 +289,6 @@ func StorageTypeFlag(value *types.StorageType) *ValueFlag[types.StorageType] {
 	}
 }
 
-func URLFlag(value **url.URL, schemes ...string) *ValueFlag[*url.URL] {
-	return &ValueFlag[*url.URL]{
-		value: value,
-		parser: func(s string) (u *url.URL, err error) {
-			u, err = url.Parse(s)
-			if u != nil && !slices.Contains(schemes, u.Scheme) {
-				err = fmt.Errorf("URL scheme must be one of: %v", schemes)
-			}
-			return
-		},
-		stringer: func(u **url.URL) string {
-			if u == nil || (*u) == nil {
-				return ""
-			} else {
-				return (*u).String()
-			}
-		},
-		typeStr: "url",
-	}
-}
-
-func parseTag(s string) (string, error) {
-	var err error
-	if !legacy_job.IsSafeAnnotation(s) {
-		err = fmt.Errorf("%q is not a valid tag", s)
-	}
-	return s, err
-}
-
-func IncludedTagFlag(value *[]model.IncludedTag) *ArrayValueFlag[model.IncludedTag] {
-	return &ArrayValueFlag[model.IncludedTag]{
-		value: value,
-		parser: func(s string) (model.IncludedTag, error) {
-			s, err := parseTag(s)
-			return model.IncludedTag(s), err
-		},
-		stringer: func(t *model.IncludedTag) string { return string(*t) },
-		typeStr:  "tag",
-	}
-}
-
-func ExcludedTagFlag(value *[]model.ExcludedTag) *ArrayValueFlag[model.ExcludedTag] {
-	return &ArrayValueFlag[model.ExcludedTag]{
-		value: value,
-		parser: func(s string) (model.ExcludedTag, error) {
-			s, err := parseTag(s)
-			return model.ExcludedTag(s), err
-		},
-		stringer: func(t *model.ExcludedTag) string { return string(*t) },
-		typeStr:  "tag",
-	}
-}
-
 func OutputFormatFlag(value *output.OutputFormat) *ValueFlag[output.OutputFormat] {
 	return &ValueFlag[output.OutputFormat]{
 		value: value,
@@ -386,43 +302,6 @@ func OutputFormatFlag(value *output.OutputFormat) *ValueFlag[output.OutputFormat
 		stringer: func(o *output.OutputFormat) string { return string(*o) },
 		typeStr:  "format",
 	}
-}
-
-func JobSelectionCLIFlags(policy *node.JobSelectionPolicy) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Job Selection Policy", pflag.ContinueOnError)
-
-	flags.Var(
-		DataLocalityFlag(&policy.Locality), "job-selection-data-locality",
-		`Only accept jobs that reference data we have locally ("local") or anywhere ("anywhere").`,
-	)
-	flags.BoolVar(
-		&policy.RejectStatelessJobs, "job-selection-reject-stateless", policy.RejectStatelessJobs,
-		`Reject jobs that don't specify any data.`,
-	)
-	flags.BoolVar(
-		&policy.AcceptNetworkedJobs, "job-selection-accept-networked", policy.AcceptNetworkedJobs,
-		`Accept jobs that require network access.`,
-	)
-	flags.StringVar(
-		&policy.ProbeHTTP, "job-selection-probe-http", policy.ProbeHTTP,
-		`Use the result of a HTTP POST to decide if we should take on the job.`,
-	)
-	flags.StringVar(
-		&policy.ProbeExec, "job-selection-probe-exec", policy.ProbeExec,
-		`Use the result of a exec an external program to decide if we should take on the job.`,
-	)
-
-	return flags
-}
-
-func DisabledFeatureCLIFlags(config *node.FeatureConfig) *pflag.FlagSet {
-	flags := pflag.NewFlagSet("Disabled Features", pflag.ContinueOnError)
-
-	flags.Var(EnginesFlag(&config.Engines), "disable-engine", "An engine type to disable.")
-	flags.Var(PublishersFlag(&config.Publishers), "disable-publisher", "A publisher type to disable.")
-	flags.Var(StorageSourcesFlag(&config.Storages), "disable-storage", "A storage type to disable.")
-
-	return flags
 }
 
 func ResultPathFlag(value *[]*models.ResultPath) *ArrayValueFlag[*models.ResultPath] {
@@ -447,7 +326,7 @@ func parseResultPath(value string) (*models.ResultPath, error) {
 	}, nil
 }
 
-func NetworkV2Flag(value *models.Network) *ValueFlag[models.Network] {
+func NetworkFlag(value *models.Network) *ValueFlag[models.Network] {
 	return &ValueFlag[models.Network]{
 		value:    value,
 		parser:   models.ParseNetwork,

@@ -19,7 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func newSetCmd() *cobra.Command {
@@ -153,8 +153,8 @@ func getParser(curValue interface{}, key string) (parserFunc, error) {
 		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 64) }
 	case types.Duration, time.Duration:
 		parser = func(s string) (any, error) { return time.ParseDuration(s) }
-	case model.JobSelectionDataLocality:
-		parser = func(s string) (any, error) { return model.ParseJobSelectionDataLocality(s) }
+	case models.JobSelectionDataLocality:
+		parser = func(s string) (any, error) { return models.ParseJobSelectionDataLocality(s) }
 	case logger.LogMode:
 		parser = func(s string) (any, error) { return logger.ParseLogMode(s) }
 	case types.StorageType:

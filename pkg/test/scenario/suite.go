@@ -160,7 +160,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	jobID := getResp.Job.ID
 
 	s.T().Log("Waiting for job")
-	s.Require().NoError(NewStateResolver(api).Wait(s.Ctx, jobID, scenario.JobCheckers...))
+	s.Require().NoError(NewStateResolverFromAPI(api).Wait(s.Ctx, jobID, scenario.JobCheckers...))
 
 	// Check outputs
 	if scenario.ResultsChecker != nil {

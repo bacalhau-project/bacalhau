@@ -6,6 +6,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/vincent-petithory/dataurl"
+
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -13,14 +16,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
-	"github.com/stretchr/testify/require"
-	"github.com/vincent-petithory/dataurl"
 
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 func (s *LogStreamTestSuite) TestWasmOutputStream() {
+	s.T().Skip("https://github.com/bacalhau-project/bacalhau/issues/4158")
 	node := s.stack.Nodes[0]
 
 	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
