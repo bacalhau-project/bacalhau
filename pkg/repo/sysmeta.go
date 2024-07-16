@@ -60,7 +60,7 @@ func (fsr *FsRepo) WriteInstallationID(id string) error {
 func (fsr *FsRepo) readMetadata() (*SystemMetadata, error) {
 	metaBytes, err := os.ReadFile(fsr.join(SystemMetadataFile))
 	if err != nil {
-		return nil, fmt.Errorf("reading repo system metadata file: %w", err)
+		return nil, err
 	}
 	metadata := new(SystemMetadata)
 	if err := yaml.Unmarshal(metaBytes, metadata); err != nil {

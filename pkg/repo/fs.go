@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -92,7 +91,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 func (fsr *FsRepo) Version() (int, error) {
 	maybeVersion, err := fsr.readVersion()
 	if err != nil {
-		if errors.As(os.ErrNotExist, &err) { //nolint: govet
+		if os.IsNotExist(err) {
 			return fsr.readLegacyVersion()
 		}
 		return -1, err
