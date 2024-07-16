@@ -15,9 +15,6 @@ const (
 	// ...
 )
 
-// VersionFile is the name of the repo file containing the repo version.
-const VersionFile = "repo.version"
-
 // IsValidVersion returns true if the version is valid.
 func IsValidVersion(version int) bool {
 	return version >= Version1 && version <= Version4

@@ -17,7 +17,7 @@ var V3Migration = repo.NewMigration(
 			return err
 		}
 		// read the old version file
-		versionPath := filepath.Join(repoPath, repo.VersionFile)
+		versionPath := filepath.Join(repoPath, repo.LegacyVersionFile)
 		versionBytes, err := os.ReadFile(versionPath)
 		if err != nil {
 			return err

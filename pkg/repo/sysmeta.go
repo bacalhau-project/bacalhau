@@ -29,6 +29,8 @@ func (fsr *FsRepo) WriteVersion(version int) error {
 	})
 }
 
+// ReadLastUpdateCheck returns the last update check value from system_metadata.yaml
+// It fails if the metadata file doesn't exist.
 func (fsr *FsRepo) ReadLastUpdateCheck() (time.Time, error) {
 	repoMeta, err := fsr.readMetadata()
 	if err != nil {
@@ -53,7 +55,8 @@ func (fsr *FsRepo) WriteInstallationID(id string) error {
 	})
 }
 
-// readMetadata opens the system_metadata.yaml file in the repo, returning the result.
+// readMetadata unmarshals the content of SystemMedataFile into SystemMetadata and returns it.
+// If fails if the metadata file doesn't exist.
 func (fsr *FsRepo) readMetadata() (*SystemMetadata, error) {
 	metaBytes, err := os.ReadFile(fsr.join(SystemMetadataFile))
 	if err != nil {
@@ -64,6 +67,21 @@ func (fsr *FsRepo) readMetadata() (*SystemMetadata, error) {
 		return nil, fmt.Errorf("unmarshalling repo system metadata: %w", err)
 	}
 	return metadata, nil
+}
+
+// writeMetadata marshals the provided SystemMetadata to YAML
+// and writes it to the system metadata file, creating the file if it doesn't exist.
+func (fsr *FsRepo) writeMetadata(m *SystemMetadata) error {
+	metaBytes, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("`marshaling` repo system metadata: %w", err)
+	}
+
+	if err := os.WriteFile(fsr.join(SystemMetadataFile), metaBytes, util.OS_USER_RW); err != nil {
+		return fmt.Errorf("writing repo system metadata file: %w", err)
+	}
+
+	return nil
 }
 
 // updateOrCreateMetadata updates an existing metadata file or creates a new one if it doesn't exist.
@@ -120,19 +138,4 @@ func (fsr *FsRepo) updateExistingMetadata(updateFunc func(*SystemMetadata)) erro
 
 	// Write the updated metadata back to the file
 	return fsr.writeMetadata(currentMetadata)
-}
-
-// writeMetadata marshals the provided SystemMetadata to YAML
-// and writes it to the system metadata file.
-func (fsr *FsRepo) writeMetadata(m *SystemMetadata) error {
-	metaBytes, err := yaml.Marshal(m)
-	if err != nil {
-		return fmt.Errorf("`marshaling` repo system metadata: %w", err)
-	}
-
-	if err := os.WriteFile(fsr.join(SystemMetadataFile), metaBytes, util.OS_USER_RW); err != nil {
-		return fmt.Errorf("writing repo system metadata file: %w", err)
-	}
-
-	return nil
 }
