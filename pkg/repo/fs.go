@@ -86,9 +86,12 @@ func (fsr *FsRepo) Exists() (bool, error) {
 
 // Version returns the version of the repo.
 func (fsr *FsRepo) Version() (int, error) {
-	maybeVersion, err := fsr.readLegacyVersion()
-	if errors.Is(os.ErrNotExist, err) {
-		return fsr.readVersion()
+	maybeVersion, err := fsr.readVersion()
+	if err != nil {
+		if errors.As(os.ErrNotExist, &err) { //nolint: govet
+			return fsr.readLegacyVersion()
+		}
+		return -1, err
 	}
 	return maybeVersion, nil
 }
