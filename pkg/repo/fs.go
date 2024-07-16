@@ -65,7 +65,11 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	var version int
 	// check if the system metadata file is present
 	if _, err := os.Stat(fsr.join(SystemMetadataFile)); os.IsNotExist(err) {
-		// if it's not present check if this repo is pre version 4, which requires a migration
+		// if it's not present check for the LegacyVersionFile
+		// if neither file exists, then the repo is uninitialized.
+		if _, err := os.Stat(fsr.join(LegacyVersionFile)); os.IsNotExist(err) {
+			return false, nil
+		}
 		version, err = fsr.readLegacyVersion()
 		if err != nil {
 			return false, err
