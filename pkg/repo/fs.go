@@ -118,6 +118,10 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
+
+	// attempt to derive an set an instanceID
+	fsr.maybePersistInstanceID()
+
 	return fsr.WriteVersion(Version4)
 }
 
@@ -168,6 +172,14 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
+
+	// if the instanceID is unset attempted to derive and set it.
+	maybeInstanceID, err := fsr.ReadInstanceID()
+	if err == nil {
+		if maybeInstanceID == "" {
+			fsr.maybePersistInstanceID()
+		}
+	}
 
 	return nil
 }
@@ -246,4 +258,17 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 // join joins path elements with fsr.path
 func (fsr *FsRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
+}
+
+// maybePersistInstanceID attempts to generate and persist an instanceID, if
+// any errors are encountered during the attempt the operation silently fails.
+// The silent failure prevents the repo from failing to open or initialize, this
+// operation is non-critical to bacalhaus overall operation.
+func (fsr *FsRepo) maybePersistInstanceID() {
+	instanceID, err := GenerateInstanceID()
+	if err == nil {
+		if instanceID != "" {
+			_ = fsr.WriteInstanceID(instanceID)
+		}
+	}
 }
