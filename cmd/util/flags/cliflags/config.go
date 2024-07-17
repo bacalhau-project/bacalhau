@@ -4,8 +4,26 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
+
+// ConfigAutoComplete provides auto-completion suggestions for configuration keys.
+func ConfigAutoComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var completions []string
+
+	// Iterate over the ConfigDescriptions map to find matching keys
+	for key, description := range types.ConfigDescriptions {
+		if strings.HasPrefix(key, toComplete) {
+			completion := fmt.Sprintf("%s\t%s", key, description)
+			completions = append(completions, completion)
+		}
+	}
+
+	return completions, cobra.ShellCompDirectiveNoSpace
+}
 
 func NewConfigFlag() *ConfigFlag {
 	return &ConfigFlag{}
