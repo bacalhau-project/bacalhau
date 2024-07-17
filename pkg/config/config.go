@@ -102,17 +102,57 @@ func New(opts ...Option) *config {
 	return c
 }
 
+// Load merges a configuration file with the current configuration, ensuring
+// that values set via the config flag (-c or --config) take precedence.
+// This allows users to override config values in multiple ways:
+// - Provide one or more config files
+// - Specify individual config values (e.g., "-c WebUI.Enabled=true")
+// - Use a combination of files and individual values
+// The function carefully merges these sources, maintaining the correct
+// precedence: flag values > file config in bacalhau repo > default values.
 func (c *config) Load(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// if the config file doesn't exist then we obviously cannot load it
-		return fmt.Errorf("config file not found at at path: %q: %w", path, err)
+		return fmt.Errorf("config file not found at path: %q: %w", path, err)
 	} else if err != nil {
 		return fmt.Errorf("failed to read config file: %w", err)
 	}
-	c.v.SetConfigFile(path)
-	if err := c.v.ReadInConfig(); err != nil {
+
+	// Create a new Viper instance for the file-based config
+	fileConfig := viper.New()
+	fileConfig.SetConfigFile(path)
+
+	// Load the file-based config
+	if err := fileConfig.ReadInConfig(); err != nil {
 		return fmt.Errorf("failed to load config file: %w", err)
 	}
+
+	// Create a new config instance for the result
+	newConfig := New(WithViper(viper.New()))
+
+	// Merge file config
+	if err := newConfig.v.MergeConfigMap(fileConfig.AllSettings()); err != nil {
+		return fmt.Errorf("failed to merge file config: %w", err)
+	}
+
+	// Create a default config to compare against
+	defaultConfig := New(WithViper(viper.New()))
+	defaultConfig.setDefault(c.defaultCfg)
+
+	// Apply only user-set overrides that were provided via the --config flag
+	for _, key := range c.v.AllKeys() {
+		// But don't(!) override the new config with values considered to be default.
+		// this step is required because viper can differentiate between default values and overrides.
+		defaultValue := defaultConfig.v.Get(key)
+		setValue := c.v.Get(key)
+		if !reflect.DeepEqual(defaultValue, setValue) {
+			newConfig.Set(key, c.v.Get(key))
+			fmt.Printf("Applying user override for key %s: %v\n", key, c.v.Get(key))
+		}
+	}
+
+	// Replace the config's Viper instance with the new, merged instance
+	c.v = newConfig.v
+
 	return nil
 }
 
