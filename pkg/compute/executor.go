@@ -20,7 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-const StorageDirectoryPerms = 0755
+const StorageDirectoryPerms = 0o755
 
 type BaseExecutorParams struct {
 	ID                     string
@@ -66,7 +66,8 @@ func prepareInputVolumes(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	storageDirectory string, inputSources ...*models.InputSource) (
-	[]storage.PreparedStorage, func(context.Context) error, error) {
+	[]storage.PreparedStorage, func(context.Context) error, error,
+) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
 	if err != nil {
 		return nil, nil, err
@@ -80,7 +81,8 @@ func prepareWasmVolumes(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
-	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
+	map[string][]storage.PreparedStorage, func(context.Context) error, error,
+) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
@@ -300,7 +302,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
 	topic := EventTopicExecutionRunning
 	defer func() {
-		if err != nil {
+		if err != nil && err.Error() != executor.ErrAlreadyCancelled.Error() {
 			e.handleFailure(ctx, state, err, topic)
 		}
 		dur := stopwatch()
@@ -352,7 +354,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		return err
 	}
 	if result.ErrorMsg != "" {
-		return fmt.Errorf("execution error: %s", result.ErrorMsg)
+		return fmt.Errorf(result.ErrorMsg)
 	}
 	jobsCompleted.Add(ctx, 1)
 
@@ -416,7 +418,8 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
-	resultFolder string) (publishedResult models.SpecConfig, err error) {
+	resultFolder string,
+) (publishedResult models.SpecConfig, err error) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
