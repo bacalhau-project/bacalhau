@@ -443,7 +443,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 
 	select {
 	case err := <-errC:
-		s.Require().Nil(err)
+		s.Require().Failf("Executor run should have returned a result, but instead returned err: %w", err.Error())
 	case result := <-resultC:
 		s.Require().NotNil(result)
 		s.Require().Equal(executor.ErrAlreadyCancelled.Error(), result.ErrorMsg)

@@ -1,4 +1,4 @@
-//go:build integration || !unit
+//go:build unit || !integration
 
 package stream
 
