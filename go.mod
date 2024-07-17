@@ -14,7 +14,7 @@ require (
 	github.com/aws/smithy-go v1.20.1
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/docker/docker v25.0.4+incompatible
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
@@ -44,7 +44,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.12.2
 	github.com/nats-io/nats-server/v2 v2.10.11
-	github.com/nats-io/nats.go v1.33.0
+	github.com/nats-io/nats.go v1.34.0
 	github.com/nats-io/nuid v1.0.1
 	github.com/open-policy-agent/opa v0.60.0
 	github.com/opencontainers/image-spec v1.1.0-rc5
@@ -55,14 +55,14 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.16.0
+	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/swag v1.16.2
 	github.com/tetratelabs/wazero v1.6.0
 	github.com/theckman/yacspin v0.13.12
 	github.com/vincent-petithory/dataurl v1.0.0
 	go.etcd.io/bbolt v1.3.8
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.47.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	go.opentelemetry.io/otel v1.26.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.24.0
@@ -140,9 +140,12 @@ require (
 	github.com/nats-io/jwt/v2 v2.5.3 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/oklog/run v1.0.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/sagikazarmark/locafero v0.4.0 // indirect
+	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect
 	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
@@ -151,8 +154,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/mod v0.15.0 // indirect
 	gonum.org/v1/gonum v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240227224415-6ceb2ff114de // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240311132316-a219d84964c2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240314234333-6e1732d8331c // indirect
 	k8s.io/cli-runtime v0.29.0 // indirect
 )
 
@@ -237,7 +240,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/petar/GoLLRB v0.0.0-20210522233825-ae3b015fd3e9 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polydawn/refmt v0.89.0 // indirect
 	github.com/prometheus/client_golang v1.18.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
@@ -248,10 +251,9 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/lo v1.39.0
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/afero v1.10.0 // indirect
-	github.com/spf13/cast v1.5.1 // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/subosito/gotenv v1.4.2 // indirect
+	github.com/spf13/afero v1.11.0 // indirect
+	github.com/spf13/cast v1.6.0 // indirect
+	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
 	github.com/whyrusleeping/cbor-gen v0.0.0-20240109153615-66e95c3e8a87 // indirect
@@ -264,7 +266,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/oauth2 v0.17.0 // indirect
+	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.18.0
