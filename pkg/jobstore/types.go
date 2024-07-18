@@ -33,18 +33,17 @@ type JobQueryResponse struct {
 type JobHistoryQuery struct {
 	Since                 int64  `json:"since"`
 	Limit                 uint32 `json:"limit"`
-	Offset                uint32 `json:"offset"`
 	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
 	ExcludeJobLevel       bool   `json:"exclude_job_level"`
 	ExecutionID           string `json:"execution_id"`
 	NodeID                string `json:"node_id"`
+	NextToken             string `json:"next_token"`
 }
 
 type JobHistoryQueryResponse struct {
 	JobHistory []models.JobHistory
 	Offset     uint32
-	Limit      uint32
-	NextOffset uint32
+	NextToken  string
 }
 
 // TxContext is a transactional context that can be used to commit or rollback

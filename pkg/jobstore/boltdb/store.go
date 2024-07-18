@@ -639,6 +639,7 @@ func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	return response, err
 }
 
+//nolint:gocyclo,funlen
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	query jobstore.JobHistoryQuery,
 ) (*jobstore.JobHistoryQueryResponse, error) {
@@ -711,11 +712,20 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })
 
-	if query.Offset >= uint32(len(history)) {
+	offset := uint32(0)
+	if query.NextToken != "" {
+		token, err := models.NewPagingTokenFromString(query.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		offset = token.Offset
+	}
+
+	if offset >= uint32(len(history)) {
 		return &jobstore.JobHistoryQueryResponse{}, nil
 	}
 
-	historyFiltered := history[query.Offset:]
+	historyFiltered := history[offset:]
 	if query.Limit == 0 {
 		return &jobstore.JobHistoryQueryResponse{
 			JobHistory: historyFiltered,
@@ -728,14 +738,17 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	response := &jobstore.JobHistoryQueryResponse{
 		JobHistory: historyFiltered,
-		Offset:     query.Offset,
-		Limit:      query.Limit,
+		Offset:     offset,
 	}
 
 	if fileteredLength > query.Limit {
-		response.NextOffset = query.Offset + query.Limit
+		response.NextToken = models.NewPagingToken(&models.PagingTokenParams{
+			Offset: offset + query.Limit,
+		}).String()
 	} else {
-		response.NextOffset = fileteredLength
+		response.NextToken = models.NewPagingToken(&models.PagingTokenParams{
+			Offset: fileteredLength,
+		}).String()
 	}
 
 	return response, nil

@@ -289,32 +289,14 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		return err
 	}
 
-	limit := args.Limit
-	var offset uint32
-	var err error
-
-	// If the request contains a pagint token then it is decoded and used to replace
-	// any other values provided in the request. This allows for stable sorting to
-	// allow the pagination to work correctly.
-	if args.NextToken != "" {
-		token, err := models.NewPagingTokenFromString(args.NextToken)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-
-		// Overwrite any provided values with the ones from the token.
-		limit = token.Limit
-		offset = token.Offset
-	}
-
 	options := jobstore.JobHistoryQuery{
 		Since:                 args.Since,
 		ExcludeExecutionLevel: args.EventType == "job",
 		ExcludeJobLevel:       args.EventType == "execution",
 		ExecutionID:           args.ExecutionID,
 		NodeID:                args.NodeID,
-		Limit:                 limit,
-		Offset:                offset,
+		Limit:                 args.Limit,
+		NextToken:             args.NextToken,
 	}
 
 	jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, options)
@@ -322,19 +304,13 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		return err
 	}
 
-	var nextToken string
-	if jobHistoryQueryResponse.NextOffset != 0 {
-		nextToken = models.NewPagingToken(&models.PagingTokenParams{
-			Limit:  args.Limit,
-			Offset: jobHistoryQueryResponse.NextOffset,
-		}).String()
-	}
 	res := &apimodels.ListJobHistoryResponse{
 		Items: make([]*models.JobHistory, len(jobHistoryQueryResponse.JobHistory)),
 		BaseListResponse: apimodels.BaseListResponse{
-			NextToken: nextToken,
+			NextToken: jobHistoryQueryResponse.NextToken,
 		},
 	}
+
 	for i := range jobHistoryQueryResponse.JobHistory {
 		res.Items[i] = &jobHistoryQueryResponse.JobHistory[i]
 	}
