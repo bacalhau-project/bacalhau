@@ -224,6 +224,46 @@ func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
+func (s *BoltJobstoreTestSuite) TestJobHistoryPagination() {
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit: 2,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken := jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 2)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     1,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 1)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 5)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+	require.Empty(s.T(), jobHistoryQueryResponse.NextToken)
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 0)
+
+}
+
 func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 	options := jobstore.JobHistoryQuery{
 		Since: 5,

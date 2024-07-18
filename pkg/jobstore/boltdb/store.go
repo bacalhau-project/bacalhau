@@ -741,7 +741,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		Offset:     offset,
 	}
 
-	if fileteredLength > query.Limit {
+	if fileteredLength >= query.Limit {
 		response.NextToken = models.NewPagingToken(&models.PagingTokenParams{
 			Offset: offset + query.Limit,
 		}).String()
