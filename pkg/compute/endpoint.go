@@ -140,13 +140,6 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 			localExecutionState.Execution.ID, localExecutionState.State)
 	}
 
-	if localExecutionState.State.IsExecuting() {
-		err = s.executor.Cancel(ctx, localExecutionState)
-		if err != nil {
-			return CancelExecutionResponse{}, err
-		}
-	}
-
 	err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
 		ExecutionID: request.ExecutionID,
 		NewState:    store.ExecutionStateCancelled,
@@ -155,13 +148,21 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 	if err != nil {
 		return CancelExecutionResponse{}, err
 	}
+
+	if localExecutionState.State.IsExecuting() {
+		err = s.executor.Cancel(ctx, localExecutionState)
+		if err != nil {
+			return CancelExecutionResponse{}, err
+		}
+	}
 	return CancelExecutionResponse{
 		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 	}, nil
 }
 
 func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (
-	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+	<-chan *concurrency.AsyncResult[models.ExecutionLog], error,
+) {
 	return s.logServer.GetLogStream(ctx, executor.LogStreamRequest{
 		ExecutionID: request.ExecutionID,
 		Tail:        request.Tail,

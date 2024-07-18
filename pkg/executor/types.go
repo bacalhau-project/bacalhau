@@ -79,6 +79,8 @@ var (
 	// ErrAlreadyStarted is returned when trying to start an already started execution.
 	ErrAlreadyStarted = fmt.Errorf("execution already started")
 
+	ErrAlreadyCancelled = fmt.Errorf("execution already cancelled")
+
 	// ErrAlreadyComplete is returned when action is attempted on an execution that is already complete.
 	ErrAlreadyComplete = fmt.Errorf("execution already complete")
 
