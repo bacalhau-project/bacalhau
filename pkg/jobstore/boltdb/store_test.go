@@ -192,54 +192,94 @@ func (s *BoltJobstoreTestSuite) TearDownTest() {
 }
 
 func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(8, len(history))
+	s.Require().Equal(8, len(jobHistoryQueryResponse.JobHistory))
 
-	history, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryQuery{})
 	s.Require().NoError(err)
-	s.NotEmpty(history)
-	s.Require().Equal("110", history[0].JobID)
+	s.NotEmpty(jobHistoryQueryResponse)
+	s.Require().Equal("110", jobHistoryQueryResponse.JobHistory[0].JobID)
 
-	history, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryQuery{})
 	s.Require().Error(err)
 	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
-	s.Require().Nil(history)
+	s.Require().Nil(jobHistoryQueryResponse)
 }
 
 func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	require.NoError(s.T(), err, "failed to get job history")
 
 	// There are 6 history entries that we created directly, and 2 created by
 	// CreateJob and CreateExecution
-	require.Equal(s.T(), 8, len(history))
+	require.Equal(s.T(), 8, len(jobHistoryQueryResponse.JobHistory))
 
 	// Make sure they come back in order
-	values := make([]int64, len(history))
-	for i, h := range history {
+	values := make([]int64, len(jobHistoryQueryResponse.JobHistory))
+	for i, h := range jobHistoryQueryResponse.JobHistory {
 		values[i] = h.Time.Unix()
 	}
 
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
+func (s *BoltJobstoreTestSuite) TestJobHistoryPagination() {
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit: 2,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken := jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 2)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     1,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 1)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 5)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+	require.Empty(s.T(), jobHistoryQueryResponse.NextToken)
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 0)
+
+}
+
 func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
-	options := jobstore.JobHistoryFilterOptions{
+	options := jobstore.JobHistoryQuery{
 		Since: 5,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", options)
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 4, len(history))
+	require.Equal(s.T(), 4, len(jobHistoryQueryResponse.JobHistory))
 }
 
 func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
-	allHistories, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	require.NoError(s.T(), err)
 
 	var executionID string
-	for _, h := range allHistories {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		if h.ExecutionID != "" {
 			executionID = h.ExecutionID
 			break
@@ -247,24 +287,24 @@ func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
 	}
 	require.NotEmpty(s.T(), executionID, "failed to find execution ID")
 
-	options := jobstore.JobHistoryFilterOptions{
+	options := jobstore.JobHistoryQuery{
 		ExecutionID: executionID,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", options)
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 
-	for _, h := range history {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		require.Equal(s.T(), executionID, h.ExecutionID)
 	}
 }
 
 func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
-	allHistories, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	require.NoError(s.T(), err)
 
 	var nodeID string
-	for _, h := range allHistories {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		if h.NodeID != "" {
 			nodeID = h.NodeID
 			break
@@ -272,32 +312,32 @@ func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
 	}
 	require.NotEmpty(s.T(), nodeID, "failed to find node ID")
 
-	options := jobstore.JobHistoryFilterOptions{
+	options := jobstore.JobHistoryQuery{
 		NodeID: nodeID,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", options)
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 
-	for _, h := range history {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		require.Equal(s.T(), nodeID, h.NodeID)
 	}
 }
 
 func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
-	jobOptions := jobstore.JobHistoryFilterOptions{
+	jobOptions := jobstore.JobHistoryQuery{
 		ExcludeExecutionLevel: true,
 	}
-	execOptions := jobstore.JobHistoryFilterOptions{
+	execOptions := jobstore.JobHistoryQuery{
 		ExcludeJobLevel: true,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(4, len(history))
-	s.Require().Equal(models.JobStateTypePending, history[1].JobState.New)
+	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
+	s.Require().Equal(models.JobStateTypePending, jobHistoryQueryResponse.JobHistory[1].JobState.New)
 
-	count := lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+	count := lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeJobLevel {
 			return agg + 1
 		}
@@ -305,12 +345,12 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	}, 0)
 	s.Require().Equal(count, 4)
 
-	history, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(4, len(history))
-	s.Require().Equal(models.ExecutionStateAskForBid, history[1].ExecutionState.New)
+	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
+	s.Require().Equal(models.ExecutionStateAskForBid, jobHistoryQueryResponse.JobHistory[1].ExecutionState.New)
 
-	count = lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+	count = lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeExecutionLevel {
 			return agg + 1
 		}
@@ -640,7 +680,6 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.NotNil(state)
 	s.Equal(2, len(state))
 	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
-
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
@@ -778,7 +817,6 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
-
 	eval := models.Evaluation{
 		ID:    "e1",
 		JobID: "10",
