@@ -153,6 +153,10 @@ func (c *config) Load(path string) error {
 	// Replace the config's Viper instance with the new, merged instance
 	c.v = newConfig.v
 
+	for _, key := range c.v.AllKeys() {
+		viper.Set(key, c.v.Get(key))
+	}
+
 	return nil
 }
 
