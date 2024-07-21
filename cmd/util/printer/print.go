@@ -3,7 +3,6 @@ package printer
 import (
 	"context"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"os/signal"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	libmath "github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -174,7 +176,8 @@ func followLogs(cmd *cobra.Command, api clientv2.API, jobID string, client clien
 //
 //nolint:gocyclo,funlen
 func waitForJobAndPrintResultsToUser(
-	ctx context.Context, cmd *cobra.Command, jobID string, quiet bool, client clientv2.API) error {
+	ctx context.Context, cmd *cobra.Command, jobID string, quiet bool, client clientv2.API,
+) error {
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
    bacalhau job describe %s`, jobID)
@@ -200,24 +203,10 @@ To cancel the job, run:
 	// Faking an initial time (sometimes it happens too fast to see)
 	startMessage := "Communicating with the network"
 
-	// Decide where the spinner should write it's output, by default we want stdout
-	// but we can also disable output here if we have been asked to be quiet.
-	writer := cmd.OutOrStdout()
-	if quiet {
-		writer = io.Discard
-	}
-
 	widestString := len(startMessage)
 	for _, v := range eventsWorthPrinting {
 		widestString = libmath.Max(widestString, len(v.Message))
 	}
-
-	spinner, err := NewSpinner(ctx, writer, widestString, false)
-	if err != nil {
-		return err
-	}
-	spinner.Run()
-	spinner.NextStep(startMessage)
 
 	// Capture Ctrl+C if the user wants to finish early the job
 	ctx, cancel := context.WithCancel(ctx)
@@ -240,7 +229,6 @@ To cancel the job, run:
 				log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if s == os.Interrupt {
 					cmdShuttingDown = true
-					spinner.Done(StopCancel)
 
 					if !quiet {
 						cmd.Println("\n\n\rPrintout canceled (the job is still running).")
@@ -258,11 +246,68 @@ To cancel the job, run:
 		}
 	}()
 
-	var lastEventState models.JobStateType
+	nextToken := ""
+	i := 0
+	liveTableWriter := util.NewLiveTableWriter()
+	liveTableWriter.Start()
+	cmd.SetOut(liveTableWriter)
+
+	historyTimeCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(time.StampMilli), WidthMaxEnforcer: output.ShortenTime},
+		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(time.StampMilli) },
+	}
+
+	historyExecIDCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
+	}
+
+	historyNodeIDCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		Value:        func(j *models.JobHistory) string { return idgen.ShortNodeID(j.NodeID) },
+	}
+
+	historyStateCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Exec State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
+		Value: func(j *models.JobHistory) string {
+			return j.ExecutionState.New.String()
+		},
+	}
+
+	historyJobStateCol := output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{Name: "Job State", WidthMax: 20, WidthMaxEnforcer: text.WrapText},
+		Value: func(j *models.JobHistory) string {
+			return j.JobState.New.String()
+		},
+	}
+
+	jobHistoryCols := []output.TableColumn[*models.JobHistory]{
+		historyTimeCol,
+		historyExecIDCol,
+		historyNodeIDCol,
+		historyStateCol,
+		historyJobStateCol,
+	}
+
+	tableOptions := output.OutputOptions{
+		Format:  output.TableFormat,
+		NoStyle: true,
+		SortBy: []table.SortBy{
+			{
+				Name: "Exec. ID",
+				Mode: table.Asc,
+			},
+		},
+	}
+
+	historyByExecId := make(map[string]*models.JobHistory)
+
 	for !cmdShuttingDown {
+
 		resp, err := client.Jobs().Get(ctx, &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
+
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 				// We're done, the user canceled the job
@@ -285,24 +330,12 @@ To cancel the job, run:
 
 				// We shouldn't do anything with execution errors because there could
 				// be retries following, so for now we will
-				if !eventsWorthPrinting[jobState.StateType].IsError && !eventsWorthPrinting[jobState.StateType].IsTerminal {
-					spinner.NextStep(eventsWorthPrinting[jobState.StateType].Message)
-				}
-			} else if wasPrinted && lastEventState == jobState.StateType {
-				spinner.msgMutex.Lock()
-				spinner.msg.Detail = jobState.Message
-				spinner.msgMutex.Unlock()
 			}
 		}
-
-		lastEventState = jobState.StateType
 
 		if resp.Job.IsTerminal() {
 			if jobState.StateType != models.JobStateTypeCompleted {
 				returnError = errors.New(jobState.Message)
-				spinner.Done(StopFailed)
-			} else {
-				spinner.Done(StopSuccess)
 			}
 			cmdShuttingDown = true
 			break
@@ -310,7 +343,6 @@ To cancel the job, run:
 
 		// If the job is long running, and it's running, we can stop the spinner
 		if resp.Job.IsLongRunning() && resp.Job.State.StateType == models.JobStateTypeRunning {
-			spinner.Done(StopSuccess)
 			cmdShuttingDown = true
 			break
 		}
@@ -320,10 +352,35 @@ To cancel the job, run:
 			break
 		}
 
+		if nextToken != "" || i == 0 {
+			jobHistoryResponse, _ := client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+				JobID:     jobID,
+				EventType: "all",
+				BaseListRequest: apimodels.BaseListRequest{
+					NextToken: nextToken,
+					Limit:     1,
+				},
+			})
+			nextToken = jobHistoryResponse.NextToken
+			if len(jobHistoryResponse.Items) != 0 {
+				history := jobHistoryResponse.Items[0]
+
+				if history.ExecutionID != "" {
+					history.JobState = &models.StateChange[models.JobStateType]{
+						New: jobState.StateType,
+					}
+					historyByExecId[history.ExecutionID] = history
+				}
+				output.Output(cmd, jobHistoryCols, tableOptions, lo.Values(historyByExecId))
+				time.Sleep(time.Millisecond * 25)
+			}
+		}
+
 		// TODO: add exponential backoff if there were no state updates
 		time.Sleep(time.Duration(500) * time.Millisecond) //nolint:gomnd // 500ms sleep
+		i += 1
 	}
-
+	liveTableWriter.Stop()
 	return returnError
 }
 
