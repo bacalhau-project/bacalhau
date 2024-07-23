@@ -40,7 +40,7 @@ func DownloadResultsHandler(
 		// No results doesn't mean error, so we should print out a message and return nil
 		cmd.Println("No results found")
 		cmd.Println("You can check the logged output of the job using the logs command.")
-		cmd.Printf("\n  bacalhau logs %s\n", jobID)
+		cmd.Printf("\n  bacalhau job logs %s\n", jobID)
 		return nil
 	}
 
