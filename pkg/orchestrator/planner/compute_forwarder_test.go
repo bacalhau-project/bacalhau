@@ -152,11 +152,7 @@ func (suite *ComputeForwarderSuite) assertStateUpdated(execution *models.Executi
 		NewState:      newState,
 		ExpectedState: expectedState,
 	})
-	txContext := jobstore.NewMockTxContext(suite.ctrl)
-	suite.jobStore.EXPECT().BeginTx(suite.ctx).Return(txContext, nil).Times(1)
-	suite.jobStore.EXPECT().UpdateExecution(txContext, matcher).Times(1)
-	suite.jobStore.EXPECT().AddExecutionHistory(txContext, execution.JobID, execution.ID, gomock.Any()).Times(1)
-	txContext.EXPECT().Commit().Times(1)
+	suite.jobStore.EXPECT().UpdateExecution(suite.ctx, matcher).Times(1)
 }
 
 func (suite *ComputeForwarderSuite) waitUntilSatisfied() bool {

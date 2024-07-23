@@ -35,7 +35,7 @@ bacalhau serve \
   --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --api-port 1234 \
-  --web-ui "${BACALHAU_NODE_WEBUI}" \
+  --web-ui="${BACALHAU_NODE_WEBUI}" \
   --web-ui-port 80 \
   --labels owner=bacalhau \
   --requester-job-translation-enabled \

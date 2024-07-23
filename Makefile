@@ -154,7 +154,7 @@ build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
 ################################################################################
 .PHONY: release-python-apiclient
 release-python-apiclient: resolve-earthly
-	cd clients && ${MAKE} pypi-upload
+	cd clients && ${MAKE} release
 	@echo "Python API client pushed to PyPi."
 
 ################################################################################
@@ -338,7 +338,8 @@ integration-test:
 	go test ./... -v --tags=integration -p 1
 
 .PHONY: bash-test
-bash-test: ${BINARY_PATH}
+bash-test: 
+	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
 .PHONY: test-debug

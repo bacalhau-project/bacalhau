@@ -14,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
@@ -209,9 +208,9 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		return StopJobResponse{}, err
 	}
 
-	e.eventEmitter.EmitEventSilently(ctx, model.JobEvent{
+	e.eventEmitter.EmitEventSilently(ctx, models.JobEvent{
 		JobID:     request.JobID,
-		EventName: model.JobEventCanceled,
+		EventName: models.JobEventCanceled,
 		Status:    request.Reason,
 		EventTime: time.Now(),
 	})

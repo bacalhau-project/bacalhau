@@ -7,9 +7,7 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/migration/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
@@ -59,16 +57,6 @@ func (c EngineSpec) ToMap() map[string]interface{} {
 	return structs.Map(c)
 }
 
-// legacyEngineSpec is first used to decode the passed spec with legacy model.StorageSpec,
-// and then converted to EngineSpec with models.InputSource
-type legacyEngineSpec struct {
-	EntryModule          model.StorageSpec
-	Entrypoint           string
-	Parameters           []string
-	EnvironmentVariables map[string]string
-	ImportModules        []model.StorageSpec
-}
-
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 	if !spec.IsType(models.EngineWasm) {
 		//nolint:goconst
@@ -92,51 +80,6 @@ func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 	}
 
 	return *c, c.Validate()
-}
-
-func DecodeLegacySpec(spec *models.SpecConfig) (EngineSpec, error) {
-	if !spec.IsType(models.EngineWasm) {
-		return EngineSpec{}, errors.New("invalid wasm engine type. expected " + models.EngineWasm + ", but received: " + spec.Type)
-	}
-
-	inputParams := spec.Params
-	if inputParams == nil {
-		return EngineSpec{}, errors.New("invalid wasm engine params. cannot be nil")
-	}
-
-	paramsBytes, err := json.Marshal(inputParams)
-	if err != nil {
-		return EngineSpec{}, fmt.Errorf("failed to encode wasm engine specs. %w", err)
-	}
-
-	var c *legacyEngineSpec
-	err = json.Unmarshal(paramsBytes, &c)
-	if err != nil {
-		return EngineSpec{}, err
-	}
-
-	entryModule, err := legacy.FromLegacyStorageSpecToInputSource(c.EntryModule)
-	if err != nil {
-		return EngineSpec{}, err
-	}
-
-	importModules := make([]*models.InputSource, 0, len(c.ImportModules))
-	for _, module := range c.ImportModules {
-		newModule, err := legacy.FromLegacyStorageSpecToInputSource(module)
-		if err != nil {
-			return EngineSpec{}, err
-		}
-		importModules = append(importModules, newModule)
-	}
-
-	engineSpec := EngineSpec{
-		EntryModule:          entryModule,
-		Entrypoint:           c.Entrypoint,
-		Parameters:           c.Parameters,
-		EnvironmentVariables: c.EnvironmentVariables,
-		ImportModules:        importModules,
-	}
-	return engineSpec, engineSpec.Validate()
 }
 
 // EngineArguments is used to pass pre-processed engine specs to the executor.
@@ -228,4 +171,12 @@ func (b *WasmEngineBuilder) Build() (*models.SpecConfig, error) {
 		Type:   models.EngineWasm,
 		Params: b.spec.ToMap(),
 	}, nil
+}
+
+func (b *WasmEngineBuilder) MustBuild() *models.SpecConfig {
+	spec, err := b.Build()
+	if err != nil {
+		panic(err)
+	}
+	return spec
 }

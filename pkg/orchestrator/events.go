@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -15,6 +16,7 @@ const (
 	EventTopicJobQueueing      models.EventTopic = "Queueing"
 	EventTopicExecutionTimeout models.EventTopic = "Exec Timeout"
 	EventTopicJobTimeout       models.EventTopic = "Job Timeout"
+	EventTopicExecution        models.EventTopic = "Execution"
 )
 
 const (
@@ -26,7 +28,8 @@ const (
 	JobTimeoutMessage          = "Job timed out"
 	jobExecutionsFailedMessage = "Job failed because one or more executions failed"
 
-	execCreatedMessage                   = "Execution created"
+	execCompletedMessage                 = "Completed successfully"
+	execRunningMessage                   = "Running"
 	execStoppedByJobStopMessage          = "Execution stop requested because job has been stopped"
 	execStoppedByNodeUnhealthyMessage    = "Execution stop requested because node has disappeared"
 	execStoppedByNodeRejectedMessage     = "Execution stop requested because node has been rejected"
@@ -34,7 +37,9 @@ const (
 	execStoppedDueToJobFailureMessage    = "Execution stopped due to job failure"
 
 	executionTimeoutMessage = "Execution timed out"
-	timeoutHint             = "Try increasing the task timeout or reducing the task size"
+
+	// TODO: message is duplicated in compute/errors.go. Find a better place for common errors
+	timeoutHint = "Increase the task timeout or allocate more resources"
 )
 
 func event(topic models.EventTopic, msg string, details map[string]string) models.Event {
@@ -99,18 +104,16 @@ func JobQueueingEvent(reason string) models.Event {
 
 func ExecCreatedEvent(execution *models.Execution) models.Event {
 	return *models.NewEvent(EventTopicJobScheduling).
-		WithMessage(execCreatedMessage).
+		WithMessage(fmt.Sprintf("Requested execution on %s", idgen.ShortNodeID(execution.NodeID))).
 		WithDetail("NodeID", execution.NodeID)
 }
 
-func ExecStateUpdateEvent(new models.ExecutionStateType, message ...string) models.Event {
-	eventMessage := new.String()
-	if len(message) > 0 && message[0] != "" {
-		eventMessage += fmt.Sprintf(". %s", strings.Join(message, ". "))
-	}
-	return *models.NewEvent(EventTopicJobStateUpdate).
-		WithMessage(eventMessage).
-		WithDetail("NewState", new.String())
+func ExecCompletedEvent() models.Event {
+	return *models.NewEvent(EventTopicExecution).WithMessage(execCompletedMessage)
+}
+
+func ExecRunningEvent() models.Event {
+	return *models.NewEvent(EventTopicExecution).WithMessage(execRunningMessage)
 }
 
 func ExecStoppedByJobStopEvent() models.Event {

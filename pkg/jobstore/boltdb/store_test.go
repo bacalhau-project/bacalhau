@@ -43,52 +43,73 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	jobFixtures := []struct {
-		id              string
-		jobType         string
-		client          string
-		tags            map[string]string
-		jobStates       []models.JobStateType
-		executionStates []models.ExecutionStateType
+		id         string
+		jobType    string
+		client     string
+		tags       map[string]string
+		jobStates  []models.JobStateType
+		executions map[int][]models.ExecutionStateType
 	}{
 		{
-			id:              "110",
-			client:          "client1",
-			jobType:         "batch",
-			tags:            map[string]string{"gpu": "true", "fast": "true"},
-			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			id:        "110",
+			client:    "client1",
+			jobType:   "batch",
+			tags:      map[string]string{"gpu": "true", "fast": "true"},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			},
 		},
 		{
-			id:              "120",
-			client:          "client2",
-			jobType:         "batch",
-			tags:            map[string]string{},
-			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			id:        "120",
+			client:    "client2",
+			jobType:   "batch",
+			tags:      map[string]string{},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			},
 		},
 		{
-			id:              "130",
-			client:          "client3",
-			jobType:         "batch",
-			tags:            map[string]string{"slow": "true", "max": "10"},
-			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			id:        "130",
+			client:    "client3",
+			jobType:   "batch",
+			tags:      map[string]string{"slow": "true", "max": "10"},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			},
 		},
 		{
-			id:              "140",
-			client:          "client4",
-			jobType:         "batch",
-			tags:            map[string]string{"max": "10"},
-			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			id:        "140",
+			client:    "client4",
+			jobType:   "batch",
+			tags:      map[string]string{"max": "10"},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			},
 		},
 		{
-			id:              "150",
-			client:          "client5",
-			jobType:         "daemon",
-			tags:            map[string]string{"max": "10"},
-			jobStates:       []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executionStates: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			id:        "150",
+			client:    "client5",
+			jobType:   "daemon",
+			tags:      map[string]string{"max": "10"},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			},
+		},
+		{
+			id:        "160",
+			client:    "client6",
+			jobType:   "batch",
+			tags:      map[string]string{"max": "10"},
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
+				2: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+			},
 		},
 	}
 
@@ -103,15 +124,6 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.Namespace = fixture.client
 		s.Require().NoError(s.store.CreateJob(s.ctx, *job))
 		s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage("job created")))
-
-		s.clock.Add(1 * time.Second)
-		execution := mock.ExecutionForJob(job)
-		execution.ComputeState.StateType = models.ExecutionStateNew
-		// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
-		execution.CreateTime = 0
-		execution.ModifyTime = 0
-		s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
-		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
 
 		for i, state := range fixture.jobStates {
 			s.clock.Add(1 * time.Second)
@@ -133,29 +145,41 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage(state.String())))
 		}
 
-		for i, state := range fixture.executionStates {
+		for _, executionStates := range fixture.executions {
 			s.clock.Add(1 * time.Second)
+			execution := mock.ExecutionForJob(job)
+			execution.ComputeState.StateType = models.ExecutionStateNew
+			// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
+			execution.CreateTime = 0
+			execution.ModifyTime = 0
+			s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
+			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
 
-			oldState := models.ExecutionStateNew
-			if i > 0 {
-				oldState = fixture.executionStates[i-1]
+			for i, state := range executionStates {
+
+				s.clock.Add(1 * time.Second)
+
+				oldState := models.ExecutionStateNew
+				if i > 0 {
+					oldState = executionStates[i-1]
+				}
+
+				// We are pretending this is a new execution struct
+				execution.ComputeState.StateType = state
+				execution.ModifyTime = s.clock.Now().UTC().UnixNano()
+
+				request := jobstore.UpdateExecutionRequest{
+					ExecutionID: execution.ID,
+					Condition: jobstore.UpdateExecutionCondition{
+						ExpectedStates:   []models.ExecutionStateType{oldState},
+						ExpectedRevision: uint64(i + 1),
+					},
+					NewValues: *execution,
+				}
+
+				s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
+				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
 			}
-
-			// We are pretending this is a new execution struct
-			execution.ComputeState.StateType = state
-			execution.ModifyTime = s.clock.Now().UTC().UnixNano()
-
-			request := jobstore.UpdateExecutionRequest{
-				ExecutionID: execution.ID,
-				Condition: jobstore.UpdateExecutionCondition{
-					ExpectedStates:   []models.ExecutionStateType{oldState},
-					ExpectedRevision: uint64(i + 1),
-				},
-				NewValues: *execution,
-			}
-
-			s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
-			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
 		}
 
 	}
@@ -167,54 +191,94 @@ func (s *BoltJobstoreTestSuite) TearDownTest() {
 }
 
 func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(8, len(history))
+	s.Require().Equal(8, len(jobHistoryQueryResponse.JobHistory))
 
-	history, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryQuery{})
 	s.Require().NoError(err)
-	s.NotEmpty(history)
-	s.Require().Equal("110", history[0].JobID)
+	s.NotEmpty(jobHistoryQueryResponse)
+	s.Require().Equal("110", jobHistoryQueryResponse.JobHistory[0].JobID)
 
-	history, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryQuery{})
 	s.Require().Error(err)
 	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
-	s.Require().Nil(history)
+	s.Require().Nil(jobHistoryQueryResponse)
 }
 
 func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	require.NoError(s.T(), err, "failed to get job history")
 
 	// There are 6 history entries that we created directly, and 2 created by
 	// CreateJob and CreateExecution
-	require.Equal(s.T(), 8, len(history))
+	require.Equal(s.T(), 8, len(jobHistoryQueryResponse.JobHistory))
 
 	// Make sure they come back in order
-	values := make([]int64, len(history))
-	for i, h := range history {
+	values := make([]int64, len(jobHistoryQueryResponse.JobHistory))
+	for i, h := range jobHistoryQueryResponse.JobHistory {
 		values[i] = h.Time.Unix()
 	}
 
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
+func (s *BoltJobstoreTestSuite) TestJobHistoryPagination() {
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit: 2,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken := jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 2)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     1,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 1)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+
+	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
+	nextToken = jobHistoryQueryResponse.NextToken
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 5)
+
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
+		Limit:     5,
+		NextToken: nextToken,
+	})
+	require.NoError(s.T(), err, "Failed to get job history")
+	require.Empty(s.T(), jobHistoryQueryResponse.NextToken)
+	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 0)
+
+}
+
 func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
-	options := jobstore.JobHistoryFilterOptions{
+	options := jobstore.JobHistoryQuery{
 		Since: 5,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", options)
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 4, len(history))
+	require.Equal(s.T(), 4, len(jobHistoryQueryResponse.JobHistory))
 }
 
 func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
-	allHistories, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryFilterOptions{})
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
 	require.NoError(s.T(), err)
 
 	var executionID string
-	for _, h := range allHistories {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		if h.ExecutionID != "" {
 			executionID = h.ExecutionID
 			break
@@ -222,31 +286,31 @@ func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
 	}
 	require.NotEmpty(s.T(), executionID, "failed to find execution ID")
 
-	options := jobstore.JobHistoryFilterOptions{
+	options := jobstore.JobHistoryQuery{
 		ExecutionID: executionID,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", options)
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
 
-	for _, h := range history {
+	for _, h := range jobHistoryQueryResponse.JobHistory {
 		require.Equal(s.T(), executionID, h.ExecutionID)
 	}
 }
 
 func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
-	jobOptions := jobstore.JobHistoryFilterOptions{
+	jobOptions := jobstore.JobHistoryQuery{
 		ExcludeExecutionLevel: true,
 	}
-	execOptions := jobstore.JobHistoryFilterOptions{
+	execOptions := jobstore.JobHistoryQuery{
 		ExcludeJobLevel: true,
 	}
 
-	history, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
+	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(4, len(history))
+	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
 
-	count := lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+	count := lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeJobLevel {
 			return agg + 1
 		}
@@ -254,11 +318,11 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	}, 0)
 	s.Require().Equal(count, 4)
 
-	history, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
+	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(4, len(history))
+	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
 
-	count = lo.Reduce(history, func(agg int, item models.JobHistory, _ int) int {
+	count = lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeExecutionLevel {
 			return agg + 1
 		}
@@ -315,7 +379,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 
 		require.NoError(t, err)
-		require.Equal(t, 1, len(response.Jobs))
+		require.Equal(t, 2, len(response.Jobs))
 	})
 
 	s.T().Run("everything sorted by created_at", func(t *testing.T) {
@@ -324,11 +388,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
-		require.Equal(t, 5, len(jobs))
+		require.Equal(t, 6, len(jobs))
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"110", "120", "130", "140", "150"}, ids)
+		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160"}, ids)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -336,11 +400,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs = response.Jobs
-		require.Equal(t, 5, len(jobs))
+		require.Equal(t, 6, len(jobs))
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"150", "140", "130", "120", "110"}, ids)
+		require.EqualValues(t, []string{"160", "150", "140", "130", "120", "110"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -348,7 +412,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 6, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
@@ -357,7 +421,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			Offset:    1,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 4, len(response.Jobs))
+		require.Equal(t, 5, len(response.Jobs))
 		require.Equal(t, uint32(1), response.Offset)
 	})
 
@@ -395,7 +459,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 4, len(response.Jobs))
+		require.Equal(t, 5, len(response.Jobs))
 	})
 
 	s.T().Run("include/exclude same tag", func(t *testing.T) {
@@ -462,7 +526,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(state)
-	s.Equal(len(state), 1)
+	s.Equal(1, len(state))
 	s.Nil(state[0].Job)
 
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
@@ -496,17 +560,109 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.Require().IsType(err, &bacerrors.MultipleJobsFound{})
 	s.Require().Nil(state)
 
+	// Created At Ascending Order Sort
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "created_at",
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
+
+	// Created At Descending Order Sort
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "created_at",
+		Reverse: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
+
+	// Created Time Backward Compatibility Ascending Order Sort
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "create_time",
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
+
+	// Create Time Backward Compatibility Descending Order Sort
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "create_time",
+		Reverse: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
+
+	// When OrderBy Empty, Created At Used as Default
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID: "160",
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
+
+	// When OrderBy is set to Modified At
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "modified_at",
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
+
+	// When OrderBy is set to Modified At With Reverese
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "modified_at",
+		Reverse: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
+
+	// When OrderBy is set to Modify Time (Backward Compatibility)
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "modify_time",
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
+
+	// When OrderBy is set to Modify Time (Backward Compatibility)
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:   "160",
+		OrderBy: "modify_time",
+		Reverse: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx, "")
 	s.Require().NoError(err)
-	s.Require().Equal(3, len(infos))
+	s.Require().Equal(4, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "batch")
 	s.Require().NoError(err)
-	s.Require().Equal(2, len(infos))
+	s.Require().Equal(3, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "daemon")
@@ -631,7 +787,6 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
-
 	eval := models.Evaluation{
 		ID:    "e1",
 		JobID: "10",

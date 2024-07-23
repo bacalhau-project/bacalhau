@@ -46,7 +46,8 @@ func (s ExecutionStateType) IsTermainl() bool {
 	return s == ExecutionStateBidRejected ||
 		s == ExecutionStateCompleted ||
 		s == ExecutionStateFailed ||
-		s == ExecutionStateCancelled
+		s == ExecutionStateCancelled ||
+		s == ExecutionStateAskForBidRejected
 }
 
 type ExecutionDesiredStateType int

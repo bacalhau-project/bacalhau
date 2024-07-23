@@ -14,7 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -136,7 +135,7 @@ func NewNode(
 		return nil, err
 	}
 
-	var debugInfoProviders []model.DebugInfoProvider
+	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
 	var requesterNode *Requester
@@ -185,6 +184,8 @@ func NewNode(
 			return nil, err
 		}
 
+		// TODO calling `Keys` on the publishers takes ~10 seconds per call
+		// https://github.com/bacalhau-project/bacalhau/issues/4153
 		metrics.NodeInfo.Add(ctx, 1,
 			attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
 			attribute.StringSlice("node_storages", storages.Keys(ctx)),

@@ -73,7 +73,7 @@ func (s *PlanTestSuite) TestMarkJobRunningIfApplicable() {
 	// Test when conditions are met to set DesiredJobState to Running
 	s.job.State = models.NewJobState(models.JobStateTypePending)
 	s.plan = models.NewPlan(s.eval, s.job)
-	s.plan.AppendApprovedExecution(mock.ExecutionForJob(s.plan.Job))
+	s.plan.AppendApprovedExecution(mock.ExecutionForJob(s.plan.Job), models.Event{Message: "job approved"})
 	s.plan.MarkJobRunningIfEligible(models.Event{Message: "job running"})
 	s.Equal(models.JobStateTypeRunning, s.plan.DesiredJobState, "Should set to Running when all conditions are met")
 	s.Equal(1, len(s.plan.JobEvents), "Should append JobEvents when DesiredJobState is set to Running")

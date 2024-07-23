@@ -15,13 +15,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-const StorageDirectoryPerms = 0755
+const StorageDirectoryPerms = 0o755
 
 type BaseExecutorParams struct {
 	ID                     string
@@ -32,7 +31,7 @@ type BaseExecutorParams struct {
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
-	FailureInjectionConfig model.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionComputeConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -46,7 +45,7 @@ type BaseExecutor struct {
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
-	failureInjection model.FailureInjectionComputeConfig
+	failureInjection models.FailureInjectionComputeConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -67,7 +66,8 @@ func prepareInputVolumes(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	storageDirectory string, inputSources ...*models.InputSource) (
-	[]storage.PreparedStorage, func(context.Context) error, error) {
+	[]storage.PreparedStorage, func(context.Context) error, error,
+) {
 	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
 	if err != nil {
 		return nil, nil, err
@@ -81,7 +81,8 @@ func prepareWasmVolumes(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
 	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
-	map[string][]storage.PreparedStorage, func(context.Context) error, error) {
+	map[string][]storage.PreparedStorage, func(context.Context) error, error,
+) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
@@ -301,7 +302,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
 	topic := EventTopicExecutionRunning
 	defer func() {
-		if err != nil {
+		if err != nil && err.Error() != executor.ErrAlreadyCancelled.Error() {
 			e.handleFailure(ctx, state, err, topic)
 		}
 		dur := stopwatch()
@@ -338,28 +339,22 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			// TODO(forrest) [correctness]:
-			// This is a special case for now. The ExecutorBuffer is using a context with a timeout to signal
-			// an execution has timed out and should end. If we return an error here, the deferred handleFailure
-			// call above will mark this execution as 'Failed'. Current testing and implementation expects executions
-			// that have timed out to be in state 'Canceled', rather than 'Failed'. IMO An execution that doesn't
-			// complete in the timeframe requested by a user should be 'Failed'. 'Canceled' probably ought to be
-			// reserved for actions initiated by a user. We are ignoring _only_ context.DeadlineExceeded
-			// errors and allowing context.Canceled errors be to returned so that when a compute node is shutdown
-			// any active executions will be labeled as 'Failed' instead of canceled.
-			// There is prior discussion regarding this point here:
-			// https://github.com/bacalhau-project/bacalhau/pull/2705#discussion_r1283543457
+			// The ExecutorBuffer is using a context with a timeout to signal an execution has timed out and should end.
+			//
+			// We don't handle context.Canceled here as it means the node is shutting down. Still we should do a
+			// better job at gracefully shutting down the execution and either reporting that to the requester
+			// or retrying the execution during startup.
 			//
 			// Moving forward we must avoid canceling executions via the context.Context. When pluggable executors
 			// become the default since canceling the context will simply result in the RPC connection closing (I think)
 			// The general solution here is to stop using contexts for canceling jobs and to instead make explicit calls
 			// the an executors `Cancel` method.
-			log.Ctx(ctx).Info().Msg("execution timeout exceeded canceling execution")
-			return nil
+			return NewErrExecTimeout(state.Execution.Job.Task().Timeouts.GetExecutionTimeout())
 		}
 		return err
 	}
 	if result.ErrorMsg != "" {
-		return fmt.Errorf("execution error: %s", result.ErrorMsg)
+		return fmt.Errorf(result.ErrorMsg)
 	}
 	jobsCompleted.Add(ctx, 1)
 
@@ -423,7 +418,8 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
-	resultFolder string) (publishedResult models.SpecConfig, err error) {
+	resultFolder string,
+) (publishedResult models.SpecConfig, err error) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 

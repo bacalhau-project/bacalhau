@@ -15,7 +15,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
 
@@ -26,7 +27,6 @@ import (
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
@@ -200,16 +200,28 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
 	port, err := s.serve("--node-type", "requester,compute")
 	s.Require().NoError(err)
-	client, err := client.NewAPIClient(client.NoTLS, s.config.User, "localhost", port)
-	s.Require().NoError(err)
 
-	clientV2 := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
-	s.Require().NoError(apitest.WaitForAlive(s.ctx, clientV2))
+	client := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
+	s.Require().NoError(apitest.WaitForAlive(s.ctx, client))
 
-	job, err := model.NewJobWithSaneProductionDefaults()
-	s.Require().NoError(err)
-
-	_, err = client.Submit(s.ctx, job)
+	job := &models.Job{
+		Name:  s.T().Name(),
+		Type:  models.JobTypeBatch,
+		Count: 1,
+		Tasks: []*models.Task{
+			{
+				Name: s.T().Name(),
+				Engine: &models.SpecConfig{
+					Type:   models.EngineNoop,
+					Params: make(map[string]interface{}),
+				},
+			},
+		},
+	}
+	job.Normalize()
+	_, err = client.Jobs().Put(s.ctx, &apimodels.PutJobRequest{
+		Job: job,
+	})
 	s.NoError(err)
 }
 

@@ -216,9 +216,9 @@ func (set execSet) markStopped(plan *models.Plan, event models.Event) {
 }
 
 // markStopped
-func (set execSet) markApproved(plan *models.Plan) {
+func (set execSet) markApproved(plan *models.Plan, event models.Event) {
 	for _, exec := range set {
-		plan.AppendApprovedExecution(exec)
+		plan.AppendApprovedExecution(exec, event)
 	}
 }
 

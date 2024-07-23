@@ -108,7 +108,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// Approve/Reject nodes
 	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
-	execsByApprovalStatus.toApprove.markApproved(plan)
+	execsByApprovalStatus.toApprove.markApproved(plan, orchestrator.ExecRunningEvent())
 	execsByApprovalStatus.toReject.markStopped(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
 
 	// create new executions if needed

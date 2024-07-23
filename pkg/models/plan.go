@@ -63,12 +63,13 @@ func (p *Plan) AppendStoppedExecution(execution *Execution, event Event) {
 }
 
 // AppendApprovedExecution marks an execution as accepted and ready to be started.
-func (p *Plan) AppendApprovedExecution(execution *Execution) {
+func (p *Plan) AppendApprovedExecution(execution *Execution, event Event) {
 	updateRequest := &PlanExecutionDesiredUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateRunning,
 	}
 	p.UpdatedExecutions[execution.ID] = updateRequest
+	p.AppendExecutionEvent(execution.ID, event)
 }
 
 // AppendEvaluation appends the evaluation to the plan evaluations.

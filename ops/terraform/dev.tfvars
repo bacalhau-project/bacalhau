@@ -27,3 +27,4 @@ num_gpu_machines       = 0
 log_level              = "debug"
 otel_collector_version  = "0.70.0"
 otel_collector_endpoint = "http://localhost:4318"
+web_ui_enabled          = true
