@@ -106,7 +106,6 @@ func (w *LiveTableWriter) Listen() {
 			return
 		}
 	}
-
 }
 
 // Stop stops the listener that updates to terminal

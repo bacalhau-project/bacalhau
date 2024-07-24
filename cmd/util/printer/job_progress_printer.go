@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -21,6 +22,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
+
+const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
 
 type JobProgressPrinter struct {
 	client          clientv2.API
@@ -117,7 +120,6 @@ func NewJobProgressPrinter(client clientv2.API, runtimeSettings *cliflags.RunTim
 // PrintJobProgress displays the job progress depending upon on cli runtime
 // settings
 func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string, cmd *cobra.Command) error {
-
 	// If we are in `--wait=false` print the jobID and then exit.
 	// All the code after this point is to show the progress of the job.
 	if !j.runtimeSettings.WaitForJobToFinish {
@@ -135,7 +137,6 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string,
 		return j.followLogs(jobID, cmd)
 	}
 
-
 	// If we are only printing the id, set the rest of the output to "quiet",
 	// i.e. don't print
 	quiet := j.runtimeSettings.PrintJobIDOnly
@@ -144,6 +145,46 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string,
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
 			return nil
+		}
+
+		history, err := j.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
+			JobID:     jobID,
+			EventType: "execution",
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job history: %w", err)
+		}
+
+		historySummary := SummariseHistoryEvents(history.Items)
+		if len(historySummary) > 0 {
+			for _, event := range historySummary {
+				PrintEvent(cmd, event)
+			}
+		} else {
+			PrintError(cmd, jobErr)
+		}
+	}
+
+	if j.runtimeSettings.PrintNodeDetails || jobErr != nil {
+		executions, err := j.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
+			JobID: jobID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed getting job executions: %w", err)
+		}
+		summary := SummariseExecutions(executions.Items)
+		if len(summary) > 0 {
+			cmd.Println("\nJob Results By Node:")
+			for message, runs := range summary {
+				nodes := len(lo.Uniq(runs))
+				prefix := fmt.Sprintf("• Node %s: ", runs[0])
+				if len(runs) > 1 {
+					prefix = fmt.Sprintf("• %d runs on %d nodes: ", len(runs), nodes)
+				}
+				printIndentedString(cmd, prefix, strings.Trim(message, "\n"), none, 0)
+			}
+		} else {
+			cmd.Println()
 		}
 	}
 
@@ -158,7 +199,6 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string,
 	}
 
 	return nil
-
 }
 
 func (j *JobProgressPrinter) followLogs(jobID string, cmd *cobra.Command) error {
@@ -185,9 +225,9 @@ func (j *JobProgressPrinter) followLogs(jobID string, cmd *cobra.Command) error 
 		JobID:  jobID,
 		Follow: true,
 	})
-
 }
 
+//nolint:gocyclo,funlen
 func (j *JobProgressPrinter) followProgress(ctx context.Context, jobID string, cmd *cobra.Command, quiet bool) error {
 	getMoreInfoString := fmt.Sprintf(`
 To get more information at any time, run:
@@ -227,6 +267,7 @@ To cancel the job, run:
 				log.Ctx(ctx).Debug().Msgf("Captured %v. Exiting...", s)
 				if s == os.Interrupt {
 					cmdShuttingDown = true
+					cmd.SetOut(os.Stdout)
 
 					if !quiet {
 						cmd.Println("\n\n\rPrintout canceled (the job is still running).")
@@ -234,7 +275,6 @@ To cancel the job, run:
 						cmd.Println(cancelString)
 					}
 					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
-
 				} else {
 					cmd.Println("Unexpected signal received. Exiting.")
 				}
@@ -262,7 +302,6 @@ To cancel the job, run:
 	timeFilter := time.Now().Unix()
 
 	for !cmdShuttingDown {
-
 		jobHistoryResponse, _ := j.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
 			JobID:     jobID,
 			EventType: "all",
@@ -293,7 +332,9 @@ To cancel the job, run:
 					event:          history.Event,
 				}
 			}
-			output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents))
+			if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {
+				return fmt.Errorf("failed to print job progress: %w", err)
+			}
 		} else {
 			timeFilter = time.Now().Unix()
 		}
@@ -311,10 +352,12 @@ To cancel the job, run:
 			break
 		}
 
-		time.Sleep(time.Millisecond * 500)
-
+		time.Sleep(time.Millisecond * 500) //nolint:gomnd // 500ms sleep
 	}
 
+	// This is needed as while printing progress, we delegate printing job progress table
+	// to Live Table Writer. We eventually close it. Now since it is closed, we want the
+	// command to redirect the output to Stdout again.
+	cmd.SetOut(os.Stdout)
 	return returnError
-
 }
