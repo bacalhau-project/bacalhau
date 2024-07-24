@@ -278,38 +278,6 @@ To cancel the job, run:
 	timeFilter := time.Now().Unix()
 
 	for !cmdShuttingDown {
-		jobHistoryResponse, _ := j.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
-			JobID:     jobID,
-			EventType: "all",
-			Since:     timeFilter,
-			BaseListRequest: apimodels.BaseListRequest{
-				NextToken: nextToken,
-				Limit:     1,
-			},
-		})
-
-		nextToken = jobHistoryResponse.NextToken
-
-		if len(jobHistoryResponse.Items) != 0 {
-			history := jobHistoryResponse.Items[0]
-			timeFilter = history.Time.Unix()
-
-			if history.Type == models.JobHistoryTypeExecutionLevel {
-				jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
-					jobID:       jobID,
-					occurred:    history.Occurred(),
-					executionID: history.ExecutionID,
-					eventTopic:  history.Event.Topic,
-					event:       history.Event,
-				}
-			}
-			if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {
-				return fmt.Errorf("failed to print job progress: %w", err)
-			}
-		} else {
-			timeFilter = time.Now().Unix()
-		}
-
 		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
@@ -326,12 +294,57 @@ To cancel the job, run:
 
 		currentJobState = resp.Job.State.StateType
 
+		// Have we been cancel(l)ed?
+		if condition := ctx.Err(); condition != nil {
+			break
+		}
+
+		var jobHistoryRequest apimodels.ListJobHistoryRequest
 		if currentJobState.IsTerminal() {
+			jobHistoryRequest = apimodels.ListJobHistoryRequest{
+				JobID:     jobID,
+				EventType: "all",
+				Since:     timeFilter,
+			}
 			if currentJobState != models.JobStateTypeCompleted {
 				returnError = errors.New("job failed")
 			}
 			cmdShuttingDown = true
-			break
+		} else {
+			jobHistoryRequest = apimodels.ListJobHistoryRequest{
+				JobID:     jobID,
+				EventType: "all",
+				Since:     timeFilter,
+				BaseListRequest: apimodels.BaseListRequest{
+					NextToken: nextToken,
+					Limit:     1,
+				},
+			}
+		}
+
+		jobHistoryResponse, _ := j.client.Jobs().History(ctx, &jobHistoryRequest)
+		if len(jobHistoryResponse.Items) == 0 {
+			timeFilter = time.Now().Unix()
+		}
+
+		nextToken = jobHistoryResponse.NextToken
+
+		for _, history := range jobHistoryResponse.Items {
+			timeFilter = history.Time.Unix()
+
+			if history.Type == models.JobHistoryTypeExecutionLevel {
+				jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
+					jobID:       jobID,
+					occurred:    history.Occurred(),
+					executionID: history.ExecutionID,
+					eventTopic:  history.Event.Topic,
+					event:       history.Event,
+				}
+			}
+		}
+
+		if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {
+			return fmt.Errorf("failed to print job progress: %w", err)
 		}
 
 		// Have we been cancel(l)ed?
