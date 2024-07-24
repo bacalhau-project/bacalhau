@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -293,9 +294,7 @@ To cancel the job, run:
 			history := jobHistoryResponse.Items[0]
 			timeFilter = history.Time.Unix()
 
-			if history.Type == models.JobHistoryTypeJobLevel {
-				currentJobState = history.JobState.New
-			} else if history.Type == models.JobHistoryTypeExecutionLevel {
+			if history.Type == models.JobHistoryTypeExecutionLevel {
 				jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
 					jobID:       jobID,
 					occurred:    history.Occurred(),
@@ -310,6 +309,22 @@ To cancel the job, run:
 		} else {
 			timeFilter = time.Now().Unix()
 		}
+
+		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
+			JobID: jobID,
+		})
+
+		if err != nil {
+			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
+				// We're done, the user canceled the job
+				cmdShuttingDown = true
+				continue
+			} else {
+				return errors.Wrap(err, "Error getting job")
+			}
+		}
+
+		currentJobState = resp.Job.State.StateType
 
 		if currentJobState.IsTerminal() {
 			if currentJobState != models.JobStateTypeCompleted {
