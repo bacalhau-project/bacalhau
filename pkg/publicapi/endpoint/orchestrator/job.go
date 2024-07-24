@@ -103,6 +103,7 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			for i := range history {
 				response.History.Items[i] = &history[i]
 			}
+			backwardCompatibleHistoryIfNecessary(c, response.History.Items)
 		case "executions":
 			// ignore if user requested executions twice
 			if response.Executions != nil {
@@ -313,6 +314,7 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 	for i := range jobHistoryQueryResponse.JobHistory {
 		res.Items[i] = &jobHistoryQueryResponse.JobHistory[i]
 	}
+	backwardCompatibleHistoryIfNecessary(c, res.Items)
 
 	return c.JSON(http.StatusOK, res)
 }

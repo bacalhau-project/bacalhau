@@ -46,6 +46,12 @@ type JobHistory struct {
 	ExecutionID string         `json:"ExecutionID,omitempty"`
 	Event       Event          `json:"Event,omitempty"`
 	Time        time.Time      `json:"Time"`
+
+	// TODO: remove with v1.5
+	// Deprecated: Left for backward compatibility with v1.4.x clients
+	JobState *StateChange[JobStateType] `json:"JobState,omitempty"`
+	// Deprecated: Left for backward compatibility with v1.4.x clients
+	ExecutionState *StateChange[ExecutionStateType] `json:"ExecutionState,omitempty"`
 }
 
 // Occurred returns when the action that triggered an update to job history
