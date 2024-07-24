@@ -273,7 +273,6 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 //	@Param			since			query		string	false	"Only return history since this time"
 //	@Param			event_type		query		string	false	"Only return history of this event type"
 //	@Param			execution_id	query		string	false	"Only return history of this execution ID"
-//	@Param			node_id			query		string	false	"Only return history of this node ID"
 //	@Param			next_token		query		string	false	"Token to get the next page of the jobs"
 //	@Success		200				{object}	apimodels.ListJobHistoryResponse
 //	@Failure		400				{object}	string
