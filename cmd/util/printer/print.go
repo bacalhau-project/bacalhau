@@ -87,8 +87,7 @@ func SummariseHistoryEvents(history []*models.JobHistory) []models.Event {
 	for _, entry := range history {
 		hasDetails := entry.Event.Details != nil
 		failsExecution := hasDetails && entry.Event.Details[models.DetailsKeyFailsExecution] == "true"
-		terminalState := entry.ExecutionState.New.IsTermainl()
-		if (failsExecution || terminalState) && entry.Event.Message != "" {
+		if failsExecution && entry.Event.Message != "" {
 			events[entry.Event.Message] = entry.Event
 		}
 	}

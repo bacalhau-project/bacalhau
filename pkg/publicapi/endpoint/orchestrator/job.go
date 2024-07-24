@@ -103,6 +103,7 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			for i := range history {
 				response.History.Items[i] = &history[i]
 			}
+			backwardCompatibleHistoryIfNecessary(c, response.History.Items)
 		case "executions":
 			// ignore if user requested executions twice
 			if response.Executions != nil {
@@ -272,7 +273,6 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 //	@Param			since			query		string	false	"Only return history since this time"
 //	@Param			event_type		query		string	false	"Only return history of this event type"
 //	@Param			execution_id	query		string	false	"Only return history of this execution ID"
-//	@Param			node_id			query		string	false	"Only return history of this node ID"
 //	@Param			next_token		query		string	false	"Token to get the next page of the jobs"
 //	@Success		200				{object}	apimodels.ListJobHistoryResponse
 //	@Failure		400				{object}	string
@@ -294,7 +294,6 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 		ExcludeExecutionLevel: args.EventType == "job",
 		ExcludeJobLevel:       args.EventType == "execution",
 		ExecutionID:           args.ExecutionID,
-		NodeID:                args.NodeID,
 		Limit:                 args.Limit,
 		NextToken:             args.NextToken,
 	}
@@ -314,6 +313,7 @@ func (e *Endpoint) jobHistory(c echo.Context) error {
 	for i := range jobHistoryQueryResponse.JobHistory {
 		res.Items[i] = &jobHistoryQueryResponse.JobHistory[i]
 	}
+	backwardCompatibleHistoryIfNecessary(c, res.Items)
 
 	return c.JSON(http.StatusOK, res)
 }

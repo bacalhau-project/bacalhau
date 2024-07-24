@@ -31,14 +31,11 @@ type JobProgressPrinter struct {
 }
 
 type jobProgressEvent struct {
-	jobID          string
-	occurred       time.Time
-	executionID    string
-	nodeID         string
-	executionState models.ExecutionStateType
-	jobState       models.JobStateType
-	eventTopic     models.EventTopic
-	event          models.Event
+	jobID       string
+	occurred    time.Time
+	executionID string
+	eventTopic  models.EventTopic
+	event       models.Event
 }
 
 var (
@@ -50,25 +47,6 @@ var (
 	jobProgressEventExecIDCol = output.TableColumn[*jobProgressEvent]{
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value:        func(j *jobProgressEvent) string { return idgen.ShortUUID(j.executionID) },
-	}
-
-	jobProgressEventNodeIDCol = output.TableColumn[*jobProgressEvent]{
-		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *jobProgressEvent) string { return idgen.ShortNodeID(j.nodeID) },
-	}
-
-	jobProgressEventExecutionStateCol = output.TableColumn[*jobProgressEvent]{
-		ColumnConfig: table.ColumnConfig{Name: "Exec. State", WidthMax: 30, WidthMaxEnforcer: text.WrapText},
-		Value: func(j *jobProgressEvent) string {
-			return j.executionState.String()
-		},
-	}
-
-	jobProgressEventJobStateCol = output.TableColumn[*jobProgressEvent]{
-		ColumnConfig: table.ColumnConfig{Name: "Job. State", WidthMax: 25, WidthMaxEnforcer: text.WrapText},
-		Value: func(j *jobProgressEvent) string {
-			return j.jobState.String()
-		},
 	}
 
 	jobProgressEventTopicCol = output.TableColumn[*jobProgressEvent]{
@@ -103,9 +81,6 @@ var (
 var jobProgressEventCols = []output.TableColumn[*jobProgressEvent]{
 	jobProgressEventTimeCol,
 	jobProgressEventExecIDCol,
-	jobProgressEventNodeIDCol,
-	jobProgressEventExecutionStateCol,
-	jobProgressEventJobStateCol,
 	jobProgressEventTopicCol,
 	jobProgressEventEventCol,
 }
@@ -322,14 +297,11 @@ To cancel the job, run:
 				currentJobState = history.JobState.New
 			} else if history.Type == models.JobHistoryTypeExecutionLevel {
 				jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
-					jobID:          jobID,
-					occurred:       history.Occurred(),
-					executionID:    history.ExecutionID,
-					nodeID:         history.NodeID,
-					jobState:       currentJobState,
-					executionState: history.ExecutionState.New,
-					eventTopic:     history.Event.Topic,
-					event:          history.Event,
+					jobID:       jobID,
+					occurred:    history.Occurred(),
+					executionID: history.ExecutionID,
+					eventTopic:  history.Event.Topic,
+					event:       history.Event,
 				}
 			}
 			if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {

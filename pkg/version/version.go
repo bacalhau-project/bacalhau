@@ -36,6 +36,14 @@ var (
 	GITVERSION = DevelopmentGitVersion
 )
 
+// IsVersionExplicit checks if the client version is a specific, known version.
+// It returns false for empty, development, or unknown versions.
+func IsVersionExplicit(clientVersionStr string) bool {
+	return clientVersionStr != "" &&
+		clientVersionStr != DevelopmentGitVersion &&
+		clientVersionStr != UnknownGitVersion
+}
+
 // Get returns the overall codebase version. It's for detecting what code a binary was built from.
 func Get() *models.BuildVersionInfo {
 	revision, revisionTime, err := getBuildInformation()
