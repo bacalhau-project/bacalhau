@@ -278,6 +278,8 @@ To cancel the job, run:
 	timeFilter := time.Now().Unix()
 
 	for !cmdShuttingDown {
+		// With new history events, we no longer support job state. Thus we need
+		// to fetch the job to get the job state, and determine if the job has completed or not.
 		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
@@ -299,6 +301,11 @@ To cancel the job, run:
 			break
 		}
 
+		// We are separating out 2 concerns here
+		// 1. If the Job is in terminal state, we just fetch all the remaining history events, as
+		//    the command will shut down after it.
+		// 2. If the Job is not in terminal state, we fetch single events, this is better while observing
+		//    history as only one line gets updated. Hence a good user experience.
 		var jobHistoryRequest apimodels.ListJobHistoryRequest
 		if currentJobState.IsTerminal() {
 			jobHistoryRequest = apimodels.ListJobHistoryRequest{
@@ -323,6 +330,9 @@ To cancel the job, run:
 		}
 
 		jobHistoryResponse, _ := j.client.Jobs().History(ctx, &jobHistoryRequest)
+		// We need to make sure if the items returned are zero, then we update timeFilter to current time
+		// As or else the timeFilter would be an older history event, we would keep on getting already
+		// displayed history events.
 		if len(jobHistoryResponse.Items) == 0 {
 			timeFilter = time.Now().Unix()
 		}
@@ -343,6 +353,7 @@ To cancel the job, run:
 			}
 		}
 
+		// Displays Job Progress Output in Table Format
 		if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {
 			return fmt.Errorf("failed to print job progress: %w", err)
 		}
