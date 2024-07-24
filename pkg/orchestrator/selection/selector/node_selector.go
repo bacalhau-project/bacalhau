@@ -2,7 +2,6 @@ package selector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 
@@ -87,10 +86,6 @@ func (n NodeSelector) rankAndFilterNodes(
 
 		return true
 	})
-
-	if len(nodeStates) == 0 {
-		return nil, nil, errors.New("unable to find any connected and approved nodes")
-	}
 
 	// extract the nodeInfo from the slice of node states for ranking
 	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))

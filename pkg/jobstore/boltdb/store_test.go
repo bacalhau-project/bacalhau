@@ -122,8 +122,8 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.Type = fixture.jobType
 		job.Labels = fixture.tags
 		job.Namespace = fixture.client
-		err := s.store.CreateJob(s.ctx, *job, models.Event{})
-		s.Require().NoError(err)
+		s.Require().NoError(s.store.CreateJob(s.ctx, *job))
+		s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage("job created")))
 
 		for i, state := range fixture.jobStates {
 			s.clock.Add(1 * time.Second)
@@ -140,10 +140,9 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 					ExpectedState:    oldState,
 					ExpectedRevision: uint64(i + 1),
 				},
-				Event: models.Event{},
 			}
-			err = s.store.UpdateJobState(s.ctx, request)
-			s.Require().NoError(err)
+			s.Require().NoError(s.store.UpdateJobState(s.ctx, request))
+			s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage(state.String())))
 		}
 
 		for _, executionStates := range fixture.executions {
@@ -153,8 +152,9 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
 			execution.CreateTime = 0
 			execution.ModifyTime = 0
-			err = s.store.CreateExecution(s.ctx, *execution, models.Event{})
-			s.Require().NoError(err)
+			s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
+			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
+
 			for i, state := range executionStates {
 
 				s.clock.Add(1 * time.Second)
@@ -175,11 +175,10 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 						ExpectedRevision: uint64(i + 1),
 					},
 					NewValues: *execution,
-					Event:     models.Event{},
 				}
 
-				err = s.store.UpdateExecution(s.ctx, request)
-				s.Require().NoError(err)
+				s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
+				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
 			}
 		}
 
@@ -299,31 +298,6 @@ func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
 	}
 }
 
-func (s *BoltJobstoreTestSuite) TestNodeFilteredJobHistory() {
-	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{})
-	require.NoError(s.T(), err)
-
-	var nodeID string
-	for _, h := range jobHistoryQueryResponse.JobHistory {
-		if h.NodeID != "" {
-			nodeID = h.NodeID
-			break
-		}
-	}
-	require.NotEmpty(s.T(), nodeID, "failed to find node ID")
-
-	options := jobstore.JobHistoryQuery{
-		NodeID: nodeID,
-	}
-
-	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", options)
-	require.NoError(s.T(), err, "failed to get job history")
-
-	for _, h := range jobHistoryQueryResponse.JobHistory {
-		require.Equal(s.T(), nodeID, h.NodeID)
-	}
-}
-
 func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	jobOptions := jobstore.JobHistoryQuery{
 		ExcludeExecutionLevel: true,
@@ -335,7 +309,6 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
 	s.Require().NoError(err, "failed to get job history")
 	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
-	s.Require().Equal(models.JobStateTypePending, jobHistoryQueryResponse.JobHistory[1].JobState.New)
 
 	count := lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeJobLevel {
@@ -348,7 +321,6 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
 	s.Require().NoError(err, "failed to get job history")
 	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
-	s.Require().Equal(models.ExecutionStateAskForBid, jobHistoryQueryResponse.JobHistory[1].ExecutionState.New)
 
 	count = lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeExecutionLevel {
@@ -507,7 +479,7 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job.ID = "deleteme"
 	job.Namespace = "client1"
 
-	err := s.store.CreateJob(s.ctx, *job, models.Event{})
+	err := s.store.CreateJob(s.ctx, *job)
 	s.Require().NoError(err)
 
 	err = s.store.DeleteJob(s.ctx, job.ID)
@@ -526,8 +498,8 @@ func (s *BoltJobstoreTestSuite) TestGetJob() {
 func (s *BoltJobstoreTestSuite) TestCreateExecution() {
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
-	s.Require().NoError(s.store.CreateJob(s.ctx, *job, models.Event{}))
-	s.Require().NoError(s.store.CreateExecution(s.ctx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(s.ctx, *job))
+	s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
 
 	// Ensure that the execution is created
 	exec, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
@@ -554,7 +526,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(state)
-	s.Equal(len(state), 1)
+	s.Equal(1, len(state))
 	s.Nil(state[0].Job)
 
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
@@ -715,7 +687,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 	s.Require().IsType(err, &bacerrors.JobNotFound{})
 
 	// Create and fetch the single entry
-	err = s.store.CreateJob(s.ctx, *job, models.Event{})
+	err = s.store.CreateJob(s.ctx, *job)
 	s.Require().NoError(err)
 
 	j, err := s.store.GetJob(s.ctx, shortString)
@@ -724,7 +696,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 
 	// Add a record that will also match and expect an appropriate error
 	job.ID = uuidString2
-	err = s.store.CreateJob(s.ctx, *job, models.Event{})
+	err = s.store.CreateJob(s.ctx, *job)
 	s.Require().NoError(err)
 
 	_, err = s.store.GetJob(s.ctx, shortString)
@@ -746,7 +718,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 	var execution models.Execution
 
 	s.Run("job create event", func() {
-		err := s.store.CreateJob(s.ctx, *job, models.Event{})
+		err := s.store.CreateJob(s.ctx, *job)
 		s.Require().NoError(err)
 
 		// Read an event, it should be a jobcreate
@@ -764,7 +736,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		execution = *mock.Execution()
 		execution.JobID = "10"
 		execution.ComputeState = models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew}
-		err := s.store.CreateExecution(s.ctx, execution, models.Event{})
+		err := s.store.CreateExecution(s.ctx, execution)
 		s.Require().NoError(err)
 
 		// Read an event, it should be a ExecutionForJob Create
@@ -780,7 +752,6 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			Condition: jobstore.UpdateJobCondition{
 				ExpectedState: models.JobStateTypePending,
 			},
-			Event: models.Event{Message: "event test"},
 		}
 		_ = s.store.UpdateJobState(s.ctx, request)
 		ev := <-watcher.Channel()
@@ -797,7 +768,6 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 				ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 			},
 			NewValues: execution,
-			Event:     models.Event{Message: "event test"},
 		})
 		ev := <-watcher.Channel()
 		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
@@ -852,8 +822,8 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContext() {
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
 	evaluation := mock.EvalForJob(job)
-	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
-	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(txCtx, *job))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution))
 	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
 
 	// Commit the transaction
@@ -890,8 +860,8 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextRollback() {
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
 	evaluation := mock.EvalForJob(job)
-	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
-	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(txCtx, *job))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution))
 	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
 
 	// Rollback the transaction
@@ -923,8 +893,8 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
 	evaluation := mock.EvalForJob(job)
-	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
-	s.Require().NoError(s.store.CreateExecution(txCtx, *execution, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(txCtx, *job))
+	s.Require().NoError(s.store.CreateExecution(txCtx, *execution))
 	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
 
 	// cancel the context
@@ -950,14 +920,14 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
 func (s *BoltJobstoreTestSuite) TestTransactionsReadDuringWrite() {
 	// Create a job outside the transaction
 	oldJob := mock.Job()
-	s.Require().NoError(s.store.CreateJob(s.ctx, *oldJob, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(s.ctx, *oldJob))
 
 	txCtx, err := s.store.BeginTx(s.ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx)
 
 	job := mock.Job()
-	s.Require().NoError(s.store.CreateJob(txCtx, *job, models.Event{}))
+	s.Require().NoError(s.store.CreateJob(txCtx, *job))
 
 	// make sure we can read existing data during transaction
 	readOldJob, err := s.store.GetJob(txCtx, oldJob.ID)

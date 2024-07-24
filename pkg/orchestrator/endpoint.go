@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -55,16 +54,14 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 // SubmitJob submits a job to the evaluation broker.
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (*SubmitJobResponse, error) {
 	job := request.Job
-	events := []models.Event{
-		JobSubmittedEvent(),
-	}
-
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
 
 	if err := e.jobTransformer.Transform(ctx, job); err != nil {
 		return nil, err
 	}
+
+	var translationEvent models.Event
 
 	// We will only perform task translation in the orchestrator if we were provided with a provider
 	// that can give translators to perform the translation.
@@ -85,23 +82,33 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 				return nil, errors.Wrap(err, "failure converting job to JSON")
 			} else {
 				translatedJob.Meta[models.MetaDerivedFrom] = base64.StdEncoding.EncodeToString(b)
-				events = append(events, JobTranslatedEvent(job, translatedJob))
+				translationEvent = JobTranslatedEvent(job, translatedJob)
 			}
 
 			job = translatedJob
 		}
 	}
 
-	for i, event := range events {
-		if i == 0 {
-			if err := e.store.CreateJob(ctx, *job, events[0]); err != nil {
-				return nil, err
-			}
-		} else {
-			req := jobstore.UpdateJobStateRequest{JobID: job.ID, Event: event, NewState: models.JobStateTypePending}
-			if err := e.store.UpdateJobState(ctx, req); err != nil {
-				return nil, err
-			}
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
+
+	if err = e.store.CreateJob(txContext, *job); err != nil {
+		return nil, err
+	}
+	if err = e.store.AddJobHistory(txContext, job.ID, JobSubmittedEvent()); err != nil {
+		return nil, err
+	}
+	if translationEvent.Message != "" {
+		if err = e.store.AddJobHistory(txContext, job.ID, translationEvent); err != nil {
+			return nil, err
 		}
 	}
 
@@ -115,10 +122,11 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		ModifyTime:  job.CreateTime,
 	}
 
-	// TODO(ross): How can we create this evaluation in the same transaction that the CreateJob
-	// call uses.
-	if err := e.store.CreateEvaluation(ctx, *eval); err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for job %s", job.ID)
+	if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
+		return nil, err
+	}
+
+	if err = txContext.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -141,11 +149,24 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		return StopJobResponse{}, nil
 	case models.JobStateTypeCompleted:
 		return StopJobResponse{}, fmt.Errorf("cannot stop job in state %s", job.State.StateType)
+	default:
+		// continue
 	}
+
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		return StopJobResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
 
 	// update the job state, except if the job is already completed
 	// we allow marking a failed job as canceled
-	err = e.store.UpdateJobState(ctx, jobstore.UpdateJobStateRequest{
+	if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
 		JobID: request.JobID,
 		Condition: jobstore.UpdateJobCondition{
 			UnexpectedStates: []models.JobStateType{
@@ -153,9 +174,12 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			},
 		},
 		NewState: models.JobStateTypeStopped,
-		Event:    JobStoppedEvent(request.Reason),
-	})
-	if err != nil {
+		Message:  request.Reason,
+	}); err != nil {
+		return StopJobResponse{}, err
+	}
+
+	if err = e.store.AddJobHistory(txContext, job.ID, JobStoppedEvent(request.Reason)); err != nil {
 		return StopJobResponse{}, err
 	}
 
@@ -174,14 +198,16 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			ModifyTime:  now,
 		}
 
-		// TODO(ross): How can we create this evaluation in the same transaction that we update the jobstate
-		err = e.store.CreateEvaluation(ctx, *eval)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("failed to save evaluation for stop job %s", request.JobID)
+		if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
 			return StopJobResponse{}, err
 		}
 		evalID = eval.ID
 	}
+
+	if err = txContext.Commit(); err != nil {
+		return StopJobResponse{}, err
+	}
+
 	e.eventEmitter.EmitEventSilently(ctx, models.JobEvent{
 		JobID:     request.JobID,
 		EventName: models.JobEventCanceled,
