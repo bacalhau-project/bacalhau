@@ -7,10 +7,8 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 )
 
-const DefaultRefreshInterval = time.Millisecond
 const ESC = 27
 
 // clear the line and move the cursor up
@@ -23,12 +21,6 @@ type LiveTableWriter struct {
 	// Out is the writer to write the table to.
 	Out io.Writer
 
-	// RefreshInterval is the time the UI should refresh
-	RefreshInterval time.Duration
-
-	ticker *time.Ticker
-	tdone  chan bool
-
 	buf      bytes.Buffer
 	mu       *sync.Mutex
 	rowCount int
@@ -37,21 +29,16 @@ type LiveTableWriter struct {
 // NewLiveTableWriter returns a new LiveTableWriter with defaults
 func NewLiveTableWriter() *LiveTableWriter {
 	return &LiveTableWriter{
-		Out:             io.Writer(os.Stdout),
-		RefreshInterval: DefaultRefreshInterval,
-		mu:              &sync.Mutex{},
+		Out: io.Writer(os.Stdout),
+		mu:  &sync.Mutex{},
 	}
 }
 
-// Flush writes out the table and resets the buffer. It should be called after
+// flush writes out the table and resets the buffer. It should be called after
 // the last call to Write to ensure that any data buffered in the Writer is
 // written to the output. An error is returned if the contents of the buffer
 // cannot be written to the underlying output stream.
-func (w *LiveTableWriter) Flush() error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	// Do Nothing if the Buffer is Empty
+func (w *LiveTableWriter) flush() error {
 	if len(w.buf.Bytes()) == 0 {
 		return nil
 	}
@@ -70,49 +57,13 @@ func (w *LiveTableWriter) Flush() error {
 	return err
 }
 
-// Start starts the listener in a non-blocking manner.
-func (w *LiveTableWriter) Start() {
-	if w.ticker == nil {
-		w.ticker = time.NewTicker(w.RefreshInterval)
-		w.tdone = make(chan bool)
-	}
-
-	go w.Listen()
-}
-
 // Write saves the table contents of buf to the writer b.
 // The only errors are ones encountered while writing to the underlying buffer.
 func (w *LiveTableWriter) Write(buf []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	_ = w.flush()
 	return w.buf.Write(buf)
-}
-
-// Listen listens for updates to live table writer's buffer and flushes to output
-// provided.
-func (w *LiveTableWriter) Listen() {
-	for {
-		select {
-		case <-w.ticker.C:
-			if w.ticker != nil {
-				_ = w.Flush()
-			}
-		case <-w.tdone:
-			w.mu.Lock()
-			w.ticker.Stop()
-			w.ticker = nil
-			w.mu.Unlock()
-			close(w.tdone)
-			return
-		}
-	}
-}
-
-// Stop stops the listener that updates to terminal
-func (w *LiveTableWriter) Stop() {
-	_ = w.Flush()
-	w.tdone <- true
-	<-w.tdone
 }
 
 func (w *LiveTableWriter) clearRows() {

@@ -35,7 +35,6 @@ type jobProgressEvent struct {
 	jobID       string
 	occurred    time.Time
 	executionID string
-	eventTopic  models.EventTopic
 	event       models.Event
 }
 
@@ -231,8 +230,6 @@ To cancel the job, run:
 	}()
 
 	liveTableWriter := util.NewLiveTableWriter()
-	liveTableWriter.Start()
-	defer liveTableWriter.Stop()
 	cmd.SetOut(liveTableWriter)
 
 	// goroutine for handling SIGINT from the signal channel, or context completion messages.
@@ -347,7 +344,6 @@ To cancel the job, run:
 					jobID:       jobID,
 					occurred:    history.Occurred(),
 					executionID: history.ExecutionID,
-					eventTopic:  history.Event.Topic,
 					event:       history.Event,
 				}
 			}
