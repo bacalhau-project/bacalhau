@@ -3,6 +3,7 @@ package printer
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -242,7 +243,11 @@ To cancel the job, run:
 	}()
 
 	liveTableWriter := util.NewLiveTableWriter()
-	cmd.SetOut(liveTableWriter)
+	if quiet {
+		cmd.SetOut(io.Discard)
+	} else {
+		cmd.SetOut(liveTableWriter)
+	}
 
 	// goroutine for handling SIGINT from the signal channel, or context completion messages.
 	go func() {
@@ -351,13 +356,11 @@ To cancel the job, run:
 		for _, history := range jobHistoryResponse.Items {
 			timeFilter = history.Time.Unix()
 
-			if history.Type == models.JobHistoryTypeExecutionLevel {
-				jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
-					jobID:       jobID,
-					occurred:    history.Occurred(),
-					executionID: history.ExecutionID,
-					event:       history.Event,
-				}
+			jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
+				jobID:       jobID,
+				occurred:    history.Occurred(),
+				executionID: history.ExecutionID,
+				event:       history.Event,
 			}
 		}
 
