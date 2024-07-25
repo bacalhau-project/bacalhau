@@ -19,6 +19,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
@@ -71,6 +72,17 @@ var (
 				if j.event.Details[models.DetailsKeyHint] != "" {
 					res += "\n" + fmt.Sprintf(
 						"%s %s", output.BoldStr(output.GreenStr("* Hint:")), j.event.Details[models.DetailsKeyHint])
+				}
+
+				// print all other details in debug mode
+				if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+					for k, v := range j.event.Details {
+						// don't print hint and error since they are already represented
+						if k == models.DetailsKeyHint || k == models.DetailsKeyIsError {
+							continue
+						}
+						res += "\n" + fmt.Sprintf("* %s %s", output.BoldStr(k+":"), v)
+					}
 				}
 			}
 			return res
