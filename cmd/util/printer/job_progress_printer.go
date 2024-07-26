@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"time"
 
@@ -281,12 +282,6 @@ To cancel the job, run:
 	tableOptions := output.OutputOptions{
 		Format:  output.TableFormat,
 		NoStyle: true,
-		SortBy: []table.SortBy{
-			{
-				Name: "Exec. ID",
-				Mode: table.Asc,
-			},
-		},
 	}
 
 	timeFilter := time.Now().Unix()
@@ -356,7 +351,17 @@ To cancel the job, run:
 		for _, history := range jobHistoryResponse.Items {
 			timeFilter = history.Time.Unix()
 
-			jobProgressEvents[history.ExecutionID] = &jobProgressEvent{
+			// We group based at 2 levels
+			// 1. Per Execution
+			// 2. Job Level State Changes
+			var eventID string
+			if history.Type == models.JobHistoryTypeExecutionLevel {
+				eventID = history.ExecutionID
+			} else {
+				eventID = history.Type.String()
+			}
+
+			jobProgressEvents[eventID] = &jobProgressEvent{
 				jobID:       jobID,
 				occurred:    history.Occurred(),
 				executionID: history.ExecutionID,
@@ -365,7 +370,25 @@ To cancel the job, run:
 		}
 
 		// Displays Job Progress Output in Table Format
-		if err := output.Output(cmd, jobProgressEventCols, tableOptions, lo.Values(jobProgressEvents)); err != nil {
+		entries := lo.Entries(jobProgressEvents)
+
+		// We do custom sorting mainly because, there is a chance that
+		// both execution level and job level states have same timestamp. In that scenarion,
+		// we need to make sure the order is still determinant. The table sorted does not
+		// support this hence we do custom sorting. rd
+		sort.Slice(entries, func(i, j int) bool {
+			if entries[i].Value.occurred.Before(entries[j].Value.occurred) {
+				return true
+			} else if entries[i].Value.occurred.After(entries[j].Value.occurred) {
+				return false
+			} else {
+				return entries[i].Value.event.Topic < entries[j].Value.event.Topic
+			}
+		})
+		if err := output.Output(cmd, jobProgressEventCols, tableOptions,
+			lo.Map(entries, func(item lo.Entry[string, *jobProgressEvent], index int) *jobProgressEvent {
+				return item.Value
+			})); err != nil {
 			return fmt.Errorf("failed to print job progress: %w", err)
 		}
 
