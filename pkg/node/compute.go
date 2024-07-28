@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nats-io/nats.go"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -19,6 +21,7 @@ import (
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -54,10 +57,11 @@ func NewComputeNode(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
+	natsConn *nats.Conn,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
-	heartbeatClient heartbeat.Client,
+	payloadRegistry *ncl.PayloadRegistry,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -190,6 +194,17 @@ func NewComputeNode(
 	// available and don't have to depend on getting the repo folder.
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
 	regFilename = filepath.Join(computeStorePath, regFilename)
+
+	// heartbeat client
+	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
+		ncl.WithPublisherName(nodeID),
+		ncl.WithPublisherDestination(config.ControlPlaneSettings.HeartbeatTopic),
+		ncl.WithPublisherPayloadRegistry(payloadRegistry),
+	)
+	if err != nil {
+		return nil, err
+	}
+	heartbeatClient := heartbeat.NewClient(nodeID, heartbeatPublisher)
 
 	// Set up the management client which will attempt to register this node
 	// with the requester node, and then if successful will send regular node

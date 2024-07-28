@@ -60,7 +60,7 @@ func NewHousekeeping(params HousekeepingParams) (*Housekeeping, error) {
 
 	// validate params
 	err := errors.Join(
-		validate.IsNotNil(params.JobStore, "job store cannot be nil"),
+		validate.NotNil(params.JobStore, "job store cannot be nil"),
 		validate.IsGreaterThanZero(params.Interval, "interval must be greater than zero"),
 		validate.IsGreaterThanZero(params.Workers, "workers must be greater than zero"),
 		validate.IsGreaterThanZero(params.TimeoutBuffer, "timeout buffer must be greater than zero"),

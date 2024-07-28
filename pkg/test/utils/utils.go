@@ -5,8 +5,13 @@ import (
 	"regexp"
 	"testing"
 
+	natsserver "github.com/nats-io/nats-server/v2/server"
+	natstest "github.com/nats-io/nats-server/v2/test"
+
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -36,4 +41,19 @@ func MustHaveIPFS(t testing.TB, ipfsConnect string) {
 // IsIPFSEnabled will return true if the test is running in an environment that can support IPFS.
 func IsIPFSEnabled(ipfsConnect string) bool {
 	return ipfsConnect != ""
+}
+
+// StartNats will start a NATS server on a random port and return a server and client instances
+func StartNats(t *testing.T) (*natsserver.Server, *nats.Conn) {
+	t.Helper()
+	port, err := network.GetFreePort()
+	require.NoError(t, err)
+
+	opts := &natstest.DefaultTestOptions
+	opts.Port = port
+
+	natsServer := natstest.RunServer(opts)
+	nc, err := nats.Connect(natsServer.ClientURL())
+	require.NoError(t, err)
+	return natsServer, nc
 }
