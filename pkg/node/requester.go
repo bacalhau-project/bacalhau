@@ -40,7 +40,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
-	"github.com/bacalhau-project/bacalhau/pkg/requester"
 )
 
 type Requester struct {
@@ -334,12 +333,12 @@ func NewRequesterNode(
 	// This endpoint implements the protocol formerly known as `bprotocol`.
 	// It provides the compute call back endpoints for interacting with compute nodes.
 	// e.g. bidding, job completions, cancellations, and failures
-	endpoint := requester.NewBaseEndpoint(&requester.BaseEndpointParams{
+	callback := orchestrator.NewCallback(&orchestrator.CallbackParams{
 		ID:           nodeID,
 		EventEmitter: eventEmitter,
 		Store:        jobStore,
 	})
-	if err = transportLayer.RegisterComputeCallback(endpoint); err != nil {
+	if err = transportLayer.RegisterComputeCallback(callback); err != nil {
 		return nil, err
 	}
 

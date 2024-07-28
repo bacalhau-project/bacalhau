@@ -148,7 +148,8 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		o.printWarnings(cmd, resp.Warnings)
 	}
 
-	if err := printer.PrintJobExecution(ctx, j, resp.JobID, cmd, o.RunTimeSettings, api); err != nil {
+	jobProgressPrinter := printer.NewJobProgressPrinter(api, o.RunTimeSettings)
+	if err := jobProgressPrinter.PrintJobProgress(ctx, resp.JobID, cmd); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 
