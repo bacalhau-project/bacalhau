@@ -3,103 +3,77 @@
 package ncl
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
 
-type JsonMessageSerializerTestSuite struct {
+type JSONMessageSerDeTestSuite struct {
 	suite.Suite
-	serializer *JSONMessageSerializer
+	serDe *JSONMessageSerDe
 }
 
-func (suite *JsonMessageSerializerTestSuite) SetupTest() {
-	suite.serializer = &JSONMessageSerializer{}
+func (suite *JSONMessageSerDeTestSuite) SetupTest() {
+	suite.serDe = &JSONMessageSerDe{}
 }
 
-func (suite *JsonMessageSerializerTestSuite) TestSerializeDeserialize() {
-	original := &RawMessage{
-		Metadata: &Metadata{"key": "value"},
-		Payload:  []byte(`{"test": "data"}`),
+func (suite *JSONMessageSerDeTestSuite) TestSerializeDeserialize() {
+	type testStruct struct {
+		Name string `json:"name"`
+		Age  int    `json:"age"`
 	}
 
-	// Serialize
-	data, err := suite.serializer.Serialize(original)
-	suite.NoError(err)
+	testCases := []struct {
+		name    string
+		payload interface{}
+	}{
+		{"string", "test"},
+		{"int", 42},
+		{"float", 3.14},
+		{"bool", true},
+		{"struct", testStruct{Name: "John", Age: 30}},
+		{"slice", []int{1, 2, 3}},
+		{"map", map[string]int{"one": 1, "two": 2}},
+	}
 
-	// Deserialize
-	result := &RawMessage{}
-	err = suite.serializer.Deserialize(data, result)
-	suite.NoError(err)
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Create original message
+			originalMsg := &Message{
+				Metadata: &Metadata{"key": "value"},
+				Payload:  tc.payload,
+			}
 
-	// Compare
-	suite.Equal(original.Metadata, result.Metadata)
-	suite.JSONEq(string(original.Payload), string(result.Payload))
+			// Serialize
+			rawMsg, err := suite.serDe.Serialize(originalMsg)
+			suite.NoError(err)
+
+			// Deserialize
+			payloadType := reflect.TypeOf(tc.payload)
+			resultMsg, err := suite.serDe.Deserialize(rawMsg, payloadType)
+			suite.NoError(err)
+
+			// Compare original and deserialized metadata
+			suite.Equal(originalMsg.Metadata, resultMsg.Metadata)
+
+			// Compare the original and deserialized payloads
+			resultPayload, ok := resultMsg.GetPayload(tc.payload)
+			suite.True(ok, "payload type not matched")
+			suite.Equal(tc.payload, resultPayload)
+		})
+	}
 }
 
-func (suite *JsonMessageSerializerTestSuite) TestSerializeNilMessage() {
-	_, err := suite.serializer.Serialize(nil)
-	suite.EqualError(err, ErrNilMessage)
-}
-
-func (suite *JsonMessageSerializerTestSuite) TestDeserializeEmptyData() {
-	err := suite.serializer.Deserialize([]byte{}, &RawMessage{})
-	suite.EqualError(err, ErrEmptyData)
-}
-
-func (suite *JsonMessageSerializerTestSuite) TestDeserializeInvalidData() {
-	err := suite.serializer.Deserialize([]byte(`invalid json`), &RawMessage{})
+func (suite *JSONMessageSerDeTestSuite) TestDeserializeError() {
+	rawMsg := &RawMessage{
+		Metadata: &Metadata{"key": "value"},
+		Payload:  []byte(`{"invalid": "json"`),
+	}
+	_, err := suite.serDe.Deserialize(rawMsg, reflect.TypeOf(0))
 	suite.Error(err)
 }
 
-func TestJsonMessageSerializerTestSuite(t *testing.T) {
-	suite.Run(t, new(JsonMessageSerializerTestSuite))
-}
-
-type ProtoSerializerTestSuite struct {
-	suite.Suite
-	serializer *ProtoSerializer
-}
-
-func (suite *ProtoSerializerTestSuite) SetupTest() {
-	suite.serializer = &ProtoSerializer{}
-}
-
-func (suite *ProtoSerializerTestSuite) TestSerializeDeserialize() {
-	original := &RawMessage{
-		Metadata: &Metadata{"key": "value"},
-		Payload:  []byte(`test data`),
-	}
-
-	// Serialize
-	data, err := suite.serializer.Serialize(original)
-	suite.NoError(err)
-
-	// Deserialize
-	result := &RawMessage{}
-	err = suite.serializer.Deserialize(data, result)
-	suite.NoError(err)
-
-	// Compare
-	suite.Equal(original.Metadata, result.Metadata)
-	suite.Equal(original.Payload, result.Payload)
-}
-
-func (suite *ProtoSerializerTestSuite) TestSerializeNilMessage() {
-	_, err := suite.serializer.Serialize(nil)
-	suite.EqualError(err, ErrNilMessage)
-}
-
-func (suite *ProtoSerializerTestSuite) TestDeserializeEmptyData() {
-	err := suite.serializer.Deserialize([]byte{}, &RawMessage{})
-	suite.EqualError(err, ErrEmptyData)
-}
-
-func (suite *ProtoSerializerTestSuite) TestDeserializeInvalidData() {
-	err := suite.serializer.Deserialize([]byte(`invalid proto`), &RawMessage{})
-	suite.Error(err)
-}
-
-func TestProtoSerializerTestSuite(t *testing.T) {
-	suite.Run(t, new(ProtoSerializerTestSuite))
+func TestJSONMessageSerDeTestSuite(t *testing.T) {
+	suite.Run(t, new(JSONMessageSerDeTestSuite))
 }

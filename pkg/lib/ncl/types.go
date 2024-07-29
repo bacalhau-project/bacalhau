@@ -22,20 +22,23 @@ type Checkpointer interface {
 	GetLastCheckpoint() (int64, error)
 }
 
-type MessageSerDe interface {
+// RawMessageSerDe interface for serializing and deserializing raw messages
+// to and from byte slices.
+type RawMessageSerDe interface {
 	Serialize(*RawMessage) ([]byte, error)
-	Deserialize([]byte, *RawMessage) error
+	Deserialize([]byte) (*RawMessage, error)
 }
 
-type PayloadSerDe interface {
-	SerializePayload(*Metadata, any) ([]byte, error)
-	DeserializePayload(*Metadata, reflect.Type, []byte) (any, error)
+// MessageSerDe interface for serializing and deserializing messages
+// to and from raw messages.
+type MessageSerDe interface {
+	Serialize(message *Message) (*RawMessage, error)
+	Deserialize(rawMessage *RawMessage, payloadType reflect.Type) (*Message, error)
 }
 
 // Publisher publishes messages to a NATS server
 type Publisher interface {
-	Publish(ctx context.Context, event any) error
-	PublishWithMetadata(ctx context.Context, metadata *Metadata, event any) error
+	Publish(ctx context.Context, message *Message) error
 }
 
 // Subscriber subscribes to messages from a NATS server

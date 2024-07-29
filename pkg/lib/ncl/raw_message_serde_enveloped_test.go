@@ -12,11 +12,11 @@ import (
 
 type EnvelopeSerializerTestSuite struct {
 	suite.Suite
-	serializer *EnvelopeSerializer
+	serializer *EnvelopedRawMessageSerDe
 }
 
 func (suite *EnvelopeSerializerTestSuite) SetupTest() {
-	suite.serializer = NewEnvelopeSerializer()
+	suite.serializer = NewEnvelopedRawMessageSerDe()
 }
 
 func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
@@ -46,8 +46,7 @@ func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
 			suite.Equal(expectedCRC, actualCRC)
 
 			// Deserialize
-			result := &RawMessage{}
-			err = suite.serializer.Deserialize(data, result)
+			result, err := suite.serializer.Deserialize(data)
 			suite.NoError(err)
 
 			// Compare
@@ -63,7 +62,7 @@ func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
 
 func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidVersion() {
 	data := []byte{255, 0, 0, 0, 0} // Invalid version
-	err := suite.serializer.Deserialize(data, &RawMessage{})
+	_, err := suite.serializer.Deserialize(data)
 	suite.Error(err)
 	suite.IsType(&ErrUnsupportedEncoding{}, err)
 }
@@ -78,7 +77,7 @@ func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidCRC() {
 	// Corrupt CRC
 	data[1] ^= 0xFF
 
-	err := suite.serializer.Deserialize(data, &RawMessage{})
+	_, err := suite.serializer.Deserialize(data)
 	suite.Error(err)
 	suite.IsType(&ErrBadMessage{}, err)
 	suite.Contains(err.Error(), ErrMsgCRCFailed)
@@ -86,7 +85,7 @@ func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidCRC() {
 
 func (suite *EnvelopeSerializerTestSuite) TestDeserializeShortMessage() {
 	data := []byte{1} // Too short
-	err := suite.serializer.Deserialize(data, &RawMessage{})
+	_, err := suite.serializer.Deserialize(data)
 	suite.Error(err)
 	suite.IsType(&ErrBadMessage{}, err)
 	suite.Contains(err.Error(), ErrMsgTooShort)

@@ -137,7 +137,7 @@ func NewNode(
 	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
-	payloadRegistry, err := CreatePayloadRegistry()
+	messageSerDeRegistry, err := CreateMessageSerDeRegistry()
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func NewNode(
 			config.RequesterNodeConfig,
 			transportLayer,
 			transportLayer.ComputeProxy(),
-			payloadRegistry,
+			messageSerDeRegistry,
 		)
 		if err != nil {
 			return nil, err
@@ -215,7 +215,7 @@ func NewNode(
 			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
 			config.Labels,
-			payloadRegistry,
+			messageSerDeRegistry,
 		)
 		if err != nil {
 			return nil, err

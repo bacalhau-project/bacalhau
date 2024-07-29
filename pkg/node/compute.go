@@ -61,7 +61,7 @@ func NewComputeNode(
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
-	payloadRegistry *ncl.PayloadRegistry,
+	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 
@@ -199,7 +199,7 @@ func NewComputeNode(
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
 		ncl.WithPublisherName(nodeID),
 		ncl.WithPublisherDestination(config.ControlPlaneSettings.HeartbeatTopic),
-		ncl.WithPublisherPayloadRegistry(payloadRegistry),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
 	)
 	if err != nil {
 		return nil, err

@@ -16,16 +16,16 @@ type SubscriberTestSuite struct {
 	suite.Suite
 	natsServer     *server.Server
 	natsConn       *nats.Conn
-	serializer     *EnvelopeSerializer
-	registry       *PayloadRegistry
+	serializer     *EnvelopedRawMessageSerDe
+	registry       *MessageSerDeRegistry
 	publisher      Publisher
 	subscriber     Subscriber
 	messageHandler *TestMessageHandler
 }
 
 func (suite *SubscriberTestSuite) SetupSuite() {
-	suite.serializer = NewEnvelopeSerializer()
-	suite.registry = NewPayloadRegistry()
+	suite.serializer = NewEnvelopedRawMessageSerDe()
+	suite.registry = NewMessageSerDeRegistry()
 	suite.Require().NoError(suite.registry.Register(TestPayloadType, TestPayload{}))
 
 	suite.natsServer, suite.natsConn = StartNats(suite.T())
@@ -43,7 +43,7 @@ func (suite *SubscriberTestSuite) SetupTest() {
 		WithPublisherName("test"),
 		WithPublisherDestination(TestSubject),
 		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherPayloadRegistry(suite.registry),
+		WithPublisherMessageSerDeRegistry(suite.registry),
 	)
 	suite.Require().NoError(err)
 
@@ -52,7 +52,7 @@ func (suite *SubscriberTestSuite) SetupTest() {
 		suite.natsConn,
 		WithSubscriberMessageHandlers(suite.messageHandler),
 		WithSubscriberMessageDeserializer(suite.serializer),
-		WithSubscriberPayloadRegistry(suite.registry),
+		WithSubscriberMessageSerDeRegistry(suite.registry),
 	)
 	suite.Require().NoError(err)
 }
@@ -67,7 +67,7 @@ func (suite *SubscriberTestSuite) TestSubscribe() {
 	suite.Require().NoError(err)
 
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), event)
+	err = suite.publisher.Publish(context.Background(), NewMessage(event))
 	suite.Require().NoError(err)
 
 	// Wait for message to be processed
@@ -89,7 +89,7 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 		suite.natsConn,
 		WithSubscriberMessageHandlers(suite.messageHandler),
 		WithSubscriberMessageDeserializer(suite.serializer),
-		WithSubscriberPayloadRegistry(suite.registry),
+		WithSubscriberMessageSerDeRegistry(suite.registry),
 		WithSubscriberMessageFilter(MessageFilterFunc(filter)),
 	)
 	suite.Require().NoError(err)
@@ -99,12 +99,14 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 
 	// Publish a message that should be filtered out
 	event1 := TestPayload{Message: "Filtered"}
-	err = suite.publisher.PublishWithMetadata(context.Background(), &Metadata{"filter": "true"}, event1)
+	msg1 := NewMessage(event1).WithMetadataValue("filter", "true")
+	err = suite.publisher.Publish(context.Background(), msg1)
 	suite.Require().NoError(err)
 
 	// Publish a message that should be processed
 	event2 := TestPayload{Message: "Not Filtered"}
-	err = suite.publisher.PublishWithMetadata(context.Background(), &Metadata{"filter": "false"}, event2)
+	msg2 := NewMessage(event2).WithMetadataValue("filter", "false")
+	err = suite.publisher.Publish(context.Background(), msg2)
 	suite.Require().NoError(err)
 
 	// Wait for message to be processed
@@ -121,7 +123,8 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 	suite.Require().NoError(err)
 
 	event1 := TestPayload{Message: "Message 1"}
-	err = suite.publisher.Publish(context.Background(), event1)
+	msg1 := NewMessage(event1)
+	err = suite.publisher.Publish(context.Background(), msg1)
 	suite.Require().NoError(err)
 
 	publisher2, err := NewPublisher(
@@ -129,12 +132,13 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 		WithPublisherName("test"),
 		WithPublisherDestinationPrefix(TestDestinationPrefix),
 		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherPayloadRegistry(suite.registry),
+		WithPublisherMessageSerDeRegistry(suite.registry),
 	)
 	suite.Require().NoError(err)
 
 	event2 := TestPayload{Message: "Message 2"}
-	err = publisher2.Publish(context.Background(), event2)
+	msg2 := NewMessage(event2)
+	err = publisher2.Publish(context.Background(), msg2)
 	suite.Require().NoError(err)
 
 	// Wait for messages to be processed
@@ -165,7 +169,7 @@ func (suite *SubscriberTestSuite) TestClose() {
 
 	// Try to publish after closing
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), event)
+	err = suite.publisher.Publish(context.Background(), NewMessage(event))
 	suite.Require().NoError(err)
 
 	// Wait for a short time

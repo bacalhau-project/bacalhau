@@ -13,28 +13,28 @@ import (
 
 // publisher handles message publishing
 type publisher struct {
-	nc                *nats.Conn
-	messageSerializer MessageSerDe
-	payloadRegistry   *PayloadRegistry
-	name              string
-	destination       string
-	destinationPrefix string
+	nc                   *nats.Conn
+	messageSerializer    RawMessageSerDe
+	messageSerDeRegistry *MessageSerDeRegistry
+	name                 string
+	destination          string
+	destinationPrefix    string
 }
 
 // PublisherOption is a function type for configuring a publisher
 type PublisherOption func(*publisher)
 
 // WithPublisherMessageSerializer sets the message serializer for the publisher
-func WithPublisherMessageSerializer(serializer MessageSerDe) PublisherOption {
+func WithPublisherMessageSerializer(serializer RawMessageSerDe) PublisherOption {
 	return func(p *publisher) {
 		p.messageSerializer = serializer
 	}
 }
 
-// WithPublisherPayloadRegistry sets the payload registry for the publisher
-func WithPublisherPayloadRegistry(registry *PayloadRegistry) PublisherOption {
+// WithPublisherMessageSerDeRegistry sets the payload registry for the publisher
+func WithPublisherMessageSerDeRegistry(registry *MessageSerDeRegistry) PublisherOption {
 	return func(p *publisher) {
-		p.payloadRegistry = registry
+		p.messageSerDeRegistry = registry
 	}
 }
 
@@ -68,7 +68,7 @@ func WithPublisherDestination(destination string) PublisherOption {
 func defaultPublisher(nc *nats.Conn) *publisher {
 	return &publisher{
 		nc:                nc,
-		messageSerializer: NewEnvelopeSerializer(),
+		messageSerializer: NewEnvelopedRawMessageSerDe(),
 	}
 }
 
@@ -96,7 +96,7 @@ func (p *publisher) validate() error {
 		validate.NotNil(p.nc, "NATS connection cannot be nil"),
 		validate.NotBlank(p.name, "publisher name cannot be blank"),
 		validate.NotNil(p.messageSerializer, "message serializer cannot be nil"),
-		validate.NotNil(p.payloadRegistry, "payload registry cannot be nil"),
+		validate.NotNil(p.messageSerDeRegistry, "payload registry cannot be nil"),
 	)
 
 	// Check one of destination or destinationPrefix is set
@@ -109,21 +109,20 @@ func (p *publisher) validate() error {
 }
 
 // Publish publishes a message to the NATS server
-func (p *publisher) Publish(ctx context.Context, event any) error {
-	return p.PublishWithMetadata(ctx, &Metadata{}, event)
-}
-
-// PublishWithMetadata publishes a message to the NATS server with metadata
-func (p *publisher) PublishWithMetadata(_ context.Context, metadata *Metadata, event any) error {
-	p.enrichMetadata(metadata)
-	msg, err := p.constructMessage(metadata, event)
-	if err != nil {
-		return fmt.Errorf("failed to construct message: %w", err)
+func (p *publisher) Publish(ctx context.Context, message *Message) error {
+	if err := validate.NotNil(message, "cannot publish nil message"); err != nil {
+		return err
 	}
 
-	subject := p.getSubject(metadata)
+	p.enrichMetadata(message)
+	rMsg, err := p.messageSerDeRegistry.Serialize(message)
+	if err != nil {
+		return fmt.Errorf("failed to serialize into raw message: %w", err)
+	}
 
-	data, err := p.messageSerializer.Serialize(msg)
+	subject := p.getSubject(message)
+
+	data, err := p.messageSerializer.Serialize(rMsg)
 	if err != nil {
 		return fmt.Errorf("failed to serialize message: %w", err)
 	}
@@ -135,31 +134,19 @@ func (p *publisher) PublishWithMetadata(_ context.Context, metadata *Metadata, e
 	return nil
 }
 
-func (p *publisher) constructMessage(metadata *Metadata, event any) (*RawMessage, error) {
-	payload, err := p.payloadRegistry.SerializePayload(metadata, event)
-	if err != nil {
-		return nil, err
-	}
-
-	return &RawMessage{
-		Metadata: metadata,
-		Payload:  payload,
-	}, nil
-}
-
-// enrichMetadata adds the publisher name to the metadata
-func (p *publisher) enrichMetadata(metadata *Metadata) {
-	metadata.Set(KeySource, p.name)
-	if !metadata.Has(KeyEventTime) {
-		metadata.SetTime(KeyEventTime, time.Now())
+// enrichMetadata adds metadata to the message, such as source and event time
+func (p *publisher) enrichMetadata(message *Message) {
+	message.Metadata.Set(KeySource, p.name)
+	if !message.Metadata.Has(KeyEventTime) {
+		message.Metadata.SetTime(KeyEventTime, time.Now())
 	}
 }
 
-func (p *publisher) getSubject(metadata *Metadata) string {
+func (p *publisher) getSubject(message *Message) string {
 	if p.destination != "" {
 		return p.destination
 	}
-	return fmt.Sprintf("%s.%s", p.destinationPrefix, metadata.Get(KeyMessageType))
+	return fmt.Sprintf("%s.%s", p.destinationPrefix, message.Metadata.Get(KeyMessageType))
 }
 
 // compile-time check for interface conformance

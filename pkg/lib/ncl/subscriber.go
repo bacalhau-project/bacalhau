@@ -14,12 +14,12 @@ import (
 
 // subscriber handles message consumption
 type subscriber struct {
-	nc                  *nats.Conn
-	messageHandlers     []MessageHandler
-	messageFilter       MessageFilter
-	checkpointer        Checkpointer
-	messageDeserializer MessageSerDe
-	payloadRegistry     *PayloadRegistry
+	nc                   *nats.Conn
+	messageHandlers      []MessageHandler
+	messageFilter        MessageFilter
+	checkpointer         Checkpointer
+	messageDeserializer  RawMessageSerDe
+	messageSerDeRegistry *MessageSerDeRegistry
 
 	subscriptions []*nats.Subscription
 	mu            sync.Mutex
@@ -43,16 +43,16 @@ func WithSubscriberCheckpointer(checkpointer Checkpointer) SubscriberOption {
 }
 
 // WithSubscriberMessageDeserializer sets the message deserializer for the subscriber
-func WithSubscriberMessageDeserializer(deserializer MessageSerDe) SubscriberOption {
+func WithSubscriberMessageDeserializer(deserializer RawMessageSerDe) SubscriberOption {
 	return func(s *subscriber) {
 		s.messageDeserializer = deserializer
 	}
 }
 
-// WithSubscriberPayloadRegistry sets the payload registry for the subscriber
-func WithSubscriberPayloadRegistry(registry *PayloadRegistry) SubscriberOption {
+// WithSubscriberMessageSerDeRegistry sets the payload registry for the subscriber
+func WithSubscriberMessageSerDeRegistry(registry *MessageSerDeRegistry) SubscriberOption {
 	return func(s *subscriber) {
-		s.payloadRegistry = registry
+		s.messageSerDeRegistry = registry
 	}
 }
 
@@ -70,7 +70,7 @@ func defaultSubscriber(nc *nats.Conn) *subscriber {
 		checkpointer:        &NoopCheckpointer{},
 		messageHandlers:     []MessageHandler{},
 		messageFilter:       NoopMessageFilter{},
-		messageDeserializer: NewEnvelopeSerializer(),
+		messageDeserializer: NewEnvelopedRawMessageSerDe(),
 		subscriptions:       []*nats.Subscription{},
 		mu:                  sync.Mutex{},
 	}
@@ -100,7 +100,7 @@ func (s *subscriber) validate() error {
 		validate.NotNil(s.nc, "NATS connection cannot be nil"),
 		validate.NotNil(s.checkpointer, "checkpointer cannot be nil"),
 		validate.NotNil(s.messageDeserializer, "message deserializer cannot be nil"),
-		validate.NotNil(s.payloadRegistry, "payload registry cannot be nil"),
+		validate.NotNil(s.messageSerDeRegistry, "payload registry cannot be nil"),
 		validate.IsNotEmpty(s.messageHandlers, "message handlers cannot be empty"),
 		validate.NotNil(s.messageFilter, "message filter cannot be nil"),
 	)
@@ -123,8 +123,8 @@ func (s *subscriber) Subscribe(subjects ...string) error {
 func (s *subscriber) processMessage(m *nats.Msg) {
 	// TODO: implement a better context
 	ctx := context.Background()
-	rMsg := &RawMessage{}
-	if err := s.messageDeserializer.Deserialize(m.Data, rMsg); err != nil {
+	rMsg, err := s.messageDeserializer.Deserialize(m.Data)
+	if err != nil {
 		// TODO: Handle error
 		log.Debug().Err(err).Send()
 		return
@@ -136,16 +136,11 @@ func (s *subscriber) processMessage(m *nats.Msg) {
 	}
 
 	// Deserialize payload
-	payload, err := s.payloadRegistry.DeserializePayload(rMsg.Metadata, rMsg.Payload)
+	message, err := s.messageSerDeRegistry.Deserialize(rMsg)
 	if err != nil {
 		// TODO: Handle error
 		log.Debug().Err(err).Send()
 		return
-	}
-
-	message := &Message{
-		Metadata: rMsg.Metadata,
-		Payload:  payload,
 	}
 
 	for _, handler := range s.messageHandlers {

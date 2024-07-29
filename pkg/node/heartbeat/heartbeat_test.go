@@ -24,13 +24,13 @@ const TestTopic = "test_heartbeat"
 type HeartbeatTestSuite struct {
 	suite.Suite
 
-	clock           *clock.Mock
-	natsServer      *server.Server
-	natsConn        *nats.Conn
-	publisher       ncl.Publisher
-	subscriber      ncl.Subscriber
-	payloadRegistry *ncl.PayloadRegistry
-	heartbeatServer *HeartbeatServer
+	clock                *clock.Mock
+	natsServer           *server.Server
+	natsConn             *nats.Conn
+	publisher            ncl.Publisher
+	subscriber           ncl.Subscriber
+	messageSerDeRegistry *ncl.MessageSerDeRegistry
+	heartbeatServer      *HeartbeatServer
 }
 
 func TestHeartbeatTestSuite(t *testing.T) {
@@ -54,18 +54,18 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	s.natsServer, s.natsConn = testutils.StartNats(s.T())
 
 	// Setup NATS publisher and subscriber
-	s.payloadRegistry = ncl.NewPayloadRegistry()
-	s.Require().NoError(s.payloadRegistry.Register(HeartbeatMessageType, Heartbeat{}))
+	s.messageSerDeRegistry = ncl.NewMessageSerDeRegistry()
+	s.Require().NoError(s.messageSerDeRegistry.Register(HeartbeatMessageType, Heartbeat{}))
 
 	s.publisher, err = ncl.NewPublisher(s.natsConn,
 		ncl.WithPublisherName("test-publisher"),
 		ncl.WithPublisherDestination(TestTopic),
-		ncl.WithPublisherPayloadRegistry(s.payloadRegistry),
+		ncl.WithPublisherMessageSerDeRegistry(s.messageSerDeRegistry),
 	)
 	s.Require().NoError(err)
 
 	s.subscriber, err = ncl.NewSubscriber(s.natsConn,
-		ncl.WithSubscriberPayloadRegistry(s.payloadRegistry),
+		ncl.WithSubscriberMessageSerDeRegistry(s.messageSerDeRegistry),
 		ncl.WithSubscriberMessageHandlers(s.heartbeatServer),
 	)
 	s.Require().NoError(err)

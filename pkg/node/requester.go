@@ -64,7 +64,7 @@ func NewRequesterNode(
 	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
-	payloadRegistry *ncl.PayloadRegistry,
+	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Requester, error) {
 	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
@@ -288,7 +288,7 @@ func NewRequesterNode(
 
 	// ncl
 	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
-		ncl.WithSubscriberPayloadRegistry(payloadRegistry),
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
 		ncl.WithSubscriberMessageHandlers(heartbeatServer),
 	)
 	if err != nil {

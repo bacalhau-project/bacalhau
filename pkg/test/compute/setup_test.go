@@ -111,7 +111,7 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { nc.Close() })
 	s.T().Cleanup(func() { ns.Shutdown() })
 
-	payloadRegistry, err := node.CreatePayloadRegistry()
+	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
 	s.Require().NoError(err)
 
 	// create the compute node
@@ -132,7 +132,7 @@ func (s *ComputeSuite) setupNode() {
 		callback,
 		ManagementEndpointMock{},
 		map[string]string{}, // empty configured labels
-		payloadRegistry,
+		messageSerDeRegistry,
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

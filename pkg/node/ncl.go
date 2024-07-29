@@ -7,9 +7,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 )
 
-// CreatePayloadRegistry creates a new payload registry.
-func CreatePayloadRegistry() (*ncl.PayloadRegistry, error) {
-	reg := ncl.NewPayloadRegistry()
+// CreateMessageSerDeRegistry creates a new payload registry.
+func CreateMessageSerDeRegistry() (*ncl.MessageSerDeRegistry, error) {
+	reg := ncl.NewMessageSerDeRegistry()
 	err := errors.Join(
 		reg.Register(heartbeat.HeartbeatMessageType, heartbeat.Heartbeat{}),
 	)
