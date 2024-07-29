@@ -118,12 +118,11 @@ func (t *Task) Validate() error {
 // ValidateSubmission is used to check a task for reasonable configuration when it is submitted.
 // It is a subset of Validate that does not check fields with defaults, such as timeouts and resources.
 func (t *Task) ValidateSubmission() error {
-	var mErr error
-	if validate.IsBlank(t.Name) {
-		mErr = errors.Join(mErr, errors.New("missing task name"))
-	} else if validate.ContainsNull(t.Name) {
-		mErr = errors.Join(mErr, errors.New("task name contains null character"))
-	}
+	mErr := errors.Join(
+		validate.NotBlank(t.Name, "missing task name"),
+		validate.NoNullChars(t.Name, "task name cannot contain null characters"),
+	)
+
 	if err := t.Engine.Validate(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("engine validation failed: %v", err))
 	}

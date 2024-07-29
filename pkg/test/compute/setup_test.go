@@ -16,7 +16,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
+	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -27,6 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type ComputeSuite struct {
@@ -69,11 +71,15 @@ func (s *ComputeSuite) setupNode() {
 	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
+	nodeID := "test"
 	s.executor = noop_executor.NewNoopExecutor()
 	s.publisher = noop_publisher.NewNoopPublisher()
 	s.bidChannel = make(chan compute.BidResult, 1)
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
+
+	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, configenv.Testing.Node.Compute.ManifestCache)
+	s.Require().NoError(err)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -100,20 +106,33 @@ func (s *ComputeSuite) setupNode() {
 		},
 	}
 
+	// setup nats server and client
+	ns, nc := testutils.StartNats(s.T())
+	s.T().Cleanup(func() { nc.Close() })
+	s.T().Cleanup(func() { ns.Shutdown() })
+
+	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
+	s.Require().NoError(err)
+
+	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
-		"test",
+		nodeID,
 		apiServer,
 		s.config,
 		storagePath,
 		repoPath,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
-		provider.NewNoopProvider[executor.Executor](s.executor),
+		provider.NewMappedProvider(map[string]executor_common.Executor{
+			models.EngineNoop:   s.executor,
+			models.EngineDocker: dockerExecutor,
+		}),
 		provider.NewNoopProvider[publisher.Publisher](s.publisher),
+		nc,
 		callback,
 		ManagementEndpointMock{},
-		map[string]string{},   // empty configured labels
-		HeartbeatClientMock{}, // no heartbeat client
+		map[string]string{}, // empty configured labels
+		messageSerDeRegistry,
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{

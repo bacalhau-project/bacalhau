@@ -50,16 +50,13 @@ type NATSTransportConfig struct {
 }
 
 func (c *NATSTransportConfig) Validate() error {
-	var mErr error
-	if validate.IsBlank(c.NodeID) {
-		mErr = errors.Join(mErr, errors.New("missing node ID"))
-	} else if validate.ContainsSpaces(c.NodeID) {
-		mErr = errors.Join(mErr, errors.New("node ID contains a space"))
-	} else if validate.ContainsNull(c.NodeID) {
-		mErr = errors.Join(mErr, errors.New("node ID contains a null character"))
-	} else if strings.ContainsAny(c.NodeID, reservedChars) {
-		mErr = errors.Join(mErr, fmt.Errorf("node ID '%s' contains one or more reserved characters: %s", c.NodeID, reservedChars))
-	}
+	mErr := errors.Join(
+		validate.NotBlank(c.NodeID, "missing node ID"),
+		validate.NoSpaces(c.NodeID, "node ID cannot contain spaces"),
+		validate.NoNullChars(c.NodeID, "node ID cannot contain null characters"),
+		validate.ContainsNoneOf(c.NodeID, reservedChars,
+			fmt.Sprintf("node ID cannot contain any of the following characters: %s", reservedChars)),
+	)
 
 	if c.IsRequesterNode {
 		mErr = errors.Join(mErr, validate.IsGreaterThanZero(c.Port, "port %d must be greater than zero", c.Port))
@@ -70,9 +67,7 @@ func (c *NATSTransportConfig) Validate() error {
 				validate.IsGreaterThanZero(c.ClusterPort, "cluster port %d must be greater than zero", c.ClusterPort))
 		}
 	} else {
-		if validate.IsEmpty(c.Orchestrators) {
-			mErr = errors.Join(mErr, errors.New("missing orchestrators"))
-		}
+		mErr = errors.Join(mErr, validate.IsNotEmpty(c.Orchestrators, "missing orchestrators"))
 	}
 	return mErr
 }

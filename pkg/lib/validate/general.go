@@ -2,9 +2,9 @@ package validate
 
 import "reflect"
 
-// IsNotNil checks if the provided value is not nil.
+// NotNil checks if the provided value is not nil.
 // Returns an error if the value is nil, using the provided message and arguments.
-func IsNotNil(value any, msg string, args ...any) error {
+func NotNil(value any, msg string, args ...any) error {
 	if value == nil {
 		return createError(msg, args...)
 	}

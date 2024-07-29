@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -63,8 +64,9 @@ func NewRequesterNode(
 	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
+	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Requester, error) {
-	nodeManager, err := createNodeManager(ctx, transportLayer, requesterConfig)
+	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +286,27 @@ func NewRequesterNode(
 		// dispatches events to listening websockets
 	)
 
+	// ncl
+	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
+		ncl.WithSubscriberMessageHandlers(heartbeatServer),
+	)
+	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
+	}
+	err = subscriber.Subscribe(requesterConfig.ControlPlaneSettings.HeartbeatTopic)
+	if err != nil {
+		return nil, err
+	}
+
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		// close the ncl subscriber
+		cleanupErr := subscriber.Close(ctx)
+		if cleanupErr != nil {
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
+		}
+
 		// stop the housekeeping background task
 		housekeeping.Stop(ctx)
 		for _, worker := range workers {
@@ -293,7 +314,7 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		cleanupErr := tracerContextProvider.Shutdown()
+		cleanupErr = tracerContextProvider.Shutdown()
 		if cleanupErr != nil {
 			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
 		}
@@ -360,22 +381,20 @@ func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) 
 
 func createNodeManager(ctx context.Context,
 	transportLayer *nats_transport.NATSTransport,
-	requesterConfig RequesterConfig) (*manager.NodeManager, error) {
+	requesterConfig RequesterConfig) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
 	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// heartbeat service
 	heartbeatParams := heartbeat.HeartbeatServerParams{
-		Client:                transportLayer.Client(),
-		Topic:                 requesterConfig.ControlPlaneSettings.HeartbeatTopic,
 		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
 		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
 	}
 	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
+		return nil, nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
 	}
 
 	// node manager
@@ -392,10 +411,10 @@ func createNodeManager(ctx context.Context,
 	// that any errors are logged. If we are unable to start the manager
 	// then we should not start the node.
 	if err = nodeManager.Start(ctx); err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to start node manager")
+		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
 	}
 
-	return nodeManager, transportLayer.RegisterManagementEndpoint(nodeManager)
+	return nodeManager, heartbeatSvr, transportLayer.RegisterManagementEndpoint(nodeManager)
 }
 
 func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NATSTransport) (routing.NodeInfoStore, error) {

@@ -175,21 +175,13 @@ func (e *Execution) Copy() *Execution {
 
 // Validate is used to check a job for reasonable configuration
 func (e *Execution) Validate() error {
-	var mErr error
-	if validate.IsBlank(e.ID) {
-		mErr = errors.Join(mErr, errors.New("missing execution ID"))
-	} else if validate.ContainsSpaces(e.ID) {
-		mErr = errors.Join(mErr, errors.New("job ID contains a space"))
-	} else if validate.ContainsNull(e.ID) {
-		mErr = errors.Join(mErr, errors.New("job ID contains a null character"))
-	}
-	if validate.IsBlank(e.Namespace) {
-		mErr = errors.Join(mErr, errors.New("execution must be in a namespace"))
-	}
-	if validate.IsBlank(e.JobID) {
-		mErr = errors.Join(mErr, errors.New("missing execution job ID"))
-	}
-	return mErr
+	return errors.Join(
+		validate.NotBlank(e.ID, "missing execution ID"),
+		validate.NoSpaces(e.ID, "execution ID contains a space"),
+		validate.NoNullChars(e.ID, "execution ID contains a null character"),
+		validate.NotBlank(e.Namespace, "execution must be in a namespace"),
+		validate.NotBlank(e.JobID, "missing execution job ID"),
+	)
 }
 
 // IsTerminalState returns true if the execution desired of observed state is terminal
