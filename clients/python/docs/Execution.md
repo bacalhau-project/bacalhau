@@ -20,7 +20,7 @@ Name | Type | Description | Notes
 **previous_execution** | **str** | PreviousExecution is the execution that this execution is replacing | [optional] 
 **published_result** | **AllOfExecutionPublishedResult** | the published results for this execution | [optional] 
 **revision** | **int** | Revision is increment each time the execution is updated. | [optional] 
-**run_output** | **AllOfExecutionRunOutput** | RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling &#x60;bacalhau logs&#x60; | [optional] 
+**run_output** | **AllOfExecutionRunOutput** | RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling &#x60;bacalhau job logs&#x60; | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

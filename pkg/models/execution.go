@@ -95,7 +95,7 @@ type Execution struct {
 	PublishedResult *SpecConfig `json:"PublishedResult"`
 
 	// RunOutput is the output of the run command
-	// TODO: evaluate removing this from execution spec in favour of calling `bacalhau logs`
+	// TODO: evaluate removing this from execution spec in favour of calling `bacalhau job logs`
 	RunOutput *RunCommandResult `json:"RunOutput"`
 
 	// PreviousExecution is the execution that this execution is replacing

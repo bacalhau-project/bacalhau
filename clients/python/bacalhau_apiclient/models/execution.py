@@ -522,7 +522,7 @@ class Execution(object):
     def run_output(self):
         """Gets the run_output of this Execution.  # noqa: E501
 
-        RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling `bacalhau logs`  # noqa: E501
+        RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling `bacalhau job logs`  # noqa: E501
 
         :return: The run_output of this Execution.  # noqa: E501
         :rtype: AllOfExecutionRunOutput
@@ -533,7 +533,7 @@ class Execution(object):
     def run_output(self, run_output):
         """Sets the run_output of this Execution.
 
-        RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling `bacalhau logs`  # noqa: E501
+        RunOutput is the output of the run command TODO: evaluate removing this from execution spec in favour of calling `bacalhau job logs`  # noqa: E501
 
         :param run_output: The run_output of this Execution.  # noqa: E501
         :type: AllOfExecutionRunOutput
