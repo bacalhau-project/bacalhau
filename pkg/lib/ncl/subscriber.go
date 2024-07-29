@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
@@ -124,7 +125,8 @@ func (s *subscriber) processMessage(m *nats.Msg) {
 	ctx := context.Background()
 	rMsg := &RawMessage{}
 	if err := s.messageDeserializer.Deserialize(m.Data, rMsg); err != nil {
-		// Handle error
+		// TODO: Handle error
+		log.Debug().Err(err).Send()
 		return
 	}
 
@@ -136,7 +138,8 @@ func (s *subscriber) processMessage(m *nats.Msg) {
 	// Deserialize payload
 	payload, err := s.payloadRegistry.DeserializePayload(rMsg.Metadata, rMsg.Payload)
 	if err != nil {
-		// Handle error
+		// TODO: Handle error
+		log.Debug().Err(err).Send()
 		return
 	}
 
@@ -148,13 +151,15 @@ func (s *subscriber) processMessage(m *nats.Msg) {
 	for _, handler := range s.messageHandlers {
 		if handler.ShouldProcess(ctx, message) {
 			if err = handler.HandleMessage(ctx, message); err != nil {
-				// Handle error
+				// TODO: Handle error
+				log.Debug().Err(err).Send()
 				return
 			}
 		}
 	}
 	if err = s.checkpointer.Checkpoint(message); err != nil {
-		// Handle error
+		// TODO: Handle error
+		log.Debug().Err(err).Send()
 		return
 	}
 }
