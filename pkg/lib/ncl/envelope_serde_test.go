@@ -31,7 +31,7 @@ func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
 			}
 
 			// Set the schema version for this test
-			suite.serializer.WithSchemaVersion(schemaVersion)
+			suite.serializer.WithSerializationVersion(schemaVersion)
 
 			// Serialize
 			data, err := suite.serializer.Serialize(original)

@@ -33,14 +33,27 @@ const (
 // The EnvelopeSerializer adds a version byte and a CRC checksum to each serialized message,
 // allowing for future extensibility, backward compatibility, and data integrity verification.
 type EnvelopeSerializer struct {
-	serializerSchemaVersion SchemaVersion
-	serializers             map[SchemaVersion]MessageSerDe
+	// serializationVersion represents the current schema version used for serializing messages.
+	// This version is included in the envelope header of each serialized message.
+	// Example: SchemaVersionJSONV1 for JSON serialization
+	serializationVersion SchemaVersion
+	// serializers is a map of schema versions to their corresponding MessageSerDe implementations.
+	// It allows the EnvelopeSerializer to:
+	// 1. Use different serialization methods based on the current schema version.
+	// 2. Deserialize messages that were encoded using different schema versions.
+	// This enables backward compatibility and supports evolution of the serialization format.
+	//
+	// Example: {
+	//    SchemaVersionJSONV1:     &JSONMessageSerializer{},
+	//    SchemaVersionProtobufV1: &ProtoSerializer{},
+	// }
+	serializers map[SchemaVersion]MessageSerDe
 }
 
 // NewEnvelopeSerializer creates a new EnvelopeSerializer with default serializers
 func NewEnvelopeSerializer() *EnvelopeSerializer {
 	return &EnvelopeSerializer{
-		serializerSchemaVersion: DefaultSchemaVersion,
+		serializationVersion: DefaultSchemaVersion,
 		serializers: map[SchemaVersion]MessageSerDe{
 			SchemaVersionJSONV1:     &JSONMessageSerializer{},
 			SchemaVersionProtobufV1: &ProtoSerializer{},
@@ -48,28 +61,28 @@ func NewEnvelopeSerializer() *EnvelopeSerializer {
 	}
 }
 
-// WithSchemaVersion sets the schema version used for serialization of new messages.
-// it does not affect the deserialization of messages.
-func (v *EnvelopeSerializer) WithSchemaVersion(version SchemaVersion) *EnvelopeSerializer {
-	v.serializerSchemaVersion = version
+// WithSerializationVersion sets the schema version used for serialization.
+// This version will be used for all subsequent Serialize calls.
+// It does not affect the deserialization of messages.
+func (v *EnvelopeSerializer) WithSerializationVersion(version SchemaVersion) *EnvelopeSerializer {
+	v.serializationVersion = version
 	return v
 }
 
 // Serialize encodes a RawMessage into a byte slice, adding version information
-// and a CRC checksum. It uses the appropriate serializer based on the schema version.
+// and a CRC checksum. It uses the serializer corresponding to the current serializationVersion.
 func (v *EnvelopeSerializer) Serialize(msg *RawMessage) ([]byte, error) {
-	version := v.serializerSchemaVersion
-	serializer := v.serializers[version]
+	serializer := v.serializers[v.serializationVersion]
 	msgBytes, err := serializer.Serialize(msg)
 	if err != nil {
-		return nil, NewErrSerializationFailed(version.String(), err)
+		return nil, NewErrSerializationFailed(v.serializationVersion.String(), err)
 	}
 
 	// Allocate the final message buffer
 	finalMsg := make([]byte, HeaderSize+len(msgBytes))
 
 	// Set SchemaVersion
-	finalMsg[0] = byte(version)
+	finalMsg[0] = byte(v.serializationVersion)
 
 	// Copy serialized message
 	copy(finalMsg[HeaderSize:], msgBytes)
