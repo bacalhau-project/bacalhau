@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto.v1;
+
+option go_package = ".";
+
+message Message {
+  Metadata metadata = 1;
+  Payload payload = 2;
+}
+
+message Metadata {
+  map<string, string> fields = 1;
+  bytes checksum = 2; // checksum of the metadata
+}
+
+message Payload {
+  bytes data = 1;
+  bytes checksum = 2; // checksum of the payload
+}
+

@@ -8,7 +8,6 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -27,7 +26,7 @@ type EngineSpec struct {
 }
 
 func (c EngineSpec) Validate() error {
-	if validate.IsBlank(c.Image) {
+	if len(c.Image) == 0 {
 		return fmt.Errorf("invalid docker engine param: 'Image' cannot be empty")
 	}
 	if c.WorkingDirectory != "" {
