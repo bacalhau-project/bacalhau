@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-make build
+GOOS=$1 GOARCH=$2 make build-bacalhau-tgz
