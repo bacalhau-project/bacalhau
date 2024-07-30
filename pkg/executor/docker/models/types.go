@@ -39,10 +39,6 @@ func (c EngineSpec) Validate() error {
 				"must contain absolute path", c.WorkingDirectory)
 		}
 	}
-	if len(c.EnvironmentVariables)%2 != 0 {
-		return fmt.Errorf("invalid docker engine param: 'EnvironmentVariables' (%s) "+
-			"must contain an even number of elements to represent environment variable key-value pairs", c.EnvironmentVariables)
-	}
 	return nil
 }
 
