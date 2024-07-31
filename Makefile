@@ -202,7 +202,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 
 .PHONY: build-webui
 build-webui: resolve-earthly
-	cd webui && ${EARTHLY} --push +all
+	cd webui && ${EARTHLY} +all
 
 
 ################################################################################
