@@ -10,11 +10,12 @@ func _() {
 	var x [1]struct{}
 	_ = x[UnknownStorage-0]
 	_ = x[BoltDB-1]
+	_ = x[BadgerDB-2]
 }
 
-const _StorageType_name = "UnknownStorageBoltDB"
+const _StorageType_name = "UnknownStorageBoltDBBadgerDB"
 
-var _StorageType_index = [...]uint8{0, 14, 20}
+var _StorageType_index = [...]uint8{0, 14, 20, 28}
 
 func (i StorageType) String() string {
 	if i < 0 || i >= StorageType(len(_StorageType_index)-1) {

@@ -13,6 +13,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/badgerdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
@@ -166,6 +167,8 @@ func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig) (stor
 	switch storeCfg.Type {
 	case types.BoltDB:
 		return boltdb.NewStore(ctx, storeCfg.Path)
+	case types.BadgerDB:
+		return badgerdb.NewStore(storeCfg.Path)
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}

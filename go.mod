@@ -15,6 +15,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dgraph-io/badger/v3 v3.2103.5
 	github.com/docker/docker v25.0.4+incompatible
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
@@ -103,6 +104,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.0 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -115,6 +118,9 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/golang/glog v1.2.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.1 // indirect

@@ -7,15 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 )
 
 const (
-	newExecutionComment = "LocalExecutionState created"
-
 	DefaultSliceRetrievalCapacity = 10
 
 	BucketExecutionsName = "execution"
@@ -371,7 +370,7 @@ func (s *Store) createExecution(tx *bolt.Tx, localExecutionState store.LocalExec
 		return err
 	}
 
-	return s.appendHistory(tx, localExecutionState, store.ExecutionStateUndefined, newExecutionComment)
+	return s.appendHistory(tx, localExecutionState, store.ExecutionStateUndefined, store.NewExecutionMessage)
 }
 
 // UpdateExecutionState updates the current state of the execution

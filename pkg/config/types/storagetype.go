@@ -15,7 +15,7 @@ type JobStoreConfig struct {
 
 func (cfg JobStoreConfig) Validate() error {
 	var err error
-	if cfg.Type <= UnknownStorage || cfg.Type > BoltDB {
+	if cfg.Type <= UnknownStorage || cfg.Type > BadgerDB {
 		err = errors.Join(err, fmt.Errorf("unknown execution store type: %q", cfg.Type.String()))
 	}
 
@@ -32,6 +32,7 @@ type StorageType int64
 const (
 	UnknownStorage StorageType = 0
 	BoltDB         StorageType = 1
+	BadgerDB       StorageType = 2
 )
 
 func (j *StorageType) UnmarshalText(text []byte) error {
@@ -57,7 +58,7 @@ func (j *StorageType) UnmarshalYAML(value *yaml.Node) error {
 }
 
 func ParseStorageType(s string) (ret StorageType, err error) {
-	for typ := UnknownStorage; typ <= BoltDB; typ++ {
+	for typ := UnknownStorage; typ <= BadgerDB; typ++ {
 		if equal(typ.String(), s) {
 			return typ, nil
 		}
