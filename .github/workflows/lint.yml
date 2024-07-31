@@ -1,0 +1,29 @@
+name: Lints
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [ok-to-test]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - run: echo "GO_VER=$(cat .tool-versions | grep 'golang ' | cut -d' ' -f2)" >> $GITHUB_ENV
+      - run: echo "NODE_VER=$(cat .tool-versions | grep nodejs | cut -d' ' -f2)" >> $GITHUB_ENV
+
+      - name: Install asdf & tools
+        uses: asdf-vm/actions/install@v3
+
+      - name: Add asdf to PATH
+        run: echo "~/.asdf/shims" >> $GITHUB_PATH
+
+      - run: go mod tidy
+      - name: Run pre-commit
+        run: |
+          pre-commit run --show-diff-on-failure --color=always --all-files

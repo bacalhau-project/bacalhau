@@ -1,0 +1,57 @@
+name: CircleCI Trigger Action
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - main
+    tags:
+      - v**
+  workflow_run:
+    workflows: ["Dependabot", "Trigger on Comment"]
+    types:
+      - completed
+  repository_dispatch:
+    types: [ok-to-test]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  trigger-circle-ci:
+    if: |
+      !contains(github.event.pull_request.labels.*.name, 'do-not-merge') &&
+      !contains(github.event.pull_request.labels.*.name, 'wip')
+    runs-on: ubuntu-latest
+    name: Pull Request Triggered CircleCI
+    steps:
+      # For Debugging Below
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+      - uses: actions/checkout@v3
+      - name: Trigger CircleCI
+        id: trigger-circle-ci
+        run: |
+          if [[ -z $CIRCLE_TOKEN ]]; then
+            echo "CIRCLE_TOKEN is not set. Exiting."
+            exit 1
+          fi
+          ./.circleci/trigger_pipeline.sh
+        env:
+          CIRCLE_TOKEN: ${{ secrets.CIRCLE_CI_TOKEN }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.event.ref }}
