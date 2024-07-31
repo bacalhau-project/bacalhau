@@ -35,6 +35,9 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 # Install Pre Commit
 RUN pip install pre-commit
 
+# Install GoTestSum
+RUN go install gotest.tools/gotestsum@v1.8.2
+
 # Verify installations
 RUN go version && python3 --version
 
