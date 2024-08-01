@@ -204,7 +204,7 @@ resource "google_compute_address" "ipv4_address" {
   name   = "bacalhau-ipv4-address-${terraform.workspace}-${count.index}"
   count  = var.protect_resources ? var.instance_count : 0
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
@@ -225,7 +225,7 @@ resource "google_compute_disk" "bacalhau_disk" {
   size     = var.volume_size_gb
   snapshot = var.restore_from_backup
   lifecycle {
-    prevent_destroy = false
+    prevent_destroy = true
   }
 }
 
