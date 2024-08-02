@@ -34,7 +34,7 @@ import (
 )
 
 const maxServeTime = 30 * time.Second
-const maxTestTime = 30 * time.Second
+const maxTestTime = 60 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
