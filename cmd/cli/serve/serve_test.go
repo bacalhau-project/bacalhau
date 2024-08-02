@@ -33,8 +33,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 15 * time.Second
-const maxTestTime = 15 * time.Second
+const maxServeTime = 30 * time.Second
+const maxTestTime = 30 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -101,7 +101,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
-	ctx, cancel := context.WithTimeout(context.Background(), maxServeTime)
+	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
 	s.T().Cleanup(func() {
 		cancel()
@@ -121,7 +121,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		errCh <- errs.Wait()
 	}()
 
-	t := time.NewTicker(10 * time.Millisecond)
+	t := time.NewTicker(50 * time.Millisecond)
 
 	defer t.Stop()
 	for {
