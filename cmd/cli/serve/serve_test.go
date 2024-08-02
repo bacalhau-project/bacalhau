@@ -101,7 +101,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 	cmd.SetArgs(args)
 	s.T().Logf("Command to execute: %q", args)
 
-	ctx, cancel := context.WithTimeout(s.ctx, maxServeTime)
+	ctx, cancel := context.WithTimeout(context.Background(), maxServeTime)
 	errs, ctx := errgroup.WithContext(ctx)
 	s.T().Cleanup(func() {
 		cancel()
