@@ -211,7 +211,7 @@ build-webui: resolve-earthly
 ${BINARY_PATH}: build-bacalhau build-plugins
 
 .PHONY: build-bacalhau
-build-bacalhau: binary-web binary
+build-bacalhau: binary
 
 CMD_FILES := $(shell bash -c 'comm -23 <(git ls-files cmd | sort) <(git ls-files cmd --deleted | sort)')
 PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files pkg --deleted | sort)')
