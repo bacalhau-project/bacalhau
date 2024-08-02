@@ -12,8 +12,8 @@ curl \
   -X POST \
   --fail-with-body \
   -H "Authorization: Token token=\"$BUILDKITE_ANALYTICS_TOKEN\"" \
-  -F "data=@unittest.xml" \
-  -F "format=junit" \
+  -F "data=@_unit.json" \
+  -F "format=json" \
   -F "run_env[CI]=buildkite" \
   -F "run_env[key]=$BUILDKITE_BUILD_ID" \
   -F "run_env[number]=$BUILDKITE_BUILD_NUMBER" \
