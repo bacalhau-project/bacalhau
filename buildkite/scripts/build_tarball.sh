@@ -1,6 +1,5 @@
 #!/bin/bash
 
-source "${BASH_ENV}"
 echo "$PRIVATE_PEM_B64" | base64 --decode > /tmp/private.pem
 echo "$PUBLIC_PEM_B64" | base64 --decode > /tmp/public.pem
 export PRIVATE_KEY_PASSPHRASE="$(echo $PRIVATE_KEY_PASSPHRASE_B64 | base64 --decode)"

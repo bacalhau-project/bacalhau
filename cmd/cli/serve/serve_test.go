@@ -121,7 +121,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 		errCh <- errs.Wait()
 	}()
 
-	t := time.NewTicker(50 * time.Millisecond)
+	t := time.NewTicker(10 * time.Millisecond)
 
 	defer t.Stop()
 	for {
