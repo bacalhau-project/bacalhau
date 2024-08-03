@@ -33,7 +33,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
-export EARTHLY ?= $(shell command -v earthly --push 2> /dev/null)
+export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau

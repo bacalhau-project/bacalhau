@@ -1,0 +1,10 @@
+
+
+steps:
+  - label: ":swagger: Generate Swagger"
+    command: "./scripts/generate_swagger.sh"
+
+  - wait: ~
+
+  - label: ":python: Build Python API Client"
+    command: "./buildkite/scripts/build_python_client.sh"

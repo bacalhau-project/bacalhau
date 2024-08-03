@@ -38,6 +38,8 @@ RUN pip install pre-commit
 # Install GoTestSum
 RUN go install gotest.tools/gotestsum@v1.8.2
 
+# Install Swag
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
 # Verify installations
 RUN go version && python3 --version
-
