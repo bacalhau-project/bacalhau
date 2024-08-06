@@ -21,6 +21,5 @@ type MetricsConfig struct {
 
 type UpdateConfig struct {
 	SkipChecks     bool     `yaml:"SkipChecks"`
-	CheckStatePath string   `yaml:"StatePath"`
 	CheckFrequency Duration `yaml:"CheckFrequency"`
 }

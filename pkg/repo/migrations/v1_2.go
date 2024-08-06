@@ -9,8 +9,8 @@ const legacyIPFSSwarmAddressesKey = "Node.IPFS.SwarmAddresses"
 const legacyBootstrapAddressesKey = "Node.BootstrapAddresses"
 
 var V1Migration = repo.NewMigration(
-	repo.RepoVersion1,
-	repo.RepoVersion2,
+	repo.Version1,
+	repo.Version2,
 	func(r repo.FsRepo) error {
 		configExist, err := configExists(r)
 		if err != nil {
