@@ -119,7 +119,7 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
-	// attempt to derive an set an instanceID
+	// attempt to derive and set an instanceID
 	fsr.maybePersistInstanceID()
 
 	return fsr.WriteVersion(Version4)
@@ -173,13 +173,8 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
-	// if the instanceID is unset attempted to derive and set it.
-	maybeInstanceID, err := fsr.ReadInstanceID()
-	if err == nil {
-		if maybeInstanceID == "" {
-			fsr.maybePersistInstanceID()
-		}
-	}
+	// attempt to derive and set an instanceID
+	fsr.maybePersistInstanceID()
 
 	return nil
 }
