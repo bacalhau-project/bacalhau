@@ -61,25 +61,14 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	var version int
-	// check if the system metadata file is present
-	if _, err := os.Stat(fsr.join(SystemMetadataFile)); os.IsNotExist(err) {
-		// if it's not present check for the LegacyVersionFile
-		// if neither file exists, then the repo is uninitialized.
-		if _, err := os.Stat(fsr.join(LegacyVersionFile)); os.IsNotExist(err) {
+	version, err := fsr.Version()
+	if err != nil {
+		// if the repo version does not exist, then the repo is uninitialized, we don't need to error.
+		if os.IsNotExist(err) {
 			return false, nil
 		}
-		version, err = fsr.readLegacyVersion()
-		if err != nil {
-			return false, err
-		}
-	} else if err != nil {
+		// if the repo version does exist, but could not be read this is an error.
 		return false, err
-	} else {
-		version, err = fsr.readVersion()
-		if err != nil {
-			return false, err
-		}
 	}
 	if !IsValidVersion(version) {
 		return false, NewUnknownRepoVersionError(version)
@@ -89,14 +78,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 
 // Version returns the version of the repo.
 func (fsr *FsRepo) Version() (int, error) {
-	maybeVersion, err := fsr.readVersion()
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fsr.readLegacyVersion()
-		}
-		return -1, err
-	}
-	return maybeVersion, nil
+	return fsr.readVersion()
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.

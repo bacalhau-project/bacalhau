@@ -13,12 +13,16 @@ import (
 // versions persist the repo version to system_metadata.yaml
 const LegacyVersionFile = "repo.version"
 
+type Version struct {
+	Version int
+}
+
 // readLegacyVersion reads the repo version from the LegacyVersionFile.
 func (fsr *FsRepo) readLegacyVersion() (int, error) {
 	versionPath := fsr.join(LegacyVersionFile)
 	versionBytes, err := os.ReadFile(versionPath)
 	if err != nil {
-		return -1, err
+		return UnknownVersion, err
 	}
 	var version Version
 	if err := json.Unmarshal(versionBytes, &version); err != nil {

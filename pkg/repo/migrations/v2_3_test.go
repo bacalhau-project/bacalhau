@@ -49,7 +49,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
-	suite.Equal(expectedRepoVersion, repoVersion)
+	suite.Equal(repo.Version3, repoVersion)
 
 	// verify configs where updated as expected
 	_, cfg, err := readConfig(*suite.repo)
@@ -81,7 +81,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
-	suite.Equal(expectedRepoVersion, repoVersion)
+	suite.Equal(repo.Version3, repoVersion)
 
 	// verify configs where updated as expected, and that network port was not changed
 	_, cfg, err := readConfig(*suite.repo)
@@ -114,7 +114,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
-	suite.Equal(expectedRepoVersion, repoVersion)
+	suite.Equal(repo.Version3, repoVersion)
 
 	// verify configs where NOT updated and the custom stores were not renamed
 	_, cfg, err := readConfig(*suite.repo)
@@ -145,7 +145,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
-	suite.Equal(expectedRepoVersion, repoVersion)
+	suite.Equal(repo.Version3, repoVersion)
 
 	// verify configs where updated as expected
 	_, cfg, err := readConfig(*suite.repo)

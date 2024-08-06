@@ -10,15 +10,38 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
+const UnknownVersion = -1
+
+const (
+	// Version1 is the repo versioning for v1-v1.1.4
+	Version1 = iota + 1
+	// Version2 is the repo versioning up to v1.2.1
+	Version2
+	// Version3 is the repo version to (including) v1.4.0
+	Version3
+	// Version4 is the current repo version
+	Version4
+	// Add new versions here when needed
+	// RepoVersion5
+	// RepoVersion6
+	// ...
+)
+
+// IsValidVersion returns true if the version is valid.
+func IsValidVersion(version int) bool {
+	return version >= Version1 && version <= Version4
+}
+
+// SystemMetadataFile is the name of the file containing the SystemMetadata.
+const SystemMetadataFile = "system_metadata.yaml"
+
 type SystemMetadata struct {
-	RepoVersion     int       `yaml:"Version"`
+	RepoVersion     int       `yaml:"RepoVersion"`
 	InstallationID  string    `yaml:"InstallationID"`
 	LastUpdateCheck time.Time `yaml:"LastUpdateCheck"`
 }
 
-const SystemMetadataFile = "system_metadata.yaml"
-
-// WriteVersion updates the Version in the metadata.
+// WriteVersion updates the RepoVersion in the SystemMetadataFile.
 // If the metadata file doesn't exist, it creates a new one.
 func (fsr *FsRepo) WriteVersion(version int) error {
 	if version < Version4 {
@@ -29,14 +52,29 @@ func (fsr *FsRepo) WriteVersion(version int) error {
 	})
 }
 
+// readVersion reads the RepoVersion in the SystemMetadataFile.
+// For repos w/ version <= Version3, the version in repo.version is read.
+// If SystemMetadataFile or repo.version doesn't exist, or if their content is invalid, an error is returned.
+func (fsr *FsRepo) readVersion() (int, error) {
+	sysmeta, err := fsr.readMetadata()
+	if err != nil {
+		// if the system metadata file does not exist attempt to read the legacy version
+		if os.IsNotExist(err) {
+			return fsr.readLegacyVersion()
+		}
+		return UnknownVersion, err
+	}
+	return sysmeta.RepoVersion, nil
+}
+
 // ReadLastUpdateCheck returns the last update check value from system_metadata.yaml
 // It fails if the metadata file doesn't exist.
 func (fsr *FsRepo) ReadLastUpdateCheck() (time.Time, error) {
-	repoMeta, err := fsr.readMetadata()
+	sysmeta, err := fsr.readMetadata()
 	if err != nil {
 		return time.Time{}, err
 	}
-	return repoMeta.LastUpdateCheck, nil
+	return sysmeta.LastUpdateCheck, nil
 }
 
 // WriteLastUpdateCheck updates the LastUpdateCheck in the metadata.
@@ -47,11 +85,19 @@ func (fsr *FsRepo) WriteLastUpdateCheck(lastUpdateCheck time.Time) error {
 	})
 }
 
+func (fsr *FsRepo) ReadInstallationID() (string, error) {
+	sysmeta, err := fsr.readMetadata()
+	if err != nil {
+		return "", err
+	}
+	return sysmeta.InstallationID, nil
+}
+
 // WriteInstallationID updates the InstallationID in the metadata.
 // It fails if the metadata file doesn't exist.
 func (fsr *FsRepo) WriteInstallationID(id string) error {
-	return fsr.updateExistingMetadata(func(metadata *SystemMetadata) {
-		metadata.InstallationID = id
+	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
+		sysmeta.InstallationID = id
 	})
 }
 
@@ -62,11 +108,11 @@ func (fsr *FsRepo) readMetadata() (*SystemMetadata, error) {
 	if err != nil {
 		return nil, err
 	}
-	metadata := new(SystemMetadata)
-	if err := yaml.Unmarshal(metaBytes, metadata); err != nil {
+	sysmeta := new(SystemMetadata)
+	if err := yaml.Unmarshal(metaBytes, sysmeta); err != nil {
 		return nil, fmt.Errorf("unmarshalling repo system metadata: %w", err)
 	}
-	return metadata, nil
+	return sysmeta, nil
 }
 
 // writeMetadata marshals the provided SystemMetadata to YAML
@@ -89,28 +135,28 @@ func (fsr *FsRepo) writeMetadata(m *SystemMetadata) error {
 func (fsr *FsRepo) updateOrCreateMetadata(updateFunc func(*SystemMetadata)) error {
 	filePath := fsr.join(SystemMetadataFile)
 
-	var metadata *SystemMetadata
+	var sysmeta *SystemMetadata
 
 	// Check if the file exists
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		// File doesn't exist, create new metadata
-		metadata = &SystemMetadata{}
+		sysmeta = &SystemMetadata{}
 	} else if err != nil {
 		return fmt.Errorf("checking system metadata file: %w", err)
 	} else {
 		// File exists, read the current metadata
-		metadata, err = fsr.readMetadata()
+		sysmeta, err = fsr.readMetadata()
 		if err != nil {
 			return fmt.Errorf("reading existing metadata: %w", err)
 		}
 	}
 
 	// Apply the update
-	updateFunc(metadata)
+	updateFunc(sysmeta)
 
 	// Write the updated metadata back to the file
-	return fsr.writeMetadata(metadata)
+	return fsr.writeMetadata(sysmeta)
 }
 
 // updateExistingMetadata updates an existing metadata file.

@@ -1,0 +1,12 @@
+node:
+    compute:
+        executionstore:
+            Type: BoltDB
+            Path: ./compute_store/executions.db
+    name: n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d
+    requester:
+        jobstore:
+            Type: BoltDB
+            Path: ./orchestrator_store/jobs.db
+user:
+    installationid: 12345678-abcd-1234-abcd-123456789012
