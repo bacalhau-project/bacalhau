@@ -98,7 +98,7 @@ func NewCmd() *cobra.Command {
 			}
 			// override the repo path set in the root command with the derived path.
 			v.Set("repo", repoPath)
-			cfg := config.New(config.WithViper(v))
+			cfg := config.New()
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
 			if err != nil {

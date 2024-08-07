@@ -20,7 +20,7 @@ func SetupRepoConfig(cmd *cobra.Command) (types.BacalhauConfig, error) {
 	if repoPath == "" {
 		return types.BacalhauConfig{}, fmt.Errorf("repo path not set")
 	}
-	cfg := config.New(config.WithViper(v))
+	cfg := config.New()
 	// create or open the bacalhau repo and load the config
 	r, err := setup.SetupBacalhauRepo(repoPath, cfg)
 	if err != nil {

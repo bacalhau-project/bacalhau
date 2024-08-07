@@ -63,7 +63,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConf
 	// create a specific viper instance for testing
 	v := viper.New()
 	// init a config with this viper instance using the local configuration as default
-	cfg := config.New(config.WithDefaultConfig(configenv.Local), config.WithViper(v))
+	cfg := config.New(config.WithDefaultConfig(configenv.Local))
 
 	// create a temporary dir to serve as bacalhau repo whose name includes the current time to avoid collisions with
 	/// other tests

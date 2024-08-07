@@ -29,7 +29,6 @@ type Reader interface {
 var _ Writer = (*config)(nil)
 
 type Writer interface {
-	Load(path string) error
 	Set(key string, value interface{})
 	SetIfAbsent(key string, value interface{})
 }
@@ -67,9 +66,12 @@ var (
 
 type config struct {
 	// viper instance for holding user provided configuration
-	v *viper.Viper
+	base *viper.Viper
 	// the default configuration values to initialize with
 	defaultCfg types.BacalhauConfig
+
+	loadXDG  string
+	loadRepo string
 }
 
 type Option = func(s *config)
@@ -80,93 +82,130 @@ func WithDefaultConfig(cfg types.BacalhauConfig) Option {
 	}
 }
 
-func WithViper(v *viper.Viper) Option {
+func WithXDGPath(path string) Option {
 	return func(c *config) {
-		c.v = v
+		c.loadXDG = path
+	}
+}
+
+func WithRepoPath(path string) Option {
+	return func(c *config) {
+		c.loadRepo = path
 	}
 }
 
 func New(opts ...Option) *config {
+	xdgPath, err := os.UserConfigDir()
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to find user config dir")
+	} else {
+		xdgPath = filepath.Join(xdgPath, "bacalhau", FileName)
+	}
+
 	c := &config{
-		v:          viper.New(),
+		base:       viper.New(),
 		defaultCfg: configenv.Production,
+		loadRepo:   filepath.Join(viper.GetString("repo"), FileName),
+		loadXDG:    xdgPath,
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.v.SetEnvPrefix(environmentVariablePrefix)
-	c.v.SetTypeByDefaultValue(inferConfigTypes)
-	c.v.AutomaticEnv()
-	c.v.SetEnvKeyReplacer(environmentVariableReplace)
+	c.base.SetEnvPrefix(environmentVariablePrefix)
+	c.base.SetTypeByDefaultValue(inferConfigTypes)
+	c.base.AutomaticEnv()
+	c.base.SetEnvKeyReplacer(environmentVariableReplace)
+
+	// 1. Set default fields in the config, these are used for fields without a corresponding file/flag/envvars value.
+	// e.g. if no flags or environment values are provided these defaults are used.
 	c.setDefault(c.defaultCfg)
-	return c
-}
 
-// Load merges a configuration file with the current configuration, ensuring
-// that values set via the config flag (-c or --config) take precedence.
-// This allows users to override config values in multiple ways:
-// - Provide one or more config files
-// - Specify individual config values (e.g., "-c WebUI.Enabled=true")
-// - Use a combination of files and individual values
-// The function carefully merges these sources, maintaining the correct
-// precedence: flag values > file config in bacalhau repo > default values.
-func (c *config) Load(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return fmt.Errorf("config file not found at path: %q: %w", path, err)
-	} else if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	// Create a new Viper instance for the file-based config
-	fileConfig := viper.New()
-	fileConfig.SetConfigFile(path)
-
-	// Load the file-based config
-	if err := fileConfig.ReadInConfig(); err != nil {
-		return fmt.Errorf("failed to load config file: %w", err)
-	}
-
-	// Create a new config instance for the result
-	newConfig := New(WithViper(viper.New()))
-
-	// Merge file config
-	if err := newConfig.v.MergeConfigMap(fileConfig.AllSettings()); err != nil {
-		return fmt.Errorf("failed to merge file config: %w", err)
-	}
-
-	// Create a default config to compare against
-	defaultConfig := New(WithViper(viper.New()))
-	defaultConfig.setDefault(c.defaultCfg)
-
-	// Apply only user-set overrides that were provided via the --config flag
-	for _, key := range c.v.AllKeys() {
-		// But don't(!) override the new config with values considered to be default.
-		// this step is required because viper can't differentiate between default values and overrides.
-		defaultValue := defaultConfig.v.Get(key)
-		setValue := c.v.Get(key)
-		if !reflect.DeepEqual(defaultValue, setValue) {
-			newConfig.Set(key, c.v.Get(key))
-			fmt.Printf("Applying user override for key %s: %v\n", key, c.v.Get(key))
+	// 2. Attempt to read a config file from the bacalhau repo, taking precedence
+	// over default values.
+	//
+	// Note:
+	// - The presence of a config file is not mandatory at this stage.
+	// - Any values read from this config file will override the default values set in the previous step.
+	//
+	// Logging:
+	// - A warning will be logged if:
+	//   1. A config file was found but could not be read.
+	if c.loadRepo != "" {
+		if err := c.Merge(c.loadRepo); err != nil {
+			if !os.IsNotExist(err) {
+				log.Warn().Err(err).Msg("failed to read config from bacalhau repo")
+			}
 		}
 	}
 
-	// Replace the config's Viper instance with the new, merged instance
-	c.v = newConfig.v
-
-	for _, key := range c.v.AllKeys() {
-		viper.Set(key, c.v.Get(key))
+	// 3. Attempt to read a config file from the default user configuration directory, taking precedence over repo
+	// config.
+	// Location specified by: https://specifications.freedesktop.org/basedir-spec/latest/
+	//
+	// Note:
+	// - The presence of a config file is not mandatory at this stage.
+	// - Any values read from this config file will override the values set in repo config.
+	//
+	// Logging:
+	// - A warning will be logged if:
+	//   1. A config file was found but could not be read.
+	//   2. `os.UserConfigDir` returns an error, which typically indicates that the $HOME environment variable is
+	//      not defined (this is a rare occurrence).
+	if c.loadXDG != "" {
+		if err := c.Merge(c.loadXDG); err != nil {
+			if !os.IsNotExist(err) {
+				log.Warn().Err(err).Msg("failed to read config from user config dir")
+			}
+		}
 	}
 
+	// 4. Finally, merge in any configuration values present on the global viper instance, taking precedence over user
+	// config directory.
+	// These values come from --config flags provided by the users and take the highest precedence.
+	settings := viper.GetViper().AllSettings()
+	if err := c.base.MergeConfigMap(settings); err != nil {
+		// NB(forrest): this method never errors: https://github.com/spf13/viper/blob/cc53fac037475edaec5cd2cae73e6c3cc5caef9e/viper.go#L1564
+		// I suspect the method signature contains an error return value as it returned an error at one point and the
+		// signature was left unchanged for compatibility reasons.
+		panic(fmt.Sprintf("DEVELOPER ERROR: viper.MergeConfigMap returned unexpected error: %s", err))
+	}
+
+	// NB(forrest): from the above comments set 1 has lowest precedence, step 4 has highest precedence.
+	return c
+}
+
+// Load reads in the configuration file specified by `path` overriding any previously set configuration with the values
+// from the read config file.
+// Load returns an error if the file cannot be read.
+func (c *config) Load(path string) error {
+	c.base.SetConfigFile(path)
+	if err := c.base.ReadInConfig(); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (c *config) Write(path string) error {
-	return c.v.WriteConfigAs(path)
+func (c *config) Merge(path string) error {
+	c.base.SetConfigFile(path)
+	if err := c.base.MergeInConfig(); err != nil {
+		return err
+	}
+	return nil
 }
 
+// Write persists the current configuration to `path`.
+// Write returns an error if:
+//   - the path cannot be accessed
+//   - the current configuration cannot be marshalled.
+func (c *config) Write(path string) error {
+	return c.base.WriteConfigAs(path)
+}
+
+// Current returns the current configuration.
+// Current returns an error if the configuration cannot be unmarshalled.
 func (c *config) Current() (types.BacalhauConfig, error) {
 	out := new(types.BacalhauConfig)
-	if err := c.v.Unmarshal(&out, DecoderHook); err != nil {
+	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 	return *out, nil
@@ -176,11 +215,11 @@ func (c *config) Current() (types.BacalhauConfig, error) {
 // This value won't be persisted in the config file.
 // Will be used instead of values obtained via flags, config file, ENV, default.
 func (c *config) Set(key string, value interface{}) {
-	c.v.Set(key, value)
+	c.base.Set(key, value)
 }
 
 func (c *config) SetIfAbsent(key string, value interface{}) {
-	if !c.v.IsSet(key) || reflect.ValueOf(c.v.Get(key)).IsZero() {
+	if !c.base.IsSet(key) || reflect.ValueOf(c.base.Get(key)).IsZero() {
 		c.Set(key, value)
 	}
 }
@@ -188,7 +227,7 @@ func (c *config) SetIfAbsent(key string, value interface{}) {
 // setDefault sets the default value for the configuration.
 // Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
 func (c *config) setDefault(config types.BacalhauConfig) {
-	types.SetDefaults(config, types.WithViper(c.v))
+	types.SetDefaults(config, types.WithViper(c.base))
 }
 
 // WritePersistedConfigs will write certain values from the resolved config to the persisted config.
