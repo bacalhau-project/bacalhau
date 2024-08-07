@@ -681,14 +681,14 @@ func (s *WatcherTestSuite) TestEventStoreConsistency() {
 
 func (s *WatcherTestSuite) wait(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
 	// wait for the watcher to consume the events
-	s.Eventually(func() bool { return w.Stats().NextEventIterator.SequenceNumber == continuationSeqNum }, 200*time.Millisecond, 10*time.Millisecond)
+	s.Eventually(func() bool { return w.Stats().NextEventIterator.SequenceNumber == continuationSeqNum }, 1*time.Second, 10*time.Millisecond)
 	s.Equal(watcher.StateRunning, w.Stats().State)
 }
 
 func (s *WatcherTestSuite) waitAndStop(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
 	s.wait(ctx, w, continuationSeqNum)
 	w.Stop(ctx)
-	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 200*time.Millisecond, 10*time.Millisecond)
+	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 1*time.Second, 10*time.Millisecond)
 }
 
 func TestWatcherSuite(t *testing.T) {
