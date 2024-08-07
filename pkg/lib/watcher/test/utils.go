@@ -3,10 +3,13 @@ package test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 )
 
 // CreateBoltDB creates a new BoltDB database for testing
@@ -27,4 +30,14 @@ func CreateBoltDB(t *testing.T) *bbolt.DB {
 	})
 
 	return db
+}
+
+// CreateSerializer creates a new JSONSerializer for testing
+func CreateSerializer(t *testing.T) *watcher.JSONSerializer {
+	t.Helper()
+
+	serializer := watcher.NewJSONSerializer()
+	require.NoError(t, serializer.RegisterType("TestObject", reflect.TypeOf(TestObject{})))
+
+	return serializer
 }

@@ -27,7 +27,9 @@ type WatcherTestSuite struct {
 
 func (s *WatcherTestSuite) SetupTest() {
 	boltdbEventStore, err := boltdb.NewEventStore(watchertest.CreateBoltDB(s.T()),
-		boltdb.WithLongPollingTimeout(1*time.Second))
+		boltdb.WithLongPollingTimeout(1*time.Second),
+		boltdb.WithEventSerializer(watchertest.CreateSerializer(s.T())),
+	)
 	s.Require().NoError(err)
 
 	s.ctrl = gomock.NewController(s.T())

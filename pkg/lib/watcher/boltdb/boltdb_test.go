@@ -35,6 +35,7 @@ func (s *BoltDBEventStoreTestSuite) SetupTest() {
 		WithGCAgeThreshold(2*time.Hour),
 		WithGCCadence(3*time.Hour),
 		WithClock(s.clock),
+		WithEventSerializer(watchertest.CreateSerializer(s.T())),
 	)
 	s.Require().NoError(err)
 	s.store = store
@@ -52,7 +53,7 @@ func (s *BoltDBEventStoreTestSuite) TestStoreAndRetrieveEvents() {
 	s.assertEventsResponse(resp, 5, watcher.AfterSequenceNumberIterator(5))
 
 	for i, event := range resp.Events {
-		s.assertEventEquals(event, uint64(i+1), watcher.OperationCreate, "TestObject", i+1)
+		s.assertEventEquals(event, uint64(i+1), watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: i + 1})
 	}
 }
 
@@ -162,11 +163,11 @@ func (s *BoltDBEventStoreTestSuite) TestNotifyOnStore() {
 
 	s.assertChannelsEmpty(respCh, errCh)
 
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", "new event"))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Name: "new event"}))
 
 	resp := s.assertResponseReceived(respCh, errCh)
 	s.assertEventsResponse(resp, 1, watcher.AfterSequenceNumberIterator(1))
-	s.assertEventEquals(resp.Events[0], 1, watcher.OperationCreate, "TestObject", "new event")
+	s.assertEventEquals(resp.Events[0], 1, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Name: "new event"})
 }
 
 func (s *BoltDBEventStoreTestSuite) TestLongPolling() {
@@ -204,7 +205,7 @@ func (s *BoltDBEventStoreTestSuite) TestGarbageCollection() {
 	s.storeEvents(5, watcher.OperationCreate, "TestObject")
 
 	s.clock.Add(2 * time.Hour)
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", "recent"))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Name: "recent"}))
 
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher1", 3))
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher2", 6))
@@ -218,9 +219,9 @@ func (s *BoltDBEventStoreTestSuite) TestGarbageCollection() {
 
 	resp := s.getEvents(watcher.TrimHorizonIterator(), 10, watcher.EventFilter{})
 	s.assertEventsResponse(resp, 3, watcher.AfterSequenceNumberIterator(6))
-	s.assertEventEquals(resp.Events[0], 4, watcher.OperationCreate, "TestObject", 4)
-	s.assertEventEquals(resp.Events[1], 5, watcher.OperationCreate, "TestObject", 5)
-	s.assertEventEquals(resp.Events[2], 6, watcher.OperationCreate, "TestObject", "recent")
+	s.assertEventEquals(resp.Events[0], 4, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 4})
+	s.assertEventEquals(resp.Events[1], 5, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 5})
+	s.assertEventEquals(resp.Events[2], 6, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Name: "recent"})
 }
 
 func (s *BoltDBEventStoreTestSuite) TestConcurrentOperations() {
@@ -274,8 +275,8 @@ func (s *BoltDBEventStoreTestSuite) TestZeroLimit() {
 
 	resp := s.getEvents(watcher.TrimHorizonIterator(), 10, watcher.EventFilter{})
 	s.Require().Len(resp.Events, 2)
-	s.assertEventEquals(resp.Events[0], uint64(1), watcher.OperationCreate, "TestObject", 1)
-	s.assertEventEquals(resp.Events[1], uint64(2), watcher.OperationCreate, "TestObject", 2)
+	s.assertEventEquals(resp.Events[0], uint64(1), watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 1})
+	s.assertEventEquals(resp.Events[1], uint64(2), watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 2})
 
 	s.Require().Equal(watcher.AfterSequenceNumberIterator(2), resp.NextEventIterator)
 }
@@ -315,7 +316,7 @@ func (s *BoltDBEventStoreTestSuite) TestIteratorProgression() {
 	for i := 1; i <= 5; i++ {
 		resp := s.getEvents(iterator, 1, watcher.EventFilter{})
 		s.Require().Len(resp.Events, 1)
-		s.assertEventEquals(resp.Events[0], uint64(i), watcher.OperationCreate, "TestObject", i)
+		s.assertEventEquals(resp.Events[0], uint64(i), watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: i})
 		s.Equal(watcher.AfterSequenceNumberIterator(uint64(i)), resp.NextEventIterator)
 		iterator = resp.NextEventIterator
 	}
@@ -345,11 +346,34 @@ func (s *BoltDBEventStoreTestSuite) TestLatestIteratorWithNewEvents() {
 	s.Equal(watcher.AfterSequenceNumberIterator(5), resp.NextEventIterator)
 }
 
+func (s *BoltDBEventStoreTestSuite) TestCaching() {
+	s.storeEvents(1, watcher.OperationCreate, "TestObject")
+	event, found := s.store.cache.Get(1)
+	s.Require().True(found)
+	s.assertEventEquals(event, 1, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 1})
+
+	resp := s.getEvents(watcher.TrimHorizonIterator(), 10, watcher.EventFilter{})
+	s.assertEventsResponse(resp, 1, watcher.AfterSequenceNumberIterator(1))
+	s.Equal(event, resp.Events[0])
+}
+
+// TestNoCaching test we read directly and unmarshal from boltdb
+func (s *BoltDBEventStoreTestSuite) TestNoCaching() {
+	s.storeEvents(1, watcher.OperationCreate, "TestObject")
+	s.store.cache.Purge()
+	_, found := s.store.cache.Get(1)
+	s.Require().False(found)
+
+	resp := s.getEvents(watcher.TrimHorizonIterator(), 10, watcher.EventFilter{})
+	s.assertEventsResponse(resp, 1, watcher.AfterSequenceNumberIterator(1))
+	s.assertEventEquals(resp.Events[0], 1, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 1})
+}
+
 // Helper methods
 
 func (s *BoltDBEventStoreTestSuite) storeEvents(count int, operation watcher.Operation, objectType string) {
 	for i := 1; i <= count; i++ {
-		err := s.store.StoreEvent(s.ctx, operation, objectType, i)
+		err := s.store.StoreEvent(s.ctx, operation, objectType, watchertest.TestObject{Value: i})
 		s.Require().NoError(err)
 	}
 }
@@ -389,12 +413,12 @@ func (s *BoltDBEventStoreTestSuite) assertEventsResponse(resp *watcher.GetEvents
 	s.Equal(expectedNext, resp.NextEventIterator)
 }
 
-func (s *BoltDBEventStoreTestSuite) assertEventEquals(event watcher.Event, expectedSeqNum uint64, expectedOperation watcher.Operation, expectedObjectType string, expectedObject interface{}) {
+func (s *BoltDBEventStoreTestSuite) assertEventEquals(event watcher.Event, expectedSeqNum uint64, expectedOperation watcher.Operation, expectedObjectType string, expectedObject *watchertest.TestObject) {
 	s.Equal(expectedSeqNum, event.SeqNum, "Unexpected sequence number")
 	s.Equal(expectedOperation, event.Operation, "Unexpected operation")
 	s.Equal(expectedObjectType, event.ObjectType, "Unexpected object type")
 	if expectedObject != nil {
-		s.Equal(expectedObject, event.Object, "Unexpected object")
+		s.Equal(*expectedObject, event.Object, "Unexpected object")
 	}
 }
 
