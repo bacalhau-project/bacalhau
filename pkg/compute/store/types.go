@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -120,6 +121,8 @@ type ExecutionStore interface {
 	// GetExecutionCount returns a count of all executions that are in the specified
 	// state
 	GetExecutionCount(ctx context.Context, state LocalExecutionStateType) (uint64, error)
+	// GetEventStore returns the event store for the execution store
+	GetEventStore() watcher.EventStore
 	// Close provides the opportunity for the underlying store to cleanup
 	// any resources as the compute node is shutting down
 	Close(ctx context.Context) error
