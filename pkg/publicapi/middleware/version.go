@@ -6,7 +6,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/labstack/echo/v4"
-	echomiddelware "github.com/labstack/echo/v4/middleware"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -29,11 +29,20 @@ type VersionCheckError struct {
 	ServerVersion string
 }
 
+func stripPreRelease(version *semver.Version) (*semver.Version, error) {
+	newVersion, _ := semver.NewVersion(version.String())
+	_, err := newVersion.SetPrerelease("")
+	if err != nil {
+		return nil, err
+	}
+	return newVersion, nil
+}
+
 func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) echo.MiddlewareFunc {
-	return echomiddelware.RequestLoggerWithConfig(echomiddelware.RequestLoggerConfig{
+	return echomiddleware.RequestLoggerWithConfig(echomiddleware.RequestLoggerConfig{
 		// instructs logger to extract given list of headers from request.
 		LogHeaders: []string{apimodels.HTTPHeaderBacalhauGitVersion},
-		LogValuesFunc: func(c echo.Context, v echomiddelware.RequestLoggerValues) error {
+		LogValuesFunc: func(c echo.Context, v echomiddleware.RequestLoggerValues) error {
 			notif := Notification{
 				RequestID:     v.RequestID,
 				ClientID:      c.Response().Header().Get(apimodels.HTTPHeaderClientID),
@@ -70,10 +79,18 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 				notif.Message = fmt.Sprintf("received request with invalid client version: %s", cVersion[0])
 				return nil
 			}
-			// extract parsed client version for comparison
-			notif.ClientVersion = clientVersion.String()
 
-			diff := serverVersion.Compare(clientVersion)
+			// Strip the pre-release tag
+			strippedClientVersion, err := stripPreRelease(clientVersion)
+			if err != nil {
+				notif.Message = fmt.Sprintf("error stripping pre-release tag from client version: %s", err)
+				return nil
+			}
+
+			// extract parsed client version for comparison
+			notif.ClientVersion = strippedClientVersion.String()
+
+			diff := serverVersion.Compare(strippedClientVersion)
 			switch diff {
 			case 1:
 				// client version is less than server version
@@ -107,12 +124,20 @@ func VersionCheckMiddleware(serverVersion, minVersion semver.Version) echo.Middl
 				})
 			}
 
-			if clientVersion.LessThan(&minVersion) {
+			// Strip the pre-release tag
+			strippedClientVersion, err := stripPreRelease(clientVersion)
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, map[string]string{
+					"Error": "Error stripping pre-release tag from client version: " + err.Error(),
+				})
+			}
+
+			if strippedClientVersion.LessThan(&minVersion) {
 				// Client version is less than the minimum required version
 				return c.JSON(http.StatusForbidden, VersionCheckError{
 					Error:         "Client version is outdated. Update your client",
 					MinVersion:    minVersion.String(),
-					ClientVersion: clientVersion.String(),
+					ClientVersion: strippedClientVersion.String(),
 					ServerVersion: serverVersion.String(),
 				})
 			}
