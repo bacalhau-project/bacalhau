@@ -40,6 +40,7 @@ func NewRootCmd() *cobra.Command {
 	if err := RootCmd.RegisterFlagCompletionFunc("config", cliflags.ConfigAutoComplete); err != nil {
 		util.Fatal(RootCmd, err, 1)
 	}
+
 	RootCmd.PersistentFlags().VarP(cliflags.NewRepoFlag(), "repo", "r", "filesystem path to bacalhau repo")
 	// Bind the repo flag to viper for access by child commands
 	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {

@@ -22,14 +22,6 @@ func getDefaultRepo() string {
 		return repoDir
 	}
 
-	// TODO deprecate this
-	if _, set := os.LookupEnv("FIL_WALLET_ADDRESS"); set {
-		if repoDir := os.Getenv("ROOT_DIR"); repoDir != "" {
-			log.Debug().Str("repo", repoDir).Msg("using station ROOT_DIR as bacalhau repo")
-			return repoDir
-		}
-	}
-
 	if userHome, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(userHome, defaultBacalhauDir)
 	}

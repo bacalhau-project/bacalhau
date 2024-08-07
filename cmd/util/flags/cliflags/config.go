@@ -51,7 +51,9 @@ func (cf *ConfigFlag) Parse() error {
 		// Handle key-value pair
 		tokens := strings.SplitN(cf.Value, "=", 2)
 		if len(tokens) == 2 {
-			viper.Set(tokens[0], tokens[1])
+			cfgKey := tokens[0]
+			cfgValue := tokens[1]
+			return setIfValid(viper.GetViper(), cfgKey, cfgValue)
 		} else {
 			return fmt.Errorf("config flag value %s is invalid", cf.Value)
 		}
@@ -63,7 +65,15 @@ func (cf *ConfigFlag) Parse() error {
 		}
 	} else {
 		// Handle dot separated path with boolean value
-		viper.Set(cf.Value, true)
+		return setIfValid(viper.GetViper(), cf.Value, true)
 	}
+	return nil
+}
+
+func setIfValid(v *viper.Viper, key string, value any) error {
+	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
+		return fmt.Errorf("no config key matching %q", key)
+	}
+	v.Set(key, value)
 	return nil
 }

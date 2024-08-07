@@ -141,7 +141,7 @@ func (c *config) Load(path string) error {
 	// Apply only user-set overrides that were provided via the --config flag
 	for _, key := range c.v.AllKeys() {
 		// But don't(!) override the new config with values considered to be default.
-		// this step is required because viper can differentiate between default values and overrides.
+		// this step is required because viper can't differentiate between default values and overrides.
 		defaultValue := defaultConfig.v.Get(key)
 		setValue := c.v.Get(key)
 		if !reflect.DeepEqual(defaultValue, setValue) {
@@ -184,22 +184,6 @@ func (c *config) SetIfAbsent(key string, value interface{}) {
 		c.Set(key, value)
 	}
 }
-
-// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
-// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
-// nested sub-keys are correctly populated into the cfg structure.
-//
-// Parameters:
-//   - key: The configuration key to retrieve values for.
-//   - cfg: The structure into which the configuration values will be unmarshaled.
-//
-// Returns:
-//   - An error if any occurred during unmarshaling; otherwise, nil.
-/*
-func (c *config) ForKey(key string, cfg interface{}) error {
-	return unmarshalCompositeKey(c.v, key, cfg)
-}
-*/
 
 // setDefault sets the default value for the configuration.
 // Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
