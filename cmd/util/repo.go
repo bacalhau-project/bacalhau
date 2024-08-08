@@ -22,7 +22,7 @@ func SetupRepoConfig(cmd *cobra.Command) (types.BacalhauConfig, error) {
 	}
 	cfg := config.New(config.WithViper(v))
 	// create or open the bacalhau repo and load the config
-	_, err := setup.SetupBacalhauRepo(repoPath, cfg)
+	r, err := setup.SetupBacalhauRepo(repoPath, cfg)
 	if err != nil {
 		return types.BacalhauConfig{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
@@ -31,7 +31,7 @@ func SetupRepoConfig(cmd *cobra.Command) (types.BacalhauConfig, error) {
 		return types.BacalhauConfig{}, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	hook.StartUpdateCheck(cmd, bacalhauCfg)
+	hook.StartUpdateCheck(cmd, bacalhauCfg, r)
 
 	return bacalhauCfg, nil
 }

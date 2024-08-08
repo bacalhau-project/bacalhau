@@ -5,6 +5,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 )
@@ -68,6 +69,7 @@ type CallbackStore struct {
 	UpdateExecutionStateFn func(ctx context.Context, request store.UpdateExecutionStateRequest) error
 	DeleteExecutionFn      func(ctx context.Context, id string) error
 	GetExecutionCountFn    func(ctx context.Context, state store.LocalExecutionStateType) (uint64, error)
+	GetEventStoreFn        func() watcher.EventStore
 	CloseFn                func(ctx context.Context) error
 }
 
@@ -105,4 +107,8 @@ func (m *CallbackStore) GetExecutionCount(ctx context.Context, state store.Local
 
 func (m *CallbackStore) Close(ctx context.Context) error {
 	return m.CloseFn(ctx)
+}
+
+func (m *CallbackStore) GetEventStore() watcher.EventStore {
+	return m.GetEventStoreFn()
 }
