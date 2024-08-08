@@ -338,7 +338,7 @@ integration-test:
 	go test ./... -v --tags=integration -p 1
 
 .PHONY: bash-test
-bash-test: 
+bash-test:
 	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
@@ -439,7 +439,6 @@ test-and-report: unittests.xml ${COVER_FILE}
 
 ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json &: ${CMD_FILES} ${PKG_FILES} $(dir ${COVER_FILE})
 	gotestsum \
-		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
 		--format testname \
 		-- \
