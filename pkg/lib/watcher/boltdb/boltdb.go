@@ -27,6 +27,9 @@ type EventStore struct {
 	latestEventNum atomic.Uint64
 	clock          clock.Clock
 
+	// notifyCh is a channel for notifying watchers of new events.
+	// GetEvents will block on this channel when no events are immediately available,
+	// or will return empty events after a long-polling timeout.
 	notifyCh chan uint64
 	stopGC   chan struct{}
 }
@@ -59,6 +62,14 @@ func NewEventStore(db *bbolt.DB, opts ...EventStoreOption) (*EventStore, error) 
 		opt(options)
 	}
 
+	err := errors.Join(
+		validate.NotNil(db, "boltDB instance cannot be nil"),
+		options.validate(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	cache, err := lru.New[uint64, watcher.Event](options.cacheSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cache: %w", err)
@@ -71,14 +82,6 @@ func NewEventStore(db *bbolt.DB, opts ...EventStoreOption) (*EventStore, error) 
 		notifyCh: make(chan uint64, 100), //nolint:gomnd
 		clock:    options.clock,
 		stopGC:   make(chan struct{}),
-	}
-
-	err = errors.Join(
-		validate.NotNil(db, "boltDB instance cannot be nil"),
-		options.validate(),
-	)
-	if err != nil {
-		return nil, err
 	}
 
 	// Initialize BoltDB buckets
