@@ -38,6 +38,7 @@ const SystemMetadataFile = "system_metadata.yaml"
 type SystemMetadata struct {
 	RepoVersion     int       `yaml:"RepoVersion"`
 	InstallationID  string    `yaml:"InstallationID"`
+	InstanceID      string    `yaml:"InstanceID"`
 	LastUpdateCheck time.Time `yaml:"LastUpdateCheck"`
 }
 
@@ -99,6 +100,24 @@ func (fsr *FsRepo) WriteInstallationID(id string) error {
 	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
 		sysmeta.InstallationID = id
 	})
+}
+
+// WriteInstanceID updates the InstanceID in the metadata.
+// It fails if the metadata file doesn't exist.
+func (fsr *FsRepo) WriteInstanceID(id string) error {
+	return fsr.updateExistingMetadata(func(metadata *SystemMetadata) {
+		metadata.InstanceID = id
+	})
+}
+
+// ReadInstanceID returns the instanceID value from system_metadata.yaml
+// It fails if the metadata file doesn't exist.
+func (fsr *FsRepo) ReadInstanceID() (string, error) {
+	meta, err := fsr.readMetadata()
+	if err != nil {
+		return "", err
+	}
+	return meta.InstanceID, nil
 }
 
 // readMetadata unmarshals the content of SystemMedataFile into SystemMetadata and returns it.
