@@ -65,113 +65,78 @@ var (
 )
 
 type config struct {
-	// viper instance for holding user provided configuration
+	// viper instance for holding user provided configuration.
 	base *viper.Viper
-	// the default configuration values to initialize with
+	// the default configuration values to initialize with.
 	defaultCfg types.BacalhauConfig
 
-	loadXDG  string
-	loadRepo string
+	// paths to configuration files merged from [0] to [N]
+	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
+	paths []string
+	// values to inject into the config, taking highest precedence.
+	values map[string]any
 }
 
 type Option = func(s *config)
 
-func WithDefaultConfig(cfg types.BacalhauConfig) Option {
+// WithDefault sets the default config to be used when no values are provided.
+func WithDefault(cfg types.BacalhauConfig) Option {
 	return func(c *config) {
 		c.defaultCfg = cfg
 	}
 }
 
-func WithXDGPath(path string) Option {
+// WithPaths sets paths to configuration files to be loaded
+// paths to configuration files merged from [0] to [N]
+// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
+func WithPaths(path ...string) Option {
 	return func(c *config) {
-		c.loadXDG = path
+		c.paths = append(c.paths, path...)
 	}
 }
 
-func WithRepoPath(path string) Option {
+// WithValues sets values to be injected into the config, taking precedence over all other options.
+func WithValues(values map[string]any) Option {
 	return func(c *config) {
-		c.loadRepo = path
+		c.values = values
 	}
 }
 
-func New(opts ...Option) *config {
-	xdgPath, err := os.UserConfigDir()
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to find user config dir")
-	} else {
-		xdgPath = filepath.Join(xdgPath, "bacalhau", FileName)
-	}
+// New returns a configuration with the provided options applied. If no options are provided, the returned config
+// contains only the default values.
+func New(opts ...Option) (*config, error) {
+	base := viper.New()
+	base.SetEnvPrefix(environmentVariablePrefix)
+	base.SetTypeByDefaultValue(inferConfigTypes)
+	base.AutomaticEnv()
+	base.SetEnvKeyReplacer(environmentVariableReplace)
 
 	c := &config{
-		base:       viper.New(),
+		base:       base,
 		defaultCfg: configenv.Production,
-		loadRepo:   filepath.Join(viper.GetString("repo"), FileName),
-		loadXDG:    xdgPath,
+		paths:      make([]string, 0),
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.base.SetEnvPrefix(environmentVariablePrefix)
-	c.base.SetTypeByDefaultValue(inferConfigTypes)
-	c.base.AutomaticEnv()
-	c.base.SetEnvKeyReplacer(environmentVariableReplace)
 
-	// 1. Set default fields in the config, these are used for fields without a corresponding file/flag/envvars value.
-	// e.g. if no flags or environment values are provided these defaults are used.
 	c.setDefault(c.defaultCfg)
 
-	// 2. Attempt to read a config file from the bacalhau repo, taking precedence
-	// over default values.
-	//
-	// Note:
-	// - The presence of a config file is not mandatory at this stage.
-	// - Any values read from this config file will override the default values set in the previous step.
-	//
-	// Logging:
-	// - A warning will be logged if:
-	//   1. A config file was found but could not be read.
-	if c.loadRepo != "" {
-		if err := c.Merge(c.loadRepo); err != nil {
-			if !os.IsNotExist(err) {
-				log.Warn().Err(err).Msg("failed to read config from bacalhau repo")
-			}
+	// merge the config files in the order they were passed.
+	for _, path := range c.paths {
+		if err := c.Merge(path); err != nil {
+			return nil, fmt.Errorf("failed to read config in %q: %w", path, err)
 		}
 	}
 
-	// 3. Attempt to read a config file from the default user configuration directory, taking precedence over repo
-	// config.
-	// Location specified by: https://specifications.freedesktop.org/basedir-spec/latest/
-	//
-	// Note:
-	// - The presence of a config file is not mandatory at this stage.
-	// - Any values read from this config file will override the values set in repo config.
-	//
-	// Logging:
-	// - A warning will be logged if:
-	//   1. A config file was found but could not be read.
-	//   2. `os.UserConfigDir` returns an error, which typically indicates that the $HOME environment variable is
-	//      not defined (this is a rare occurrence).
-	if c.loadXDG != "" {
-		if err := c.Merge(c.loadXDG); err != nil {
-			if !os.IsNotExist(err) {
-				log.Warn().Err(err).Msg("failed to read config from user config dir")
-			}
+	// merge the passed values last as they take highest precedence
+	if len(c.values) > 0 {
+		if err := c.base.MergeConfigMap(c.values); err != nil {
+			return nil, fmt.Errorf("DEVELOPER ERROR: viper.MergeConfigMap returned unexpected error: %w", err)
 		}
 	}
 
-	// 4. Finally, merge in any configuration values present on the global viper instance, taking precedence over user
-	// config directory.
-	// These values come from --config flags provided by the users and take the highest precedence.
-	settings := viper.GetViper().AllSettings()
-	if err := c.base.MergeConfigMap(settings); err != nil {
-		// NB(forrest): this method never errors: https://github.com/spf13/viper/blob/cc53fac037475edaec5cd2cae73e6c3cc5caef9e/viper.go#L1564
-		// I suspect the method signature contains an error return value as it returned an error at one point and the
-		// signature was left unchanged for compatibility reasons.
-		panic(fmt.Sprintf("DEVELOPER ERROR: viper.MergeConfigMap returned unexpected error: %s", err))
-	}
-
-	// NB(forrest): from the above comments set 1 has lowest precedence, step 4 has highest precedence.
-	return c
+	return c, nil
 }
 
 // Load reads in the configuration file specified by `path` overriding any previously set configuration with the values

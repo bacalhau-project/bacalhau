@@ -64,6 +64,21 @@ func setupTestCommand() *cobra.Command {
 
 // loadConfig loads the configuration from viper
 func loadConfig() (*Config, error) {
+	configFiles := viper.GetStringSlice(RootCommandConfigFiles)
+	for _, f := range configFiles {
+		viper.SetConfigFile(f)
+		if err := viper.MergeInConfig(); err != nil {
+			return nil, err
+		}
+	}
+	base := viper.AllSettings()
+	override := viper.GetStringMap(RootCommandConfigValues)
+	for k, v := range override {
+		base[k] = v
+	}
+	if err := viper.MergeConfigMap(base); err != nil {
+		return nil, err
+	}
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err

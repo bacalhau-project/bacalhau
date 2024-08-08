@@ -93,7 +93,10 @@ func NewCmd() *cobra.Command {
 			if repoPath == "" {
 				return fmt.Errorf("repo path not set")
 			}
-			cfg := config.New()
+			cfg, err := util.SetupConfig()
+			if err != nil {
+				return fmt.Errorf("failed to setup config: %w", err)
+			}
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
 			if err != nil {

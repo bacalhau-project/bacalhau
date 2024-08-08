@@ -26,7 +26,17 @@ func ConfigAutoComplete(cmd *cobra.Command, args []string, toComplete string) ([
 }
 
 func NewConfigFlag() *ConfigFlag {
+	viper.Set(RootCommandConfigValues, new(map[string]any))
+	viper.Set(RootCommandConfigFiles, make([]string, 0))
 	return &ConfigFlag{}
+}
+
+const RootCommandConfigFiles = "Root.Command.Config.Files"
+const RootCommandConfigValues = "Root.Command.Config.Values"
+
+type Something struct {
+	ConfigFiles  []string
+	ConfigParams map[string]any
 }
 
 type ConfigFlag struct {
@@ -59,10 +69,9 @@ func (cf *ConfigFlag) Parse() error {
 		}
 	} else if strings.HasSuffix(cf.Value, ".yaml") || strings.HasSuffix(cf.Value, ".yml") {
 		// Handle YAML file
-		viper.SetConfigFile(cf.Value)
-		if err := viper.MergeInConfig(); err != nil {
-			return fmt.Errorf("error reading config file (%s): %w", cf.Value, err)
-		}
+		configFiles := viper.GetStringSlice(RootCommandConfigFiles)
+		configFiles = append(configFiles, cf.Value)
+		viper.Set(RootCommandConfigFiles, configFiles)
 	} else {
 		// Handle dot separated path with boolean value
 		return setIfValid(viper.GetViper(), cf.Value, true)
@@ -74,6 +83,8 @@ func setIfValid(v *viper.Viper, key string, value any) error {
 	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
 		return fmt.Errorf("no config key matching %q", key)
 	}
-	v.Set(key, value)
+	configMap := v.GetStringMap(RootCommandConfigValues)
+	configMap[key] = value
+	v.Set(RootCommandConfigValues, configMap)
 	return nil
 }
