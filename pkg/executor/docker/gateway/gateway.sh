@@ -29,6 +29,12 @@ while IFS= read -r BRIDGE_SUBNET; do
     iptables -A INPUT -p tcp --src "${BRIDGE_SUBNET}" --dport 8080 -j ACCEPT
 done < <(cat /etc/bacalhau/allowed-clients.txt)
 
+# Apply rate limits to the outbound connections. We just do this for all
+# interfaces rather than working out which is our Internet connection.
+while IFS= read -r IFACE; do
+    tc qdisc add dev "${IFACE}" root tbf rate 10mbit burst 32kbit latency 10sec
+done < <(ip --json address show | jq -rc '.[] | .ifname')
+
 # Add Bacalhau job ID to outgoing requests. We can use this to detect jobs
 # trying to spawn other jobs.
 echo request_header_access X-Bacalhau-Job-ID deny all > /etc/squid/conf.d/bac-job.conf

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -25,10 +26,13 @@ type APIServerTestSuite struct {
 }
 
 func (s *APIServerTestSuite) SetupTest() {
+	port, err := network.GetFreePort()
+	s.Require().NoError(err)
+
 	params := ServerParams{
 		Router:  echo.New(),
 		Address: "localhost",
-		Port:    8080,
+		Port:    uint16(port),
 		HostID:  "testHostID",
 		Config: *NewConfig(
 			WithRequestHandlerTimeout(testTimeout),
@@ -36,7 +40,6 @@ func (s *APIServerTestSuite) SetupTest() {
 		),
 		Authorizer: authz.AlwaysAllow,
 	}
-	var err error
 	s.server, err = NewAPIServer(params)
 	assert.NotNil(s.T(), s.server)
 	assert.NoError(s.T(), err)
