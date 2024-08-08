@@ -60,7 +60,9 @@ test() {
     initialize_ipfs
     build_web_ui
     run_tests_and_report
+    TEST_RUN_EXIT_CODE=$?  # Store the exit code for run_tests_and_report. This way we send failure results to buildkite and fail the pipeline
     upload_test_results
+    exit $TEST_RUN_EXIT_CODE
 }
 
 # Call the main function with the provided test tag
