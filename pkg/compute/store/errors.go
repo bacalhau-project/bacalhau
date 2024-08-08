@@ -39,19 +39,6 @@ func (e ErrExecutionsNotFoundForJob) Error() string {
 	return "no executions found for job: " + e.JobID
 }
 
-// ErrJobNotFound is returned when the a job isn't found when trying to get its executions
-type ErrJobNotFound struct {
-	JobID string
-}
-
-func NewErrJobNotFound(id string) ErrJobNotFound {
-	return ErrJobNotFound{JobID: id}
-}
-
-func (e ErrJobNotFound) Error() string {
-	return "job not found: " + e.JobID
-}
-
 // ErrExecutionHistoryNotFound is returned when the execution is not found
 type ErrExecutionHistoryNotFound struct {
 	ExecutionID string
@@ -93,19 +80,19 @@ func (e ErrInvalidExecutionState) Error() string {
 	return fmt.Sprintf("execution %s is in state %s but expected one of %v", e.ExecutionID, e.Actual, e.Expected)
 }
 
-// ErrInvalidExecutionVersion is returned when an execution has an invalid version.
-type ErrInvalidExecutionVersion struct {
+// ErrInvalidExecutionRevision is returned when an execution has an invalid revision.
+type ErrInvalidExecutionRevision struct {
 	ExecutionID string
 	Actual      int
 	Expected    int
 }
 
-func NewErrInvalidExecutionVersion(id string, actual int, expected int) ErrInvalidExecutionVersion {
-	return ErrInvalidExecutionVersion{ExecutionID: id, Actual: actual, Expected: expected}
+func NewErrInvalidExecutionRevision(id string, actual int, expected int) ErrInvalidExecutionRevision {
+	return ErrInvalidExecutionRevision{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
-func (e ErrInvalidExecutionVersion) Error() string {
-	return fmt.Sprintf("execution %s has version %d but expected %d", e.ExecutionID, e.Actual, e.Expected)
+func (e ErrInvalidExecutionRevision) Error() string {
+	return fmt.Sprintf("execution %s has revision %d but expected %d", e.ExecutionID, e.Actual, e.Expected)
 }
 
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.

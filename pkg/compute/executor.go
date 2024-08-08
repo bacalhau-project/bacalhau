@@ -399,6 +399,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		ExecutionID:    execution.ID,
 		ExpectedStates: []store.LocalExecutionStateType{expectedState},
 		NewState:       store.ExecutionStateCompleted,
+		Result:         result,
 	}); err != nil {
 		return err
 	}

@@ -12,22 +12,24 @@ import (
 
 type LocalExecutionState struct {
 	Execution       *models.Execution
+	Result          *models.RunCommandResult
 	RequesterNodeID string
 	State           LocalExecutionStateType
-	Version         int
+	Revision        int
 	CreateTime      time.Time
 	UpdateTime      time.Time
 	LatestComment   string
 }
 
 func NewLocalExecutionState(execution *models.Execution, requesterNodeID string) *LocalExecutionState {
+	now := time.Now().UTC()
 	return &LocalExecutionState{
 		Execution:       execution,
 		RequesterNodeID: requesterNodeID,
 		State:           ExecutionStateCreated,
-		Version:         1,
-		CreateTime:      time.Now().UTC(),
-		UpdateTime:      time.Now().UTC(),
+		Revision:        1,
+		CreateTime:      now,
+		UpdateTime:      now,
 	}
 }
 
@@ -58,7 +60,7 @@ type LocalStateHistory struct {
 	ExecutionID   string
 	PreviousState LocalExecutionStateType
 	NewState      LocalExecutionStateType
-	NewVersion    int
+	NewRevision   int
 	Comment       string
 	Time          time.Time
 }
@@ -72,11 +74,12 @@ type ExecutionSummary struct {
 }
 
 type UpdateExecutionStateRequest struct {
-	ExecutionID     string
-	NewState        LocalExecutionStateType
-	ExpectedStates  []LocalExecutionStateType
-	ExpectedVersion int
-	Comment         string
+	ExecutionID      string
+	NewState         LocalExecutionStateType
+	ExpectedStates   []LocalExecutionStateType
+	ExpectedRevision int
+	Result           *models.RunCommandResult
+	Comment          string
 }
 
 // Validate checks if the condition matches the given execution
@@ -95,8 +98,8 @@ func (condition UpdateExecutionStateRequest) Validate(localExecutionState LocalE
 		}
 	}
 
-	if condition.ExpectedVersion != 0 && condition.ExpectedVersion != localExecutionState.Version {
-		return NewErrInvalidExecutionVersion(execution.ID, localExecutionState.Version, condition.ExpectedVersion)
+	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != localExecutionState.Revision {
+		return NewErrInvalidExecutionRevision(execution.ID, localExecutionState.Revision, condition.ExpectedRevision)
 	}
 	return nil
 }

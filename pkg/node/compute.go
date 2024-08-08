@@ -183,8 +183,6 @@ func NewComputeNode(
 	// register compute public http apis
 	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
 		Router:             apiServer.Router,
-		Bidder:             bidder,
-		Store:              executionStore,
 		DebugInfoProviders: debugInfoProviders,
 	})
 
