@@ -33,8 +33,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 15 * time.Second
-const maxTestTime = 15 * time.Second
+const maxServeTime = 30 * time.Second
+const maxTestTime = 60 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {

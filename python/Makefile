@@ -24,15 +24,15 @@ test: unittest coverage
 
 .PHONY: ruff
 ruff:
-	$(EARTHLY) --push +run-linter
+	$(EARTHLY) +run-linter
 
 .PHONY: unittest
 unittest:
-	$(EARTHLY) --push +run-unittest
+	$(EARTHLY) +run-unittest
 
 .PHONY: coverage
 coverage:
-	$(EARTHLY) --push +run-coverage
+	$(EARTHLY) +run-coverage
 
 .PHONY: install-pre-commit
 install-pre-commit:
