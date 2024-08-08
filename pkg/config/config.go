@@ -196,7 +196,7 @@ func (c *config) Merge(path string) error {
 // Write persists the current configuration to `path`.
 // Write returns an error if:
 //   - the path cannot be accessed
-//   - the current configuration cannot be marshalled.
+//   - the current configuration cannot be marshaled.
 func (c *config) Write(path string) error {
 	return c.base.WriteConfigAs(path)
 }
