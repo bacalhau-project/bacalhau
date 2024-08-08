@@ -15,7 +15,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/docker v25.0.4+incompatible
+	github.com/docker/docker v26.1.4+incompatible
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
@@ -134,6 +134,7 @@ require (
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
