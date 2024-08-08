@@ -4,6 +4,7 @@ package boltdb
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -18,11 +19,12 @@ import (
 
 type BoltDBEventStoreTestSuite struct {
 	suite.Suite
-	db     *bbolt.DB
-	store  *EventStore
-	clock  *clock.Mock
-	ctx    context.Context
-	cancel context.CancelFunc
+	db         *bbolt.DB
+	store      *EventStore
+	serializer *watcher.JSONSerializer
+	clock      *clock.Mock
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 func (s *BoltDBEventStoreTestSuite) SetupTest() {
@@ -30,12 +32,14 @@ func (s *BoltDBEventStoreTestSuite) SetupTest() {
 	s.clock = clock.NewMock()
 	s.ctx, s.cancel = context.WithTimeout(context.Background(), 2*time.Second)
 
+	s.serializer = watchertest.CreateSerializer(s.T())
 	store, err := NewEventStore(s.db,
 		WithLongPollingTimeout(100*time.Millisecond),
 		WithGCAgeThreshold(2*time.Hour),
 		WithGCCadence(3*time.Hour),
 		WithClock(s.clock),
-		WithEventSerializer(watchertest.CreateSerializer(s.T())),
+		WithEventSerializer(s.serializer),
+		WithCacheSize(2), // smaller cache size to trigger eviction and unmarshalling of boltdb events
 	)
 	s.Require().NoError(err)
 	s.store = store
@@ -58,6 +62,9 @@ func (s *BoltDBEventStoreTestSuite) TestStoreAndRetrieveEvents() {
 }
 
 func (s *BoltDBEventStoreTestSuite) TestFilterEvents() {
+	s.Require().NoError(s.serializer.RegisterType("TypeA", reflect.TypeOf("")))
+	s.Require().NoError(s.serializer.RegisterType("TypeB", reflect.TypeOf("")))
+
 	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TypeA", "event1"))
 	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationUpdate, "TypeB", "event2"))
 	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationDelete, "TypeA", "event3"))
@@ -232,7 +239,7 @@ func (s *BoltDBEventStoreTestSuite) TestConcurrentOperations() {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			err := s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", i)
+			err := s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Value: i + 1})
 			s.Require().NoError(err)
 		}(i)
 	}
