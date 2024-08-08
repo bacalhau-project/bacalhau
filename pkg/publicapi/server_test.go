@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,12 +23,14 @@ const testMaxBytesToReadInBody = "500B"
 
 type APIServerTestSuite struct {
 	suite.Suite
+	port   int
 	server *Server
 }
 
 func (s *APIServerTestSuite) SetupTest() {
 	port, err := network.GetFreePort()
 	s.Require().NoError(err)
+	s.port = port
 
 	params := ServerParams{
 		Router:  echo.New(),
@@ -56,7 +59,7 @@ func (s *APIServerTestSuite) TestGetURI() {
 	assert.NotNil(s.T(), uri)
 	assert.Equal(s.T(), "http", uri.Scheme)
 	assert.Equal(s.T(), "localhost", uri.Hostname())
-	assert.Equal(s.T(), "8080", uri.Port())
+	assert.Equal(s.T(), strconv.Itoa(s.port), uri.Port())
 }
 
 func (s *APIServerTestSuite) TestListenAndServe() {
