@@ -23,15 +23,17 @@ func TestConfig(t *testing.T) {
 	t.Run("NewWriteRead", func(t *testing.T) {
 		// create a testing config instance
 		expectedConfig := configenv.Testing
-		wc := config.New(config.WithDefaultConfig(expectedConfig))
+		wc, err := config.New(config.WithDefault(expectedConfig))
+		require.NoError(t, err)
 
 		// write the config file to disk
 		cfgFilePath := filepath.Join(t.TempDir(), fmt.Sprintf("%d_config.yaml", time.Now().UnixNano()))
-		err := wc.Write(cfgFilePath)
+		err = wc.Write(cfgFilePath)
 		require.NoError(t, err)
 
 		// read the file we wrote from disk
-		rc := config.New(config.WithDefaultConfig(expectedConfig))
+		rc, err := config.New(config.WithDefault(expectedConfig))
+		require.NoError(t, err)
 		err = rc.Load(cfgFilePath)
 		require.NoError(t, err)
 
@@ -49,17 +51,19 @@ func TestConfig(t *testing.T) {
 		// create a testing config instance
 		expectedConfig := configenv.Testing
 		expectedConfig.Node.Name = "unexpected_name"
-		wc := config.New(config.WithDefaultConfig(expectedConfig))
+		wc, err := config.New(config.WithDefault(expectedConfig))
+		require.NoError(t, err)
 
 		const expectedName = "bacalhau_testing"
 		wc.Set(types.NodeName, expectedName)
 		// write the config file to disk
 		cfgFilePath := filepath.Join(t.TempDir(), fmt.Sprintf("%d_config.yaml", time.Now().UnixNano()))
-		err := wc.Write(cfgFilePath)
+		err = wc.Write(cfgFilePath)
 		require.NoError(t, err)
 
 		// read the file we wrote from disk
-		rc := config.New(config.WithDefaultConfig(expectedConfig))
+		rc, err := config.New(config.WithDefault(expectedConfig))
+		require.NoError(t, err)
 		err = rc.Load(cfgFilePath)
 		require.NoError(t, err)
 

@@ -26,7 +26,7 @@ type NodeConfig struct {
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`
 	// Type is "compute", "requester" or both
 	Type []string `yaml:"Type"`
-	// Local paths that are allowed to be mounted into jobs
+	// AllowListedLocalPaths contains local paths that are allowed to be mounted into jobs
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths"`
 	// What features should not be enabled even if installed
 	DisabledFeatures FeatureConfig `yaml:"DisabledFeatures"`

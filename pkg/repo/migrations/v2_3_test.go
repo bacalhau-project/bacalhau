@@ -45,7 +45,9 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open(config.New()))
+	c, err := config.New()
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.repo.Open(c))
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
@@ -76,7 +78,9 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open(config.New()))
+	c, err := config.New()
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.repo.Open(c))
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -109,7 +113,9 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open(config.New()))
+	c, err := config.New()
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.repo.Open(c))
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -141,7 +147,9 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	suite.Require().NoError(suite.repo.Open(config.New()))
+	c, err := config.New()
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.repo.Open(c))
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)

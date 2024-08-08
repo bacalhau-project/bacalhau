@@ -154,7 +154,7 @@ with an alphanumeric character.`)
 		`Whether to target the minimum number of matching nodes ("any") (default) or all matching nodes ("all").`)
 
 	// NB(forrest): the `constraints` flag is replacing `selector` flag. Hide the `selector` flag and add deprecation notice.
-	fs.StringVarP(&s.constraints, "constraints", "c", s.constraints,
+	fs.StringVar(&s.constraints, "constraints", s.constraints,
 		`Selector (label query) to filter nodes on which this job can be executed.
 Supports '=', '==', and '!='.(e.g. -s key1=value1,key2=value2).
 Matching objects must satisfy all of the specified label constraints.`)

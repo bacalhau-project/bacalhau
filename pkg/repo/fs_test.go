@@ -11,7 +11,8 @@ import (
 )
 
 func TestNewFS(t *testing.T) {
-	c := config.New()
+	c, err := config.New()
+	require.NoError(t, err)
 	repo, err := NewFS(FsRepoParams{Path: t.TempDir() + t.Name()})
 	require.NoError(t, err)
 	require.NotNil(t, repo)
