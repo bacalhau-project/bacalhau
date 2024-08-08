@@ -237,9 +237,16 @@ func NewComputeNode(
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if err = watcherRegistry.Stop(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to stop watcher registry")
+		}
 		managementClient.Stop()
-		executionStore.Close(ctx)
-		resultsPath.Close()
+		if err = executionStore.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to close execution store")
+		}
+		if err = resultsPath.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close results path")
+		}
 	}
 
 	return &Compute{

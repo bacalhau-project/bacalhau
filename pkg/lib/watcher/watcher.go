@@ -156,7 +156,7 @@ func (w *watcher) fetchWithBackoff(ctx context.Context) (*GetEventsResponse, err
 			return response, nil
 		}
 
-		if errors.Is(err, context.Canceled) {
+		if !errors.Is(err, context.Canceled) {
 			log.Error().Err(err).Str("watcher_id", w.id).Msg("failed to fetch events. Retrying...")
 		}
 		select {
