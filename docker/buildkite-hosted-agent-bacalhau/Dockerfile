@@ -1,8 +1,8 @@
-FROM buildkite/hosted-agent-base
+FROM docker.io/buildkite/hosted-agent-base:ubuntu-v1.0.0@sha256:af0d05215252cc0d362135fcf1f3413e6a5a2ff11e8c40d8b8ba453f4d7f245a
 
 ENV GOLANG_VERSION 1.21.0
 
-RUN apt-get update && apt-get install -y wget make
+RUN apt-get update && apt-get install -y wget make iproute2
 
 # Set environment variables for Go
 RUN wget https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz \
@@ -38,8 +38,18 @@ RUN pip install pre-commit
 # Install GoTestSum
 RUN go install gotest.tools/gotestsum@v1.8.2
 
-# Install Swag
+# Install Swag for Swagger Generation
 RUN go install github.com/swaggo/swag/cmd/swag@latest
 
 # Verify installations
 RUN go version && python3 --version
+
+# Install IPFS
+ENV ipfs_version v0.18.0
+
+
+RUN wget https://dist.ipfs.tech/go-ipfs/${ipfs_version}/go-ipfs_${ipfs_version}_linux-amd64.tar.gz -O ipfs.tar.gz \
+ && tar -xzf ipfs.tar.gz \
+ && cd go-ipfs \
+ && sudo bash install.sh \
+ && ipfs --version

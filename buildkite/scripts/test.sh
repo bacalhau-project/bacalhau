@@ -8,5 +8,6 @@ export AWS_ACCESS_KEY_ID=$(buildkite-agent secret get AWS_ACCESS_KEY_ID)
 export AWS_SECRET_ACCESS_KEY=$(buildkite-agent secret get AWS_SECRET_ACCESS_KEY)
 export AWS_REGION=eu-west-1
 
+ipfs daemon --offline &
 make build-webui
 make test-and-report
