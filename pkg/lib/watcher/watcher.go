@@ -25,7 +25,6 @@ type watcher struct {
 	lastProcessedEventTime time.Time
 	lastListenTime         time.Time
 
-	ctx     context.Context
 	cancel  context.CancelFunc
 	stopped chan struct{} // channel to signal that the watcher has stopped
 	state   State
@@ -101,7 +100,8 @@ func (w *watcher) Start() {
 		return
 	}
 
-	w.ctx, w.cancel = context.WithCancel(context.Background())
+	var ctx context.Context
+	ctx, w.cancel = context.WithCancel(context.Background())
 	w.ch = make(chan Event, w.options.bufferSize)
 	w.stopped = make(chan struct{}, 1)
 	w.state = StateRunning
@@ -116,16 +116,16 @@ func (w *watcher) Start() {
 
 	for {
 		select {
-		case <-w.ctx.Done():
+		case <-ctx.Done():
 			return
 		default:
-			response, err := w.fetchWithBackoff()
+			response, err := w.fetchWithBackoff(ctx)
 			if err != nil {
 				continue
 			}
 
 			for _, event := range response.Events {
-				if err = w.processEventWithRetry(event); err != nil {
+				if err = w.processEventWithRetry(ctx, event); err != nil {
 					// if the error is due to the context being canceled, return
 					if errors.Is(err, context.Canceled) {
 						return
@@ -143,10 +143,10 @@ func (w *watcher) Start() {
 
 // fetchWithBackoff fetches events with retries and backoff
 // no maximum retries are applied here as the watcher should keep trying to fetch events
-func (w *watcher) fetchWithBackoff() (*GetEventsResponse, error) {
+func (w *watcher) fetchWithBackoff(ctx context.Context) (*GetEventsResponse, error) {
 	backoff := w.options.initialBackoff
 	for {
-		response, err := w.store.GetEvents(w.ctx, GetEventsRequest{
+		response, err := w.store.GetEvents(ctx, GetEventsRequest{
 			EventIterator: w.nextEventIterator,
 			Limit:         w.options.batchSize,
 			Filter:        w.options.filter,
@@ -160,8 +160,8 @@ func (w *watcher) fetchWithBackoff() (*GetEventsResponse, error) {
 			log.Error().Err(err).Str("watcher_id", w.id).Msg("failed to fetch events. Retrying...")
 		}
 		select {
-		case <-w.ctx.Done():
-			return nil, w.ctx.Err()
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		case <-time.After(backoff):
 			backoff = time.Duration(math.Min(float64(backoff)*2, float64(w.options.maxBackoff)))
 		}
@@ -171,7 +171,7 @@ func (w *watcher) fetchWithBackoff() (*GetEventsResponse, error) {
 // processEventWithRetry processes an event with retries
 // the number of retries is limited by the maxRetries option before skipping the event,
 // or unlimited if the retry strategy is RetryStrategyBlock
-func (w *watcher) processEventWithRetry(event Event) error {
+func (w *watcher) processEventWithRetry(ctx context.Context, event Event) error {
 	backoff := w.options.initialBackoff
 	maxRetries := w.options.maxRetries
 	if w.options.retryStrategy == RetryStrategyBlock {
@@ -179,7 +179,7 @@ func (w *watcher) processEventWithRetry(event Event) error {
 	}
 	var err error
 	for i := 0; i < maxRetries; i++ {
-		err = w.handler.HandleEvent(w.ctx, event)
+		err = w.handler.HandleEvent(ctx, event)
 		if err == nil {
 			return nil
 		}
@@ -188,8 +188,8 @@ func (w *watcher) processEventWithRetry(event Event) error {
 			Msg("failed to process event. Retrying...")
 
 		select {
-		case <-w.ctx.Done():
-			return w.ctx.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-time.After(backoff):
 			backoff = time.Duration(math.Min(float64(backoff)*2, float64(w.options.maxBackoff)))
 		}
