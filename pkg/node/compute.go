@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
@@ -22,6 +23,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher/handlers"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -64,6 +67,13 @@ func NewComputeNode(
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
+	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+
+	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -227,9 +237,16 @@ func NewComputeNode(
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if err = watcherRegistry.Stop(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to stop watcher registry")
+		}
 		managementClient.Stop()
-		executionStore.Close(ctx)
-		resultsPath.Close()
+		if err = executionStore.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to close execution store")
+		}
+		if err = resultsPath.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close results path")
+		}
 	}
 
 	return &Compute{
