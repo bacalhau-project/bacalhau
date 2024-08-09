@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	v2 "github.com/bacalhau-project/bacalhau/pkg/config/types/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -109,7 +110,7 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	bacalhauConfig types.BacalhauConfig,
+	bacalhauConfig v2.Bacalhau,
 	config NodeConfig,
 	fsr *repo.FsRepo,
 ) (*Node, error) {
@@ -121,22 +122,35 @@ func NewNode(
 		}
 	}()
 
-	if err = prepareConfig(&config, bacalhauConfig); err != nil {
-		return nil, err
-	}
-
-	apiServer, err := createAPIServer(config, bacalhauConfig)
+	authProviders, err := SetupAuthenticators("TODO", bacalhauConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating auth provider: %w", err)
 	}
-
-	transportLayer, err := createTransport(ctx, config)
+	apiServer, err := SetupAPIServer("TODO", bacalhauConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating api server: %w", err)
 	}
+	transport, err := SetupTransport(bacalhauConfig)
+
+	/*
+		if err = prepareConfig(&config, bacalhauConfig); err != nil {
+			return nil, err
+		}
+
+		apiServer, err := createAPIServer(config, bacalhauConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		transportLayer, err := createTransport(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+
+	*/
 
 	var debugInfoProviders []models.DebugInfoProvider
-	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
+	debugInfoProviders = append(debugInfoProviders, transport.DebugInfoProviders()...)
 
 	var requesterNode *Requester
 	var computeNode *Compute
@@ -151,8 +165,8 @@ func NewNode(
 			config,
 			bacalhauConfig.Metrics,
 			config.RequesterNodeConfig,
-			transportLayer,
-			transportLayer.ComputeProxy(),
+			transport,
+			transport.ComputeProxy(),
 		)
 		if err != nil {
 			return nil, err
@@ -194,7 +208,7 @@ func NewNode(
 
 		// heartbeat client
 		heartbeatClient, err := heartbeat.NewClient(
-			transportLayer.Client(), config.NodeID, config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
+			transport.Client(), config.NodeID, config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
 		)
 		if err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
@@ -215,8 +229,8 @@ func NewNode(
 			storages,
 			executors,
 			publishers,
-			transportLayer.CallbackProxy(),
-			transportLayer.ManagementProxy(),
+			transport.CallbackProxy(),
+			transport.ManagementProxy(),
 			config.Labels,
 			heartbeatClient,
 		)
@@ -224,7 +238,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
+		err = transport.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +255,7 @@ func NewNode(
 		BacalhauVersion:     *version.Get(),
 		DefaultNodeApproval: models.NodeMembership.APPROVED,
 	})
-	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
+	nodeInfoProvider.RegisterNodeInfoDecorator(transport.NodeInfoDecorator())
 	if computeNode != nil {
 		nodeInfoProvider.RegisterNodeInfoDecorator(computeNode.nodeInfoDecorator)
 	}
@@ -292,7 +306,7 @@ func NewNode(
 
 		var err error
 		if transportLayer != nil {
-			err = errors.Join(err, transportLayer.Close(ctx))
+			err = errors.Join(err, transport.Close(ctx))
 		}
 
 		if apiServer != nil {

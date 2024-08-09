@@ -16,8 +16,8 @@ type Compute struct {
 	Orchestrators []string
 	// TLS specifies the TLS configuration used to connect to orchestrators.
 	TLS types.TLS
-	// Labels specifies a list of labels the compute node will advertise to orchestrators.
-	Labels []string
+	// Labels specifies a map of key value pairs the compute node will advertise to orchestrators.
+	Labels map[string]string
 	// Heartbeat specifies the compute node's heartbeat configuration.
 	Heartbeat Heartbeat
 	// Store specifies the compute node's store configuration.
@@ -25,11 +25,11 @@ type Compute struct {
 	// Capacity specifies the compute node's capacity configuration.
 	Capacity Capacity
 	// Publishers specifies the configuration of publishers the compute node provides.
-	Publishers executor.Providers
+	Publishers publisher.Providers
 	// InputSources specifies the configuration of input sources the compute node provides.
 	InputSources storage.Providers
 	// Executors specifies the configuration of executors the compute node provides.
-	Executors publisher.Providers
+	Executors executor.Providers
 	// Policy specifies the configuration of the compute node's job selection policy.
 	Policy SelectionPolicy
 }
@@ -56,37 +56,15 @@ type ComputeStore struct {
 type Capacity struct {
 	// Total when specified overrides the auto-detected capacity of the compute node.
 	// When provided, the Allocated capacity will be ignored.
-	Total types.Resource
+	Total types.ResourceConfig
 	// Allocated specifies the percentage of the total capacity that can be allocated to jobs on the compute node.
-	Allocated types.Resource
+	Allocated types.ResourceScalerConfig
 }
 
 // SelectionPolicy represents the job selection policy configuration for the compute node.
 type SelectionPolicy struct {
-	// Batch specifies the selection policy for batch jobs.
-	Batch BatchPolicy
-	// Daemon specifies the selection policy for daemon jobs.
-	Daemon DaemonPolicy
-}
-
-// BatchPolicy represents the selection policy configuration for batch jobs on the compute node.
-type BatchPolicy struct {
-	// Enabled when set to true instructs the compute node to accept 'batch' jobs.
-	Enabled bool
-	// Networked when set to true allows the compute node to accept batch jobs requiring network access.
+	// Networked when set to true allows the compute node to accept jobs requiring network access.
 	Networked bool
-	// MaxDuration specifies the maximum execution time for a batch job.
-	MaxDuration types.Duration
-	// Capacity specifies the percentage of the total capacity that can be allocated to batch jobs on the compute node.
-	Capacity types.Resource
-}
-
-// DaemonPolicy represents the selection policy configuration for daemon jobs on the compute node.
-type DaemonPolicy struct {
-	// Enabled when set to true instructs the compute node to accept 'daemon' jobs.
-	Enabled bool
-	// Networked when set to true allows the compute node to accept daemon jobs requiring network access.
-	Networked bool
-	// Capacity specifies the percentage of the total capacity that can be allocated to daemon jobs on the compute node.
-	Capacity types.Resource
+	// Local when set to true instructs the compute node to only accept jobs whose inputs it has locally.
+	Local bool
 }

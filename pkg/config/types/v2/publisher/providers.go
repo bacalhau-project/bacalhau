@@ -15,6 +15,8 @@ type Providers struct {
 	Local Local
 	// HTTP is the configuration for the HTTP provider.
 	HTTP HTTP
+
+	LocalHTTPServer LocalHTTPServer
 }
 
 // IPFS represents the configuration settings for the IPFS storage provider.
@@ -57,4 +59,10 @@ type HTTP struct {
 	Endpoint string
 	// Headers specifies the HTTP headers to be included in requests to the HTTP provider.
 	Headers map[string]string
+}
+
+type LocalHTTPServer struct {
+	Enabled bool
+	Host    string
+	Port    int
 }

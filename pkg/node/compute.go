@@ -137,7 +137,6 @@ func NewComputeNode(
 		publishers,
 		storages,
 		executors,
-		runningCapacityTracker,
 		nodeID,
 		executionStore,
 		computeCallback,
@@ -176,7 +175,7 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: configuredLabels},
+		&ConfigLabelsProvider{StaticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 	)
@@ -242,7 +241,6 @@ func NewBidder(
 	publishers publisher.PublisherProvider,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	runningCapacityTracker capacity.Tracker,
 	nodeID string,
 	executionStore store.ExecutionStore,
 	computeCallback compute.Callback,
