@@ -1,0 +1,64 @@
+cache:
+  paths:
+    - "/golangci-lint-cache"
+    - "/vendor-cache"
+    - "/node-modules-cache"
+  size: 20g
+  name: "vendor-module-cache"
+
+steps:
+  - label: ":golang: Lint"
+    command: "./buildkite/scripts/lint.sh"
+    key: "lint"
+    agents:
+      queue: "buildkite-hosted-linux-medium"
+      
+  - group: ":package: Build Tarball"
+    key: "build-tarball"
+    steps:
+      - label: ":golang: Build linux amd64"
+        command: "./buildkite/scripts/build_tarball.sh linux amd64"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build linux arm64"
+        command: "./buildkite/scripts/build_tarball.sh linux arm64"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build linux armv6"
+        command: "./buildkite/scripts/build_tarball.sh linux armv6"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build linux armv7"
+        command: "./buildkite/scripts/build_tarball.sh linux armv7"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build darwin amd64"
+        command: "./buildkite/scripts/build_tarball.sh darwin amd64"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build darwin arm64"
+        command: "./buildkite/scripts/build_tarball.sh darwin arm64"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+          
+      - label: ":golang: Build windows amd64"
+        command: "./buildkite/scripts/build_tarball.sh windows amd64"
+        agents:
+          queue: "buildkite-hosted-linux-small"
+        
+  - label: ":testengine: Unit Test"
+    command: "./buildkite/scripts/test.sh unit"
+    key: "unit-test"
+    agents:
+      queue: "buildkite-hosted-linux-large"
+      
+  - label: ":testengine: Integration Test"
+    command: "./buildkite/scripts/test.sh integration"
+    key: "integration-test"
+    agents:
+      queue: "buildkite-hosted-linux-large"

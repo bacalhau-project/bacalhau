@@ -34,7 +34,7 @@ func (m *MigrationManager) Add(migration Migration) error {
 
 // Migrate runs the migrations on the given repo.
 func (m *MigrationManager) Migrate(repo FsRepo) error {
-	currentVersion, err := repo.readVersion()
+	currentVersion, err := repo.Version()
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (m *MigrationManager) Migrate(repo FsRepo) error {
 			return err
 		}
 		currentVersion = migration.ToVersion
-		err = repo.writeVersion(currentVersion)
+		err = repo.WriteVersion(currentVersion)
 		if err != nil {
 			return err
 		}

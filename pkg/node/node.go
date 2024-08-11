@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -138,6 +137,10 @@ func NewNode(
 	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
+	messageSerDeRegistry, err := CreateMessageSerDeRegistry()
+	if err != nil {
+		return nil, err
+	}
 	var requesterNode *Requester
 	var computeNode *Compute
 	var labelsProvider models.LabelsProvider
@@ -153,6 +156,7 @@ func NewNode(
 			config.RequesterNodeConfig,
 			transportLayer,
 			transportLayer.ComputeProxy(),
+			messageSerDeRegistry,
 		)
 		if err != nil {
 			return nil, err
@@ -192,14 +196,6 @@ func NewNode(
 			attribute.StringSlice("node_engines", executors.Keys(ctx)),
 		)
 
-		// heartbeat client
-		heartbeatClient, err := heartbeat.NewClient(
-			transportLayer.Client(), config.NodeID, config.ComputeConfig.ControlPlaneSettings.HeartbeatTopic,
-		)
-		if err != nil {
-			return nil, pkgerrors.Wrap(err, "failed to create heartbeat client")
-		}
-
 		repoPath, err := fsr.Path()
 		if err != nil {
 			return nil, err
@@ -215,10 +211,11 @@ func NewNode(
 			storages,
 			executors,
 			publishers,
+			transportLayer.Client(),
 			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
 			config.Labels,
-			heartbeatClient,
+			messageSerDeRegistry,
 		)
 		if err != nil {
 			return nil, err
@@ -275,6 +272,7 @@ func NewNode(
 	version.RunUpdateChecker(
 		updateCheckCtx,
 		bacalhauConfig,
+		fsr,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)

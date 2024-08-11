@@ -135,7 +135,7 @@ func TestEngineSpec_Validate(t *testing.T) {
 				Image:                "valid-image",
 				Entrypoint:           []string{"entrypoint"},
 				Parameters:           []string{"param1", "param2"},
-				EnvironmentVariables: []string{"KEY1", "value1", "KEY2", "value2"},
+				EnvironmentVariables: []string{"KEY1=VALUE1", "KEY2=VALUE2"},
 				WorkingDirectory:     "/valid/path",
 			},
 			expectedErrorMsg: "",
@@ -154,14 +154,6 @@ func TestEngineSpec_Validate(t *testing.T) {
 				WorkingDirectory: "relative/path",
 			},
 			expectedErrorMsg: "invalid docker engine param: 'WorkingDirectory' (\"relative/path\") must contain absolute path",
-		},
-		{
-			name: "Odd Number of Environment Variables",
-			engineSpec: EngineSpec{
-				Image:                "valid-image",
-				EnvironmentVariables: []string{"KEY1", "value1", "KEY2"},
-			},
-			expectedErrorMsg: "invalid docker engine param: 'EnvironmentVariables' ([KEY1 value1 KEY2]) must contain an even number of elements to represent environment variable key-value pairs",
 		},
 	}
 

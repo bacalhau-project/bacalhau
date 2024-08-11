@@ -33,7 +33,7 @@ endif
 export GO111MODULE = on
 export CGO_ENABLED = 0
 export PRECOMMIT = poetry run pre-commit
-export EARTHLY ?= $(shell command -v earthly --push 2> /dev/null)
+export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
 
 BUILD_DIR = bacalhau
 BINARY_NAME = bacalhau
@@ -202,7 +202,7 @@ WEB_SRC_FILES := $(shell find webui -not -path 'webui/build/*' -not -path 'webui
 
 .PHONY: build-webui
 build-webui: resolve-earthly
-	cd webui && ${EARTHLY} --push +all
+	cd webui && ${EARTHLY} +all
 
 
 ################################################################################
@@ -338,7 +338,7 @@ integration-test:
 	go test ./... -v --tags=integration -p 1
 
 .PHONY: bash-test
-bash-test: 
+bash-test:
 	${BINARY_PATH}
 	cd test && bin/bashtub *.sh
 
@@ -439,11 +439,9 @@ test-and-report: unittests.xml ${COVER_FILE}
 
 ${COVER_FILE} unittests.xml ${TEST_OUTPUT_FILE_PREFIX}_unit.json &: ${CMD_FILES} ${PKG_FILES} $(dir ${COVER_FILE})
 	gotestsum \
-		--jsonfile ${TEST_OUTPUT_FILE_PREFIX}_unit.json \
 		--junitfile unittests.xml \
 		--format testname \
 		-- \
-			-p ${TEST_PARALLEL_PACKAGES} \
 			./pkg/... ./cmd/... \
 			-coverpkg=./... -coverprofile=${COVER_FILE} \
 			--tags=${TEST_BUILD_TAGS}

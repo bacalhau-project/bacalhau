@@ -53,9 +53,6 @@ const (
 	AutoCertCachePath     = "autocert-cache"
 	NetworkTransportStore = "nats-store"
 
-	// update check paths
-	UpdateCheckStatePath = "update.json"
-
 	// auth paths
 	TokensPath = "tokens.json"
 )

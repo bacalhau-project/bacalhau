@@ -7,13 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/suite"
-)
-
-const (
-	expectedRepoVersion = repo.RepoVersion3
 )
 
 type BaseMigrationTestSuite struct {
@@ -77,5 +72,3 @@ func (suite *BaseMigrationTestSuite) copyFile(src, dst string) {
 	err = os.Chmod(dst, srcInfo.Mode())
 	suite.Require().NoError(err)
 }
-
-//

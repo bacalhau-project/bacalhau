@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // LabelSelectorRequirement A selector that contains values, a key, and an operator that relates the key and values.
@@ -18,10 +19,10 @@ type LabelSelectorRequirement struct {
 	// key is the label key that the selector applies to.
 	Key string `json:"Key"`
 	// operator represents a key's relationship to a set of values.
-	// Valid operators are In, NotIn, Exists and DoesNotExist.
+	// Valid operators are In, NotIn, Exists and KeyNotInImap.
 	Operator selection.Operator `json:"Operator"`
 	// values is an array of string values. If the operator is In or NotIn,
-	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
+	// the values array must be non-empty. If the operator is Exists or KeyNotInImap,
 	// the values array must be empty. This array is replaced during a strategic
 	Values []string `json:"Values,omitempty"`
 }
@@ -42,19 +43,12 @@ func (r *LabelSelectorRequirement) Copy() *LabelSelectorRequirement {
 }
 
 func (r *LabelSelectorRequirement) Validate() error {
-	var mErr error
-	if validate.IsBlank(r.Key) {
-		mErr = errors.Join(mErr, errors.New("selector key cannot be blank"))
-	}
+	mErr := validate.NotBlank(r.Key, "selector key cannot be blank")
 	switch r.Operator {
 	case selection.In, selection.NotIn:
-		if validate.IsEmpty(r.Values) {
-			mErr = errors.Join(mErr, errors.New("selector values cannot be empty for In or NotIn operators"))
-		}
+		mErr = errors.Join(mErr, validate.IsNotEmpty(r.Values, "selector values cannot be empty for In or NotIn operators"))
 	case selection.Exists, selection.DoesNotExist:
-		if !validate.IsEmpty(r.Values) {
-			mErr = errors.Join(mErr, errors.New("selector values must be empty for Exists or DoesNotExist operators"))
-		}
+		mErr = errors.Join(mErr, validate.IsEmpty(r.Values, "selector values must be empty for Exists or KeyNotInImap operators"))
 	default:
 		if len(r.Values) != 1 {
 			mErr = errors.Join(mErr, errors.New("selector values must have exactly one value for other operators"))

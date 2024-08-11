@@ -25,6 +25,8 @@ func NewStateUpdater(store jobstore.Store) *StateUpdater {
 }
 
 // Process updates the state of the executions in the plan according to the scheduler's desired state.
+//
+//nolint:gocyclo
 func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 	// If there are no new or updated executions
 	// and the job state is not being updated, there is nothing to do.
@@ -48,15 +50,14 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 
 	// Create new executions
 	for _, exec := range plan.NewExecutions {
-		err = s.store.CreateExecution(txContext, *exec, plan.Event)
-		if err != nil {
+		if err = s.store.CreateExecution(txContext, *exec); err != nil {
 			return err
 		}
 	}
 
 	// Update existing executions
 	for _, u := range plan.UpdatedExecutions {
-		err = s.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
+		if err = s.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
 			ExecutionID: u.Execution.ID,
 			NewValues: models.Execution{
 				DesiredState: models.State[models.ExecutionDesiredStateType]{
@@ -67,35 +68,46 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedRevision: u.Execution.Revision,
 			},
-			Event: u.Event,
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 	}
 
 	// Update job state if necessary
 	if !plan.DesiredJobState.IsUndefined() {
-		err = s.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
+		if err = s.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
 			JobID:    plan.Job.ID,
 			NewState: plan.DesiredJobState,
-			Event:    plan.Event,
+			Message:  plan.UpdateMessage,
 			Condition: jobstore.UpdateJobCondition{
 				ExpectedRevision: plan.Job.Revision,
 			},
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 	}
 
 	// Create follow-up evaluations, if any
 	for _, eval := range plan.NewEvaluations {
-		err = s.store.CreateEvaluation(txContext, *eval)
-		if err != nil {
+		if err = s.store.CreateEvaluation(txContext, *eval); err != nil {
 			return err
 		}
 	}
+
+	// Add history events
+	if len(plan.JobEvents) > 0 {
+		if err = s.store.AddJobHistory(txContext, plan.Job.ID, plan.JobEvents...); err != nil {
+			return err
+		}
+	}
+	if len(plan.ExecutionEvents) > 0 {
+		for executionID, events := range plan.ExecutionEvents {
+			if err = s.store.AddExecutionHistory(txContext, plan.Job.ID, executionID, events...); err != nil {
+				return err
+			}
+		}
+	}
+
 	return txContext.Commit()
 }
 

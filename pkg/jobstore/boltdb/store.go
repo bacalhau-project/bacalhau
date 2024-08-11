@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
@@ -407,7 +406,6 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 		Limit:  query.Limit,
 	}
 
-	// If we don't have 'limit' jobs, then there definitely aren't any more
 	if more {
 		response.NextOffset = query.Offset + query.Limit
 	}
@@ -415,7 +413,7 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	return response, nil
 }
 
-// getJobsWithinLimit returns the initial set of jobs to be considered for GetJobs response.
+// getJobsInitialSet returns the initial set of jobs to be considered for GetJobs response.
 // It either returns all jobs, or jobs for a specific client if specified in the query.
 func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (map[string]struct{}, error) {
 	jobSet := make(map[string]struct{})
@@ -629,28 +627,29 @@ func createInProgressIndexKey(job *models.Job) string {
 // GetJobHistory returns the job (and execution) history for the provided options
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
-	options jobstore.JobHistoryFilterOptions,
-) ([]models.JobHistory, error) {
-	var history []models.JobHistory
+	query jobstore.JobHistoryQuery,
+) (*jobstore.JobHistoryQueryResponse, error) {
+	var response *jobstore.JobHistoryQueryResponse
 	err := b.view(ctx, func(tx *bolt.Tx) (err error) {
-		history, err = b.getJobHistory(tx, jobID, options)
+		response, err = b.getJobHistory(tx, jobID, query)
 		return
 	})
 
-	return history, err
+	return response, err
 }
 
+//nolint:gocyclo,funlen
 func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
-	options jobstore.JobHistoryFilterOptions,
-) ([]models.JobHistory, error) {
+	query jobstore.JobHistoryQuery,
+) (*jobstore.JobHistoryQueryResponse, error) {
 	var history []models.JobHistory
 
 	jobID, err := b.reifyJobID(tx, jobID)
 	if err != nil {
-		return history, err
+		return nil, err
 	}
 
-	if !options.ExcludeJobLevel {
+	if !query.ExcludeJobLevel {
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false); err != nil {
 			return nil, err
 		} else {
@@ -671,7 +670,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 		}
 	}
 
-	if !options.ExcludeExecutionLevel {
+	if !query.ExcludeExecutionLevel {
 		// 	// Get the executions for this JobID
 		if bkt, err := NewBucketPath(BucketJobs, jobID, BucketExecutionHistory).Get(tx, false); err != nil {
 			return nil, err
@@ -696,15 +695,11 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 	// Filter out anything before the specified Since time, and anything that doesn't match the
 	// specified ExecutionID or NodeID
 	history = lo.Filter(history, func(event models.JobHistory, index int) bool {
-		if options.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, options.ExecutionID) {
+		if query.ExecutionID != "" && !strings.HasPrefix(event.ExecutionID, query.ExecutionID) {
 			return false
 		}
 
-		if options.NodeID != "" && !strings.HasPrefix(event.NodeID, options.NodeID) {
-			return false
-		}
-
-		if event.Time.Unix() < options.Since {
+		if event.Time.Unix() < query.Since {
 			return false
 		}
 		return true
@@ -712,11 +707,50 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string,
 
 	sort.Slice(history, func(i, j int) bool { return history[i].Time.UTC().Before(history[j].Time.UTC()) })
 
-	return history, nil
+	offset := uint32(0)
+	if query.NextToken != "" {
+		token, err := models.NewPagingTokenFromString(query.NextToken)
+		if err != nil {
+			return nil, err
+		}
+		offset = token.Offset
+	}
+
+	if offset >= uint32(len(history)) {
+		return &jobstore.JobHistoryQueryResponse{}, nil
+	}
+
+	historyFiltered := history[offset:]
+	if query.Limit == 0 {
+		return &jobstore.JobHistoryQueryResponse{
+			JobHistory: historyFiltered,
+		}, nil
+	}
+
+	limit := math.Min(uint32(len(historyFiltered)), query.Limit)
+	fileteredLength := uint32(len(historyFiltered))
+	historyFiltered = historyFiltered[:limit]
+
+	response := &jobstore.JobHistoryQueryResponse{
+		JobHistory: historyFiltered,
+		Offset:     offset,
+	}
+
+	if fileteredLength >= query.Limit {
+		response.NextToken = models.NewPagingToken(&models.PagingTokenParams{
+			Offset: offset + query.Limit,
+		}).String()
+	} else {
+		response.NextToken = models.NewPagingToken(&models.PagingTokenParams{
+			Offset: fileteredLength,
+		}).String()
+	}
+
+	return response, nil
 }
 
 // CreateJob creates a new record of a job in the data store
-func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event models.Event) error {
+func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
 	job.State = models.NewJobState(models.JobStateTypePending)
 	job.Revision = 1
 	job.CreateTime = b.clock.Now().UTC().UnixNano()
@@ -727,7 +761,7 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job, event mode
 		return err
 	}
 	return b.update(ctx, func(tx *bolt.Tx) (err error) {
-		return b.createJob(tx, job, event)
+		return b.createJob(tx, job)
 	})
 }
 
@@ -799,7 +833,7 @@ func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) e
 	return view(tx)
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event) error {
+func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	if b.jobExists(tx, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
@@ -860,7 +894,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job, event models.Event
 		}
 	}
 
-	return b.appendJobHistory(tx, job, models.JobStateTypePending, event)
+	return nil
 }
 
 // DeleteJob removes the specified job from the system entirely
@@ -949,9 +983,8 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	})
 
 	// update the job state
-	previousState := job.State.StateType
 	job.State.StateType = request.NewState
-	job.State.Message = request.Event.Message
+	job.State.Message = request.Message
 	job.Revision++
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 
@@ -979,28 +1012,34 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		}
 	}
 
-	return b.appendJobHistory(tx, job, previousState, request.Event)
+	return nil
 }
 
-func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previousState models.JobStateType, event models.Event) error {
+// AddJobHistory appends a new history entry to the job history
+func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events ...models.Event) error {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
+		for _, event := range events {
+			if err = b.addJobHistory(tx, jobID, event); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (b *BoltJobStore) addJobHistory(tx *bolt.Tx, jobID string, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:  models.JobHistoryTypeJobLevel,
-		JobID: updateJob.ID,
-		JobState: &models.StateChange[models.JobStateType]{
-			Previous: previousState,
-			New:      updateJob.State.StateType,
-		},
-		NewRevision: updateJob.Revision,
-		Comment:     event.Message,
-		Event:       event,
-		Time:        time.Unix(0, updateJob.ModifyTime),
+		JobID: jobID,
+		Event: event,
+		Time:  b.clock.Now().UTC(),
 	}
 	data, err := b.marshaller.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
 
-	if bkt, err := NewBucketPath(BucketJobs, updateJob.ID, BucketJobHistory).Get(tx, true); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, true); err != nil {
 		return err
 	} else {
 		seq := BucketSequenceString(tx, bkt)
@@ -1013,7 +1052,7 @@ func (b *BoltJobStore) appendJobHistory(tx *bolt.Tx, updateJob models.Job, previ
 }
 
 // CreateExecution creates a record of a new execution
-func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution, event models.Event) error {
+func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) error {
 	if execution.CreateTime == 0 {
 		execution.CreateTime = b.clock.Now().UTC().UnixNano()
 	}
@@ -1031,11 +1070,11 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 		return err
 	}
 	return b.update(ctx, func(tx *bolt.Tx) (err error) {
-		return b.createExecution(tx, execution, event)
+		return b.createExecution(tx, execution)
 	})
 }
 
-func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution, event models.Event) error {
+func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) error {
 	if !b.jobExists(tx, execution.JobID) {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
@@ -1073,7 +1112,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution, 
 		}
 	}
 
-	return b.appendExecutionHistory(tx, execution, models.ExecutionStateNew, event)
+	return nil
 }
 
 // UpdateExecution updates the state of a single execution by loading from storage,
@@ -1134,25 +1173,28 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
-	return b.appendExecutionHistory(tx, newExecution, existingExecution.ComputeState.StateType, request.Event)
+	return nil
 }
 
-func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execution,
-	previous models.ExecutionStateType, event models.Event,
-) error {
+// AddExecutionHistory appends a new history entry to the execution history
+func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error {
+	return b.update(ctx, func(tx *bolt.Tx) (err error) {
+		for _, event := range events {
+			if err = b.addExecutionHistory(tx, jobID, executionID, event); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (b *BoltJobStore) addExecutionHistory(tx *bolt.Tx, jobID, executionID string, event models.Event) error {
 	historyEntry := models.JobHistory{
 		Type:        models.JobHistoryTypeExecutionLevel,
-		JobID:       updated.JobID,
-		NodeID:      updated.NodeID,
-		ExecutionID: updated.ID,
-		ExecutionState: &models.StateChange[models.ExecutionStateType]{
-			Previous: previous,
-			New:      updated.ComputeState.StateType,
-		},
-		NewRevision: updated.Revision,
-		Comment:     event.Message,
+		JobID:       jobID,
+		ExecutionID: executionID,
 		Event:       event,
-		Time:        time.Unix(0, updated.ModifyTime),
+		Time:        b.clock.Now().UTC(),
 	}
 
 	data, err := b.marshaller.Marshal(historyEntry)
@@ -1162,7 +1204,7 @@ func (b *BoltJobStore) appendExecutionHistory(tx *bolt.Tx, updated models.Execut
 
 	// Get the history bucket for this job ID, which involves potentially
 	// creating the bucket (executions_history.<jobid>)
-	if bkt, err := NewBucketPath(BucketJobs, updated.JobID, BucketExecutionHistory).Get(tx, true); err != nil {
+	if bkt, err := NewBucketPath(BucketJobs, jobID, BucketExecutionHistory).Get(tx, true); err != nil {
 		return err
 	} else {
 		seq := BucketSequenceString(tx, bkt)

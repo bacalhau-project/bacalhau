@@ -1417,7 +1417,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "RunOutput": {
-                    "description": "RunOutput is the output of the run command\nTODO: evaluate removing this from execution spec in favour of calling ` + "`" + `bacalhau logs` + "`" + `",
+                    "description": "RunOutput is the output of the run command\nTODO: evaluate removing this from execution spec in favour of calling ` + "`" + `bacalhau job logs` + "`" + `",
                     "allOf": [
                         {
                             "$ref": "#/definitions/models.RunCommandResult"

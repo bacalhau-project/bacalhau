@@ -78,10 +78,7 @@ func (s *SpecConfig) Validate() error {
 	if s == nil {
 		return errors.New("nil spec config")
 	}
-	if validate.IsBlank(s.Type) {
-		return errors.New("missing spec type")
-	}
-	return nil
+	return validate.NotBlank(s.Type, "missing spec type")
 }
 
 // ValidateAllowBlank is the same as Validate but allows blank types.
@@ -104,5 +101,5 @@ func (s *SpecConfig) IsType(t string) bool {
 
 // IsEmpty returns true if the spec config is empty
 func (s *SpecConfig) IsEmpty() bool {
-	return s == nil || (validate.IsBlank(s.Type) && len(s.Params) == 0)
+	return s == nil || (len(s.Type) == 0 && len(s.Params) == 0)
 }

@@ -95,9 +95,7 @@ func VersionCheckMiddleware(serverVersion, minVersion semver.Version) echo.Middl
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			clientVersionStr := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauGitVersion)
-			if clientVersionStr == "" ||
-				clientVersionStr == version.DevelopmentGitVersion ||
-				clientVersionStr == version.UnknownGitVersion {
+			if !version.IsVersionExplicit(clientVersionStr) {
 				// allow the request to pass through
 				return next(c)
 			}

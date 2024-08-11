@@ -102,6 +102,11 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 	}
 }
 
+type UpdateStore interface {
+	ReadLastUpdateCheck() (time.Time, error)
+	WriteLastUpdateCheck(time.Time) error
+}
+
 // RunUpdateChecker starts a goroutine that will periodically make an update
 // check according to the configured update frequency and check skipping. The
 // goroutine is ended by canceling the passed context. `getServerVersion` is
@@ -110,6 +115,7 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 func RunUpdateChecker(
 	ctx context.Context,
 	cfg types.BacalhauConfig,
+	store UpdateStore,
 	getServerVersion func(context.Context) (*models.BuildVersionInfo, error),
 	responseCallback func(context.Context, *UpdateCheckResponse),
 ) {
@@ -150,15 +156,12 @@ func RunUpdateChecker(
 
 		if err == nil {
 			responseCallback(ctx, updateResponse)
-			// TODO(forrest): similar to the below TODO, shove this in a cache and persit on shutdown.
-			err = writeNewLastCheckTime(cfg.Update.CheckStatePath)
+			err = store.WriteLastUpdateCheck(time.Now())
 			log.Ctx(ctx).WithLevel(logger.ErrOrDebug(err)).Err(err).Msg("Completed update check")
 		}
 	}
 
-	// TODO(forrest) [efficiency]: rather than repeatedly reading a file, set the value in a cache and flush the cache
-	// to disk when this service shutwdown, no reason for this IO.
-	lastCheck, err := readLastCheckTime(cfg.Update.CheckStatePath)
+	lastCheck, err := store.ReadLastUpdateCheck()
 	if err != nil {
 		// Only log if the error is not about a missing update.json
 		if !os.IsNotExist(err) {
@@ -195,43 +198,4 @@ func RunUpdateChecker(
 			}
 		}
 	}()
-}
-
-type updateState struct {
-	LastCheck time.Time
-}
-
-func readLastCheckTime(path string) (time.Time, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return time.Time{}, err // File not found, return zero time and the error
-		}
-		return time.Now(), errors.Wrap(err, "error opening update state file")
-	}
-	defer file.Close()
-
-	var state updateState
-	err = json.NewDecoder(file).Decode(&state)
-	if err != nil {
-		return time.Now(), errors.Wrap(err, "error reading update state")
-	}
-
-	return state.LastCheck, nil
-}
-
-func writeNewLastCheckTime(path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return errors.Wrap(err, "error creating update state file")
-	}
-	defer file.Close()
-
-	state := updateState{LastCheck: time.Now()}
-	err = json.NewEncoder(file).Encode(&state)
-	if err != nil {
-		return errors.Wrap(err, "error writing update state")
-	}
-
-	return nil
 }

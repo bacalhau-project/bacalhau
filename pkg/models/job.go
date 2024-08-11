@@ -214,39 +214,28 @@ func (j *Job) Copy() *Job {
 
 // Validate is used to check a job for reasonable configuration
 func (j *Job) Validate() error {
-	var mErr error
-
-	// Validate the job ID
-	if validate.IsBlank(j.ID) {
-		mErr = errors.Join(mErr, errors.New("missing job ID"))
-	} else if validate.ContainsSpaces(j.ID) {
-		mErr = errors.Join(mErr, errors.New("job ID contains a space"))
-	} else if validate.ContainsNull(j.ID) {
-		mErr = errors.Join(mErr, errors.New("job ID contains a null character"))
-	}
-
-	// Validate the job name
-	if validate.IsBlank(j.Name) {
-		mErr = errors.Join(mErr, errors.New("missing job name"))
-	} else if validate.ContainsNull(j.Name) {
-		mErr = errors.Join(mErr, errors.New("job Name contains a null character"))
-	}
-
-	// Validate the job namespace
-	if validate.IsBlank(j.Namespace) {
-		mErr = errors.Join(mErr, errors.New("job must be in a namespace"))
-	}
-
-	mErr = errors.Join(mErr, j.ValidateSubmission())
+	errs := errors.Join(
+		// Validate the job ID
+		validate.NotBlank(j.ID, "missing job ID"),
+		validate.NoSpaces(j.ID, "job ID contains a space"),
+		validate.NoNullChars(j.ID, "job ID contains a null character"),
+		// Validate the job name
+		validate.NotBlank(j.Name, "missing job name"),
+		validate.NoNullChars(j.Name, "job Name contains a null character"),
+		// Validate the job namespace
+		validate.NotBlank(j.Namespace, "job must be in a namespace"),
+		// More validations
+		j.ValidateSubmission(),
+	)
 
 	// Validate the task group
 	for _, task := range j.Tasks {
 		if err := task.Validate(); err != nil {
 			outer := fmt.Errorf("task %s validation failed: %v", task.Name, err)
-			mErr = errors.Join(mErr, outer)
+			errs = errors.Join(errs, outer)
 		}
 	}
-	return mErr
+	return errs
 }
 
 // ValidateSubmission is used to check a job for reasonable configuration when it is submitted.

@@ -19,8 +19,8 @@ import (
 // - Adds the execution and job store paths to the config if they are missing, which is the case for v3 repos
 // - Renames the execution and job store directories to the new name if they exist
 var V2Migration = repo.NewMigration(
-	repo.RepoVersion2,
-	repo.RepoVersion3,
+	repo.Version2,
+	repo.Version3,
 	func(r repo.FsRepo) error {
 		v, fileCfg, err := readConfig(r)
 		if err != nil {

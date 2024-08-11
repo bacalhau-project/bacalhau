@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 // ErrSchedulerNotFound is returned when the scheduler is not found for a given evaluation type
@@ -72,12 +73,40 @@ func (e ErrNotEnoughNodes) Details() map[string]string {
 
 // ErrNoMatchingNodes is returned when no matching nodes in the network to run a job
 type ErrNoMatchingNodes struct {
+	AvailableNodes []NodeRank
 }
 
-func NewErrNoMatchingNodes() ErrNoMatchingNodes {
-	return ErrNoMatchingNodes{}
+func NewErrNoMatchingNodes(availableNodes []NodeRank) ErrNoMatchingNodes {
+	return ErrNoMatchingNodes{
+		AvailableNodes: availableNodes,
+	}
 }
 
 func (e ErrNoMatchingNodes) Error() string {
-	return "no matching nodes to run job"
+	reasons := lo.GroupBy(e.AvailableNodes, func(rank NodeRank) string { return rank.Reason })
+
+	var message strings.Builder
+	fmt.Fprintf(&message, "not matching nodes to run job out of %d available nodes.", len(e.AvailableNodes))
+	for reason, nodes := range reasons {
+		fmt.Fprint(&message, "\n• ")
+		if len(nodes) > 1 {
+			fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
+		} else {
+			fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
+		}
+		fmt.Fprintf(&message, ": %s", reason)
+	}
+	return message.String()
+}
+
+func (e ErrNoMatchingNodes) Details() map[string]string {
+	return map[string]string{
+		"NodesAvailable": fmt.Sprint(len(e.AvailableNodes)),
+	}
+}
+
+func (e ErrNoMatchingNodes) Retryable() bool {
+	return lo.ContainsBy(e.AvailableNodes, func(rank NodeRank) bool {
+		return !rank.MeetsRequirement() && rank.Retryable
+	})
 }
