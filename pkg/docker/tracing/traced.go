@@ -6,10 +6,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
 	docker_sys "github.com/docker/docker/api/types/system"
@@ -17,6 +16,9 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 func NewTracedClient() (TracedClient, error) {
@@ -111,11 +113,11 @@ func (c TracedClient) ContainerWait(
 	return telemetry.RecordErrorOnSpanTwoChannels[container.WaitResponse](span)(c.client.ContainerWait(ctx, containerID, condition))
 }
 
-func (c TracedClient) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error) {
+func (c TracedClient) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, container.PathStat, error) {
 	ctx, span := c.span(ctx, "container.cp")
 	// span ends when the io.ReadCloser is closed
 
-	return telemetry.RecordErrorOnSpanReadCloserTwoAndClose[types.ContainerPathStat](span)(
+	return telemetry.RecordErrorOnSpanReadCloserTwoAndClose[container.PathStat](span)(
 		c.client.CopyFromContainer(ctx, containerID, srcPath),
 	)
 }
@@ -134,7 +136,7 @@ func (c TracedClient) DistributionInspect(ctx context.Context, imageID string, a
 	return telemetry.RecordErrorOnSpanTwo[registry.DistributionInspect](span)(c.client.DistributionInspect(ctx, imageID, authToken))
 }
 
-func (c TracedClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (c TracedClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
 	ctx, span := c.span(ctx, "image.pull")
 	// span ends when the io.ReadCloser is closed
 
@@ -150,29 +152,29 @@ func (c TracedClient) NetworkConnect(ctx context.Context, networkID, containerID
 	return telemetry.RecordErrorOnSpan(span)(c.client.NetworkConnect(ctx, networkID, containerID, config))
 }
 
-func (c TracedClient) NetworkCreate(ctx context.Context, name string, options types.NetworkCreate) (types.NetworkCreateResponse, error) {
+func (c TracedClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
 	ctx, span := c.span(ctx, "network.create")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[types.NetworkCreateResponse](span)(c.client.NetworkCreate(ctx, name, options))
+	return telemetry.RecordErrorOnSpanTwo[network.CreateResponse](span)(c.client.NetworkCreate(ctx, name, options))
 }
 
-func (c TracedClient) NetworkList(ctx context.Context, options types.NetworkListOptions) ([]types.NetworkResource, error) {
+func (c TracedClient) NetworkList(ctx context.Context, options network.ListOptions) ([]network.Inspect, error) {
 	ctx, span := c.span(ctx, "network.list")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[[]types.NetworkResource](span)(c.client.NetworkList(ctx, options))
+	return telemetry.RecordErrorOnSpanTwo[[]network.Inspect](span)(c.client.NetworkList(ctx, options))
 }
 
 func (c TracedClient) NetworkInspect(
 	ctx context.Context,
 	networkID string,
-	options types.NetworkInspectOptions,
-) (types.NetworkResource, error) {
+	options network.InspectOptions,
+) (network.Inspect, error) {
 	ctx, span := c.span(ctx, "network.inspect")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[types.NetworkResource](span)(c.client.NetworkInspect(ctx, networkID, options))
+	return telemetry.RecordErrorOnSpanTwo[network.Inspect](span)(c.client.NetworkInspect(ctx, networkID, options))
 }
 
 func (c TracedClient) NetworkRemove(ctx context.Context, networkID string) error {
