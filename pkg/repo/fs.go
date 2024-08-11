@@ -19,9 +19,6 @@ const (
 	repoPermission         = 0755
 	defaultRunInfoFilename = "bacalhau.run"
 	runInfoFilePermissions = 0755
-
-	// UpdateCheckStatePath is the update check paths.
-	UpdateCheckStatePath = "update.json"
 )
 
 type FsRepoParams struct {
@@ -46,6 +43,7 @@ func NewFS(params FsRepoParams) (*FsRepo, error) {
 	}, nil
 }
 
+// Path returns the filesystem path to of the repo directory.
 func (fsr *FsRepo) Path() (string, error) {
 	if exists, err := fsr.Exists(); err != nil {
 		return "", err
@@ -55,6 +53,7 @@ func (fsr *FsRepo) Path() (string, error) {
 	return fsr.path, nil
 }
 
+// Exists returns true if the repo exists and is valid, false otherwise.
 func (fsr *FsRepo) Exists() (bool, error) {
 	// check if the path is present
 	if _, err := os.Stat(fsr.path); os.IsNotExist(err) {
@@ -62,15 +61,13 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	// check if the repo version file is present
-	versionPath := filepath.Join(fsr.path, RepoVersionFile)
-	if _, err := os.Stat(versionPath); os.IsNotExist(err) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	version, err := fsr.readVersion()
+	version, err := fsr.Version()
 	if err != nil {
+		// if the repo version does not exist, then the repo is uninitialized, we don't need to error.
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		// if the repo version does exist, but could not be read this is an error.
 		return false, err
 	}
 	if !IsValidVersion(version) {
@@ -84,11 +81,7 @@ func (fsr *FsRepo) Version() (int, error) {
 	return fsr.readVersion()
 }
 
-// join joins path elements with fsr.path
-func (fsr *FsRepo) join(paths ...string) string {
-	return filepath.Join(append([]string{fsr.path}, paths...)...)
-}
-
+// Init initializes a new repo, returning an error if the repo already exists.
 func (fsr *FsRepo) Init(c config.ReadWriter) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -125,9 +118,10 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.writeVersion(RepoVersion3)
+	return fsr.WriteVersion(Version4)
 }
 
+// Open opens an existing repo, returning an error if the repo is uninitialized.
 func (fsr *FsRepo) Open(c config.ReadWriter) error {
 	// if the repo does not exist we cannot open it.
 	if exists, err := fsr.Exists(); err != nil {
@@ -170,11 +164,6 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		ID, _ := config.GetClientID(cfg.User.KeyPath)
 		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
 		c.Set(types.UserInstallationID, uuidFromUserID.String())
-	}
-
-	// TODO we should be initializing the file as a part of creating the repo, instead of sometime later.
-	if cfg.Update.CheckStatePath == "" {
-		c.Set(types.UpdateCheckStatePath, fsr.join(UpdateCheckStatePath))
 	}
 
 	// TODO this should be a part of the config.
@@ -238,7 +227,7 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	*/
 }
 
-// modifies the config to include keys for accessing repo paths
+// EnsureRepoPathsConfigured modifies the config to include keys for accessing repo paths
 func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 	c.SetIfAbsent(types.AuthTokensPath, fsr.join(config.TokensPath))
 	c.SetIfAbsent(types.UserKeyPath, fsr.join(config.UserPrivateKeyFileName))
@@ -247,10 +236,14 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 	// NB(forrest): pay attention to the subtle name difference here
 	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
 
-	c.SetIfAbsent(types.UpdateCheckStatePath, fsr.join(config.UpdateCheckStatePath))
 	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
 	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
 
 	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
 	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
+}
+
+// join joins path elements with fsr.path
+func (fsr *FsRepo) join(paths ...string) string {
+	return filepath.Join(append([]string{fsr.path}, paths...)...)
 }

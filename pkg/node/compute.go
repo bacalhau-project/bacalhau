@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -19,6 +22,9 @@ import (
 	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher/handlers"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -54,12 +60,20 @@ func NewComputeNode(
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
+	natsConn *nats.Conn,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
-	heartbeatClient heartbeat.Client,
+	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
+	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+
+	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -191,6 +205,17 @@ func NewComputeNode(
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
 	regFilename = filepath.Join(computeStorePath, regFilename)
 
+	// heartbeat client
+	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
+		ncl.WithPublisherName(nodeID),
+		ncl.WithPublisherDestination(config.ControlPlaneSettings.HeartbeatTopic),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
+	)
+	if err != nil {
+		return nil, err
+	}
+	heartbeatClient := heartbeat.NewClient(nodeID, heartbeatPublisher)
+
 	// Set up the management client which will attempt to register this node
 	// with the requester node, and then if successful will send regular node
 	// info updates.
@@ -212,9 +237,16 @@ func NewComputeNode(
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if err = watcherRegistry.Stop(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to stop watcher registry")
+		}
 		managementClient.Stop()
-		executionStore.Close(ctx)
-		resultsPath.Close()
+		if err = executionStore.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to close execution store")
+		}
+		if err = resultsPath.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close results path")
+		}
 	}
 
 	return &Compute{

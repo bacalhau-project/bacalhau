@@ -124,7 +124,6 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 	// bacalhau execution label _before_ we do anything else.  If we are able to find one then we
 	// will use that container in the executionHandler that we create.
 	containerID, err := e.FindRunningContainer(ctx, request.ExecutionID)
-
 	if err != nil {
 		// Unable to find a running container for this execution, we will instead check for a handler, and
 		// failing that will create a new container.
@@ -153,6 +152,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		containerID = jobContainer.ID
 	}
 
+	childCtx, cancel := context.WithCancelCause(ctx)
 	handler := &executionHandler{
 		client: e.client,
 		logger: log.With().
@@ -169,12 +169,13 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		waitCh:      make(chan bool),
 		activeCh:    make(chan bool),
 		running:     atomic.NewBool(false),
+		cancelFunc:  cancel,
 	}
 
 	// register the handler for this executionID
 	e.handlers.Put(request.ExecutionID, handler)
 	// run the container.
-	go handler.run(ctx)
+	go handler.run(childCtx)
 	return nil
 }
 
@@ -234,7 +235,8 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	if !found {
 		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.ErrNotFound)
 	}
-	return handler.kill(ctx)
+	handler.cancelFunc(executor.ErrAlreadyCancelled)
+	return nil
 }
 
 // GetLogStream provides a stream of output logs for a specific execution.
@@ -438,7 +440,8 @@ func configureDevices(ctx context.Context, resources *models.Resources) ([]conta
 }
 
 func makeContainerMounts(
-	ctx context.Context, inputs []storage.PreparedStorage, outputs []*models.ResultPath, resultsDir string) ([]mount.Mount, error) {
+	ctx context.Context, inputs []storage.PreparedStorage, outputs []*models.ResultPath, resultsDir string,
+) ([]mount.Mount, error) {
 	// the actual mounts we will give to the container
 	// these are paths for both input and output data
 	var mounts []mount.Mount

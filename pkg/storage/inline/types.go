@@ -1,7 +1,6 @@
 package inline
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/fatih/structs"
@@ -16,10 +15,7 @@ type Source struct {
 }
 
 func (c Source) Validate() error {
-	if validate.IsBlank(c.URL) {
-		return errors.New("invalid inline params: url cannot be empty")
-	}
-	return nil
+	return validate.NotBlank(c.URL, "invalid inline params: url cannot be empty")
 }
 
 func (c Source) ToMap() map[string]interface{} {

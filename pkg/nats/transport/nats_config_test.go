@@ -44,7 +44,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				Orchestrators: []string{"orch1", "orch2"},
 				AuthSecret:    "sekret",
 			},
-			expectedErrors: []string{"node ID contains a space"},
+			expectedErrors: []string{"node ID cannot contain spaces"},
 		},
 		{
 			name: "NodeID Contains Null Character",
@@ -53,7 +53,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				Orchestrators: []string{"orch1", "orch2"},
 				AuthSecret:    "sekret",
 			},
-			expectedErrors: []string{"node ID contains a null character"},
+			expectedErrors: []string{"node ID cannot contain null characters"},
 		},
 		{
 			name: "NodeID Contains > Character",
@@ -62,7 +62,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				Orchestrators: []string{"orch1", "orch2"},
 				AuthSecret:    "sekret",
 			},
-			expectedErrors: []string{"contains one or more reserved character"},
+			expectedErrors: []string{"node ID cannot contain any of the following characters:"},
 		},
 		{
 			name: "NodeID Contains . Character",
@@ -71,7 +71,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				Orchestrators: []string{"orch1", "orch2"},
 				AuthSecret:    "sekret",
 			},
-			expectedErrors: []string{"contains one or more reserved character"},
+			expectedErrors: []string{"node ID cannot contain any of the following characters:"},
 		},
 		{
 			name: "NodeID Contains * Character",
@@ -80,7 +80,7 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 				Orchestrators: []string{"orch1", "orch2"},
 				AuthSecret:    "sekret",
 			},
-			expectedErrors: []string{"contains one or more reserved character"},
+			expectedErrors: []string{"node ID cannot contain any of the following characters:"},
 		},
 		{
 			name: "Missing Orchestrators in Non-Requester Node",

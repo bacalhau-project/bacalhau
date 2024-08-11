@@ -22,6 +22,7 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 	return repo.NewMigrationManager(
 		migrations.V1Migration,
 		migrations.V2Migration,
+		migrations.V3Migration,
 	)
 }
 

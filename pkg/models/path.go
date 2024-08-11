@@ -39,12 +39,8 @@ func (p *ResultPath) Validate() error {
 	if p == nil {
 		return errors.New("path is nil")
 	}
-	var mErr error
-	if validate.IsBlank(p.Path) {
-		mErr = errors.Join(mErr, errors.New("path is blank"))
-	}
-	if validate.IsBlank(p.Name) {
-		mErr = errors.Join(mErr, errors.New("resultpath name is blank"))
-	}
-	return mErr
+	return errors.Join(
+		validate.NotBlank(p.Path, "missing path"),
+		validate.NotBlank(p.Name, "missing resultpath name"),
+	)
 }

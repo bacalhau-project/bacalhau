@@ -1,0 +1,19 @@
+
+
+steps:
+  - label: ":swagger: Generate Swagger"
+    command: "./scripts/generate_swagger.sh"
+
+  - wait: ~
+
+  - label: ":python: Build Python API Client"
+    command: "make build-python-apiclient"
+
+  - label: ":python: Build Python SDK"
+    command: "make build-python-sdk"
+
+  - label: ":python: Build Bacalhau Airflow Integration"
+    command: "make build-bacalhau-airflow"
+
+  - label: ":pytest: Test Bacalhau Python SDK"
+    command: "make test-python-sdk"

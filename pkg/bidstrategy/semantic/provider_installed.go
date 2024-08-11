@@ -6,7 +6,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -24,7 +23,7 @@ func NewProviderInstalledStrategy[P provider.Providable](
 		getter: func(j *models.Job) []string {
 			// handle optional specs, such as publisher
 			key := strings.TrimSpace(getter(j))
-			if validate.IsBlank(key) {
+			if len(key) == 0 {
 				return []string{}
 			}
 			return []string{key}

@@ -19,7 +19,7 @@ copy-code:
 
 run-lint:
     FROM +copy-code
-    RUN ruff --config ruff.toml
+    RUN ruff check --config ruff.toml
 
 run-format:
     FROM +run-lint

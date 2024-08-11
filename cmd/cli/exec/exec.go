@@ -128,7 +128,8 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, api client
 		return fmt.Errorf("failed request: %w", err)
 	}
 
-	if err := printer.PrintJobExecution(cmd.Context(), job, resp.JobID, cmd, options.RunTimeSettings, api); err != nil {
+	jobProgressPrinter := printer.NewJobProgressPrinter(api, options.RunTimeSettings)
+	if err := jobProgressPrinter.PrintJobProgress(cmd.Context(), resp.JobID, cmd); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

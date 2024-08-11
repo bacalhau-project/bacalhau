@@ -107,7 +107,6 @@ type ListJobHistoryRequest struct {
 	Since       int64  `query:"since" validate:"min=0"`
 	EventType   string `query:"event_type" validate:"omitempty,oneof=all job execution"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
-	NodeID      string `query:"node_id" validate:"omitempty"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -122,9 +121,6 @@ func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
 	}
 	if o.ExecutionID != "" {
 		r.Params.Set("execution_id", o.ExecutionID)
-	}
-	if o.NodeID != "" {
-		r.Params.Set("node_id", o.NodeID)
 	}
 	return r
 }

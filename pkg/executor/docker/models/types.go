@@ -8,7 +8,6 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -27,7 +26,7 @@ type EngineSpec struct {
 }
 
 func (c EngineSpec) Validate() error {
-	if validate.IsBlank(c.Image) {
+	if len(c.Image) == 0 {
 		return fmt.Errorf("invalid docker engine param: 'Image' cannot be empty")
 	}
 	if c.WorkingDirectory != "" {
@@ -39,10 +38,6 @@ func (c EngineSpec) Validate() error {
 			return fmt.Errorf("invalid docker engine param: 'WorkingDirectory' (%q) "+
 				"must contain absolute path", c.WorkingDirectory)
 		}
-	}
-	if len(c.EnvironmentVariables)%2 != 0 {
-		return fmt.Errorf("invalid docker engine param: 'EnvironmentVariables' (%s) "+
-			"must contain an even number of elements to represent environment variable key-value pairs", c.EnvironmentVariables)
 	}
 	return nil
 }

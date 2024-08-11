@@ -2,15 +2,20 @@ package boltdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
 )
 
 const (
@@ -22,6 +27,9 @@ const (
 	BucketHistoryName    = "execution-history"
 	BucketJobIndexName   = "execution-index"
 	BucketLiveIndexName  = "execution-live-index"
+
+	BucketEventsName      = "events"
+	BucketCheckpointsName = "checkpoints"
 )
 
 // Store represents an execution store that is backed by a boltdb database
@@ -69,6 +77,7 @@ type Store struct {
 
 	starting     sync.WaitGroup
 	stateCounter *StateCounter
+	eventStore   *boltdb_watcher.EventStore
 }
 
 // NewStore creates a new store backed by a boltdb database at the
@@ -78,7 +87,7 @@ type Store struct {
 // it would mean later transactions will fail unless they obtain their
 // own reference to the bucket.
 func NewStore(ctx context.Context, dbPath string) (*Store, error) {
-	store := &Store{
+	s := &Store{
 		marshaller:   marshaller.NewJSONMarshaller(),
 		starting:     sync.WaitGroup{},
 		stateCounter: NewStateCounter(),
@@ -87,14 +96,14 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 
 	database, err := GetDatabase(dbPath)
 	if err != nil {
-		if err == bolt.ErrTimeout {
+		if errors.Is(err, bolt.ErrTimeout) {
 			return nil, fmt.Errorf("timed out while opening database, is file %q in use?", dbPath)
 		}
 		return nil, err
 	}
 
-	store.database = database
-	err = store.database.Update(func(tx *bolt.Tx) error {
+	s.database = database
+	err = s.database.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucketIfNotExists([]byte(BucketExecutionsName))
 		if err != nil {
 			return err
@@ -122,11 +131,22 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("error creating database structure: %s", err)
 	}
 
-	// Populate the state counter for the
-	store.starting.Add(1)
-	go store.populateStateCounter(ctx)
+	eventObjectSerializer := watcher.NewJSONSerializer()
+	err = eventObjectSerializer.RegisterType("LocalStateHistory", reflect.TypeOf(store.LocalStateHistory{}))
+	if err != nil {
+		return nil, fmt.Errorf("failed to register LocalStateHistory type: %w", err)
+	}
+	s.eventStore, err = boltdb_watcher.NewEventStore(database,
+		boltdb_watcher.WithEventsBucket(BucketEventsName),
+		boltdb_watcher.WithCheckpointBucket(BucketCheckpointsName),
+		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
+	)
 
-	return store, nil
+	// Populate the state counter for the
+	s.starting.Add(1)
+	go s.populateStateCounter(ctx)
+
+	return s, nil
 }
 
 // getExecutionsBucket helper gets a reference to the executions bucket within
@@ -337,6 +357,7 @@ func (s *Store) CreateExecution(ctx context.Context, localExecutionState store.L
 			// and we won't rollback
 			s.stateCounter.IncrementState(localExecutionState.State, 1)
 		}
+
 		return
 	})
 }
@@ -492,6 +513,11 @@ func (s *Store) appendHistory(
 		return err
 	}
 	seq := fmt.Sprintf("%03d", seqNum)
+
+	err = s.eventStore.StoreEventTx(tx, watcher.OperationCreate, "LocalStateHistory", historyEntry)
+	if err != nil {
+		return err
+	}
 	return executionHistoryBucket.Put([]byte(seq), historyEntryData)
 }
 
@@ -538,6 +564,11 @@ func (s *Store) deleteExecution(tx *bolt.Tx, executionID string) error {
 	}
 
 	return nil
+}
+
+// GetEventStore returns the event store for the execution store
+func (s *Store) GetEventStore() watcher.EventStore {
+	return s.eventStore
 }
 
 // Close ensures the database is closed cleanly

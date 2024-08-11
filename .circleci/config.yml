@@ -37,11 +37,11 @@ executors:
   linux-amd64:
     machine:
       image: default
-    resource_class: xlarge
+    resource_class: large
   linux-arm64:
     machine:
       image: default
-    resource_class: arm.xlarge
+    resource_class: arm.large
   darwin-arm64:
     macos:
       xcode: "14.2.0"
@@ -49,14 +49,14 @@ executors:
   windows-amd64:
     machine:
       image: "windows-server-2022-gui:current"
-    resource_class: windows.xlarge
+    resource_class: windows.large
   docker-linux:
     docker:
       - image: cimg/base:2022.09
         auth:
           username: $DOCKERHUB_USERNAME
           password: $DOCKERHUB_PASSWORD
-    resource_class: xlarge
+    resource_class: large
 
 commands:
   install_go:
@@ -438,7 +438,7 @@ jobs:
           steps:
             - run:
                 name: Login to Github Container Registry
-                command: echo $GHCR_PAT | docker login ghcr.io -u circleci --password-stdin
+                command: echo $GHCR_PAT | docker login ghcr.io -u bacalhau-infra-bot --password-stdin
             - run: make push-bacalhau-image
 
   build_python_packages:
@@ -557,7 +557,7 @@ jobs:
           environment:
             LOG_LEVEL: debug
             TEST_BUILD_TAGS: << parameters.build_tags >>
-            TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as xlarge instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
+            TEST_PARALLEL_PACKAGES: 4 # This is set to 4 as large instances have at least 8 CPUs, and we want to leave some CPU for the Docker instances
           command: |
             export GOBIN=${HOME}/bin
             export PATH=$GOBIN:$PATH

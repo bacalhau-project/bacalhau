@@ -55,12 +55,11 @@ func (a *InputSource) Validate() error {
 	if a == nil {
 		return nil
 	}
-	var mErr error
+	mErr := errors.Join(
+		validate.NotBlank(a.Target, "missing artifact target"),
+	)
 	if err := a.Source.Validate(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("invalid artifact source: %w", err))
-	}
-	if validate.IsBlank(a.Target) {
-		mErr = errors.Join(mErr, errors.New("missing artifact target"))
 	}
 	return mErr
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -108,7 +109,7 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	require.NoError(suite.T(), err)
 
-	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	containers, err := cli.ContainerList(ctx, container.ListOptions{})
 	require.NoError(suite.T(), err, "Error listing containers")
 
 	for _, tag := range suite.imageNames {
@@ -123,7 +124,7 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 			}
 		}
 
-		_, err = cli.ImageRemove(ctx, tag+":latest", types.ImageRemoveOptions{Force: true})
+		_, err = cli.ImageRemove(ctx, tag+":latest", image.RemoveOptions{Force: true})
 		require.NoError(suite.T(), err, "Error removing image")
 	}
 
