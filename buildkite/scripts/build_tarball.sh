@@ -10,5 +10,5 @@ GOOS=$1 GOARCH=$2 make build-bacalhau-tgz
 
 
 if [ -z "$BUILDKITE_TAG" ]; then
-    buildkite-agent artifact upload dist/bacalhau_*
+    buildkite-agent artifact upload "dist/bacalhau_*"
 fi
