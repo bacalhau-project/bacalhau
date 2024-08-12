@@ -33,6 +33,7 @@ func NewConfigFlag() *ConfigFlag {
 
 const RootCommandConfigFiles = "Root.Command.Config.Files"
 const RootCommandConfigValues = "Root.Command.Config.Values"
+const RootCommandConfigFlags = "Root.Command.Config.Flags"
 
 type Something struct {
 	ConfigFiles  []string

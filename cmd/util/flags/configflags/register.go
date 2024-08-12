@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -41,9 +41,7 @@ type Definition struct {
 	DeprecatedMessage    string
 }
 
-// BindFlags binds flags from a command to Viper using the provided definitions.
-// This method should be called in command `PreRun`
-func BindFlags(cmd *cobra.Command, v *viper.Viper, register map[string][]Definition) error {
+func BindFlags(v *viper.Viper, register map[string][]Definition) error {
 	seen := make(map[string]Definition)
 	for _, defs := range register {
 		for _, def := range defs {
@@ -53,21 +51,13 @@ func BindFlags(cmd *cobra.Command, v *viper.Viper, register map[string][]Definit
 					" previously registered on on flag %s", def.ConfigPath, def.FlagName, dup.FlagName)
 			}
 			seen[def.ConfigPath] = def
-
-			// set the default value
-			v.SetDefault(def.ConfigPath, def.DefaultValue)
-
-			// Bind the flag to viper
-			if err := v.BindPFlag(def.ConfigPath, cmd.Flags().Lookup(def.FlagName)); err != nil {
-				return err
+			flagDefs := viper.Get(cliflags.RootCommandConfigFlags)
+			if flagDefs == nil {
+				flagDefs = make([]Definition, 0)
 			}
-
-			// Bind environment variables to viper
-			if len(def.EnvironmentVariables) > 0 {
-				if err := v.BindEnv(append([]string{def.ConfigPath}, def.EnvironmentVariables...)...); err != nil {
-					return err
-				}
-			}
+			flagsConfigs := flagDefs.([]Definition)
+			flagsConfigs = append(flagsConfigs, def)
+			v.Set(cliflags.RootCommandConfigFlags, flagsConfigs)
 		}
 	}
 	return nil
@@ -76,9 +66,9 @@ func BindFlags(cmd *cobra.Command, v *viper.Viper, register map[string][]Definit
 // PreRun returns a run hook that binds the passed flag sets onto the command.
 func PreRun(v *viper.Viper, flags map[string][]Definition) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		err := BindFlags(cmd, v, flags)
+		err := BindFlags(v, flags)
 		if err != nil {
-			util.Fatal(cmd, err, 1)
+			return err
 		}
 		return err
 	}
