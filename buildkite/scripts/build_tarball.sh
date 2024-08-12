@@ -11,4 +11,5 @@ GOOS=$1 GOARCH=$2 make build-bacalhau-tgz
 
 if [ -z "$BUILDKITE_TAG" ]; then
     buildkite-agent artifact upload "dist/bacalhau_*"
+    buildkite-agent meta-data set "triggered_build_id" "$$BUILDKITE_TRIGGERED_FROM_BUILD_ID" --job $TRIGGER_JOB_ID
 fi

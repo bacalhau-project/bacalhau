@@ -4,10 +4,12 @@ set -e
 
 set_environment_variables() {
     export BACALHAU_RELEASE_TOKEN=$(buildkite-agent secret get BACALHAU_RELEASE_TOKEN)
+    echo "Fetched Released Token"
 }
 
 download_artifact() {
-    bacalhau-agent artifact download "bacalhau_*"
+    buildkite-agent artifact download "*.*" .  --build "$(buildkite-agent meta-data get "triggered_build_id")"
+    echo "Downloaded artifacts from build pipeline"
 }
 
 
@@ -21,7 +23,6 @@ upload_artifact_to_github() {
 
     gh release upload $TAG bacalhau_$TAG_*
 }
-
 
 main() {
     set_environment_variables
