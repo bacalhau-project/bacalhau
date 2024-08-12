@@ -9,6 +9,6 @@ find webui -exec touch -c '{}' +
 GOOS=$1 GOARCH=$2 make build-bacalhau-tgz
 
 
-if [ -n "$BUILDKITE_TAG" ]; then
+if [ -z "$BUILDKITE_TAG" ]; then
     buildkite-agent artifact upload "dist/bacalhau_*"
 fi
