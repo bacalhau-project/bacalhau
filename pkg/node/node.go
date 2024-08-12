@@ -253,6 +253,7 @@ func NewNode(
 		Router:             apiServer.Router,
 		NodeStateProvider:  nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
+		BacalhauConfig:     bacalhauConfig,
 	})
 
 	// We want to register the current requester node to the node store

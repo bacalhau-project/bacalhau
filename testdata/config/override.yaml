@@ -1,0 +1,5 @@
+Node:
+  ClientAPI:
+    Host: "2.2.2.2"
+  Labels:
+    "buz": boo

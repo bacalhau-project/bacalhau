@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -16,12 +17,14 @@ type EndpointParams struct {
 	Router             *echo.Echo
 	NodeStateProvider  models.NodeStateProvider
 	DebugInfoProviders []models.DebugInfoProvider
+	BacalhauConfig     types.BacalhauConfig
 }
 
 type Endpoint struct {
 	router             *echo.Echo
 	nodeStateProvider  models.NodeStateProvider
 	debugInfoProviders []models.DebugInfoProvider
+	bacalhauConfig     types.BacalhauConfig
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
@@ -29,6 +32,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		router:             params.Router,
 		nodeStateProvider:  params.NodeStateProvider,
 		debugInfoProviders: params.DebugInfoProviders,
+		bacalhauConfig:     params.BacalhauConfig,
 	}
 
 	// JSON group
@@ -38,6 +42,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/version", e.version)
 	g.GET("/node", e.node)
 	g.GET("/debug", e.debug)
+	g.GET("/config", e.config)
 	return e
 }
 
@@ -106,4 +111,18 @@ func (e *Endpoint) debug(c echo.Context) error {
 		debugInfoMap[debugInfo.Component] = debugInfo.Info
 	}
 	return c.JSON(http.StatusOK, debugInfoMap)
+}
+
+// debug godoc
+//
+//	@ID			agent/config
+//	@Summary	Returns the current configuration of the node.
+//	@Tags		Ops
+//	@Produce	json
+//	@Success	200	{object}	types.BacalhauConfig
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/agent/config [get]
+func (e *Endpoint) config(c echo.Context) error {
+	cfg := e.bacalhauConfig
+	return c.JSON(http.StatusOK, cfg)
 }
