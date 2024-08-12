@@ -74,7 +74,7 @@ func NewRootCmd() *cobra.Command {
 		// Binds flags with a corresponding config file value to the root command.
 		// This is done in the pre-run so their values are set in the Run function.
 		// Cobra doesn't allow the root pre run method to run if a child command also has a prerun defined.
-		if err := configflags.BindFlags(cmd, viper.GetViper(), rootFlags); err != nil {
+		if err := configflags.BindFlags(viper.GetViper(), rootFlags); err != nil {
 			return err
 		}
 

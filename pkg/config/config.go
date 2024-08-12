@@ -9,6 +9,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
@@ -73,6 +74,11 @@ type config struct {
 	// paths to configuration files merged from [0] to [N]
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
 	paths []string
+
+	flags map[string]*pflag.Flag
+
+	environmentVariables map[string][]string
+
 	// values to inject into the config, taking highest precedence.
 	values map[string]any
 }
@@ -92,6 +98,18 @@ func WithDefault(cfg types.BacalhauConfig) Option {
 func WithPaths(path ...string) Option {
 	return func(c *config) {
 		c.paths = append(c.paths, path...)
+	}
+}
+
+func WithFlags(flags map[string]*pflag.Flag) Option {
+	return func(s *config) {
+		s.flags = flags
+	}
+}
+
+func WithEnvironmentVariables(ev map[string][]string) Option {
+	return func(s *config) {
+		s.environmentVariables = ev
 	}
 }
 
@@ -125,16 +143,33 @@ func New(opts ...Option) (*config, error) {
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
 		if err := c.Merge(path); err != nil {
-			return nil, fmt.Errorf("failed to read config in %q: %w", path, err)
+			return nil, fmt.Errorf("merging config file %q: %w", path, err)
+		}
+	}
+
+	for name, values := range c.environmentVariables {
+		if err := c.base.BindEnv(append([]string{name}, values...)...); err != nil {
+			return nil, fmt.Errorf("binding environment variable %q to config: %w", name, err)
+		}
+	}
+
+	for name, flag := range c.flags {
+		if err := c.base.BindPFlag(name, flag); err != nil {
+			return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
 		}
 	}
 
 	// merge the passed values last as they take highest precedence
-	if len(c.values) > 0 {
-		if err := c.base.MergeConfigMap(c.values); err != nil {
-			return nil, fmt.Errorf("DEVELOPER ERROR: viper.MergeConfigMap returned unexpected error: %w", err)
-		}
+	for name, value := range c.values {
+		c.base.Set(name, value)
 	}
+	/*
+		if len(c.values) > 0 {
+			if err := c.base.MergeConfigMap(c.values); err != nil {
+				return nil, fmt.Errorf("merging config values: %w", err)
+			}
+		}
+	*/
 
 	return c, nil
 }
