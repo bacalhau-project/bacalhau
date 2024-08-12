@@ -1,0 +1,9 @@
+steps:
+  - label: ":golang: Build CLI"
+    trigger: "bacalhau-golang"
+
+  - wait
+
+  - label: ":rocket: Release CLI"
+    command: "./buildkite/scripts/release_cli.sh"
+    
