@@ -13,6 +13,5 @@ GOOS=$1 GOARCH=$2 make build-bacalhau-tgz
 
 if [ -z "$BUILDKITE_TAG" ]; then
     cd dist
-    echo $BACALHAU_RELEASE_TOKEN | gh auth login --with-token
-    gh release upload "1.4.1-dev" bacalhau_*
+    buildkite-agent artifact upload "bacalhau_*"
 fi

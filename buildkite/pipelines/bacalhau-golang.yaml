@@ -54,3 +54,10 @@ steps:
     key: "integration-test"
     agents:
       queue: "buildkite-hosted-linux-large"
+
+  - wait: ~
+
+  - label: ":rocket: Release CLI"
+    command: "./buildkite/scripts/release_cli.sh"
+    key: "release-cli"
+
