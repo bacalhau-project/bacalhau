@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -66,22 +65,34 @@ func SetupConfig(cmd *cobra.Command) (config.ReadWriter, error) {
 		return nil, fmt.Errorf("repo path not set")
 	}
 
+	opts := []config.Option{config.WithDefault(config.ForEnvironment())}
+
 	// check if the user specified config files via the --config flag
 	configFiles, err := getConfigFiles(v, repoPath)
 	if err != nil {
 		return nil, err
 	}
-	configFlags := getConfigFlags(v, cmd)
-	configEnvVar := getConfigEnvVars(v)
-	configValues := getConfigValues(v)
+	// if a config file is present, apply it to the config
+	if len(configFiles) > 0 {
+		opts = append(opts, config.WithPaths(configFiles...))
+	}
 
-	cfg, err := config.New(
-		config.WithValues(configValues),
-		config.WithFlags(configFlags),
-		config.WithEnvironmentVariables(configEnvVar),
-		config.WithPaths(configFiles...),
-		config.WithDefault(config.ForEnvironment()),
-	)
+	configFlags := getConfigFlags(v, cmd)
+	if len(configFlags) > 0 {
+		opts = append(opts, config.WithFlags(configFlags))
+	}
+
+	configEnvVar := getConfigEnvVars(v)
+	if len(configEnvVar) > 0 {
+		opts = append(opts, config.WithEnvironmentVariables(configEnvVar))
+	}
+
+	configValues := getConfigValues(v)
+	if len(configValues) > 0 {
+		opts = append(opts, config.WithValues(configValues))
+	}
+
+	cfg, err := config.New(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -95,6 +106,9 @@ func getConfigValues(v *viper.Viper) map[string]any {
 
 func getConfigFlags(v *viper.Viper, cmd *cobra.Command) map[string]*pflag.Flag {
 	flagDefs := v.Get(cliflags.RootCommandConfigFlags)
+	if flagDefs == nil {
+		return nil
+	}
 	flagsConfigs := flagDefs.([]configflags.Definition)
 	out := make(map[string]*pflag.Flag)
 	for _, flag := range flagsConfigs {
@@ -105,6 +119,9 @@ func getConfigFlags(v *viper.Viper, cmd *cobra.Command) map[string]*pflag.Flag {
 
 func getConfigEnvVars(v *viper.Viper) map[string][]string {
 	flagDefs := v.Get(cliflags.RootCommandConfigFlags)
+	if flagDefs == nil {
+		return nil
+	}
 	flagsConfigs := flagDefs.([]configflags.Definition)
 	out := make(map[string][]string)
 	for _, flag := range flagsConfigs {
@@ -114,44 +131,44 @@ func getConfigEnvVars(v *viper.Viper) map[string][]string {
 }
 
 func getConfigFiles(v *viper.Viper, repoPath string) ([]string, error) {
-	// check if the user specified config files via the --config flag
+	// check if the user specified config files via the --config/-c flag
 	configFiles := v.GetStringSlice(cliflags.RootCommandConfigFiles)
 	if len(configFiles) > 0 {
 		return configFiles, nil
 	}
-	out := make([]string, 0)
-	// if no files were provided we look in repo and xdg config, the latter takes precedence
-	repoConfig, err := getConfigFileAtPath(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("loading repo config file at path %q: %w", repoPath, err)
-	}
-	if repoConfig != "" {
-		out = append(out, repoConfig)
-	}
-	var xdgConfig string
-	xdgPath, err := os.UserConfigDir()
-	if err != nil {
-		log.Info().Err(err).Msg("find to find user config dir")
-	} else {
-		xdgConfig, err = getConfigFileAtPath(xdgPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading xdg config file at path %q: %w", xdgPath, err)
-		}
-		if xdgConfig != "" {
-			out = append(out, xdgConfig)
-		}
-	}
-	return out, nil
-}
 
-func getConfigFileAtPath(path string) (string, error) {
-	configPath := filepath.Join(path, config.FileName)
-	if _, err := os.Stat(configPath); err != nil {
-		// it's okay for the file to not exist.
-		if os.IsNotExist(err) {
-			return "", nil
+	// check if a config file is present at $XDG_CONFIG_HOME/bacalhau/config.yaml
+	{
+		xdgPath, err := os.UserConfigDir()
+		if err == nil {
+			path := filepath.Join(xdgPath, config.FileName)
+			if _, err := os.Stat(path); err != nil {
+				// if the file exists and could not be read, return an error
+				if !os.IsNotExist(err) {
+					return nil, fmt.Errorf("loading xdg config file at %q: %w", path, err)
+				}
+			} else {
+				// the file exists, use it.
+				return []string{path}, nil
+			}
 		}
-		return "", err
 	}
-	return configPath, nil
+
+	// if no config files were provided by the users, and we failed to find a config in
+	// $XDG_CONFIG_HOME/bacalhau/config.yaml fall back to the repo
+	{
+		path := filepath.Join(repoPath, config.FileName)
+		if _, err := os.Stat(path); err != nil {
+			// if the file exists and could not be read, return an error
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("loading xdg config file at %q: %w", path, err)
+			}
+		} else {
+			// the file exists, use it.
+			return []string{path}, nil
+		}
+	}
+
+	// no config file exists, this is fine bacalhau will use defaults and values from flags and env vars.
+	return []string{}, nil
 }
