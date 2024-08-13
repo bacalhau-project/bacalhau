@@ -139,12 +139,40 @@ func (t *Task) ValidateSubmission() error {
 		mErr = errors.Join(mErr, errors.New("publisher must be set if result paths are set"))
 	}
 
+	// Check for collisions in input sources
 	seenInputAliases := make(map[string]bool)
+	seenInputTargets := make(map[string]bool)
 	for _, input := range t.InputSources {
-		if input.Alias != "" && seenInputAliases[input.Alias] {
-			mErr = errors.Join(mErr, fmt.Errorf("input source with alias %s already exist", input.Alias))
+		if input.Alias != "" {
+			if seenInputAliases[input.Alias] {
+				mErr = errors.Join(mErr, fmt.Errorf("input source with alias '%s' already exists", input.Alias))
+			}
+			seenInputAliases[input.Alias] = true
 		}
-		seenInputAliases[input.Alias] = true
+		if input.Target != "" {
+			if seenInputTargets[input.Target] {
+				mErr = errors.Join(mErr, fmt.Errorf("input source with target '%s' already exists", input.Target))
+			}
+			seenInputTargets[input.Target] = true
+		}
+	}
+
+	// Check for collisions in result paths
+	seenResultNames := make(map[string]bool)
+	seenResultPaths := make(map[string]bool)
+	for _, result := range t.ResultPaths {
+		if result.Name != "" {
+			if seenResultNames[result.Name] {
+				mErr = errors.Join(mErr, fmt.Errorf("result path with name '%s' already exists", result.Name))
+			}
+			seenResultNames[result.Name] = true
+		}
+		if result.Path != "" {
+			if seenResultPaths[result.Path] {
+				mErr = errors.Join(mErr, fmt.Errorf("result path '%s' already exists", result.Path))
+			}
+			seenResultPaths[result.Path] = true
+		}
 	}
 
 	return mErr
@@ -156,9 +184,14 @@ func (t *Task) ToBuilder() *TaskBuilder {
 }
 
 func (t *Task) AllStorageTypes() []string {
-	var types []string
+	uniqueTypes := make(map[string]bool)
 	for _, a := range t.InputSources {
-		types = append(types, a.Source.Type)
+		uniqueTypes[a.Source.Type] = true
+	}
+
+	types := make([]string, 0, len(uniqueTypes))
+	for typ := range uniqueTypes {
+		types = append(types, typ)
 	}
 	return types
 }

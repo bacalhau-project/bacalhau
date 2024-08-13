@@ -46,6 +46,7 @@ func (a *InputSource) Copy() *InputSource {
 	}
 	return &InputSource{
 		Source: a.Source.Copy(),
+		Alias:  a.Alias,
 		Target: a.Target,
 	}
 }
