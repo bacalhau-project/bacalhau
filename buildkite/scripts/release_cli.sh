@@ -8,7 +8,7 @@ set_environment_variables() {
 }
 
 download_artifact() {
-    buildkite-agent artifact download "*.*" .  --build "$(buildkite-agent meta-data get "triggered_build_id")"
+    buildkite-agent artifact download "*.*" .  --build "$(buildkite-agent meta-data get "triggered_build_id" --build $BUILDKITE_BUILD_ID)"
     echo "Downloaded artifacts from build pipeline"
 }
 
