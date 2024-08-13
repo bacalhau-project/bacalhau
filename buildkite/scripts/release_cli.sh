@@ -22,7 +22,7 @@ upload_artifact_to_github() {
     fi
 
     sleep 1000
-    gh release upload $TAG bacalhau_$TAG_*
+    gh release upload 1.4.1-dev bacalhau_1.4.1-dev_*
 }
 
 main() {
