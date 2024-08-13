@@ -21,7 +21,6 @@ upload_artifact_to_github() {
         exit 1
     fi
 
-    sleep 1000
     gh release upload 1.4.1-dev bacalhau_1.4.1-dev_*
 }
 
