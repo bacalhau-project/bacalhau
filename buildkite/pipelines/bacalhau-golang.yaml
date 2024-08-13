@@ -60,4 +60,5 @@ steps:
   - label: ":rocket: Release CLI"
     command: "./buildkite/scripts/release_cli.sh"
     key: "release-cli"
+    if: build.tag != ""
 
