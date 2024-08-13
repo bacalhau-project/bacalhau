@@ -1,3 +1,10 @@
+
+# This pipeline is triggered if either of this condition is met
+# build.branch == "main" || !build.pull_request.draft ||
+# build.pull_request.labels includes "build/go" ||
+# build.pull_request.labels includes "build/golang" ||
+# build.tag != null
+
 steps:
   - label: ":golang: Lint"
     command: "./buildkite/scripts/lint.sh"
@@ -57,8 +64,9 @@ steps:
 
   - wait: ~
 
+  # Release CLI is only triggered if the tag is present.
+
   - label: ":rocket: Release CLI"
     command: "./buildkite/scripts/release_cli.sh"
     key: "release-cli"
     if: build.tag != ""
-
