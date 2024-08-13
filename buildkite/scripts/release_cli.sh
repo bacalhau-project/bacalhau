@@ -21,6 +21,7 @@ upload_artifact_to_github() {
         exit 1
     fi
 
+    sleep 1000
     gh release upload $TAG bacalhau_$TAG_*
 }
 
@@ -29,3 +30,5 @@ main() {
     download_artifact
     upload_artifact_to_github
 }
+
+main
