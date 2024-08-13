@@ -8,11 +8,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -65,21 +67,21 @@ func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
 	job string,
 	executionID string,
-	network *models.NetworkConfig,
+	networkConfig *models.NetworkConfig,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
-	containerConfig.NetworkDisabled = network.Disabled()
-	switch network.Type {
+	containerConfig.NetworkDisabled = networkConfig.Disabled()
+	switch networkConfig.Type {
 	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
 	case models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
 	case models.NetworkHTTP:
-		var internalNetwork *types.NetworkResource
+		var internalNetwork *network.Inspect
 		var proxyAddr *net.TCPAddr
-		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, network)
+		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, networkConfig)
 		if err != nil {
 			return
 		}
@@ -89,7 +91,7 @@ func (e *Executor) setupNetworkForJob(
 			fmt.Sprintf("https_proxy=%s", proxyAddr.String()),
 		)
 	default:
-		err = fmt.Errorf("unsupported network type %q", network.Type.String())
+		err = fmt.Errorf("unsupported network type %q", networkConfig.Type.String())
 	}
 	return
 }
@@ -99,8 +101,8 @@ func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	job string,
 	executionID string,
-	network *models.NetworkConfig,
-) (*types.NetworkResource, *net.TCPAddr, error) {
+	networkConfig *models.NetworkConfig,
+) (*network.Inspect, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
 	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
 	if err != nil {
@@ -108,7 +110,7 @@ func (e *Executor) createHTTPGateway(
 	}
 
 	// Create an internal only bridge network to join our gateway and job container
-	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(executionID, job, "network"), types.NetworkCreate{
+	networkResp, err := e.client.NetworkCreate(ctx, e.dockerObjectName(executionID, job, "network"), network.CreateOptions{
 		Driver:     "bridge",
 		Scope:      "local",
 		Internal:   true,
@@ -120,20 +122,20 @@ func (e *Executor) createHTTPGateway(
 	}
 
 	// Get the subnet that Docker has picked for the newly created network
-	internalNetwork, err := e.client.NetworkInspect(ctx, networkResp.ID, types.NetworkInspectOptions{})
+	internalNetwork, err := e.client.NetworkInspect(ctx, networkResp.ID, network.InspectOptions{})
 	if err != nil || len(internalNetwork.IPAM.Config) < 1 {
 		return nil, nil, pkgerrors.Wrap(err, "error getting network subnet")
 	}
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
-	if len(network.DomainSet()) == 0 {
+	if len(networkConfig.DomainSet()) == 0 {
 		return nil,
 			nil,
 			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", models.NetworkHTTP)
 	}
 
 	// Create the gateway container initially attached to the *host* network
-	domainList, derr := json.Marshal(network.DomainSet())
+	domainList, derr := json.Marshal(networkConfig.DomainSet())
 	clientList, cerr := json.Marshal([]string{subnet})
 	if derr != nil || cerr != nil {
 		return nil, nil, pkgerrors.Wrap(errors.Join(derr, cerr), "error preparing gateway config")

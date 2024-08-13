@@ -17,6 +17,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -98,7 +100,7 @@ func (c *Client) IsInstalled(ctx context.Context) bool {
 }
 
 func (c *Client) HostGatewayIP(ctx context.Context) (net.IP, error) {
-	response, err := c.NetworkInspect(ctx, "bridge", types.NetworkInspectOptions{})
+	response, err := c.NetworkInspect(ctx, "bridge", network.InspectOptions{})
 	if err != nil {
 		return net.IP{}, err
 	}
@@ -116,27 +118,27 @@ func (c *Client) removeContainers(ctx context.Context, filterz filters.Args) err
 	}
 
 	wg := multierrgroup.Group{}
-	for _, container := range containers {
-		container := container
+	for _, cont := range containers {
+		containerID := cont.ID
 		wg.Go(func() error {
-			return c.RemoveContainer(ctx, container.ID)
+			return c.RemoveContainer(ctx, containerID)
 		})
 	}
 	return wg.Wait()
 }
 
 func (c *Client) removeNetworks(ctx context.Context, filterz filters.Args) error {
-	networks, err := c.NetworkList(ctx, types.NetworkListOptions{Filters: filterz})
+	networks, err := c.NetworkList(ctx, network.ListOptions{Filters: filterz})
 	if err != nil {
 		return err
 	}
 
 	wg := multierrgroup.Group{}
-	for _, network := range networks {
-		network := network
+	for _, n := range networks {
+		networkID := n.ID
 		wg.Go(func() error {
-			log.Ctx(ctx).Debug().Str("Network", network.ID).Msg("Network Stop")
-			return c.NetworkRemove(ctx, network.ID)
+			log.Ctx(ctx).Debug().Str("Network", networkID).Msg("Network Stop")
+			return c.NetworkRemove(ctx, networkID)
 		})
 	}
 	return wg.Wait()
@@ -392,8 +394,8 @@ func (c *Client) ImageDistribution(
 	return manifest, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config.DockerCredentials) error {
-	_, _, err := c.ImageInspectWithRaw(ctx, image)
+func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config.DockerCredentials) error {
+	_, _, err := c.ImageInspectWithRaw(ctx, img)
 	if err == nil {
 		// If there is no error, then return immediately as it means we have the docker image
 		// being discussed. No need to pull it.
@@ -406,13 +408,13 @@ func (c *Client) PullImage(ctx context.Context, image string, dockerCreds config
 		return err
 	}
 
-	log.Ctx(ctx).Debug().Str("image", image).Msg("Pulling image as it wasn't found")
+	log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")
 
-	pullOptions := types.ImagePullOptions{
-		RegistryAuth: getAuthToken(ctx, image, dockerCreds),
+	pullOptions := image.PullOptions{
+		RegistryAuth: getAuthToken(ctx, img, dockerCreds),
 	}
 
-	output, err := c.ImagePull(ctx, image, pullOptions)
+	output, err := c.ImagePull(ctx, img, pullOptions)
 	if err != nil {
 		return err
 	}
