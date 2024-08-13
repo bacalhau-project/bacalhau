@@ -16,7 +16,7 @@ download_artifact() {
 upload_artifact_to_github() {
     echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
 
-    if [ -z "$BUILDKITE_TAG" ]; then
+    if [ -n "$BUILDKITE_TAG" ]; then
         echo "Tag is Missing"
         exit 1
     fi
