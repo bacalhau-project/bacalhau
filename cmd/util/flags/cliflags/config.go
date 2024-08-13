@@ -2,8 +2,10 @@ package cliflags
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -72,6 +74,16 @@ func (cf *ConfigFlag) Parse() error {
 		// Handle YAML file
 		configFiles := viper.GetStringSlice(RootCommandConfigFiles)
 		configFiles = append(configFiles, cf.Value)
+		if stat, err := os.Stat(cf.Value); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("the specified configuration file %q doesn't exist", cf.Value)
+			}
+			return fmt.Errorf("the specified configuration file %q cannot be read: %w", cf.Value, err)
+		} else if stat.IsDir() {
+			return fmt.Errorf("the specified configuration file %q is a directory, must be a file", cf.Value)
+		} else if stat.Size() == 0 {
+			log.Warn().Msgf("the specified configuration file is empty and ineffectual")
+		}
 		viper.Set(RootCommandConfigFiles, configFiles)
 	} else {
 		// Handle dot separated path with boolean value
@@ -82,7 +94,10 @@ func (cf *ConfigFlag) Parse() error {
 
 func setIfValid(v *viper.Viper, key string, value any) error {
 	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
-		return fmt.Errorf("no config key matching %q", key)
+		if _, err := os.Stat(key); err == nil {
+			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
+		}
+		return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
 	}
 	configMap := v.GetStringMap(RootCommandConfigValues)
 	configMap[key] = value

@@ -143,7 +143,10 @@ func New(opts ...Option) (*config, error) {
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
 		if err := c.Merge(path); err != nil {
-			return nil, fmt.Errorf("merging config file %q: %w", path, err)
+			if os.IsNotExist(err) {
+				return nil, fmt.Errorf("the specified configuration file %q doesn't exist", path)
+			}
+			return nil, fmt.Errorf("opening config file %q: %w", path, err)
 		}
 	}
 
