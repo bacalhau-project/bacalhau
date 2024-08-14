@@ -67,7 +67,7 @@ func NewComputeNode(
 	})
 	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
-	resultsPath, err := compute.NewResultsPath()
+	resultsPath, err := compute.NewResultsPath("")
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: configuredLabels},
+		&ConfigLabelsProvider{StaticLabels: configuredLabels},
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 	)

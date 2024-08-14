@@ -10,6 +10,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types/v2/types"
 )
 
 type ResourcesConfig struct {
@@ -168,6 +170,45 @@ type GPU struct {
 	PCIAddress string
 }
 
+func ParseResourceConfig(r types.ResourceConfig) (*Resources, error) {
+	r.Normalize()
+	var mErr error
+	res := &Resources{}
+
+	if r.CPU != "" {
+		cpu, err := k8sresource.NewCPUFromString(r.CPU)
+		if err != nil {
+			mErr = errors.Join(mErr, fmt.Errorf("invalid CPU value: %s", r.CPU))
+		}
+		res.CPU = cpu.ToFloat64()
+	}
+	if r.Memory != "" {
+		mem, err := humanize.ParseBytes(r.Memory)
+		if err != nil {
+			mErr = errors.Join(mErr, fmt.Errorf("invalid memory value: %s", r.Memory))
+		}
+		res.Memory = mem
+	}
+	if r.Disk != "" {
+		disk, err := humanize.ParseBytes(r.Disk)
+		if err != nil {
+			mErr = errors.Join(mErr, fmt.Errorf("invalid disk value: %s", r.Disk))
+		}
+		res.Disk = disk
+	}
+	if r.GPU != "" {
+		gpu, err := strconv.ParseUint(r.GPU, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid GPU value: %s", r.GPU)
+		}
+		res.GPU = gpu
+	}
+	if err := res.Validate(); err != nil {
+		mErr = errors.Join(mErr, fmt.Errorf("parsed resources are invalid: %w", err))
+	}
+	return res, mErr
+}
+
 type Resources struct {
 	// CPU units
 	CPU float64 `json:"CPU,omitempty"`
@@ -281,6 +322,49 @@ func (r *Resources) Multiply(factor float64) *Resources {
 		Disk:   uint64(float64(r.Disk) * factor),
 		GPU:    uint64(float64(r.GPU) * factor),
 	}
+}
+
+func (r *Resources) Scale(scaler types.ResourceScalerConfig) (*Resources, error) {
+	cpy := r.Copy()
+	if err := scaler.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid ResourceScalerConfig: %w", err)
+	}
+	if scaler.CPU != "" {
+		cpuScale, err := scaler.CPU.Parse()
+		if err != nil {
+			return nil, fmt.Errorf("invalid CPU scaler: %w", err)
+		}
+		cpy.CPU *= cpuScale
+	}
+
+	if scaler.Memory != "" {
+		memoryScale, err := scaler.Memory.Parse()
+		if err != nil {
+			return nil, fmt.Errorf("invalid Memory scaler: %w", err)
+		}
+		cpy.Memory = uint64(float64(r.Memory) * memoryScale)
+	}
+
+	if scaler.Disk != "" {
+		diskScale, err := scaler.Disk.Parse()
+		if err != nil {
+			return nil, fmt.Errorf("invalid Disk scaler: %w", err)
+		}
+		cpy.Disk = uint64(float64(r.Disk) * diskScale)
+	}
+
+	// TODO(forrest): not sure how to scale GPU, they are sort of all or nothing
+	/*
+		if scaler.GPU != "" {
+			gpuScale, _ := parsePercentage(scale.GPU)
+			r.GPU = uint64(float64(r.GPU) * gpuScale)
+			for i := range r.GPUs {
+				r.GPUs[i].Units = uint64(float64(r.GPUs[i].Units) * gpuScale)
+			}
+		}
+	*/
+
+	return cpy, nil
 }
 
 func (r *Resources) LessThan(other Resources) bool {

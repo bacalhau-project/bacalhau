@@ -6,7 +6,9 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -16,11 +18,18 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	v2 "github.com/bacalhau-project/bacalhau/pkg/config/types/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types/v2/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types/v2/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types/v2/storage"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/config/types/v2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
+	nodev2 "github.com/bacalhau-project/bacalhau/pkg/node/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -99,11 +108,8 @@ func NewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-			bcfg, err := cfg.Current()
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-			return serve(cmd, bcfg, fsr)
+
+			return serveV2(cmd, fsr)
 		},
 	}
 
@@ -356,4 +362,155 @@ func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig
 	}
 	cert = certFile.Name()
 	return cert, key, nil
+}
+
+func serveV2(cmd *cobra.Command, r *repo.FsRepo) error {
+	ctx := cmd.Context()
+
+	rpath, err := r.Path()
+	if err != nil {
+		return err
+	}
+
+	// Create node
+	standardNode, err := nodev2.New(ctx, r, v2.Bacalhau{
+		Repo: rpath,
+		Name: "TESTING",
+		Server: v2.Server{
+			Address: "0.0.0.0",
+			Port:    1234,
+			Auth: v2.AuthConfig{
+				TokensPath: "",
+				Methods: map[string]v2.AuthenticatorConfig{
+					"ClientKey": {
+						Type: authn.MethodTypeChallenge,
+					},
+				},
+				AccessPolicyPath: "",
+			},
+		},
+		Orchestrator: v2.Orchestrator{
+			Enabled:   true,
+			Listen:    "0.0.0.0",
+			Port:      4222,
+			Advertise: "0.0.0.0",
+			NodeManager: v2.NodeManager{
+				DisconnectTimeout: types2.Duration(time.Second * 30),
+				AutoApprove:       true,
+			},
+			Store: v2.OrchestratorStore{
+				Type: types.BoltDB.String(),
+			},
+			Scheduler: v2.Scheduler{
+				Workers:              runtime.NumCPU(),
+				HousekeepingInterval: types2.Duration(time.Second * 30),
+				HousekeepingTimeout:  types2.Duration(time.Minute * 2),
+			},
+			Broker: v2.EvaluationBroker{
+				VisibilityTimeout: types2.Duration(time.Second * 60),
+				MaxRetries:        10,
+			},
+		},
+		Compute: v2.Compute{
+			Enabled:       true,
+			Orchestrators: []string{"0.0.0.0:4222"},
+			Labels: map[string]string{
+				"testing": "labels",
+			},
+			Heartbeat: v2.Heartbeat{
+				MessageInterval:  types2.Duration(time.Second * 30),
+				ResourceInterval: types2.Duration(time.Second * 30),
+				InfoInterval:     types2.Duration(time.Second * 30),
+			},
+			Store: v2.ComputeStore{
+				Type: types.BoltDB.String(),
+			},
+			Capacity: v2.Capacity{
+				Allocated: types2.ResourceScalerConfig{
+					CPU:    "80%",
+					Memory: "80%",
+					Disk:   "80%",
+					GPU:    "100%",
+				},
+			},
+			Publishers: publisher.Providers{
+				IPFS: publisher.IPFS{
+					Enabled:  true,
+					Endpoint: "/ip4/127.0.0.1/tcp/5001",
+				},
+				S3: publisher.S3{
+					Enabled: false,
+				},
+				Local: publisher.Local{
+					Enabled: false,
+				},
+				HTTP: publisher.HTTP{
+					Enabled: false,
+				},
+				LocalHTTPServer: publisher.LocalHTTPServer{
+					Enabled: false,
+				},
+			},
+			InputSources: storage.Providers{
+				HTTP: storage.HTTP{
+					Enabled: false,
+				},
+				IPFS: storage.IPFS{
+					Enabled:  true,
+					Endpoint: "/ip4/127.0.0.1/tcp/5001",
+				},
+				Local: storage.Local{
+					Enabled: true,
+					Volumes: []types2.Volume{
+						{
+							Name:  "tmp",
+							Path:  "/tmp",
+							Write: false,
+						},
+					},
+				},
+				S3: storage.S3{
+					Enabled: false,
+				},
+			},
+			Executors: executor.Providers{
+				Docker: executor.Docker{
+					Enabled:  true,
+					Endpoint: "TODO",
+					ManifestCache: executor.DockerManifestCache{
+						Size:    10 << 30, // 10 GB
+						TTL:     types2.Duration(time.Hour * 24),
+						Refresh: types2.Duration(time.Hour),
+					},
+				},
+				WASM: executor.WASM{
+					Enabled: true,
+				},
+			},
+			Policy: v2.SelectionPolicy{
+				Networked: true,
+				Local:     true,
+			},
+		},
+		Telemetry: v2.Telemetry{
+			Logging: v2.Logging{
+				Level:  "debug",
+				Format: "color",
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("creating node: %w", err)
+	}
+
+	// Start node
+	if err := standardNode.Start(ctx); err != nil {
+		return fmt.Errorf("starting node: %w", err)
+	}
+
+	<-ctx.Done() // block until killed
+	if err := standardNode.Stop(context.TODO()); err != nil {
+		return fmt.Errorf("stopping node: %w", err)
+	}
+	return nil
 }

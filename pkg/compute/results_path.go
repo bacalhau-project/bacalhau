@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 type ResultsPath struct {
@@ -13,8 +14,16 @@ type ResultsPath struct {
 	ResultsDir string
 }
 
-func NewResultsPath() (*ResultsPath, error) {
-	dir, err := os.MkdirTemp("", "bacalhau-results")
+func NewResultsPath(root string) (*ResultsPath, error) {
+	var (
+		dir string
+		err error
+	)
+	if root != "" {
+		dir, err = os.MkdirTemp(root, "bacalhau-results")
+	} else {
+		dir, err = os.MkdirTemp("", "bacalhau-results")
+	}
 	if err != nil {
 		return nil, err
 	}

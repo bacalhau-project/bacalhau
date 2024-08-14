@@ -31,6 +31,7 @@ func NewPhysicalCapacityProvider(path string) *PhysicalCapacityProvider {
 	}
 }
 
+// TODO this method should return a pointer
 func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (models.Resources, error) {
 	totalCapacity, err := p.GetTotalCapacity(ctx)
 	if err != nil {
@@ -46,6 +47,7 @@ func (p *PhysicalCapacityProvider) GetAvailableCapacity(ctx context.Context) (mo
 	}, nil
 }
 
+// TODO this method should return a pointer
 func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models.Resources, error) {
 	diskSpace, err := getFreeDiskSpace(p.path)
 	if err != nil {

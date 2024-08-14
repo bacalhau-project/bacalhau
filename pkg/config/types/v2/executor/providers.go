@@ -26,7 +26,7 @@ type Docker struct {
 // DockerManifestCache represents the configuration settings for the Docker manifest cache.
 type DockerManifestCache struct {
 	// Size specifies the size of the Docker manifest cache.
-	Size string
+	Size uint64
 	// TTL specifies the time-to-live duration for cache entries.
 	TTL types.Duration
 	// Refresh specifies the refresh interval for cache entries.

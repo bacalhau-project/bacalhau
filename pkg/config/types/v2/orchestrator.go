@@ -10,10 +10,16 @@ type Orchestrator struct {
 	// Enabled specifies whether the orchestration service is enabled on the Bacalhau node.
 	Enabled bool
 
-	// Listen specifies the endpoint the orchestration service will listen on for connections from compute nodes.
+	// Listen specifies the address the orchestration service will listen on for connections from compute nodes.
 	Listen string
+	// Port specifies the port the orchestration service will listen for connections from compute nodes.
+	Port int
 	// Advertise specifies the endpoint the orchestration service will advertise to the network for connections from compute nodes.
 	Advertise string
+	// AuthSecret is a secret string that clients must use to connect. NATS servers
+	// must supply this value, while clients can also supply it as the user part
+	// of their Orchestrator URL.
+	AuthSecret string
 	// TLS specifies the TLS configuration of the orchestration service.
 	TLS types.TLS
 
@@ -31,8 +37,12 @@ type Orchestrator struct {
 
 // Cluster represents the configuration settings for the orchestration service NATs cluster.
 type Cluster struct {
+	// Name specifies the name of the cluster the orchestration service will connect to.
+	Name string
 	// Listen specifies the address the orchestration service will listen on for connections from other orchestration services.
 	Listen string
+	// Port specifies the port the orchestration service will listen on for connections from other orchestration services.
+	Port int
 	// Advertise specifies the endpoint the orchestration service will advertise to the network for connections from other orchestration services.
 	Advertise string
 	// Peers specifies the list of peer orchestration services.

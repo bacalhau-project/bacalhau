@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -253,4 +256,156 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 
 	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
 	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
+}
+
+const OrchestratorStorePath = "orchestrator_store"
+
+func (fsr *FsRepo) OrchestratorPath() (string, error) {
+	if exists, err := fsr.Exists(); err != nil {
+		return "", fmt.Errorf("opening orchestrator path: %w", err)
+	} else if !exists {
+		return "", fmt.Errorf("opening orchestrator path: DEVELOPER ERROR repo does not exist but should")
+	}
+	orchestratorPath := fsr.join(OrchestratorStorePath)
+	if exists, err := fileExists(orchestratorPath); err != nil {
+		return "", fmt.Errorf("opening orchestrator path: %w", err)
+	} else if exists {
+		return orchestratorPath, nil
+	}
+	// repo exists, but the orchestrator path doesn't, create it.
+	if err := os.MkdirAll(orchestratorPath, repoPermission); err != nil {
+		return "", fmt.Errorf("creating orchestrator path: %w", err)
+	}
+	return orchestratorPath, nil
+}
+
+const JobStorePath = "jobs.db"
+
+func (fsr *FsRepo) JobStorePath() (string, error) {
+	root, err := fsr.OrchestratorPath()
+	if err != nil {
+		return "", fmt.Errorf("opening job store path: %w", err)
+	}
+	return filepath.Join(root, JobStorePath), nil
+}
+
+const NetworkTransportStore = "nats-store"
+
+func (fsr *FsRepo) NetworkTransportStorePath() (string, error) {
+	root, err := fsr.OrchestratorPath()
+	if err != nil {
+		return "", fmt.Errorf("opening network transport path: %w", err)
+	}
+	return filepath.Join(root, NetworkTransportStore), nil
+}
+
+const ComputeStorePath = "compute_store"
+
+func (fsr *FsRepo) ComputePath() (string, error) {
+	if exists, err := fsr.Exists(); err != nil {
+		return "", fmt.Errorf("opening compute path: %w", err)
+	} else if !exists {
+		return "", fmt.Errorf("opening compute path: DEVELOPER ERROR repo does not exist but should")
+	}
+	computePath := fsr.join(ComputeStorePath)
+	if exists, err := fileExists(computePath); err != nil {
+		return "", fmt.Errorf("opening compute path: %w", err)
+	} else if exists {
+		return computePath, nil
+	}
+	// repo exists, but the compute path doesn't, create it.
+	if err := os.MkdirAll(computePath, repoPermission); err != nil {
+		return "", fmt.Errorf("creating compute path: %w", err)
+	}
+	return computePath, nil
+}
+
+const ExecutionStorePath = "executions.db"
+
+func (fsr *FsRepo) ExecutionStorePath() (string, error) {
+	root, err := fsr.ComputePath()
+	if err != nil {
+		return "", fmt.Errorf("opening execution store path: %w", err)
+	}
+	return filepath.Join(root, ExecutionStorePath), nil
+}
+
+const ExecutorStoragePath = "executor_storages"
+
+func (fsr *FsRepo) ExecutorStoragePath() (string, error) {
+	root, err := fsr.ComputePath()
+	if err != nil {
+		return "", fmt.Errorf("opening executor storage path: %w", err)
+	}
+	return filepath.Join(root, ExecutorStoragePath), nil
+}
+
+const ExecutorResultPath = "executor_results"
+
+func (fsr *FsRepo) ExecutorResultPath() (string, error) {
+	root, err := fsr.ComputePath()
+	if err != nil {
+		return "", fmt.Errorf("opening executor result path: %w", err)
+	}
+	resultPath := filepath.Join(root, ExecutorResultPath)
+	if exists, err := fileExists(resultPath); err != nil {
+		return "", fmt.Errorf("opening result path: %w", err)
+	} else if exists {
+		return resultPath, nil
+	}
+	// repo exists, but the compute path doesn't, create it.
+	if err := os.MkdirAll(resultPath, repoPermission); err != nil {
+		return "", fmt.Errorf("creating result path: %w", err)
+	}
+	return resultPath, nil
+}
+
+const PublisherPath = "publishers"
+
+func (fsr *FsRepo) PublisherPath() (string, error) {
+	root, err := fsr.ComputePath()
+	if err != nil {
+		return "", fmt.Errorf("opening publisher path: %w", err)
+	}
+	return filepath.Join(root, PublisherPath), nil
+}
+
+const UserPrivateKeyFileName = "user_id.pem"
+
+type UserKey struct {
+	sk      *rsa.PrivateKey
+	sigHash crypto.Hash
+}
+
+func (u *UserKey) PrivateKey() *rsa.PrivateKey {
+	return u.sk
+}
+
+func (u *UserKey) PublicKey() *rsa.PublicKey {
+	return &u.sk.PublicKey
+}
+
+func (u *UserKey) ClientID() string {
+	hash := u.sigHash.New()
+	hash.Write(u.sk.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes)
+}
+
+func (fsr *FsRepo) LoadUserKey() (*UserKey, error) {
+	// if the repo does not exist we cannot load the key
+	if exists, err := fsr.Exists(); err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, fmt.Errorf("DEVELOPER ERROR: repo does not exist but should")
+	}
+	sk, err := baccrypto.LoadPKCS1KeyFile(fsr.join(UserPrivateKeyFileName))
+	if err != nil {
+		return nil, err
+	}
+	return &UserKey{
+		sk:      sk,
+		sigHash: crypto.SHA256,
+	}, nil
 }

@@ -77,6 +77,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	log.Ctx(ctx).Info().Msg("Heartbeat server started")
 
+	// TODO use a wait group
 	tickerStartCh := make(chan struct{})
 
 	go func(ctx context.Context) {

@@ -20,9 +20,9 @@ func (*RuntimeLabelsProvider) GetLabels(context.Context) map[string]string {
 var _ models.LabelsProvider = (*RuntimeLabelsProvider)(nil)
 
 type ConfigLabelsProvider struct {
-	staticLabels map[string]string
+	StaticLabels map[string]string
 }
 
 func (p *ConfigLabelsProvider) GetLabels(context.Context) map[string]string {
-	return p.staticLabels
+	return p.StaticLabels
 }

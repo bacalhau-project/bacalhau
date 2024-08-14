@@ -159,7 +159,7 @@ func NewNode(
 		}
 
 		labelsProvider = models.MergeLabelsInOrder(
-			&ConfigLabelsProvider{staticLabels: config.Labels},
+			&ConfigLabelsProvider{StaticLabels: config.Labels},
 			&RuntimeLabelsProvider{},
 		)
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
