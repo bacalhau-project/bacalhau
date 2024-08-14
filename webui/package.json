@@ -13,7 +13,7 @@
     "@types/node": "^20.11.16",
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
-    "axios": "^1.6.7",
+    "axios": "^1.7.4",
     "babel-jest": "^29.7.0",
     "babel-preset-react": "^6.24.1",
     "babel-preset-react-app": "^10.0.1",
