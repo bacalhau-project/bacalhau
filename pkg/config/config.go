@@ -166,13 +166,6 @@ func New(opts ...Option) (*config, error) {
 	for name, value := range c.values {
 		c.base.Set(name, value)
 	}
-	/*
-		if len(c.values) > 0 {
-			if err := c.base.MergeConfigMap(c.values); err != nil {
-				return nil, fmt.Errorf("merging config values: %w", err)
-			}
-		}
-	*/
 
 	return c, nil
 }
