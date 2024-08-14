@@ -79,7 +79,7 @@ func NewCmd() *cobra.Command {
 		Long:    devStackLong,
 		Example: devstackExample,
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			return configflags.BindFlags(cmd, viper.GetViper(), devstackFlags)
+			return configflags.BindFlags(viper.GetViper(), devstackFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// ensure we either use a temp repo for the devstack, or the repo path provided
@@ -98,8 +98,10 @@ func NewCmd() *cobra.Command {
 			}
 			// override the repo path set in the root command with the derived path.
 			v.Set("repo", repoPath)
-			cfg := config.New(config.WithViper(v))
-			// create or open the bacalhau repo and load the config
+			cfg, err := util.SetupConfig(cmd)
+			if err != nil {
+				return fmt.Errorf("setting up config: %w", err)
+			}
 			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)

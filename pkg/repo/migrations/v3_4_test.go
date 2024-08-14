@@ -47,7 +47,9 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	suite.Equal(repo.Version3, repoVersion3)
 
 	// open the repo to trigger the migration to version 4
-	suite.Require().NoError(suite.repo.Open(config.New()))
+	cfg, err := config.New()
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.repo.Open(cfg))
 
 	// verify the repo's new current version is 4
 	repoVersion4, err := suite.repo.Version()

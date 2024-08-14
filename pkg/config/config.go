@@ -9,6 +9,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
@@ -29,7 +30,6 @@ type Reader interface {
 var _ Writer = (*config)(nil)
 
 type Writer interface {
-	Load(path string) error
 	Set(key string, value interface{})
 	SetIfAbsent(key string, value interface{})
 }
@@ -66,63 +66,142 @@ var (
 )
 
 type config struct {
-	// viper instance for holding user provided configuration
-	v *viper.Viper
-	// the default configuration values to initialize with
+	// viper instance for holding user provided configuration.
+	base *viper.Viper
+	// the default configuration values to initialize with.
 	defaultCfg types.BacalhauConfig
+
+	// paths to configuration files merged from [0] to [N]
+	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
+	paths []string
+
+	flags map[string]*pflag.Flag
+
+	environmentVariables map[string][]string
+
+	// values to inject into the config, taking highest precedence.
+	values map[string]any
 }
 
 type Option = func(s *config)
 
-func WithDefaultConfig(cfg types.BacalhauConfig) Option {
+// WithDefault sets the default config to be used when no values are provided.
+func WithDefault(cfg types.BacalhauConfig) Option {
 	return func(c *config) {
 		c.defaultCfg = cfg
 	}
 }
 
-func WithViper(v *viper.Viper) Option {
+// WithPaths sets paths to configuration files to be loaded
+// paths to configuration files merged from [0] to [N]
+// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
+func WithPaths(path ...string) Option {
 	return func(c *config) {
-		c.v = v
+		c.paths = append(c.paths, path...)
 	}
 }
 
-func New(opts ...Option) *config {
+func WithFlags(flags map[string]*pflag.Flag) Option {
+	return func(s *config) {
+		s.flags = flags
+	}
+}
+
+func WithEnvironmentVariables(ev map[string][]string) Option {
+	return func(s *config) {
+		s.environmentVariables = ev
+	}
+}
+
+// WithValues sets values to be injected into the config, taking precedence over all other options.
+func WithValues(values map[string]any) Option {
+	return func(c *config) {
+		c.values = values
+	}
+}
+
+// New returns a configuration with the provided options applied. If no options are provided, the returned config
+// contains only the default values.
+func New(opts ...Option) (*config, error) {
+	base := viper.New()
+	base.SetEnvPrefix(environmentVariablePrefix)
+	base.SetTypeByDefaultValue(inferConfigTypes)
+	base.AutomaticEnv()
+	base.SetEnvKeyReplacer(environmentVariableReplace)
+
 	c := &config{
-		v:          viper.New(),
+		base:       base,
 		defaultCfg: configenv.Production,
+		paths:      make([]string, 0),
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
-	c.v.SetEnvPrefix(environmentVariablePrefix)
-	c.v.SetTypeByDefaultValue(inferConfigTypes)
-	c.v.AutomaticEnv()
-	c.v.SetEnvKeyReplacer(environmentVariableReplace)
+
 	c.setDefault(c.defaultCfg)
-	return c
+
+	// merge the config files in the order they were passed.
+	for _, path := range c.paths {
+		if err := c.Merge(path); err != nil {
+			if os.IsNotExist(err) {
+				return nil, fmt.Errorf("the specified configuration file %q doesn't exist", path)
+			}
+			return nil, fmt.Errorf("opening config file %q: %w", path, err)
+		}
+	}
+
+	for name, values := range c.environmentVariables {
+		if err := c.base.BindEnv(append([]string{name}, values...)...); err != nil {
+			return nil, fmt.Errorf("binding environment variable %q to config: %w", name, err)
+		}
+	}
+
+	for name, flag := range c.flags {
+		if err := c.base.BindPFlag(name, flag); err != nil {
+			return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+		}
+	}
+
+	// merge the passed values last as they take highest precedence
+	for name, value := range c.values {
+		c.base.Set(name, value)
+	}
+
+	return c, nil
 }
 
+// Load reads in the configuration file specified by `path` overriding any previously set configuration with the values
+// from the read config file.
+// Load returns an error if the file cannot be read.
 func (c *config) Load(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		// if the config file doesn't exist then we obviously cannot load it
-		return fmt.Errorf("config file not found at at path: %q: %w", path, err)
-	} else if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
-	c.v.SetConfigFile(path)
-	if err := c.v.ReadInConfig(); err != nil {
-		return fmt.Errorf("failed to load config file: %w", err)
+	c.base.SetConfigFile(path)
+	if err := c.base.ReadInConfig(); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (c *config) Write(path string) error {
-	return c.v.WriteConfigAs(path)
+func (c *config) Merge(path string) error {
+	c.base.SetConfigFile(path)
+	if err := c.base.MergeInConfig(); err != nil {
+		return err
+	}
+	return nil
 }
 
+// Write persists the current configuration to `path`.
+// Write returns an error if:
+//   - the path cannot be accessed
+//   - the current configuration cannot be marshaled.
+func (c *config) Write(path string) error {
+	return c.base.WriteConfigAs(path)
+}
+
+// Current returns the current configuration.
+// Current returns an error if the configuration cannot be unmarshalled.
 func (c *config) Current() (types.BacalhauConfig, error) {
 	out := new(types.BacalhauConfig)
-	if err := c.v.Unmarshal(&out, DecoderHook); err != nil {
+	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return types.BacalhauConfig{}, err
 	}
 	return *out, nil
@@ -132,35 +211,19 @@ func (c *config) Current() (types.BacalhauConfig, error) {
 // This value won't be persisted in the config file.
 // Will be used instead of values obtained via flags, config file, ENV, default.
 func (c *config) Set(key string, value interface{}) {
-	c.v.Set(key, value)
+	c.base.Set(key, value)
 }
 
 func (c *config) SetIfAbsent(key string, value interface{}) {
-	if !c.v.IsSet(key) || reflect.ValueOf(c.v.Get(key)).IsZero() {
+	if !c.base.IsSet(key) || reflect.ValueOf(c.base.Get(key)).IsZero() {
 		c.Set(key, value)
 	}
 }
 
-// ForKey unmarshals configuration values associated with a given key into the provided cfg structure.
-// It uses unmarshalCompositeKey internally to handle composite keys, ensuring values spread across
-// nested sub-keys are correctly populated into the cfg structure.
-//
-// Parameters:
-//   - key: The configuration key to retrieve values for.
-//   - cfg: The structure into which the configuration values will be unmarshaled.
-//
-// Returns:
-//   - An error if any occurred during unmarshaling; otherwise, nil.
-/*
-func (c *config) ForKey(key string, cfg interface{}) error {
-	return unmarshalCompositeKey(c.v, key, cfg)
-}
-*/
-
 // setDefault sets the default value for the configuration.
 // Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
 func (c *config) setDefault(config types.BacalhauConfig) {
-	types.SetDefaults(config, types.WithViper(c.v))
+	types.SetDefaults(config, types.WithViper(c.base))
 }
 
 // WritePersistedConfigs will write certain values from the resolved config to the persisted config.
