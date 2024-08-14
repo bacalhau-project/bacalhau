@@ -83,7 +83,7 @@ func NewCmd() *cobra.Command {
 		Long:    serveLong,
 		Example: serveExample,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return configflags.BindFlags(cmd, viper.GetViper(), serveFlags)
+			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// get the global viper instance
@@ -93,7 +93,10 @@ func NewCmd() *cobra.Command {
 			if repoPath == "" {
 				return fmt.Errorf("repo path not set")
 			}
-			cfg := config.New(config.WithViper(v))
+			cfg, err := util.SetupConfig(cmd)
+			if err != nil {
+				return fmt.Errorf("failed to setup config: %w", err)
+			}
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
 			if err != nil {

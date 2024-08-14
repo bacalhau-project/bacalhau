@@ -17,14 +17,14 @@ clean_repo() {
 create_node() {
     TYPE=$1
     shift 1
-    $BACALHAU serve --peer=none --node-type=$TYPE $@ 1>$BACALHAU_DIR/out.log 2>$BACALHAU_DIR/err.log &
+    $BACALHAU serve --node-type=$TYPE $@ 1>$BACALHAU_DIR/out.log 2>$BACALHAU_DIR/err.log &
     NODE_PID=$!
     RUNNING_NODES+=($NODE_PID)
     {
         while ! ls $BACALHAU_DIR/bacalhau.run 2>/dev/null; do
             if ! ps $NODE_PID; then
-                echo "$BACALHAU serve --peer=none --node-type=$TYPE $@ failed to start?" 1>&2;
-                echo `$BACALHAU serve --peer=none --node-type=$TYPE $@` 1>&2
+                echo "$BACALHAU serve --node-type=$TYPE $@ failed to start?" 1>&2;
+                echo `$BACALHAU serve --node-type=$TYPE $@` 1>&2
                 exit 1
             fi
             sleep 0.01

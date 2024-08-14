@@ -96,15 +96,8 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 		return err
 	}
 
-	// check if a config file is already present, even though the repo is uninitialized
-	// users may still place a config file in a repo (we do this for our terraform deployments)
-	// we should attempt to load the config file if it's present.
-	if _, err := os.Stat(fsr.join(config.FileName)); err == nil {
-		if err := c.Load(fsr.join(config.FileName)); err != nil {
-			return fmt.Errorf("failed to load config file present in repo: %w", err)
-		}
-	}
-
+	// modifies the config to include keys for accessing repo paths if they are not set.
+	// This ensures either user provided paths are valid to default paths for the repo are set.
 	fsr.EnsureRepoPathsConfigured(c)
 
 	cfg, err := c.Current()
@@ -133,14 +126,6 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 	if fsr.Migrations != nil {
 		if err := fsr.Migrations.Migrate(*fsr); err != nil {
 			return fmt.Errorf("failed to migrate repo: %w", err)
-		}
-	}
-
-	// load the configuration for the repo.
-	// Repos without a config file are still valid. So check if one is present.
-	if _, err := os.Stat(fsr.join(config.FileName)); err == nil {
-		if err := c.Load(fsr.join(config.FileName)); err != nil {
-			return fmt.Errorf("failed to load config file present in repo: %w", err)
 		}
 	}
 

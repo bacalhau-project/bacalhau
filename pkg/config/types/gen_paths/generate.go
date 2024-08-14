@@ -2,34 +2,53 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-// generateConstants is a recursive function that iterates through the fields of a given reflect.Type representing
-// the structure of a configuration object. It constructs constant definitions for each field, building up the
-// constant name and value based on the field's name, any associated "config" tags, and a provided prefix string.
-//
-// The parameters are:
-// - t: The reflect.Type of the current part of the structure being examined.
-// - prefix: A string that is used as the beginning of the constant names and values, reflecting the path within the structure.
-// - file: An *os.File that represents the file to which the constant definitions are written.
-//
-// The function processes each field as follows:
-// - If the field has a "config" tag, the prefix is replaced with the tag's value.
-// - If the field is an anonymous field, the prefix remains unchanged.
-// - If the field's name is "Node" and the prefix is already "Node", the prefix remains unchanged to avoid duplication.
-// - In other cases, the field's name is appended to the prefix.
-//
-// If the field is itself a struct, the function calls itself recursively to handle the nested fields. If the field
-// is not a struct, the function generates a line of code defining a constant, using the built-up prefix to form the
-// constant's name and value. This line is written to the provided file.
-//
-// The resulting file will contain a series of constant definitions that can be used to access configuration values
-// by name.
+var commentsMap = make(map[string]string)
+
+// extractComments extracts comments from the source files in the provided directory.
+func extractComments(dir string) error {
+	fset := token.NewFileSet()
+	packages, err := parser.ParseDir(fset, dir, nil, parser.ParseComments)
+	if err != nil {
+		return fmt.Errorf("error parsing directory %s: %w", dir, err)
+	}
+
+	for _, pkg := range packages {
+		for _, file := range pkg.Files {
+			ast.Inspect(file, func(n ast.Node) bool {
+				switch x := n.(type) {
+				case *ast.TypeSpec:
+					if x.Doc != nil {
+						commentsMap[x.Name.Name] = strings.TrimSpace(x.Doc.Text())
+					}
+				case *ast.Field:
+					if x.Doc != nil && len(x.Names) > 0 {
+						commentsMap[x.Names[0].Name] = strings.TrimSpace(x.Doc.Text())
+					}
+				}
+				return true
+			})
+		}
+	}
+	return nil
+}
+
+// escapeString escapes double quotes in the string for safe inclusion in Go source code.
+func escapeString(s string) string {
+	return strings.ReplaceAll(s, `"`, `\"`)
+}
+
+// generateConstants generates constant definitions for each field in the given struct type.
 func generateConstants(t reflect.Type, prefix string, file *os.File) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -37,13 +56,10 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 		newPrefix := ""
 
 		if tag != "" {
-			// If there's a tag, we use it as the new prefix, discarding the old one
 			newPrefix = tag
 		} else if field.Anonymous {
-			// For anonymous fields, keep the existing prefix
 			newPrefix = prefix
 		} else {
-			// If prefix is empty, just use the field name. Otherwise, concatenate with "."
 			newPrefix = prefix
 			if newPrefix != "" {
 				newPrefix += "."
@@ -52,33 +68,101 @@ func generateConstants(t reflect.Type, prefix string, file *os.File) {
 		}
 
 		if field.Type.Kind() == reflect.Struct {
-			// This is the modification where we add an intermediary path
-			// constant before diving deeper into the struct.
 			constantNameForStruct := strings.ReplaceAll(newPrefix, ".", "")
-			fmt.Fprintf(file, "const %s = \"%s\"\n", constantNameForStruct, newPrefix)
-
+			fmt.Fprintf(file, "const %s = \"%s\"\n", constantNameForStruct, strings.ToLower(newPrefix))
 			generateConstants(field.Type, newPrefix, file)
 		} else {
 			constantName := strings.ReplaceAll(newPrefix, ".", "")
-			constantValue := newPrefix
+			constantValue := strings.ToLower(newPrefix)
 			fmt.Fprintf(file, "const %s = \"%s\"\n", constantName, constantValue)
 		}
 	}
 }
 
-func main() {
-	config := types.BacalhauConfig{}
+// generateDescriptions generates the map of configuration descriptions.
+func generateDescriptions(t reflect.Type, prefix string, file *os.File) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("config")
+		newPrefix := prefix
 
-	// Open a file for writing
-	file, err := os.Create("generated_constants.go")
+		if tag != "" {
+			if newPrefix != "" {
+				newPrefix += "."
+			}
+			newPrefix += tag
+		} else if !field.Anonymous {
+			if newPrefix != "" {
+				newPrefix += "."
+			}
+			newPrefix += field.Name
+		}
+
+		if field.Type.Kind() != reflect.Struct {
+			description := commentsMap[field.Name]
+			if description == "" {
+				description = "No description available"
+			} else {
+				// Clean up the comment: remove leading "//" and newlines
+				description = strings.TrimPrefix(description, "//")
+				description = strings.ReplaceAll(description, "\n", " ")
+				description = strings.TrimSpace(description)
+				description = escapeString(description)
+			}
+
+			constantName := strings.ReplaceAll(newPrefix, ".", "")
+			fmt.Fprintf(file, "\t%s: \"%s\",\n", constantName, description)
+		}
+
+		if field.Type.Kind() == reflect.Struct {
+			generateDescriptions(field.Type, newPrefix, file)
+		}
+	}
+}
+
+func main() {
+	if len(os.Args) != 2 {
+		fmt.Println("Please provide the path to the config directory.")
+		os.Exit(1)
+	}
+	inputDir := os.Args[1]
+
+	// Extract comments from all source files in the directory
+	err := extractComments(inputDir)
 	if err != nil {
 		panic(err)
 	}
-	defer file.Close()
+
+	// Generate constants file
+	constantsFile, err := os.Create(filepath.Join(inputDir, "generated_constants.go"))
+	if err != nil {
+		panic(err)
+	}
+	defer constantsFile.Close()
 
 	// Write the package declaration
-	fmt.Fprintf(file, "// CODE GENERATED BY pkg/config/types/gen_paths DO NOT EDIT\n\n")
-	fmt.Fprintf(file, "package types\n\n")
+	fmt.Fprintf(constantsFile, "// CODE GENERATED BY pkg/config/types/gen_paths DO NOT EDIT\n\n")
+	fmt.Fprintf(constantsFile, "package types\n\n")
 
-	generateConstants(reflect.TypeOf(config), "", file)
+	generateConstants(reflect.TypeOf(types.BacalhauConfig{}), "", constantsFile)
+
+	// Generate descriptions file
+	descriptionsFile, err := os.Create(filepath.Join(inputDir, "generated_descriptions.go"))
+	if err != nil {
+		panic(err)
+	}
+	defer descriptionsFile.Close()
+
+	// Write the package declaration
+	fmt.Fprintf(descriptionsFile, "// Code generated by go generate; DO NOT EDIT.\n\n")
+	fmt.Fprintf(descriptionsFile, "package types\n\n")
+
+	fmt.Fprintf(descriptionsFile, "// ConfigDescriptions maps configuration paths to their descriptions\n")
+	fmt.Fprintf(descriptionsFile, "var ConfigDescriptions = map[string]string{\n")
+
+	generateDescriptions(reflect.TypeOf(types.BacalhauConfig{}), "", descriptionsFile)
+
+	fmt.Fprintf(descriptionsFile, "}\n")
+
+	fmt.Printf("Generated files written to %s\n", inputDir)
 }

@@ -6,13 +6,12 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func newListCmd() *cobra.Command {
@@ -44,8 +43,8 @@ func newListCmd() *cobra.Command {
 }
 
 type configListEntry struct {
-	Key   string
-	Value interface{}
+	Key         string
+	Description string
 }
 
 func list(cmd *cobra.Command, o output.OutputOptions) error {
@@ -54,12 +53,10 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 		Mode: table.Asc,
 	}}
 	var cfgList []configListEntry
-	viperSchema := NewViperWithDefaultConfig(config.ForEnvironment())
-	for _, k := range viperSchema.AllKeys() {
-		v := viper.Get(k)
+	for key, description := range types.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
-			Key:   k,
-			Value: v,
+			Key:         key,
+			Description: description,
 		})
 	}
 
@@ -78,9 +75,9 @@ var listColumns = []output.TableColumn[configListEntry]{
 		},
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "Value", WidthMax: 40, WidthMaxEnforcer: text.WrapHard},
+		ColumnConfig: table.ColumnConfig{Name: "Description", WidthMax: 40, WidthMaxEnforcer: text.WrapHard},
 		Value: func(v configListEntry) string {
-			return fmt.Sprintf("%v", v.Value)
+			return fmt.Sprintf("%v", v.Description)
 		},
 	},
 }

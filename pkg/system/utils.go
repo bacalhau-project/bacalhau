@@ -3,7 +3,6 @@ package system
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"regexp"
@@ -30,9 +29,6 @@ var MaxStderrReturnLength = 2 * datasize.KB
 
 // TODO: #282 we need these to avoid stream based deadlocks
 // https://go-review.googlesource.com/c/go/+/42271/3/misc/android/go_android_exec.go#37
-
-var Stdout = struct{ io.Writer }{os.Stdout}
-var Stderr = struct{ io.Writer }{os.Stderr}
 
 // PathExists returns whether the given file or directory exists
 func PathExists(path string) (bool, error) {
