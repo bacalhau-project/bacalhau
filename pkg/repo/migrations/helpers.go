@@ -112,8 +112,10 @@ func loadLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
 func copyFS(dir string, fsys fs.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			// Handle the error before accessing d
-			return fmt.Errorf("error accessing %s: %v", path, err)
+			if path != "." {
+				// Handle the error before accessing d
+				return fmt.Errorf("error accessing %s: %v", path, err)
+			}
 		}
 
 		targ := filepath.Join(dir, filepath.FromSlash(path))
