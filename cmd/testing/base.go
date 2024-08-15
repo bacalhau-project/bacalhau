@@ -43,8 +43,7 @@ func (s *BaseSuite) SetupTest() {
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 	s.Config = cfg
-	executionDirPath, err := fsr.ExecutionDir()
-	s.Require().NoError(err)
+	executionDirPath := cfg.ExecutionDir()
 
 	// TODO: Update checker is configured with production default configs
 	//  and not respecting the test environment. This is a temporary fix

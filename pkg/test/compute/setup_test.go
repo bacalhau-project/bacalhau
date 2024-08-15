@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
@@ -24,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -61,19 +63,6 @@ func (s *ComputeSuite) setupConfig() {
 	})
 	s.Require().NoError(err)
 	s.config = cfg
-}
-
-type fakeComputeRepo struct {
-	computeStore   string
-	executionStore string
-}
-
-func (f *fakeComputeRepo) ComputeDir() (string, error) {
-	return f.computeStore, nil
-}
-
-func (f *fakeComputeRepo) ExecutionDir() (string, error) {
-	return f.executionStore, nil
 }
 
 func (s *ComputeSuite) setupNode() {
@@ -121,17 +110,27 @@ func (s *ComputeSuite) setupNode() {
 	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
 	s.Require().NoError(err)
 
-	computeRepo := &fakeComputeRepo{
-		computeStore:   s.T().TempDir(),
-		executionStore: s.T().TempDir(),
-	}
+	r, err := repo.NewFS(repo.FsRepoParams{
+		Path:       s.T().TempDir(),
+		Migrations: nil,
+	})
+	s.Require().NoError(err)
+
+	c, err := config.New()
+	s.Require().NoError(err)
+
+	err = r.Init(c)
+	s.Require().NoError(err)
+	cfg, err := c.Current()
+	s.Require().NoError(err)
+
 	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
 		nodeID,
 		apiServer,
+		cfg,
 		s.config,
-		computeRepo,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewMappedProvider(map[string]executor_common.Executor{
 			models.EngineNoop:   s.executor,

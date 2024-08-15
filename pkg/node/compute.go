@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 
 	"github.com/nats-io/nats.go"
@@ -19,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -48,18 +48,13 @@ type Compute struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-type ComputeRepo interface {
-	ComputeDir() (string, error)
-	ExecutionDir() (string, error)
-}
-
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
+	cfg types.BacalhauConfig,
 	config ComputeConfig,
-	r ComputeRepo,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -69,19 +64,13 @@ func NewComputeNode(
 	configuredLabels map[string]string,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
-	computeDir, err := r.ComputeDir()
-	if err != nil {
-		return nil, err
-	}
-	executionDir, err := r.ExecutionDir()
-	if err != nil {
-		return nil, err
-	}
+	computeDir := cfg.ComputeDir()
+	executionDir := cfg.ExecutionDir()
 
 	executionStore := config.ExecutionStore
 	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
 
-	_, err = watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
 		return nil, err
@@ -206,10 +195,6 @@ func NewComputeNode(
 		&RuntimeLabelsProvider{},
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 	)
-
-	if err = os.MkdirAll(computeDir, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed to create compute store directory: %s", err)
-	}
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.

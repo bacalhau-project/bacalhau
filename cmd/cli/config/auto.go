@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 const (
@@ -104,11 +103,11 @@ func newAutoResourceCmd() *cobra.Command {
 				return err
 			}
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			r, _, err := util.SetupRepoConfig(cmd)
+			cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			return autoConfig(cmd.Context(), r, settings)
+			return autoConfig(cmd.Context(), cfg, settings)
 		},
 	}
 
@@ -117,12 +116,8 @@ func newAutoResourceCmd() *cobra.Command {
 	return autoCmd
 }
 
-func autoConfig(ctx context.Context, r *repo.FsRepo, settings *autoSettings) error {
-	path, err := r.ExecutionDir()
-	if err != nil {
-		return err
-	}
-	pp := system.NewPhysicalCapacityProvider(path)
+func autoConfig(ctx context.Context, cfg types.BacalhauConfig, settings *autoSettings) error {
+	pp := system.NewPhysicalCapacityProvider(cfg.ExecutionDir())
 	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)

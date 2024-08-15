@@ -105,7 +105,6 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 type UpdateStore interface {
 	ReadLastUpdateCheck() (time.Time, error)
 	WriteLastUpdateCheck(time.Time) error
-	UserKeyPath() (string, error)
 }
 
 // RunUpdateChecker starts a goroutine that will periodically make an update
@@ -127,11 +126,7 @@ func RunUpdateChecker(
 	}
 
 	clientVersion := Get()
-	userKeyPath, err := store.UserKeyPath()
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to get user key path from repo")
-		return
-	}
+	userKeyPath := cfg.UserKeyPath()
 	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key file")

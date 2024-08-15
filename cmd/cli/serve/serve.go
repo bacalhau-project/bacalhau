@@ -139,17 +139,14 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	transportDir, err := fsRepo.NetworkTransportDir()
-	if err != nil {
-		return err
-	}
+	transportDir := cfg.NetworkTransportDir()
 
 	networkConfig, err := getNetworkConfig(transportDir, cfg.Node.Network)
 	if err != nil {
 		return err
 	}
 
-	computeConfig, err := GetComputeConfig(ctx, cfg.Node, fsRepo, isComputeNode)
+	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
@@ -342,10 +339,7 @@ func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig
 	var err error
 	// If the user has not specified a private key, use their client key
 	if key == "" {
-		key, err = r.UserKeyPath()
-		if err != nil {
-			return "", "", fmt.Errorf("loading user key from repo for TLS Certificate: %w", err)
-		}
+		key = cfg.UserKeyPath()
 	}
 	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
 	if err != nil {

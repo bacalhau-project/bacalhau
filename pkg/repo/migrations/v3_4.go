@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -54,13 +55,13 @@ var V3Migration = StagedMigration(
 		}
 
 		if fileCfg.User.KeyPath != "" {
-			if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, repo.UserKeyFile)); err != nil {
+			if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, types.UserKeyFileName)); err != nil {
 				return fmt.Errorf("copying user key file: %w", err)
 			}
 		}
 
 		if fileCfg.Auth.TokensPath != "" {
-			if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, repo.AuthTokensFile)); err != nil {
+			if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, types.AuthTokensFileName)); err != nil {
 				return fmt.Errorf("copying auth tokens file: %w", err)
 			}
 		}
@@ -68,7 +69,7 @@ var V3Migration = StagedMigration(
 		if fileCfg.Node.Compute.ExecutionStore.Path != "" {
 			if err := copyFile(
 				fileCfg.Node.Compute.ExecutionStore.Path,
-				filepath.Join(repoPath, repo.ComputeDirKey, "executions.db"),
+				filepath.Join(repoPath, types.ComputeDirName, "executions.db"),
 			); err != nil {
 				return fmt.Errorf("copying execution database: %w", err)
 			}
@@ -77,7 +78,7 @@ var V3Migration = StagedMigration(
 		if fileCfg.Node.Requester.JobStore.Path != "" {
 			if err := copyFile(
 				fileCfg.Node.Requester.JobStore.Path,
-				filepath.Join(repoPath, repo.OrchestratorDirKey, "jobs.db"),
+				filepath.Join(repoPath, types.OrchestratorDirName, "jobs.db"),
 			); err != nil {
 				return fmt.Errorf("copying job database: %w", err)
 			}
@@ -87,7 +88,7 @@ var V3Migration = StagedMigration(
 		if from == "" {
 			from = filepath.Join(repoPath, "executor_storages")
 		}
-		to := filepath.Join(repoPath, repo.ExecutionDirKey)
+		to := filepath.Join(repoPath, types.ExecutionDirName)
 		log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
 		if err := copyFS(to, os.DirFS(from)); err != nil {
 			return fmt.Errorf("copying executor storages: %w", err)

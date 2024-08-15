@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,6 +21,7 @@ func TestStagedMigration(t *testing.T) {
 	require.NoError(t, err, "Failed to create temp dir")
 	defer os.RemoveAll(tempDir)
 
+	viper.Set("repo", tempDir)
 	// Create a test repo
 	testRepo, err := repo.NewFS(repo.FsRepoParams{
 		Path:       tempDir,
@@ -66,6 +68,7 @@ func TestPerformStagedMigration(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	// Create a test repo
+	viper.Set("repo", tempDir)
 	testRepo, err := repo.NewFS(repo.FsRepoParams{
 		Path:       tempDir,
 		Migrations: nil,

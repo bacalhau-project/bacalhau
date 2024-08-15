@@ -49,8 +49,7 @@ func setupNodeForTestWithConfig(t *testing.T, apiCfg publicapi.Config) (*node.No
 	executionStore, err := boltdb.NewStore(ctx, filepath.Join(repoPath, "executions.db"))
 	require.NoError(t, err)
 
-	executionDir, err := repo.ExecutionDir()
-	require.NoError(t, err)
+	executionDir := c.ExecutionDir()
 	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
 		ExecutionStore: executionStore,
 	})

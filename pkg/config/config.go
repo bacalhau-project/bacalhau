@@ -204,6 +204,9 @@ func (c *config) Current() (types.BacalhauConfig, error) {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return types.BacalhauConfig{}, err
 	}
+	if out.Repo == "" {
+		out.Repo = viper.GetString("repo")
+	}
 	return *out, nil
 }
 

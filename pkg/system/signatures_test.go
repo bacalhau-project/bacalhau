@@ -18,9 +18,8 @@ func TestMessageSigning(t *testing.T) {
 			t.Errorf("unexpected panic: %v", r)
 		}
 	}()
-	r, _ := setup.SetupBacalhauRepoForTesting(t)
-	userKeyPath, err := r.UserKeyPath()
-	require.NoError(t, err)
+	_, c := setup.SetupBacalhauRepoForTesting(t)
+	userKeyPath := c.UserKeyPath()
 	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	require.NoError(t, err)
 	signer := system.NewMessageSigner(userKey.PrivateKey())

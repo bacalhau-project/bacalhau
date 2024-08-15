@@ -18,7 +18,6 @@ import (
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -31,55 +30,48 @@ import (
 
 func GetComputeConfig(
 	ctx context.Context,
-	cfg types.NodeConfig,
-	r *repo.FsRepo,
+	cfg types.BacalhauConfig,
 	createExecutionStore bool,
 ) (node.ComputeConfig, error) {
-	totalResources, totalErr := cfg.Compute.Capacity.TotalResourceLimits.ToResources()
-	jobResources, jobErr := cfg.Compute.Capacity.JobResourceLimits.ToResources()
-	defaultResources, defaultErr := cfg.Compute.Capacity.DefaultJobResourceLimits.ToResources()
+	totalResources, totalErr := cfg.Node.Compute.Capacity.TotalResourceLimits.ToResources()
+	jobResources, jobErr := cfg.Node.Compute.Capacity.JobResourceLimits.ToResources()
+	defaultResources, defaultErr := cfg.Node.Compute.Capacity.DefaultJobResourceLimits.ToResources()
 	if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
 		return node.ComputeConfig{}, err
 	}
 
 	var executionStore store.ExecutionStore
 	if createExecutionStore {
-		computeDirPath, err := r.ComputeDir()
-		if err != nil {
-			return node.ComputeConfig{}, err
-		}
-		// TODO(forrest): would it be better to hand the bolt store a path and have it create the database there?
-		executionStore, err = getExecutionStore(ctx, cfg.Compute.ExecutionStore, filepath.Join(computeDirPath, "executions.db"))
+		computeDirPath := cfg.ComputeDir()
+		var err error
+		executionStore, err = getExecutionStore(ctx, cfg.Node.Compute.ExecutionStore, filepath.Join(computeDirPath, "executions.db"))
 		if err != nil {
 			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
-	executionsDir, err := r.ExecutionDir()
-	if err != nil {
-		return node.ComputeConfig{}, err
-	}
+	executionsDir := cfg.ExecutionDir()
 	return node.NewComputeConfigWith(executionsDir, node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		JobResourceLimits:                     *jobResources,
 		DefaultJobResourceLimits:              *defaultResources,
-		IgnorePhysicalResourceLimits:          cfg.Compute.Capacity.IgnorePhysicalResourceLimits,
-		JobNegotiationTimeout:                 time.Duration(cfg.Compute.JobTimeouts.JobNegotiationTimeout),
-		MinJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MinJobExecutionTimeout),
-		MaxJobExecutionTimeout:                time.Duration(cfg.Compute.JobTimeouts.MaxJobExecutionTimeout),
-		DefaultJobExecutionTimeout:            time.Duration(cfg.Compute.JobTimeouts.DefaultJobExecutionTimeout),
-		JobExecutionTimeoutClientIDBypassList: cfg.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+		IgnorePhysicalResourceLimits:          cfg.Node.Compute.Capacity.IgnorePhysicalResourceLimits,
+		JobNegotiationTimeout:                 time.Duration(cfg.Node.Compute.JobTimeouts.JobNegotiationTimeout),
+		MinJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MinJobExecutionTimeout),
+		MaxJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+		DefaultJobExecutionTimeout:            time.Duration(cfg.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout),
+		JobExecutionTimeoutClientIDBypassList: cfg.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.Compute.JobSelection.Locality),
-			RejectStatelessJobs: cfg.Compute.JobSelection.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.Compute.JobSelection.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.Compute.JobSelection.ProbeHTTP,
-			ProbeExec:           cfg.Compute.JobSelection.ProbeExec,
+			Locality:            semantic.JobSelectionDataLocality(cfg.Node.Compute.JobSelection.Locality),
+			RejectStatelessJobs: cfg.Node.Compute.JobSelection.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.Node.Compute.JobSelection.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.Node.Compute.JobSelection.ProbeHTTP,
+			ProbeExec:           cfg.Node.Compute.JobSelection.ProbeExec,
 		},
-		LogRunningExecutionsInterval: time.Duration(cfg.Compute.Logging.LogRunningExecutionsInterval),
-		LogStreamBufferSize:          cfg.Compute.LogStreamConfig.ChannelBufferSize,
+		LogRunningExecutionsInterval: time.Duration(cfg.Node.Compute.Logging.LogRunningExecutionsInterval),
+		LogStreamBufferSize:          cfg.Node.Compute.LogStreamConfig.ChannelBufferSize,
 		ExecutionStore:               executionStore,
-		LocalPublisher:               cfg.Compute.LocalPublisher,
+		LocalPublisher:               cfg.Node.Compute.LocalPublisher,
 	})
 }
 

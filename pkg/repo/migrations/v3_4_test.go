@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -44,8 +45,8 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	configPath := filepath.Join(suite.TempDir, config.FileName)
 
 	// define a config in the repo we are migrating with the correct paths defined in it
-	executionStorePath := filepath.Join(suite.TempDir, repo.ComputeDirKey, "executions.db")
-	jobStorePath := filepath.Join(suite.TempDir, repo.OrchestratorDirKey, "jobs.db")
+	executionStorePath := filepath.Join(suite.TempDir, types.ComputeDirName, "executions.db")
+	jobStorePath := filepath.Join(suite.TempDir, types.OrchestratorDirName, "jobs.db")
 	expectedInstallationID := "12345678-abcd-1234-abcd-123456789012"
 	tokensPath := filepath.Join(suite.TempDir, "tokens.json")
 	f, err := os.Create(tokensPath)
@@ -88,8 +89,8 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, config.FileName))
 
 	// verify database files are present
-	suite.FileExists(filepath.Join(suite.TempDir, repo.OrchestratorDirKey, "jobs.db"))
-	suite.FileExists(filepath.Join(suite.TempDir, repo.ComputeDirKey, "executions.db"))
+	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, "jobs.db"))
+	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, "executions.db"))
 
 	// verify old file were removed
 	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
@@ -100,7 +101,7 @@ Auth:
 
 	// old directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
-	suite.DirExists(filepath.Join(suite.TempDir, repo.ComputeDirKey, "executions"))
+	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, "executions"))
 
 	// verify we can read the expected installationID from it.
 	actualInstallationID, err := suite.repo.ReadInstallationID()

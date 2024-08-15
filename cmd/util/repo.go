@@ -18,25 +18,25 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
-func SetupRepoConfig(cmd *cobra.Command) (*repo.FsRepo, types.BacalhauConfig, error) {
+func SetupRepoConfig(cmd *cobra.Command) (types.BacalhauConfig, error) {
 	cfg, err := SetupConfig(cmd)
 	if err != nil {
-		return nil, types.BacalhauConfig{}, err
+		return types.BacalhauConfig{}, err
 	}
 	// create or open the bacalhau repo and load the config
 	r, err := SetupRepo(cfg)
 	if err != nil {
-		return nil, types.BacalhauConfig{}, fmt.Errorf("failed to reconcile repo: %w", err)
+		return types.BacalhauConfig{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
 
 	bacalhauCfg, err := cfg.Current()
 	if err != nil {
-		return nil, types.BacalhauConfig{}, fmt.Errorf("failed to load config: %w", err)
+		return types.BacalhauConfig{}, fmt.Errorf("failed to load config: %w", err)
 	}
 
 	hook.StartUpdateCheck(cmd, bacalhauCfg, r)
 
-	return r, bacalhauCfg, nil
+	return bacalhauCfg, nil
 }
 
 func SetupRepo(cfg config.ReadWriter) (*repo.FsRepo, error) {

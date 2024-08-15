@@ -63,12 +63,12 @@ func NewExecutionCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			r, cfg, err := util.SetupRepoConfig(cmd)
+			cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg, r)
+			api, err := util.GetAPIClientV2(cmd, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}

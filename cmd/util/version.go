@@ -12,7 +12,6 @@ import (
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -23,7 +22,7 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, r *repo.FsRepo, api clientv2.API) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.API) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 
@@ -41,10 +40,7 @@ func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, r *repo.FsRep
 		GOARCH:     resp.GOARCH,
 	}
 
-	userKeyPath, err := r.UserKeyPath()
-	if err != nil {
-		return versions, fmt.Errorf("getting user key path: %w", err)
-	}
+	userKeyPath := cfg.UserKeyPath()
 	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		return versions, fmt.Errorf("loading user key: %w", err)

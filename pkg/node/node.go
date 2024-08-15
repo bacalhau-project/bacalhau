@@ -126,19 +126,13 @@ func NewNode(
 		}
 	}()
 
-	userKeyPath, err := fsr.UserKeyPath()
-	if err != nil {
-		return nil, err
-	}
+	userKeyPath := bacalhauConfig.UserKeyPath()
 	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
-	executionDir, err := fsr.ExecutionDir()
-	if err != nil {
-		return nil, err
-	}
+	executionDir := bacalhauConfig.ExecutionDir()
 
 	if err = prepareConfig(&config, bacalhauConfig, executionDir, userKey); err != nil {
 		return nil, err
@@ -221,8 +215,8 @@ func NewNode(
 			ctx,
 			config.NodeID,
 			apiServer,
+			bacalhauConfig,
 			config.ComputeConfig,
-			fsr,
 			storages,
 			executors,
 			publishers,
