@@ -26,6 +26,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -54,16 +55,16 @@ func NewCmd() *cobra.Command {
 		PreRun: hook.ApplyPorcelainLogLevel,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			cfg, err := util.SetupRepoConfig(cmd)
+			r, cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.GetAPIClientV2(cmd, cfg, r)
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
-			return runVersion(cmd, cfg, api, oV)
+			return runVersion(cmd, cfg, r, api, oV)
 		},
 	}
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
@@ -72,10 +73,10 @@ func NewCmd() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(cmd *cobra.Command, cfg types.BacalhauConfig, api clientv2.API, oV *VersionOptions) error {
+func runVersion(cmd *cobra.Command, cfg types.BacalhauConfig, r *repo.FsRepo, api clientv2.API, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
-	err := oV.Run(ctx, cmd, cfg, api)
+	err := oV.Run(ctx, cmd, cfg, r, api)
 	if err != nil {
 		return fmt.Errorf("error running version: %w", err)
 	}
@@ -103,7 +104,13 @@ var updateMessageColumn = output.TableColumn[util.Versions]{
 	Value:        func(v util.Versions) string { return v.UpdateMessage },
 }
 
-func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command, cfg types.BacalhauConfig, api clientv2.API) error {
+func (oV *VersionOptions) Run(
+	ctx context.Context,
+	cmd *cobra.Command,
+	cfg types.BacalhauConfig,
+	r *repo.FsRepo,
+	api clientv2.API,
+) error {
 	var (
 		versions util.Versions
 		columns  []output.TableColumn[util.Versions]
@@ -117,7 +124,7 @@ func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command, cfg types
 		vctx, cancel := context.WithTimeout(ctx, time.Second*3)
 		defer cancel()
 		var err error
-		versions, err = util.GetAllVersions(vctx, cfg, api)
+		versions, err = util.GetAllVersions(vctx, cfg, r, api)
 		if err != nil {
 			// No error on fail of version check. Just print as much as we can.
 			log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")

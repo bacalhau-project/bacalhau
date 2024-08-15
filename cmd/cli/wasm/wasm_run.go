@@ -104,12 +104,12 @@ func newRunCmd() *cobra.Command {
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			cfg, err := util.SetupRepoConfig(cmd)
+			r, cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create a v2 api client
-			apiV2, err := util.GetAPIClientV2(cmd, cfg)
+			apiV2, err := util.GetAPIClientV2(cmd, cfg, r)
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}

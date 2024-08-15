@@ -74,7 +74,11 @@ func Setup(
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	stackConfig, err := defaultDevStackConfig(cfg)
+	executionDir, err := fsRepo.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
+	stackConfig, err := defaultDevStackConfig(executionDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
@@ -279,17 +283,13 @@ func Setup(
 
 func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
-	repoPath, err := fsRepo.Path()
+	orchestratorStoreRootPath, err := fsRepo.OrchestratorDir()
 	if err != nil {
 		return err
 	}
-	orchestratorStoreRootPath := filepath.Join(repoPath, config.OrchestratorStorePath)
-	computeStoreRootPath := filepath.Join(repoPath, config.ComputeStorePath)
-	if err := os.MkdirAll(orchestratorStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create orchestrator store root path: %w", err)
-	}
-	if err := os.MkdirAll(computeStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create compute store root path: %w", err)
+	computeStoreRootPath, err := fsRepo.ComputeDir()
+	if err != nil {
+		return err
 	}
 	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorStoreRootPath, fmt.Sprintf("jobstore-%s.db", nodeID)))
 	if err != nil {

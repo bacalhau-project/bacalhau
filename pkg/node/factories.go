@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"time"
@@ -119,14 +118,14 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
+func NewStandardPublishersFactory(executionDir string, cfg types.BacalhauConfig) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
-				cfg.Node.ComputeStoragePath,
+				executionDir,
 				nodeConfig.CleanupManager,
 				cfg.Node.IPFS.Connect,
 				&nodeConfig.ComputeConfig.LocalPublisher,
@@ -138,14 +137,10 @@ func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 		})
 }
 
-func NewStandardAuthenticatorsFactory(userKeyPath string) AuthenticatorsFactory {
+func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) AuthenticatorsFactory {
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
-			privKey, allErr := loadUserIDKey(userKeyPath)
-			if allErr != nil {
-				return nil, allErr
-			}
 
 			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
@@ -160,7 +155,7 @@ func NewStandardAuthenticatorsFactory(userKeyPath string) AuthenticatorsFactory 
 					authns[name] = challenge.NewAuthenticator(
 						methodPolicy,
 						challenge.NewStringMarshaller(nodeConfig.NodeID),
-						privKey,
+						userKey.PrivateKey(),
 						nodeConfig.NodeID,
 					)
 				case authn.MethodTypeAsk:
@@ -172,7 +167,7 @@ func NewStandardAuthenticatorsFactory(userKeyPath string) AuthenticatorsFactory 
 
 					authns[name] = ask.NewAuthenticator(
 						methodPolicy,
-						privKey,
+						userKey.PrivateKey(),
 						nodeConfig.NodeID,
 					)
 				default:
@@ -183,9 +178,4 @@ func NewStandardAuthenticatorsFactory(userKeyPath string) AuthenticatorsFactory 
 			return provider.NewMappedProvider(authns), allErr
 		},
 	)
-}
-
-// loadUserIDKey loads the user ID key from the path
-func loadUserIDKey(path string) (*rsa.PrivateKey, error) {
-	return baccrypto.LoadPKCS1KeyFile(path)
 }

@@ -99,11 +99,11 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
-			cfg, err := util.SetupRepoConfig(cmd)
+			r, cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.GetAPIClientV2(cmd, cfg, r)
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}

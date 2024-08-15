@@ -97,7 +97,9 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
 		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
 		// we probably want to merge these instead.
-		cfg, err := node.NewComputeConfigWithDefaults(s.Config.Node.ComputeStoragePath)
+		executionDir, err := s.Repo.ExecutionDir()
+		s.Require().NoError(err)
+		cfg, err := node.NewComputeConfigWithDefaults(executionDir)
 		s.Require().NoError(err)
 		config.ComputeConfig = cfg
 	}

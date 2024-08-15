@@ -50,7 +50,10 @@ func (s *BaseTLSSuite) SetupTest() {
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
+	executionDirPath, err := fsr.ExecutionDir()
+	s.Require().NoError(err)
+
+	computeConfig, err := node.NewComputeConfigWith(executionDirPath, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},

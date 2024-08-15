@@ -96,21 +96,20 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 		return err
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
-	cfg, err := c.Current()
-	if err != nil {
-		return err
+	// create files required by repo
+	if err := fsr.initializeRepoFiles(); err != nil {
+		return fmt.Errorf("`initializing` repo: %w", err)
 	}
 
-	if err := initRepoFiles(cfg); err != nil {
-		return fmt.Errorf("failed to initialize repo: %w", err)
+	// TODO(forrest) remove this block once we delete the old config, its required for for config validation to pass
+	{
+		// modifies the config to include keys for accessing repo paths if they are not set.
+		// This ensures either user provided paths are valid to default paths for the repo are set.
+		fsr.EnsureRepoPathsConfigured(c)
+		// TODO this should be a part of the config.
+		telemetry.SetupFromEnvs()
 	}
 
-	// TODO this should be a part of the config.
-	telemetry.SetupFromEnvs()
 	return fsr.WriteVersion(Version4)
 }
 
@@ -129,30 +128,30 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		}
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
-	cfg, err := c.Current()
-	if err != nil {
-		return err
+	// create files required by repo
+	if err := fsr.openRepoFiles(); err != nil {
+		return fmt.Errorf("opening repo: %w", err)
 	}
 
-	// ensure the loaded config has valid fields as they pertain to the filesystem
-	// e.g. user key files exists, storage paths exist, etc.
-	if err := validateRepoConfig(cfg); err != nil {
-		return fmt.Errorf("failed to validate repo config: %w", err)
-	}
+	// TODO(forrest) remove this block once we delete the old config, its required for for config validation to pass
+	{
+		// modifies the config to include keys for accessing repo paths if they are not set.
+		// This ensures either user provided paths are valid to default paths for the repo are set.
+		fsr.EnsureRepoPathsConfigured(c)
+		cfg, err := c.Current()
+		if err != nil {
+			return err
+		}
 
-	// derive an installationID from the client ID loaded from the repo.
-	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID(cfg.User.KeyPath)
-		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		c.Set(types.UserInstallationID, uuidFromUserID.String())
+		// derive an installationID from the client ID loaded from the repo.
+		if cfg.User.InstallationID == "" {
+			ID, _ := config.GetClientID(cfg.User.KeyPath)
+			uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
+			c.Set(types.UserInstallationID, uuidFromUserID.String())
+		}
+		// TODO this should be a part of the config.
+		telemetry.SetupFromEnvs()
 	}
-
-	// TODO this should be a part of the config.
-	telemetry.SetupFromEnvs()
 
 	return nil
 }
@@ -190,42 +189,50 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	return runInfoPath, nil
-	// TODO previous behavior put it in these places, we may consider creating a symlink later
-	/*
-		if writeable, _ := filefs.IsWritable("/run"); writeable {
-			writePath = "/run" // Linux
-		} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
-			writePath = "/var/run" // Older Linux
-		} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
-			writePath = "/private/var/run" // MacOS
-		} else {
-			// otherwise write to the user's dir, which should be available on all systems
-			userDir, err := os.UserHomeDir()
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
-				return nil
-			}
-			log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
-				"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
-			writePath = userDir
-		}
-	*/
+}
+
+func (fsr *FsRepo) UserKeyPath() (string, error) {
+	return fsr.getFile(UserKeyFile)
+}
+
+func (fsr *FsRepo) AuthTokensPath() (string, error) {
+	return fsr.ensureFile(AuthTokensFile)
+}
+
+func (fsr *FsRepo) OrchestratorDir() (string, error) {
+	return fsr.ensureDir(OrchestratorDirKey)
+}
+
+func (fsr *FsRepo) NetworkTransportDir() (string, error) {
+	return fsr.ensureDir(NetworkTransportDirKey)
+}
+
+func (fsr *FsRepo) ComputeDir() (string, error) {
+	return fsr.ensureDir(ComputeDirKey)
+}
+
+func (fsr *FsRepo) ExecutionDir() (string, error) {
+	return fsr.ensureDir(ExecutionDirKey)
+}
+
+func (fsr *FsRepo) EnginePluginsDir() (string, error) {
+	return fsr.ensureDir(EnginePluginsDirKey)
 }
 
 // EnsureRepoPathsConfigured modifies the config to include keys for accessing repo paths
 func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
-	c.SetIfAbsent(types.AuthTokensPath, fsr.join(config.TokensPath))
-	c.SetIfAbsent(types.UserKeyPath, fsr.join(config.UserPrivateKeyFileName))
-	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(config.PluginsPath))
+	c.SetIfAbsent(types.AuthTokensPath, fsr.join(AuthTokensFile))
+	c.SetIfAbsent(types.UserKeyPath, fsr.join(UserKeyFile))
+	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(EnginePluginsDirKey))
 
 	// NB(forrest): pay attention to the subtle name difference here
-	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
+	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(ExecutionDirKey))
 
-	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
-	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
+	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(AutoCertCachePath))
+	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(NetworkTransportDirKey))
 
-	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
-	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
+	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(OrchestratorDirKey, "jobs.db"))
+	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(ComputeDirKey, "executions.db"))
 }
 
 // join joins path elements with fsr.path

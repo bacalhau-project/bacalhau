@@ -18,6 +18,7 @@ type AuthConfig struct {
 	// By default it will be local to the Bacalhau repo, but can be any location
 	// in the host filesystem. Tokens are sensitive and should be stored in a
 	// location that is only readable to the current user.
+	// Deprecated: use repo package
 	TokensPath string `yaml:"TokensPath"`
 
 	// Methods maps "method names" to authenticator implementations. A method

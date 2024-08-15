@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -55,8 +54,8 @@ func NewComputeNode(
 	nodeID string,
 	apiServer *publicapi.Server,
 	config ComputeConfig,
-	storagePath string,
-	repoPath string,
+	computeDir string,
+	executionDir string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -89,7 +88,7 @@ func NewComputeNode(
 		ID:                     nodeID,
 		Callback:               computeCallback,
 		Store:                  executionStore,
-		StorageDirectory:       storagePath,
+		StorageDirectory:       executionDir,
 		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
@@ -195,15 +194,14 @@ func NewComputeNode(
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 	)
 
-	computeStorePath := filepath.Join(repoPath, pkgconfig.ComputeStorePath)
-	if err = os.MkdirAll(computeStorePath, os.ModePerm); err != nil {
+	if err = os.MkdirAll(computeDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create compute store directory: %s", err)
 	}
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-	regFilename = filepath.Join(computeStorePath, regFilename)
+	regFilename = filepath.Join(computeDir, regFilename)
 
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,

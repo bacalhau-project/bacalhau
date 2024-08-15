@@ -139,12 +139,17 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(cfg.Node.Network)
+	transportDir, err := fsRepo.NetworkTransportDir()
 	if err != nil {
 		return err
 	}
 
-	computeConfig, err := GetComputeConfig(ctx, cfg.Node, isComputeNode)
+	networkConfig, err := getNetworkConfig(transportDir, cfg.Node.Network)
+	if err != nil {
+		return err
+	}
+
+	computeConfig, err := GetComputeConfig(ctx, cfg.Node, fsRepo, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
@@ -183,7 +188,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig)
+			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig, fsRepo)
 			if err != nil {
 				return err
 			}
@@ -318,7 +323,7 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 	return orchestrator
 }
 
-func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) (string, string, error) {
+func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig, r *repo.FsRepo) (string, string, error) {
 	cert := cfg.Node.ServerAPI.TLS.ServerCertificate
 	key := cfg.Node.ServerAPI.TLS.ServerKey
 	if cert != "" && key != "" {
@@ -337,7 +342,10 @@ func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig
 	var err error
 	// If the user has not specified a private key, use their client key
 	if key == "" {
-		key = cfg.User.KeyPath
+		key, err = r.UserKeyPath()
+		if err != nil {
+			return "", "", fmt.Errorf("loading user key from repo for TLS Certificate: %w", err)
+		}
 	}
 	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
 	if err != nil {

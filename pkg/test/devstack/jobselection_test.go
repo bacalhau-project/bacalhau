@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -44,7 +43,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(configenv.Testing.Node.ComputeStoragePath, node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
 			JobSelectionPolicy: testCase.policy,
 		})
 		suite.Require().NoError(err)

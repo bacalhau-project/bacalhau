@@ -12,15 +12,22 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API, error) {
+func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig, r *repo.FsRepo) (clientv2.API, error) {
 	tlsCfg := cfg.Node.ClientAPI.ClientTLS
 	apiHost := cfg.Node.ClientAPI.Host
 	apiPort := cfg.Node.ClientAPI.Port
-	tokenPath := cfg.Auth.TokensPath
-	clientKeyPath := cfg.User.KeyPath
+	tokenPath, err := r.AuthTokensPath()
+	if err != nil {
+		return nil, fmt.Errorf("loading auth tokens from repo: %w", err)
+	}
+	clientKeyPath, err := r.UserKeyPath()
+	if err != nil {
+		return nil, fmt.Errorf("loading user key from repo: %w", err)
+	}
 
 	if tlsCfg.CACert != "" {
 		if _, err := os.Stat(tlsCfg.CACert); os.IsNotExist(err) {

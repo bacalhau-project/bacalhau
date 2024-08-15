@@ -18,6 +18,7 @@ import (
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
@@ -28,7 +29,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
-func GetComputeConfig(ctx context.Context, cfg types.NodeConfig, createExecutionStore bool) (node.ComputeConfig, error) {
+func GetComputeConfig(
+	ctx context.Context,
+	cfg types.NodeConfig,
+	r *repo.FsRepo,
+	createExecutionStore bool,
+) (node.ComputeConfig, error) {
 	totalResources, totalErr := cfg.Compute.Capacity.TotalResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Compute.Capacity.JobResourceLimits.ToResources()
 	defaultResources, defaultErr := cfg.Compute.Capacity.DefaultJobResourceLimits.ToResources()
@@ -36,17 +42,24 @@ func GetComputeConfig(ctx context.Context, cfg types.NodeConfig, createExecution
 		return node.ComputeConfig{}, err
 	}
 
-	var err error
 	var executionStore store.ExecutionStore
-
 	if createExecutionStore {
-		executionStore, err = getExecutionStore(ctx, cfg.Compute.ExecutionStore)
+		computeDirPath, err := r.ComputeDir()
+		if err != nil {
+			return node.ComputeConfig{}, err
+		}
+		// TODO(forrest): would it be better to hand the bolt store a path and have it create the database there?
+		executionStore, err = getExecutionStore(ctx, cfg.Compute.ExecutionStore, filepath.Join(computeDirPath, "executions.db"))
 		if err != nil {
 			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
-	return node.NewComputeConfigWith(cfg.ComputeStoragePath, node.ComputeConfigParams{
+	executionsDir, err := r.ExecutionDir()
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+	return node.NewComputeConfigWith(executionsDir, node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		JobResourceLimits:                     *jobResources,
 		DefaultJobResourceLimits:              *defaultResources,
@@ -144,12 +157,12 @@ func getNodeType(cfg types.BacalhauConfig) (requester, compute bool, err error) 
 	return
 }
 
-func getNetworkConfig(cfg types.NetworkConfig) (node.NetworkConfig, error) {
+func getNetworkConfig(networkStorePath string, cfg types.NetworkConfig) (node.NetworkConfig, error) {
 	return node.NetworkConfig{
 		Port:                     cfg.Port,
 		AdvertisedAddress:        cfg.AdvertisedAddress,
 		Orchestrators:            cfg.Orchestrators,
-		StoreDir:                 cfg.StoreDir,
+		StoreDir:                 networkStorePath,
 		AuthSecret:               cfg.AuthSecret,
 		ClusterName:              cfg.Cluster.Name,
 		ClusterPort:              cfg.Cluster.Port,
@@ -158,14 +171,14 @@ func getNetworkConfig(cfg types.NetworkConfig) (node.NetworkConfig, error) {
 	}, nil
 }
 
-func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig) (store.ExecutionStore, error) {
+func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig, path string) (store.ExecutionStore, error) {
 	if err := storeCfg.Validate(); err != nil {
 		return nil, err
 	}
 
 	switch storeCfg.Type {
 	case types.BoltDB:
-		return boltdb.NewStore(ctx, storeCfg.Path)
+		return boltdb.NewStore(ctx, path)
 	default:
 		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
 	}
