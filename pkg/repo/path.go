@@ -104,7 +104,7 @@ func (fsr *FsRepo) ensureFile(in string) (string, error) {
 	path, err := fsr.getFile(in)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fsr.mkFile(path, func(f *os.File) error {
+			return fsr.mkFile(in, func(f *os.File) error {
 				// noop, this method simply ensures the file exists,
 				return nil
 			})
