@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -85,7 +87,9 @@ var V3Migration = StagedMigration(
 		if from == "" {
 			from = filepath.Join(repoPath, "executor_storages")
 		}
-		if err := copyFS(filepath.Join(repoPath, repo.ExecutionDirKey), os.DirFS(from)); err != nil {
+		to := filepath.Join(repoPath, repo.ExecutionDirKey)
+		log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
+		if err := copyFS(to, os.DirFS(from)); err != nil {
 			return fmt.Errorf("copying executor storages: %w", err)
 		}
 		if err := os.RemoveAll(from); err != nil {
