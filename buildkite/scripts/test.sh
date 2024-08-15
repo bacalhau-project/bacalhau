@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Exit immediately if a command exits with a non-zero status
-set -e
-
 # Function to set environment variables
 set_environment_variables() {
     export LOG_LEVEL=DEBUG
