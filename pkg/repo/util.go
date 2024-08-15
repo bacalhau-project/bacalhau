@@ -40,13 +40,7 @@ func validateRepoConfig(cfg types.BacalhauConfig) error {
 	if exists, err := fileExists(cfg.UserKeyPath()); err != nil {
 		return err
 	} else if !exists {
-		return fmt.Errorf("user key file does not exist at: %q", cfg.User.KeyPath)
-	}
-
-	if exists, err := fileExists(cfg.EnginePluginsDir()); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("executor plugin path does not exist at: %q", cfg.EnginePluginsDir())
+		return fmt.Errorf("user key file does not exist at: %q", cfg.UserKeyPath())
 	}
 
 	return nil

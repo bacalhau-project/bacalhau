@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -37,7 +36,6 @@ func NewFS(params FsRepoParams) (*FsRepo, error) {
 	if err != nil {
 		return nil, err
 	}
-	viper.Set("repo", expandedPath)
 
 	return &FsRepo{
 		path:       expandedPath,
@@ -98,13 +96,16 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 		return err
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
 	cfg, err := c.Current()
 	if err != nil {
 		return err
+	}
+
+	// in the event a user has provided a config without a path we need to set it here base on what the repo was
+	// initialized with.
+	if cfg.Repo == "" {
+		cfg.Repo = fsr.path
+		c.Set("repo", fsr.path)
 	}
 
 	if err := initRepoFiles(cfg); err != nil {
@@ -131,13 +132,16 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		}
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
 	cfg, err := c.Current()
 	if err != nil {
 		return err
+	}
+
+	// in the event a user has provided a config without a path we need to set it here base on what the repo was
+	// initialized with.
+	if cfg.Repo == "" {
+		cfg.Repo = fsr.path
+		c.Set("repo", fsr.path)
 	}
 
 	// ensure the loaded config has valid fields as they pertain to the filesystem
