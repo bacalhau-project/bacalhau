@@ -10,8 +10,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V3Migration updates the repo replacing repo.version and update.json with system_metadata.yaml.
@@ -35,71 +35,143 @@ var V3Migration = repo.NewMigration(
 			return fmt.Errorf("reading config from repo: %w", err)
 		}
 
-		// migrate values from config to repo.SystemMetadataFile
-		{
-			// create the SystemMetadataFile
-			{
-				// initialize the repo.SystemMetadataFile by writing the version to it.
-				if err := r.WriteVersion(repo.Version4); err != nil {
-					return err
-				}
-				// reset the last update check to zero.
-				if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
-					return err
-				}
-				// if an installationID is present migrate it.
-				if fileCfg.User.InstallationID != "" {
-					if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
-						return err
-					}
-				}
+		// Create a temporary staging directory, in the event a migration step fails we don't fubar the repo.
+		stagingPath := filepath.Join(os.TempDir(), "bacalhau-migration-staging")
+		if err := os.Mkdir(stagingPath, os.ModePerm); err != nil {
+			return fmt.Errorf("creating staging directory: %w", err)
+		}
+		defer func() {
+			if err := os.RemoveAll(stagingPath); err != nil {
+				log.Warn().Err(err).Str("path", stagingPath).Msg("failed to clean up staging path for migration.")
 			}
+		}() // Clean up staging directory regardless of failure
 
-			// remove legacy repo files.
-			{
-				// delete the update.json file, this has been replaced by repo.SystemMetadataFile
-				// ignore errors regarding failure to remove since there isn't a guarantee the file exists
-				_ = os.Remove(filepath.Join(repoPath, "update.json"))
-
-				// delete the repo.version file, this has been replaced by repo.SystemMetadataFile.
-				if err := os.Remove(filepath.Join(repoPath, repo.LegacyVersionFile)); err != nil {
-					return fmt.Errorf("removing legacy repo version file: %w", err)
-				}
-			}
+		// Stage all changes in the temporary directory
+		if err := stageMigration(r, fileCfg, stagingPath); err != nil {
+			return fmt.Errorf("staging migration: %w", err)
 		}
 
-		// migrate new repo paths
-		// TODO migrate the job and execution databases
-		{
-			if fileCfg.User.KeyPath != "" && fileCfg.User.KeyPath != filepath.Join(repoPath, repo.UserKeyFile) {
-				// the user has configured a non-standard location for their private key file, copy it to the repo.
-				from := fileCfg.User.KeyPath
-				to := filepath.Join(repoPath, repo.UserKeyFile)
-				log.Info().Msgf("copying user key from %q to %q", from, to)
-				if err := copyFile(from, to); err != nil {
-					return fmt.Errorf("copying user key file: %w", err)
-				}
-				log.Info().Msgf("copied user key from %q to %q. You may discard %q", from, to, from)
-			}
-
-			// this is actually 'executor_storages', we need to move it under 'compute_store'
-			// compute_store doesn't have a configurable path, thankfully
-			from := fileCfg.Node.ComputeStoragePath
-			if from == "" {
-				from = filepath.Join(repoPath, "executor_storages")
-			}
-			fromFS := os.DirFS(from)
-			to := filepath.Join(repoPath, repo.ExecutionDirKey)
-			log.Info().Msgf("copying execution dir from %q to %q", from, to)
-			// copy the contents from ~/.bacalhau/executor_storages/* to  ~/.bacalhau/compute_store/executions/*
-			if err := copyFS(to, fromFS); err != nil {
-				return fmt.Errorf("copying executor_storages: %w", err)
-			}
-			log.Info().Msgf("copied execution dir from %q to %q. You may discard %q", from, to, from)
+		// Commit the changes by moving the staged directory to the actual location
+		if err := commitMigration(stagingPath, repoPath); err != nil {
+			return fmt.Errorf("committing migration: %w", err)
 		}
+
 		return nil
 	},
 )
+
+func stageMigration(r repo.FsRepo, fileCfg types.BacalhauConfig, stagingPath string) error {
+	repoPath, err := r.Path()
+	if err != nil {
+		return err
+	}
+	// create a staging repo to run the migration in
+	stagingRepo, err := repo.NewFS(repo.FsRepoParams{
+		Path:       stagingPath,
+		Migrations: nil,
+	})
+	if err != nil {
+		return err
+	}
+	// copy the current repo into the staging repo
+	if err := copyFS(stagingPath, os.DirFS(repoPath)); err != nil {
+		return err
+	}
+	// from this point, all operations are done on a staging bacalhau repo
+	// Initialize the SystemMetadataFile in the staging directory
+	if err := stagingRepo.WriteVersion(repo.Version4); err != nil {
+		return err
+	}
+	if err := stagingRepo.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
+		return err
+	}
+	if fileCfg.User.InstallationID != "" {
+		if err := stagingRepo.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+			return err
+		}
+	}
+
+	// Copy or move files as needed, but in the staging directory
+	if err := migrateLegacyFiles(stagingPath); err != nil {
+		return err
+	}
+	if err := migrateRepoPaths(fileCfg, stagingPath, repoPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func migrateLegacyFiles(path string) error {
+	// Delete or move legacy files, but within the staging directory
+	_ = os.Remove(filepath.Join(path, "update.json"))
+	if err := os.Remove(filepath.Join(path, repo.LegacyVersionFile)); err != nil {
+		return fmt.Errorf("removing legacy repo version file: %w", err)
+	}
+	return nil
+}
+
+func migrateRepoPaths(fileCfg types.BacalhauConfig, stagingPath, repoPath string) error {
+	// Stage migration of paths
+	if fileCfg.User.KeyPath != "" && fileCfg.User.KeyPath != filepath.Join(repoPath, repo.UserKeyFile) {
+		if err := stageFileCopy(fileCfg.User.KeyPath, filepath.Join(stagingPath, repo.UserKeyFile)); err != nil {
+			return fmt.Errorf("copying user key file: %w", err)
+		}
+	}
+
+	if fileCfg.Node.Compute.ExecutionStore.Path != "" &&
+		fileCfg.Node.Compute.ExecutionStore.Path != filepath.Join(repoPath, repo.ComputeDirKey, "executions.db") {
+		if err := stageFileCopy(
+			fileCfg.Node.Compute.ExecutionStore.Path,
+			filepath.Join(stagingPath, repo.ComputeDirKey, "executions.db"),
+		); err != nil {
+			return fmt.Errorf("copying execution database: %w", err)
+		}
+	}
+
+	if fileCfg.Node.Requester.JobStore.Path != "" &&
+		fileCfg.Node.Requester.JobStore.Path != filepath.Join(repoPath, repo.OrchestratorDirKey, "jobs.db") {
+		if err := stageFileCopy(
+			fileCfg.Node.Requester.JobStore.Path,
+			filepath.Join(stagingPath, repo.OrchestratorDirKey, "jobs.db"),
+		); err != nil {
+			return fmt.Errorf("copying job database: %w", err)
+		}
+	}
+
+	from := fileCfg.Node.ComputeStoragePath
+	if from == "" {
+		from = filepath.Join(repoPath, "executor_storages")
+	}
+	if err := copyFS(filepath.Join(stagingPath, repo.ExecutionDirKey), os.DirFS(from)); err != nil {
+		return fmt.Errorf("copying executor storages: %w", err)
+	}
+
+	return nil
+}
+
+func stageFileCopy(from, to string) error {
+	log.Info().Msgf("staging file copy from %q to %q", from, to)
+	return copyFile(from, to)
+}
+
+func commitMigration(stagingPath, repoPath string) error {
+	// Replace the original paths with the staged changes
+	log.Info().Msgf("committing staged changes from %q to %q", stagingPath, repoPath)
+	// create a backup of the repo pre-migration
+	backupPath := filepath.Join(filepath.Dir(repoPath), fmt.Sprintf(".bacalhau_backup_%d", time.Now().Unix()))
+	// move the current bacalhau repo into the backup
+	if err := os.Rename(repoPath, backupPath); err != nil {
+		return err
+	}
+	// rename move the migrated repo to the specified repo path
+	// this is the actual migration
+	if err := os.Rename(stagingPath, repoPath); err != nil {
+		return err
+	}
+	// rename the backup if the above step was successful
+	return os.RemoveAll(backupPath)
+}
 
 // copyFS copies the file system fsys into the directory dir,
 // creating dir if necessary.
@@ -124,7 +196,11 @@ func copyFS(dir string, fsys fs.FS) error {
 
 		if d.IsDir() {
 			// Create the directory
-			if err := os.MkdirAll(targ, util.OS_USER_RW); err != nil {
+			dinfor, err := d.Info()
+			if err != nil {
+				return fmt.Errorf("stating directory: %w", err)
+			}
+			if err := os.MkdirAll(targ, dinfor.Mode()); err != nil {
 				return fmt.Errorf("creating directory %s: %v", targ, err)
 			}
 			return nil
