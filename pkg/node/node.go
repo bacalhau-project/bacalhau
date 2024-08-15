@@ -216,19 +216,13 @@ func NewNode(
 			)
 
 		*/
-
-		computeDir, err := fsr.ComputeDir()
-		if err != nil {
-			return nil, err
-		}
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
 			config.NodeID,
 			apiServer,
 			config.ComputeConfig,
-			computeDir,
-			executionDir,
+			fsr,
 			storages,
 			executors,
 			publishers,

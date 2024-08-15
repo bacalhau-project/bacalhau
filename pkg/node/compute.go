@@ -48,14 +48,18 @@ type Compute struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
+type ComputeRepo interface {
+	ComputeDir() (string, error)
+	ExecutionDir() (string, error)
+}
+
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
 	config ComputeConfig,
-	computeDir string,
-	executionDir string,
+	r ComputeRepo,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -65,10 +69,19 @@ func NewComputeNode(
 	configuredLabels map[string]string,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
+	computeDir, err := r.ComputeDir()
+	if err != nil {
+		return nil, err
+	}
+	executionDir, err := r.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
+
 	executionStore := config.ExecutionStore
 	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
 
-	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+	_, err = watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
 		return nil, err

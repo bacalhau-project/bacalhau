@@ -63,6 +63,19 @@ func (s *ComputeSuite) setupConfig() {
 	s.config = cfg
 }
 
+type fakeComputeRepo struct {
+	computeStore   string
+	executionStore string
+}
+
+func (f *fakeComputeRepo) ComputeDir() (string, error) {
+	return f.computeStore, nil
+}
+
+func (f *fakeComputeRepo) ExecutionDir() (string, error) {
+	return f.executionStore, nil
+}
+
 func (s *ComputeSuite) setupNode() {
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
@@ -87,9 +100,6 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	storagePath := s.T().TempDir()
-	repoPath := s.T().TempDir()
-
 	noopstorage := noop_storage.NewNoopStorage()
 	callback := compute.CallbackMock{
 		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
@@ -111,14 +121,17 @@ func (s *ComputeSuite) setupNode() {
 	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
 	s.Require().NoError(err)
 
+	computeRepo := &fakeComputeRepo{
+		computeStore:   s.T().TempDir(),
+		executionStore: s.T().TempDir(),
+	}
 	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
 		nodeID,
 		apiServer,
 		s.config,
-		storagePath,
-		repoPath,
+		computeRepo,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewMappedProvider(map[string]executor_common.Executor{
 			models.EngineNoop:   s.executor,
