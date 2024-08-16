@@ -25,11 +25,11 @@ type Configurable interface {
 	Validate() error
 }
 
-type Config[C Configurable] struct {
+type Config struct {
 	// viper instance for holding user provided configuration.
 	base *viper.Viper
 	// the default configuration values to initialize with.
-	defaultCfg C
+	defaultCfg interface{}
 
 	// paths to configuration files merged from [0] to [N]
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
@@ -43,11 +43,11 @@ type Config[C Configurable] struct {
 	values map[string]any
 }
 
-type Option = func(s *Config[Configurable])
+type Option = func(s *Config)
 
 // WithDefault sets the default config to be used when no values are provided.
 func WithDefault(cfg Configurable) Option {
-	return func(c *Config[Configurable]) {
+	return func(c *Config) {
 		c.defaultCfg = cfg
 	}
 }
@@ -56,40 +56,40 @@ func WithDefault(cfg Configurable) Option {
 // paths to configuration files merged from [0] to [N]
 // e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
 func WithPaths(path ...string) Option {
-	return func(c *Config[Configurable]) {
+	return func(c *Config) {
 		c.paths = append(c.paths, path...)
 	}
 }
 
 func WithFlags(flags map[string]*pflag.Flag) Option {
-	return func(s *Config[Configurable]) {
+	return func(s *Config) {
 		s.flags = flags
 	}
 }
 
 func WithEnvironmentVariables(ev map[string][]string) Option {
-	return func(s *Config[Configurable]) {
+	return func(s *Config) {
 		s.environmentVariables = ev
 	}
 }
 
 // WithValues sets values to be injected into the config, taking precedence over all other options.
 func WithValues(values map[string]any) Option {
-	return func(c *Config[Configurable]) {
+	return func(c *Config) {
 		c.values = values
 	}
 }
 
 // New returns a configuration with the provided options applied. If no options are provided, the returned config
 // contains only the default values.
-func New(opts ...Option) (*Config[Configurable], error) {
+func New(opts ...Option) (*Config, error) {
 	base := viper.New()
 	base.SetEnvPrefix(environmentVariablePrefix)
 	base.SetTypeByDefaultValue(inferConfigTypes)
 	base.AutomaticEnv()
 	base.SetEnvKeyReplacer(environmentVariableReplace)
 
-	c := &Config[Configurable]{
+	c := &Config{
 		base:       base,
 		defaultCfg: Default,
 		paths:      make([]string, 0),
@@ -141,7 +141,7 @@ func New(opts ...Option) (*Config[Configurable], error) {
 // Load reads in the configuration file specified by `path` overriding any previously set configuration with the values
 // from the read config file.
 // Load returns an error if the file cannot be read.
-func (c *Config[C]) Load(path string) error {
+func (c *Config) Load(path string) error {
 	log.Debug().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
@@ -152,7 +152,7 @@ func (c *Config[C]) Load(path string) error {
 
 // Merge merges a new configuration file specified by `path` with the existing config.
 // Merge returns an error if the file cannot be read
-func (c *Config[C]) Merge(path string) error {
+func (c *Config) Merge(path string) error {
 	log.Debug().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
@@ -163,7 +163,7 @@ func (c *Config[C]) Merge(path string) error {
 
 // Current returns the current configuration.
 // Current returns an error if the configuration cannot be unmarshalled.
-func (c *Config[C]) Unmarshal(out C) error {
+func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err
 	}

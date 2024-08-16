@@ -19,11 +19,6 @@ type Bacalhau struct {
 	Telemetry Telemetry `yaml:"Telemetry,omitempty"`
 }
 
-func (b Bacalhau) Validate() error {
-	//TODO implement me
-	return nil
-}
-
 // Server represents the configuration settings for the Bacalhau server.
 type Server struct {
 	// Address specifies the endpoint Bacalhau will serve on.
