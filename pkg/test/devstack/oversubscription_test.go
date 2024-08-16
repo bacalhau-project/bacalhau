@@ -64,9 +64,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 	nodeCapacity, err := s.jobResources.ToResources()
 	s.Require().NoError(err)
 
-	executionDir := c.ExecutionDir()
-
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(c.ExecutionDir(), node.ComputeConfigParams{
 		IgnorePhysicalResourceLimits: true,
 		TotalResourceLimits:          *nodeCapacity,
 		DefaultJobResourceLimits:     *nodeCapacity,

@@ -198,7 +198,7 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg.Node.Requester, true)
+	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg, true)
 	if err != nil {
 		return err
 	}
@@ -207,28 +207,22 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 	)
-	userKeyPath := cfg.UserKeyPath()
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	userKey, err := baccrypto.LoadUserKey(cfg.UserKeyPath())
 	if err != nil {
 		return err
 	}
-	executionDir := cfg.ExecutionDir()
 	if IsNoop {
 		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
 	} else if ODs.ExecutorPlugins {
-		pluginPath := cfg.EnginePluginsDir()
 		options = append(options, devstack.WithDependencyInjector(
 			node.NewExecutorPluginNodeDependencyInjector(
 				cfg,
-				pluginPath,
-				executionDir,
 				userKey,
 			)))
 	} else {
 		options = append(options, devstack.WithDependencyInjector(
 			node.NewStandardNodeDependencyInjector(
 				cfg,
-				executionDir,
 				userKey,
 			)))
 	}

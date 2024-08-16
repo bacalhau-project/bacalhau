@@ -118,14 +118,14 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(executionDir string, cfg types.BacalhauConfig) PublishersFactory {
+func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
-				executionDir,
+				cfg.ExecutionDir(),
 				nodeConfig.CleanupManager,
 				cfg.Node.IPFS.Connect,
 				&nodeConfig.ComputeConfig.LocalPublisher,

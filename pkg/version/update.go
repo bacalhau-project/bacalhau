@@ -126,8 +126,7 @@ func RunUpdateChecker(
 	}
 
 	clientVersion := Get()
-	userKeyPath := cfg.UserKeyPath()
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	userKey, err := baccrypto.LoadUserKey(cfg.UserKeyPath())
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key file")
 		return

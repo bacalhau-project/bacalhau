@@ -127,8 +127,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		parsedResources, err := resourcesConfig.ToResources()
 		require.NoError(suite.T(), err)
 
-		executionDir := c.ExecutionDir()
-		computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(c.ExecutionDir(), node.ComputeConfigParams{
 			TotalResourceLimits:          *parsedResources,
 			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
 		})
@@ -303,8 +302,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	fsr, c := setup.SetupBacalhauRepoForTesting(suite.T())
 
-	executionDir := c.ExecutionDir()
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(c.ExecutionDir(), node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU:    1,
 			Memory: 1 * 1024 * 1024 * 1024,

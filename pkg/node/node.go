@@ -77,23 +77,21 @@ type NodeDependencyInjector struct {
 
 func NewExecutorPluginNodeDependencyInjector(
 	cfg types.BacalhauConfig,
-	pluginPath string,
-	executionPath string,
 	userKey *baccrypto.UserKey,
 ) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
-		ExecutorsFactory:        NewPluginExecutorFactory(pluginPath),
-		PublishersFactory:       NewStandardPublishersFactory(executionPath, cfg),
+		ExecutorsFactory:        NewPluginExecutorFactory(cfg.EnginePluginsDir()),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
 }
 
-func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig, executionPath string, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
-		PublishersFactory:       NewStandardPublishersFactory(executionPath, cfg),
+		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
 }
@@ -126,15 +124,12 @@ func NewNode(
 		}
 	}()
 
-	userKeyPath := bacalhauConfig.UserKeyPath()
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
+	if err = prepareConfig(&config, bacalhauConfig); err != nil {
 		return nil, err
 	}
 
-	executionDir := bacalhauConfig.ExecutionDir()
-
-	if err = prepareConfig(&config, bacalhauConfig, executionDir, userKey); err != nil {
+	userKey, err := baccrypto.LoadUserKey(bacalhauConfig.UserKeyPath())
+	if err != nil {
 		return nil, err
 	}
 
@@ -327,10 +322,14 @@ func NewNode(
 	return node, nil
 }
 
-func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig, executionDir string, userKey *baccrypto.UserKey) error {
+func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig) error {
+	userKey, err := baccrypto.LoadUserKey(bacalhauConfig.UserKeyPath())
+	if err != nil {
+		return err
+	}
 	config.DependencyInjector =
-		mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(bacalhauConfig, executionDir, userKey))
-	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
+		mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(bacalhauConfig, userKey))
+	err = mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
 		return err
 	}

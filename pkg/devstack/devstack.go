@@ -74,8 +74,7 @@ func Setup(
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	executionDir := cfg.ExecutionDir()
-	stackConfig, err := defaultDevStackConfig(executionDir)
+	stackConfig, err := defaultDevStackConfig(cfg.ExecutionDir())
 	if err != nil {
 		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
@@ -280,14 +279,12 @@ func Setup(
 
 func setStorePaths(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
-	orchestratorStoreRootPath := cfg.OrchestratorDir()
-	computeStoreRootPath := cfg.ComputeDir()
-	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorStoreRootPath, fmt.Sprintf("jobstore-%s.db", nodeID)))
+	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(cfg.OrchestratorDir(), fmt.Sprintf("jobstore-%s.db", nodeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create job store: %w", err)
 	}
 
-	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
+	executionStore, err := boltdb.NewStore(ctx, filepath.Join(cfg.ComputeDir(), fmt.Sprintf("executionstore-%s.db", nodeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create execution store: %w", err)
 	}

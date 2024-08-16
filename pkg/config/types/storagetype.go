@@ -19,10 +19,6 @@ func (cfg JobStoreConfig) Validate() error {
 		err = errors.Join(err, fmt.Errorf("unknown execution store type: %q", cfg.Type.String()))
 	}
 
-	if cfg.Path == "" {
-		err = errors.Join(err, fmt.Errorf("execution store path is missing"))
-	}
-
 	return err
 }
 

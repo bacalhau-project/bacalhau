@@ -43,7 +43,6 @@ func (s *BaseSuite) SetupTest() {
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 	s.Config = cfg
-	executionDirPath := cfg.ExecutionDir()
 
 	// TODO: Update checker is configured with production default configs
 	//  and not respecting the test environment. This is a temporary fix
@@ -51,7 +50,7 @@ func (s *BaseSuite) SetupTest() {
 
 	s.AllowListedPath = s.T().TempDir()
 
-	computeConfig, err := node.NewComputeConfigWith(executionDirPath, node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(cfg.ExecutionDir(), node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},

@@ -49,6 +49,12 @@ func (c BacalhauConfig) OrchestratorDir() string {
 	return filepath.Join(c.Repo, OrchestratorDirName)
 }
 
+const JobStoreFileName = "jobs.db"
+
+func (c BacalhauConfig) JobStorePath() string {
+	return filepath.Join(c.Repo, JobStoreFileName)
+}
+
 const NetworkTransportDirName = OrchestratorDirName + "/" + "nats-store"
 
 func (c BacalhauConfig) NetworkTransportDir() string {
@@ -71,4 +77,10 @@ const EnginePluginsDirName = ComputeDirName + "/" + "plugins" + "/" + "engines"
 
 func (c BacalhauConfig) EnginePluginsDir() string {
 	return filepath.Join(c.Repo, EnginePluginsDirName)
+}
+
+const ExecutionStoreFileName = "executions.db"
+
+func (c BacalhauConfig) ExecutionStorePath() string {
+	return filepath.Join(c.Repo, ExecutionStoreFileName)
 }

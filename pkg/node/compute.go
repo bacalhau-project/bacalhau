@@ -64,9 +64,6 @@ func NewComputeNode(
 	configuredLabels map[string]string,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
-	computeDir := cfg.ComputeDir()
-	executionDir := cfg.ExecutionDir()
-
 	executionStore := config.ExecutionStore
 	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
 
@@ -90,7 +87,7 @@ func NewComputeNode(
 		ID:                     nodeID,
 		Callback:               computeCallback,
 		Store:                  executionStore,
-		StorageDirectory:       executionDir,
+		StorageDirectory:       cfg.ExecutionDir(),
 		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
@@ -199,7 +196,7 @@ func NewComputeNode(
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-	regFilename = filepath.Join(computeDir, regFilename)
+	regFilename = filepath.Join(cfg.ComputeDir(), regFilename)
 
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,

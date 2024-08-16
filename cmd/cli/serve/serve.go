@@ -139,9 +139,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	transportDir := cfg.NetworkTransportDir()
-
-	networkConfig, err := getNetworkConfig(transportDir, cfg.Node.Network)
+	networkConfig, err := getNetworkConfig(cfg.NetworkTransportDir(), cfg.Node.Network)
 	if err != nil {
 		return err
 	}
@@ -151,7 +149,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx, cfg.Node.Requester, isRequesterNode)
+	requesterConfig, err := GetRequesterConfig(ctx, cfg, isRequesterNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
