@@ -5,29 +5,32 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/mitchellh/mapstructure"
+
 	v1types "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
+	publisherConfig, err := migratePublishers(in.Node)
+	if err != nil {
+		return types.Bacalhau{}, fmt.Errorf("migrating publisher config: %w", err)
+	}
+	executorConfig, err := migrateEngines(in.Node)
+	if err != nil {
+		return types.Bacalhau{}, fmt.Errorf("migrating executor config: %w", err)
+	}
 	out := types.Bacalhau{
-		Repo: "",
-		Name: in.Node.Name,
-		Client: types.Client{
-			Address:     fmt.Sprintf("http://%s:%d", in.Node.ClientAPI.Host, in.Node.ClientAPI.Port),
-			Certificate: in.Node.ClientAPI.ClientTLS.CACert,
-			Insecure:    in.Node.ClientAPI.ClientTLS.Insecure,
-		},
-		Server: types.Server{
-			Address: in.Node.ServerAPI.Host,
-			Port:    in.Node.ServerAPI.Port,
+		DataDir: "~/.bacalhau",
+		// TODO(forrest) [review]: when migrating should the address come from the server or client when both are present?
+		API: types.API{
+			Address: "TODO",
 			TLS: types.TLS{
-				AutoCert:          in.Node.ServerAPI.TLS.AutoCert,
-				AutoCertCachePath: in.Node.ServerAPI.TLS.AutoCertCachePath,
-				Certificate:       in.Node.ServerAPI.TLS.ServerCertificate,
-				Key:               in.Node.ServerAPI.TLS.ServerKey,
+				// TODO(forrest) [review]: when migrating if both the server and client have TLS configs, which do we take?
+				CertFile: "TODO",
+				KeyFile:  "TODO",
+				CAFile:   "TODO",
 			},
 			Auth: types.AuthConfig{
 				TokensPath: in.Auth.TokensPath,
@@ -48,26 +51,36 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
 				return strings.ToLower(s) == "requester"
 			}),
-			Port:       in.Node.Network.Port,
-			Advertise:  in.Node.Network.AdvertisedAddress,
-			AuthSecret: in.Node.Network.AuthSecret,
+			Listen:    fmt.Sprintf("0.0.0.0:%d", in.Node.Network.Port),
+			Advertise: in.Node.Network.AdvertisedAddress,
+			// TODO(forrest) [review]: unsure what this field is for, do we use if for the auth secret?
+			Authorization: nil,
 			Cluster: types.Cluster{
-				Name:      in.Node.Network.Cluster.Name,
-				Port:      in.Node.Network.Cluster.Port,
+				Listen:    fmt.Sprintf("0.0.0.0:%d", in.Node.Network.Cluster.Port),
 				Advertise: in.Node.Network.Cluster.AdvertisedAddress,
-				Peers:     in.Node.Network.Cluster.Peers,
+				// TODO(forrest) [review]: unsure what this field is for, do we use if for the auth secret again?
+				Authorization: nil,
+				Peers:         in.Node.Network.Cluster.Peers,
 			},
 			NodeManager: types.NodeManager{
 				DisconnectTimeout: types.Duration(in.Node.Requester.ControlPlaneSettings.NodeDisconnectedAfter),
-				AutoApprove:       !in.Node.Requester.ManualNodeApproval,
+				ManualApproval:    !in.Node.Requester.ManualNodeApproval,
+			},
+			StateStore: types.OrchestratorStateStore{
+				Backend: types.StoreBackend{
+					Type: in.Node.Requester.JobStore.Type.String(),
+					Config: map[string]string{
+						"path": in.Node.Requester.JobStore.Path,
+					},
+				},
 			},
 			Scheduler: types.Scheduler{
-				Workers:              in.Node.Requester.Worker.WorkerCount,
+				WorkerCount:          in.Node.Requester.Worker.WorkerCount,
 				HousekeepingInterval: types.Duration(in.Node.Requester.HousekeepingBackgroundTaskInterval),
 			},
-			Broker: types.EvaluationBroker{
+			EvaluationBroker: types.EvaluationBroker{
 				VisibilityTimeout: types.Duration(in.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
-				MaxRetries:        in.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
+				MaxRetryCount:     in.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
 			},
 		},
 		Compute: types.Compute{
@@ -77,111 +90,270 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 			Orchestrators: in.Node.Network.Orchestrators,
 			Labels:        in.Node.Labels,
 			Heartbeat: types.Heartbeat{
-				MessageInterval:  types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
-				ResourceInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
-				InfoInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
+				Interval:               types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
+				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
+				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
-			Capacity: types.Capacity{
-				Total: types.Resource{
-					CPU:    in.Node.Compute.Capacity.TotalResourceLimits.CPU,
-					Memory: in.Node.Compute.Capacity.TotalResourceLimits.Memory,
-					Disk:   in.Node.Compute.Capacity.TotalResourceLimits.Disk,
-					GPU:    in.Node.Compute.Capacity.TotalResourceLimits.GPU,
-				},
+			TotalCapacity: types.Resource{
+				CPU:    in.Node.Compute.Capacity.TotalResourceLimits.CPU,
+				Memory: in.Node.Compute.Capacity.TotalResourceLimits.Memory,
+				Disk:   in.Node.Compute.Capacity.TotalResourceLimits.Disk,
+				GPU:    in.Node.Compute.Capacity.TotalResourceLimits.GPU,
 			},
-			Publishers: types.Publisher{
-				IPFS: types.IPFSPublisher{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Publishers, func(s string) bool {
-						return strings.ToLower(s) == models.PublisherIPFS
-					}),
-					Endpoint: in.Node.IPFS.Connect,
-				},
-				// NB(forrest): this is challenging as there was never a config file this, it lives in environment variables...
-				// it's also mixing the responsibility of compute and requester, since the requester used the Pre-signed bits..
-				S3: types.S3Publisher{
-					Enabled:   false,
-					Endpoint:  "",
-					AccessKey: "",
-					SecretKey: "",
-					// TODO(forrest) [review] unsure if we should even be migrating these here..
-					PreSignedURLEnabled:    !in.Node.Requester.StorageProvider.S3.PreSignedURLDisabled,
-					PreSignedURLExpiration: types.Duration(in.Node.Requester.StorageProvider.S3.PreSignedURLExpiration),
-				},
-				LocalHTTPServer: types.LocalHTTPServerPublisher{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Publishers, func(s string) bool {
-						return strings.ToLower(s) == models.PublisherLocal
-					}),
-					Host: in.Node.Compute.LocalPublisher.Address,
-					Port: in.Node.Compute.LocalPublisher.Port,
-				},
-			},
-			Storages: types.Storage{
-				HTTP: types.HTTPStorage{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Storages, func(s string) bool {
-						return strings.ToLower(s) == models.StorageSourceURL
-					}),
-				},
-				IPFS: types.IPFSStorage{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Storages, func(s string) bool {
-						return strings.ToLower(s) == models.StorageSourceIPFS
-					}),
-					Endpoint: in.Node.IPFS.Connect,
-				},
-				Local: types.LocalStorage{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Storages, func(s string) bool {
-						return strings.ToLower(s) == models.StorageSourceLocalDirectory
-					}),
-					Volumes: func(paths []string) []types.Volume {
-						out := make([]types.Volume, len(paths))
-						for i, p := range paths {
-							out[i] = types.Volume{
-								Name:  p,
-								Path:  p,
-								Write: false,
-							}
-						}
-						return out
-					}(in.Node.AllowListedLocalPaths),
-				},
-				// NB(forrest): this is challenging as there was never a config file this, it lives in environment variables...
-				// for now mark it as disabled
-				S3: types.S3Storage{
-					Enabled: false,
-				},
-			},
-			Engines: types.Engine{
-				Docker: types.Docker{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Engines, func(s string) bool {
-						return strings.ToLower(s) == models.EngineDocker
-					}),
-					ManifestCache: types.DockerManifestCache{
-						Size:    in.Node.Compute.ManifestCache.Size,
-						TTL:     types.Duration(in.Node.Compute.ManifestCache.Duration),
-						Refresh: types.Duration(in.Node.Compute.ManifestCache.Frequency),
+			StateStore: types.ComputeStateStore{
+				Backend: types.StoreBackend{
+					Type: in.Node.Compute.ExecutionStore.Type.String(),
+					Config: map[string]string{
+						"path": in.Node.Compute.ExecutionStore.Path,
 					},
 				},
-				WASM: types.WASM{
-					Enabled: !slices.ContainsFunc(in.Node.DisabledFeatures.Engines, func(s string) bool {
-						return strings.ToLower(s) == models.EngineWasm
-					}),
+			},
+			Volumes: func(paths []string) []types.Volume {
+				out := make([]types.Volume, len(paths))
+				for i, p := range paths {
+					out[i] = types.Volume{
+						Name: p,
+						Path: p,
+					}
+				}
+				return out
+			}(in.Node.AllowListedLocalPaths),
+		},
+		WebUI: types.WebUI{
+			Enabled: in.Node.WebUI.Enabled,
+			Listen: func(enabled bool, port int) string {
+				if enabled {
+					return fmt.Sprintf("0.0.0.0:%d", port)
+				}
+				return ""
+			}(in.Node.WebUI.Enabled, in.Node.WebUI.Port),
+		},
+		InputSources: types.InputSourcesConfig{
+			Disabled: in.Node.DisabledFeatures.Storages,
+			Config:   migrateInputSources(in.Node),
+		},
+		Publishers: types.PublishersConfig{
+			Disabled: in.Node.DisabledFeatures.Publishers,
+			Config:   publisherConfig,
+		},
+		Executors: types.ExecutorsConfig{
+			Disabled: in.Node.DisabledFeatures.Engines,
+			Config:   executorConfig,
+		},
+		ResultDownloaders: types.ResultDownloaders{
+			// TODO(forrest) [review]: unsure what value we should include here, if any.
+			Timeout: types.Duration(in.Node.DownloadURLRequestTimeout),
+			Config:  migrateDownloadConfig(in.Node),
+		},
+		// TODO(forrest) [review] the decision regarding the presence of these values or if we even use them has
+		// not been made https://www.notion.so/Rethinking-Configuration-435fbe87419148b4bbc5119d413786eb?d=1c73cb661b18405b8b67b3856f02e1d1&pvs=4#fdc6de7c00364de1bb81b325686e6e66
+		// It sounds like we only want to allow the setting of a default publisher, but unsure if this is on a job
+		// type basis or something else
+		JobDefaults: types.JobDefaults{
+			Batch: types.JobDefaultsConfig{
+				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
+				// Priority: 100,
+				Task: types.TaskDefaultConfig{
+					Resources: types.Resource{
+						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
+						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
+						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
+						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
+					},
+					Publisher: types.DefaultPublisherConfig{
+						Type: in.Node.Requester.DefaultPublisher,
+					},
+					Timeouts: types.TaskTimeoutConfig{
+						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+					},
 				},
 			},
-			Policy: types.SelectionPolicy{
-				Networked: in.Node.Compute.JobSelection.AcceptNetworkedJobs,
-				Local:     in.Node.Compute.JobSelection.Locality == models.Local,
+			Daemon: types.JobDefaultsConfig{
+				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
+				// Priority: 100,
+				Task: types.TaskDefaultConfig{
+					Resources: types.Resource{
+						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
+						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
+						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
+						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
+					},
+					Publisher: types.DefaultPublisherConfig{
+						Type: in.Node.Requester.DefaultPublisher,
+					},
+					Timeouts: types.TaskTimeoutConfig{
+						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+					},
+				},
+			},
+			Service: types.JobDefaultsConfig{
+				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
+				// Priority: 100,
+				Task: types.TaskDefaultConfig{
+					Resources: types.Resource{
+						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
+						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
+						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
+						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
+					},
+					Publisher: types.DefaultPublisherConfig{
+						Type: in.Node.Requester.DefaultPublisher,
+					},
+					Timeouts: types.TaskTimeoutConfig{
+						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+					},
+				},
+			},
+			Ops: types.JobDefaultsConfig{
+				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
+				// Priority: 100,
+				Task: types.TaskDefaultConfig{
+					Resources: types.Resource{
+						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
+						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
+						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
+						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
+					},
+					Publisher: types.DefaultPublisherConfig{
+						Type: in.Node.Requester.DefaultPublisher,
+					},
+					Timeouts: types.TaskTimeoutConfig{
+						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+					},
+				},
 			},
 		},
-		Telemetry: types.Telemetry{
-			Logging: types.Logging{
-				Level: "info",
-				Format: func(mode logger.LogMode) string {
-					if mode == logger.LogModeJSON {
-						return "json"
-					}
-					return "console"
-				}(in.Node.LoggingMode),
-			},
+		// TODO(forrest) [review]: currently both the compute and requester have a job selection policy
+		// it is not clear whose policy should be migrated here.
+		JobAdmissionControl: types.JobAdmissionControl{
+			RejectStatelessJobs: in.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
+			AcceptNetworkedJobs: in.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
+			ProbeHTTP:           in.Node.Requester.JobSelectionPolicy.ProbeHTTP,
+			ProbeExec:           in.Node.Requester.JobSelectionPolicy.ProbeExec,
+		},
+		Logging: types.Logging{
+			Level:                "info",
+			Mode:                 string(in.Node.LoggingMode),
+			LogDebugInfoInterval: types.Duration(in.Node.Compute.Logging.LogRunningExecutionsInterval),
+		},
+		UpdateConfig: types.UpdateConfig{
+			Interval: types.Duration(in.Update.CheckFrequency),
+		},
+		FeatureFlags: types.FeatureFlags{
+			ExecTranslation: in.Node.Requester.TranslationEnabled,
 		},
 	}
 	return out, nil
+}
+
+func migrateDownloadConfig(in v1types.NodeConfig) map[string]map[string]string {
+	out := make(map[string]map[string]string)
+	if in.IPFS.Connect != "" {
+		// TODO(forrest) [review]: unsure what name to key here
+		out[models.StorageSourceIPFS] = map[string]string{
+			"endpoint": in.IPFS.Connect,
+		}
+	}
+	// TODO(forrest) [review]: assuredly the presence of these keys in the map indicate
+	// they are enable. I think we want to enable these by default, but at the same time
+	// we don't want to use, for example, the S3 downloader if it's not configured correctly.
+	// TODO(forrest) [review]: unsure what name to key here
+	out[models.StorageSourceS3] = make(map[string]string)
+	// TODO(forrest) [review]: unsure what name to key here
+	out[models.StorageSourceURL] = make(map[string]string)
+
+	return out
+}
+
+func migrateEngines(in v1types.NodeConfig) (map[string]map[string]interface{}, error) {
+	out := make(map[string]map[string]interface{})
+	if !slices.ContainsFunc(in.DisabledFeatures.Engines, func(s string) bool {
+		return strings.ToLower(s) == models.EngineDocker
+	}) {
+		config := make(map[string]interface{})
+		var cacheConfig map[string]interface{}
+		if err := mapstructure.Decode(in.Compute.ManifestCache, &cacheConfig); err != nil {
+			return nil, err
+		}
+		config["manifestcache"] = cacheConfig
+		out[models.EngineDocker] = config
+	}
+	if !slices.ContainsFunc(in.DisabledFeatures.Engines, func(s string) bool {
+		return strings.ToLower(s) == models.EngineWasm
+	}) {
+		config := make(map[string]interface{})
+		out[models.EngineWasm] = config
+	}
+	return out, nil
+}
+
+func migratePublishers(in v1types.NodeConfig) (map[string]map[string]interface{}, error) {
+	out := make(map[string]map[string]interface{})
+	if !slices.ContainsFunc(in.DisabledFeatures.Publishers, func(s string) bool {
+		return strings.ToLower(s) == models.PublisherIPFS
+	}) && in.IPFS.Connect != "" {
+		config := make(map[string]interface{})
+		config["endpoint"] = in.IPFS.Connect
+		out[models.PublisherIPFS] = config
+	}
+	if !slices.ContainsFunc(in.DisabledFeatures.Publishers, func(s string) bool {
+		return strings.ToLower(s) == models.PublisherS3
+	}) {
+		// TODO(forrest) [review]: should we attempt to extract values in the environment for this?
+		// should we include the PreSignedURL bits from the v1 config?
+		out[models.PublisherS3] = make(map[string]interface{})
+	}
+	if !slices.ContainsFunc(in.DisabledFeatures.Publishers, func(s string) bool {
+		return strings.ToLower(s) == models.PublisherLocal
+	}) {
+		var config map[string]interface{}
+		if err := mapstructure.Decode(in.Compute.LocalPublisher, &config); err != nil {
+			return nil, err
+		}
+		out[models.PublisherLocal] = config
+	}
+	return out, nil
+}
+
+// TODO(forrest) [review]: other storage sources to consider here include:
+//
+//	S3PreSigned
+//	Inline
+func migrateInputSources(in v1types.NodeConfig) map[string]map[string]interface{} {
+	out := make(map[string]map[string]interface{})
+	// if the URL input source isn't listed as disabled, enable it
+	if !slices.ContainsFunc(in.DisabledFeatures.Storages, func(s string) bool {
+		return strings.ToLower(s) == models.StorageSourceURL
+	}) {
+		// there isn't configuration for this storage, meaning its presents in the map implies it's enabled.
+		out[models.StorageSourceURL] = make(map[string]interface{})
+	}
+
+	// if the IPFS input source isn't listed as disabled, and it has a config value, enable it
+	if !slices.ContainsFunc(in.DisabledFeatures.Storages, func(s string) bool {
+		return strings.ToLower(s) == models.StorageSourceIPFS
+	}) && in.IPFS.Connect != "" {
+		config := make(map[string]interface{})
+		config["endpoint"] = in.IPFS.Connect
+		out[models.StorageSourceIPFS] = config
+	}
+
+	if !slices.ContainsFunc(in.DisabledFeatures.Storages, func(s string) bool {
+		return strings.ToLower(s) == models.StorageSourceLocalDirectory
+	}) {
+		config := make(map[string]interface{})
+		// TODO(forrest) [review] unsure how to configure this.
+		// we are mixing configuration across fields here, Volumes on the compute node should be what determine this
+		// but that isn't part of this config structure, so configure it in both spots I guess?
+		config["volumes"] = in.AllowListedLocalPaths
+		out[models.StorageSourceLocalDirectory] = config
+	}
+	if !slices.ContainsFunc(in.DisabledFeatures.Storages, func(s string) bool {
+		return strings.ToLower(s) == models.StorageSourceS3
+	}) {
+		// TODO(forrest) [review]: should we attempt to extract values in the environment for this?
+		out[models.StorageSourceS3] = make(map[string]interface{})
+	}
+
+	return out
 }

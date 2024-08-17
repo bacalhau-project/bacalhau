@@ -1,60 +1,118 @@
 package types
 
-// Bacalhau represents the configuration for the Bacalhau system,
-// including client, server, orchestrator, compute service, and telemetry settings.
 type Bacalhau struct {
-	// Repo specifies a path on the filesystem where Bacalhau will persist its state.
-	Repo string `yaml:"Repo,omitempty"`
-	// Name specifies the name the Bacalhau node will advertise on the network.
-	Name string `yaml:"Name,omitempty"`
-	// Client specifies the configuration of the Bacalhau client.
-	Client Client `yaml:"Client,omitempty"`
-	// Server specifies the configuration of the Bacalhau server.
-	Server Server `yaml:"Server,omitempty"`
-	// Orchestrator specifies the configuration of the Bacalhau orchestration service.
-	Orchestrator Orchestrator `yaml:"Orchestrator,omitempty"`
-	// Compute specifies the configuration of the Bacalhau compute service.
-	Compute Compute `yaml:"Compute,omitempty"`
-	// Telemetry specifies the configuration of the Bacalhau node's telemetry system.
-	Telemetry Telemetry `yaml:"Telemetry,omitempty"`
+	API     API    `yaml:"API,omitempty"`
+	DataDir string `yaml:"DataDir,omitempty"`
+
+	// TODO Should NameProvider be a cli flag only option since it is not used post
+	//   node creation?
+	NameProvider string `yaml:"NameProvider,omitempty"`
+
+	StrictVersionMatch  bool
+	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`
+	Compute             Compute             `yaml:"Compute,omitempty"`
+	WebUI               WebUI               `yaml:"WebUI,omitempty"`
+	InputSources        InputSourcesConfig  `yaml:"InputSources,omitempty"`
+	Publishers          PublishersConfig    `yaml:"Publishers,omitempty"`
+	Executors           ExecutorsConfig     `yaml:"Executors,omitempty"`
+	ResultDownloaders   ResultDownloaders   `yaml:"ResultDownloaders,omitempty"`
+	JobDefaults         JobDefaults         `yaml:"JobDefaults,omitempty"`
+	JobAdmissionControl JobAdmissionControl `yaml:"JobAdmissionControl,omitempty"`
+	Logging             Logging             `yaml:"Logging,omitempty"`
+	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
+	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
 }
 
-// Server represents the configuration settings for the Bacalhau server.
-type Server struct {
-	// Address specifies the endpoint Bacalhau will serve on.
-	Address string `yaml:"Address,omitempty"`
-	// Port specifies the port Bacalhau will serve on.
-	Port int `yaml:"Port,omitempty"`
-	// TLS specifies the TLS configuration for the server.
-	TLS TLS `yaml:"TLS,omitempty"`
-	// Auth specifies configuration for authorization and authentication.
-	Auth AuthConfig `yaml:"Auth,omitempty"`
+type UpdateConfig struct {
+	Interval Duration `yaml:"Interval,omitempty"`
 }
 
-// Client represents the configuration settings for the Bacalhau client.
-type Client struct {
-	// Address specifies the endpoint the Bacalhau client will connect to a Bacalhau API on.
-	Address string `yaml:"Address,omitempty"`
-	// Certificate specifies the path of a certificate file (primarily for self-signed server certs) the client will use for API requests.
-	Certificate string `yaml:"Certificate,omitempty"`
-	// Insecure when true instructs the client not to verify the certificate of the server.
-	Insecure bool `yaml:"Insecure,omitempty"`
+type FeatureFlags struct {
+	ExecTranslation bool `yaml:"ExecTranslation,omitempty"`
 }
 
-// WebUI represents the configuration settings for the Bacalhau WebUI.
+type API struct {
+	Address string
+	TLS     TLS
+	Auth    AuthConfig
+}
+
+type TLS struct {
+	CertFile string `yaml:"Certificate,omitempty"`
+	KeyFile  string `yaml:"Key,omitempty"`
+	CAFile   string `yaml:"CAFile,omitempty"`
+}
+
 type WebUI struct {
-	// Enabled when true enables the WebUI on the Bacalhau node.
-	Enabled bool `yaml:"Enabled,omitempty"`
-	// Server specifies the configuration of the server for the WebUI.
-	Server Server `yaml:"Server,omitempty"`
+	Enabled bool   `yaml:"Enabled,omitempty"`
+	Listen  string `yaml:"Listen,omitempty"`
 }
 
-// JobDownloaders represents the configuration settings for job downloaders in Bacalhau.
-type JobDownloaders struct {
-	// Timeout specifies the duration after which job downloads will time out.
-	Timeout Duration `yaml:"Timeout,omitempty"`
-	// IPFS specifies the configuration for the IPFS job downloader.
-	IPFS IPFSStorage `yaml:"IPFS,omitempty"`
-	// S3 specifies the configuration for the S3 job downloader.
-	S3 S3Storage `yaml:"S3,omitempty"`
+type InputSourcesConfig struct {
+	Disabled []string `yaml:"Disabled,omitempty"`
+
+	ReadTimeout   Duration            `yaml:"ReadTimeout,omitempty"`
+	MazSize       string              `yaml:"MazSize,omitempty"`
+	Decompression DecompressionConfig `yaml:"Decompression"`
+
+	Config map[string]map[string]interface{} `yaml:"Config,omitempty"`
+}
+
+type PublishersConfig struct {
+	Disabled []string                          `yaml:"Disabled,omitempty"`
+	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
+}
+
+type ExecutorsConfig struct {
+	Disabled []string                          `yaml:"Disabled,omitempty"`
+	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
+}
+
+type Logging struct {
+	Level                string   `yaml:"Level,omitempty"`
+	Mode                 string   `yaml:"Mode,omitempty"`
+	LogDebugInfoInterval Duration `yaml:"LogDebugInfoInterval,omitempty"`
+}
+
+type JobAdmissionControl struct {
+	RejectStatelessJobs bool   `yaml:"RejectStatelessJobs,omitempty"`
+	AcceptNetworkedJobs bool   `yaml:"AcceptNetworkedJobs,omitempty"`
+	ProbeHTTP           string `yaml:"ProbeHTTP,omitempty"`
+	ProbeExec           string `yaml:"ProbeExec,omitempty"`
+}
+
+type ResultDownloaders struct {
+	Timeout Duration                     `yaml:"Timeout,omitempty"`
+	Config  map[string]map[string]string `yaml:"Config,omitempty"`
+}
+
+type DecompressionConfig struct {
+	SizeLimit      string `yaml:"SizeLimit,omitempty"`
+	FileCountLimit int    `yaml:"FileCountLimit,omitempty"`
+}
+
+type JobDefaults struct {
+	Batch   JobDefaultsConfig `yaml:"Batch,omitempty"`
+	Daemon  JobDefaultsConfig `yaml:"Daemon,omitempty"`
+	Service JobDefaultsConfig `yaml:"Service,omitempty"`
+	Ops     JobDefaultsConfig `yaml:"Ops,omitempty"`
+}
+
+type JobDefaultsConfig struct {
+	Priority int               `yaml:"Priority,omitempty"`
+	Task     TaskDefaultConfig `yaml:"Task,omitempty"`
+}
+
+type TaskDefaultConfig struct {
+	Resources Resource               `yaml:"Resources,omitempty"`
+	Publisher DefaultPublisherConfig `yaml:"Publisher,omitempty"`
+	Timeouts  TaskTimeoutConfig      `yaml:"Timeouts,omitempty"`
+}
+
+type DefaultPublisherConfig struct {
+	Type string `yaml:"Type,omitempty"`
+}
+
+type TaskTimeoutConfig struct {
+	ExecutionTimeout Duration `yaml:"ExecutionTimeout,omitempty"`
 }

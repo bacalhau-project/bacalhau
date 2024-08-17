@@ -1,15 +1,5 @@
 package types
 
-// AuthenticatorConfig is config for a specific named authentication method,
-// specifying the type of authentication and the path to a policy file that
-// controls the method. Some implementation types may require policies that meet
-// a certain interface beyond the default – see the documentation on that type
-// for more info.
-type AuthenticatorConfig struct {
-	Type       string `yaml:"Type,omitempty"`
-	PolicyPath string `yaml:"PolicyPath,omitempty"`
-}
-
 // AuthConfig is config that controls user authentication and authorization.
 type AuthConfig struct {
 	// TokensPath is the location where a state file of tokens will be stored.
@@ -39,4 +29,14 @@ type AuthConfig struct {
 	// that permits access to all API endpoints to both authenticated and
 	// unauthenticated users (the default as of v1.2.0) will be used.
 	AccessPolicyPath string `yaml:"AccessPolicyPath,omitempty"`
+}
+
+// AuthenticatorConfig is config for a specific named authentication method,
+// specifying the type of authentication and the path to a policy file that
+// controls the method. Some implementation types may require policies that meet
+// a certain interface beyond the default – see the documentation on that type
+// for more info.
+type AuthenticatorConfig struct {
+	Type       string `yaml:"Type,omitempty"`
+	PolicyPath string `yaml:"PolicyPath,omitempty"`
 }

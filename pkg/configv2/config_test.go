@@ -33,21 +33,18 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	overrideRepo := "overrideRepo"
 	overrideName := "overrideName"
 	overrideClientAddress := "overrideAddress"
-	overrideClientCert := "overrideCert"
 
 	defaultConfig := types.Bacalhau{
-		Repo: "defaultRepo",
-		Name: "defaultName",
-		Client: types.Client{
-			Address:     "defaultAddress",
-			Certificate: "defaultCert",
+		DataDir:      "defaultRepo",
+		NameProvider: "defaultName",
+		API: types.API{
+			Address: "defaultAddress",
 		},
 	}
 	overrideValues := map[string]any{
-		"repo":               overrideRepo,
-		"name":               overrideName,
-		"client.address":     overrideClientAddress,
-		"client.certificate": overrideClientCert,
+		"datadir":      overrideRepo,
+		"nameprovider": overrideName,
+		"api.address":  overrideClientAddress,
 	}
 
 	cfg, err := configv2.New(
@@ -60,14 +57,11 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	err = cfg.Unmarshal(&actual)
 	require.NoError(t, err)
 
-	assert.Equal(t, overrideRepo, actual.Repo)
-	assert.Equal(t, overrideName, actual.Name)
-	assert.Equal(t, overrideClientAddress, actual.Client.Address)
-	assert.Equal(t, overrideClientCert, actual.Client.Certificate)
-	assert.Empty(t, actual.Server)
+	assert.Equal(t, overrideRepo, actual.DataDir)
+	assert.Equal(t, overrideName, actual.NameProvider)
+	assert.Equal(t, overrideClientAddress, actual.API.Address)
 	assert.Empty(t, actual.Orchestrator)
 	assert.Empty(t, actual.Compute)
-	assert.Empty(t, actual.Telemetry)
 }
 
 type TestConfig struct {
