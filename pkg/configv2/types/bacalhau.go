@@ -8,7 +8,7 @@ type Bacalhau struct {
 	//   node creation?
 	NameProvider string `yaml:"NameProvider,omitempty"`
 
-	StrictVersionMatch  bool
+	StrictVersionMatch  bool                `yaml:"StrictVersionMatch,omitempty"`
 	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`
 	Compute             Compute             `yaml:"Compute,omitempty"`
 	WebUI               WebUI               `yaml:"WebUI,omitempty"`
@@ -32,9 +32,9 @@ type FeatureFlags struct {
 }
 
 type API struct {
-	Address string
-	TLS     TLS
-	Auth    AuthConfig
+	Address string     `yaml:"Address,omitempty"`
+	TLS     TLS        `yaml:"TLS,omitempty"`
+	Auth    AuthConfig `yaml:"Auth,omitempty"`
 }
 
 type TLS struct {

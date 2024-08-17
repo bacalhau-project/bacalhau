@@ -27,7 +27,7 @@ type Cluster struct {
 }
 
 type NodeManager struct {
-	GCThreshold       Duration `yaml:"GCThreshold,"`
+	GCThreshold       Duration `yaml:"GCThreshold,omitempty"`
 	GCInterval        Duration `yaml:"GCInterval,omitempty"`
 	DisconnectTimeout Duration `yaml:"DisconnectTimeout,omitempty"`
 	ManualApproval    bool     `yaml:"ManualApproval,omitempty"`
