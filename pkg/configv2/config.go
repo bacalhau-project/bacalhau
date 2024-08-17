@@ -46,7 +46,7 @@ type Config struct {
 type Option = func(s *Config)
 
 // WithDefault sets the default config to be used when no values are provided.
-func WithDefault(cfg Configurable) Option {
+func WithDefault(cfg interface{}) Option {
 	return func(c *Config) {
 		c.defaultCfg = cfg
 	}
