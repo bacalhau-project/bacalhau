@@ -21,10 +21,6 @@ var (
 	DecoderHook                = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
-type Configurable interface {
-	Validate() error
-}
-
 type Config struct {
 	// viper instance for holding user provided configuration.
 	base *viper.Viper
