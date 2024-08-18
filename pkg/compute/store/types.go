@@ -12,7 +12,8 @@ import (
 
 type LocalExecutionState struct {
 	Execution       *models.Execution
-	Result          *models.RunCommandResult
+	PublishedResult *models.SpecConfig
+	RunOutput       *models.RunCommandResult
 	RequesterNodeID string
 	State           LocalExecutionStateType
 	Revision        int
@@ -78,7 +79,8 @@ type UpdateExecutionStateRequest struct {
 	NewState         LocalExecutionStateType
 	ExpectedStates   []LocalExecutionStateType
 	ExpectedRevision int
-	Result           *models.RunCommandResult
+	PublishedResult  *models.SpecConfig
+	RunOutput        *models.RunCommandResult
 	Comment          string
 }
 

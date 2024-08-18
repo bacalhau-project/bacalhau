@@ -359,7 +359,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	jobsCompleted.Add(ctx, 1)
 
 	expectedState := store.ExecutionStateRunning
-	publishedResult := models.SpecConfig{}
+	var publishedResult *models.SpecConfig
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
@@ -368,6 +368,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 			ExecutionID:    execution.ID,
 			ExpectedStates: []store.LocalExecutionStateType{expectedState},
 			NewState:       store.ExecutionStatePublishing,
+			RunOutput:      result,
 		}); err != nil {
 			return err
 		}
@@ -395,11 +396,12 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	}
 
 	// mark the execution as completed
-	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:    execution.ID,
-		ExpectedStates: []store.LocalExecutionStateType{expectedState},
-		NewState:       store.ExecutionStateCompleted,
-		Result:         result,
+	if err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		ExecutionID:     execution.ID,
+		ExpectedStates:  []store.LocalExecutionStateType{expectedState},
+		NewState:        store.ExecutionStateCompleted,
+		PublishedResult: publishedResult,
+		RunOutput:       result,
 	}); err != nil {
 		return err
 	}
@@ -411,7 +413,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 			SourcePeerID: e.ID,
 			TargetPeerID: state.RequesterNodeID,
 		},
-		PublishResult:    &publishedResult,
+		PublishResult:    publishedResult,
 		RunCommandResult: result,
 	})
 	return err
@@ -420,26 +422,24 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
 	resultFolder string,
-) (publishedResult models.SpecConfig, err error) {
+) (*models.SpecConfig, error) {
 	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
 	if err != nil {
-		err = fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
-		return
+		return nil, fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 	}
-	publishedResult, err = jobPublisher.PublishResult(ctx, execution, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
 	if err != nil {
-		err = fmt.Errorf("failed to publish result: %w", err)
-		return
+		return nil, fmt.Errorf("failed to publish result: %w", err)
 	}
 
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
 		Msg("Execution published")
 
-	return
+	return &publishedResult, nil
 }
 
 // Cancel the execution.

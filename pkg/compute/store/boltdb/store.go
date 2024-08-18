@@ -17,19 +17,6 @@ import (
 	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
 )
 
-const (
-	defaultSliceRetrievalCapacity = 10
-	defaultDatabasePermissions    = 0600
-
-	executionsBucket           = "executions"
-	executionHistoryBucket     = "execution_history"
-	idxExecutionsByJobBucket   = "idx_executions_by_job_id"
-	idxExecutionsByStateBucket = "idx_executions_by_state"
-
-	eventsBucket      = "events"
-	checkpointsBucket = "checkpoints"
-)
-
 // Store represents an execution store that is backed by a boltdb database
 // on disk. The structure of the store is organized into boltdb buckets and sub-buckets
 // for efficient data retrieval and organization.
@@ -335,7 +322,15 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		previousState := execution.State
 		execution.State = request.NewState
 		execution.Revision++
-		execution.UpdateTime = time.Now()
+		execution.UpdateTime = time.Now().UTC()
+
+		if request.RunOutput != nil {
+			execution.RunOutput = request.RunOutput
+		}
+
+		if request.PublishedResult != nil {
+			execution.PublishedResult = request.PublishedResult
+		}
 
 		// Update execution
 		executionData, err := s.marshaller.Marshal(execution)
