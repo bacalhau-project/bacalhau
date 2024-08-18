@@ -398,7 +398,7 @@ To cancel the job, run:
 			break
 		}
 
-		time.Sleep(time.Millisecond * 500) //nolint:gomnd // 500ms sleep
+		time.Sleep(time.Millisecond * 500) //nolint:mnd // 500ms sleep
 	}
 
 	// This is needed as while printing progress, we delegate printing job progress table

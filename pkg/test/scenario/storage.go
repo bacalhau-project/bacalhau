@@ -27,7 +27,7 @@ func CreateSourcePath(rootSourceDir string) (string, error) {
 	}
 
 	// Generate a random pathname
-	pathname := fmt.Sprintf("input_%d", rand.Intn(1000000)) //nolint:gomnd,gosec
+	pathname := fmt.Sprintf("input_%d", rand.Intn(1000000)) //nolint:mnd,gosec
 	return filepath.Join(rootSourceDir, pathname), nil
 }
 

@@ -46,6 +46,8 @@ linters-settings:
     - "3"
     ignored-functions:
     - strings.SplitN
+    - time.Duration
+    - types.Duration
 
   govet:
     enable:
@@ -88,6 +90,7 @@ linters:
   - ineffassign
   - lll
   - misspell
+  - mnd
   - nakedret
   - noctx
   - nolintlint
