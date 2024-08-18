@@ -14,7 +14,6 @@ type LocalExecutionState struct {
 	Execution       *models.Execution
 	PublishedResult *models.SpecConfig
 	RunOutput       *models.RunCommandResult
-	RequesterNodeID string
 	State           LocalExecutionStateType
 	Revision        int
 	CreateTime      time.Time
@@ -22,15 +21,14 @@ type LocalExecutionState struct {
 	LatestComment   string
 }
 
-func NewLocalExecutionState(execution *models.Execution, requesterNodeID string) *LocalExecutionState {
+func NewLocalExecutionState(execution *models.Execution) *LocalExecutionState {
 	now := time.Now().UTC()
 	return &LocalExecutionState{
-		Execution:       execution,
-		RequesterNodeID: requesterNodeID,
-		State:           ExecutionStateCreated,
-		Revision:        1,
-		CreateTime:      now,
-		UpdateTime:      now,
+		Execution:  execution,
+		State:      ExecutionStateCreated,
+		Revision:   1,
+		CreateTime: now,
+		UpdateTime: now,
 	}
 }
 

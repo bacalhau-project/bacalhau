@@ -4,6 +4,7 @@ package models
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -50,6 +51,29 @@ func (s ExecutionStateType) IsTermainl() bool {
 		s == ExecutionStateAskForBidRejected
 }
 
+func ExecutionStateTypes() []ExecutionStateType {
+	var res []ExecutionStateType
+	for typ := ExecutionStateNew; typ <= ExecutionStateCancelled; typ++ {
+		res = append(res, typ)
+	}
+	return res
+}
+
+func (s ExecutionStateType) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+func (s *ExecutionStateType) UnmarshalText(text []byte) (err error) {
+	name := strings.TrimSpace(string(text))
+	for _, typ := range ExecutionStateTypes() {
+		if strings.EqualFold(typ.String(), name) {
+			*s = typ
+			return
+		}
+	}
+	return
+}
+
 type ExecutionDesiredStateType int
 
 const (
@@ -57,6 +81,29 @@ const (
 	ExecutionDesiredStateRunning
 	ExecutionDesiredStateStopped
 )
+
+func ExecutionDesiredStateTypes() []ExecutionDesiredStateType {
+	var res []ExecutionDesiredStateType
+	for typ := ExecutionDesiredStatePending; typ <= ExecutionDesiredStateStopped; typ++ {
+		res = append(res, typ)
+	}
+	return res
+}
+
+func (s ExecutionDesiredStateType) MarshalText() ([]byte, error) {
+	return []byte(s.String()), nil
+}
+
+func (s *ExecutionDesiredStateType) UnmarshalText(text []byte) (err error) {
+	name := strings.TrimSpace(string(text))
+	for _, typ := range ExecutionDesiredStateTypes() {
+		if strings.EqualFold(typ.String(), name) {
+			*s = typ
+			return
+		}
+	}
+	return
+}
 
 // Execution is used to allocate the placement of a task group to a node.
 type Execution struct {

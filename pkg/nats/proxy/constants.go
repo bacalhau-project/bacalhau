@@ -33,16 +33,16 @@ func computeEndpointSubscribeSubject(nodeID string) string {
 	return fmt.Sprintf("%s.%s.>", ComputeEndpointSubjectPrefix, nodeID)
 }
 
-func callbackPublishSubject(nodeID string, method string) string {
-	return fmt.Sprintf("%s.%s.%s", CallbackSubjectPrefix, nodeID, method)
+func callbackPublishSubject(method string) string {
+	return fmt.Sprintf("%s.%s", CallbackSubjectPrefix, method)
 }
 
-func callbackSubscribeSubject(nodeID string) string {
-	return fmt.Sprintf("%s.%s.>", CallbackSubjectPrefix, nodeID)
+func callbackSubscribeSubject() string {
+	return fmt.Sprintf("%s.>", CallbackSubjectPrefix)
 }
 
-func managementPublishSubject(nodeID string, method string) string {
-	return fmt.Sprintf("%s.%s.%s", ManagementSubjectPrefix, nodeID, method)
+func managementPublishSubject(method string) string {
+	return fmt.Sprintf("%s.%s", ManagementSubjectPrefix, method)
 }
 
 func managementSubscribeSubject() string {

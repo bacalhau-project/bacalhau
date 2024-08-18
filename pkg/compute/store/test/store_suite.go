@@ -41,7 +41,7 @@ func (s *StoreSuite) SetupTest() {
 	s.executionStore, err = s.storeCreator(s.ctx, s.dbPath)
 	require.NoError(s.T(), err)
 	s.execution = mock.ExecutionForJob(mock.Job())
-	s.localExecutionState = *store.NewLocalExecutionState(s.execution, "nodeID-1")
+	s.localExecutionState = *store.NewLocalExecutionState(s.execution)
 }
 
 func (s *StoreSuite) TearDownTest() {
@@ -103,7 +103,7 @@ func (s *StoreSuite) TestGetExecutions() {
 
 	// Create another execution for the same job
 	anotherExecution := mock.ExecutionForJob(s.execution.Job)
-	anotherExecutionState := *store.NewLocalExecutionState(anotherExecution, "nodeID")
+	anotherExecutionState := *store.NewLocalExecutionState(anotherExecution)
 	err = s.executionStore.CreateExecution(s.ctx, anotherExecutionState)
 	s.Require().NoError(err)
 
@@ -115,7 +115,7 @@ func (s *StoreSuite) TestGetExecutions() {
 }
 
 func (s *StoreSuite) TestGetLiveExecutions() {
-	localExec := store.NewLocalExecutionState(s.execution, "req1")
+	localExec := store.NewLocalExecutionState(s.execution)
 	err := s.executionStore.CreateExecution(s.ctx, *localExec)
 	s.Require().NoError(err)
 
@@ -144,7 +144,7 @@ func (s *StoreSuite) TestFullLiveExecutions() {
 		s.Require().Equal([]store.LocalExecutionState{}, execs)
 	}
 
-	localExec := store.NewLocalExecutionState(s.execution, "req1")
+	localExec := store.NewLocalExecutionState(s.execution)
 	err := s.executionStore.CreateExecution(s.ctx, *localExec)
 	s.Require().NoError(err)
 
@@ -176,7 +176,7 @@ func (s *StoreSuite) TestGetMultipleLiveExecutions() {
 	for i := 0; i < 3; i++ {
 		exec := mock.ExecutionForJob(mock.Job())
 		exec.ID = fmt.Sprintf("%d", i+1)
-		localExec := store.NewLocalExecutionState(exec, "req1")
+		localExec := store.NewLocalExecutionState(exec)
 		err := s.executionStore.CreateExecution(s.ctx, *localExec)
 		s.Require().NoError(err)
 
@@ -262,7 +262,7 @@ func (s *StoreSuite) TestGetExecutionCount() {
 
 	for _, state := range states {
 		execution := mock.ExecutionForJob(mock.Job())
-		executionState := *store.NewLocalExecutionState(execution, "nodeID")
+		executionState := *store.NewLocalExecutionState(execution)
 		err := s.executionStore.CreateExecution(s.ctx, executionState)
 		s.Require().NoError(err)
 
@@ -377,13 +377,13 @@ func (s *StoreSuite) TestDeleteExecutionMultiEntries() {
 
 	// second execution with same jobID
 	secondExecution := mock.ExecutionForJob(s.execution.Job)
-	secondExecutionState := *store.NewLocalExecutionState(secondExecution, "nodeID")
+	secondExecutionState := *store.NewLocalExecutionState(secondExecution)
 	err = s.executionStore.CreateExecution(s.ctx, secondExecutionState)
 	require.NoError(s.T(), err)
 
 	// third execution with different jobID
 	thirdExecution := mock.ExecutionForJob(mock.Job())
-	thirdExecutionState := *store.NewLocalExecutionState(thirdExecution, "nodeID")
+	thirdExecutionState := *store.NewLocalExecutionState(thirdExecution)
 	err = s.executionStore.CreateExecution(s.ctx, thirdExecutionState)
 	s.Require().NoError(err)
 

@@ -85,7 +85,6 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 				ExecutionMetadata: NewExecutionMetadata(execution),
 				RoutingMetadata: RoutingMetadata{
 					SourcePeerID: s.ID,
-					TargetPeerID: localExecutionState.RequesterNodeID,
 				},
 				Event: models.EventFromError(EventTopicExecutionPreparing, err),
 			})

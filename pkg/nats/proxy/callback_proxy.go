@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 )
 
 type CallbackProxyParams struct {
@@ -31,25 +32,24 @@ func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 }
 
 func (p *CallbackProxy) OnBidComplete(ctx context.Context, result compute.BidResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnBidComplete, result)
+	proxyCallbackRequest(ctx, p.conn, OnBidComplete, result)
 }
 
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnRunComplete, result)
+	proxyCallbackRequest(ctx, p.conn, OnRunComplete, result)
 }
 
 func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result compute.CancelResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnCancelComplete, result)
+	proxyCallbackRequest(ctx, p.conn, OnCancelComplete, result)
 }
 
 func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result compute.ComputeError) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnComputeFailure, result)
+	proxyCallbackRequest(ctx, p.conn, OnComputeFailure, result)
 }
 
 func proxyCallbackRequest(
 	ctx context.Context,
 	conn *nats.Conn,
-	destNodeID string,
 	method string,
 	request interface{}) {
 	// deserialize the request object
@@ -59,13 +59,13 @@ func proxyCallbackRequest(
 		return
 	}
 
-	subject := callbackPublishSubject(destNodeID, method)
+	subject := callbackPublishSubject(method)
 	log.Ctx(ctx).Trace().Msgf("Sending request %+v to subject %s", request, subject)
 
 	// We use Publish instead of Request as Orchestrator callbacks do not return a response, for now.
 	err = conn.Publish(subject, data)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to send callback to node %s", reflect.TypeOf(request), destNodeID)
+		log.Ctx(ctx).Error().Err(err).Msgf("%s: failed to send callback", reflect.TypeOf(request))
 		return
 	}
 }
