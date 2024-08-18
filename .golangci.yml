@@ -126,7 +126,7 @@ run:
   modules-download-mode: readonly
   # Allow multiple parallel golangci-lint instances running.
   # If false (default) - golangci-lint acquires file lock on start.
-  allow-parallel-runners: true
+  allow-parallel-runners: false
 
 issues:
   exclude-files:
