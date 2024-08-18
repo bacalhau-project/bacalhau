@@ -1,6 +1,6 @@
 FROM docker.io/buildkite/hosted-agent-base:ubuntu-v1.0.0@sha256:af0d05215252cc0d362135fcf1f3413e6a5a2ff11e8c40d8b8ba453f4d7f245a
 
-ENV GOLANG_VERSION 1.21.0
+ENV GOLANG_VERSION 1.23.0
 
 RUN apt-get update && apt-get install -y wget make iproute2
 
