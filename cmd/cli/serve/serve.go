@@ -139,7 +139,11 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(cfg.NetworkTransportDir(), cfg.Node.Network)
+	transportPath, err := cfg.NetworkTransportDir()
+	if err != nil {
+		return err
+	}
+	networkConfig, err := getNetworkConfig(transportPath, cfg.Node.Network)
 	if err != nil {
 		return err
 	}
@@ -337,7 +341,10 @@ func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig
 	var err error
 	// If the user has not specified a private key, use their client key
 	if key == "" {
-		key = cfg.UserKeyPath()
+		key, err = cfg.UserKeyPath()
+		if err != nil {
+			return "", "", err
+		}
 	}
 	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
 	if err != nil {

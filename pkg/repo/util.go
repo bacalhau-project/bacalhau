@@ -16,33 +16,13 @@ import (
 
 // initRepoFiles initializes all files required for a valid bacalhau repo.
 func initRepoFiles(cfg types.BacalhauConfig) error {
-	if err := initUserIDKey(cfg.UserKeyPath()); err != nil {
-		return fmt.Errorf("failed to create user key: %w", err)
-	}
-	if err := ensureDir(cfg.EnginePluginsDir()); err != nil {
-		return fmt.Errorf("failed to create plugin dir: %w", err)
-	}
-	if err := ensureDir(cfg.OrchestratorDir()); err != nil {
-		return fmt.Errorf("failed to create orchestrator dir: %w", err)
-	}
-	if err := ensureDir(cfg.ComputeDir()); err != nil {
-		return fmt.Errorf("failed to create executor storage dir: %w", err)
-	}
-	if err := ensureDir(cfg.ExecutionDir()); err != nil {
-		return fmt.Errorf("failed to create executor storage dir: %w", err)
-	}
-
+	panic("TODO")
 	return nil
 }
 
 // validateRepoConfig ensures all files exist for a valid bacalhau repo.
 func validateRepoConfig(cfg types.BacalhauConfig) error {
-	if exists, err := fileExists(cfg.UserKeyPath()); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user key file does not exist at: %q", cfg.UserKeyPath())
-	}
-
+	panic("TODO")
 	return nil
 }
 

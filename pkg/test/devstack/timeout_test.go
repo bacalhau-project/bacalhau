@@ -122,7 +122,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	userKey, err := baccrypto.LoadUserKey(suite.Config.UserKeyPath())
+	userKeyPath, err := suite.Config.UserKeyPath()
+	suite.Require().NoError(err)
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{

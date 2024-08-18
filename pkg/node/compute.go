@@ -83,11 +83,15 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
+	executionDir, err := cfg.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     nodeID,
 		Callback:               computeCallback,
 		Store:                  executionStore,
-		StorageDirectory:       cfg.ExecutionDir(),
+		StorageDirectory:       executionDir,
 		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
@@ -195,8 +199,12 @@ func NewComputeNode(
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
+	computeDir, err := cfg.ComputeDir()
+	if err != nil {
+		return nil, err
+	}
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-	regFilename = filepath.Join(cfg.ComputeDir(), regFilename)
+	regFilename = filepath.Join(computeDir, regFilename)
 
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,

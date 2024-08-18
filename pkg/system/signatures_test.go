@@ -19,7 +19,9 @@ func TestMessageSigning(t *testing.T) {
 		}
 	}()
 	_, c := setup.SetupBacalhauRepoForTesting(t)
-	userKey, err := baccrypto.LoadUserKey(c.UserKeyPath())
+	userKeyPath, err := c.UserKeyPath()
+	require.NoError(t, err)
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	require.NoError(t, err)
 	signer := system.NewMessageSigner(userKey.PrivateKey())
 

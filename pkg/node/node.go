@@ -78,10 +78,11 @@ type NodeDependencyInjector struct {
 func NewExecutorPluginNodeDependencyInjector(
 	cfg types.BacalhauConfig,
 	userKey *baccrypto.UserKey,
+	pluginPath string,
 ) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
-		ExecutorsFactory:        NewPluginExecutorFactory(cfg.EnginePluginsDir()),
+		ExecutorsFactory:        NewPluginExecutorFactory(pluginPath),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
@@ -128,7 +129,11 @@ func NewNode(
 		return nil, err
 	}
 
-	userKey, err := baccrypto.LoadUserKey(bacalhauConfig.UserKeyPath())
+	userKeyPath, err := bacalhauConfig.UserKeyPath()
+	if err != nil {
+		return nil, err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +328,11 @@ func NewNode(
 }
 
 func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig) error {
-	userKey, err := baccrypto.LoadUserKey(bacalhauConfig.UserKeyPath())
+	userKeyPath, err := bacalhauConfig.UserKeyPath()
+	if err != nil {
+		return err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		return err
 	}

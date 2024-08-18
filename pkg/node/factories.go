@@ -123,9 +123,13 @@ func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
+			executionDir, err := cfg.ExecutionDir()
+			if err != nil {
+				return nil, err
+			}
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
-				cfg.ExecutionDir(),
+				executionDir,
 				nodeConfig.CleanupManager,
 				cfg.Node.IPFS.Connect,
 				&nodeConfig.ComputeConfig.LocalPublisher,

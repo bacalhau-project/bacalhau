@@ -101,15 +101,11 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 		return err
 	}
 
-	// in the event a user has provided a config without a path we need to set it here base on what the repo was
+	// in the event a user has provided a config without a path we need to set it here based on what the repo was
 	// initialized with.
-	if cfg.Repo == "" {
-		cfg.Repo = fsr.path
-		c.Set("repo", fsr.path)
-	}
-
-	if err := initRepoFiles(cfg); err != nil {
-		return fmt.Errorf("failed to initialize repo: %w", err)
+	if cfg.DataDir == "" {
+		cfg.DataDir = fsr.path
+		c.Set("DataDir", fsr.path)
 	}
 
 	// TODO this should be a part of the config.
@@ -137,17 +133,11 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		return err
 	}
 
-	// in the event a user has provided a config without a path we need to set it here base on what the repo was
+	// in the event a user has provided a config without a path we need to set it here based on what the repo was
 	// initialized with.
-	if cfg.Repo == "" {
-		cfg.Repo = fsr.path
-		c.Set("repo", fsr.path)
-	}
-
-	// ensure the loaded config has valid fields as they pertain to the filesystem
-	// e.g. user key files exists, storage paths exist, etc.
-	if err := validateRepoConfig(cfg); err != nil {
-		return fmt.Errorf("failed to validate repo config: %w", err)
+	if cfg.DataDir == "" {
+		cfg.DataDir = fsr.path
+		c.Set("DataDir", fsr.path)
 	}
 
 	// derive an installationID from the client ID loaded from the repo.

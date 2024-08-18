@@ -40,7 +40,11 @@ func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.
 		GOARCH:     resp.GOARCH,
 	}
 
-	userKey, err := baccrypto.LoadUserKey(cfg.UserKeyPath())
+	userKeyPath, err := cfg.UserKeyPath()
+	if err != nil {
+		return versions, err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	if err != nil {
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}

@@ -1,13 +1,16 @@
 package types
 
 import (
+	"fmt"
 	"path/filepath"
 )
 
 //go:generate go run gen_paths/generate.go ./
 //go:generate go run gen_viper/generate.go
 type BacalhauConfig struct {
-	Repo    string        `yaml:"Repo,omitempty"`
+	// NB(forrest): this field shouldn't be persisted yet.
+	DataDir string `yaml:"-"`
+
 	Node    NodeConfig    `yaml:"Node"`
 	User    UserConfig    `yaml:"User"`
 	Metrics MetricsConfig `yaml:"Metrics"`
@@ -33,54 +36,117 @@ type UpdateConfig struct {
 
 const UserKeyFileName = "user_id.pem"
 
-func (c BacalhauConfig) UserKeyPath() string {
-	return filepath.Join(c.Repo, UserKeyFileName)
+func (c BacalhauConfig) UserKeyPath() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, UserKeyFileName)
+	if exists, err := fileExists(path); err != nil {
+		return "", fmt.Errorf("checking if user key exists: %w", err)
+	} else if exists {
+		return path, nil
+	}
+	if err := initUserIDKey(path); err != nil {
+		return "", fmt.Errorf("creating user private key: %w", err)
+	}
+	return path, nil
 }
 
 const AuthTokensFileName = "tokens.json"
 
-func (c BacalhauConfig) AuthTokensPath() string {
-	return filepath.Join(c.Repo, AuthTokensFileName)
+func (c BacalhauConfig) AuthTokensPath() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	return filepath.Join(c.DataDir, AuthTokensFileName), nil
 }
 
-const OrchestratorDirName = "orchestrator_store"
+const OrchestratorDirName = "orchestrator"
 
-func (c BacalhauConfig) OrchestratorDir() string {
-	return filepath.Join(c.Repo, OrchestratorDirName)
+func (c BacalhauConfig) OrchestratorDir() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, OrchestratorDirName)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting orchestrator path: %w", err)
+	}
+	return path, nil
 }
 
-const JobStoreFileName = "jobs.db"
+const JobStoreFileName = "state_boltdb.db"
 
-func (c BacalhauConfig) JobStorePath() string {
-	return filepath.Join(c.Repo, JobStoreFileName)
+func (c BacalhauConfig) JobStoreFilePath() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	// make sure the parent dir exists first
+	if _, err := c.OrchestratorDir(); err != nil {
+		return "", fmt.Errorf("getting job store path: %w", err)
+	}
+	return filepath.Join(c.DataDir, OrchestratorDirName, JobStoreFileName), nil
 }
 
-const NetworkTransportDirName = OrchestratorDirName + "/" + "nats-store"
+const NetworkTransportDirName = "nats-store"
 
-func (c BacalhauConfig) NetworkTransportDir() string {
-	return filepath.Join(c.Repo, NetworkTransportDirName)
+func (c BacalhauConfig) NetworkTransportDir() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, OrchestratorDirName, NetworkTransportDirName)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting network transport path: %w", err)
+	}
+	return path, nil
 }
 
-const ComputeDirName = "compute_store"
+const ComputeDirName = "compute"
 
-func (c BacalhauConfig) ComputeDir() string {
-	return filepath.Join(c.Repo, ComputeDirName)
+func (c BacalhauConfig) ComputeDir() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, ComputeDirName)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting compute path: %w", err)
+	}
+	return path, nil
 }
 
-const ExecutionDirName = ComputeDirName + "/" + "executions"
+const ExecutionDirName = "executions"
 
-func (c BacalhauConfig) ExecutionDir() string {
-	return filepath.Join(c.Repo, ExecutionDirName)
+func (c BacalhauConfig) ExecutionDir() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, ComputeDirName, ExecutionDirName)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting executions path: %w", err)
+	}
+	return path, nil
 }
 
-const EnginePluginsDirName = ComputeDirName + "/" + "plugins" + "/" + "engines"
+const PluginsDirName = "plugins"
 
-func (c BacalhauConfig) EnginePluginsDir() string {
-	return filepath.Join(c.Repo, EnginePluginsDirName)
+func (c BacalhauConfig) PluginsDir() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(c.DataDir, PluginsDirName)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting plugins path: %w", err)
+	}
+	return path, nil
 }
 
-const ExecutionStoreFileName = "executions.db"
+const ExecutionStoreFileName = "state_boltdb.db"
 
-func (c BacalhauConfig) ExecutionStorePath() string {
-	return filepath.Join(c.Repo, ExecutionStoreFileName)
+func (c BacalhauConfig) ExecutionStoreFilePath() (string, error) {
+	if c.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	if _, err := c.ComputeDir(); err != nil {
+		return "", fmt.Errorf("getting execution store path: %w", err)
+	}
+	return filepath.Join(c.DataDir, ComputeDirName, ExecutionStoreFileName), nil
 }

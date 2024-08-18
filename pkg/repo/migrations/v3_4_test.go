@@ -45,8 +45,9 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	configPath := filepath.Join(suite.TempDir, config.FileName)
 
 	// define a config in the repo we are migrating with the correct paths defined in it
-	executionStorePath := filepath.Join(suite.TempDir, types.ComputeDirName, "executions.db")
-	jobStorePath := filepath.Join(suite.TempDir, types.OrchestratorDirName, "jobs.db")
+	// based on the old directory structure.
+	executionStorePath := filepath.Join(suite.TempDir, "compute_store", "executions.db")
+	jobStorePath := filepath.Join(suite.TempDir, "orchestrator_store", "jobs.db")
 	expectedInstallationID := "12345678-abcd-1234-abcd-123456789012"
 	tokensPath := filepath.Join(suite.TempDir, "tokens.json")
 	f, err := os.Create(tokensPath)
@@ -89,8 +90,8 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, config.FileName))
 
 	// verify database files are present
-	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, "jobs.db"))
-	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, "executions.db"))
+	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
+	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
 	// verify old file were removed
 	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
@@ -101,7 +102,7 @@ Auth:
 
 	// old directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
-	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, "executions"))
+	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.
 	actualInstallationID, err := suite.repo.ReadInstallationID()

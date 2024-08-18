@@ -54,6 +54,7 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 	}
 	defer cleanupStagingPath(stagingPath)
 
+	log.Info().Str("from", repoPath).Str("to", stagingPath).Msg("migrating repo")
 	if err := copyFS(stagingPath, os.DirFS(repoPath)); err != nil {
 		return fmt.Errorf("copying repository to staging: %w", err)
 	}

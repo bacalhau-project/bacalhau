@@ -43,13 +43,22 @@ func GetComputeConfig(
 	var executionStore store.ExecutionStore
 	if createExecutionStore {
 		var err error
-		executionStore, err = getExecutionStore(ctx, cfg.Node.Compute.ExecutionStore, cfg.ExecutionStorePath())
+		executionStoreDBPath, err := cfg.ExecutionStoreFilePath()
+		if err != nil {
+			return node.ComputeConfig{}, err
+		}
+		executionStore, err = getExecutionStore(ctx, cfg.Node.Compute.ExecutionStore, executionStoreDBPath)
 		if err != nil {
 			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
 		}
 	}
 
-	return node.NewComputeConfigWith(cfg.ExecutionDir(), node.ComputeConfigParams{
+	executionsPath, err := cfg.ExecutionDir()
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
+
+	return node.NewComputeConfigWith(executionsPath, node.ComputeConfigParams{
 		TotalResourceLimits:                   *totalResources,
 		JobResourceLimits:                     *jobResources,
 		DefaultJobResourceLimits:              *defaultResources,
@@ -77,7 +86,11 @@ func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJob
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
-		jobStore, err = getJobStore(ctx, cfg.Node.Requester.JobStore, cfg.JobStorePath())
+		jobStoreDBPath, err := cfg.JobStoreFilePath()
+		if err != nil {
+			return node.RequesterConfig{}, err
+		}
+		jobStore, err = getJobStore(ctx, cfg.Node.Requester.JobStore, jobStoreDBPath)
 		if err != nil {
 			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}

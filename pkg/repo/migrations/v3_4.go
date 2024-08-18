@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V3Migration updates the repo replacing repo.version and update.json with system_metadata.yaml.
@@ -35,68 +36,119 @@ var V3Migration = StagedMigration(
 		if err != nil {
 			return err
 		}
-		// Initialize the SystemMetadataFile in the staging directory
-		if err := r.WriteVersion(repo.Version4); err != nil {
-			return err
-		}
-		if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
-			return err
-		}
-		if fileCfg.User.InstallationID != "" {
-			if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+		// migrate from the repo.version file to the system_metadata.yaml file.
+		{
+			// Initialize the SystemMetadataFile in the staging directory
+			if err := r.WriteVersion(repo.Version4); err != nil {
 				return err
 			}
-		}
+			if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
+				return err
+			}
+			if fileCfg.User.InstallationID != "" {
+				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+					return err
+				}
+			}
 
-		// ignore this error as the file may not exist
-		_ = os.Remove(filepath.Join(repoPath, "update.json"))
-		if err := os.Remove(filepath.Join(repoPath, repo.LegacyVersionFile)); err != nil {
-			return fmt.Errorf("removing legacy repo version file: %w", err)
-		}
-
-		if fileCfg.User.KeyPath != "" {
-			if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, types.UserKeyFileName)); err != nil {
-				return fmt.Errorf("copying user key file: %w", err)
+			// ignore this error as the file may not exist
+			_ = os.Remove(filepath.Join(repoPath, "update.json"))
+			// remove the legacy repo version file
+			if err := os.Remove(filepath.Join(repoPath, repo.LegacyVersionFile)); err != nil {
+				return fmt.Errorf("removing legacy repo version file: %w", err)
 			}
 		}
 
-		if fileCfg.Auth.TokensPath != "" {
-			if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, types.AuthTokensFileName)); err != nil {
-				return fmt.Errorf("copying auth tokens file: %w", err)
+		// migrate to the new repo structure
+		{
+			// if the user provided a non-standard path we will move it to the migrated repo
+			// if the user didn't provide a path, no copy required as the location of the file in the repo
+			// is unchanged.
+			if fileCfg.User.KeyPath != "" {
+				if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, types.UserKeyFileName)); err != nil {
+					return fmt.Errorf("copying user key file: %w", err)
+				}
 			}
-		}
 
-		if fileCfg.Node.Compute.ExecutionStore.Path != "" {
-			if err := copyFile(
-				fileCfg.Node.Compute.ExecutionStore.Path,
-				filepath.Join(repoPath, types.ComputeDirName, "executions.db"),
-			); err != nil {
-				return fmt.Errorf("copying execution database: %w", err)
+			// if the user provided a non-standard path we will move it to the migrated repo
+			// if the user didn't provide a path, no copy required as the location of the file in the repo
+			// is unchanged.
+			if fileCfg.Auth.TokensPath != "" {
+				if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, types.AuthTokensFileName)); err != nil {
+					return fmt.Errorf("copying auth tokens file: %w", err)
+				}
 			}
-		}
 
-		if fileCfg.Node.Requester.JobStore.Path != "" {
-			if err := copyFile(
-				fileCfg.Node.Requester.JobStore.Path,
-				filepath.Join(repoPath, types.OrchestratorDirName, "jobs.db"),
-			); err != nil {
-				return fmt.Errorf("copying job database: %w", err)
+			// create the new compute store directory
+			computeDirPath := filepath.Join(repoPath, types.ComputeDirName)
+			if err := os.Mkdir(computeDirPath, util.OS_USER_RWX); err != nil {
+				return fmt.Errorf("creating compute dir path: %w", err)
 			}
-		}
 
-		from := fileCfg.Node.ComputeStoragePath
-		if from == "" {
-			from = filepath.Join(repoPath, "executor_storages")
-		}
-		to := filepath.Join(repoPath, types.ExecutionDirName)
-		log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
-		if err := copyFS(to, os.DirFS(from)); err != nil {
-			return fmt.Errorf("copying executor storages: %w", err)
-		}
-		if err := os.RemoveAll(from); err != nil {
-			return err
-		}
+			// if the user has configured a path, migration from it
+			if fileCfg.Node.Compute.ExecutionStore.Path != "" {
+				if err := copyFile(
+					fileCfg.Node.Compute.ExecutionStore.Path,
+					filepath.Join(repoPath, types.ComputeDirName, types.ExecutionStoreFileName),
+				); err != nil {
+					return fmt.Errorf("copying execution database: %w", err)
+				}
+			} else {
+				// else use the default location
+				if err := copyFile(
+					filepath.Join(repoPath, "compute_store", "executions.db"),
+					filepath.Join(repoPath, types.ComputeDirName, types.ExecutionStoreFileName)); err != nil {
+					return fmt.Errorf("copying execution database: %w", err)
+				}
+			}
 
+			// remove the old compute_store
+			if err := os.RemoveAll(filepath.Join(repoPath, "compute_store")); err != nil {
+				return fmt.Errorf("removing %s: %w", filepath.Join(repoPath, "compute_store"), err)
+			}
+
+			// create the new orchestrator store directory
+			orchestratorDirPath := filepath.Join(repoPath, types.OrchestratorDirName)
+			if err := os.Mkdir(orchestratorDirPath, util.OS_USER_RWX); err != nil {
+				return fmt.Errorf("creating orchestrator dir path: %w", err)
+			}
+
+			// if the user has configured a path, migration from it
+			if fileCfg.Node.Requester.JobStore.Path != "" {
+				if err := copyFile(
+					fileCfg.Node.Requester.JobStore.Path,
+					filepath.Join(repoPath, types.OrchestratorDirName, types.JobStoreFileName),
+				); err != nil {
+					return fmt.Errorf("copying job database: %w", err)
+				}
+			} else {
+				// else use the default location
+				if err := copyFile(
+					filepath.Join(repoPath, "orchestrator_store", "jobs.db"),
+					filepath.Join(repoPath, types.OrchestratorDirName, types.JobStoreFileName)); err != nil {
+					return fmt.Errorf("copying execution database: %w", err)
+				}
+			}
+
+			// remove the old orchestrator_store
+			if err := os.RemoveAll(filepath.Join(repoPath, "orchestrator_store")); err != nil {
+				return fmt.Errorf("removing %s: %w", filepath.Join(repoPath, "orchestrator_store"), err)
+			}
+
+			from := fileCfg.Node.ComputeStoragePath
+			if from == "" {
+				from = filepath.Join(repoPath, "executor_storages")
+			}
+			to := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
+			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
+			if err := copyFS(to, os.DirFS(from)); err != nil {
+				return fmt.Errorf("copying executor storages: %w", err)
+			}
+			if err := os.RemoveAll(from); err != nil {
+				return err
+			}
+
+		}
 		return nil
 	},
 )
