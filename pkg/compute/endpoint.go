@@ -92,21 +92,10 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 		return BidAcceptedResponse{}, err
 	}
 
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
-	if err != nil {
-		return BidAcceptedResponse{}, err
-	}
-
 	// Increment the number of jobs accepted by this compute node:
 	jobsAccepted.Add(ctx, 1)
 
-	err = s.executor.Run(ctx, localExecutionState)
-	if err != nil {
-		return BidAcceptedResponse{}, err
-	}
-	return BidAcceptedResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
-	}, nil
+	return BidAcceptedResponse{}, nil
 }
 
 func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
@@ -120,13 +109,7 @@ func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedReques
 	if err != nil {
 		return BidRejectedResponse{}, err
 	}
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
-	if err != nil {
-		return BidRejectedResponse{}, err
-	}
-	return BidRejectedResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
-	}, nil
+	return BidRejectedResponse{}, nil
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
@@ -149,15 +132,7 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 		return CancelExecutionResponse{}, err
 	}
 
-	if localExecutionState.State.IsExecuting() {
-		err = s.executor.Cancel(ctx, localExecutionState)
-		if err != nil {
-			return CancelExecutionResponse{}, err
-		}
-	}
-	return CancelExecutionResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
-	}, nil
+	return CancelExecutionResponse{}, nil
 }
 
 func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (

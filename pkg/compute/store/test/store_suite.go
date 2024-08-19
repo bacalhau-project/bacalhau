@@ -428,7 +428,7 @@ func (s *StoreSuite) TestDeleteExecutionDoesntExist() {
 
 func (s *StoreSuite) TestGetExecutionHistoryDoesntExist() {
 	_, err := s.executionStore.GetExecutionHistory(s.ctx, uuid.NewString())
-	s.ErrorAs(err, &store.ErrExecutionHistoryNotFound{})
+	s.ErrorAs(err, &store.ErrExecutionEventsNotFound{})
 }
 
 func (s *StoreSuite) verifyHistory(history store.LocalStateHistory,

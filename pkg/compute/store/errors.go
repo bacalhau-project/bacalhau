@@ -39,17 +39,17 @@ func (e ErrExecutionsNotFoundForJob) Error() string {
 	return "no executions found for job: " + e.JobID
 }
 
-// ErrExecutionHistoryNotFound is returned when the execution is not found
-type ErrExecutionHistoryNotFound struct {
+// ErrExecutionEventsNotFound is returned when the execution is not found
+type ErrExecutionEventsNotFound struct {
 	ExecutionID string
 }
 
-func NewErrExecutionHistoryNotFound(id string) ErrExecutionHistoryNotFound {
-	return ErrExecutionHistoryNotFound{ExecutionID: id}
+func NewErrExecutionEventsNotFound(id string) ErrExecutionEventsNotFound {
+	return ErrExecutionEventsNotFound{ExecutionID: id}
 }
 
-func (e ErrExecutionHistoryNotFound) Error() string {
-	return "no history found for execution: " + e.ExecutionID
+func (e ErrExecutionEventsNotFound) Error() string {
+	return "no events found for execution: " + e.ExecutionID
 }
 
 // ErrExecutionAlreadyExists is returned when an execution already exists

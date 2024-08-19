@@ -57,15 +57,6 @@ func (e *LocalExecutionState) ToSummary() ExecutionSummary {
 	}
 }
 
-type LocalStateHistory struct {
-	ExecutionID   string
-	PreviousState LocalExecutionStateType
-	NewState      LocalExecutionStateType
-	NewRevision   int
-	Comment       string
-	Time          time.Time
-}
-
 // Summary of an execution that is used in logging and debugging.
 type ExecutionSummary struct {
 	ExecutionID        string
@@ -106,8 +97,17 @@ func (condition UpdateExecutionStateRequest) Validate(localExecutionState LocalE
 	return nil
 }
 
+// TxContext is a transactional context that can be used to commit or rollback
+type TxContext interface {
+	context.Context
+	Commit() error
+	Rollback() error
+}
+
 // ExecutionStore A metadata store of job executions handled by the current compute node
 type ExecutionStore interface {
+	// BeginTx starts a new transaction and returns a transactional context
+	BeginTx(ctx context.Context) (TxContext, error)
 	// GetExecution returns the execution for a given id
 	GetExecution(ctx context.Context, id string) (LocalExecutionState, error)
 	// GetExecutions returns all the executions for a given job
@@ -115,8 +115,10 @@ type ExecutionStore interface {
 	// GetLiveExecutions gets an array of the executions currently in the
 	// active state (ExecutionStateBidAccepted)
 	GetLiveExecutions(ctx context.Context) ([]LocalExecutionState, error)
-	// GetExecutionHistory returns the history of an execution
-	GetExecutionHistory(ctx context.Context, id string) ([]LocalStateHistory, error)
+	// AddExecutionEvent adds an event to the execution
+	AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error
+	// GetExecutionEvents returns the history of an execution
+	GetExecutionEvents(ctx context.Context, executionID string) ([]models.Event, error)
 	// CreateExecution creates a new execution for a given job
 	CreateExecution(ctx context.Context, execution LocalExecutionState) error
 	// UpdateExecutionState updates the execution state

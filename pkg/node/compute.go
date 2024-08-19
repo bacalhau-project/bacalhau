@@ -33,6 +33,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
+const (
+	computeLoggerWatcherID    = "compute-logger"
+	executionApplierWatcherID = "execution-applier"
+)
+
 type Compute struct {
 	// Visible for testing
 	ID                 string
@@ -69,7 +74,7 @@ func NewComputeNode(
 	executionStore := config.ExecutionStore
 	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
 
-	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+	_, err := watcherRegistry.Watch(ctx, computeLoggerWatcherID, handlers.NewLoggingHandler(log.Logger),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
 		return nil, err
@@ -115,6 +120,19 @@ func NewComputeNode(
 			Interval:     config.LogRunningExecutionsInterval,
 		})
 		go loggingSensor.Start(ctx)
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	_, err = watcherRegistry.Watch(ctx, executionApplierWatcherID, compute.NewExecutionStateHandler(bufferRunner),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectLocalExecutionState},
+			Operations:  []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
 	}
 
 	// endpoint/frontend

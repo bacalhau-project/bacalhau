@@ -28,8 +28,8 @@ const currentSchemaVersion = "v1"
 // versioning and backward compatibility
 const (
 	// Main buckets
-	executionsBucket       = currentSchemaVersion + "_executions"
-	executionHistoryBucket = currentSchemaVersion + "_execution_history"
+	executionsBucket      = currentSchemaVersion + "_executions"
+	executionEventsBucket = currentSchemaVersion + "_execution_events"
 
 	// Index buckets
 	idxExecutionsByJobBucket   = currentSchemaVersion + "_idx_executions_by_job_id"

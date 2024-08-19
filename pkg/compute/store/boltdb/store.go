@@ -11,10 +11,13 @@ import (
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // Store represents an execution store that is backed by a boltdb database
@@ -31,15 +34,15 @@ import (
 //
 //	|--> <execution-id> -> {store.LocalExecutionState}
 //
-// * Execution history is stored in a bucket called `execution-history`. Each execution
-// that has history is stored in a sub-bucket, whose name is the execution ID.
+// * Execution events is stored in a bucket called `execution_events`. Each execution
+// that has events is stored in a sub-bucket, whose name is the execution ID.
 // Within the execution ID bucket, each key is a sequential number for the
-// history item, ensuring they are returned in write order.
+// event item, ensuring they are returned in write order.
 //
-// execution_history
+// execution_events
 //
 //	|--> <execution-id>
-//	          |--> <seqnum> -> {store.LocalStateHistory}
+//	          |--> <seqnum> -> {models.Event}
 //
 // * The job index is stored in a bucket called `idx:executions-by-jobid` where
 // each job is represented by a sub-bucket, named after the job ID. Within
@@ -65,7 +68,7 @@ import (
 //   - `checkpoints`: Stores checkpoint information for the event system
 //
 // This structure allows for efficient querying of executions by ID, job, and state,
-// as well as maintaining a complete history of execution state changes.
+// as well as maintaining a complete events of execution state changes.
 type Store struct {
 	database   *bolt.DB
 	marshaller marshaller.Marshaller
@@ -90,7 +93,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	}
 
 	err = database.Update(func(tx *bolt.Tx) error {
-		buckets := []string{executionsBucket, executionHistoryBucket, idxExecutionsByJobBucket, idxExecutionsByStateBucket}
+		buckets := []string{executionsBucket, executionEventsBucket, idxExecutionsByJobBucket, idxExecutionsByStateBucket}
 		for _, b := range buckets {
 			_, err = tx.CreateBucketIfNotExists(strToBytes(b))
 			if err != nil {
@@ -105,9 +108,12 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	}
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
-	err = eventObjectSerializer.RegisterType("LocalStateHistory", reflect.TypeOf(store.LocalStateHistory{}))
+	err = errors.Join(
+		eventObjectSerializer.RegisterType(compute.EventObjectLocalExecutionState, reflect.TypeOf(store.LocalExecutionState{})),
+		eventObjectSerializer.RegisterType(compute.EventObjectExecutionEvent, reflect.TypeOf(models.Event{})),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to register LocalStateHistory type: %w", err)
+		return nil, fmt.Errorf("failed to register event object types: %w", err)
 	}
 	eventStore, err := boltdb_watcher.NewEventStore(database,
 		boltdb_watcher.WithEventsBucket(eventsBucket),
@@ -120,6 +126,15 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 		marshaller: marshaller.NewJSONMarshaller(),
 		eventStore: eventStore,
 	}, nil
+}
+
+// BeginTx starts a new writable transaction for the store
+func (s *Store) BeginTx(ctx context.Context) (store.TxContext, error) {
+	tx, err := s.database.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	return boltdblib.NewTxContext(ctx, tx), nil
 }
 
 // GetExecution returns the stored LocalExecutionState structure for the provided execution ID.
@@ -225,28 +240,25 @@ func (s *Store) GetLiveExecutions(ctx context.Context) ([]store.LocalExecutionSt
 	return executions, nil
 }
 
-// GetExecutionHistory retrieves the execution history for a single execution
+// GetExecutionEvents retrieves the execution events for a single execution
 // specified by the executionID parameter.
-func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]store.LocalStateHistory, error) {
-	history := make([]store.LocalStateHistory, 0, defaultSliceRetrievalCapacity)
+func (s *Store) GetExecutionEvents(ctx context.Context, executionID string) ([]models.Event, error) {
+	events := make([]models.Event, 0, defaultSliceRetrievalCapacity)
 
 	err := s.database.View(func(tx *bolt.Tx) error {
-		historyBucket := bucket(tx, executionHistoryBucket, executionID)
-		if historyBucket == nil {
-			return store.NewErrExecutionHistoryNotFound(executionID)
+		bu := bucket(tx, executionEventsBucket, executionID)
+		if bu == nil {
+			return store.NewErrExecutionEventsNotFound(executionID)
 		}
 
-		// Iterate all of the key-values in the history/executionID bucket as they
-		// are the history, and are written in sequential order using the bucket
-		// sequence
-		return historyBucket.ForEach(func(k, v []byte) error {
-			var historyItem store.LocalStateHistory
-			err := s.marshaller.Unmarshal(v, &historyItem)
+		return bu.ForEach(func(k, v []byte) error {
+			var event models.Event
+			err := s.marshaller.Unmarshal(v, &event)
 			if err != nil {
 				return err
 			}
 
-			history = append(history, historyItem)
+			events = append(events, event)
 			return nil
 		})
 	})
@@ -254,11 +266,47 @@ func (s *Store) GetExecutionHistory(ctx context.Context, executionID string) ([]
 	if err != nil {
 		return nil, err
 	}
-	if len(history) == 0 {
-		return nil, store.NewErrExecutionHistoryNotFound(executionID)
+	if len(events) == 0 {
+		return nil, store.NewErrExecutionEventsNotFound(executionID)
 	}
 
-	return history, nil
+	return events, nil
+}
+
+func (s *Store) AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error {
+	return s.database.Update(func(tx *bolt.Tx) error {
+		execution, err := s.getExecutionInTx(tx, executionID)
+		if err != nil {
+			return err
+		}
+
+		for i := range events {
+			event := events[i]
+			eventData, err := s.marshaller.Marshal(event)
+			if err != nil {
+				return err
+			}
+
+			bkt, err := bucket(tx, executionEventsBucket).CreateBucketIfNotExists(strToBytes(execution.Execution.ID))
+			if err != nil {
+				return err
+			}
+
+			seqNum, err := bkt.NextSequence()
+			if err != nil {
+				return err
+			}
+
+			err = s.eventStore.StoreEventTx(tx, watcher.OperationCreate, compute.EventObjectExecutionEvent, event)
+			if err != nil {
+				return err
+			}
+
+			return bkt.Put(uint64ToBytes(seqNum), eventData)
+		}
+
+		return nil
+	})
 }
 
 func (s *Store) CreateExecution(ctx context.Context, execution store.LocalExecutionState) error {
@@ -303,8 +351,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution store.LocalExecut
 			return err
 		}
 
-		// Append to history
-		return s.appendHistory(tx, execution, store.ExecutionStateUndefined, store.NewExecutionMessage)
+		return s.eventStore.StoreEventTx(tx, watcher.OperationCreate, compute.EventObjectLocalExecutionState, execution)
 	})
 }
 
@@ -315,7 +362,7 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 			return err
 		}
 
-		if err := request.Validate(execution); err != nil {
+		if err = request.Validate(execution); err != nil {
 			return err
 		}
 
@@ -353,45 +400,14 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 			return err
 		}
 
-		// Append to history
-		return s.appendHistory(tx, execution, previousState, request.Comment)
+		if err = s.eventStore.StoreEventTx(tx, watcher.OperationUpdate, compute.EventObjectLocalExecutionState, execution); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
-func (s *Store) appendHistory(tx *bolt.Tx,
-	execution store.LocalExecutionState, previousState store.LocalExecutionStateType, comment string) error {
-	historyEntry := store.LocalStateHistory{
-		ExecutionID:   execution.Execution.ID,
-		PreviousState: previousState,
-		NewState:      execution.State,
-		NewRevision:   execution.Revision,
-		Comment:       comment,
-		Time:          execution.UpdateTime,
-	}
-	historyData, err := s.marshaller.Marshal(historyEntry)
-	if err != nil {
-		return err
-	}
-
-	historyBucket, err := bucket(tx, executionHistoryBucket).CreateBucketIfNotExists(strToBytes(execution.Execution.ID))
-	if err != nil {
-		return err
-	}
-
-	seqNum, err := historyBucket.NextSequence()
-	if err != nil {
-		return err
-	}
-
-	err = s.eventStore.StoreEventTx(tx, watcher.OperationCreate, "LocalStateHistory", historyEntry)
-	if err != nil {
-		return err
-	}
-
-	return historyBucket.Put(uint64ToBytes(seqNum), historyData)
-}
-
-// DeleteExecution delete the execution, removes its history and removes it
+// DeleteExecution delete the execution, removes its events and removes it
 // from the job index (along with the job indexes bucket)
 func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 	return s.database.Update(func(tx *bolt.Tx) error {
@@ -430,9 +446,9 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 			}
 		}
 
-		// Delete history
-		if err = bucket(tx, executionHistoryBucket).DeleteBucket(strToBytes(executionID)); err != nil {
-			return fmt.Errorf("failed to delete execution history: %w", err)
+		// Delete execution events
+		if err = bucket(tx, executionEventsBucket).DeleteBucket(strToBytes(executionID)); err != nil {
+			return fmt.Errorf("failed to delete execution events: %w", err)
 		}
 
 		return nil

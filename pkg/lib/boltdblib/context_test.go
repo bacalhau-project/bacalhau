@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package boltjobstore
+package boltdblib
 
 import (
 	"context"
@@ -34,11 +34,11 @@ func (suite *TxContextTestSuite) Test_newTxContext() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	suite.NotNil(txCtx.tx)
 
 	// Ensure the transaction is part of the context.
-	retrievedTx, ok := txFromContext(txCtx)
+	retrievedTx, ok := TxFromContext(txCtx)
 	suite.True(ok)
 	suite.Equal(tx, retrievedTx)
 
@@ -46,12 +46,12 @@ func (suite *TxContextTestSuite) Test_newTxContext() {
 	suite.NoError(txCtx.Rollback())
 }
 
-// Test_Commit tests committing a transaction through txContext.
+// Test_Commit tests committing a transaction through TxContext.
 func (suite *TxContextTestSuite) Test_Commit() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	err = txCtx.Commit()
 	suite.NoError(err)
 	suite.Nil(txCtx.tx.DB()) // Ensure the transaction is committed.
@@ -63,12 +63,12 @@ func (suite *TxContextTestSuite) Test_Commit() {
 	suite.NoError(err)
 }
 
-// Test_Rollback tests rolling back a transaction through txContext.
+// Test_Rollback tests rolling back a transaction through TxContext.
 func (suite *TxContextTestSuite) Test_Rollback() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	err = txCtx.Rollback()
 	suite.NoError(err)
 	suite.Nil(txCtx.tx.DB()) // Ensure the transaction is rolled back.
@@ -80,7 +80,7 @@ func (suite *TxContextTestSuite) Test_AutomaticRollback() {
 	suite.Require().NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := newTxContext(ctx, tx)
+	txCtx := NewTxContext(ctx, tx)
 
 	cancel() // Trigger the cancellation.
 	// Ensure the transaction is rolled back.
@@ -95,7 +95,7 @@ func (suite *TxContextTestSuite) Test_CommitAfterRollbackFails() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	suite.NoError(txCtx.Rollback())
 	suite.Error(txCtx.Commit(), "expected error when committing after rollback")
 }
@@ -106,7 +106,7 @@ func (suite *TxContextTestSuite) Test_CommitAfterCancelFails() {
 	suite.Require().NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := newTxContext(ctx, tx)
+	txCtx := NewTxContext(ctx, tx)
 
 	cancel() // Trigger the cancellation.
 	suite.Eventually(func() bool { return txCtx.tx.DB() == nil }, 500*time.Millisecond, 10*time.Millisecond)
@@ -118,7 +118,7 @@ func (suite *TxContextTestSuite) Test_RollbackAfterCommitIsGraceful() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	suite.NoError(txCtx.Commit())
 	suite.NoError(txCtx.Rollback(), "expected no error when rolling back after commit")
 }
@@ -128,7 +128,7 @@ func (suite *TxContextTestSuite) Test_RollbackMultipleTimesIsGraceful() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 
-	txCtx := newTxContext(context.Background(), tx)
+	txCtx := NewTxContext(context.Background(), tx)
 	suite.NoError(txCtx.Rollback())
 
 	// Try to rollback multiple times.
@@ -142,7 +142,7 @@ func (suite *TxContextTestSuite) Test_RollbackAfterCancelIsGraceful() {
 	suite.Require().NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := newTxContext(ctx, tx)
+	txCtx := NewTxContext(ctx, tx)
 
 	cancel() // Trigger the cancellation.
 	suite.Eventually(func() bool { return txCtx.tx.DB() == nil }, 500*time.Millisecond, 10*time.Millisecond)
@@ -154,7 +154,7 @@ func (suite *TxContextTestSuite) Test_CancelAfterCommitIsGraceful() {
 	suite.Require().NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := newTxContext(ctx, tx)
+	txCtx := NewTxContext(ctx, tx)
 	suite.NoError(txCtx.Commit())
 	cancel()                          // Trigger the cancellation.
 	time.Sleep(50 * time.Millisecond) // Wait for the goroutine to handle the cancellation.
@@ -165,7 +165,7 @@ func (suite *TxContextTestSuite) Test_CancelAfterRollbackIsGraceful() {
 	suite.Require().NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := newTxContext(ctx, tx)
+	txCtx := NewTxContext(ctx, tx)
 	suite.NoError(txCtx.Rollback())
 	cancel()                          // Trigger the cancellation.
 	time.Sleep(50 * time.Millisecond) // Wait for the goroutine to handle the cancellation.

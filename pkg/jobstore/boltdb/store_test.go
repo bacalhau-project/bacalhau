@@ -17,6 +17,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
@@ -947,7 +948,7 @@ func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
 	txCtx1, err := s.store.BeginTx(s.ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx1)
-	tx1, ok := txFromContext(txCtx1)
+	tx1, ok := boltdblib.TxFromContext(txCtx1)
 	s.Require().True(ok)
 	// commit to release the transaction
 	s.Require().NoError(txCtx1.Commit())
@@ -956,7 +957,7 @@ func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
 	txCtx2, err := s.store.BeginTx(txCtx1)
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx2)
-	tx2, ok := txFromContext(txCtx2)
+	tx2, ok := boltdblib.TxFromContext(txCtx2)
 	s.Require().True(ok)
 	// commit to release the transaction
 	s.Require().NoError(txCtx2.Commit())
