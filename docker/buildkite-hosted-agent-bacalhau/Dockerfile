@@ -4,7 +4,7 @@ FROM docker.io/buildkite/hosted-agent-base:ubuntu-v1.0.0@sha256:af0d05215252cc0d
 ENV GOLANG_VERSION 1.23.0
 ENV GOLANGCI_LINT_VERSION v1.60.1
 
-RUN apt-get update && apt-get install -y wget make iproute2
+RUN apt-get update && apt-get install -y wget make iproute2 gh
 
 # Set environment variables for Go
 RUN wget https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz \
@@ -50,6 +50,7 @@ RUN go version && python3 --version
 ENV ipfs_version v0.18.0
 
 
+# Install IPFS
 RUN wget https://dist.ipfs.tech/go-ipfs/${ipfs_version}/go-ipfs_${ipfs_version}_linux-amd64.tar.gz -O ipfs.tar.gz \
  && tar -xzf ipfs.tar.gz \
  && cd go-ipfs \
