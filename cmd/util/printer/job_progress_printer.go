@@ -10,6 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
+	"github.com/spf13/cobra"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
@@ -18,13 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-	"github.com/spf13/cobra"
 )
 
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
@@ -265,7 +266,7 @@ To cancel the job, run:
 						cmd.Println(getMoreInfoString)
 						cmd.Println(cancelString)
 					}
-					returnError = fmt.Errorf(PrintoutCanceledButRunningNormally)
+					returnError = fmt.Errorf("%s", PrintoutCanceledButRunningNormally)
 				} else {
 					cmd.Println("Unexpected signal received. Exiting.")
 				}
@@ -397,7 +398,7 @@ To cancel the job, run:
 			break
 		}
 
-		time.Sleep(time.Millisecond * 500) //nolint:gomnd // 500ms sleep
+		time.Sleep(time.Millisecond * 500) //nolint:mnd // 500ms sleep
 	}
 
 	// This is needed as while printing progress, we delegate printing job progress table

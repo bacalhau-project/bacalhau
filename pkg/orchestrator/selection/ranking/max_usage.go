@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/dustin/go-humanize"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 type MaxUsageNodeRanker struct {
@@ -55,7 +56,7 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, node
 const perResourceReason = "more %s (%s) than the maximum available (%s)"
 
 func (s *MaxUsageNodeRanker) formatReason(requested, maximum models.Resources) string {
-	reasons := make([]string, 0, 4) //nolint:gomnd  // number of resources
+	reasons := make([]string, 0, 4) //nolint:mnd  // number of resources
 	if requested.CPU > maximum.CPU {
 		reasons = append(reasons, fmt.Sprintf(perResourceReason, "CPU",
 			fmt.Sprint(requested.CPU),

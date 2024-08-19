@@ -60,7 +60,7 @@ func (ar *AsyncResult[T]) UnmarshalJSON(data []byte) error {
 	}
 
 	if aux.Error != "" {
-		ar.Err = fmt.Errorf(aux.Error)
+		ar.Err = fmt.Errorf("%s", aux.Error)
 	}
 	return nil
 }

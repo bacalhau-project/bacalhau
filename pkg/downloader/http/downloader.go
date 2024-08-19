@@ -103,7 +103,7 @@ func checkHTTPResponse(resp *http.Response, url string) error {
 
 	// Read the response body for additional context.
 	// Limit the size of the body we will read to avoid large allocations.
-	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) //nolint:gomnd // 1MB max
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) //nolint:mnd // 1MB max
 	if err != nil {
 		// If we can't read the body, just return an error with the status code
 		return fmt.Errorf("request to %s failed with status code %d and unable to read response body", url, resp.StatusCode)

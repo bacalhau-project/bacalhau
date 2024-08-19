@@ -27,7 +27,7 @@ func (m MockCache[T]) Get(key string) (T, bool) {
 }
 
 func (m MockCache[T]) SetWithDefaultTTL(key string, value T, cost uint64) error {
-	return m.Set(key, value, cost, 10) //nolint:gomnd
+	return m.Set(key, value, cost, 10) //nolint:mnd
 }
 
 func (m MockCache[T]) Set(key string, value T, cost uint64, expiresInSeconds int64) error {
