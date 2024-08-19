@@ -13,17 +13,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
-// V3Migration updates the repo replacing repo.version and update.json with system_metadata.yaml.
+// V3Migration updates the repo, replacing repo.version and update.json with system_metadata.yaml.
 // It does the following:
-// - creates system_metadata.yaml with repo version 4.
-// - sets the last update check time in system_metadata.yaml to unix time zero.
-// - if an installationID is present in the config its value is persisted to system_metadata.yaml.
-// - removes update.json if the file is present.
-// - removes repo.version.
-// - creates a new directory .bacalhau/compute_store/executions which contains the content of ./bacalhau/execution_store
-// - removes ./bacalhau/execution_store
-// - iff a user has configured a user key path, the configured value is copied to .bacalhau/user_id.pem
-// - iff a user has configured a auth tokens path, the configured value is copied to .bacalhau/tokens.json
+// - Creates system_metadata.yaml with repo version 4.
+// - Sets the last update check time in system_metadata.yaml to Unix time zero.
+// - If an installationID is present in the config, its value is persisted to system_metadata.yaml.
+// - Removes update.json if the file is present.
+// - Removes repo.version.
+// - Creates a new directory .bacalhau/orchestrator.
+// - Moves contents of .bacalhau/orchestrator_store to .bacalhau/orchestrator and renames jobs.db to state_boltdb.db.
+// - Removes .bacalhau/orchestrator_store.
+// - Creates a new directory .bacalhau/compute.
+// - Moves executions.db from .bacalhau/compute_store to .bacalhau/compute/state_boltdb.db.
+// - Creates a new directory .bacalhau/compute/executions.
+// - Moves contents of .bacalhau/execution_store to .bacalhau/compute/executions.
+// - Removes ./bacalhau/execution_store.
+// - If a user has configured a custom user key path, the configured value is copied to .bacalhau/user_id.pem.
+// - If a user has configured a custom auth tokens path, the configured value is copied to .bacalhau/tokens.json.
 var V3Migration = StagedMigration(
 	repo.Version3,
 	repo.Version4,
@@ -141,13 +147,9 @@ var V3Migration = StagedMigration(
 			}
 			to := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
 			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
-			if err := copyFS(to, os.DirFS(from)); err != nil {
-				return fmt.Errorf("copying executor storages: %w", err)
+			if err := os.Rename(from, to); err != nil {
+				return fmt.Errorf("migrating executor storages: %w", err)
 			}
-			if err := os.RemoveAll(from); err != nil {
-				return err
-			}
-
 		}
 		return nil
 	},

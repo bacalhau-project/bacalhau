@@ -48,15 +48,17 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 		return fmt.Errorf("getting repo path: %w", err)
 	}
 
+	log.Info().Msgf("starting staged repo migration for: %q", repoPath)
+
 	stagingPath := filepath.Join(os.TempDir(), fmt.Sprintf("bacalhau-migration-staging-%d", time.Now().UnixNano()))
 	if err := os.Mkdir(stagingPath, os.ModePerm); err != nil {
-		return fmt.Errorf("creating staging directory: %w", err)
+		return fmt.Errorf("creating staging directory %q for repo migration: migration not applied: %w", stagingPath, err)
 	}
 	defer cleanupStagingPath(stagingPath)
 
-	log.Info().Str("from", repoPath).Str("to", stagingPath).Msg("migrating repo")
-	if err := copyFS(stagingPath, os.DirFS(repoPath)); err != nil {
-		return fmt.Errorf("copying repository to staging: %w", err)
+	log.Debug().Msgf("copied repo to staging directory: %q", stagingPath)
+	if err := os.CopyFS(stagingPath, os.DirFS(repoPath)); err != nil {
+		return fmt.Errorf("copying repository to staging directory %q for repo migration: migration not applied: %w", stagingPath, err)
 	}
 
 	stagingRepo, err := repo.NewFS(repo.FsRepoParams{
@@ -64,9 +66,10 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 		Migrations: nil,
 	})
 	if err != nil {
-		return fmt.Errorf("creating staging repo: %w", err)
+		return fmt.Errorf("creating staging repo for migration: %w", err)
 	}
 
+	log.Info().Msgf("running staged repo migration over repo: %q", repoPath)
 	if err := migrationFn(*stagingRepo); err != nil {
 		return fmt.Errorf("performing migration: %w", err)
 	}
@@ -75,6 +78,7 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 		return fmt.Errorf("committing migration: %w", err)
 	}
 
+	log.Info().Msgf("successfully migrated bacalhau repo %q", repoPath)
 	return nil
 }
 
@@ -100,18 +104,26 @@ func cleanupStagingPath(stagingPath string) {
 // - error: Any error encountered during the process
 func commitMigration(stagingPath, repoPath string) error {
 	// Replace the original paths with the staged changes
-	log.Info().Msgf("committing staged changes from %q to %q", stagingPath, repoPath)
+	log.Info().Msgf("committing migration from %q to %q", stagingPath, repoPath)
 	// create a backup of the repo pre-migration
 	backupPath := filepath.Join(filepath.Dir(repoPath), fmt.Sprintf(".bacalhau_backup_%d", time.Now().Unix()))
+	log.Info().Msgf("repo backup created in %q", backupPath)
 	// move the current bacalhau repo into the backup
 	if err := os.Rename(repoPath, backupPath); err != nil {
-		return err
+		return fmt.Errorf("failed to backup bacalhau repo, migration not applied: %w", err)
 	}
 	// rename move the migrated repo to the specified repo path
 	// this is the actual migration
 	if err := os.Rename(stagingPath, repoPath); err != nil {
-		return err
+		return fmt.Errorf("failed to migrate repo, migration not applied: %w", err)
 	}
 	// rename the backup if the above step was successful
-	return os.RemoveAll(backupPath)
+	if err := os.RemoveAll(backupPath); err != nil {
+		// we don't need to error here as the migration was successful, we just failed to delete the backup which is
+		// not critical for bacalhaus operation. A user may manually remove this dir in the rare case this occurs.
+		log.Warn().Msgf("successfully applied migration, but failed to remove backup repo at %q: %s", backupPath, err)
+		return nil
+	}
+
+	return nil
 }

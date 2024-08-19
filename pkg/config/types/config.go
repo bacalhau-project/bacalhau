@@ -20,7 +20,7 @@ type BacalhauConfig struct {
 
 type UserConfig struct {
 	// KeyPath is deprecated
-	// Deprecated: use repo package
+	// Deprecated: replaced by cfg.UserKeyPath()
 	KeyPath        string `yaml:"KeyPath"`
 	InstallationID string `yaml:"InstallationID"`
 }
