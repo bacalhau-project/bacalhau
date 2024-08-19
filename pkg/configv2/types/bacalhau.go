@@ -1,13 +1,8 @@
 package types
 
 type Bacalhau struct {
-	API     API    `yaml:"API,omitempty"`
-	DataDir string `yaml:"DataDir,omitempty"`
-
-	// TODO Should NameProvider be a cli flag only option since it is not used post
-	//   node creation?
-	NameProvider string `yaml:"NameProvider,omitempty"`
-
+	API                 API                 `yaml:"API,omitempty"`
+	DataDir             string              `yaml:"DataDir,omitempty"`
 	StrictVersionMatch  bool                `yaml:"StrictVersionMatch,omitempty"`
 	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`
 	Compute             Compute             `yaml:"Compute,omitempty"`
@@ -49,13 +44,8 @@ type WebUI struct {
 }
 
 type InputSourcesConfig struct {
-	Disabled []string `yaml:"Disabled,omitempty"`
-
-	ReadTimeout   Duration            `yaml:"ReadTimeout,omitempty"`
-	MazSize       string              `yaml:"MazSize,omitempty"`
-	Decompression DecompressionConfig `yaml:"Decompression"`
-
-	Config map[string]map[string]interface{} `yaml:"Config,omitempty"`
+	Disabled []string                          `yaml:"Disabled,omitempty"`
+	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
 }
 
 type PublishersConfig struct {
@@ -84,11 +74,6 @@ type JobAdmissionControl struct {
 type ResultDownloaders struct {
 	Timeout Duration                     `yaml:"Timeout,omitempty"`
 	Config  map[string]map[string]string `yaml:"Config,omitempty"`
-}
-
-type DecompressionConfig struct {
-	SizeLimit      string `yaml:"SizeLimit,omitempty"`
-	FileCountLimit int    `yaml:"FileCountLimit,omitempty"`
 }
 
 type JobDefaults struct {

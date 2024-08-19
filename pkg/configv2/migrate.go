@@ -51,28 +51,15 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
 				return strings.ToLower(s) == "requester"
 			}),
-			Listen:    fmt.Sprintf("0.0.0.0:%d", in.Node.Network.Port),
 			Advertise: in.Node.Network.AdvertisedAddress,
-			// TODO(forrest) [review]: unsure what this field is for, do we use if for the auth secret?
-			Authorization: nil,
 			Cluster: types.Cluster{
 				Listen:    fmt.Sprintf("0.0.0.0:%d", in.Node.Network.Cluster.Port),
 				Advertise: in.Node.Network.Cluster.AdvertisedAddress,
-				// TODO(forrest) [review]: unsure what this field is for, do we use if for the auth secret again?
-				Authorization: nil,
-				Peers:         in.Node.Network.Cluster.Peers,
+				Peers:     in.Node.Network.Cluster.Peers,
 			},
 			NodeManager: types.NodeManager{
 				DisconnectTimeout: types.Duration(in.Node.Requester.ControlPlaneSettings.NodeDisconnectedAfter),
 				ManualApproval:    !in.Node.Requester.ManualNodeApproval,
-			},
-			StateStore: types.OrchestratorStateStore{
-				Backend: types.StoreBackend{
-					Type: in.Node.Requester.JobStore.Type.String(),
-					Config: map[string]string{
-						"path": in.Node.Requester.JobStore.Path,
-					},
-				},
 			},
 			Scheduler: types.Scheduler{
 				WorkerCount:          in.Node.Requester.Worker.WorkerCount,
@@ -99,14 +86,6 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				Memory: in.Node.Compute.Capacity.TotalResourceLimits.Memory,
 				Disk:   in.Node.Compute.Capacity.TotalResourceLimits.Disk,
 				GPU:    in.Node.Compute.Capacity.TotalResourceLimits.GPU,
-			},
-			StateStore: types.ComputeStateStore{
-				Backend: types.StoreBackend{
-					Type: in.Node.Compute.ExecutionStore.Type.String(),
-					Config: map[string]string{
-						"path": in.Node.Compute.ExecutionStore.Path,
-					},
-				},
 			},
 			Volumes: func(paths []string) []types.Volume {
 				out := make([]types.Volume, len(paths))

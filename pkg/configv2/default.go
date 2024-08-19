@@ -23,29 +23,14 @@ var Default = types.Bacalhau{
 	API: types.API{
 		Address: "0.0.0.0:1234",
 	},
-	DataDir:            "~/.bacalhau",
-	NameProvider:       "puuid",
-	StrictVersionMatch: false,
+	DataDir: "~/.bacalhau",
 	Orchestrator: types.Orchestrator{
 		Enabled: true,
 		Listen:  "0.0.0.0:4222",
-		Cluster: types.Cluster{
-			Listen: "0.0.0.0:4222",
-		},
 		NodeManager: types.NodeManager{
 			GCThreshold:       Day,
 			GCInterval:        10 * Minuet,
 			DisconnectTimeout: Minuet,
-			ManualApproval:    false,
-		},
-		StateStore: types.OrchestratorStateStore{
-			JobGCInterval:   10 * Minuet,
-			JobGCThreshold:  Day,
-			EvalGCThreshold: Hour,
-			Backend: types.StoreBackend{
-				Type:   "BoltDB",
-				Config: make(map[string]string),
-			},
 		},
 		Scheduler: types.Scheduler{
 			WorkerCount:          runtime.NumCPU(),
@@ -76,60 +61,9 @@ var Default = types.Bacalhau{
 			Disk:   "80%",
 			GPU:    "100%",
 		},
-		StateStore: types.ComputeStateStore{
-			ExecutionGCInterval:  10 * Minuet,
-			ExecutionGCThreshold: Day,
-			Backend: types.StoreBackend{
-				Type:   "BoltDB",
-				Config: make(map[string]string),
-			},
-		},
-	},
-	WebUI: types.WebUI{
-		Enabled: false,
-		Listen:  "0.0.0.0:8483",
-	},
-	InputSources: types.InputSourcesConfig{
-		ReadTimeout: 5 * Minuet,
-		MazSize:     "100GB",
-		Decompression: types.DecompressionConfig{
-			SizeLimit:      "100GB",
-			FileCountLimit: 1000,
-		},
-		Config: map[string]map[string]interface{}{
-			models.StorageSourceURL: make(map[string]interface{}),
-			// TODO(forrest) [review]: we need this here to support running wasm jobs
-			// as the wasm binary is inlined
-			models.StorageSourceInline: make(map[string]interface{}),
-		},
-	},
-	Publishers: types.PublishersConfig{
-		Config: map[string]map[string]interface{}{
-			models.PublisherLocal: {
-				// TODO(forrest) [review]: this was the default, but public isn't a valid host. It could be worth changing.
-				"address": "public",
-				"port":    6001,
-			},
-		},
-	},
-	Executors: types.ExecutorsConfig{
-		Config: map[string]map[string]interface{}{
-			models.EngineDocker: {
-				"manifestcache": map[string]interface{}{
-					"size":             1000,
-					"duration":         Hour,
-					"refreshFrequency": Hour,
-				},
-			},
-			models.EngineWasm: make(map[string]interface{}),
-		},
 	},
 	ResultDownloaders: types.ResultDownloaders{
 		Timeout: 5 * Minuet,
-		Config: map[string]map[string]string{
-			models.StorageSourceS3:  make(map[string]string),
-			models.StorageSourceURL: make(map[string]string),
-		},
 	},
 	JobDefaults: types.JobDefaults{
 		Batch: types.JobDefaultsConfig{
@@ -193,12 +127,6 @@ var Default = types.Bacalhau{
 			},
 		},
 	},
-	JobAdmissionControl: types.JobAdmissionControl{
-		RejectStatelessJobs: false,
-		AcceptNetworkedJobs: false,
-		ProbeHTTP:           "",
-		ProbeExec:           "",
-	},
 	Logging: types.Logging{
 		Level:                "INFO",
 		Mode:                 "Default",
@@ -206,8 +134,5 @@ var Default = types.Bacalhau{
 	},
 	UpdateConfig: types.UpdateConfig{
 		Interval: Day,
-	},
-	FeatureFlags: types.FeatureFlags{
-		ExecTranslation: false,
 	},
 }
