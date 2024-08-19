@@ -79,7 +79,7 @@ func NewEventStore(db *bbolt.DB, opts ...EventStoreOption) (*EventStore, error) 
 		db:       db,
 		options:  options,
 		cache:    cache,
-		notifyCh: make(chan uint64, 100), //nolint:gomnd
+		notifyCh: make(chan uint64, 100), //nolint:mnd
 		clock:    options.clock,
 		stopGC:   make(chan struct{}),
 	}

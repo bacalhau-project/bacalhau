@@ -55,7 +55,7 @@ func (c *NATSTransportConfig) Validate() error {
 		validate.NoSpaces(c.NodeID, "node ID cannot contain spaces"),
 		validate.NoNullChars(c.NodeID, "node ID cannot contain null characters"),
 		validate.ContainsNoneOf(c.NodeID, reservedChars,
-			fmt.Sprintf("node ID cannot contain any of the following characters: %s", reservedChars)),
+			"node ID cannot contain any of the following characters: %s", reservedChars),
 	)
 
 	if c.IsRequesterNode {

@@ -7,7 +7,7 @@ import "fmt"
 func createError(msg string, args ...any) error {
 	if len(args) == 0 {
 		// If no arguments, return the message as-is.
-		return fmt.Errorf(msg)
+		return fmt.Errorf("%s", msg)
 	}
 	// If arguments are provided, format the message.
 	return fmt.Errorf(msg, args...)
