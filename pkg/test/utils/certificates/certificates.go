@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	ipv4Loopback = net.IPv4(127, 0, 0, 1) //nolint:gomnd
+	ipv4Loopback = net.IPv4(127, 0, 0, 1) //nolint:mnd
 	ipv6Loopback = net.IPv6loopback
 )
 

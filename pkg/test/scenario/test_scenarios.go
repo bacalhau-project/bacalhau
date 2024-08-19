@@ -153,7 +153,7 @@ func SedFile(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			downloader.DownloadFilenameStdout,
 			[]string{"LISBON"},
-			5, //nolint:gomnd // magic number ok for testing
+			5, //nolint:mnd // magic number ok for testing
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -188,7 +188,7 @@ func AwkFile(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			downloader.DownloadFilenameStdout,
 			[]string{"LISBON"},
-			501, //nolint:gomnd // magic number appropriate for test
+			501, //nolint:mnd // magic number appropriate for test
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -303,7 +303,7 @@ func WasmCsvTransform(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"outputs/parents-children.csv",
 			[]string{"http://www.wikidata.org/entity/Q14949904,Tugela,http://www.wikidata.org/entity/Q1001792,Makybe Diva"},
-			269, //nolint:gomnd // magic number appropriate for test
+			269, //nolint:mnd // magic number appropriate for test
 		),
 		Outputs: []*models.ResultPath{
 			{

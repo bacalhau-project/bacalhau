@@ -472,7 +472,7 @@ func logImagePullStatus(ctx context.Context, m *sync.Map) {
 			if mess.Progress.Total <= 0 {
 				status = fmt.Sprintf("%d %s", mess.Progress.Total, mess.Progress.Units)
 			} else {
-				status = fmt.Sprintf("%.3f%%", float64(mess.Progress.Current)/float64(mess.Progress.Total)*100) //nolint:gomnd
+				status = fmt.Sprintf("%.3f%%", float64(mess.Progress.Current)/float64(mess.Progress.Total)*100) //nolint:mnd
 			}
 
 			if _, ok := withUnits[mess.Status]; !ok {

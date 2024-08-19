@@ -100,7 +100,7 @@ type CloseError struct {
 // CloseError implements the error interface.
 func (e *CloseError) Error() string {
 	s := []byte("nats stream: close ")
-	s = strconv.AppendInt(s, int64(e.Code), 10) //nolint:gomnd
+	s = strconv.AppendInt(s, int64(e.Code), 10) //nolint:mnd
 	switch e.Code {
 	case CloseNormalClosure:
 		s = append(s, " (normal)"...)

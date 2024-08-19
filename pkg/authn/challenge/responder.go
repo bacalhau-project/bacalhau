@@ -28,7 +28,7 @@ func (c *Responder) Respond(input *json.RawMessage) ([]byte, error) {
 }
 
 func (c *Responder) generateChallenge(req request) (response, error) {
-	if req.InputPhrase == nil || len(req.InputPhrase) == 0 {
+	if len(req.InputPhrase) == 0 {
 		return response{}, errors.New("unexpected challenge input")
 	}
 

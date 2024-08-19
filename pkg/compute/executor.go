@@ -354,7 +354,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		return err
 	}
 	if result.ErrorMsg != "" {
-		return fmt.Errorf(result.ErrorMsg)
+		return fmt.Errorf("%s", result.ErrorMsg)
 	}
 	jobsCompleted.Add(ctx, 1)
 
