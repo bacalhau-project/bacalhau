@@ -68,7 +68,7 @@ func (s *StartupTestSuite) TestLongRunning() {
 
 		execution := mock.ExecutionForJob(j)
 		execution.ID = tc.ID
-		exec := store.NewLocalExecutionState(execution)
+		exec := store.NewLocalExecutionState(execution, "req")
 		err := database.CreateExecution(s.ctx, *exec)
 		s.Require().NoError(err)
 

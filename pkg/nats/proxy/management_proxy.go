@@ -52,7 +52,7 @@ func (p *ManagementProxy) Register(ctx context.Context,
 	var asyncRes *concurrency.AsyncResult[requests.RegisterResponse]
 
 	asyncRes, err = send[requests.RegisterRequest, requests.RegisterResponse](
-		ctx, p.conn, request, RegisterNode)
+		ctx, p.conn, request.Info.NodeID, request, RegisterNode)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send response to registration request")
@@ -70,7 +70,7 @@ func (p *ManagementProxy) UpdateInfo(ctx context.Context,
 	var asyncRes *concurrency.AsyncResult[requests.UpdateInfoResponse]
 
 	asyncRes, err = send[requests.UpdateInfoRequest, requests.UpdateInfoResponse](
-		ctx, p.conn, request, UpdateNodeInfo)
+		ctx, p.conn, request.Info.NodeID, request, UpdateNodeInfo)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send response to update info request")
@@ -87,7 +87,7 @@ func (p *ManagementProxy) UpdateResources(ctx context.Context,
 	var asyncRes *concurrency.AsyncResult[requests.UpdateResourcesResponse]
 
 	asyncRes, err = send[requests.UpdateResourcesRequest, requests.UpdateResourcesResponse](
-		ctx, p.conn, request, UpdateResources)
+		ctx, p.conn, request.NodeID, request, UpdateResources)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send response to update resources request")
@@ -102,6 +102,7 @@ func (p *ManagementProxy) UpdateResources(ctx context.Context,
 func send[Q managementRequest, R managementResponse](
 	ctx context.Context,
 	conn *nats.Conn,
+	nodeID string,
 	req Q, method string) (*concurrency.AsyncResult[R], error) {
 	data, err := json.Marshal(req)
 	if err != nil {
@@ -109,7 +110,7 @@ func send[Q managementRequest, R managementResponse](
 		return nil, err
 	}
 
-	subject := managementPublishSubject(method)
+	subject := managementPublishSubject(nodeID, method)
 	log.Ctx(ctx).Trace().Msgf("Sending %T request to subject %s", req, subject)
 
 	respMsg, err := conn.Request(subject, data, requestTimeout)

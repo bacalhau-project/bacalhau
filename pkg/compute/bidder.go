@@ -65,6 +65,7 @@ func (b Bidder) ReturnBidResult(
 	result := BidResult{
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: b.nodeID,
+			TargetPeerID: localExecutionState.RequesterNodeID,
 		},
 		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
 		Accepted:          response.ShouldBid,
@@ -111,7 +112,7 @@ func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 		})
 		return
 	}
-	b.handleBidResult(ctx, bidResult, bidRequest.WaitForApproval, bidRequest.Execution)
+	b.handleBidResult(ctx, bidResult, bidRequest.SourcePeerID, bidRequest.WaitForApproval, bidRequest.Execution)
 }
 
 type bidStrategyResponse struct {
@@ -124,6 +125,7 @@ type bidStrategyResponse struct {
 func (b Bidder) handleBidResult(
 	ctx context.Context,
 	result *bidStrategyResponse,
+	targetPeer string,
 	waitForApproval bool,
 	execution *models.Execution,
 ) {
@@ -131,6 +133,8 @@ func (b Bidder) handleBidResult(
 		routingMetadata = RoutingMetadata{
 			// the source of this response is the bidders nodeID.
 			SourcePeerID: b.nodeID,
+			// the target of this response is the source of the request.
+			TargetPeerID: targetPeer,
 		}
 		executionMetadata = ExecutionMetadata{
 			ExecutionID: execution.ID,
@@ -169,7 +173,7 @@ func (b Bidder) handleBidResult(
 		}
 
 		execution.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
-		localExecution := store.NewLocalExecutionState(execution)
+		localExecution := store.NewLocalExecutionState(execution, targetPeer)
 		localExecution.State = store.ExecutionStateBidAccepted
 
 		if err := b.store.CreateExecution(ctx, *localExecution); err != nil {
@@ -187,7 +191,7 @@ func (b Bidder) handleBidResult(
 	// if we are bidding or waiting create an execution
 	if result.bid || result.wait {
 		execution.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
-		localExecution := store.NewLocalExecutionState(execution)
+		localExecution := store.NewLocalExecutionState(execution, targetPeer)
 		if err := b.store.CreateExecution(ctx, *localExecution); err != nil {
 			handleComputeFailure(ctx, err, "failed to create execution state")
 			return

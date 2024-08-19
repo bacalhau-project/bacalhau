@@ -1,10 +1,6 @@
 //go:generate stringer -type=LocalExecutionStateType --trimprefix=ExecutionState --output state_string.go
 package store
 
-import (
-	"strings"
-)
-
 type LocalExecutionStateType int
 
 const (
@@ -44,19 +40,4 @@ func (s LocalExecutionStateType) IsExecuting() bool {
 // IsTerminal returns true if the execution is terminal
 func (s LocalExecutionStateType) IsTerminal() bool {
 	return s == ExecutionStateCompleted || s == ExecutionStateFailed || s == ExecutionStateCancelled
-}
-
-func (s LocalExecutionStateType) MarshalText() ([]byte, error) {
-	return []byte(s.String()), nil
-}
-
-func (s *LocalExecutionStateType) UnmarshalText(text []byte) (err error) {
-	name := strings.TrimSpace(string(text))
-	for _, typ := range ExecutionStateTypes() {
-		if strings.EqualFold(typ.String(), name) {
-			*s = typ
-			return
-		}
-	}
-	return
 }

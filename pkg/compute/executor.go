@@ -411,6 +411,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 		PublishResult:    publishedResult,
 		RunCommandResult: result,
@@ -464,6 +465,7 @@ func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionSta
 		ExecutionMetadata: NewExecutionMetadata(execution),
 		RoutingMetadata: RoutingMetadata{
 			SourcePeerID: e.ID,
+			TargetPeerID: state.RequesterNodeID,
 		},
 	})
 	return err
@@ -486,6 +488,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecu
 			ExecutionMetadata: NewExecutionMetadata(execution),
 			RoutingMetadata: RoutingMetadata{
 				SourcePeerID: e.ID,
+				TargetPeerID: state.RequesterNodeID,
 			},
 			Event: models.EventFromError(topic, err),
 		})

@@ -70,7 +70,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
-	localExecutionState := store.NewLocalExecutionState(execution)
+	localExecutionState := store.NewLocalExecutionState(execution, "nodeID")
 	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, *localExecutionState)
 
 	execution.ComputeState.StateType = models.ExecutionStateBidAccepted

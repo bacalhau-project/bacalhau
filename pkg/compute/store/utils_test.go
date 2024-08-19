@@ -32,5 +32,5 @@ func TestValidateNewExecution_InvalidRevision(t *testing.T) {
 
 func newExecution() LocalExecutionState {
 	execution := mock.ExecutionForJob(mock.Job())
-	return *NewLocalExecutionState(execution)
+	return *NewLocalExecutionState(execution, "nodeID-1")
 }

@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
-
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 )
 
 type CallbackHandlerParams struct {
@@ -35,7 +34,7 @@ func NewCallbackHandler(params CallbackHandlerParams) (*CallbackHandler, error) 
 		callback: params.Callback,
 	}
 
-	subject := callbackSubscribeSubject()
+	subject := callbackSubscribeSubject(handler.name)
 	_, err := handler.conn.Subscribe(subject, func(m *nats.Msg) {
 		handler.handle(m)
 	})

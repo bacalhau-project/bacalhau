@@ -13,5 +13,5 @@ func (r *BaseRequest[T]) ComputeEndpoint() string {
 
 // OrchestratorEndpoint return the orchestrator endpoint for the base request.
 func (r *BaseRequest[T]) OrchestratorEndpoint() string {
-	return callbackPublishSubject(r.Method)
+	return callbackPublishSubject(r.TargetNodeID, r.Method)
 }
