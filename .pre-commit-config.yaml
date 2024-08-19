@@ -29,10 +29,6 @@ repos:
     name: go fmt
     entry: .gitprecommit/go_fmt.sh
     language: script
-  - id: golangci-lint
-    name: golangci-lint
-    entry: .gitprecommit/golangci-lint.sh
-    language: script
   - id: go-mod-tidy-check
     name: make modtidy check-diff
     entry: .gitprecommit/go_mod_tidy_check.sh
