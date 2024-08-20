@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -80,11 +79,7 @@ Auth:
 	// open the repo to trigger the migration to version 4
 	cfg, err := config.New()
 	suite.Require().NoError(err)
-	err = suite.repo.Open(cfg)
-	if err != nil {
-		log.Info().Err(err).Msgf("migation v3 failed, debug in terminal")
-		time.Sleep(time.Minute * 10)
-	}
+	suite.Require().NoError(suite.repo.Open(cfg))
 
 	// verify the repo's new current version is 4
 	repoVersion4, err := suite.repo.Version()
