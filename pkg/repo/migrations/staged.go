@@ -50,7 +50,7 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 
 	log.Info().Msgf("starting staged repo migration for: %q", repoPath)
 
-	stagingPath := filepath.Join(filepath.Dir(repoPath), fmt.Sprintf("bacalhau-migration-staging-%d", time.Now().UnixNano()))
+	stagingPath := filepath.Join(os.TempDir(), fmt.Sprintf("bacalhau-migration-staging-%d", time.Now().UnixNano()))
 	if err := os.Mkdir(stagingPath, os.ModePerm); err != nil {
 		return fmt.Errorf("creating staging directory %q for repo migration: migration not applied: %w", stagingPath, err)
 	}
