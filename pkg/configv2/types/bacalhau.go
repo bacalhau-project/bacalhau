@@ -2,6 +2,7 @@ package types
 
 type Bacalhau struct {
 	API                 API                 `yaml:"API,omitempty"`
+	NameProvider        string              `yaml:"NameProvider,omitempty"`
 	DataDir             string              `yaml:"DataDir,omitempty"`
 	StrictVersionMatch  bool                `yaml:"StrictVersionMatch,omitempty"`
 	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`

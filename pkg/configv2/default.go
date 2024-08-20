@@ -23,7 +23,8 @@ var Default = types.Bacalhau{
 	API: types.API{
 		Address: "0.0.0.0:1234",
 	},
-	DataDir: getDefaultDataDir(),
+	NameProvider: "puuid",
+	DataDir:      getDefaultDataDir(),
 	Orchestrator: types.Orchestrator{
 		Enabled: true,
 		Listen:  "0.0.0.0:4222",
