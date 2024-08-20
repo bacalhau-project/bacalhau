@@ -147,9 +147,6 @@ var V3Migration = StagedMigration(
 			}
 			to := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
 			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
-			fromExists, fromErr := fileExists(from)
-			toExists, toErr := fileExists(to)
-			log.Info().Bool("fromExists", fromExists).Bool("toExists", toExists).Str("fromErr", fromErr.Error()).Str("toErr", toErr.Error()).Msg("check for buildkit")
 			if err := os.Rename(from, to); err != nil {
 				return fmt.Errorf("migrating executor storages: %w", err)
 			}
@@ -157,17 +154,3 @@ var V3Migration = StagedMigration(
 		return nil
 	},
 )
-
-func fileExists(path string) (bool, error) {
-	// Check if the file exists
-	_, err := os.Stat(path)
-	if err == nil {
-		// File exists
-		return true, nil
-	} else if !os.IsNotExist(err) {
-		// os.Stat returned an error other than "file does not exist"
-		return false, fmt.Errorf("failed to check if file exists at path: %w", err)
-	}
-	// file does not exist
-	return false, nil
-}
