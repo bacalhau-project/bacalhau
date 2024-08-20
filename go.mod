@@ -1,8 +1,6 @@
 module github.com/bacalhau-project/bacalhau
 
-go 1.21
-
-toolchain go1.21.11
+go 1.23
 
 require (
 	github.com/BTBurke/k8sresource v1.2.0
@@ -37,7 +35,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo/v4 v4.11.4
+	github.com/labstack/echo/v4 v4.12.0
 	github.com/lestrrat-go/jwx v1.2.29
 	github.com/libp2p/go-libp2p v0.33.0
 	github.com/mattn/go-isatty v0.0.20

@@ -50,7 +50,7 @@ func (m *LogMessage) ToBytes() []byte {
 }
 
 func (m *LogMessage) FromReader(reader bufio.Reader) error {
-	sizeB, err := reader.Peek(4) //nolint:gomnd
+	sizeB, err := reader.Peek(4) //nolint:mnd
 	if err != nil {
 		return err
 	}

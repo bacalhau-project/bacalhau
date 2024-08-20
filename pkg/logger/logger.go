@@ -229,7 +229,7 @@ type zerologWriteSyncer struct {
 var _ zapcore.WriteSyncer = (*zerologWriteSyncer)(nil)
 
 func (z *zerologWriteSyncer) Write(b []byte) (int, error) {
-	z.l.Log().CallerSkipFrame(5).Msg(string(b)) //nolint:gomnd
+	z.l.Log().CallerSkipFrame(5).Msg(string(b)) //nolint:mnd
 	return len(b), nil
 }
 

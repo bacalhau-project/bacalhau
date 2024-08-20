@@ -406,11 +406,7 @@ devstack-badactor:
 ################################################################################
 .PHONY: lint
 lint:
-	golangci-lint run --timeout 10m
-
-.PHONY: lint-fix
-lint-fix:
-	golangci-lint run --timeout 10m
+	golangci-lint -v run --timeout 10m
 
 ################################################################################
 # Target: modtidy
