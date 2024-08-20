@@ -103,7 +103,12 @@ var updateMessageColumn = output.TableColumn[util.Versions]{
 	Value:        func(v util.Versions) string { return v.UpdateMessage },
 }
 
-func (oV *VersionOptions) Run(ctx context.Context, cmd *cobra.Command, cfg types.BacalhauConfig, api clientv2.API) error {
+func (oV *VersionOptions) Run(
+	ctx context.Context,
+	cmd *cobra.Command,
+	cfg types.BacalhauConfig,
+	api clientv2.API,
+) error {
 	var (
 		versions util.Versions
 		columns  []output.TableColumn[util.Versions]

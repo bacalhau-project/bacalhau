@@ -96,17 +96,16 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 		return err
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
 	cfg, err := c.Current()
 	if err != nil {
 		return err
 	}
 
-	if err := initRepoFiles(cfg); err != nil {
-		return fmt.Errorf("failed to initialize repo: %w", err)
+	// in the event a user has provided a config without a path we need to set it here based on what the repo was
+	// initialized with.
+	if cfg.DataDir == "" {
+		cfg.DataDir = fsr.path
+		c.Set("DataDir", fsr.path)
 	}
 
 	// TODO this should be a part of the config.
@@ -129,19 +128,16 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		}
 	}
 
-	// modifies the config to include keys for accessing repo paths if they are not set.
-	// This ensures either user provided paths are valid to default paths for the repo are set.
-	fsr.EnsureRepoPathsConfigured(c)
-
 	cfg, err := c.Current()
 	if err != nil {
 		return err
 	}
 
-	// ensure the loaded config has valid fields as they pertain to the filesystem
-	// e.g. user key files exists, storage paths exist, etc.
-	if err := validateRepoConfig(cfg); err != nil {
-		return fmt.Errorf("failed to validate repo config: %w", err)
+	// in the event a user has provided a config without a path we need to set it here based on what the repo was
+	// initialized with.
+	if cfg.DataDir == "" {
+		cfg.DataDir = fsr.path
+		c.Set("DataDir", fsr.path)
 	}
 
 	// derive an installationID from the client ID loaded from the repo.

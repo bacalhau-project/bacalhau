@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -192,12 +193,12 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig(ctx, cfg.Node, true)
+	computeConfig, err := serve.GetComputeConfig(ctx, cfg, true)
 	if err != nil {
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg.Node.Requester, true)
+	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg, true)
 	if err != nil {
 		return err
 	}
@@ -206,12 +207,33 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 	)
+	userKeyPath, err := cfg.UserKeyPath()
+	if err != nil {
+		return err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	if err != nil {
+		return err
+	}
 	if IsNoop {
 		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
 	} else if ODs.ExecutorPlugins {
-		options = append(options, devstack.WithDependencyInjector(node.NewExecutorPluginNodeDependencyInjector(cfg)))
+		pluginPath, err := cfg.PluginsDir()
+		if err != nil {
+			return err
+		}
+		options = append(options, devstack.WithDependencyInjector(
+			node.NewExecutorPluginNodeDependencyInjector(
+				cfg,
+				userKey,
+				pluginPath,
+			)))
 	} else {
-		options = append(options, devstack.WithDependencyInjector(node.NewStandardNodeDependencyInjector(cfg)))
+		options = append(options, devstack.WithDependencyInjector(
+			node.NewStandardNodeDependencyInjector(
+				cfg,
+				userKey,
+			)))
 	}
 
 	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).

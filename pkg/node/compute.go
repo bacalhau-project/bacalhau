@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 
 	"github.com/nats-io/nats.go"
@@ -19,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	pkgconfig "github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -54,9 +53,8 @@ func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
+	cfg types.BacalhauConfig,
 	config ComputeConfig,
-	storagePath string,
-	repoPath string,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
@@ -85,11 +83,15 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
+	executionDir, err := cfg.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     nodeID,
 		Callback:               computeCallback,
 		Store:                  executionStore,
-		StorageDirectory:       storagePath,
+		StorageDirectory:       executionDir,
 		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
@@ -195,15 +197,14 @@ func NewComputeNode(
 		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
 	)
 
-	computeStorePath := filepath.Join(repoPath, pkgconfig.ComputeStorePath)
-	if err = os.MkdirAll(computeStorePath, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed to create compute store directory: %s", err)
-	}
-
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
+	computeDir, err := cfg.ComputeDir()
+	if err != nil {
+		return nil, err
+	}
 	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
-	regFilename = filepath.Join(computeStorePath, regFilename)
+	regFilename = filepath.Join(computeDir, regFilename)
 
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,

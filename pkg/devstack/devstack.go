@@ -74,7 +74,11 @@ func Setup(
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	stackConfig, err := defaultDevStackConfig(cfg)
+	executionDir, err := cfg.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
+	stackConfig, err := defaultDevStackConfig(executionDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
@@ -246,7 +250,7 @@ func Setup(
 		nodeConfig.RequesterNodeConfig.DefaultApprovalState = stackConfig.RequesterConfig.DefaultApprovalState
 
 		// Create dedicated store paths for each node
-		err = setStorePaths(ctx, fsRepo, &nodeConfig)
+		err = setStorePaths(ctx, cfg, &nodeConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -277,26 +281,22 @@ func Setup(
 	}, nil
 }
 
-func setStorePaths(ctx context.Context, fsRepo *repo.FsRepo, nodeConfig *node.NodeConfig) error {
+func setStorePaths(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
-	repoPath, err := fsRepo.Path()
+	orchestratorDir, err := cfg.OrchestratorDir()
 	if err != nil {
 		return err
 	}
-	orchestratorStoreRootPath := filepath.Join(repoPath, config.OrchestratorStorePath)
-	computeStoreRootPath := filepath.Join(repoPath, config.ComputeStorePath)
-	if err := os.MkdirAll(orchestratorStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create orchestrator store root path: %w", err)
-	}
-	if err := os.MkdirAll(computeStoreRootPath, util.OS_USER_RWX); err != nil && !os.IsExist(err) {
-		return fmt.Errorf("failed to create compute store root path: %w", err)
-	}
-	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorStoreRootPath, fmt.Sprintf("jobstore-%s.db", nodeID)))
+	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorDir, fmt.Sprintf("jobstore-%s.db", nodeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create job store: %w", err)
 	}
 
-	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeStoreRootPath, fmt.Sprintf("executionstore-%s.db", nodeID)))
+	computeDir, err := cfg.ComputeDir()
+	if err != nil {
+		return err
+	}
+	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeDir, fmt.Sprintf("executionstore-%s.db", nodeID)))
 	if err != nil {
 		return fmt.Errorf("failed to create execution store: %w", err)
 	}
