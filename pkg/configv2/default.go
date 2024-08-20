@@ -1,29 +1,29 @@
 package configv2
 
 import (
+	"os"
+	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
-	Day    = types.Duration(time.Hour * 24)
-	Hour   = types.Duration(time.Hour)
-	Minuet = types.Duration(time.Minute)
 	Second = types.Duration(time.Second)
+	Minuet = types.Duration(time.Minute)
+	Day    = types.Duration(time.Hour * 24)
 )
-
-// NB(forrest): setting copied verbatim from:
-// https://www.notion.so/expanso/Rethinking-Configuration-435fbe87419148b4bbc5119d413786eb?pvs=4#6a28290e0c514e3b95e8ec6ee0106379
 
 // Default is the default configuration for a bacalhau node.
 var Default = types.Bacalhau{
 	API: types.API{
 		Address: "0.0.0.0:1234",
 	},
-	DataDir: "~/.bacalhau",
+	DataDir: getDefaultDataDir(),
 	Orchestrator: types.Orchestrator{
 		Enabled: true,
 		Listen:  "0.0.0.0:4222",
@@ -135,4 +135,30 @@ var Default = types.Bacalhau{
 	UpdateConfig: types.UpdateConfig{
 		Interval: Day,
 	},
+}
+
+const defaultBacalhauDir = ".bacalhau"
+
+// getDefaultDataDir determines the appropriate default directory for storing repository data.
+// Priority order:
+// 1. If the environment variable BACALHAU_DIR is set and non-empty, use it.
+// 3. User's home directory with .bacalhau appended.
+// 4. User-specific configuration directory with .bacalhau appended.
+// 5. If all above fail, use .bacalhau in the current directory.
+// The function logs any errors encountered during the process and always returns a usable path.
+func getDefaultDataDir() string {
+	if repoDir, set := os.LookupEnv("BACALHAU_DIR"); set && repoDir != "" {
+		return repoDir
+	}
+
+	if userHome, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(userHome, defaultBacalhauDir)
+	}
+
+	if userDir, err := os.UserConfigDir(); err == nil {
+		return filepath.Join(userDir, defaultBacalhauDir)
+	}
+
+	log.Error().Msg("Failed to determine default repo path. Using current directory.")
+	return defaultBacalhauDir
 }

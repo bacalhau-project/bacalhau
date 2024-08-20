@@ -157,8 +157,8 @@ func (c *Config) Merge(path string) error {
 	return nil
 }
 
-// Current returns the current configuration.
-// Current returns an error if the configuration cannot be unmarshalled.
+// Unmarshal returns the current configuration.
+// Unmarshal returns an error if the configuration cannot be unmarshalled.
 func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err

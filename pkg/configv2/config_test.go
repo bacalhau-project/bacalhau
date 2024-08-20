@@ -35,8 +35,7 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	overrideClientAddress := "overrideAddress"
 
 	defaultConfig := types.Bacalhau{
-		DataDir:      "defaultRepo",
-		NameProvider: "defaultName",
+		DataDir: "defaultRepo",
 		API: types.API{
 			Address: "defaultAddress",
 		},
@@ -58,7 +57,6 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, overrideRepo, actual.DataDir)
-	assert.Equal(t, overrideName, actual.NameProvider)
 	assert.Equal(t, overrideClientAddress, actual.API.Address)
 	assert.Empty(t, actual.Orchestrator)
 	assert.Empty(t, actual.Compute)
