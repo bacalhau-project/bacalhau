@@ -42,6 +42,18 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_defaults")
 	suite.copyRepo(testDataPath)
+	// validate the repo copy is correct
+	suite.DirExists(filepath.Join(suite.TempDir, "compute_store"))
+	suite.FileExists(filepath.Join(suite.TempDir, "compute_store", "executions.db"))
+	suite.DirExists(filepath.Join(suite.TempDir, "executor_storages"))
+	suite.DirExists(filepath.Join(suite.TempDir, "executor_storages", "bacalhau-local-publisher"))
+	suite.DirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
+	suite.DirExists(filepath.Join(suite.TempDir, "orchestrator_store", "nats-store"))
+	suite.FileExists(filepath.Join(suite.TempDir, "orchestrator_store", "jobs.db"))
+	suite.DirExists(filepath.Join(suite.TempDir, "plugins"))
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	suite.FileExists(filepath.Join(suite.TempDir, "update.json"))
+	suite.FileExists(filepath.Join(suite.TempDir, "user_id.pem"))
 	configPath := filepath.Join(suite.TempDir, config.FileName)
 
 	// define a config in the repo we are migrating with the correct paths defined in it
@@ -70,6 +82,7 @@ Auth:
     TokensPath: %s
 `, executionStorePath, jobStorePath, expectedInstallationID, tokensPath))
 	suite.Require().NoError(err)
+	suite.FileExists(configPath)
 
 	// verify the repo's current version is 3
 	repoVersion3, err := suite.repo.Version()
