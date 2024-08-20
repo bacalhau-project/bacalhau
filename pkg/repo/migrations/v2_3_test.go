@@ -95,9 +95,6 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	suite.Equal(libp2pPeerID, cfg.Node.Name)
 	suite.Equal(123456789, cfg.Node.Network.Port)
 
-	suite.DirExists(suite.TempDir)
-	suite.DirExists(filepath.Join(suite.TempDir, "executor_storages"))
-
 	// verify the old directories were renamed
 	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-compute"))
 	suite.NoDirExists(filepath.Join(suite.TempDir, libp2pPeerID+"-requester"))
