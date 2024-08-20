@@ -80,6 +80,7 @@ Auth:
 	cfg, err := config.New()
 	suite.Require().NoError(err)
 	suite.Require().NoError(suite.repo.Open(cfg))
+	time.Sleep(time.Minute * 10)
 
 	// verify the repo's new current version is 4
 	repoVersion4, err := suite.repo.Version()
