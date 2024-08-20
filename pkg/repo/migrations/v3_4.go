@@ -141,13 +141,18 @@ var V3Migration = repo.NewMigration(
 				return fmt.Errorf("removing %s: %w", filepath.Join(repoPath, "orchestrator_store"), err)
 			}
 
+			// TODO for buildkite to work it seems we need to create ExecutionDirName first?
+			computeExecutionsDirPath := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
+			if err := os.Mkdir(computeExecutionsDirPath, util.OS_USER_RWX); err != nil {
+				return fmt.Errorf("creating compute exectuions dir %q: %q", computeExecutionsDirPath, err)
+			}
+
 			from := fileCfg.Node.ComputeStoragePath
 			if from == "" {
 				from = filepath.Join(repoPath, "executor_storages")
 			}
-			to := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
-			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
-			if err := os.Rename(from, to); err != nil {
+			log.Info().Str("from", from).Str("to", computeExecutionsDirPath).Msg("copying executor storages")
+			if err := os.Rename(from, computeExecutionsDirPath); err != nil {
 				return fmt.Errorf("migrating executor storages: %w", err)
 			}
 		}
