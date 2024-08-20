@@ -30,7 +30,7 @@ import (
 // - Removes ./bacalhau/execution_store.
 // - If a user has configured a custom user key path, the configured value is copied to .bacalhau/user_id.pem.
 // - If a user has configured a custom auth tokens path, the configured value is copied to .bacalhau/tokens.json.
-var V3Migration = StagedMigration(
+var V3Migration = repo.NewMigration(
 	repo.Version3,
 	repo.Version4,
 	func(r repo.FsRepo) error {
