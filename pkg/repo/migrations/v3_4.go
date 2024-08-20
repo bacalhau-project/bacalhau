@@ -149,7 +149,14 @@ var V3Migration = StagedMigration(
 			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
 			fromExists, fromErr := fileExists(from)
 			toExists, toErr := fileExists(to)
-			log.Info().Bool("fromExists", fromExists).Bool("toExists", toExists).Str("fromErr", fromErr.Error()).Str("toErr", toErr.Error()).Msg("check for buildkit")
+			event := log.Info().Bool("fromExists", fromExists).Bool("toExists", toExists)
+			if fromErr != nil {
+				event.Str("fromErr", fromErr.Error())
+			}
+			if toErr != nil {
+				event.Str("toErr", toErr.Error())
+			}
+			event.Msg("BUILD KIT DEBUG")
 			if err := os.Rename(from, to); err != nil {
 				return fmt.Errorf("migrating executor storages: %w", err)
 			}
