@@ -56,8 +56,6 @@ func performStagedMigration(r repo.FsRepo, migrationFn repo.MigrationFn) error {
 	}
 	defer cleanupStagingPath(stagingPath)
 
-	info, err := os.Stat(stagingPath)
-	log.Info().Msgf("BUILD KITE does staging %q exist: INFO: %v, ERR: %v", stagingPath, info, err)
 	log.Debug().Msgf("copied repo to staging directory: %q", stagingPath)
 	if err := os.CopyFS(stagingPath, os.DirFS(repoPath)); err != nil {
 		return fmt.Errorf("copying repository to staging directory %q for repo migration: migration not applied: %w", stagingPath, err)
