@@ -13,8 +13,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -126,9 +126,14 @@ func RunUpdateChecker(
 	}
 
 	clientVersion := Get()
-	clientID, err := config.GetClientID(cfg.User.KeyPath)
+	userKeyPath, err := cfg.UserKeyPath()
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to read client ID")
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key path")
+		return
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key file")
 		return
 	}
 
@@ -149,7 +154,7 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, clientID, cfg.User.InstallationID)
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID(), cfg.User.InstallationID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}

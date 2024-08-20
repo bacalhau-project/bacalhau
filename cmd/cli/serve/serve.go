@@ -139,17 +139,21 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return err
 	}
 
-	networkConfig, err := getNetworkConfig(cfg.Node.Network)
+	transportPath, err := cfg.NetworkTransportDir()
+	if err != nil {
+		return err
+	}
+	networkConfig, err := getNetworkConfig(transportPath, cfg.Node.Network)
 	if err != nil {
 		return err
 	}
 
-	computeConfig, err := GetComputeConfig(ctx, cfg.Node, isComputeNode)
+	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx, cfg.Node.Requester, isRequesterNode)
+	requesterConfig, err := GetRequesterConfig(ctx, cfg, isRequesterNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
@@ -183,7 +187,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig)
+			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig, fsRepo)
 			if err != nil {
 				return err
 			}
@@ -318,7 +322,7 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 	return orchestrator
 }
 
-func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) (string, string, error) {
+func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig, r *repo.FsRepo) (string, string, error) {
 	cert := cfg.Node.ServerAPI.TLS.ServerCertificate
 	key := cfg.Node.ServerAPI.TLS.ServerKey
 	if cert != "" && key != "" {
@@ -337,7 +341,10 @@ func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig
 	var err error
 	// If the user has not specified a private key, use their client key
 	if key == "" {
-		key = cfg.User.KeyPath
+		key, err = cfg.UserKeyPath()
+		if err != nil {
+			return "", "", err
+		}
 	}
 	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
 	if err != nil {

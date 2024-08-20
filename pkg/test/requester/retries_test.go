@@ -50,7 +50,9 @@ func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 
-	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
+	executionDir, err := cfg.ExecutionDir()
+	s.Require().NoError(err)
+	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
 		BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 		BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
 	})

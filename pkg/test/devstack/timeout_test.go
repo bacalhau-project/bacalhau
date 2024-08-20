@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
@@ -49,7 +49,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(suite.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
+		computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
 			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
 			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
 			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
@@ -122,7 +122,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	clientID, err := config.GetClientID(suite.Config.User.KeyPath)
+	userKeyPath, err := suite.Config.UserKeyPath()
+	suite.Require().NoError(err)
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
 	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
@@ -223,7 +225,7 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		},
 		{
 			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
-			computeJobExecutionBypassList:       []string{clientID},
+			computeJobExecutionBypassList:       []string{userKey.ClientID()},
 			computeJobNegotiationTimeout:        10 * time.Second,
 			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
 			computeMaxJobExecutionTimeout:       1 * time.Minute,

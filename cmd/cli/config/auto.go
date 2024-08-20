@@ -117,7 +117,11 @@ func newAutoResourceCmd() *cobra.Command {
 }
 
 func autoConfig(ctx context.Context, cfg types.BacalhauConfig, settings *autoSettings) error {
-	pp := system.NewPhysicalCapacityProvider(cfg.Node.ComputeStoragePath)
+	executionDir, err := cfg.ExecutionDir()
+	if err != nil {
+		return err
+	}
+	pp := system.NewPhysicalCapacityProvider(executionDir)
 	physicalResources, err := pp.GetTotalCapacity(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to calculate system physical resources: %w", err)

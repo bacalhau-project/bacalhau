@@ -50,7 +50,10 @@ func (s *BaseSuite) SetupTest() {
 
 	s.AllowListedPath = s.T().TempDir()
 
-	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
+	executionDir, err := cfg.ExecutionDir()
+	s.Require().NoError(err)
+
+	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},

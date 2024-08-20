@@ -6,15 +6,14 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 type ConfigOption = func(cfg *DevStackConfig)
 
-func defaultDevStackConfig(cfg types.BacalhauConfig) (*DevStackConfig, error) {
-	computeConfig, err := node.NewComputeConfigWithDefaults(cfg.Node.ComputeStoragePath)
+func defaultDevStackConfig(executionDir string) (*DevStackConfig, error) {
+	computeConfig, err := node.NewComputeConfigWithDefaults(executionDir)
 	if err != nil {
 		return nil, err
 	}

@@ -122,16 +122,16 @@ type ComputeConfig struct {
 	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
 
-func NewComputeConfigWithDefaults(storagePath string) (ComputeConfig, error) {
-	return NewComputeConfigWith(storagePath, NewDefaultComputeParam(storagePath))
+func NewComputeConfigWithDefaults(executionDir string) (ComputeConfig, error) {
+	return NewComputeConfigWith(executionDir, NewDefaultComputeParam(executionDir))
 }
 
 //nolint:funlen
-func NewComputeConfigWith(storagePath string, params ComputeConfigParams) (ComputeConfig, error) {
-	if storagePath == "" {
-		storagePath = os.TempDir()
+func NewComputeConfigWith(executionDir string, params ComputeConfigParams) (ComputeConfig, error) {
+	if executionDir == "" {
+		executionDir = os.TempDir()
 	}
-	defaults := NewDefaultComputeParam(storagePath)
+	defaults := NewDefaultComputeParam(executionDir)
 	if params.JobNegotiationTimeout == 0 {
 		params.JobNegotiationTimeout = defaults.JobNegotiationTimeout
 	}
