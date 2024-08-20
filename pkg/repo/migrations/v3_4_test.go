@@ -45,6 +45,7 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	// validate the repo copy is correct
 	suite.DirExists(filepath.Join(suite.TempDir, "compute_store"))
 	suite.FileExists(filepath.Join(suite.TempDir, "compute_store", "executions.db"))
+	suite.FileExists(filepath.Join(suite.TempDir, "compute_store", "n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d.registration.lock"))
 	suite.DirExists(filepath.Join(suite.TempDir, "executor_storages"))
 	suite.DirExists(filepath.Join(suite.TempDir, "executor_storages", "bacalhau-local-publisher"))
 	suite.DirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
@@ -113,8 +114,14 @@ Auth:
 	// verify the new files exists
 	suite.FileExists(filepath.Join(suite.TempDir, "system_metadata.yaml"))
 
-	// old directories were replaced with new ones
+	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
+	suite.DirExists(filepath.Join(suite.TempDir, "orchestrator"))
+	suite.DirExists(filepath.Join(suite.TempDir, "orchestrator", "nats-store"))
+	suite.FileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
+
+	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
+	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.

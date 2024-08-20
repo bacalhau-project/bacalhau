@@ -6,11 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V3Migration updates the repo, replacing repo.version and update.json with system_metadata.yaml.
@@ -85,72 +82,56 @@ var V3Migration = repo.NewMigration(
 				}
 			}
 
-			// create the new compute store directory
-			computeDirPath := filepath.Join(repoPath, types.ComputeDirName)
-			if err := os.Mkdir(computeDirPath, util.OS_USER_RWX); err != nil {
-				return fmt.Errorf("creating compute dir path: %w", err)
+			if err := migrateOrchestratorStore(repoPath, fileCfg.Node.Requester.JobStore); err != nil {
+				return err
 			}
 
-			// if the user has configured a path, migration from it
-			if fileCfg.Node.Compute.ExecutionStore.Path != "" {
-				if err := copyFile(
-					fileCfg.Node.Compute.ExecutionStore.Path,
-					filepath.Join(repoPath, types.ComputeDirName, types.ExecutionStoreFileName),
-				); err != nil {
-					return fmt.Errorf("copying execution database: %w", err)
-				}
-			} else {
-				// else use the default location
-				if err := copyFile(
-					filepath.Join(repoPath, "compute_store", "executions.db"),
-					filepath.Join(repoPath, types.ComputeDirName, types.ExecutionStoreFileName)); err != nil {
-					return fmt.Errorf("copying execution database: %w", err)
-				}
-			}
-
-			// remove the old compute_store
-			if err := os.RemoveAll(filepath.Join(repoPath, "compute_store")); err != nil {
-				return fmt.Errorf("removing %s: %w", filepath.Join(repoPath, "compute_store"), err)
-			}
-
-			// create the new orchestrator store directory
-			orchestratorDirPath := filepath.Join(repoPath, types.OrchestratorDirName)
-			if err := os.Mkdir(orchestratorDirPath, util.OS_USER_RWX); err != nil {
-				return fmt.Errorf("creating orchestrator dir path: %w", err)
-			}
-
-			// if the user has configured a path, migration from it
-			if fileCfg.Node.Requester.JobStore.Path != "" {
-				if err := copyFile(
-					fileCfg.Node.Requester.JobStore.Path,
-					filepath.Join(repoPath, types.OrchestratorDirName, types.JobStoreFileName),
-				); err != nil {
-					return fmt.Errorf("copying job database: %w", err)
-				}
-			} else {
-				// else use the default location
-				if err := copyFile(
-					filepath.Join(repoPath, "orchestrator_store", "jobs.db"),
-					filepath.Join(repoPath, types.OrchestratorDirName, types.JobStoreFileName)); err != nil {
-					return fmt.Errorf("copying execution database: %w", err)
-				}
-			}
-
-			// remove the old orchestrator_store
-			if err := os.RemoveAll(filepath.Join(repoPath, "orchestrator_store")); err != nil {
-				return fmt.Errorf("removing %s: %w", filepath.Join(repoPath, "orchestrator_store"), err)
-			}
-
-			from := fileCfg.Node.ComputeStoragePath
-			if from == "" {
-				from = filepath.Join(repoPath, "executor_storages")
-			}
-			to := filepath.Join(repoPath, types.ComputeDirName, types.ExecutionDirName)
-			log.Info().Str("from", from).Str("to", to).Msg("copying executor storages")
-			if err := os.Rename(from, to); err != nil {
-				return fmt.Errorf("migrating executor storages: %w", err)
+			if err := migrateComputeStore(repoPath, fileCfg.Node.Compute.ExecutionStore); err != nil {
+				return err
 			}
 		}
 		return nil
 	},
 )
+
+func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
+	oldComputeDir := filepath.Join(repoPath, "compute_store")
+	oldExecutionStorePath := config.Path
+	if oldExecutionStorePath == "" {
+		oldExecutionStorePath = filepath.Join(oldComputeDir, "executions.db")
+	}
+	newExecutionStorePath := filepath.Join(oldComputeDir, "state_boltdb.db")
+	if err := os.Rename(oldExecutionStorePath, newExecutionStorePath); err != nil {
+		return err
+	}
+
+	newComputeDir := filepath.Join(repoPath, types.ComputeDirName)
+	if err := os.Rename(oldComputeDir, newComputeDir); err != nil {
+		return err
+	}
+
+	oldExecutionDir := filepath.Join(repoPath, "executor_storages")
+	newExecutionDir := filepath.Join(newComputeDir, "executions")
+	if err := os.Rename(oldExecutionDir, newExecutionDir); err != nil {
+		return err
+	}
+	return nil
+}
+
+func migrateOrchestratorStore(repoPath string, config types.JobStoreConfig) error {
+	oldOrchestratorDir := filepath.Join(repoPath, "orchestrator_store")
+	oldJobStorePath := config.Path
+	if oldJobStorePath == "" {
+		oldJobStorePath = filepath.Join(oldOrchestratorDir, "jobs.db")
+	}
+	newJobStorePath := filepath.Join(oldOrchestratorDir, "state_boltdb.db")
+	if err := os.Rename(oldJobStorePath, newJobStorePath); err != nil {
+		return err
+	}
+
+	newOrchestratorDir := filepath.Join(repoPath, types.OrchestratorDirName)
+	if err := os.Rename(oldOrchestratorDir, newOrchestratorDir); err != nil {
+		return err
+	}
+	return nil
+}
