@@ -156,6 +156,9 @@ func (e *Execution) Normalize() {
 			Tasks: make(map[string]*Resources),
 		}
 	}
+	if e.PublishedResult == nil {
+		e.PublishedResult = &SpecConfig{}
+	}
 	e.Job.Normalize()
 }
 
