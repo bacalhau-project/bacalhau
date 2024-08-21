@@ -19,8 +19,6 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API,
 	tlsCfg := cfg.Node.ClientAPI.ClientTLS
 	apiHost := cfg.Node.ClientAPI.Host
 	apiPort := cfg.Node.ClientAPI.Port
-	tokenPath := cfg.Auth.TokensPath
-	clientKeyPath := cfg.User.KeyPath
 
 	if tlsCfg.CACert != "" {
 		if _, err := os.Stat(tlsCfg.CACert); os.IsNotExist(err) {
@@ -52,9 +50,18 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API,
 		clientv2.WithHeaders(headers),
 	}
 
-	existingAuthToken, err := ReadToken(tokenPath, base)
+	authTokenPath, err := cfg.AuthTokensPath()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read access tokens path – API calls will be without authorization")
+	}
+	existingAuthToken, err := ReadToken(authTokenPath, base)
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+	}
+
+	userKeyPath, err := cfg.UserKeyPath()
+	if err != nil {
+		return nil, err
 	}
 
 	return clientv2.NewAPI(
@@ -62,10 +69,10 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API,
 			Client:     clientv2.NewHTTPClient(base, opts...),
 			Credential: existingAuthToken,
 			PersistCredential: func(cred *apimodels.HTTPCredential) error {
-				return WriteToken(tokenPath, base, cred)
+				return WriteToken(authTokenPath, base, cred)
 			},
 			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
-				return auth.RunAuthenticationFlow(ctx, cmd, a, clientKeyPath)
+				return auth.RunAuthenticationFlow(ctx, cmd, a, userKeyPath)
 			},
 		},
 	), nil

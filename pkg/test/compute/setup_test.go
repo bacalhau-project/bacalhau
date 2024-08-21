@@ -14,8 +14,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -25,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -34,7 +35,6 @@ import (
 type ComputeSuite struct {
 	suite.Suite
 	node             *node.Compute
-	c                types.BacalhauConfig
 	config           node.ComputeConfig
 	cm               *system.CleanupManager
 	executor         *noop_executor.NoopExecutor
@@ -52,11 +52,10 @@ func (s *ComputeSuite) SetupTest() {
 
 // setupConfig creates a new config for testing
 func (s *ComputeSuite) setupConfig() {
-	s.c = configenv.Testing
 	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
 	s.Require().NoError(err)
 
-	cfg, err := node.NewComputeConfigWith(s.c.Node.ComputeStoragePath, node.ComputeConfigParams{
+	cfg, err := node.NewComputeConfigWith(s.T().TempDir(), node.ComputeConfigParams{
 		TotalResourceLimits: models.Resources{
 			CPU: 2,
 		},
@@ -90,9 +89,6 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	storagePath := s.T().TempDir()
-	repoPath := s.T().TempDir()
-
 	noopstorage := noop_storage.NewNoopStorage()
 	callback := compute.CallbackMock{
 		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
@@ -114,14 +110,27 @@ func (s *ComputeSuite) setupNode() {
 	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
 	s.Require().NoError(err)
 
+	r, err := repo.NewFS(repo.FsRepoParams{
+		Path:       s.T().TempDir(),
+		Migrations: nil,
+	})
+	s.Require().NoError(err)
+
+	c, err := config.New()
+	s.Require().NoError(err)
+
+	err = r.Init(c)
+	s.Require().NoError(err)
+	cfg, err := c.Current()
+	s.Require().NoError(err)
+
 	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
 		nodeID,
 		apiServer,
+		cfg,
 		s.config,
-		storagePath,
-		repoPath,
 		provider.NewNoopProvider[storage.Storage](noopstorage),
 		provider.NewMappedProvider(map[string]executor_common.Executor{
 			models.EngineNoop:   s.executor,

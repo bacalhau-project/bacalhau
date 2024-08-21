@@ -3,6 +3,7 @@ package migrations
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -93,4 +94,50 @@ func loadLibp2pPrivKey(path string) (libp2p_crypto.PrivKey, error) {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 	return key, nil
+}
+
+// copyFile copies a file from srcPath to dstPath, preserving the file permissions.
+// It opens the source file, creates the destination file, copies the content,
+// and sets the destination file's permissions to match the source file. It also
+// ensures that the destination file's contents are flushed to disk before returning.
+func copyFile(srcPath, dstPath string) error {
+	// Open the source file
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	// Get the file info of the source file to retrieve its permissions
+	srcFileInfo, err := srcFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	// Create the destination file
+	dstFile, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	// Copy the contents from source to destination
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	// Set the destination file's permissions to match the source file's permissions
+	err = os.Chmod(dstPath, srcFileInfo.Mode())
+	if err != nil {
+		return err
+	}
+
+	// Flush the contents to disk
+	err = dstFile.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

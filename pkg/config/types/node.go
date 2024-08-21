@@ -18,9 +18,11 @@ type NodeConfig struct {
 	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
 	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
 
+	// Deprecated: replaced by cfg.PluginsDir()
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
 
 	// TODO(forrest) [refactor]: rename this to ExecutorStoragePath
+	// Deprecated: replaced by cfg.ComputeDir()
 	ComputeStoragePath string `yaml:"ComputeStoragePath"`
 
 	LoggingMode logger.LogMode `yaml:"LoggingMode"`

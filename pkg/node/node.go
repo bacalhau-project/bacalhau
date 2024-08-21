@@ -13,6 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -74,21 +75,25 @@ type NodeDependencyInjector struct {
 	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
-func NewExecutorPluginNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
+func NewExecutorPluginNodeDependencyInjector(
+	cfg types.BacalhauConfig,
+	userKey *baccrypto.UserKey,
+	pluginPath string,
+) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
-		ExecutorsFactory:        NewPluginExecutorFactory(cfg.Node.ExecutorPluginPath),
+		ExecutorsFactory:        NewPluginExecutorFactory(pluginPath),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
 }
 
-func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(cfg.User.KeyPath),
+		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
 }
 
@@ -124,7 +129,16 @@ func NewNode(
 		return nil, err
 	}
 
-	apiServer, err := createAPIServer(config, bacalhauConfig)
+	userKeyPath, err := bacalhauConfig.UserKeyPath()
+	if err != nil {
+		return nil, err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
+	apiServer, err := createAPIServer(config, userKey)
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +184,6 @@ func NewNode(
 	}
 
 	if config.IsComputeNode {
-		storagePath := bacalhauConfig.Node.ComputeStoragePath
-
 		// Setup dependencies
 		publishers, err := config.DependencyInjector.PublishersFactory.Get(ctx, config)
 		if err != nil {
@@ -188,26 +200,23 @@ func NewNode(
 			return nil, err
 		}
 
-		// TODO calling `Keys` on the publishers takes ~10 seconds per call
-		// https://github.com/bacalhau-project/bacalhau/issues/4153
-		metrics.NodeInfo.Add(ctx, 1,
-			attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
-			attribute.StringSlice("node_storages", storages.Keys(ctx)),
-			attribute.StringSlice("node_engines", executors.Keys(ctx)),
-		)
+		/*
+			// TODO calling `Keys` on the publishers takes ~10 seconds per call
+			// https://github.com/bacalhau-project/bacalhau/issues/4153
+			metrics.NodeInfo.Add(ctx, 1,
+				attribute.StringSlice("node_publishers", publishers.Keys(ctx)),
+				attribute.StringSlice("node_storages", storages.Keys(ctx)),
+				attribute.StringSlice("node_engines", executors.Keys(ctx)),
+			)
 
-		repoPath, err := fsr.Path()
-		if err != nil {
-			return nil, err
-		}
+		*/
 		// setup compute node
 		computeNode, err = NewComputeNode(
 			ctx,
 			config.NodeID,
 			apiServer,
+			bacalhauConfig,
 			config.ComputeConfig,
-			storagePath,
-			repoPath,
 			storages,
 			executors,
 			publishers,
@@ -319,9 +328,17 @@ func NewNode(
 }
 
 func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig) error {
+	userKeyPath, err := bacalhauConfig.UserKeyPath()
+	if err != nil {
+		return err
+	}
+	userKey, err := baccrypto.LoadUserKey(userKeyPath)
+	if err != nil {
+		return err
+	}
 	config.DependencyInjector =
-		mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(bacalhauConfig))
-	err := mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
+		mergeDependencyInjectors(config.DependencyInjector, NewStandardNodeDependencyInjector(bacalhauConfig, userKey))
+	err = mergo.Merge(&config.APIServerConfig, publicapi.DefaultConfig())
 	if err != nil {
 		return err
 	}
@@ -337,13 +354,8 @@ func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig) erro
 	return nil
 }
 
-func createAPIServer(config NodeConfig, bacalhauConfig types.BacalhauConfig) (*publicapi.Server, error) {
+func createAPIServer(config NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Server, error) {
 	authzPolicy, err := policy.FromPathOrDefault(config.AuthConfig.AccessPolicyPath, authz.AlwaysAllowPolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	signingKey, err := loadUserIDKey(bacalhauConfig.User.KeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -356,7 +368,7 @@ func createAPIServer(config NodeConfig, bacalhauConfig types.BacalhauConfig) (*p
 		Port:       config.APIPort,
 		HostID:     config.NodeID,
 		Config:     config.APIServerConfig,
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, &signingKey.PublicKey, config.NodeID),
+		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), config.NodeID),
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,

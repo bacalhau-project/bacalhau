@@ -19,12 +19,8 @@ const (
 	Version2
 	// Version3 is the repo version to (including) v1.4.0
 	Version3
-	// Version4 is the current repo version
+	// Version4 is the latest version
 	Version4
-	// Add new versions here when needed
-	// RepoVersion5
-	// RepoVersion6
-	// ...
 )
 
 // IsValidVersion returns true if the version is valid.

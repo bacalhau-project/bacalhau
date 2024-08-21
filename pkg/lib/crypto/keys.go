@@ -1,15 +1,50 @@
 package crypto
 
 import (
+	"crypto"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/pkg/errors"
+
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
+
+type UserKey struct {
+	sk      *rsa.PrivateKey
+	sigHash crypto.Hash
+}
+
+func (u *UserKey) PrivateKey() *rsa.PrivateKey {
+	return u.sk
+}
+
+func (u *UserKey) PublicKey() *rsa.PublicKey {
+	return &u.sk.PublicKey
+}
+
+func (u *UserKey) ClientID() string {
+	hash := u.sigHash.New()
+	hash.Write(u.sk.N.Bytes())
+	hashBytes := hash.Sum(nil)
+
+	return fmt.Sprintf("%x", hashBytes)
+}
+
+func LoadUserKey(path string) (*UserKey, error) {
+	sk, err := LoadPKCS1KeyFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return &UserKey{
+		sk:      sk,
+		sigHash: crypto.SHA256,
+	}, nil
+}
 
 func LoadPKCS1KeyFile(keyFile string) (*rsa.PrivateKey, error) {
 	file, err := os.Open(keyFile)

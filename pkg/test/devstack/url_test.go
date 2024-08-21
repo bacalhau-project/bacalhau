@@ -53,7 +53,7 @@ func runURLTest(
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 
-	computeConfig, err := node.NewComputeConfigWith(cfg.Node.ComputeStoragePath, node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
@@ -225,7 +225,7 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 	}))
 	defer svr.Close()
 
-	computeConfig, err := node.NewComputeConfigWith(s.Config.Node.ComputeStoragePath, node.ComputeConfigParams{
+	computeConfig, err := node.NewComputeConfigWith(s.T().TempDir(), node.ComputeConfigParams{
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
