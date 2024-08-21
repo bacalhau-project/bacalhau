@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -23,25 +24,39 @@ func NewPublisherProvider(
 	ctx context.Context,
 	storagePath string,
 	cm *system.CleanupManager,
-	ipfsConnect string,
+	cfg types2.PublishersConfig,
 	localConfig *types.LocalPublisherConfig,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher := noop.NewNoopPublisher()
-	s3Publisher, err := configureS3Publisher(storagePath, cm)
-	if err != nil {
-		return nil, err
+	providers := make(map[string]publisher.Publisher)
+
+	// TODO(review): the NoopPublisher is a testing attribute, should it remain part of the default set of publishers?
+	// for now, lets keep everything the same for compatibility, else tests might fail.
+	providers[models.PublisherNoop] = noop.NewNoopPublisher()
+
+	if cfg.Enabled(types2.KindPublisherS3) {
+		s3Publisher, err := configureS3Publisher(storagePath, cm)
+		if err != nil {
+			return nil, err
+		}
+		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
 	}
 
-	localPublisher := local.NewLocalPublisher(ctx, localConfig.Directory, localConfig.Address, localConfig.Port)
-
-	providers := map[string]publisher.Publisher{
-		models.PublisherNoop:  tracing.Wrap(noopPublisher),
-		models.PublisherS3:    tracing.Wrap(s3Publisher),
-		models.PublisherLocal: tracing.Wrap(localPublisher),
+	if cfg.Enabled(types2.KindPublisherLocal) {
+		providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
+			ctx,
+			localConfig.Directory,
+			localConfig.Address,
+			localConfig.Port,
+		))
 	}
 
-	if ipfsConnect != "" {
-		ipfsClient, err := ipfs_client.NewClient(ctx, ipfsConnect)
+	// TODO(review): what does it mean if IPFS isn't disabled in the config, and also doesn't have a config?
+	if cfg.Enabled(types2.KindPublisherIPFS) && cfg.HasConfig(types2.KindPublisherIPFS) {
+		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsPublisherConfig](cfg)
+		if err != nil {
+			return nil, err
+		}
+		ipfsClient, err := ipfs_client.NewClient(ctx, ipfscfg.Connect)
 		if err != nil {
 			return nil, err
 		}
@@ -49,9 +64,9 @@ func NewPublisherProvider(
 		if err != nil {
 			return nil, err
 		}
-
-		providers[models.PublisherIPFS] = ipfsPublisher
+		providers[models.PublisherIPFS] = tracing.Wrap(ipfsPublisher)
 	}
+
 	return provider.NewMappedProvider(providers), nil
 }
 

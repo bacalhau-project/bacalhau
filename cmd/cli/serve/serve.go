@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -117,37 +119,27 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) error {
+func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	var nodeName string
-	var err error
-
-	if cfg.Node.Name == "" {
-		nodeName, err = getNodeID(ctx, cfg.Node.NameProvider)
-		if err != nil {
-			return err
-		}
-		cfg.Node.Name = nodeName
+	// TODO(review): at some point we need to initialize this, assumedly in the config or repo
+	nodeName, err := fsRepo.ReadNodeName()
+	if err != nil {
+		return fmt.Errorf("failed to get node name: %w", err)
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
-	isRequesterNode, isComputeNode, err := getNodeType(cfg)
+	isRequesterNode := cfg.Orchestrator.Enabled
+	isComputeNode := cfg.Compute.Enabled
+
+	networkConfig, err := getNetworkConfig(cfg)
 	if err != nil {
 		return err
 	}
 
-	transportPath, err := cfg.NetworkTransportDir()
-	if err != nil {
-		return err
-	}
-	networkConfig, err := getNetworkConfig(transportPath, cfg.Node.Network)
-	if err != nil {
-		return err
-	}
-
+	// TODO(review) should we build this type iff isComputeNodei == true?
 	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
@@ -159,35 +151,57 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 	}
 
 	// Create node config from cmd arguments
-	hostAddress, err := parseServerAPIHost(cfg.Node.ServerAPI.Host)
+	// TODO(forrest): this method will need to be adjusted to accept a string like "address:port"
+	// instead of just an address with no port as it does now. something like net.SplitHostPort
+	hostAddress, err := parseServerAPIHost(cfg.API.Address)
+	if err != nil {
+		return err
+	}
+	_, portStr, err := net.SplitHostPort(cfg.API.Address)
+	if err != nil {
+		return err
+	}
+	port, err := strconv.ParseUint(portStr, 10, 63)
 	if err != nil {
 		return err
 	}
 	nodeConfig := node.NodeConfig{
-		NodeID:                cfg.Node.Name,
-		CleanupManager:        cm,
-		DisabledFeatures:      node.FeatureConfig(cfg.Node.DisabledFeatures),
-		HostAddress:           hostAddress,
-		APIPort:               uint16(cfg.Node.ServerAPI.Port),
-		ComputeConfig:         computeConfig,
-		RequesterNodeConfig:   requesterConfig,
-		AuthConfig:            cfg.Auth,
-		IsComputeNode:         isComputeNode,
-		IsRequesterNode:       isRequesterNode,
-		RequesterSelfSign:     cfg.Node.ServerAPI.TLS.SelfSigned,
-		Labels:                cfg.Node.Labels,
-		AllowListedLocalPaths: cfg.Node.AllowListedLocalPaths,
+		NodeID:         nodeName,
+		CleanupManager: cm,
+		DisabledFeatures: node.FeatureConfig{
+			Engines:    cfg.Executors.Disabled,
+			Publishers: cfg.Publishers.Disabled,
+			Storages:   cfg.InputSources.Disabled,
+		},
+		HostAddress:         hostAddress,
+		APIPort:             uint16(port),
+		ComputeConfig:       computeConfig,
+		RequesterNodeConfig: requesterConfig,
+		AuthConfig: types.AuthConfig{
+			TokensPath:       cfg.API.Auth.TokensPath,
+			Methods:          cfg.API.Auth.Methods,
+			AccessPolicyPath: cfg.API.Auth.AccessPolicyPath,
+		},
+		IsComputeNode:   isComputeNode,
+		IsRequesterNode: isRequesterNode,
+		// TODO(review): previously we supported the generation of self signed config, we have moved away from this
+		// with the new config. Does this remain the intention
+		RequesterSelfSign: false,
+		//RequesterSelfSign:     cfg.Node.ServerAPI.TLS.SelfSigned,
+		Labels:                cfg.Compute.Labels,
+		AllowListedLocalPaths: cfg.Compute.Volumes,
 		NetworkConfig:         networkConfig,
 	}
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
+		// TODO(review) do we still want to enable a requester to automatically get a certificate?
 		nodeConfig.RequesterAutoCert = cfg.Node.ServerAPI.TLS.AutoCert
 		nodeConfig.RequesterAutoCertCache = cfg.Node.ServerAPI.TLS.AutoCertCachePath
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig, fsRepo)
+			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig)
 			if err != nil {
 				return err
 			}
@@ -201,14 +215,16 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 		return fmt.Errorf("error creating node: %w", err)
 	}
 
-	// Persist the node config after the node is created and its config is valid.
-	repoDir, err := fsRepo.Path()
-	if err != nil {
-		return err
-	}
-	if err = persistConfigs(repoDir, cfg); err != nil {
-		return fmt.Errorf("error persisting configs: %w", err)
-	}
+	/*
+		// Persist the node config after the node is created and its config is valid.
+		repoDir, err := fsRepo.Path()
+		if err != nil {
+			return err
+		}
+		if err = persistConfigs(repoDir, cfg); err != nil {
+			return fmt.Errorf("error persisting configs: %w", err)
+		}
+	*/
 
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {
@@ -216,15 +232,23 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 	}
 
 	// Start up Dashboard - default: 8483
-	if cfg.Node.WebUI.Enabled {
+	if cfg.WebUI.Enabled {
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		_, webUIPortStr, err := net.SplitHostPort(cfg.WebUI.Listen)
+		if err != nil {
+			return err
+		}
+		webuiPort, err := strconv.ParseInt(webUIPortStr, 10, 64)
+		if err != nil {
+			return err
+		}
 		go func() {
 			// Specifically leave the host blank. The app will just use whatever
 			// host it is served on and replace the port and path.
 			apiPort := apiURL.Port()
 			apiPath := apiURL.Path
 
-			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, cfg.Node.WebUI.Port)
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, int(webuiPort))
 			if err != nil {
 				cmd.PrintErrln(err)
 			}
@@ -238,7 +262,7 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 	cmd.Println()
 	cmd.Println(connectCmd)
 
-	envVars, err := buildEnvVariables(ctx, cfg, &nodeConfig)
+	envVars, err := buildEnvVariables(ctx, cfg.API, &nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -282,20 +306,28 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (stri
 
 func buildEnvVariables(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types2.API,
 	nodeConfig *node.NodeConfig,
 ) (string, error) {
+	hostStr, portStr, err := net.SplitHostPort(cfg.Address)
+	if err != nil {
+		return "", err
+	}
+	port, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		return "", err
+	}
 	// build shell variables to connect to this node
 	envVarBuilder := strings.Builder{}
 	envVarBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
 		config.KeyAsEnvVar(types.NodeClientAPIHost),
-		cfg.Node.ServerAPI.Host,
+		hostStr,
 	))
 	envVarBuilder.WriteString(fmt.Sprintf(
 		"export %s=%d\n",
 		config.KeyAsEnvVar(types.NodeClientAPIPort),
-		cfg.Node.ServerAPI.Port,
+		port,
 	))
 
 	if nodeConfig.IsRequesterNode {
@@ -322,9 +354,9 @@ func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
 	return orchestrator
 }
 
-func GetTLSCertificate(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig, r *repo.FsRepo) (string, string, error) {
-	cert := cfg.Node.ServerAPI.TLS.ServerCertificate
-	key := cfg.Node.ServerAPI.TLS.ServerKey
+func GetTLSCertificate(ctx context.Context, cfg types2.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
+	cert := cfg.API.TLS.CertFile
+	key := cfg.API.TLS.KeyFile
 	if cert != "" && key != "" {
 		return cert, key, nil
 	}

@@ -54,7 +54,8 @@ type RequesterConfigParams struct {
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
 
-	JobStore         jobstore.Store
+	JobStore jobstore.Store
+	// TODO(review): we don't use this field for anything, maybe we can delete it
 	NodeInfoStoreTTL time.Duration
 
 	DefaultPublisher string

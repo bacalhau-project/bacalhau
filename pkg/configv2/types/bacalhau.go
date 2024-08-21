@@ -44,21 +44,6 @@ type WebUI struct {
 	Listen  string `yaml:"Listen,omitempty"`
 }
 
-type InputSourcesConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
-}
-
-type PublishersConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
-}
-
-type ExecutorsConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
-}
-
 type Logging struct {
 	Level                string   `yaml:"Level,omitempty"`
 	Mode                 string   `yaml:"Mode,omitempty"`

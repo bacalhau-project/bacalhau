@@ -9,7 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -48,17 +48,28 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory(cfg types.BacalhauConfig) StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg types2.InputSourcesConfig) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
+		ipfsConnect := ""
+		if cfg.Enabled(types2.KindStorageIPFS) && cfg.HasConfig(types2.KindStorageIPFS) {
+			ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsInputSourceConfig](cfg)
+			if err != nil {
+				return nil, err
+			}
+			ipfsConnect = ipfscfg.Connect
+		}
+		// TODO(forrest): pass the config down through this method and only enable the non-disabled one.
 		pr, err := executor_util.NewStandardStorageProvider(
-			time.Duration(cfg.Node.VolumeSizeRequestTimeout),
-			time.Duration(cfg.Node.DownloadURLRequestTimeout),
-			cfg.Node.DownloadURLRequestRetries,
+			// NB(forrest): defaults taken from v1 config
+			2*time.Minute,
+			5*time.Minute,
+			3,
+
 			executor_util.StandardStorageProviderOptions{
-				IPFSConnect:           cfg.Node.IPFS.Connect,
+				IPFSConnect:           ipfsConnect,
 				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
 			},
 		)
@@ -69,7 +80,7 @@ func NewStandardStorageProvidersFactory(cfg types.BacalhauConfig) StorageProvide
 	})
 }
 
-func NewStandardExecutorsFactory(cfg types.DockerCacheConfig) ExecutorsFactory {
+func NewStandardExecutorsFactory(cfg types2.ExecutorsConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
@@ -118,7 +129,7 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
+func NewStandardPublishersFactory(cfg types2.Bacalhau) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
@@ -131,7 +142,7 @@ func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 				ctx,
 				executionDir,
 				nodeConfig.CleanupManager,
-				cfg.Node.IPFS.Connect,
+				cfg.Publishers,
 				&nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {

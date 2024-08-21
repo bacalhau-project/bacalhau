@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -105,6 +106,7 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 type UpdateStore interface {
 	ReadLastUpdateCheck() (time.Time, error)
 	WriteLastUpdateCheck(time.Time) error
+	ReadInstallationID() (string, error)
 }
 
 // RunUpdateChecker starts a goroutine that will periodically make an update
@@ -114,12 +116,12 @@ type UpdateStore interface {
 // (e.g. because the node running the update check is the server).
 func RunUpdateChecker(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types2.Bacalhau,
 	store UpdateStore,
 	getServerVersion func(context.Context) (*models.BuildVersionInfo, error),
 	responseCallback func(context.Context, *UpdateCheckResponse),
 ) {
-	updateFrequency := time.Duration(cfg.Update.CheckFrequency)
+	updateFrequency := time.Duration(cfg.UpdateConfig.Interval)
 	if updateFrequency <= 0 {
 		log.Ctx(ctx).Warn().Dur(types.UpdateCheckFrequency, updateFrequency).Msg("Update frequency is zero or less so no update checks will run")
 		return
@@ -138,11 +140,6 @@ func RunUpdateChecker(
 	}
 
 	runUpdateCheck := func() {
-		if cfg.Update.SkipChecks {
-			log.Debug().Msg("skipping update check")
-			return
-		}
-
 		// The server may update itself between checks, so always ask the server
 		// for its current version.
 		// TODO(forrest): [correctness] this should be a local only call to get the version of the binary running this code
@@ -154,7 +151,14 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID(), cfg.User.InstallationID)
+		installationID, err := store.ReadInstallationID()
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to read user installationID")
+			// we can continue here and still use an empty string
+			// a failure here indicates the system metadata file is un-readable
+		}
+
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID(), installationID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}

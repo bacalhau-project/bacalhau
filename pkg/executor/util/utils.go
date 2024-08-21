@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -99,23 +100,49 @@ func NewNoopStorageProvider(
 }
 
 func NewStandardExecutorProvider(
-	dockerCacheCfg types.DockerCacheConfig,
+	cfg types2.ExecutorsConfig,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(executorOptions.DockerID, dockerCacheCfg)
-	if err != nil {
-		return nil, err
+	providers := make(map[string]executor.Executor)
+	if cfg.Enabled(types2.KindExecutorDocker) {
+		var dockerExecutor *docker.Executor
+		if cfg.HasConfig(types2.KindExecutorDocker) {
+			dockercfg, err := types2.DecodeProviderConfig[types2.Docker](cfg)
+			if err != nil {
+				return nil, err
+			}
+			dockerExecutor, err = docker.NewExecutor(executorOptions.DockerID, types.DockerCacheConfig{
+				Size:      dockercfg.ManifestCache.Size,
+				Duration:  types.Duration(dockercfg.ManifestCache.TTL),
+				Frequency: types.Duration(dockercfg.ManifestCache.Refresh),
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			var err error
+			dockerExecutor, err = docker.NewExecutor(executorOptions.DockerID, types.DockerCacheConfig{
+				Size:      1000,
+				Duration:  types.Duration(1 * time.Hour),
+				Frequency: types.Duration(1 * time.Hour),
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+		providers[models.EngineDocker] = dockerExecutor
 	}
 
-	wasmExecutor, err := wasm.NewExecutor()
-	if err != nil {
-		return nil, err
+	// NB(forrest): wasm doesn't have a config, so just check that its enabled.
+	if cfg.Enabled(types2.KindExecutorWASM) {
+		wasmExecutor, err := wasm.NewExecutor()
+		if err != nil {
+			return nil, err
+		}
+		providers[models.EngineWasm] = wasmExecutor
 	}
 
-	return provider.NewMappedProvider(map[string]executor.Executor{
-		models.EngineDocker: dockerExecutor,
-		models.EngineWasm:   wasmExecutor,
-	}), nil
+	return provider.NewMappedProvider(providers), nil
 }
 
 // return noop executors for all engines

@@ -42,10 +42,11 @@ type JobSelectionPolicy struct {
 
 type ComputeConfigParams struct {
 	// Capacity config
-	TotalResourceLimits          models.Resources
-	JobResourceLimits            models.Resources
-	DefaultJobResourceLimits     models.Resources
-	PhysicalResourcesProvider    capacity.Provider
+	TotalResourceLimits       models.Resources
+	JobResourceLimits         models.Resources
+	DefaultJobResourceLimits  models.Resources
+	PhysicalResourcesProvider capacity.Provider
+	// Deprecated: this feature is no longer supported, delete
 	IgnorePhysicalResourceLimits bool
 
 	// Timeout config

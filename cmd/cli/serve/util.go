@@ -6,33 +6,30 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 func GetComputeConfig(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types2.Bacalhau,
 	createExecutionStore bool,
 ) (node.ComputeConfig, error) {
+	// TODO(review): unsure what to do here now
 	totalResources, totalErr := cfg.Node.Compute.Capacity.TotalResourceLimits.ToResources()
 	jobResources, jobErr := cfg.Node.Compute.Capacity.JobResourceLimits.ToResources()
 	defaultResources, defaultErr := cfg.Node.Compute.Capacity.DefaultJobResourceLimits.ToResources()
@@ -47,10 +44,7 @@ func GetComputeConfig(
 		if err != nil {
 			return node.ComputeConfig{}, err
 		}
-		executionStore, err = getExecutionStore(ctx, cfg.Node.Compute.ExecutionStore, executionStoreDBPath)
-		if err != nil {
-			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
-		}
+		executionStore, err = boltdb.NewStore(ctx, executionStoreDBPath)
 	}
 
 	executionsPath, err := cfg.ExecutionDir()
@@ -58,31 +52,54 @@ func GetComputeConfig(
 		return node.ComputeConfig{}, err
 	}
 
-	return node.NewComputeConfigWith(executionsPath, node.ComputeConfigParams{
-		TotalResourceLimits:                   *totalResources,
-		JobResourceLimits:                     *jobResources,
-		DefaultJobResourceLimits:              *defaultResources,
-		IgnorePhysicalResourceLimits:          cfg.Node.Compute.Capacity.IgnorePhysicalResourceLimits,
-		JobNegotiationTimeout:                 time.Duration(cfg.Node.Compute.JobTimeouts.JobNegotiationTimeout),
-		MinJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MinJobExecutionTimeout),
-		MaxJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-		DefaultJobExecutionTimeout:            time.Duration(cfg.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout),
-		JobExecutionTimeoutClientIDBypassList: cfg.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+	params := node.ComputeConfigParams{
+		ExecutionStore: executionStore,
+
+		// TODO(review): what are we setting these fields to now? We have a new set of defaults that are based on the job type.
+		TotalResourceLimits:      *totalResources,
+		JobResourceLimits:        *jobResources,
+		DefaultJobResourceLimits: *defaultResources,
+
+		// TODO(review): assumedly we no longer support this feature?
+		// IgnorePhysicalResourceLimits:          false,
+
+		// NB(forrest): not setting these fields should result in a default populating the field by calling method
+		// JobNegotiationTimeout:                 time.Duration(cfg.Node.Compute.JobTimeouts.JobNegotiationTimeout),
+		// MinJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MinJobExecutionTimeout),
+		// MaxJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
+		// DefaultJobExecutionTimeout:            time.Duration(cfg.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout),
+		// JobExecutionTimeoutClientIDBypassList: cfg.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.Node.Compute.JobSelection.Locality),
-			RejectStatelessJobs: cfg.Node.Compute.JobSelection.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.Node.Compute.JobSelection.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.Node.Compute.JobSelection.ProbeHTTP,
-			ProbeExec:           cfg.Node.Compute.JobSelection.ProbeExec,
+			// Locality:            semantic.JobSelectionDataLocality(cfg.Node.Compute.JobSelection.Locality),
+			// TODO(review): assumedly policy should be to accept jobs with data anywhere as we have disabled the option
+			// in the config?
+			Locality:            semantic.Anywhere,
+			RejectStatelessJobs: cfg.JobAdmissionControl.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobAdmissionControl.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
+			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
 		},
-		LogRunningExecutionsInterval: time.Duration(cfg.Node.Compute.Logging.LogRunningExecutionsInterval),
-		LogStreamBufferSize:          cfg.Node.Compute.LogStreamConfig.ChannelBufferSize,
-		ExecutionStore:               executionStore,
-		LocalPublisher:               cfg.Node.Compute.LocalPublisher,
-	})
+
+		// NB(forrest): not setting these fields should result in a default populating the field by calling method
+		// LogRunningExecutionsInterval: time.Duration(cfg.Logging.LogDebugInfoInterval),
+		// LogStreamBufferSize:          cfg.Node.Compute.LogStreamConfig.ChannelBufferSize,
+	}
+
+	// TODO(review): assumedly this should work this way, but not sure.
+	// what is the default publisher config in the event one is not provided?
+	if cfg.Publishers.Enabled(types2.KindPublisherLocal) && cfg.Publishers.HasConfig(types2.KindPublisherLocal) {
+		lpcfg, err := types2.DecodeProviderConfig[types2.LocalPublisherConfig](cfg.Publishers)
+		if err != nil {
+			return node.ComputeConfig{}, err
+		}
+		params.LocalPublisher = types.LocalPublisherConfig(lpcfg)
+	}
+
+	return node.NewComputeConfigWith(executionsPath, params)
 }
 
-func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJobStore bool) (node.RequesterConfig, error) {
+func GetRequesterConfig(ctx context.Context, cfg types2.Bacalhau, createJobStore bool) (node.RequesterConfig, error) {
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
@@ -90,51 +107,68 @@ func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJob
 		if err != nil {
 			return node.RequesterConfig{}, err
 		}
-		jobStore, err = getJobStore(ctx, cfg.Node.Requester.JobStore, jobStoreDBPath)
+		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreDBPath)
 		if err != nil {
 			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}
 	}
+	params := node.RequesterConfigParams{
+		// NB(forrest): not setting these fields should result in a default populating the field by calling method
+		/*
+			JobDefaults: transformer.JobDefaults{
+				TotalTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.TotalTimeout),
+				ExecutionTimeout: time.Duration(cfg.Node.Requester.JobDefaults.ExecutionTimeout),
+				QueueTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.QueueTimeout),
+			},
 
-	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobDefaults: transformer.JobDefaults{
-			TotalTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.TotalTimeout),
-			ExecutionTimeout: time.Duration(cfg.Node.Requester.JobDefaults.ExecutionTimeout),
-			QueueTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.QueueTimeout),
-		},
-		HousekeepingBackgroundTaskInterval: time.Duration(cfg.Node.Requester.HousekeepingBackgroundTaskInterval),
-		NodeRankRandomnessRange:            cfg.Node.Requester.NodeRankRandomnessRange,
-		OverAskForBidsFactor:               cfg.Node.Requester.OverAskForBidsFactor,
+			NodeRankRandomnessRange:            cfg.Node.Requester.NodeRankRandomnessRange,
+			OverAskForBidsFactor:               cfg.Node.Requester.OverAskForBidsFactor,
+			FailureInjectionConfig:         cfg.Node.Requester.FailureInjectionConfig,
+			EvalBrokerInitialRetryDelay:    time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerInitialRetryDelay),
+			EvalBrokerSubsequentRetryDelay: time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
+			NodeOverSubscriptionFactor:     cfg.Node.Requester.Scheduler.NodeOverSubscriptionFactor,
+			WorkerEvalDequeueTimeout:     time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueTimeout),
+			WorkerEvalDequeueBaseBackoff: time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueBaseBackoff),
+			WorkerEvalDequeueMaxBackoff:  time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueMaxBackoff),
+			SchedulerQueueBackoff:        time.Duration(cfg.Node.Requester.Scheduler.QueueBackoff),
+
+			// TODO this field is never read
+			NodeInfoStoreTTL:            time.Duration(cfg.Node.Requester.NodeInfoStoreTTL),
+		*/
+		HousekeepingBackgroundTaskInterval: time.Duration(cfg.Orchestrator.Scheduler.HousekeepingInterval),
+		HousekeepingTimeoutBuffer:          time.Duration(cfg.Orchestrator.Scheduler.HousekeepingTimeout),
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.Node.Requester.JobSelectionPolicy.Locality),
-			RejectStatelessJobs: cfg.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.Node.Requester.JobSelectionPolicy.ProbeHTTP,
-			ProbeExec:           cfg.Node.Requester.JobSelectionPolicy.ProbeExec,
+			// TODO(review): assumedly policy should be to accept jobs with data anywhere?
+			Locality:            semantic.Anywhere,
+			RejectStatelessJobs: cfg.JobAdmissionControl.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobAdmissionControl.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
+			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
 		},
-		FailureInjectionConfig:         cfg.Node.Requester.FailureInjectionConfig,
-		EvalBrokerVisibilityTimeout:    time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
-		EvalBrokerInitialRetryDelay:    time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerInitialRetryDelay),
-		EvalBrokerSubsequentRetryDelay: time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
-		EvalBrokerMaxRetryCount:        cfg.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
-		WorkerCount:                    cfg.Node.Requester.Worker.WorkerCount,
-		NodeOverSubscriptionFactor:     cfg.Node.Requester.Scheduler.NodeOverSubscriptionFactor,
-		WorkerEvalDequeueTimeout:       time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueTimeout),
-		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueBaseBackoff),
-		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueMaxBackoff),
-		SchedulerQueueBackoff:          time.Duration(cfg.Node.Requester.Scheduler.QueueBackoff),
-		S3PreSignedURLExpiration:       time.Duration(cfg.Node.Requester.StorageProvider.S3.PreSignedURLExpiration),
-		S3PreSignedURLDisabled:         cfg.Node.Requester.StorageProvider.S3.PreSignedURLDisabled,
-		TranslationEnabled:             cfg.Node.Requester.TranslationEnabled,
-		JobStore:                       jobStore,
-		DefaultPublisher:               cfg.Node.Requester.DefaultPublisher,
-		NodeInfoStoreTTL:               time.Duration(cfg.Node.Requester.NodeInfoStoreTTL),
-	})
+		EvalBrokerVisibilityTimeout: time.Duration(cfg.Orchestrator.EvaluationBroker.VisibilityTimeout),
+		EvalBrokerMaxRetryCount:     cfg.Orchestrator.EvaluationBroker.MaxRetryCount,
+		WorkerCount:                 cfg.Orchestrator.Scheduler.WorkerCount,
+		TranslationEnabled:          cfg.FeatureFlags.ExecTranslation,
+		JobStore:                    jobStore,
+		// TODO(review): of the default job type configs it's not clear what we should be using here.
+		DefaultPublisher: cfg.JobDefaults.Batch.Task.Publisher.Type,
+	}
+
+	if cfg.InputSources.Enabled(types2.KindStorageS3) && cfg.InputSources.HasConfig(types2.KindStorageS3) {
+		s3cfg, err := types2.DecodeProviderConfig[types2.S3InputSourceConfig](cfg.InputSources)
+		if err != nil {
+			return node.RequesterConfig{}, err
+		}
+		params.S3PreSignedURLExpiration = time.Duration(s3cfg.PreSignedURLExpiration)
+		params.S3PreSignedURLDisabled = s3cfg.PreSignedURLDisabled
+	}
+
+	requesterConfig, err := node.NewRequesterConfigWith(params)
 	if err != nil {
 		return node.RequesterConfig{}, err
 	}
 
-	if cfg.Node.Requester.ManualNodeApproval {
+	if cfg.Orchestrator.NodeManager.ManualApproval {
 		requesterConfig.DefaultApprovalState = models.NodeMembership.PENDING
 	} else {
 		requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
@@ -143,84 +177,43 @@ func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJob
 	return requesterConfig, nil
 }
 
-func getNodeType(cfg types.BacalhauConfig) (requester, compute bool, err error) {
-	requester = false
-	compute = false
-	err = nil
-
-	for _, nodeType := range cfg.Node.Type {
-		if nodeType == "compute" {
-			compute = true
-		} else if nodeType == "requester" {
-			requester = true
-		} else {
-			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
-		}
-	}
-	return
-}
-
-func getNetworkConfig(networkStorePath string, cfg types.NetworkConfig) (node.NetworkConfig, error) {
-	return node.NetworkConfig{
-		Port:                     cfg.Port,
-		AdvertisedAddress:        cfg.AdvertisedAddress,
-		Orchestrators:            cfg.Orchestrators,
-		StoreDir:                 networkStorePath,
-		AuthSecret:               cfg.AuthSecret,
-		ClusterName:              cfg.Cluster.Name,
-		ClusterPort:              cfg.Cluster.Port,
-		ClusterAdvertisedAddress: cfg.Cluster.AdvertisedAddress,
-		ClusterPeers:             cfg.Cluster.Peers,
-	}, nil
-}
-
-func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig, path string) (store.ExecutionStore, error) {
-	if err := storeCfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	switch storeCfg.Type {
-	case types.BoltDB:
-		return boltdb.NewStore(ctx, path)
-	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
-	}
-}
-
-func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig, path string) (jobstore.Store, error) {
-	if err := storeCfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	switch storeCfg.Type {
-	case types.BoltDB:
-		log.Ctx(ctx).Debug().Str("Path", path).Msg("creating boltdb backed jobstore")
-		return boltjobstore.NewBoltJobStore(path)
-	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
-	}
-}
-
-func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
-	nodeNameProviders := map[string]idgen.NodeNameProvider{
-		"hostname": idgen.HostnameProvider{},
-		"aws":      idgen.NewAWSNodeNameProvider(),
-		"gcp":      idgen.NewGCPNodeNameProvider(),
-		"uuid":     idgen.UUIDNodeNameProvider{},
-		"puuid":    idgen.PUUIDNodeNameProvider{},
-	}
-	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
-	if !ok {
-		return "", fmt.Errorf(
-			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
-	}
-
-	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
+	// TODO(review) see method getPublicNATSOrchestratorURL for why we ignore the host.
+	_, listenPortStr, err := net.SplitHostPort(cfg.Orchestrator.Listen)
 	if err != nil {
-		return "", err
+		return node.NetworkConfig{}, err
 	}
-
-	return nodeName, nil
+	listenPort, err := strconv.ParseInt(listenPortStr, 10, 64)
+	if err != nil {
+		return node.NetworkConfig{}, err
+	}
+	storeDir, err := cfg.NetworkTransportDir()
+	if err != nil {
+		return node.NetworkConfig{}, err
+	}
+	_, clusterListenPortStr, err := net.SplitHostPort(cfg.Orchestrator.Cluster.Listen)
+	if err != nil {
+		return node.NetworkConfig{}, err
+	}
+	clusterListenPort, err := strconv.ParseInt(clusterListenPortStr, 10, 64)
+	if err != nil {
+		return node.NetworkConfig{}, err
+	}
+	return node.NetworkConfig{
+		Port:              int(listenPort),
+		AdvertisedAddress: cfg.Orchestrator.Advertise,
+		Orchestrators:     cfg.Compute.Orchestrators,
+		StoreDir:          storeDir,
+		// TODO(review): an auth secret is no longer part of the config, should we operate without one, or include it
+		// in the config?
+		AuthSecret: "TODO",
+		// TODO(review): a cluster name is no longer part of the config, should we operate without one, or include it
+		// in the config?
+		ClusterName:              "TODO",
+		ClusterPort:              int(clusterListenPort),
+		ClusterAdvertisedAddress: cfg.Orchestrator.Cluster.Advertise,
+		ClusterPeers:             cfg.Orchestrator.Cluster.Peers,
+	}, nil
 }
 
 // persistConfigs writes the resolved config to the persisted config file.
