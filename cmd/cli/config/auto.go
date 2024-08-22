@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -116,7 +117,7 @@ func newAutoResourceCmd() *cobra.Command {
 	return autoCmd
 }
 
-func autoConfig(ctx context.Context, cfg types.BacalhauConfig, settings *autoSettings) error {
+func autoConfig(ctx context.Context, cfg types2.Bacalhau, settings *autoSettings) error {
 	executionDir, err := cfg.ExecutionDir()
 	if err != nil {
 		return err

@@ -33,20 +33,31 @@ type LocalPublisherConfig struct {
 	Directory string `yaml:"Directory"`
 }
 
-const KindPublisherLocal = "localpublisher"
+const KindPublisherLocal = "Local"
 
 func (l LocalPublisherConfig) Kind() string {
 	return KindPublisherLocal
 }
 
-const KindPublisherS3 = "s3publisher"
+var _ ProviderType = (*S3PublisherConfig)(nil)
+
+type S3PublisherConfig struct {
+	PreSignedURLDisabled   bool     `yaml:"PreSignedURLDisabled"`
+	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
+}
+
+const KindPublisherS3 = "S3"
+
+func (s S3PublisherConfig) Kind() string {
+	return KindPublisherS3
+}
 
 type IpfsPublisherConfig struct {
 	// Connect is the multiaddress to connect to for IPFS.
 	Connect string `yaml:"Connect"`
 }
 
-const KindPublisherIPFS = "ipfspublisher"
+const KindPublisherIPFS = "IPFS"
 
 func (i IpfsPublisherConfig) Kind() string {
 	return KindPublisherIPFS

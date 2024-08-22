@@ -8,11 +8,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -27,13 +25,13 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 }
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
-func SetupBacalhauRepo(repoDir string, c config.ReadWriter) (*repo.FsRepo, error) {
+func SetupBacalhauRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
 	migrationManger, err := SetupMigrationManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migration manager: %w", err)
 	}
 	fsRepo, err := repo.NewFS(repo.FsRepoParams{
-		Path:       repoDir,
+		Path:       cfg.DataDir,
 		Migrations: migrationManger,
 	})
 	if err != nil {
@@ -46,28 +44,18 @@ func SetupBacalhauRepo(repoDir string, c config.ReadWriter) (*repo.FsRepo, error
 
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
-		if err := fsRepo.Init(c); err != nil {
+		if err := fsRepo.Init(cfg); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}
 	} else {
-		if err := fsRepo.Open(c); err != nil {
+		if err := fsRepo.Open(); err != nil {
 			return nil, fmt.Errorf("failed to open repo: %w", err)
 		}
 	}
 	return fsRepo, nil
 }
 
-func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConfig) {
-	// reset the global viper instance used by cmds pkg.
-	viper.Reset()
-	// create a specific viper instance for testing
-	v := viper.New()
-	// init a config with this viper instance using the local configuration as default
-	cfg, err := config.New(config.WithDefault(configenv.Local))
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	// create a temporary dir to serve as bacalhau repo whose name includes the current time to avoid collisions with
 	/// other tests
 	tmpDir, err := os.MkdirTemp("", "")
@@ -75,15 +63,26 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConf
 		t.Fatal(errors.Wrap(err, "failed to create temporary directory in test setup"))
 	}
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
+
 	// configure the repo on the testing viper insance
-	v.Set("repo", path)
+	// init a config with this viper instance using the local configuration as default
+	c, err := configv2.New(configv2.WithValues(map[string]any{
+		"DataDir": path,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	t.Logf("creating repo for testing at: %s", path)
 	t.Setenv("BACALHAU_ENVIRONMENT", "local")
 	t.Setenv("BACALHAU_DIR", path)
 
+	var cfg types2.Bacalhau
+	if err := c.Unmarshal(&cfg); err != nil {
+		t.Fatal(err)
+	}
 	// create the repo used for testing
-	fsRepo, err := SetupBacalhauRepo(path, cfg)
+	fsRepo, err := SetupBacalhauRepo(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,11 +94,5 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.BacalhauConf
 		}
 	})
 
-	// load the config with merged in settings from repo.
-	bcfg, err := cfg.Current()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return fsRepo, bcfg
+	return fsRepo, cfg
 }

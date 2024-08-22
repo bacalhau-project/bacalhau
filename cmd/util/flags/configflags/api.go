@@ -6,7 +6,7 @@ var ClientAPIFlags = []Definition{
 	{
 		FlagName:     "api-host",
 		DefaultValue: Default.Node.ClientAPI.Host,
-		ConfigPath:   types.NodeClientAPIHost,
+		ConfigPath:   "API.Host",
 		Description: `The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_HOST"},
@@ -14,7 +14,7 @@ Ignored if BACALHAU_API_HOST environment variable is set.`,
 	{
 		FlagName:     "api-port",
 		DefaultValue: Default.Node.ClientAPI.Port,
-		ConfigPath:   types.NodeClientAPIPort,
+		ConfigPath:   "API.Port",
 		Description: `The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_PORT"},

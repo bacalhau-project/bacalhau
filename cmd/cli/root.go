@@ -41,14 +41,16 @@ func NewRootCmd() *cobra.Command {
 		util.Fatal(RootCmd, err, 1)
 	}
 
-	RootCmd.PersistentFlags().VarP(cliflags.NewRepoFlag(), "repo", "r", "filesystem path to bacalhau repo")
-	// Bind the repo flag to viper for access by child commands
-	if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
-		util.Fatal(RootCmd, err, 1)
-	}
-	if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
-		util.Fatal(RootCmd, err, 1)
-	}
+	/*
+		RootCmd.PersistentFlags().VarP(cliflags.NewRepoFlag(), "repo", "r", "filesystem path to bacalhau repo")
+		// Bind the repo flag to viper for access by child commands
+		if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
+			util.Fatal(RootCmd, err, 1)
+		}
+		if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
+			util.Fatal(RootCmd, err, 1)
+		}
+	*/
 
 	// flag definitions with a corresponding field in the config file.
 	// when these flags are provided their value will be used instead of the value present in the config file.
@@ -56,6 +58,7 @@ func NewRootCmd() *cobra.Command {
 	rootFlags := map[string][]configflags.Definition{
 		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
+		"repo":    configflags.DataDirFlag,
 	}
 	// register the flags on the command.
 	if err := configflags.RegisterFlags(RootCmd, rootFlags); err != nil {

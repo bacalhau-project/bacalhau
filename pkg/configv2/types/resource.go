@@ -34,11 +34,11 @@ type ResourceScaler struct {
 	GPU Percentage `yaml:"GPU,omitempty"`
 }
 
-func (r *ResourceScaler) IsZero() bool {
+func (r ResourceScaler) IsZero() bool {
 	return r.CPU == "" && r.Memory == "" && r.Disk == "" && r.GPU == ""
 }
 
-func (r *ResourceScaler) Validate() error {
+func (r ResourceScaler) Validate() error {
 	fields := map[string]Percentage{
 		"CPU":    r.CPU,
 		"Memory": r.Memory,
@@ -73,11 +73,11 @@ func (pv Percentage) Parse() (float64, error) {
 	}
 
 	if value != float64(int(value)) {
-		return 0, fmt.Errorf("percentage must be a whole number")
+		return 0, fmt.Errorf("percentage must be a whole number. receieved %q", pv)
 	}
 
 	if value < 1 || value > 100 {
-		return 0, fmt.Errorf("percentage must be between 1 and 100")
+		return 0, fmt.Errorf(`percentage must be between 1%% and 100%%. receieved %q`, pv)
 	}
 
 	return value / 100, nil

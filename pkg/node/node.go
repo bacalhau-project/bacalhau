@@ -51,7 +51,7 @@ type NodeConfig struct {
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
-	AuthConfig                  types.AuthConfig
+	AuthConfig                  types2.AuthConfig
 	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool

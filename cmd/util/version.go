@@ -8,10 +8,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -22,7 +23,7 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.API) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types2.Bacalhau, api clientv2.API, r *repo.FsRepo) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 
@@ -49,7 +50,12 @@ func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}
 
-	if cfg.User.InstallationID == "" {
+	installationID, err := r.ReadInstallationID()
+	if err != nil {
+		return versions, fmt.Errorf("reading installationID: %w", err)
+	}
+
+	if installationID == "" {
 		return versions, errors.Wrap(err, "Installation ID not set")
 	}
 
@@ -58,7 +64,7 @@ func GetAllVersions(ctx context.Context, cfg types.BacalhauConfig, api clientv2.
 		versions.ClientVersion,
 		versions.ServerVersion,
 		userKey.ClientID(),
-		cfg.User.InstallationID,
+		installationID,
 	)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")

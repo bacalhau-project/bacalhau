@@ -88,27 +88,17 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// get the global viper instance
-			v := viper.GetViper()
-			// get the repo path set in the root command.
-			repoPath := v.GetString("repo")
-			if repoPath == "" {
-				return fmt.Errorf("repo path not set")
-			}
 			cfg, err := util.SetupConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
 			// create or open the bacalhau repo and load the config
-			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
+			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-			bcfg, err := cfg.Current()
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-			return serve(cmd, bcfg, fsr)
+
+			return serve(cmd, cfg, fsr)
 		},
 	}
 
@@ -123,7 +113,6 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	// TODO(review): at some point we need to initialize this, assumedly in the config or repo
 	nodeName, err := fsRepo.ReadNodeName()
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
@@ -151,17 +140,11 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	// Create node config from cmd arguments
-	// TODO(forrest): this method will need to be adjusted to accept a string like "address:port"
-	// instead of just an address with no port as it does now. something like net.SplitHostPort
-	hostAddress, err := parseServerAPIHost(cfg.API.Address)
+	parsedURL, err := url.Parse(cfg.API.Address)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse API address: %w", err)
 	}
-	_, portStr, err := net.SplitHostPort(cfg.API.Address)
-	if err != nil {
-		return err
-	}
-	port, err := strconv.ParseUint(portStr, 10, 63)
+	port, err := strconv.ParseUint(parsedURL.Port(), 10, 63)
 	if err != nil {
 		return err
 	}
@@ -173,31 +156,28 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			Publishers: cfg.Publishers.Disabled,
 			Storages:   cfg.InputSources.Disabled,
 		},
-		HostAddress:         hostAddress,
+		HostAddress:         parsedURL.Hostname(),
 		APIPort:             uint16(port),
 		ComputeConfig:       computeConfig,
 		RequesterNodeConfig: requesterConfig,
-		AuthConfig: types.AuthConfig{
-			TokensPath:       cfg.API.Auth.TokensPath,
-			Methods:          cfg.API.Auth.Methods,
-			AccessPolicyPath: cfg.API.Auth.AccessPolicyPath,
-		},
-		IsComputeNode:   isComputeNode,
-		IsRequesterNode: isRequesterNode,
+		AuthConfig:          cfg.API.Auth,
+		IsComputeNode:       isComputeNode,
+		IsRequesterNode:     isRequesterNode,
 		// TODO(review): previously we supported the generation of self signed config, we have moved away from this
 		// with the new config. Does this remain the intention
 		RequesterSelfSign: false,
 		//RequesterSelfSign:     cfg.Node.ServerAPI.TLS.SelfSigned,
-		Labels:                cfg.Compute.Labels,
-		AllowListedLocalPaths: cfg.Compute.Volumes,
-		NetworkConfig:         networkConfig,
+		Labels: cfg.Compute.Labels,
+		// TODO(forrest): make this work
+		//AllowListedLocalPaths: cfg.Compute.Volumes,
+		NetworkConfig: networkConfig,
 	}
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
 		// TODO(review) do we still want to enable a requester to automatically get a certificate?
-		nodeConfig.RequesterAutoCert = cfg.Node.ServerAPI.TLS.AutoCert
-		nodeConfig.RequesterAutoCertCache = cfg.Node.ServerAPI.TLS.AutoCertCachePath
+		//nodeConfig.RequesterAutoCert = cfg.Node.ServerAPI.TLS.AutoCert
+		//nodeConfig.RequesterAutoCertCache = cfg.Node.ServerAPI.TLS.AutoCertCachePath
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
@@ -234,11 +214,11 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		_, webUIPortStr, err := net.SplitHostPort(cfg.WebUI.Listen)
+		parsedURL, err := url.Parse(cfg.WebUI.Listen)
 		if err != nil {
 			return err
 		}
-		webuiPort, err := strconv.ParseInt(webUIPortStr, 10, 64)
+		webuiPort, err := strconv.ParseInt(parsedURL.Port(), 10, 64)
 		if err != nil {
 			return err
 		}
@@ -262,7 +242,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	cmd.Println()
 	cmd.Println(connectCmd)
 
-	envVars, err := buildEnvVariables(ctx, cfg.API, &nodeConfig)
+	envVars, err := buildEnvVariables(cfg.API, &nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -305,29 +285,24 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (stri
 }
 
 func buildEnvVariables(
-	ctx context.Context,
 	cfg types2.API,
 	nodeConfig *node.NodeConfig,
 ) (string, error) {
-	hostStr, portStr, err := net.SplitHostPort(cfg.Address)
+	parsedURL, err := url.Parse(cfg.Address)
 	if err != nil {
-		return "", err
-	}
-	port, err := strconv.ParseInt(portStr, 10, 64)
-	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to parse API address: %w", err)
 	}
 	// build shell variables to connect to this node
 	envVarBuilder := strings.Builder{}
 	envVarBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
 		config.KeyAsEnvVar(types.NodeClientAPIHost),
-		hostStr,
+		parsedURL.Hostname(),
 	))
 	envVarBuilder.WriteString(fmt.Sprintf(
-		"export %s=%d\n",
+		"export %s=%s\n",
 		config.KeyAsEnvVar(types.NodeClientAPIPort),
-		port,
+		parsedURL.Port(),
 	))
 
 	if nodeConfig.IsRequesterNode {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -22,7 +22,7 @@ import (
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
-	cfg types.BacalhauConfig,
+	cfg types2.Bacalhau,
 	apiV2 clientv2.API,
 	jobID string,
 	downloadSettings *cliflags.DownloaderSettings,
@@ -43,8 +43,16 @@ func DownloadResultsHandler(
 		cmd.Printf("\n  bacalhau job logs %s\n", jobID)
 		return nil
 	}
+	ipfsConnect := ""
+	if cfg.ResultDownloaders.Enabled(types2.KindDownloadIPFS) && cfg.ResultDownloaders.HasConfig(types2.KindStorageIPFS) {
+		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsDownloadConfig](cfg.ResultDownloaders)
+		if err != nil {
+			return err
+		}
+		ipfsConnect = ipfscfg.Connect
+	}
 
-	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.Node.IPFS.Connect)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, ipfsConnect)
 	if err != nil {
 		return err
 	}

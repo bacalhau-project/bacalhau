@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 )
 
 const (
@@ -25,7 +27,7 @@ type Config struct {
 	// viper instance for holding user provided configuration.
 	base *viper.Viper
 	// the default configuration values to initialize with.
-	defaultCfg interface{}
+	defaultCfg types.Validatable
 
 	// paths to configuration files merged from [0] to [N]
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
@@ -42,7 +44,7 @@ type Config struct {
 type Option = func(s *Config)
 
 // WithDefault sets the default config to be used when no values are provided.
-func WithDefault(cfg interface{}) Option {
+func WithDefault(cfg types.Validatable) Option {
 	return func(c *Config) {
 		c.defaultCfg = cfg
 	}
@@ -138,7 +140,7 @@ func New(opts ...Option) (*Config, error) {
 // from the read config file.
 // Load returns an error if the file cannot be read.
 func (c *Config) Load(path string) error {
-	log.Debug().Msgf("loading config file: %q", path)
+	log.Info().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -149,7 +151,7 @@ func (c *Config) Load(path string) error {
 // Merge merges a new configuration file specified by `path` with the existing config.
 // Merge returns an error if the file cannot be read
 func (c *Config) Merge(path string) error {
-	log.Debug().Msgf("loading config file: %q", path)
+	log.Info().Msgf("merging config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		return err
@@ -159,8 +161,11 @@ func (c *Config) Merge(path string) error {
 
 // Unmarshal returns the current configuration.
 // Unmarshal returns an error if the configuration cannot be unmarshalled.
-func (c *Config) Unmarshal(out interface{}) error {
+func (c *Config) Unmarshal(out types.Validatable) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
+		return err
+	}
+	if err := out.Validate(); err != nil {
 		return err
 	}
 	return nil

@@ -13,6 +13,7 @@ import (
 )
 
 func NewStandardDownloaders(ctx context.Context, ipfsConnect string) (downloader.DownloaderProvider, error) {
+	// TODO(review): do we want to check if these are disabled before providing them?
 	providers := map[string]downloader.Downloader{
 		models.StorageSourceS3PreSigned: s3signed.NewDownloader(s3signed.DownloaderParams{
 			HTTPDownloader: http.NewHTTPDownloader(),

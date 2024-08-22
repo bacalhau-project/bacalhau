@@ -11,7 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -103,15 +103,11 @@ func NewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("setting up config: %w", err)
 			}
-			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
+			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-			bcfg, err := cfg.Current()
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-			return runDevstack(cmd, bcfg, fsr, ODs, IsNoop)
+			return runDevstack(cmd, cfg, fsr, ODs, IsNoop)
 		},
 	}
 
@@ -171,7 +167,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, cfg types2.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
@@ -238,8 +234,8 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 
 	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
 	options = append(options, devstack.WithSelfSignedCertificate(
-		cfg.Node.ServerAPI.TLS.ServerCertificate,
-		cfg.Node.ServerAPI.TLS.ServerKey,
+		cfg.API.TLS.CertFile,
+		cfg.API.TLS.KeyFile,
 	))
 
 	stack, err := devstack.Setup(ctx, cfg, cm, fsr, options...)

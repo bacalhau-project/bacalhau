@@ -93,12 +93,14 @@ func (cf *ConfigFlag) Parse() error {
 }
 
 func setIfValid(v *viper.Viper, key string, value any) error {
-	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
-		if _, err := os.Stat(key); err == nil {
-			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
+	/*
+		if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
+			if _, err := os.Stat(key); err == nil {
+				return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
+			}
+			return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
 		}
-		return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
-	}
+	*/
 	configMap := v.GetStringMap(RootCommandConfigValues)
 	configMap[key] = value
 	v.Set(RootCommandConfigValues, configMap)

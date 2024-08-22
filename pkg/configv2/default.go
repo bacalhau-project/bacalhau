@@ -8,45 +8,53 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
 	Second = types.Duration(time.Second)
-	Minuet = types.Duration(time.Minute)
+	Minute = types.Duration(time.Minute)
 	Day    = types.Duration(time.Hour * 24)
 )
 
 // Default is the default configuration for a bacalhau node.
 var Default = types.Bacalhau{
 	API: types.API{
-		Address: "0.0.0.0:1234",
+		Address: "http://0.0.0.0:1234",
+		Auth: types.AuthConfig{
+			Methods: map[string]types.AuthenticatorConfig{
+				"ClientKey": {
+					Type: string(authn.MethodTypeChallenge),
+				},
+			},
+		},
 	},
 	NameProvider: "puuid",
 	DataDir:      getDefaultDataDir(),
 	Orchestrator: types.Orchestrator{
-		Enabled: true,
-		Listen:  "0.0.0.0:4222",
+		Enabled:   true,
+		Listen:    "0.0.0.0:4222",
+		Advertise: "0.0.0.0:4222",
 		NodeManager: types.NodeManager{
-			GCThreshold:       Day,
-			GCInterval:        10 * Minuet,
-			DisconnectTimeout: Minuet,
+			DisconnectTimeout: Minute,
 		},
 		Scheduler: types.Scheduler{
 			WorkerCount:          runtime.NumCPU(),
 			HousekeepingInterval: 30 * Second,
-			HousekeepingTimeout:  2 * Minuet,
+			HousekeepingTimeout:  2 * Minute,
 		},
 		EvaluationBroker: types.EvaluationBroker{
-			VisibilityTimeout: Minuet,
+			VisibilityTimeout: Minute,
 			MaxRetryCount:     10,
 		},
 	},
 	Compute: types.Compute{
-		Enabled: true,
+		Enabled:       true,
+		Orchestrators: []string{"nats://127.0.0.1:4222"},
 		Heartbeat: types.Heartbeat{
-			InfoUpdateInterval:     Minuet,
+			InfoUpdateInterval:     Minute,
 			ResourceUpdateInterval: 30 * Second,
 			Interval:               15 * Second,
 		},
@@ -64,7 +72,7 @@ var Default = types.Bacalhau{
 		},
 	},
 	ResultDownloaders: types.ResultDownloaders{
-		Timeout: 5 * Minuet,
+		Timeout: 5 * Minute,
 	},
 	JobDefaults: types.JobDefaults{
 		Batch: types.JobDefaultsConfig{
@@ -78,7 +86,7 @@ var Default = types.Bacalhau{
 					Type: models.PublisherLocal,
 				},
 				Timeouts: types.TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minuet,
+					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},
@@ -93,7 +101,7 @@ var Default = types.Bacalhau{
 					Type: models.PublisherLocal,
 				},
 				Timeouts: types.TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minuet,
+					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},
@@ -108,7 +116,7 @@ var Default = types.Bacalhau{
 					Type: models.PublisherLocal,
 				},
 				Timeouts: types.TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minuet,
+					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},
@@ -123,7 +131,7 @@ var Default = types.Bacalhau{
 					Type: models.PublisherLocal,
 				},
 				Timeouts: types.TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minuet,
+					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},

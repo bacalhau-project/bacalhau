@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -82,7 +85,7 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(c config.ReadWriter) error {
+func (fsr *FsRepo) Init(cfg types2.Bacalhau) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -91,30 +94,34 @@ func (fsr *FsRepo) Init(c config.ReadWriter) error {
 
 	log.Info().Msgf("Initializing repo at '%s' for environment '%s'", fsr.path, config.GetConfigEnvironment())
 
+	// if it takes longer than 5 seconds to get the node name from a provider, fail
+	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	nodeName, err := getNodeID(nameCtx, cfg.NameProvider)
+	if err != nil {
+		return err
+	}
+
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	cfg, err := c.Current()
-	if err != nil {
-		return err
-	}
-
-	// in the event a user has provided a config without a path we need to set it here based on what the repo was
-	// initialized with.
-	if cfg.DataDir == "" {
-		cfg.DataDir = fsr.path
-		c.Set("DataDir", fsr.path)
-	}
-
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.WriteVersion(Version4)
+
+	if err := fsr.WriteVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist repo version: %w", err)
+	}
+
+	if err := fsr.WriteNodeName(nodeName); err != nil {
+		return fmt.Errorf("failed to persist node name: %w", err)
+	}
+	return nil
 }
 
 // Open opens an existing repo, returning an error if the repo is uninitialized.
-func (fsr *FsRepo) Open(c config.ReadWriter) error {
+func (fsr *FsRepo) Open() error {
 	// if the repo does not exist we cannot open it.
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -126,25 +133,6 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		if err := fsr.Migrations.Migrate(*fsr); err != nil {
 			return fmt.Errorf("failed to migrate repo: %w", err)
 		}
-	}
-
-	cfg, err := c.Current()
-	if err != nil {
-		return err
-	}
-
-	// in the event a user has provided a config without a path we need to set it here based on what the repo was
-	// initialized with.
-	if cfg.DataDir == "" {
-		cfg.DataDir = fsr.path
-		c.Set("DataDir", fsr.path)
-	}
-
-	// derive an installationID from the client ID loaded from the repo.
-	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID(cfg.User.KeyPath)
-		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		c.Set(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO this should be a part of the config.
@@ -227,4 +215,26 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
 // join joins path elements with fsr.path
 func (fsr *FsRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
+}
+
+func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return nodeName, nil
 }

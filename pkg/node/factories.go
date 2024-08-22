@@ -160,7 +160,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
 				switch authnConfig.Type {
-				case authn.MethodTypeChallenge:
+				case string(authn.MethodTypeChallenge):
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
 					if err != nil {
 						allErr = errors.Join(allErr, err)
@@ -173,7 +173,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 						userKey.PrivateKey(),
 						nodeConfig.NodeID,
 					)
-				case authn.MethodTypeAsk:
+				case string(authn.MethodTypeAsk):
 					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
 					if err != nil {
 						allErr = errors.Join(allErr, err)

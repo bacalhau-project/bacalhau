@@ -64,6 +64,8 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 1 * time.Second,
 	WorkerEvalDequeueMaxBackoff:  30 * time.Second,
 
+	NodeOverSubscriptionFactor: 1.5,
+
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
 

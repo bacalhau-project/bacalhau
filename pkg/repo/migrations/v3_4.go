@@ -6,8 +6,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V3Migration updates the repo, replacing repo.version and update.json with system_metadata.yaml.
@@ -89,6 +94,49 @@ var V3Migration = repo.NewMigration(
 			if err := migrateComputeStore(repoPath, fileCfg.Node.Compute.ExecutionStore); err != nil {
 				return err
 			}
+		}
+
+		// iff there is a config file in the repo, try and move it to $XDG_CONFIG_HOME/bacalhau
+		{
+			oldConfigFilePath := filepath.Join(repoPath, config.FileName)
+			if _, err := os.Stat(oldConfigFilePath); err == nil {
+				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+					return fmt.Errorf("migrating installation id: %w", err)
+				}
+				if err := r.WriteNodeName(fileCfg.Node.Name); err != nil {
+					return fmt.Errorf("migrating node name: %w", err)
+				}
+				newConfigType, err := configv2.MigrateV1(fileCfg)
+				if err != nil {
+					return fmt.Errorf("migrating to new config: %w", err)
+				}
+				// ensure the repo path of the config points to the repo
+				newConfigType.DataDir = repoPath
+				userConfigDir, err := os.UserConfigDir()
+				if err == nil {
+					newConfigDir := filepath.Join(userConfigDir, "bacalhau")
+					if err := os.Mkdir(newConfigDir, util.OS_USER_RWX); err != nil {
+						return err
+					}
+					newConfigFilePath := filepath.Join(newConfigDir, config.FileName)
+					if err := os.Rename(oldConfigFilePath, newConfigFilePath); err != nil {
+						return err
+					}
+					newConfigBytes, err := yaml.Marshal(&newConfigType)
+					if err != nil {
+						return err
+					}
+					newConfigFile, err := os.OpenFile(newConfigFilePath, os.O_RDWR|os.O_TRUNC, util.OS_USER_RWX)
+					if err != nil {
+						return err
+					}
+					defer newConfigFile.Close()
+					if _, err := newConfigFile.Write(newConfigBytes); err != nil {
+						return err
+					}
+				}
+			}
+
 		}
 		return nil
 	},

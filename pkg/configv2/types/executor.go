@@ -41,11 +41,11 @@ type DockerManifestCache struct {
 	Refresh Duration
 }
 
-const KindExecutorDocker = "dockerexecutor"
+const KindExecutorDocker = "Docker"
 
 func (d Docker) Kind() string {
 	return KindExecutorDocker
 }
 
 // wasm doesn't have a config, but may still be enabled or disabled, so we need this constant.
-const KindExecutorWASM = "wasmexecutor"
+const KindExecutorWASM = "WASM"

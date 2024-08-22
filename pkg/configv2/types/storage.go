@@ -25,25 +25,12 @@ func (i InputSourcesConfig) HasConfig(kind string) bool {
 	return ok
 }
 
-var _ ProviderType = (*S3InputSourceConfig)(nil)
-
-type S3InputSourceConfig struct {
-	PreSignedURLDisabled   bool     `yaml:"PreSignedURLDisabled"`
-	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
-}
-
-const KindStorageS3 = "s3storage"
-
-func (s S3InputSourceConfig) Kind() string {
-	return KindStorageS3
-}
-
 type IpfsInputSourceConfig struct {
 	// Connect is the multiaddress to connect to for IPFS.
 	Connect string `yaml:"Connect"`
 }
 
-const KindStorageIPFS = "ipfsstorage"
+const KindStorageIPFS = "IPFS"
 
 func (i IpfsInputSourceConfig) Kind() string {
 	return KindStorageIPFS

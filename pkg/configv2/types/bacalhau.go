@@ -1,5 +1,14 @@
 package types
 
+import (
+	"fmt"
+	"slices"
+	"strings"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
+)
+
 type Bacalhau struct {
 	API                 API                 `yaml:"API,omitempty"`
 	NameProvider        string              `yaml:"NameProvider,omitempty"`
@@ -19,18 +28,48 @@ type Bacalhau struct {
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
 }
 
-type UpdateConfig struct {
-	Interval Duration `yaml:"Interval,omitempty"`
-}
+// Validate returns an error if the config is invalid
+// It uses the helper method validateFields to validate fields that implement Validatable
+func (c Bacalhau) Validate() error {
+	// check non-struct fields
+	if c.NameProvider == "" {
+		return fmt.Errorf("NameProvider cannot be empty")
+	}
+	if !slices.ContainsFunc(idgen.NameProviders, func(s string) bool {
+		return strings.ToLower(s) == strings.ToLower(c.NameProvider)
+	}) {
+		return fmt.Errorf("NameProvider type %q unknow. must be one of: %v", c.NameProvider, idgen.NameProviders)
+	}
 
-type FeatureFlags struct {
-	ExecTranslation bool `yaml:"ExecTranslation,omitempty"`
+	if c.DataDir == "" {
+		return fmt.Errorf("DataDir cannot be empty")
+	}
+
+	if !c.Orchestrator.Enabled && !c.Compute.Enabled {
+		return fmt.Errorf("compute and orchestraor services cannot both be disabled")
+	}
+
+	// Validate struct fields using the helper method
+	if err := validateFields(c); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type API struct {
 	Address string     `yaml:"Address,omitempty"`
+	Host    string     `yaml:"-"`
+	Port    int        `yaml:"-"`
 	TLS     TLS        `yaml:"TLS,omitempty"`
 	Auth    AuthConfig `yaml:"Auth,omitempty"`
+}
+
+func (c API) Validate() error {
+	if err := validateURL(c.Address, "http", "https"); err != nil {
+		return fmt.Errorf("API address invalid: %w", err)
+	}
+	return nil
 }
 
 type TLS struct {
@@ -39,9 +78,32 @@ type TLS struct {
 	CAFile   string `yaml:"CAFile,omitempty"`
 }
 
+func (c TLS) Validate() error {
+	// TODO consider validating a key is present when the CAFile is, and visa versa.
+	if err := validateFileIffExists(c.CertFile); err != nil {
+		return fmt.Errorf("TLS CertFile invalid: %w", err)
+	}
+	if err := validateFileIffExists(c.KeyFile); err != nil {
+		return fmt.Errorf("TLS KeyFile invalid: %w", err)
+	}
+	if err := validateFileIffExists(c.CAFile); err != nil {
+		return fmt.Errorf("TLS CAFile invalid: %w", err)
+	}
+	return nil
+}
+
 type WebUI struct {
 	Enabled bool   `yaml:"Enabled,omitempty"`
 	Listen  string `yaml:"Listen,omitempty"`
+}
+
+func (c WebUI) Validate() error {
+	if c.Enabled {
+		if err := validateURL(c.Listen); err != nil {
+			return fmt.Errorf("WebUI address invalid: %w", err)
+		}
+	}
+	return nil
 }
 
 type Logging struct {
@@ -50,16 +112,30 @@ type Logging struct {
 	LogDebugInfoInterval Duration `yaml:"LogDebugInfoInterval,omitempty"`
 }
 
+func (c Logging) Validate() error {
+	validLogLevels := []string{"trace", "debug", "info", "warn", "error", "fatal"}
+	if !slices.ContainsFunc(validLogLevels, func(s string) bool {
+		return strings.ToLower(c.Level) == s
+	}) {
+		return fmt.Errorf("logging level %q invalid. must be one of: %v", c.Level, validLogLevels)
+	}
+	return nil
+
+}
+
+type FeatureFlags struct {
+	ExecTranslation bool `yaml:"ExecTranslation,omitempty"`
+}
+
+type UpdateConfig struct {
+	Interval Duration `yaml:"Interval,omitempty"`
+}
+
 type JobAdmissionControl struct {
 	RejectStatelessJobs bool   `yaml:"RejectStatelessJobs,omitempty"`
 	AcceptNetworkedJobs bool   `yaml:"AcceptNetworkedJobs,omitempty"`
 	ProbeHTTP           string `yaml:"ProbeHTTP,omitempty"`
 	ProbeExec           string `yaml:"ProbeExec,omitempty"`
-}
-
-type ResultDownloaders struct {
-	Timeout Duration                     `yaml:"Timeout,omitempty"`
-	Config  map[string]map[string]string `yaml:"Config,omitempty"`
 }
 
 type JobDefaults struct {
@@ -70,7 +146,7 @@ type JobDefaults struct {
 }
 
 type JobDefaultsConfig struct {
-	Priority int               `yaml:"Priority,omitempty"`
+	Priority uint              `yaml:"Priority,omitempty"`
 	Task     TaskDefaultConfig `yaml:"Task,omitempty"`
 }
 
@@ -82,6 +158,22 @@ type TaskDefaultConfig struct {
 
 type DefaultPublisherConfig struct {
 	Type string `yaml:"Type,omitempty"`
+}
+
+func (c DefaultPublisherConfig) Validate() error {
+	if c.Type == "" {
+		return fmt.Errorf("default publisher type cannot be empty")
+	}
+	isValidType := false
+	for _, expected := range models.PublisherNames {
+		if strings.ToLower(c.Type) == strings.ToLower(expected) {
+			isValidType = true
+		}
+	}
+	if !isValidType {
+		return fmt.Errorf("default publisher type %q unknow. must be one of: %v", c.Type, models.PublisherNames)
+	}
+	return nil
 }
 
 type TaskTimeoutConfig struct {

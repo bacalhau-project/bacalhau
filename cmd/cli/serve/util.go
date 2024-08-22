@@ -2,9 +2,9 @@ package serve
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
+	"net/url"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -30,13 +30,15 @@ func GetComputeConfig(
 	createExecutionStore bool,
 ) (node.ComputeConfig, error) {
 	// TODO(review): unsure what to do here now
-	totalResources, totalErr := cfg.Node.Compute.Capacity.TotalResourceLimits.ToResources()
-	jobResources, jobErr := cfg.Node.Compute.Capacity.JobResourceLimits.ToResources()
-	defaultResources, defaultErr := cfg.Node.Compute.Capacity.DefaultJobResourceLimits.ToResources()
-	if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
-		return node.ComputeConfig{}, err
-	}
+	/*
+		totalResources, totalErr := cfg.Node.Compute.Capacity.TotalResourceLimits.ToResources()
+		jobResources, jobErr := cfg.Node.Compute.Capacity.JobResourceLimits.ToResources()
+		defaultResources, defaultErr := cfg.Node.Compute.Capacity.DefaultJobResourceLimits.ToResources()
+		if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
+			return node.ComputeConfig{}, err
+		}
 
+	*/
 	var executionStore store.ExecutionStore
 	if createExecutionStore {
 		var err error
@@ -56,9 +58,9 @@ func GetComputeConfig(
 		ExecutionStore: executionStore,
 
 		// TODO(review): what are we setting these fields to now? We have a new set of defaults that are based on the job type.
-		TotalResourceLimits:      *totalResources,
-		JobResourceLimits:        *jobResources,
-		DefaultJobResourceLimits: *defaultResources,
+		//TotalResourceLimits:      *totalResources,
+		//JobResourceLimits:        *jobResources,
+		//DefaultJobResourceLimits: *defaultResources,
 
 		// TODO(review): assumedly we no longer support this feature?
 		// IgnorePhysicalResourceLimits:          false,
@@ -154,8 +156,8 @@ func GetRequesterConfig(ctx context.Context, cfg types2.Bacalhau, createJobStore
 		DefaultPublisher: cfg.JobDefaults.Batch.Task.Publisher.Type,
 	}
 
-	if cfg.InputSources.Enabled(types2.KindStorageS3) && cfg.InputSources.HasConfig(types2.KindStorageS3) {
-		s3cfg, err := types2.DecodeProviderConfig[types2.S3InputSourceConfig](cfg.InputSources)
+	if cfg.Publishers.Enabled(types2.KindPublisherS3) && cfg.InputSources.HasConfig(types2.KindPublisherS3) {
+		s3cfg, err := types2.DecodeProviderConfig[types2.S3PublisherConfig](cfg.Publishers)
 		if err != nil {
 			return node.RequesterConfig{}, err
 		}
@@ -178,12 +180,11 @@ func GetRequesterConfig(ctx context.Context, cfg types2.Bacalhau, createJobStore
 }
 
 func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
-	// TODO(review) see method getPublicNATSOrchestratorURL for why we ignore the host.
-	_, listenPortStr, err := net.SplitHostPort(cfg.Orchestrator.Listen)
+	_, portStr, err := net.SplitHostPort(cfg.Orchestrator.Listen)
 	if err != nil {
-		return node.NetworkConfig{}, err
+		return node.NetworkConfig{}, fmt.Errorf("failed to parse orchestrator listen address: %w", err)
 	}
-	listenPort, err := strconv.ParseInt(listenPortStr, 10, 64)
+	listenPort, err := strconv.ParseInt(portStr, 10, 64)
 	if err != nil {
 		return node.NetworkConfig{}, err
 	}
@@ -191,29 +192,32 @@ func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
 	if err != nil {
 		return node.NetworkConfig{}, err
 	}
-	_, clusterListenPortStr, err := net.SplitHostPort(cfg.Orchestrator.Cluster.Listen)
-	if err != nil {
-		return node.NetworkConfig{}, err
-	}
-	clusterListenPort, err := strconv.ParseInt(clusterListenPortStr, 10, 64)
-	if err != nil {
-		return node.NetworkConfig{}, err
-	}
-	return node.NetworkConfig{
+	ntwkCfg := node.NetworkConfig{
 		Port:              int(listenPort),
 		AdvertisedAddress: cfg.Orchestrator.Advertise,
 		Orchestrators:     cfg.Compute.Orchestrators,
 		StoreDir:          storeDir,
 		// TODO(review): an auth secret is no longer part of the config, should we operate without one, or include it
 		// in the config?
-		AuthSecret: "TODO",
+		//AuthSecret: "TODO",
 		// TODO(review): a cluster name is no longer part of the config, should we operate without one, or include it
 		// in the config?
-		ClusterName:              "TODO",
-		ClusterPort:              int(clusterListenPort),
+		//ClusterName:              "TODO",
 		ClusterAdvertisedAddress: cfg.Orchestrator.Cluster.Advertise,
 		ClusterPeers:             cfg.Orchestrator.Cluster.Peers,
-	}, nil
+	}
+	if cfg.Orchestrator.Cluster.Listen != "" {
+		parsedURL, err := url.Parse(cfg.Orchestrator.Cluster.Listen)
+		if err != nil {
+			return node.NetworkConfig{}, fmt.Errorf("failed to parse cluster listen address: %w", err)
+		}
+		clusterListenPort, err := strconv.ParseInt(parsedURL.Port(), 10, 64)
+		if err != nil {
+			return node.NetworkConfig{}, err
+		}
+		ntwkCfg.ClusterPort = int(clusterListenPort)
+	}
+	return ntwkCfg, nil
 }
 
 // persistConfigs writes the resolved config to the persisted config file.
@@ -228,27 +232,32 @@ func persistConfigs(repoPath string, cfg types.BacalhauConfig) error {
 }
 
 func parseServerAPIHost(host string) (string, error) {
-	if net.ParseIP(host) == nil {
+	parsedURL, err := url.Parse(host)
+	if err != nil {
+		return "", err
+	}
+	h := parsedURL.Hostname()
+	if net.ParseIP(h) == nil {
 		// We should check that the value gives us an address type
 		// we can use to get our IP address. If it doesn't, we should
 		// panic.
-		atype, ok := network.AddressTypeFromString(host)
+		atype, ok := network.AddressTypeFromString(h)
 		if !ok {
-			return "", fmt.Errorf("invalid address type in Server API Host config: %s", host)
+			return "", fmt.Errorf("invalid address type in Server API Host config: %s", h)
 		}
 
 		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
 		if err != nil {
-			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", host, err)
+			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", h, err)
 		}
 
 		if len(addr) == 0 {
-			return "", fmt.Errorf("no %s addresses found for Server API Host", host)
+			return "", fmt.Errorf("no %s addresses found for Server API Host", h)
 		}
 
 		// Use the first address
-		host = addr[0]
+		h = addr[0]
 	}
 
-	return host, nil
+	return h, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -69,7 +70,7 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types2.Bacalhau,
 	cm *system.CleanupManager,
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
@@ -219,10 +220,10 @@ func Setup(
 			DisabledFeatures:      stackConfig.DisabledFeatures,
 			AllowListedLocalPaths: stackConfig.AllowListedLocalPaths,
 			NetworkConfig:         clusterConfig,
-			AuthConfig: types.AuthConfig{
-				Methods: map[string]types.AuthenticatorConfig{
+			AuthConfig: types2.AuthConfig{
+				Methods: map[string]types2.AuthenticatorConfig{
 					"ClientKey": {
-						Type: authn.MethodTypeChallenge,
+						Type: string(authn.MethodTypeChallenge),
 					},
 				},
 			},
@@ -281,7 +282,7 @@ func Setup(
 	}, nil
 }
 
-func setStorePaths(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) error {
+func setStorePaths(ctx context.Context, cfg types2.Bacalhau, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
 	orchestratorDir, err := cfg.OrchestratorDir()
 	if err != nil {

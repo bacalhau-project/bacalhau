@@ -19,6 +19,8 @@ type NodeNameProvider interface {
 	GenerateNodeName(ctx context.Context) (string, error)
 }
 
+var NameProviders = []string{"hostname", "aws", "gcp", "uuid", "puuid"}
+
 // NodeNameProviderFunc type is an adapter to allow the use of ordinary functions as NodeNameProvider.
 type NodeNameProviderFunc func(ctx context.Context) (string, error)
 
