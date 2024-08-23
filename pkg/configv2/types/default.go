@@ -73,7 +73,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: KindPublisherLocal,
+					Type: models.PublisherLocal,
 				},
 				Timeouts: TaskTimeoutConfig{
 					ExecutionTimeout: Duration(models.NoTimeout),
@@ -88,7 +88,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: KindPublisherLocal,
+					Type: models.PublisherLocal,
 				},
 				Timeouts: TaskTimeoutConfig{
 					ExecutionTimeout: Duration(models.NoTimeout),
@@ -103,7 +103,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: KindPublisherLocal,
+					Type: models.PublisherLocal,
 				},
 			},
 		},
@@ -115,7 +115,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: KindPublisherLocal,
+					Type: models.PublisherLocal,
 				},
 			},
 		},
@@ -129,7 +129,7 @@ var Default = Bacalhau{
 		Interval: Day,
 	},
 	DefaultPublisher: DefaultPublisherConfig{
-		Type: KindPublisherLocal,
+		Type: models.PublisherLocal,
 	},
 }
 

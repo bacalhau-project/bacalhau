@@ -11,6 +11,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -32,10 +33,25 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 }
 
 // MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.
-func MustHaveIPFS(t testing.TB, ipfsConnect string) {
-	if !IsIPFSEnabled(ipfsConnect) {
+// Otherwise it returns an IPFS connect string
+func MustHaveIPFS(t testing.TB, cfg types2.Bacalhau) string {
+	downloaderConfigured := cfg.ResultDownloaders.Enabled(models.StorageSourceIPFS) &&
+		cfg.ResultDownloaders.Installed(models.StorageSourceIPFS)
+	inputSourceConfigured := cfg.InputSources.Enabled(models.StorageSourceIPFS) &&
+		cfg.InputSources.Installed(models.StorageSourceIPFS)
+	publisherConfigured := cfg.Publishers.Enabled(models.PublisherIPFS) &&
+		cfg.Publishers.Installed(models.PublisherIPFS)
+
+	if !(downloaderConfigured && inputSourceConfigured && publisherConfigured) {
 		t.Skip("Cannot run this test because it IPFS Connect is not configured")
 	}
+
+	// TODO(review): unsure which connect string to return
+	ipfsCfg, err := types2.DecodeProviderConfig[types2.IpfsDownloadConfig](cfg.ResultDownloaders)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ipfsCfg.Connect
 }
 
 // IsIPFSEnabled will return true if the test is running in an environment that can support IPFS.

@@ -54,7 +54,7 @@ func NewStandardStorageProvidersFactory(cfg types2.InputSourcesConfig) StoragePr
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
 		ipfsConnect := ""
-		if cfg.Enabled(types2.KindStorageIPFS) && cfg.HasConfig(types2.KindStorageIPFS) {
+		if cfg.Enabled(models.StorageSourceIPFS) && cfg.Installed(models.StorageSourceIPFS) {
 			ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsInputSourceConfig](cfg)
 			if err != nil {
 				return nil, err

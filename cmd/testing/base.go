@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -31,7 +32,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node            *node.Node
 	ClientV2        clientv2.API
-	Config          types.BacalhauConfig
+	Config          types2.Bacalhau
 	Host            string
 	Port            uint16
 	AllowListedPath string
@@ -74,7 +75,7 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Executors),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
@@ -138,13 +139,10 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	root.SetIn(stdin)
 
 	arguments := []string{}
-	if !slices.Contains(args, "--api-host") {
-		arguments = append(arguments, "--api-host", s.Host)
+	if !slices.Contains(args, "--api") {
+		arguments = append(arguments, "--api", fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 	}
 
-	if !slices.Contains(args, "--api-port") {
-		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
-	}
 	arguments = append(arguments, args...)
 
 	root.SetArgs(arguments)

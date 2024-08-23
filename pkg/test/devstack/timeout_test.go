@@ -10,14 +10,13 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -58,8 +57,21 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.Require().NoError(err)
 
 		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-			JobDefaults: transformer.JobDefaults{
-				TotalTimeout: testCase.requesterDefaultJobExecutionTimeout,
+			JobDefaults: types2.JobDefaults{
+				Batch: types2.BatchJobDefaultsConfig{
+					Task: types2.BatchTaskDefaultConfig{
+						Timeouts: types2.TaskTimeoutConfig{
+							ExecutionTimeout: types2.Duration(testCase.requesterDefaultJobExecutionTimeout),
+						},
+					},
+				},
+				Ops: types2.BatchJobDefaultsConfig{
+					Task: types2.BatchTaskDefaultConfig{
+						Timeouts: types2.TaskTimeoutConfig{
+							ExecutionTimeout: types2.Duration(testCase.requesterDefaultJobExecutionTimeout),
+						},
+					},
+				},
 			},
 			HousekeepingBackgroundTaskInterval: 100 * time.Millisecond,
 			// we want compute nodes to fail first instead or requesters to cancel

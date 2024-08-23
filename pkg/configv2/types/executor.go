@@ -3,7 +3,11 @@ package types
 import (
 	"slices"
 	"strings"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+var _ ConfigProvider = (*ExecutorsConfig)(nil)
 
 type ExecutorsConfig struct {
 	Disabled []string                          `yaml:"Disabled,omitempty"`
@@ -16,7 +20,7 @@ func (e ExecutorsConfig) Enabled(kind string) bool {
 	})
 }
 
-func (e ExecutorsConfig) HasConfig(kind string) bool {
+func (e ExecutorsConfig) Installed(kind string) bool {
 	_, ok := e.Config[kind]
 	return ok
 }
@@ -41,11 +45,6 @@ type DockerManifestCache struct {
 	Refresh Duration
 }
 
-const KindExecutorDocker = "Docker"
-
 func (d Docker) Kind() string {
-	return KindExecutorDocker
+	return models.EngineDocker
 }
-
-// wasm doesn't have a config, but may still be enabled or disabled, so we need this constant.
-const KindExecutorWASM = "WASM"

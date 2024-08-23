@@ -3,7 +3,11 @@ package types
 import (
 	"slices"
 	"strings"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+var _ ConfigProvider = (*PublishersConfig)(nil)
 
 type PublishersConfig struct {
 	Disabled []string                          `yaml:"Disabled,omitempty"`
@@ -20,7 +24,7 @@ func (p PublishersConfig) Enabled(kind string) bool {
 	})
 }
 
-func (p PublishersConfig) HasConfig(kind string) bool {
+func (p PublishersConfig) Installed(kind string) bool {
 	_, ok := p.Config[kind]
 	return ok
 }
@@ -33,10 +37,8 @@ type LocalPublisherConfig struct {
 	Directory string `yaml:"Directory"`
 }
 
-const KindPublisherLocal = "Local"
-
 func (l LocalPublisherConfig) Kind() string {
-	return KindPublisherLocal
+	return models.PublisherLocal
 }
 
 var _ ProviderType = (*S3PublisherConfig)(nil)
@@ -46,10 +48,8 @@ type S3PublisherConfig struct {
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
 }
 
-const KindPublisherS3 = "S3"
-
 func (s S3PublisherConfig) Kind() string {
-	return KindPublisherS3
+	return models.PublisherS3
 }
 
 type IpfsPublisherConfig struct {
@@ -57,8 +57,6 @@ type IpfsPublisherConfig struct {
 	Connect string `yaml:"Connect"`
 }
 
-const KindPublisherIPFS = "IPFS"
-
 func (i IpfsPublisherConfig) Kind() string {
-	return KindPublisherIPFS
+	return models.PublisherIPFS
 }

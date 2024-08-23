@@ -104,9 +104,9 @@ func NewStandardExecutorProvider(
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	providers := make(map[string]executor.Executor)
-	if cfg.Enabled(types2.KindExecutorDocker) {
+	if cfg.Enabled(models.EngineDocker) {
 		var dockerExecutor *docker.Executor
-		if cfg.HasConfig(types2.KindExecutorDocker) {
+		if cfg.Installed(models.EngineDocker) {
 			dockercfg, err := types2.DecodeProviderConfig[types2.Docker](cfg)
 			if err != nil {
 				return nil, err
@@ -134,7 +134,7 @@ func NewStandardExecutorProvider(
 	}
 
 	// NB(forrest): wasm doesn't have a config, so just check that its enabled.
-	if cfg.Enabled(types2.KindExecutorWASM) {
+	if cfg.Enabled(models.EngineWasm) {
 		wasmExecutor, err := wasm.NewExecutor()
 		if err != nil {
 			return nil, err

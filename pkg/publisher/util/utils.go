@@ -33,7 +33,7 @@ func NewPublisherProvider(
 	// for now, lets keep everything the same for compatibility, else tests might fail.
 	providers[models.PublisherNoop] = noop.NewNoopPublisher()
 
-	if cfg.Enabled(types2.KindPublisherS3) {
+	if cfg.Enabled(models.PublisherS3) {
 		s3Publisher, err := configureS3Publisher(storagePath, cm)
 		if err != nil {
 			return nil, err
@@ -41,7 +41,7 @@ func NewPublisherProvider(
 		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
 	}
 
-	if cfg.Enabled(types2.KindPublisherLocal) {
+	if cfg.Enabled(models.PublisherLocal) {
 		providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
 			ctx,
 			localConfig.Directory,
@@ -51,7 +51,7 @@ func NewPublisherProvider(
 	}
 
 	// TODO(review): what does it mean if IPFS isn't disabled in the config, and also doesn't have a config?
-	if cfg.Enabled(types2.KindPublisherIPFS) && cfg.HasConfig(types2.KindPublisherIPFS) {
+	if cfg.Enabled(models.PublisherIPFS) && cfg.Installed(models.PublisherIPFS) {
 		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsPublisherConfig](cfg)
 		if err != nil {
 			return nil, err

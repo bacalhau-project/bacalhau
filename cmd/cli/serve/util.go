@@ -66,7 +66,7 @@ func GetComputeConfig(
 
 	// if the local publisher is enabled and a config exists for it populate params, otherwise
 	// a default set of values will be used which are defined in NewComputeConfigWith
-	if cfg.Publishers.Enabled(types2.KindPublisherLocal) && cfg.Publishers.HasConfig(types2.KindPublisherLocal) {
+	if cfg.Publishers.Enabled(models.PublisherLocal) && cfg.Publishers.Installed(models.PublisherLocal) {
 		lpcfg, err := types2.DecodeProviderConfig[types2.LocalPublisherConfig](cfg.Publishers)
 		if err != nil {
 			return node.ComputeConfig{}, err
@@ -109,7 +109,7 @@ func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.Requeste
 		DefaultPublisher:            cfg.DefaultPublisher.Type,
 	}
 
-	if cfg.Publishers.Enabled(types2.KindPublisherS3) && cfg.InputSources.HasConfig(types2.KindPublisherS3) {
+	if cfg.Publishers.Enabled(models.PublisherS3) && cfg.InputSources.Installed(models.PublisherS3) {
 		s3cfg, err := types2.DecodeProviderConfig[types2.S3PublisherConfig](cfg.Publishers)
 		if err != nil {
 			return node.RequesterConfig{}, err

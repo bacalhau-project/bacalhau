@@ -71,7 +71,7 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		devstack.WithNumberOfComputeOnlyNodes(3),
 		devstack.WithNodeOverrides(nodeOverrides...),
 		devstack.WithRequesterConfig(requesterConfig),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Executors),
 	)
 
 	s.requester = stack.Nodes[0]

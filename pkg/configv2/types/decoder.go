@@ -14,7 +14,7 @@ func DecodeProviderConfig[P ProviderType](cfg ConfigProvider) (P, error) {
 	kind := target.Kind()
 
 	// Check if the config for the specified kind exists
-	if !cfg.HasConfig(kind) {
+	if !cfg.Installed(kind) {
 		return target, fmt.Errorf("no config found for publisher: %s", kind)
 	}
 	data := cfg.ConfigMap()[kind]

@@ -3,15 +3,15 @@ package types
 import (
 	"slices"
 	"strings"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+var _ ConfigProvider = (*InputSourcesConfig)(nil)
 
 type InputSourcesConfig struct {
 	Disabled []string                          `yaml:"Disabled,omitempty"`
 	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
-}
-
-func (i InputSourcesConfig) ConfigMap() map[string]map[string]interface{} {
-	return i.Config
 }
 
 func (i InputSourcesConfig) Enabled(kind string) bool {
@@ -20,9 +20,13 @@ func (i InputSourcesConfig) Enabled(kind string) bool {
 	})
 }
 
-func (i InputSourcesConfig) HasConfig(kind string) bool {
+func (i InputSourcesConfig) Installed(kind string) bool {
 	_, ok := i.Config[kind]
 	return ok
+}
+
+func (i InputSourcesConfig) ConfigMap() map[string]map[string]interface{} {
+	return i.Config
 }
 
 type IpfsInputSourceConfig struct {
@@ -30,8 +34,6 @@ type IpfsInputSourceConfig struct {
 	Connect string `yaml:"Connect"`
 }
 
-const KindStorageIPFS = "IPFS"
-
 func (i IpfsInputSourceConfig) Kind() string {
-	return KindStorageIPFS
+	return models.StorageSourceIPFS
 }

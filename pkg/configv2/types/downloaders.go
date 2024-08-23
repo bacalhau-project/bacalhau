@@ -1,5 +1,9 @@
 package types
 
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
+
 type ResultDownloaders struct {
 	Timeout Duration                          `yaml:"Timeout,omitempty"`
 	Config  map[string]map[string]interface{} `yaml:"Config,omitempty"`
@@ -11,7 +15,7 @@ func (r ResultDownloaders) Enabled(kind string) bool {
 	return true
 }
 
-func (r ResultDownloaders) HasConfig(kind string) bool {
+func (r ResultDownloaders) Installed(kind string) bool {
 	_, ok := r.Config[kind]
 	return ok
 }
@@ -25,8 +29,6 @@ type IpfsDownloadConfig struct {
 	Connect string `yaml:"Connect"`
 }
 
-const KindDownloadIPFS = "ipfsdownload"
-
 func (i IpfsDownloadConfig) Kind() string {
-	return KindDownloadIPFS
+	return models.StorageSourceIPFS
 }

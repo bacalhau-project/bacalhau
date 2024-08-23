@@ -65,7 +65,7 @@ func (s *BaseTLSSuite) SetupTest() {
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithSelfSignedCertificate(serverCertPath, serverKeyPath),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Executors),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address // NOTE: 0.0.0.0 will not work because we're testing TLS validation

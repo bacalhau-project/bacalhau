@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
@@ -44,7 +43,6 @@ type URLBasedTestCase struct {
 
 func runURLTest(
 	suite *URLTestSuite,
-	cfg types.BacalhauConfig,
 	handler func(w http.ResponseWriter, r *http.Request),
 	testCase URLBasedTestCase,
 ) {
@@ -124,7 +122,7 @@ func (s *URLTestSuite) TestMultipleURLs() {
 			w.Write([]byte(content))
 		}
 	}
-	runURLTest(s, s.Config, handler, testCase)
+	runURLTest(s, handler, testCase)
 }
 
 // both starts should be before both ends if we are downloading in parallel
@@ -159,7 +157,7 @@ func (s *URLTestSuite) TestURLsInParallel() {
 		}
 
 	}
-	runURLTest(s, s.Config, handler, testCase)
+	runURLTest(s, handler, testCase)
 
 	start1, ok := accessTimes["/"+getAccessKey(testCase.file1, "start")]
 	require.True(s.T(), ok)
@@ -207,7 +205,7 @@ func (s *URLTestSuite) TestFlakyURLs() {
 		}
 
 	}
-	runURLTest(s, s.Config, handler, testCase)
+	runURLTest(s, handler, testCase)
 }
 
 func (s *URLTestSuite) TestLocalURLCombo() {

@@ -9,6 +9,7 @@ import (
 
 	v1types "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
@@ -187,7 +188,7 @@ func migrateDownloadConfig(in v1types.NodeConfig) (types.ResultDownloaders, erro
 			return types.ResultDownloaders{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindDownloadIPFS] = config
+		out.Config[models.StorageSourceIPFS] = config
 	}
 	return out, nil
 }
@@ -214,7 +215,7 @@ func migrateEngines(in v1types.NodeConfig) (types.ExecutorsConfig, error) {
 			return types.ExecutorsConfig{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindExecutorDocker] = config
+		out.Config[models.EngineDocker] = config
 	}
 	return out, nil
 }
@@ -232,7 +233,7 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 			return types.PublishersConfig{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindPublisherIPFS] = config
+		out.Config[models.PublisherIPFS] = config
 	}
 
 	if in.Compute.LocalPublisher.Address != "" ||
@@ -253,7 +254,7 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 			return types.PublishersConfig{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindPublisherLocal] = localcfg
+		out.Config[models.PublisherLocal] = localcfg
 	}
 
 	if in.Requester.StorageProvider.S3.PreSignedURLDisabled ||
@@ -270,7 +271,7 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 			return types.PublishersConfig{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindPublisherS3] = s3cfg
+		out.Config[models.PublisherS3] = s3cfg
 	}
 	return out, nil
 }
@@ -286,7 +287,7 @@ func migrateInputSources(in v1types.NodeConfig) (types.InputSourcesConfig, error
 			return types.InputSourcesConfig{}, err
 		}
 		out.Config = make(map[string]map[string]interface{})
-		out.Config[types.KindStorageIPFS] = config
+		out.Config[models.StorageSourceIPFS] = config
 	}
 
 	return out, nil

@@ -33,11 +33,11 @@ func TestStorageSuite(t *testing.T) {
 func (s *StorageSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
 	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-	testutils.MustHaveIPFS(s.T(), cfg.Node.IPFS.Connect)
+	ipfsConnect := testutils.MustHaveIPFS(s.T(), cfg)
 
 	var err error
-	s.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.Node.IPFS.Connect)
-	s.storage, err = NewStorage(*s.ipfsClient, time.Duration(cfg.Node.VolumeSizeRequestTimeout))
+	s.ipfsClient, err = ipfs.NewClient(context.Background(), ipfsConnect)
+	s.storage, err = NewStorage(*s.ipfsClient, 5*time.Second)
 	s.Require().NoError(err)
 }
 

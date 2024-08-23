@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -44,7 +45,7 @@ func DownloadResultsHandler(
 		return nil
 	}
 	ipfsConnect := ""
-	if cfg.ResultDownloaders.Enabled(types2.KindDownloadIPFS) && cfg.ResultDownloaders.HasConfig(types2.KindStorageIPFS) {
+	if cfg.ResultDownloaders.Enabled(models.StorageSourceIPFS) && cfg.ResultDownloaders.Installed(models.StorageSourceIPFS) {
 		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsDownloadConfig](cfg.ResultDownloaders)
 		if err != nil {
 			return err

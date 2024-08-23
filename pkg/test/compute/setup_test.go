@@ -14,8 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -116,12 +117,13 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.Require().NoError(err)
 
-	c, err := config.New()
+	c, err := configv2.New()
 	s.Require().NoError(err)
 
-	err = r.Init(c)
-	s.Require().NoError(err)
-	cfg, err := c.Current()
+	var cfg types2.Bacalhau
+	s.Require().NoError(c.Unmarshal(&cfg))
+
+	err = r.Init(cfg)
 	s.Require().NoError(err)
 
 	// create the compute node

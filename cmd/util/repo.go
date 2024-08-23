@@ -2,6 +2,8 @@ package util
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -10,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/configv2"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -45,11 +48,24 @@ func SetupRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
 func SetupConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
 	var opts []configv2.Option
 	v := viper.GetViper()
-	// check if the user specified config files via the --config flag, if none were provided look
-	// in $XDG_CONFIG_HOME/bacalhau/config.yaml
-	configFiles, err := getConfigFiles(v)
-	if err != nil {
-		return types2.Bacalhau{}, err
+	// check if the user specified config files via the --config flag
+	configFiles := getConfigFiles(v)
+
+	// if none were provided look in $XDG_CONFIG_HOME/bacalhau/config.yaml
+	if len(configFiles) == 0 {
+		xdgPath, err := os.UserConfigDir()
+		if err == nil {
+			path := filepath.Join(xdgPath, "bacalhau", config.FileName)
+			if _, err := os.Stat(path); err != nil {
+				// if the file exists and could not be read, return an error
+				if !os.IsNotExist(err) {
+					return types2.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
+				}
+			} else {
+				// the file exists, use it.
+				configFiles = append(configFiles, path)
+			}
+		}
 	}
 	// if a config file is present, apply it to the config
 	if len(configFiles) > 0 {
@@ -113,32 +129,7 @@ func getConfigEnvVars(v *viper.Viper) map[string][]string {
 	return out
 }
 
-func getConfigFiles(v *viper.Viper) ([]string, error) {
+func getConfigFiles(v *viper.Viper) []string {
 	// check if the user specified config files via the --config/-c flag
-	configFiles := v.GetStringSlice(cliflags.RootCommandConfigFiles)
-	if len(configFiles) > 0 {
-		return configFiles, nil
-	}
-
-	/*
-		// check if a config file is present at $XDG_CONFIG_HOME/bacalhau/config.yaml
-		{
-			xdgPath, err := os.UserConfigDir()
-			if err == nil {
-				path := filepath.Join(xdgPath, "bacalhau", config.FileName)
-				if _, err := os.Stat(path); err != nil {
-					// if the file exists and could not be read, return an error
-					if !os.IsNotExist(err) {
-						return nil, fmt.Errorf("loading xdg config file at %q: %w", path, err)
-					}
-				} else {
-					// the file exists, use it.
-					return []string{path}, nil
-				}
-			}
-		}
-	*/
-
-	// no config file exists, this is fine bacalhau will use defaults and values from flags and env vars.
-	return []string{}, nil
+	return v.GetStringSlice(cliflags.RootCommandConfigFiles)
 }
