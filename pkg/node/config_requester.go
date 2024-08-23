@@ -9,15 +9,15 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 )
 
 type RequesterConfigParams struct {
-	JobDefaults transformer.JobDefaults
+	JobDefaults types2.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	HousekeepingTimeoutBuffer          time.Duration

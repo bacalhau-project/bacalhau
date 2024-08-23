@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -41,7 +41,7 @@ func Setup(
 	ctx context.Context,
 	t testing.TB,
 	fsr *repo.FsRepo,
-	cfg types.BacalhauConfig,
+	cfg types2.Bacalhau,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
 	cm := system.NewCleanupManager()
@@ -63,7 +63,7 @@ func Setup(
 	return stack
 }
 
-func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types.DockerCacheConfig) devstack.ConfigOption {
+func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types2.ExecutorsConfig) devstack.ConfigOption {
 	return devstack.WithDependencyInjector(node.NodeDependencyInjector{
 		ExecutorsFactory: &mixedExecutorFactory{
 			standardFactory: node.NewStandardExecutorsFactory(cfg),

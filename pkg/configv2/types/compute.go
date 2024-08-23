@@ -13,7 +13,6 @@ type Compute struct {
 	TLS               TLS               `yaml:"TLS,omitempty"`
 	Heartbeat         Heartbeat         `yaml:"Heartbeat,omitempty"`
 	Labels            map[string]string `yaml:"Labels,omitempty"`
-	TotalCapacity     Resource          `yaml:"TotalCapacity,omitempty"`
 	AllocatedCapacity ResourceScaler    `yaml:"AllocatedCapacity,omitempty"`
 	Volumes           []Volume          `yaml:"Volumes,omitempty"`
 }

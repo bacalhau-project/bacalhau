@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
@@ -52,12 +54,6 @@ var Default = Bacalhau{
 			ResourceUpdateInterval: 30 * Second,
 			Interval:               15 * Second,
 		},
-		TotalCapacity: Resource{
-			CPU:    "1",
-			Memory: "1Gb",
-			Disk:   "1Gb",
-			GPU:    "0",
-		},
 		AllocatedCapacity: ResourceScaler{
 			CPU:    "80%",
 			Memory: "80%",
@@ -69,10 +65,10 @@ var Default = Bacalhau{
 		Timeout: 5 * Minute,
 	},
 	JobDefaults: JobDefaults{
-		Batch: JobDefaultsConfig{
-			Priority: 50,
-			Task: TaskDefaultConfig{
-				Resources: Resource{
+		Batch: BatchJobDefaultsConfig{
+			Priority: 0,
+			Task: BatchTaskDefaultConfig{
+				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
@@ -80,14 +76,14 @@ var Default = Bacalhau{
 					Type: KindPublisherLocal,
 				},
 				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minute,
+					ExecutionTimeout: Duration(models.NoTimeout),
 				},
 			},
 		},
-		Daemon: JobDefaultsConfig{
-			Priority: 100,
-			Task: TaskDefaultConfig{
-				Resources: Resource{
+		Ops: BatchJobDefaultsConfig{
+			Priority: 0,
+			Task: BatchTaskDefaultConfig{
+				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
@@ -95,37 +91,31 @@ var Default = Bacalhau{
 					Type: KindPublisherLocal,
 				},
 				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minute,
+					ExecutionTimeout: Duration(models.NoTimeout),
 				},
 			},
 		},
-		Service: JobDefaultsConfig{
-			Priority: 50,
-			Task: TaskDefaultConfig{
-				Resources: Resource{
+		Daemon: LongRunningJobDefaultsConfig{
+			Priority: 0,
+			Task: LongRunningTaskDefaultConfig{
+				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
 					Type: KindPublisherLocal,
-				},
-				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},
-		Ops: JobDefaultsConfig{
-			Priority: 50,
-			Task: TaskDefaultConfig{
-				Resources: Resource{
+		Service: LongRunningJobDefaultsConfig{
+			Priority: 0,
+			Task: LongRunningTaskDefaultConfig{
+				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
 					Type: KindPublisherLocal,
-				},
-				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: 30 * Minute,
 				},
 			},
 		},
@@ -137,6 +127,9 @@ var Default = Bacalhau{
 	},
 	UpdateConfig: UpdateConfig{
 		Interval: Day,
+	},
+	DefaultPublisher: DefaultPublisherConfig{
+		Type: KindPublisherLocal,
 	},
 }
 

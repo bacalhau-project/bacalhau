@@ -7,12 +7,12 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -46,7 +46,7 @@ type ScenarioTestSuite interface {
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx    context.Context
-	Config types.BacalhauConfig
+	Config types2.Bacalhau
 	Repo   *repo.FsRepo
 }
 
@@ -95,8 +95,8 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 	}
 
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
-		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
-		// we probably want to merge these instead.
+		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the entire compute
+		// config settings.
 		executionDir, err := s.Config.ExecutionDir()
 		s.Require().NoError(err)
 		cfg, err := node.NewComputeConfigWithDefaults(executionDir)
@@ -110,7 +110,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
-			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Node.Compute.ManifestCache),
+			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Executors),
 		)...,
 	)
 

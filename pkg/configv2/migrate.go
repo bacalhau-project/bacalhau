@@ -62,12 +62,6 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
 				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
-			TotalCapacity: types.Resource{
-				CPU:    in.Node.Compute.Capacity.TotalResourceLimits.CPU,
-				Memory: in.Node.Compute.Capacity.TotalResourceLimits.Memory,
-				Disk:   in.Node.Compute.Capacity.TotalResourceLimits.Disk,
-				GPU:    in.Node.Compute.Capacity.TotalResourceLimits.GPU,
-			},
 			Volumes: func(paths []string) []types.Volume {
 				out := make([]types.Volume, len(paths))
 				for i, p := range paths {
@@ -92,84 +86,6 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 		Publishers:        publisherConfig,
 		Executors:         executorConfig,
 		ResultDownloaders: downloaderConfig,
-		// TODO(forrest) [review] the decision regarding the presence of these values or if we even use them has
-		// not been made https://www.notion.so/Rethinking-Configuration-435fbe87419148b4bbc5119d413786eb?d=1c73cb661b18405b8b67b3856f02e1d1&pvs=4#fdc6de7c00364de1bb81b325686e6e66
-		// It sounds like we only want to allow the setting of a default publisher, but unsure if this is on a job
-		// type basis or something else
-		JobDefaults: types.JobDefaults{
-			Batch: types.JobDefaultsConfig{
-				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
-				// Priority: 100,
-				Task: types.TaskDefaultConfig{
-					Resources: types.Resource{
-						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
-						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
-						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
-						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
-					},
-					Publisher: types.DefaultPublisherConfig{
-						Type: in.Node.Requester.DefaultPublisher,
-					},
-					Timeouts: types.TaskTimeoutConfig{
-						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-					},
-				},
-			},
-			Daemon: types.JobDefaultsConfig{
-				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
-				// Priority: 100,
-				Task: types.TaskDefaultConfig{
-					Resources: types.Resource{
-						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
-						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
-						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
-						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
-					},
-					Publisher: types.DefaultPublisherConfig{
-						Type: in.Node.Requester.DefaultPublisher,
-					},
-					Timeouts: types.TaskTimeoutConfig{
-						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-					},
-				},
-			},
-			Service: types.JobDefaultsConfig{
-				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
-				// Priority: 100,
-				Task: types.TaskDefaultConfig{
-					Resources: types.Resource{
-						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
-						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
-						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
-						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
-					},
-					Publisher: types.DefaultPublisherConfig{
-						Type: in.Node.Requester.DefaultPublisher,
-					},
-					Timeouts: types.TaskTimeoutConfig{
-						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-					},
-				},
-			},
-			Ops: types.JobDefaultsConfig{
-				// TODO(forrest) [review]: Does a zero publisher value imply it has no priority or that it's not configured?
-				// Priority: 100,
-				Task: types.TaskDefaultConfig{
-					Resources: types.Resource{
-						CPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.CPU,
-						Memory: in.Node.Compute.Capacity.DefaultJobResourceLimits.Memory,
-						Disk:   in.Node.Compute.Capacity.DefaultJobResourceLimits.Disk,
-						GPU:    in.Node.Compute.Capacity.DefaultJobResourceLimits.GPU,
-					},
-					Publisher: types.DefaultPublisherConfig{
-						Type: in.Node.Requester.DefaultPublisher,
-					},
-					Timeouts: types.TaskTimeoutConfig{
-						ExecutionTimeout: types.Duration(in.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-					},
-				},
-			},
-		},
 		// TODO(forrest) [review]: currently both the compute and requester have a job selection policy
 		// it is not clear whose policy should be migrated here.
 		JobAdmissionControl: types.JobAdmissionControl{
@@ -322,10 +238,15 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 	if in.Compute.LocalPublisher.Address != "" ||
 		in.Compute.LocalPublisher.Port != 0 ||
 		in.Compute.LocalPublisher.Directory != "" {
-		localPublisherCfg := types.LocalPublisherConfig{
-			Address:   in.Compute.LocalPublisher.Address,
-			Port:      in.Compute.LocalPublisher.Port,
-			Directory: in.Compute.LocalPublisher.Directory,
+		localPublisherCfg := types.LocalPublisherConfig{}
+		if in.Compute.LocalPublisher.Address != "" {
+			localPublisherCfg.Address = in.Compute.LocalPublisher.Address
+		}
+		if in.Compute.LocalPublisher.Port != 0 {
+			localPublisherCfg.Port = in.Compute.LocalPublisher.Port
+		}
+		if in.Compute.LocalPublisher.Directory != "" {
+			localPublisherCfg.Directory = in.Compute.LocalPublisher.Directory
 		}
 		var localcfg map[string]interface{}
 		if err := mapstructure.Decode(localPublisherCfg, &localcfg); err != nil {
@@ -337,9 +258,12 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 
 	if in.Requester.StorageProvider.S3.PreSignedURLDisabled ||
 		in.Requester.StorageProvider.S3.PreSignedURLExpiration != 0 {
-		s3PublisherCfg := types.S3PublisherConfig{
-			PreSignedURLDisabled:   in.Requester.StorageProvider.S3.PreSignedURLDisabled,
-			PreSignedURLExpiration: types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration),
+		s3PublisherCfg := types.S3PublisherConfig{}
+		if in.Requester.StorageProvider.S3.PreSignedURLDisabled {
+			s3PublisherCfg.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
+		}
+		if in.Requester.StorageProvider.S3.PreSignedURLExpiration != 0 {
+			s3PublisherCfg.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
 		}
 		var s3cfg map[string]interface{}
 		if err := mapstructure.Decode(s3PublisherCfg, &s3cfg); err != nil {
@@ -351,10 +275,6 @@ func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
 	return out, nil
 }
 
-// TODO(forrest) [review]: other storage sources to consider here include:
-//
-//	S3PreSigned
-//	Inline
 func migrateInputSources(in v1types.NodeConfig) (types.InputSourcesConfig, error) {
 	var out types.InputSourcesConfig
 	out.Disabled = in.DisabledFeatures.Storages

@@ -194,7 +194,7 @@ func runDevstack(cmd *cobra.Command, cfg types2.Bacalhau, fsr *repo.FsRepo, ODs 
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg, true)
+	requesterConfig, err := serve.GetRequesterConfig(cfg, true)
 	if err != nil {
 		return err
 	}

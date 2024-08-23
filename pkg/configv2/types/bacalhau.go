@@ -7,27 +7,27 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 type Bacalhau struct {
-	API                 API                 `yaml:"API,omitempty"`
-	NameProvider        string              `yaml:"NameProvider,omitempty"`
-	DataDir             string              `yaml:"DataDir,omitempty"`
-	StrictVersionMatch  bool                `yaml:"StrictVersionMatch,omitempty"`
-	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`
-	Compute             Compute             `yaml:"Compute,omitempty"`
-	WebUI               WebUI               `yaml:"WebUI,omitempty"`
-	InputSources        InputSourcesConfig  `yaml:"InputSources,omitempty"`
-	Publishers          PublishersConfig    `yaml:"Publishers,omitempty"`
-	Executors           ExecutorsConfig     `yaml:"Executors,omitempty"`
-	ResultDownloaders   ResultDownloaders   `yaml:"ResultDownloaders,omitempty"`
-	JobDefaults         JobDefaults         `yaml:"JobDefaults,omitempty"`
-	JobAdmissionControl JobAdmissionControl `yaml:"JobAdmissionControl,omitempty"`
-	Logging             Logging             `yaml:"Logging,omitempty"`
-	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
-	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
+	API                 API                    `yaml:"API,omitempty"`
+	NameProvider        string                 `yaml:"NameProvider,omitempty"`
+	DataDir             string                 `yaml:"DataDir,omitempty"`
+	StrictVersionMatch  bool                   `yaml:"StrictVersionMatch,omitempty"`
+	Orchestrator        Orchestrator           `yaml:"Orchestrator,omitempty"`
+	Compute             Compute                `yaml:"Compute,omitempty"`
+	WebUI               WebUI                  `yaml:"WebUI,omitempty"`
+	InputSources        InputSourcesConfig     `yaml:"InputSources,omitempty"`
+	Publishers          PublishersConfig       `yaml:"Publishers,omitempty"`
+	Executors           ExecutorsConfig        `yaml:"Executors,omitempty"`
+	ResultDownloaders   ResultDownloaders      `yaml:"ResultDownloaders,omitempty"`
+	JobDefaults         JobDefaults            `yaml:"JobDefaults,omitempty"`
+	JobAdmissionControl JobAdmissionControl    `yaml:"JobAdmissionControl,omitempty"`
+	Logging             Logging                `yaml:"Logging,omitempty"`
+	UpdateConfig        UpdateConfig           `yaml:"UpdateConfig,omitempty"`
+	FeatureFlags        FeatureFlags           `yaml:"FeatureFlags,omitempty"`
+	DefaultPublisher    DefaultPublisherConfig `yaml:"DefaultPublisher,omitempty"`
 }
 
 // Validate returns an error if the config is invalid
@@ -136,44 +136,6 @@ type JobAdmissionControl struct {
 	AcceptNetworkedJobs bool   `yaml:"AcceptNetworkedJobs,omitempty"`
 	ProbeHTTP           string `yaml:"ProbeHTTP,omitempty"`
 	ProbeExec           string `yaml:"ProbeExec,omitempty"`
-}
-
-type JobDefaults struct {
-	Batch   JobDefaultsConfig `yaml:"Batch,omitempty"`
-	Daemon  JobDefaultsConfig `yaml:"Daemon,omitempty"`
-	Service JobDefaultsConfig `yaml:"Service,omitempty"`
-	Ops     JobDefaultsConfig `yaml:"Ops,omitempty"`
-}
-
-type JobDefaultsConfig struct {
-	Priority uint              `yaml:"Priority,omitempty"`
-	Task     TaskDefaultConfig `yaml:"Task,omitempty"`
-}
-
-type TaskDefaultConfig struct {
-	Resources Resource               `yaml:"Resources,omitempty"`
-	Publisher DefaultPublisherConfig `yaml:"Publisher,omitempty"`
-	Timeouts  TaskTimeoutConfig      `yaml:"Timeouts,omitempty"`
-}
-
-type DefaultPublisherConfig struct {
-	Type string `yaml:"Type,omitempty"`
-}
-
-func (c DefaultPublisherConfig) Validate() error {
-	if c.Type == "" {
-		return fmt.Errorf("default publisher type cannot be empty")
-	}
-	isValidType := false
-	for _, expected := range models.PublisherNames {
-		if strings.ToLower(c.Type) == strings.ToLower(expected) {
-			isValidType = true
-		}
-	}
-	if !isValidType {
-		return fmt.Errorf("default publisher type %q unknow. must be one of: %v", c.Type, models.PublisherNames)
-	}
-	return nil
 }
 
 type TaskTimeoutConfig struct {

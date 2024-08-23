@@ -9,7 +9,6 @@ import (
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -41,10 +40,6 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: models.NoTimeout,
-	},
-
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
@@ -82,9 +77,6 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
-	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: 30 * time.Second,
-	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,

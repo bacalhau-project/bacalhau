@@ -2,8 +2,9 @@ package transformer
 
 import (
 	"context"
-	"time"
+	"fmt"
 
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -16,37 +17,82 @@ func IDGenerator(_ context.Context, job *models.Job) error {
 	return nil
 }
 
-type JobDefaults struct {
-	TotalTimeout     time.Duration
-	ExecutionTimeout time.Duration
-	QueueTimeout     time.Duration
-}
-
 // DefaultsApplier is a transformer that applies default values to the job.
-func DefaultsApplier(defaults JobDefaults) JobTransformer {
+func DefaultsApplier(defaults types2.JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-		for _, task := range job.Tasks {
-			// only apply default execution timeout to non-long running jobs
-			if !job.IsLongRunning() {
-				if task.Timeouts.TotalTimeout <= 0 {
-					task.Timeouts.TotalTimeout = int64(defaults.TotalTimeout.Seconds())
-				}
-				if task.Timeouts.ExecutionTimeout <= 0 {
-					task.Timeouts.ExecutionTimeout = int64(defaults.ExecutionTimeout.Seconds())
-				}
-			}
-
-			// only apply default queue timeout to batch and service jobs
-			if job.Type == models.JobTypeBatch || job.Type == models.JobTypeService {
-				if task.Timeouts.GetQueueTimeout() <= 0 {
-					task.Timeouts.QueueTimeout = int64(defaults.QueueTimeout.Seconds())
-				}
-			}
+		switch job.Type {
+		case models.JobTypeBatch:
+			applyBatchJobDefaults(defaults.Batch, job)
+		case models.JobTypeOps:
+			applyBatchJobDefaults(defaults.Ops, job)
+		case models.JobTypeService:
+			applyLongRunningJobDefaults(defaults.Service, job)
+		case models.JobTypeDaemon:
+			applyLongRunningJobDefaults(defaults.Daemon, job)
+		default:
+			return fmt.Errorf("unknown job type: %s", job.Type)
 		}
 
 		return nil
 	}
 	return JobFn(f)
+}
+
+func applyBatchJobDefaults(defaults types2.BatchJobDefaultsConfig, job *models.Job) {
+	if job.Priority == 0 {
+		job.Priority = defaults.Priority
+	}
+	for _, task := range job.Tasks {
+		applyBatchTaskDefaults(defaults.Task, task)
+	}
+}
+
+func applyBatchTaskDefaults(defaults types2.BatchTaskDefaultConfig, task *models.Task) {
+	if task.ResourcesConfig.CPU == "" {
+		task.ResourcesConfig.CPU = defaults.Resources.CPU
+	}
+	if task.ResourcesConfig.Memory == "" {
+		task.ResourcesConfig.Memory = defaults.Resources.Memory
+	}
+	if task.ResourcesConfig.Disk == "" {
+		task.ResourcesConfig.Disk = defaults.Resources.Disk
+	}
+	if task.ResourcesConfig.GPU == "" {
+		task.ResourcesConfig.GPU = defaults.Resources.GPU
+	}
+	if task.Publisher.IsEmpty() {
+		task.Publisher.Type = defaults.Publisher.Type
+	}
+	if task.Timeouts.ExecutionTimeout == 0 {
+		task.Timeouts.ExecutionTimeout = int64(defaults.Timeouts.ExecutionTimeout)
+	}
+}
+
+func applyLongRunningJobDefaults(defaults types2.LongRunningJobDefaultsConfig, job *models.Job) {
+	if job.Priority == 0 {
+		job.Priority = defaults.Priority
+	}
+	for _, task := range job.Tasks {
+		applyLongRunningTaskDefaults(defaults.Task, task)
+	}
+}
+
+func applyLongRunningTaskDefaults(defaults types2.LongRunningTaskDefaultConfig, task *models.Task) {
+	if task.ResourcesConfig.CPU == "" {
+		task.ResourcesConfig.CPU = defaults.Resources.CPU
+	}
+	if task.ResourcesConfig.Memory == "" {
+		task.ResourcesConfig.Memory = defaults.Resources.Memory
+	}
+	if task.ResourcesConfig.Disk == "" {
+		task.ResourcesConfig.Disk = defaults.Resources.Disk
+	}
+	if task.ResourcesConfig.GPU == "" {
+		task.ResourcesConfig.GPU = defaults.Resources.GPU
+	}
+	if task.Publisher.IsEmpty() {
+		task.Publisher.Type = defaults.Publisher.Type
+	}
 }
 
 // RequesterInfo is a transformer that sets the requester ID in the job meta.

@@ -122,7 +122,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	requesterConfig, err := GetRequesterConfig(ctx, cfg, isRequesterNode)
+	requesterConfig, err := GetRequesterConfig(cfg, isRequesterNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
