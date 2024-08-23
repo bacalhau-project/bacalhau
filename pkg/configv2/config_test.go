@@ -15,7 +15,7 @@ import (
 )
 
 func TestConfigWithDefaults(t *testing.T) {
-	expected := configv2.Default
+	expected := types.Default
 
 	cfg, err := configv2.New(
 		configv2.WithDefault(expected),
@@ -31,13 +31,16 @@ func TestConfigWithDefaults(t *testing.T) {
 
 func TestConfigWithValueOverrides(t *testing.T) {
 	overrideRepo := "overrideRepo"
-	overrideName := "overrideName"
-	overrideClientAddress := "overrideAddress"
+	overrideName := "puuid"
+	overrideClientAddress := "http://1.1.1.1:1234"
 
 	defaultConfig := types.Bacalhau{
 		DataDir: "defaultRepo",
 		API: types.API{
-			Address: "defaultAddress",
+			Address: "http://0.0.0.0:1234",
+		},
+		Logging: types.Logging{
+			Level: "info",
 		},
 	}
 	overrideValues := map[string]any{

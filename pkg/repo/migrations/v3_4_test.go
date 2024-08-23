@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -39,6 +42,16 @@ func TestV3MigrationsTestSuite(t *testing.T) {
 }
 
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
+	switch runtime.GOOS {
+	case "windows":
+		suite.T().Setenv("AppData", suite.TempDir)
+	case "darwin", "ios":
+		suite.T().Setenv("HOME", suite.TempDir)
+	case "plan9":
+		suite.T().Setenv("home", suite.TempDir)
+	default: // Unix
+		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
+	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_defaults")
 	suite.copyRepo(testDataPath)
@@ -68,6 +81,10 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	defer f.Close()
 	_, err = createConfig(configPath, fmt.Sprintf(`
 Node:
+    ClientAPI:
+# these are values that will be migrated to the new config API.Address field
+        Host: 1.2.3.4
+        Port: 9999
     Compute:
         ExecutionStore:
             Type: BoltDB
@@ -91,17 +108,23 @@ Auth:
 	suite.Equal(repo.Version3, repoVersion3)
 
 	// open the repo to trigger the migration to version 4
-	cfg, err := config.New()
 	suite.Require().NoError(err)
-	suite.Require().NoError(suite.repo.Open(cfg))
+	suite.Require().NoError(suite.repo.Open())
 
 	// verify the repo's new current version is 4
 	repoVersion4, err := suite.repo.Version()
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file remains present
-	suite.FileExists(filepath.Join(suite.TempDir, config.FileName))
+	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
+	// and that it contains the values from the the original config that have been migrated
+	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config.FileName)
+	suite.FileExists(newConfigPath)
+	c, err := configv2.New(configv2.WithPaths(newConfigPath))
+	suite.Require().NoError(err)
+	var bacCfg types2.Bacalhau
+	suite.Require().NoError(c.Unmarshal(&bacCfg))
+	suite.Require().Equal("http://1.2.3.4:9999", bacCfg.API.Address)
 
 	// verify database files are present
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
@@ -133,6 +156,11 @@ Auth:
 	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+
+	// the node name was migrated from the old config to system_metadata.yaml
+	actualNodeName, err := suite.repo.ReadNodeName()
+	suite.Require().NoError(err)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
 }
 
 // createConfig creates a config file with the given content

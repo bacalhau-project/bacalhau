@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -46,7 +48,7 @@ func (c Bacalhau) Validate() error {
 	}
 
 	if !c.Orchestrator.Enabled && !c.Compute.Enabled {
-		return fmt.Errorf("compute and orchestraor services cannot both be disabled")
+		log.Warn().Msg("the orchestrator service and compute service are both disabled")
 	}
 
 	// Validate struct fields using the helper method
@@ -59,8 +61,6 @@ func (c Bacalhau) Validate() error {
 
 type API struct {
 	Address string     `yaml:"Address,omitempty"`
-	Host    string     `yaml:"-"`
-	Port    int        `yaml:"-"`
 	TLS     TLS        `yaml:"TLS,omitempty"`
 	Auth    AuthConfig `yaml:"Auth,omitempty"`
 }
@@ -99,7 +99,7 @@ type WebUI struct {
 
 func (c WebUI) Validate() error {
 	if c.Enabled {
-		if err := validateURL(c.Listen); err != nil {
+		if err := validateAddress(c.Listen); err != nil {
 			return fmt.Errorf("WebUI address invalid: %w", err)
 		}
 	}

@@ -7,13 +7,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 )
 
 func TestNewFS(t *testing.T) {
-	c, err := config.New()
+	c, err := configv2.New()
+	repoPath := t.TempDir() + t.Name()
+	var bacCfg types2.Bacalhau
+	require.NoError(t, c.Unmarshal(&bacCfg))
+	bacCfg.DataDir = repoPath
 	require.NoError(t, err)
-	repo, err := NewFS(FsRepoParams{Path: t.TempDir() + t.Name()})
+	repo, err := NewFS(FsRepoParams{Path: repoPath})
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -23,13 +28,13 @@ func TestNewFS(t *testing.T) {
 	require.False(t, exists)
 
 	// cannot open uninitialized repo
-	err = repo.Open(c)
+	err = repo.Open()
 	require.Error(t, err)
 
 	// can init a repo
 	// TODO(forrest) [refactor]: assert the repo initializes the expected values
 	// in the config, such as paths and keys.
-	err = repo.Init(c)
+	err = repo.Init(bacCfg)
 	require.NoError(t, err)
 
 	// it better exist now
@@ -38,10 +43,10 @@ func TestNewFS(t *testing.T) {
 	require.True(t, exists)
 
 	// should be able to open
-	err = repo.Open(c)
+	err = repo.Open()
 	require.NoError(t, err)
 
 	// cannot init an already init'ed repo.
-	err = repo.Init(c)
+	err = repo.Init(bacCfg)
 	require.Error(t, err)
 }

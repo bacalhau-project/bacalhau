@@ -71,7 +71,7 @@ func validateAddress(address string) error {
 	}
 
 	// Split the host and port
-	host, port, err := net.SplitHostPort(address)
+	host, portStr, err := net.SplitHostPort(address)
 	if err != nil {
 		return fmt.Errorf("address %q must be a valid host:port pair: %w", address, err)
 	}
@@ -87,10 +87,14 @@ func validateAddress(address string) error {
 	}
 
 	// Validate port
-	if port == "" {
+	if portStr == "" {
 		return fmt.Errorf("address %q requires a port", address)
 	}
-	if strings.Contains(port, "0") {
+	port, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		return fmt.Errorf("port must be a valid number: %w", err)
+	}
+	if port == 0 {
 		return fmt.Errorf("address %q port cannot be 0", address)
 	}
 

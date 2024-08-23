@@ -89,7 +89,7 @@ func New(opts ...Option) (*Config, error) {
 
 	c := &Config{
 		base:       base,
-		defaultCfg: Default,
+		defaultCfg: types.Default,
 		paths:      make([]string, 0),
 	}
 	for _, opt := range opts {

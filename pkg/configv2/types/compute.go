@@ -19,16 +19,18 @@ type Compute struct {
 }
 
 func (c Compute) Validate() error {
-	if err := validate.IsNotEmpty(c.Orchestrators, "at least one compute orchestrator is required"); err != nil {
-		return err
-	}
-	for i, o := range c.Orchestrators {
-		if err := validateURL(o, "nats", ""); err != nil {
-			return fmt.Errorf("compute orchestrator %q at index %d is invalid: %w", o, i, err)
+	if c.Enabled {
+		if err := validate.IsNotEmpty(c.Orchestrators, "at least one compute orchestrator is required"); err != nil {
+			return err
 		}
-	}
-	if err := validateFields(c); err != nil {
-		return err
+		for i, o := range c.Orchestrators {
+			if err := validateURL(o, "nats", ""); err != nil {
+				return fmt.Errorf("compute orchestrator %q at index %d is invalid: %w", o, i, err)
+			}
+		}
+		if err := validateFields(c); err != nil {
+			return err
+		}
 	}
 	return nil
 }

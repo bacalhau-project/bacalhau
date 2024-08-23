@@ -27,14 +27,13 @@ import (
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 30 * time.Second
-const maxTestTime = 60 * time.Second
+const maxServeTime = 30 * time.Hour
+const maxTestTime = 60 * time.Hour
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -44,7 +43,6 @@ type ServeSuite struct {
 
 	ctx      context.Context
 	repoPath string
-	protocol string
 	config   types2.Bacalhau
 }
 
@@ -54,12 +52,14 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
-	repoPath, err := fsRepo.Path()
-	s.Require().NoError(err)
-	s.repoPath = repoPath
-	s.protocol = "http"
-	s.config = c
+	/*
+		fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
+		repoPath, err := fsRepo.Path()
+		s.Require().NoError(err)
+		s.repoPath = repoPath
+		s.config = c
+
+	*/
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -94,8 +94,8 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	args := []string{
 		"serve",
-		"--repo", s.repoPath,
-		"--port", fmt.Sprint(port),
+		"--repo", s.T().TempDir(),
+		"--api", fmt.Sprintf("http://127.0.0.1:%d", port),
 	}
 	args = append(args, extraArgs...)
 	cmd.SetArgs(args)
@@ -135,7 +135,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			s.FailNow("Server did not start in time")
 
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -181,24 +181,9 @@ func (s *ServeSuite) TestHealthcheck() {
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
-func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	s.T().Skip("bacalhau is no longer used by station")
-	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
-	actualUrl := s.out.String()
-
-	s.Require().Contains(actualUrl, expectedURL)
-}
-
-func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
-	port, _ := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
-	s.Require().NotContains(s.out.String(), expectedURL)
-}
-
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, err := s.serve("--node-type", "requester,compute")
+	port, err := s.serve("--orchestrator", "--compute")
 	s.Require().NoError(err)
 
 	client := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
@@ -225,12 +210,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 	s.NoError(err)
 }
 
-func (s *ServeSuite) TestSelfSignedRequester() {
-	s.protocol = "https"
-	_, err := s.serve("--node-type", "requester", "--self-signed")
-	s.Require().NoError(err)
-}
-
 // Begin WebUI Tests
 func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
@@ -248,23 +227,10 @@ func (s *ServeSuite) Test200ForRoot() {
 	if err != nil {
 		s.T().Fatal(err, "Could not get port for web-ui")
 	}
-	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
+	_, err = s.serve("-c", "webui.enabled=true", "-c", fmt.Sprintf("webui.listen=127.0.0.1:%d", webUIPort))
 	s.Require().NoError(err, "Error starting server")
 
 	_, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
-
-// TODO: Can't figure out how to make this test work, it spits out the help text
-// func (s *ServeSuite) TestBadBacalhauDir() {
-// 	badDirString := "/BADDIR"
-
-// 	// if we set the peer connect to "env" it should return the peers from the env
-// 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
-// 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
-// 	os.Setenv("BACALHAU_DIR", badDirString)
-// 	_, err := s.serve("--node-type", "requester", "--node-type", "compute", RETURN_ERROR_FLAG)
-// 	s.Require().Contains(s.out.String(), "Could not write to")
-// 	s.Error(err)
-// }

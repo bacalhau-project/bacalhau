@@ -58,26 +58,14 @@ var (
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
-		"local_publisher":       configflags.LocalPublisherFlags,
-		"publishing":            configflags.PublishingFlags,
-		"requester-tls":         configflags.RequesterTLSFlags,
-		"server-api":            configflags.ServerAPIFlags,
-		"network":               configflags.NetworkFlags,
-		"ipfs":                  configflags.IPFSFlags,
-		"capacity":              configflags.CapacityFlags,
-		"job-timeouts":          configflags.ComputeTimeoutFlags,
-		"job-selection":         configflags.JobSelectionFlags,
-		"disable-features":      configflags.DisabledFeatureFlags,
-		"labels":                configflags.LabelFlags,
-		"node-type":             configflags.NodeTypeFlags,
-		"list-local":            configflags.AllowListLocalPathsFlags,
-		"compute-store":         configflags.ComputeStorageFlags,
-		"requester-store":       configflags.RequesterJobStorageFlags,
-		"web-ui":                configflags.WebUIFlags,
-		"node-info-store":       configflags.NodeInfoStoreFlags,
-		"node-name":             configflags.NodeNameFlags,
-		"translations":          configflags.JobTranslationFlags,
-		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
+		"orchestrator":     configflags.OrchestratorFlags,
+		"compute":          configflags.ComputeFlags,
+		"disable-features": configflags.DisabledFeatureFlags,
+		"job-selection":    configflags.JobSelectionFlags,
+		"labels":           configflags.LabelFlags,
+		"web-ui":           configflags.WebUIFlags,
+		"node-name":        configflags.NodeNameFlags,
+		"translations":     configflags.JobTranslationFlags,
 	}
 	serveCmd := &cobra.Command{
 		Use:     "serve",
@@ -214,11 +202,11 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
 		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		parsedURL, err := url.Parse(cfg.WebUI.Listen)
+		host, portStr, err := net.SplitHostPort(cfg.WebUI.Listen)
 		if err != nil {
 			return err
 		}
-		webuiPort, err := strconv.ParseInt(parsedURL.Port(), 10, 64)
+		webuiPort, err := strconv.ParseInt(portStr, 10, 64)
 		if err != nil {
 			return err
 		}
@@ -228,7 +216,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			apiPort := apiURL.Port()
 			apiPath := apiURL.Path
 
-			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, int(webuiPort))
+			err := webui.ListenAndServe(ctx, host, apiPort, apiPath, int(webuiPort))
 			if err != nil {
 				cmd.PrintErrln(err)
 			}

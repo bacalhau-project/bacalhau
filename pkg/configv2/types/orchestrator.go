@@ -18,15 +18,17 @@ type Orchestrator struct {
 }
 
 func (c Orchestrator) Validate() error {
-	if err := validateAddress(c.Listen); err != nil {
-		return fmt.Errorf("orchestrator listen address is invalid: %w", err)
-	}
-	if err := validateAddress(c.Advertise); err != nil {
-		return fmt.Errorf("orchestrator advertise address is invalid: %w", err)
-	}
+	if c.Enabled {
+		if err := validateAddress(c.Listen); err != nil {
+			return fmt.Errorf("orchestrator listen address is invalid: %w", err)
+		}
+		if err := validateAddress(c.Advertise); err != nil {
+			return fmt.Errorf("orchestrator advertise address is invalid: %w", err)
+		}
 
-	if err := validateFields(c); err != nil {
-		return err
+		if err := validateFields(c); err != nil {
+			return err
+		}
 	}
 	return nil
 }
