@@ -258,15 +258,11 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (stri
 		cmdB.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
 		// other nodes can be just compute nodes
 		// no need to spawn 1+ requester nodes
-		cmdB.WriteString(fmt.Sprintf("%s=compute ",
-			configflags.FlagNameForKey(types.NodeType, configflags.NodeTypeFlags...)))
+		cmdB.WriteString(fmt.Sprintf("--compute "))
 
 		advertisedAddr := getPublicNATSOrchestratorURL(nodeConfig)
 		headerB.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
-		cmdB.WriteString(fmt.Sprintf("%s=%s ",
-			configflags.FlagNameForKey(types.NodeNetworkOrchestrators, configflags.NetworkFlags...),
-			advertisedAddr.String(),
-		))
+		cmdB.WriteString(fmt.Sprintf("--orchestrators=%s ", advertisedAddr.String()))
 	}
 
 	return headerB.String() + cmdB.String(), nil
