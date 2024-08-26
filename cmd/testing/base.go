@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -43,11 +42,9 @@ func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+	// disable update checks in testing.
+	cfg.UpdateConfig.Interval = 0
 	s.Config = cfg
-
-	// TODO: Update checker is configured with production default configs
-	//  and not respecting the test environment. This is a temporary fix
-	os.Setenv(config.KeyAsEnvVar(types.UpdateSkipChecks), "true")
 
 	s.AllowListedPath = s.T().TempDir()
 
@@ -131,6 +128,9 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd()
 	root.SetOut(buf)
+	// TODO(forrest): we should separate the ouputs from a command into different buffers for stderr and sdtout, otherwise
+	// log lines and other outputs (like the update checker) will be included in the returned buffer, and commands
+	// that make assertions on the output containing specific values, or being marshaller-able to yaml will fail.
 	root.SetErr(buf)
 	root.SetIn(stdin)
 
