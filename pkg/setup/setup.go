@@ -64,6 +64,9 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	}
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
+	// disable update checks in testing.
+	t.Setenv("BACALHAU_UPDATECONFIG_INTERVAL", "0")
+
 	// configure the repo on the testing viper insance
 	// init a config with this viper instance using the local configuration as default
 	c, err := configv2.New(configv2.WithValues(map[string]any{
@@ -74,8 +77,6 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	}
 
 	t.Logf("creating repo for testing at: %s", path)
-	t.Setenv("BACALHAU_ENVIRONMENT", "local")
-	t.Setenv("BACALHAU_DIR", path)
 
 	var cfg types2.Bacalhau
 	if err := c.Unmarshal(&cfg); err != nil {

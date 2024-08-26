@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -123,7 +122,7 @@ func RunUpdateChecker(
 ) {
 	updateFrequency := time.Duration(cfg.UpdateConfig.Interval)
 	if updateFrequency <= 0 {
-		log.Ctx(ctx).Warn().Dur(types.UpdateCheckFrequency, updateFrequency).Msg("Update frequency is zero or less so no update checks will run")
+		log.Ctx(ctx).Debug().Dur("interval", updateFrequency).Msg("Update frequency is zero or less so no update checks will run")
 		return
 	}
 

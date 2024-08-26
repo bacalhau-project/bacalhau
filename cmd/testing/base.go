@@ -42,8 +42,6 @@ func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-	// disable update checks in testing.
-	cfg.UpdateConfig.Interval = 0
 	s.Config = cfg
 
 	s.AllowListedPath = s.T().TempDir()
