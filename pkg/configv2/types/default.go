@@ -55,9 +55,9 @@ var Default = Bacalhau{
 			Interval:               15 * Second,
 		},
 		AllocatedCapacity: ResourceScaler{
-			CPU:    "80%",
-			Memory: "80%",
-			Disk:   "80%",
+			CPU:    "70%",
+			Memory: "70%",
+			Disk:   "70%",
 			GPU:    "100%",
 		},
 	},

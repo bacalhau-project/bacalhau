@@ -174,13 +174,6 @@ func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types2.Re
 
 	// if allocated capacity scaler is zero, return the system capacity
 	if scaler.IsZero() {
-		// TODO(forrest): hack because system total resources fluctuate wrt disk by several kb.
-		scaler := types2.ResourceScaler{
-			CPU:    "90%",
-			Memory: "90%",
-			Disk:   "90%",
-			GPU:    "100%",
-		}
 		return scaler.Scale(systemCapacity)
 	}
 
