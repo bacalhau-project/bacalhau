@@ -139,5 +139,6 @@ type JobAdmissionControl struct {
 }
 
 type TaskTimeoutConfig struct {
+	TotalTimeout     Duration `yaml:"TotalTimeout,omitempty"`
 	ExecutionTimeout Duration `yaml:"ExecutionTimeout,omitempty"`
 }

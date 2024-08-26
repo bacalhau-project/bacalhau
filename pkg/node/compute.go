@@ -288,9 +288,8 @@ func NewBidder(
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
 			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
 			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+				MaxJobExecutionTimeout: config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout: config.MinJobExecutionTimeout,
 			}),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,

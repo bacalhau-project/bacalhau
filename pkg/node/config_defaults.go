@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -40,6 +41,23 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
+	JobDefaults: types2.JobDefaults{
+		Batch: types2.BatchJobDefaultsConfig{
+			Task: types2.BatchTaskDefaultConfig{
+				Timeouts: types2.TaskTimeoutConfig{
+					TotalTimeout: types2.Duration(models.NoTimeout),
+				},
+			},
+		},
+		Ops: types2.BatchJobDefaultsConfig{
+			Task: types2.BatchTaskDefaultConfig{
+				Timeouts: types2.TaskTimeoutConfig{
+					TotalTimeout: types2.Duration(models.NoTimeout),
+				},
+			},
+		},
+	},
+
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
@@ -77,6 +95,23 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
+	JobDefaults: types2.JobDefaults{
+		Batch: types2.BatchJobDefaultsConfig{
+			Task: types2.BatchTaskDefaultConfig{
+				Timeouts: types2.TaskTimeoutConfig{
+					TotalTimeout: types2.Duration(30 * time.Second),
+				},
+			},
+		},
+		Ops: types2.BatchJobDefaultsConfig{
+			Task: types2.BatchTaskDefaultConfig{
+				Timeouts: types2.TaskTimeoutConfig{
+					TotalTimeout: types2.Duration(30 * time.Second),
+				},
+			},
+		},
+	},
+
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,

@@ -3,6 +3,7 @@ package transformer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -63,8 +64,11 @@ func applyBatchTaskDefaults(defaults types2.BatchTaskDefaultConfig, task *models
 	if task.Publisher.IsEmpty() {
 		task.Publisher.Type = defaults.Publisher.Type
 	}
-	if task.Timeouts.ExecutionTimeout == 0 {
-		task.Timeouts.ExecutionTimeout = int64(defaults.Timeouts.ExecutionTimeout)
+	if task.Timeouts.ExecutionTimeout <= 0 {
+		task.Timeouts.ExecutionTimeout = int64(time.Duration(defaults.Timeouts.ExecutionTimeout).Seconds())
+	}
+	if task.Timeouts.TotalTimeout <= 0 {
+		task.Timeouts.TotalTimeout = int64(time.Duration(defaults.Timeouts.TotalTimeout).Seconds())
 	}
 }
 

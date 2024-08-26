@@ -72,9 +72,6 @@ var Default = Bacalhau{
 				Publisher: DefaultPublisherConfig{
 					Type: models.PublisherLocal,
 				},
-				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: Duration(models.NoTimeout),
-				},
 			},
 		},
 		Ops: BatchJobDefaultsConfig{
@@ -86,9 +83,6 @@ var Default = Bacalhau{
 				},
 				Publisher: DefaultPublisherConfig{
 					Type: models.PublisherLocal,
-				},
-				Timeouts: TaskTimeoutConfig{
-					ExecutionTimeout: Duration(models.NoTimeout),
 				},
 			},
 		},

@@ -10,11 +10,10 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -49,27 +48,17 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 
 	runTest := func(testCase TestCase) {
 		computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
-			JobNegotiationTimeout:                 testCase.computeJobNegotiationTimeout,
-			MinJobExecutionTimeout:                testCase.computeMinJobExecutionTimeout,
-			MaxJobExecutionTimeout:                testCase.computeMaxJobExecutionTimeout,
-			JobExecutionTimeoutClientIDBypassList: testCase.computeJobExecutionBypassList,
+			JobNegotiationTimeout:  testCase.computeJobNegotiationTimeout,
+			MinJobExecutionTimeout: testCase.computeMinJobExecutionTimeout,
+			MaxJobExecutionTimeout: testCase.computeMaxJobExecutionTimeout,
 		})
 		suite.Require().NoError(err)
 
 		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-			JobDefaults: types2.JobDefaults{
-				Batch: types2.BatchJobDefaultsConfig{
-					Task: types2.BatchTaskDefaultConfig{
-						Timeouts: types2.TaskTimeoutConfig{
-							ExecutionTimeout: types2.Duration(testCase.requesterDefaultJobExecutionTimeout),
-						},
-					},
-				},
-				Ops: types2.BatchJobDefaultsConfig{
-					Task: types2.BatchTaskDefaultConfig{
-						Timeouts: types2.TaskTimeoutConfig{
-							ExecutionTimeout: types2.Duration(testCase.requesterDefaultJobExecutionTimeout),
-						},
+			JobDefaults: types.JobDefaults{
+				Batch: types.BatchJobDefaultsConfig{
+					Task: types.BatchTaskDefaultConfig{
+						Timeouts: types.TaskTimeoutConfig{TotalTimeout: types.Duration(testCase.requesterDefaultJobExecutionTimeout)},
 					},
 				},
 			},
@@ -134,10 +123,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.RunScenario(testScenario)
 	}
 
-	userKeyPath, err := suite.Config.UserKeyPath()
-	suite.Require().NoError(err)
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	suite.Require().NoError(err)
 	for _, testCase := range []TestCase{
 		{
 			name:                                "sleep_within_default_timeout",
@@ -234,19 +219,6 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 			sleepTime:                           1 * time.Second,
 			jobTimeout:                          2 * time.Minute,
 			rejectedCount:                       1,
-		},
-		{
-			name:                                "job_timeout_greater_than_max_but_on_allowed_list",
-			computeJobExecutionBypassList:       []string{userKey.ClientID()},
-			computeJobNegotiationTimeout:        10 * time.Second,
-			computeMinJobExecutionTimeout:       1 * time.Nanosecond,
-			computeMaxJobExecutionTimeout:       1 * time.Minute,
-			requesterDefaultJobExecutionTimeout: 40 * time.Second,
-			nodeCount:                           1,
-			concurrency:                         1,
-			sleepTime:                           1 * time.Second,
-			jobTimeout:                          2 * time.Minute,
-			completedCount:                      1,
 		},
 	} {
 		suite.Run(testCase.name, func() {
