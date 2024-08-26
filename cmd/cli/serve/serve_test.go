@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -52,14 +53,11 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	/*
-		fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
-		repoPath, err := fsRepo.Path()
-		s.Require().NoError(err)
-		s.repoPath = repoPath
-		s.config = c
-
-	*/
+	fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
+	repoPath, err := fsRepo.Path()
+	s.Require().NoError(err)
+	s.repoPath = repoPath
+	s.config = c
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
