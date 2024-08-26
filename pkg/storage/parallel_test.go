@@ -43,10 +43,10 @@ func (s *ParallelStorageSuite) SetupSuite() {
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
-	ipfsConnect := testutils.MustHaveIPFS(s.T(), s.cfg)
+	testutils.MustHaveIPFS(s.T(), s.cfg)
 
 	ctx := context.Background()
-	client, err := ipfs.NewClient(ctx, ipfsConnect)
+	client, err := ipfs.NewClient(ctx, s.cfg.InputSources.IPFS.Endpoint)
 	require.NoError(s.T(), err)
 
 	cid, err := client.Put(ctx, "../../testdata/grep_file.txt")

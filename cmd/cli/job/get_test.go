@@ -43,7 +43,7 @@ func (s *GetSuite) SetupTest() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	ipfsConnect := testutils.MustHaveIPFS(s.T(), s.Config)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--publisher", "ipfs",
@@ -53,7 +53,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", ipfsConnect),
+		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -62,7 +62,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
-	ipfsConnect := testutils.MustHaveIPFS(s.T(), s.Config)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -76,7 +76,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", ipfsConnect),
+		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -86,7 +86,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	ipfsConnect := testutils.MustHaveIPFS(s.T(), s.Config)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -100,7 +100,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", ipfsConnect),
+		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
 		"--api", fmt.Sprintf("http://%s:%d", s.Node.APIServer.Address, s.Node.APIServer.Port),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),
 	)

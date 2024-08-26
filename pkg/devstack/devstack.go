@@ -200,6 +200,14 @@ func Setup(
 			}
 		}
 
+		for _, p := range stackConfig.AllowListedLocalPaths {
+			cfg.Compute.Volumes = append(cfg.Compute.Volumes, types2.Volume{
+				Name:      "",
+				Path:      p,
+				ReadWrite: false,
+			})
+		}
+
 		nodeConfig := node.NodeConfig{
 			NodeID:              nodeID,
 			CleanupManager:      cm,

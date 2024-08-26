@@ -73,6 +73,12 @@ func NewStandardStorageProvider(cfg types2.Bacalhau) (storage.StorageProvider, e
 					ReadWrite: v.ReadWrite,
 				})
 			}
+			var err error
+			providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
+				localdirectory.StorageProviderParams{AllowedPaths: allowedPaths})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

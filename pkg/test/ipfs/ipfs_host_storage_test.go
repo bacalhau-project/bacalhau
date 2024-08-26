@@ -24,9 +24,8 @@ import (
 
 type IPFSHostStorageSuite struct {
 	suite.Suite
-	client      *ipfs.Client
-	Config      types2.Bacalhau
-	ipfsConnect string
+	client *ipfs.Client
+	Config types2.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -39,10 +38,10 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	_, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
-	suite.ipfsConnect = testutils.MustHaveIPFS(suite.T(), suite.Config)
+	testutils.MustHaveIPFS(suite.T(), suite.Config)
 
 	var err error
-	suite.client, err = ipfs.NewClient(context.Background(), suite.ipfsConnect)
+	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.InputSources.IPFS.Endpoint)
 	suite.Require().NoError(err)
 
 }
