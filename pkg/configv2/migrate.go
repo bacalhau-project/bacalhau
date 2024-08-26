@@ -5,32 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
-
 	v1types "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
-	publisherConfig, err := migratePublishers(in.Node)
-	if err != nil {
-		return types.Bacalhau{}, fmt.Errorf("migrating publisher config: %w", err)
-	}
-	executorConfig, err := migrateEngines(in.Node)
-	if err != nil {
-		return types.Bacalhau{}, fmt.Errorf("migrating executor config: %w", err)
-	}
-	inputSourceConfig, err := migrateInputSources(in.Node)
-	if err != nil {
-		return types.Bacalhau{}, fmt.Errorf("migrating input source config: %w", err)
-	}
-	downloaderConfig, err := migrateDownloadConfig(in.Node)
-	if err != nil {
-		return types.Bacalhau{}, fmt.Errorf("migrating result downloader config: %w", err)
-	}
 	out := types.Bacalhau{
-		DataDir: "~/.bacalhau",
 		// TODO(forrest) [review]: when migrating should the address come from the server or client when both are present?
 		API: migrateAPI(in),
 		Orchestrator: types.Orchestrator{
@@ -83,10 +63,10 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				return ""
 			}(in.Node.WebUI.Enabled, in.Node.WebUI.Port),
 		},
-		InputSources:      inputSourceConfig,
-		Publishers:        publisherConfig,
-		Executors:         executorConfig,
-		ResultDownloaders: downloaderConfig,
+		InputSources:      migrateInputSources(in.Node),
+		Publishers:        migratePublishers(in.Node),
+		Engines:           migrateEngines(in.Node),
+		ResultDownloaders: migrateDownloadConfig(in.Node),
 		// TODO(forrest) [review]: currently both the compute and requester have a job selection policy
 		// it is not clear whose policy should be migrated here.
 		JobAdmissionControl: types.JobAdmissionControl{
@@ -174,121 +154,59 @@ func migrateAPI(in v1types.BacalhauConfig) types.API {
 	}
 }
 
-func migrateDownloadConfig(in v1types.NodeConfig) (types.ResultDownloaders, error) {
+func migrateDownloadConfig(in v1types.NodeConfig) types.ResultDownloaders {
 	var out types.ResultDownloaders
-	if in.DownloadURLRequestTimeout != 0 {
-		out.Timeout = types.Duration(in.DownloadURLRequestTimeout)
-	}
-	if in.IPFS.Connect != "" {
-		ipfsDownloaderCfg := types.IpfsDownloadConfig{Connect: in.IPFS.Connect}
 
-		config := make(map[string]interface{})
-		var dwnldCfg map[string]interface{}
-		if err := mapstructure.Decode(ipfsDownloaderCfg, &dwnldCfg); err != nil {
-			return types.ResultDownloaders{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.StorageSourceIPFS] = config
-	}
-	return out, nil
+	out.Timeout = types.Duration(in.DownloadURLRequestTimeout)
+	out.IPFS.Endpoint = in.IPFS.Connect
+
+	return out
 }
 
-func migrateEngines(in v1types.NodeConfig) (types.ExecutorsConfig, error) {
-	var out types.ExecutorsConfig
+func migrateEngines(in v1types.NodeConfig) types.EngineConfig {
+	var out types.EngineConfig
+
 	// migrate any disabled engines
 	out.Disabled = in.DisabledFeatures.Engines
 
-	// only write a config if there exists at least one non-zero configuration value, otherwise omit this
-	if in.Compute.ManifestCache.Size != 0 ||
-		in.Compute.ManifestCache.Duration != 0 ||
-		in.Compute.ManifestCache.Frequency != 0 {
-		dockerConfig := types.Docker{
-			ManifestCache: types.DockerManifestCache{
-				Size:    in.Compute.ManifestCache.Size,
-				TTL:     types.Duration(in.Compute.ManifestCache.Duration),
-				Refresh: types.Duration(in.Compute.ManifestCache.Frequency),
-			},
-		}
-		config := make(map[string]interface{})
-		var cacheConfig map[string]interface{}
-		if err := mapstructure.Decode(dockerConfig, &cacheConfig); err != nil {
-			return types.ExecutorsConfig{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.EngineDocker] = config
+	out.Docker.ManifestCache = types.DockerManifestCache{
+		Size:    in.Compute.ManifestCache.Size,
+		TTL:     types.Duration(in.Compute.ManifestCache.Duration),
+		Refresh: types.Duration(in.Compute.ManifestCache.Frequency),
 	}
-	return out, nil
+
+	return out
 }
 
-func migratePublishers(in v1types.NodeConfig) (types.PublishersConfig, error) {
+func migratePublishers(in v1types.NodeConfig) types.PublishersConfig {
 	var out types.PublishersConfig
+
 	// migrate any disabled publishers
 	out.Disabled = in.DisabledFeatures.Publishers
 
-	if in.IPFS.Connect != "" {
-		ipfsPublisherCfg := types.IpfsPublisherConfig{Connect: in.IPFS.Connect}
-		config := make(map[string]interface{})
-		var ipfscfg map[string]interface{}
-		if err := mapstructure.Decode(ipfsPublisherCfg, ipfscfg); err != nil {
-			return types.PublishersConfig{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.PublisherIPFS] = config
-	}
+	// ipfs
+	out.IPFS.Endpoint = in.IPFS.Connect
 
-	if in.Compute.LocalPublisher.Address != "" ||
-		in.Compute.LocalPublisher.Port != 0 ||
-		in.Compute.LocalPublisher.Directory != "" {
-		localPublisherCfg := types.LocalPublisherConfig{}
-		if in.Compute.LocalPublisher.Address != "" {
-			localPublisherCfg.Address = in.Compute.LocalPublisher.Address
-		}
-		if in.Compute.LocalPublisher.Port != 0 {
-			localPublisherCfg.Port = in.Compute.LocalPublisher.Port
-		}
-		if in.Compute.LocalPublisher.Directory != "" {
-			localPublisherCfg.Directory = in.Compute.LocalPublisher.Directory
-		}
-		var localcfg map[string]interface{}
-		if err := mapstructure.Decode(localPublisherCfg, &localcfg); err != nil {
-			return types.PublishersConfig{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.PublisherLocal] = localcfg
-	}
+	// local
+	out.Local.Port = in.Compute.LocalPublisher.Port
+	out.Local.Address = in.Compute.LocalPublisher.Address
+	out.Local.Directory = in.Compute.LocalPublisher.Directory
 
-	if in.Requester.StorageProvider.S3.PreSignedURLDisabled ||
-		in.Requester.StorageProvider.S3.PreSignedURLExpiration != 0 {
-		s3PublisherCfg := types.S3PublisherConfig{}
-		if in.Requester.StorageProvider.S3.PreSignedURLDisabled {
-			s3PublisherCfg.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
-		}
-		if in.Requester.StorageProvider.S3.PreSignedURLExpiration != 0 {
-			s3PublisherCfg.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
-		}
-		var s3cfg map[string]interface{}
-		if err := mapstructure.Decode(s3PublisherCfg, &s3cfg); err != nil {
-			return types.PublishersConfig{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.PublisherS3] = s3cfg
-	}
-	return out, nil
+	// s3
+	out.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
+	out.S3.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
+
+	return out
 }
 
-func migrateInputSources(in v1types.NodeConfig) (types.InputSourcesConfig, error) {
+func migrateInputSources(in v1types.NodeConfig) types.InputSourcesConfig {
 	var out types.InputSourcesConfig
-	out.Disabled = in.DisabledFeatures.Storages
-	if in.IPFS.Connect != "" {
-		ipfsStorageCfg := types.IpfsInputSourceConfig{Connect: in.IPFS.Connect}
-		config := make(map[string]interface{})
-		var ipfscfg map[string]interface{}
-		if err := mapstructure.Decode(ipfsStorageCfg, ipfscfg); err != nil {
-			return types.InputSourcesConfig{}, err
-		}
-		out.Config = make(map[string]map[string]interface{})
-		out.Config[models.StorageSourceIPFS] = config
-	}
 
-	return out, nil
+	// migrate any disabled storages
+	out.Disabled = in.DisabledFeatures.Storages
+
+	// ipfs
+	out.IPFS.Endpoint = in.IPFS.Connect
+
+	return out
 }

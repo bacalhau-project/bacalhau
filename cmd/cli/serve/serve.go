@@ -59,6 +59,7 @@ var (
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"orchestrator":     configflags.OrchestratorFlags,
+		"ipfs":             configflags.IPFSFlags,
 		"compute":          configflags.ComputeFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"job-selection":    configflags.JobSelectionFlags,
@@ -140,7 +141,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		NodeID:         nodeName,
 		CleanupManager: cm,
 		DisabledFeatures: node.FeatureConfig{
-			Engines:    cfg.Executors.Disabled,
+			Engines:    cfg.Engines.Disabled,
 			Publishers: cfg.Publishers.Disabled,
 			Storages:   cfg.InputSources.Disabled,
 		},

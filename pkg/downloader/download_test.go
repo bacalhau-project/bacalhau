@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/s3signed"
@@ -46,11 +45,10 @@ type DownloaderSuite struct {
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
 	_, cfg := setup.SetupBacalhauRepoForTesting(ds.T())
-	ipfsCfg, err := types.DecodeProviderConfig[types.IpfsDownloadConfig](cfg.ResultDownloaders)
-	ds.Require().NoError(err)
-	if testutils.IsIPFSEnabled(ipfsCfg.Connect) {
+
+	if testutils.IsIPFSEnabled(cfg.ResultDownloaders.IPFS.Endpoint) {
 		var err error
-		ds.ipfsClient, err = ipfs.NewClient(context.Background(), ipfsCfg.Connect)
+		ds.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.IPFS.Endpoint)
 		require.NoError(ds.T(), err)
 	}
 	ds.HelperSuite.SetupSuite()

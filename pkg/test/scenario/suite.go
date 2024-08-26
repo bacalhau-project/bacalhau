@@ -110,7 +110,7 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
-			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Executors),
+			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Engines),
 		)...,
 	)
 

@@ -165,8 +165,5 @@ func (c *Config) Unmarshal(out types.Validatable) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err
 	}
-	if err := out.Validate(); err != nil {
-		return err
-	}
 	return nil
 }

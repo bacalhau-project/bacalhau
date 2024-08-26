@@ -83,7 +83,7 @@ func NewExecutorPluginNodeDependencyInjector(
 	pluginPath string,
 ) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.InputSources),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewPluginExecutorFactory(pluginPath),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
@@ -92,8 +92,8 @@ func NewExecutorPluginNodeDependencyInjector(
 
 func NewStandardNodeDependencyInjector(cfg types2.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg.InputSources),
-		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Executors),
+		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
+		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}

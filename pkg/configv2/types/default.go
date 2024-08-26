@@ -61,31 +61,6 @@ var Default = Bacalhau{
 			GPU:    "100%",
 		},
 	},
-	InputSources: InputSourcesConfig{
-		// TODO(forrest): this is a hack to make testing work with existing envvars
-		Config: map[string]map[string]interface{}{
-			models.PublisherIPFS: {
-				"Connect": os.Getenv("BACALHAU_NODE_IPFS_CONNECT"),
-			},
-		},
-	},
-	Publishers: PublishersConfig{
-		// TODO(forrest): this is a hack to make testing work with existing envvars
-		Config: map[string]map[string]interface{}{
-			models.PublisherIPFS: {
-				"Connect": os.Getenv("BACALHAU_NODE_IPFS_CONNECT"),
-			},
-		},
-	},
-	ResultDownloaders: ResultDownloaders{
-		Timeout: 5 * Minute,
-		// TODO(forrest): this is a hack to make testing work with existing envvars
-		Config: map[string]map[string]interface{}{
-			models.StorageSourceIPFS: {
-				"Connect": os.Getenv("BACALHAU_NODE_IPFS_CONNECT"),
-			},
-		},
-	},
 	JobDefaults: JobDefaults{
 		Batch: BatchJobDefaultsConfig{
 			Priority: 0,

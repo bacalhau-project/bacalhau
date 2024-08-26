@@ -3,48 +3,49 @@ package types
 import (
 	"slices"
 	"strings"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-var _ ConfigProvider = (*ExecutorsConfig)(nil)
+var _ Provider = (*EngineConfig)(nil)
 
-type ExecutorsConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
+type EngineConfig struct {
+	Disabled []string `yaml:"Disabled,omitempty"`
+	Docker   Docker   `yaml:"Docker,omitempty"`
+	WASM     WASM     `yaml:"WASM,omitempty"`
 }
 
-func (e ExecutorsConfig) Enabled(kind string) bool {
+func (e EngineConfig) Enabled(kind string) bool {
 	return !slices.ContainsFunc(e.Disabled, func(s string) bool {
 		return strings.ToLower(s) == strings.ToLower(kind)
 	})
 }
 
-func (e ExecutorsConfig) Installed(kind string) bool {
-	_, ok := e.Config[kind]
-	return ok
-}
-
-func (e ExecutorsConfig) ConfigMap() map[string]map[string]interface{} {
-	return e.Config
-}
+var _ Configurable = (*Docker)(nil)
 
 // Docker represents the configuration settings for the Docker runtime provider.
 type Docker struct {
 	// ManifestCache specifies the settings for the Docker manifest cache.
-	ManifestCache DockerManifestCache
+	ManifestCache DockerManifestCache `yaml:"ManifestCache,omitempty"`
+}
+
+func (d Docker) Installed() bool {
+	return d == Docker{}
 }
 
 // DockerManifestCache represents the configuration settings for the Docker manifest cache.
 type DockerManifestCache struct {
 	// Size specifies the size of the Docker manifest cache.
-	Size uint64
+	Size uint64 `yaml:"Size,omitempty"`
 	// TTL specifies the time-to-live duration for cache entries.
-	TTL Duration
+	TTL Duration `yaml:"TTL,omitempty"`
 	// Refresh specifies the refresh interval for cache entries.
-	Refresh Duration
+	Refresh Duration `yaml:"Refresh,omitempty"`
 }
 
-func (d Docker) Kind() string {
-	return models.EngineDocker
+var _ Configurable = (*WASM)(nil)
+
+type WASM struct {
+}
+
+func (W WASM) Installed() bool {
+	return true
 }

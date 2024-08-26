@@ -142,7 +142,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
-			}, c.Executors),
+			}, c.Engines),
 		)
 
 		for _, jobResources := range testCase.jobs {
@@ -336,7 +336,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: jobHandler,
 				},
-			}, c.Executors),
+			}, c.Engines),
 	)
 
 	// for the requester node to pick up the nodeInfo messages

@@ -1,34 +1,31 @@
 package types
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"slices"
+	"strings"
 )
 
+var _ Provider = (*ResultDownloaders)(nil)
+
 type ResultDownloaders struct {
-	Timeout Duration                          `yaml:"Timeout,omitempty"`
-	Config  map[string]map[string]interface{} `yaml:"Config,omitempty"`
+	Disabled []string `yaml:"Disabled,omitempty"`
+	Timeout  Duration `yaml:"Timeout,omitempty"`
+	IPFS     IpfsDownloader
 }
 
 func (r ResultDownloaders) Enabled(kind string) bool {
-	// TODO(review): do we want to allow downloaders to be disabled?
-	// for now they are all enabled by default
-	return true
+	return !slices.ContainsFunc(r.Disabled, func(s string) bool {
+		return strings.ToLower(s) == strings.ToLower(kind)
+	})
 }
 
-func (r ResultDownloaders) Installed(kind string) bool {
-	_, ok := r.Config[kind]
-	return ok
+var _ Configurable = (*IpfsDownloader)(nil)
+
+type IpfsDownloader struct {
+	// Endpoint is the multiaddress to connect to for IPFS.
+	Endpoint string `yaml:"Connect,omitempty"`
 }
 
-func (r ResultDownloaders) ConfigMap() map[string]map[string]interface{} {
-	return r.Config
-}
-
-type IpfsDownloadConfig struct {
-	// Connect is the multiaddress to connect to for IPFS.
-	Connect string `yaml:"Connect"`
-}
-
-func (i IpfsDownloadConfig) Kind() string {
-	return models.StorageSourceIPFS
+func (i IpfsDownloader) Installed() bool {
+	return i == IpfsDownloader{}
 }

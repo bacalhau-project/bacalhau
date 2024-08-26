@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -44,16 +43,7 @@ func DownloadResultsHandler(
 		cmd.Printf("\n  bacalhau job logs %s\n", jobID)
 		return nil
 	}
-	ipfsConnect := ""
-	if cfg.ResultDownloaders.Enabled(models.StorageSourceIPFS) && cfg.ResultDownloaders.Installed(models.StorageSourceIPFS) {
-		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsDownloadConfig](cfg.ResultDownloaders)
-		if err != nil {
-			return err
-		}
-		ipfsConnect = ipfscfg.Connect
-	}
-
-	downloaderProvider, err := util.NewStandardDownloaders(ctx, ipfsConnect)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.ResultDownloaders)
 	if err != nil {
 		return err
 	}

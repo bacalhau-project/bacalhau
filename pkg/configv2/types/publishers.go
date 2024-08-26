@@ -3,19 +3,15 @@ package types
 import (
 	"slices"
 	"strings"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-var _ ConfigProvider = (*PublishersConfig)(nil)
+var _ Provider = (*PublishersConfig)(nil)
 
 type PublishersConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
-}
-
-func (p PublishersConfig) ConfigMap() map[string]map[string]interface{} {
-	return p.Config
+	Disabled []string       `yaml:"Disabled,omitempty"`
+	IPFS     IPFSPublisher  `yaml:"IPFS,omitempty"`
+	S3       S3Publisher    `yaml:"S3,omitempty"`
+	Local    LocalPublisher `yaml:"Local,omitempty"`
 }
 
 func (p PublishersConfig) Enabled(kind string) bool {
@@ -24,39 +20,41 @@ func (p PublishersConfig) Enabled(kind string) bool {
 	})
 }
 
-func (p PublishersConfig) Installed(kind string) bool {
-	_, ok := p.Config[kind]
-	return ok
+var _ Configurable = (*IPFSPublisher)(nil)
+
+type IPFSPublisher struct {
+	// Endpoint specifies the endpoint Multiaddress for the IPFS publisher
+	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
-var _ ProviderType = (*LocalPublisherConfig)(nil)
-
-type LocalPublisherConfig struct {
-	Address   string `yaml:"Address"`
-	Port      int    `yaml:"Port"`
-	Directory string `yaml:"Directory"`
+func (c IPFSPublisher) Installed() bool {
+	return c != IPFSPublisher{}
 }
 
-func (l LocalPublisherConfig) Kind() string {
-	return models.PublisherLocal
+var _ Configurable = (*S3Publisher)(nil)
+
+type S3Publisher struct {
+	// PreSignedURLDisabled specifies whether pre-signed URLs are enabled for the S3 provider.
+	PreSignedURLDisabled bool `yaml:"PreSignedURLDisabled,omitempty"`
+	// PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
+	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty"`
 }
 
-var _ ProviderType = (*S3PublisherConfig)(nil)
-
-type S3PublisherConfig struct {
-	PreSignedURLDisabled   bool     `yaml:"PreSignedURLDisabled"`
-	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
+func (c S3Publisher) Installed() bool {
+	return c != S3Publisher{}
 }
 
-func (s S3PublisherConfig) Kind() string {
-	return models.PublisherS3
+var _ Configurable = (*LocalPublisher)(nil)
+
+type LocalPublisher struct {
+	// Address is the endpoint the publisher serves on.
+	Address string `yaml:"Host,omitempty"`
+	// Port is the port the publisher serves on.
+	Port int `yaml:"Port,omitempty"`
+	// Directory is a path to location on disk where content is served from.
+	Directory string `yaml:"Directory,omitempty"`
 }
 
-type IpfsPublisherConfig struct {
-	// Connect is the multiaddress to connect to for IPFS.
-	Connect string `yaml:"Connect"`
-}
-
-func (i IpfsPublisherConfig) Kind() string {
-	return models.PublisherIPFS
+func (l LocalPublisher) Installed() bool {
+	return l == LocalPublisher{}
 }

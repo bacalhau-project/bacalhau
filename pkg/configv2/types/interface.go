@@ -1,11 +1,9 @@
 package types
 
-type ConfigProvider interface {
+type Provider interface {
 	Enabled(kind string) bool
-	Installed(kind string) bool
-	ConfigMap() map[string]map[string]interface{}
 }
 
-type ProviderType interface {
-	Kind() string
+type Configurable interface {
+	Installed() bool
 }

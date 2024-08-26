@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -25,13 +24,12 @@ func NewPublisherProvider(
 	storagePath string,
 	cm *system.CleanupManager,
 	cfg types2.PublishersConfig,
-	localConfig *types.LocalPublisherConfig,
 ) (publisher.PublisherProvider, error) {
 	providers := make(map[string]publisher.Publisher)
 
-	// TODO(review): the NoopPublisher is a testing attribute, should it remain part of the default set of publishers?
-	// for now, lets keep everything the same for compatibility, else tests might fail.
-	providers[models.PublisherNoop] = noop.NewNoopPublisher()
+	if cfg.Enabled(models.PublisherNoop) {
+		providers[models.PublisherNoop] = noop.NewNoopPublisher()
+	}
 
 	if cfg.Enabled(models.PublisherS3) {
 		s3Publisher, err := configureS3Publisher(storagePath, cm)
@@ -42,29 +40,37 @@ func NewPublisherProvider(
 	}
 
 	if cfg.Enabled(models.PublisherLocal) {
-		providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
-			ctx,
-			localConfig.Directory,
-			localConfig.Address,
-			localConfig.Port,
-		))
+		if cfg.Local.Installed() {
+			providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
+				ctx,
+				cfg.Local.Directory,
+				cfg.Local.Address,
+				cfg.Local.Port,
+			))
+		} else {
+			providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
+				// TODO(review): what is the default configuration for a local publisher?
+				// who/what makes the path it serves from?
+				ctx,
+				"TODO",
+				"TODO",
+				-1,
+			))
+		}
 	}
 
-	// TODO(review): what does it mean if IPFS isn't disabled in the config, and also doesn't have a config?
-	if cfg.Enabled(models.PublisherIPFS) && cfg.Installed(models.PublisherIPFS) {
-		ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsPublisherConfig](cfg)
-		if err != nil {
-			return nil, err
+	if cfg.Enabled(models.PublisherIPFS) {
+		if cfg.IPFS.Installed() {
+			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.IPFS.Endpoint)
+			if err != nil {
+				return nil, err
+			}
+			ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, *ipfsClient)
+			if err != nil {
+				return nil, err
+			}
+			providers[models.PublisherIPFS] = tracing.Wrap(ipfsPublisher)
 		}
-		ipfsClient, err := ipfs_client.NewClient(ctx, ipfscfg.Connect)
-		if err != nil {
-			return nil, err
-		}
-		ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, *ipfsClient)
-		if err != nil {
-			return nil, err
-		}
-		providers[models.PublisherIPFS] = tracing.Wrap(ipfsPublisher)
 	}
 
 	return provider.NewMappedProvider(providers), nil

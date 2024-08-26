@@ -63,7 +63,7 @@ func Setup(
 	return stack
 }
 
-func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types2.ExecutorsConfig) devstack.ConfigOption {
+func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types2.EngineConfig) devstack.ConfigOption {
 	return devstack.WithDependencyInjector(node.NodeDependencyInjector{
 		ExecutorsFactory: &mixedExecutorFactory{
 			standardFactory: node.NewStandardExecutorsFactory(cfg),

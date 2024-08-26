@@ -86,7 +86,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: noop_executor.DelayedJobHandler(s.jobRunDuration),
 				},
-			}, c.Executors),
+			}, c.Engines),
 	)
 
 	s.requester = stack.Nodes[0]

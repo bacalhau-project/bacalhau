@@ -20,7 +20,7 @@ type Bacalhau struct {
 	WebUI               WebUI                  `yaml:"WebUI,omitempty"`
 	InputSources        InputSourcesConfig     `yaml:"InputSources,omitempty"`
 	Publishers          PublishersConfig       `yaml:"Publishers,omitempty"`
-	Executors           ExecutorsConfig        `yaml:"Executors,omitempty"`
+	Engines             EngineConfig           `yaml:"Engines,omitempty"`
 	ResultDownloaders   ResultDownloaders      `yaml:"ResultDownloaders,omitempty"`
 	JobDefaults         JobDefaults            `yaml:"JobDefaults,omitempty"`
 	JobAdmissionControl JobAdmissionControl    `yaml:"JobAdmissionControl,omitempty"`

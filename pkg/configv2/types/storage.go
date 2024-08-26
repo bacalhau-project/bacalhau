@@ -3,15 +3,14 @@ package types
 import (
 	"slices"
 	"strings"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-var _ ConfigProvider = (*InputSourcesConfig)(nil)
+var _ Provider = (*InputSourcesConfig)(nil)
 
 type InputSourcesConfig struct {
-	Disabled []string                          `yaml:"Disabled,omitempty"`
-	Config   map[string]map[string]interface{} `yaml:"Config,omitempty"`
+	Disabled []string    `yaml:"Disabled,omitempty"`
+	IPFS     IPFSStorage `yaml:"IPFS,omitempty"`
+	S3       S3Storage   `yaml:"S3,omitempty"`
 }
 
 func (i InputSourcesConfig) Enabled(kind string) bool {
@@ -20,20 +19,28 @@ func (i InputSourcesConfig) Enabled(kind string) bool {
 	})
 }
 
-func (i InputSourcesConfig) Installed(kind string) bool {
-	_, ok := i.Config[kind]
-	return ok
+var _ Configurable = (*IPFSStorage)(nil)
+
+type IPFSStorage struct {
+	// Endpoint specifies the endpoint Multiaddress for the IPFS input source.
+	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
-func (i InputSourcesConfig) ConfigMap() map[string]map[string]interface{} {
-	return i.Config
+func (c IPFSStorage) Installed() bool {
+	return c != IPFSStorage{}
 }
 
-type IpfsInputSourceConfig struct {
-	// Connect is the multiaddress to connect to for IPFS.
-	Connect string `yaml:"Connect"`
+var _ Configurable = (*S3Storage)(nil)
+
+type S3Storage struct {
+	// Endpoint specifies the endpoint URL for the S3 input source.
+	Endpoint string `yaml:"Endpoint,omitempty"`
+	// AccessKey specifies the access key for the S3 input source.
+	AccessKey string `yaml:"AccessKey,omitempty"`
+	// SecretKey specifies the secret key for the S3 input source.
+	SecretKey string `yaml:"SecretKey,omitempty"`
 }
 
-func (i IpfsInputSourceConfig) Kind() string {
-	return models.StorageSourceIPFS
+func (c S3Storage) Installed() bool {
+	return c != S3Storage{}
 }

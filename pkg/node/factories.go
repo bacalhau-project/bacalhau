@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
@@ -48,31 +47,12 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory(cfg types2.InputSourcesConfig) StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg types2.Bacalhau) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
-		ipfsConnect := ""
-		if cfg.Enabled(models.StorageSourceIPFS) && cfg.Installed(models.StorageSourceIPFS) {
-			ipfscfg, err := types2.DecodeProviderConfig[types2.IpfsInputSourceConfig](cfg)
-			if err != nil {
-				return nil, err
-			}
-			ipfsConnect = ipfscfg.Connect
-		}
-		// TODO(forrest): pass the config down through this method and only enable the non-disabled one.
-		pr, err := executor_util.NewStandardStorageProvider(
-			// NB(forrest): defaults taken from v1 config
-			2*time.Minute,
-			5*time.Minute,
-			3,
-
-			executor_util.StandardStorageProviderOptions{
-				IPFSConnect:           ipfsConnect,
-				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
-			},
-		)
+		pr, err := executor_util.NewStandardStorageProvider(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +60,7 @@ func NewStandardStorageProvidersFactory(cfg types2.InputSourcesConfig) StoragePr
 	})
 }
 
-func NewStandardExecutorsFactory(cfg types2.ExecutorsConfig) ExecutorsFactory {
+func NewStandardExecutorsFactory(cfg types2.EngineConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
@@ -143,7 +123,6 @@ func NewStandardPublishersFactory(cfg types2.Bacalhau) PublishersFactory {
 				executionDir,
 				nodeConfig.CleanupManager,
 				cfg.Publishers,
-				&nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {
 				return nil, err

@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -39,15 +37,8 @@ func (s *ParallelStorageSuite) SetupSuite() {
 	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 	s.cfg = cfg
 
-	ipfsCfg, err := types2.DecodeProviderConfig[types2.IpfsInputSourceConfig](cfg.InputSources)
-	s.Require().NoError(err)
-
-	s.provider, err = executor_util.NewStandardStorageProvider(
-		time.Duration(configenv.Testing.Node.VolumeSizeRequestTimeout),
-		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-		configenv.Testing.Node.DownloadURLRequestRetries,
-		executor_util.StandardStorageProviderOptions{IPFSConnect: ipfsCfg.Connect},
-	)
+	var err error
+	s.provider, err = executor_util.NewStandardStorageProvider(cfg)
 	s.Require().NoError(err)
 }
 

@@ -8,7 +8,7 @@ var DisabledFeatureFlags = []Definition{
 	{
 		FlagName:     "disable-engine",
 		ConfigPath:   "Executors.Disabled",
-		DefaultValue: types2.Default.Executors.Disabled,
+		DefaultValue: types2.Default.Engines.Disabled,
 		Description:  "Engine types to disable",
 	},
 	{

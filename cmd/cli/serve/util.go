@@ -64,14 +64,16 @@ func GetComputeConfig(
 		},
 	}
 
-	// if the local publisher is enabled and a config exists for it populate params, otherwise
-	// a default set of values will be used which are defined in NewComputeConfigWith
-	if cfg.Publishers.Enabled(models.PublisherLocal) && cfg.Publishers.Installed(models.PublisherLocal) {
-		lpcfg, err := types2.DecodeProviderConfig[types2.LocalPublisherConfig](cfg.Publishers)
-		if err != nil {
-			return node.ComputeConfig{}, err
+	// if the local publisher is enabled and installed, populate params.
+	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
+	if cfg.Publishers.Enabled(models.PublisherLocal) {
+		if cfg.Publishers.Local.Installed() {
+			params.LocalPublisher = types.LocalPublisherConfig{
+				Address:   cfg.Publishers.Local.Address,
+				Port:      cfg.Publishers.Local.Port,
+				Directory: cfg.Publishers.Local.Directory,
+			}
 		}
-		params.LocalPublisher = types.LocalPublisherConfig(lpcfg)
 	}
 
 	return node.NewComputeConfigWith(executionsPath, params)
@@ -109,13 +111,11 @@ func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.Requeste
 		DefaultPublisher:            cfg.DefaultPublisher.Type,
 	}
 
-	if cfg.Publishers.Enabled(models.PublisherS3) && cfg.InputSources.Installed(models.PublisherS3) {
-		s3cfg, err := types2.DecodeProviderConfig[types2.S3PublisherConfig](cfg.Publishers)
-		if err != nil {
-			return node.RequesterConfig{}, err
+	if cfg.Publishers.Enabled(models.StorageSourceS3) {
+		if cfg.Publishers.S3.Installed() {
+			params.S3PreSignedURLExpiration = time.Duration(cfg.Publishers.S3.PreSignedURLExpiration)
+			params.S3PreSignedURLDisabled = cfg.Publishers.S3.PreSignedURLDisabled
 		}
-		params.S3PreSignedURLExpiration = time.Duration(s3cfg.PreSignedURLExpiration)
-		params.S3PreSignedURLDisabled = s3cfg.PreSignedURLDisabled
 	}
 
 	requesterConfig, err := node.NewRequesterConfigWith(params)
@@ -123,10 +123,9 @@ func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.Requeste
 		return node.RequesterConfig{}, err
 	}
 
+	requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
 	if cfg.Orchestrator.NodeManager.ManualApproval {
 		requesterConfig.DefaultApprovalState = models.NodeMembership.PENDING
-	} else {
-		requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
 	}
 
 	return requesterConfig, nil

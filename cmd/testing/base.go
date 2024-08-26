@@ -75,7 +75,7 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Executors),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
@@ -139,8 +139,8 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	root.SetIn(stdin)
 
 	arguments := []string{}
-	if !slices.Contains(args, "--api") {
-		arguments = append(arguments, "--api", fmt.Sprintf("http://%s:%d", s.Host, s.Port))
+	if !slices.Contains(args, "--api-address") {
+		arguments = append(arguments, "--api-address", fmt.Sprintf("http://%s:%d", s.Host, s.Port))
 	}
 
 	arguments = append(arguments, args...)
