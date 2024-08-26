@@ -187,19 +187,17 @@ func Setup(
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-
-			localPublisherConfig := types.LocalPublisherConfig{
+			cfg.Publishers.Local = types2.LocalPublisher{
 				Port:      fport,
-				Address:   "127.0.0.1", //nolint:gomnd
+				Address:   "127.0.0.1",
 				Directory: path.Join(repoPath, fmt.Sprintf("local-publisher-%d", i)),
 			}
-			err = os.MkdirAll(localPublisherConfig.Directory, util.OS_USER_RWX)
+
+			err = os.MkdirAll(cfg.Publishers.Local.Directory, util.OS_USER_RWX)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create local publisher directory %s: %w",
-					localPublisherConfig.Directory, err)
+					cfg.Publishers.Local.Directory, err)
 			}
-
-			stackConfig.ComputeConfig.LocalPublisher = localPublisherConfig
 		}
 
 		nodeConfig := node.NodeConfig{

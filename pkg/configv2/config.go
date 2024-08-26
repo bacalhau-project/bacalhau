@@ -140,7 +140,7 @@ func New(opts ...Option) (*Config, error) {
 // from the read config file.
 // Load returns an error if the file cannot be read.
 func (c *Config) Load(path string) error {
-	log.Info().Msgf("loading config file: %q", path)
+	log.Debug().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -151,7 +151,7 @@ func (c *Config) Load(path string) error {
 // Merge merges a new configuration file specified by `path` with the existing config.
 // Merge returns an error if the file cannot be read
 func (c *Config) Merge(path string) error {
-	log.Info().Msgf("merging config file: %q", path)
+	log.Debug().Msgf("merging config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		return err

@@ -56,5 +56,5 @@ type LocalPublisher struct {
 }
 
 func (l LocalPublisher) Installed() bool {
-	return l == LocalPublisher{}
+	return l != LocalPublisher{}
 }
