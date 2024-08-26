@@ -18,7 +18,6 @@ initialize_ipfs() {
     ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
     ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
     ipfs daemon --offline &
-    # TODO(forrest): this won't work with the new config struct
     export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 }
 
