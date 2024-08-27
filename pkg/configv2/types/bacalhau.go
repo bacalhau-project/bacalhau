@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 
@@ -28,6 +29,34 @@ type Bacalhau struct {
 	UpdateConfig        UpdateConfig           `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags           `yaml:"FeatureFlags,omitempty"`
 	DefaultPublisher    DefaultPublisherConfig `yaml:"DefaultPublisher,omitempty"`
+}
+
+func AllKeys() map[string]reflect.Type {
+	config := Bacalhau{}
+	paths := make(map[string]reflect.Type)
+	buildPathMap(reflect.ValueOf(config), "", paths)
+	return paths
+}
+
+func buildPathMap(v reflect.Value, prefix string, paths map[string]reflect.Type) {
+	switch v.Kind() {
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Type().Field(i)
+			tag := field.Tag.Get("yaml")
+			if tag == "" {
+				tag = field.Name
+			} else {
+				tag = strings.Split(tag, ",")[0]
+			}
+			fieldPath := prefix + strings.ToLower(tag)
+			buildPathMap(v.Field(i), fieldPath+".", paths)
+		}
+	case reflect.Map, reflect.Slice, reflect.Array, reflect.Ptr:
+		paths[prefix[:len(prefix)-1]] = v.Type()
+	default:
+		paths[prefix[:len(prefix)-1]] = v.Type()
+	}
 }
 
 // Validate returns an error if the config is invalid

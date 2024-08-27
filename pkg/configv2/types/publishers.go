@@ -48,7 +48,7 @@ var _ Configurable = (*LocalPublisher)(nil)
 
 type LocalPublisher struct {
 	// Address is the endpoint the publisher serves on.
-	Address string `yaml:"Host,omitempty"`
+	Address string `yaml:"Address,omitempty"`
 	// Port is the port the publisher serves on.
 	Port int `yaml:"Port,omitempty"`
 	// Directory is a path to location on disk where content is served from.
