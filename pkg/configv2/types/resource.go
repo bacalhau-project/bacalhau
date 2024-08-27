@@ -95,9 +95,9 @@ func (s ResourceScaler) ToResource(in models.Resources) (*models.Resources, erro
 			return nil, fmt.Errorf("percentage must be between 0%% and 100%%, got %s", s.GPU)
 		}
 		value = value / 100
-		// ensure we never scale a GPU down to zero
+		// ensure we never scale a GPU down to zero unless there isn't a GPU
 		tmp := float64(in.GPU) * value
-		if tmp < 1 {
+		if tmp < 1 && in.GPU >= 1 {
 			tmp = 1
 		}
 		out.GPU = uint64(tmp)

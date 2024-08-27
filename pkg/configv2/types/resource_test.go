@@ -58,3 +58,116 @@ func TestResources(t *testing.T) {
 	assert.EqualValues(t, 100_000_000_000, out.Disk)
 	assert.EqualValues(t, 4, out.GPU)
 }
+
+func TestScaleGPU(t *testing.T) {
+	t.Run("scaling single GPU results in 1 GPU unit", func(t *testing.T) {
+		systemCapacity := models.Resources{
+			CPU:    10,
+			Memory: 10,
+			Disk:   10,
+			GPU:    1,
+		}
+
+		scaler := ResourceScaler{
+			CPU:    "80%",
+			Memory: "70%",
+			Disk:   "60%",
+			GPU:    "50%",
+		}
+
+		out, err := scaler.ToResource(systemCapacity)
+		require.NoError(t, err)
+
+		// ensure 50% of a GPU is still 1 gpu
+		assert.EqualValues(t, 1, out.GPU)
+	})
+
+	t.Run("scaling zero GPU results in 0 GPU unit", func(t *testing.T) {
+		systemCapacity := models.Resources{
+			CPU:    10,
+			Memory: 10,
+			Disk:   10,
+			GPU:    0,
+		}
+
+		scaler := ResourceScaler{
+			CPU:    "80%",
+			Memory: "70%",
+			Disk:   "60%",
+			GPU:    "50%",
+		}
+
+		out, err := scaler.ToResource(systemCapacity)
+		require.NoError(t, err)
+
+		// ensure 50% of a GPU is still 1 gpu
+		assert.EqualValues(t, 0, out.GPU)
+	})
+
+	t.Run("scaling 2 GPU to 50% results in 1 GPU unit", func(t *testing.T) {
+		systemCapacity := models.Resources{
+			CPU:    10,
+			Memory: 10,
+			Disk:   10,
+			GPU:    2,
+		}
+
+		scaler := ResourceScaler{
+			CPU:    "80%",
+			Memory: "70%",
+			Disk:   "60%",
+			GPU:    "50%",
+		}
+
+		out, err := scaler.ToResource(systemCapacity)
+		require.NoError(t, err)
+
+		// ensure 50% of a GPU is still 1 gpu
+		assert.EqualValues(t, 1, out.GPU)
+	})
+
+	t.Run("scaling 2 GPU to 1% results in 1 GPU unit", func(t *testing.T) {
+		systemCapacity := models.Resources{
+			CPU:    10,
+			Memory: 10,
+			Disk:   10,
+			GPU:    2,
+		}
+
+		scaler := ResourceScaler{
+			CPU:    "80%",
+			Memory: "70%",
+			Disk:   "60%",
+			GPU:    "1%",
+		}
+
+		out, err := scaler.ToResource(systemCapacity)
+		require.NoError(t, err)
+
+		// ensure 50% of a GPU is still 1 gpu
+		assert.EqualValues(t, 1, out.GPU)
+	})
+
+	t.Run("scaling 4 GPU to 75% results in 3 GPU unit", func(t *testing.T) {
+		systemCapacity := models.Resources{
+			CPU:    10,
+			Memory: 10,
+			Disk:   10,
+			GPU:    4,
+		}
+
+		scaler := ResourceScaler{
+			CPU:    "80%",
+			Memory: "70%",
+			Disk:   "60%",
+			GPU:    "75%",
+		}
+
+		out, err := scaler.ToResource(systemCapacity)
+		require.NoError(t, err)
+
+		// ensure 50% of a GPU is still 1 gpu
+		assert.EqualValues(t, 3, out.GPU)
+	})
+
+}
