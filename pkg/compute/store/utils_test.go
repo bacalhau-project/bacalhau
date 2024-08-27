@@ -5,8 +5,9 @@ package store
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 func TestValidateNewExecution(t *testing.T) {
@@ -22,11 +23,11 @@ func TestValidateNewExecution_InvalidState(t *testing.T) {
 	assert.ErrorAs(t, err, &ErrInvalidExecutionState{})
 }
 
-func TestValidateNewExecution_InvalidVersion(t *testing.T) {
+func TestValidateNewExecution_InvalidRevision(t *testing.T) {
 	execution := newExecution()
-	execution.Version = 2
+	execution.Revision = 2
 	err := ValidateNewExecution(execution)
-	assert.ErrorAs(t, err, &ErrInvalidExecutionVersion{})
+	assert.ErrorAs(t, err, &ErrInvalidExecutionRevision{})
 }
 
 func newExecution() LocalExecutionState {
