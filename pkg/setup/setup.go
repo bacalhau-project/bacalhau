@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/configv2"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -26,6 +27,9 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
 func SetupBacalhauRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
+	if err := logger.ConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
+		return nil, fmt.Errorf("failed to configure logging: %w", err)
+	}
 	migrationManger, err := SetupMigrationManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migration manager: %w", err)

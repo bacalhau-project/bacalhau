@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -100,10 +101,12 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.Var(flags.LoggingFlag(&v), def.FlagName, def.Description)
 			case time.Duration:
 				fset.DurationVar(&v, def.FlagName, v, def.Description)
-			case types.Duration:
+			case types2.Duration:
 				fset.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
 			case types.StorageType:
 				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
+			case types2.ResourceType:
+				fset.String(def.FlagName, string(v), def.Description)
 			default:
 				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
 			}

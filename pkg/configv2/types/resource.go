@@ -5,111 +5,115 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/BTBurke/k8sresource"
+	"github.com/dustin/go-humanize"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ResourceScaler struct {
 	// CPU specifies the amount of CPU allocated as a percentage.
-	CPU Percentage `yaml:"CPU,omitempty"`
+	CPU ResourceType `yaml:"CPU,omitempty"`
 	// Memory specifies the amount of Memory allocated as a percentage.
-	Memory Percentage `yaml:"Memory,omitempty"`
+	Memory ResourceType `yaml:"Memory,omitempty"`
 	// Disk specifies the amount of Disk space allocated as a percentage.
-	Disk Percentage `yaml:"Disk,omitempty"`
+	Disk ResourceType `yaml:"Disk,omitempty"`
 	// GPU specifies the amount of GPU allocated as a percentage.
-	GPU Percentage `yaml:"GPU,omitempty"`
+	GPU ResourceType `yaml:"GPU,omitempty"`
 }
 
-func (r ResourceScaler) IsZero() bool {
-	return r.CPU == "" && r.Memory == "" && r.Disk == "" && r.GPU == ""
+func (s ResourceScaler) IsZero() bool {
+	return s.CPU == "" && s.Memory == "" && s.Disk == "" && s.GPU == ""
 }
 
-func (r ResourceScaler) Validate() error {
-	fields := map[string]Percentage{
-		"CPU":    r.CPU,
-		"Memory": r.Memory,
-		"Disk":   r.Disk,
-		"GPU":    r.GPU,
-	}
-
-	for field, value := range fields {
-		if value != "" {
-			if _, err := value.Parse(); err != nil {
-				return fmt.Errorf("invalid %s percentage: %w", field, err)
-			}
-		}
-	}
-	return nil
-}
-
-func (r ResourceScaler) Scale(resources models.Resources) (models.Resources, error) {
-	if err := r.Validate(); err != nil {
-		return models.Resources{}, fmt.Errorf("invalid allocated capacity config: %w", err)
-	}
-	out := models.Resources{}
-	if r.CPU != "" {
-		cpuScale, err := r.CPU.Parse()
+func (s ResourceScaler) ToResource(in models.Resources) (*models.Resources, error) {
+	out := new(models.Resources)
+	if s.CPU.IsScaler() {
+		scalerStr := strings.TrimSuffix(string(s.CPU), "%")
+		value, err := strconv.ParseFloat(scalerStr, 64)
 		if err != nil {
-			return models.Resources{}, fmt.Errorf("invalid CPU allocation: %w", err)
+			return nil, fmt.Errorf("cpu capacity invalid percentage format: %w", err)
 		}
-		out.CPU = resources.CPU * cpuScale
-	}
-
-	if r.Memory != "" {
-		memoryScale, err := r.Memory.Parse()
+		if value < 0 || value > 100 {
+			return nil, fmt.Errorf("cpu capacity percentage must be between 0%% and 100%%, got %s", s.CPU)
+		}
+		value = value / 100
+		out.CPU = in.CPU * value
+	} else {
+		cpu, err := k8sresource.NewCPUFromString(string(s.CPU))
 		if err != nil {
-			return models.Resources{}, fmt.Errorf("invalid Memory allocation: %w", err)
+			return nil, fmt.Errorf("invalid CPU value %q: %w", s.CPU, err)
 		}
-		out.Memory = uint64(float64(resources.Memory) * memoryScale)
+		out.CPU = cpu.ToFloat64()
 	}
 
-	if r.Disk != "" {
-		diskScale, err := r.Disk.Parse()
+	if s.Memory.IsScaler() {
+		scalerStr := strings.TrimSuffix(string(s.Memory), "%")
+		value, err := strconv.ParseFloat(scalerStr, 64)
 		if err != nil {
-			return models.Resources{}, fmt.Errorf("invalid Disk allocation: %w", err)
+			return nil, fmt.Errorf("memory capacity invalid percentage format: %w", err)
 		}
-		out.Disk = uint64(float64(resources.Disk) * diskScale)
+		if value < 0 || value > 100 {
+			return nil, fmt.Errorf("memory capacity percentage must be between 0%% and 100%%, got %s", s.Memory)
+		}
+		value = value / 100
+		out.Memory = uint64(float64(in.Memory) * value)
+	} else {
+		mem, err := humanize.ParseBytes(string(s.Memory))
+		if err != nil {
+			return nil, fmt.Errorf("invalid Memory value %q: %w", s.Memory, err)
+		}
+		out.Memory = mem
 	}
 
-	// TODO(forrest): at present it is unclear how/if GPU resources should be scaled.
-	// Currently, tasks denote the number of GPU units required.
-	// For example, in a task spec, '2' would signify a requirement of 2 GPU units.
-	// If the scaler is .8, then we'd get 1.6 GPUs here, which doesn't work.
-	/*
-		if r.GPU != "" {
-			gpuScale, err := r.GPU.Parse()
-			if err != nil {
-				return models.Resources{}, fmt.Errorf("invalid GPU allocation")
-			}
-			out.GPU = uint64(float64(resources.GPU) * gpuScale)
+	if s.Disk.IsScaler() {
+		scalerStr := strings.TrimSuffix(string(s.Disk), "%")
+		value, err := strconv.ParseFloat(scalerStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("disk capacity invalid percentage format: %w", err)
 		}
-	*/
+		if value < 0 || value > 100 {
+			return nil, fmt.Errorf("disk capacity percentage must be between 0%% and 100%%, got %s", s.Disk)
+		}
+		value = value / 100
+		out.Disk = uint64(float64(in.Disk) * value)
+	} else {
+		disk, err := humanize.ParseBytes(string(s.Disk))
+		if err != nil {
+			return nil, fmt.Errorf("invalid Disk value %q: %w", s.Disk, err)
+		}
+		out.Disk = disk
+	}
+
+	if s.GPU.IsScaler() {
+		scalerStr := strings.TrimSuffix(string(s.GPU), "%")
+		value, err := strconv.ParseFloat(scalerStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid percentage format: %w", err)
+		}
+		if value < 0 || value > 100 {
+			return nil, fmt.Errorf("percentage must be between 0%% and 100%%, got %s", s.GPU)
+		}
+		value = value / 100
+		// ensure we never scale a GPU down to zero
+		tmp := float64(in.GPU) * value
+		if tmp < 1 {
+			tmp = 1
+		}
+		out.GPU = uint64(tmp)
+	} else {
+		gpu, err := strconv.ParseUint(string(s.GPU), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid GPU value %q: %w", s.GPU, err)
+		}
+		out.GPU = gpu
+	}
 
 	return out, nil
 }
 
-type Percentage string
+type ResourceType string
 
-func (pv Percentage) Parse() (float64, error) {
-	// if the percentage is empty then it means the user didn't provide a config
-	// value, and we shouldn't scale. Returning 1 will result in no scaling.
-	if pv == "" {
-		return 1, nil
-	}
-	s := strings.TrimSpace(string(pv))
-	s = strings.TrimSuffix(s, "%")
-
-	value, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid percentage format: %w", err)
-	}
-
-	if value != float64(int(value)) {
-		return 0, fmt.Errorf("percentage must be a whole number. receieved %q", pv)
-	}
-
-	if value < 1 || value > 100 {
-		return 0, fmt.Errorf(`percentage must be between 1%% and 100%%. receieved %q`, pv)
-	}
-
-	return value / 100, nil
+func (t ResourceType) IsScaler() bool {
+	return strings.HasSuffix(string(t), "%")
 }

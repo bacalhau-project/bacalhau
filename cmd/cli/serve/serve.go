@@ -30,8 +30,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/webui"
 )
 
-const DefaultPeerConnect = "none"
-
 var (
 	serveLong = templates.LongDesc(i18n.T(`
 		Start a bacalhau node.
@@ -41,15 +39,11 @@ var (
 		# Start a private bacalhau requester node
 		bacalhau serve
 		# or
-		bacalhau serve --node-type requester
+		bacalhau serve --orchestrator
 
 		# Start a private bacalhau hybrid node that acts as both compute and requester
-		bacalhau serve --node-type compute --node-type requester
+		bacalhau serve --orchestrator --compute
 		# or
-		bacalhau serve --node-type compute,requester
-
-		# Start a public bacalhau requester node
-		bacalhau serve --peer env 
 
 		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
 		bacalhau serve --web-ui --web-ui-port=3000
@@ -59,7 +53,9 @@ var (
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"orchestrator":     configflags.OrchestratorFlags,
+		"capacity":         configflags.CapacityFlags,
 		"ipfs":             configflags.IPFSFlags,
+		"local-publisher":  configflags.LocalPublisherFlags,
 		"compute":          configflags.ComputeFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"job-selection":    configflags.JobSelectionFlags,

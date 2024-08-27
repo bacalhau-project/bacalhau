@@ -64,12 +64,9 @@ func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false
 	devstackFlags := map[string][]configflags.Definition{
-		"publishing": configflags.PublishingFlags,
-		//"requester-tls":         configflags.RequesterTLSFlags,
 		"job-selection":         configflags.JobSelectionFlags,
 		"disable-features":      configflags.DisabledFeatureFlags,
 		"capacity":              configflags.CapacityFlags,
-		"job-timeouts":          configflags.ComputeTimeoutFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
@@ -150,10 +147,6 @@ func NewCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
 		"File to save memory profiling to",
-	)
-	devstackCmd.PersistentFlags().StringSliceVar(
-		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
 	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,

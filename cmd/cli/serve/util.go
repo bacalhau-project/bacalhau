@@ -174,9 +174,14 @@ func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types2.Re
 
 	// if allocated capacity scaler is zero, return the system capacity
 	if scaler.IsZero() {
-		return scaler.Scale(systemCapacity)
+		return systemCapacity, nil
 	}
 
 	// scale the system resources based on the allocation
-	return scaler.Scale(systemCapacity)
+	allocatedCapacity, err := scaler.ToResource(systemCapacity)
+	if err != nil {
+		return models.Resources{}, fmt.Errorf("allocating system capacity: %w", err)
+	}
+
+	return *allocatedCapacity, nil
 }

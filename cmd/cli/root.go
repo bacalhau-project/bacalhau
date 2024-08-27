@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -41,22 +40,10 @@ func NewRootCmd() *cobra.Command {
 		util.Fatal(RootCmd, err, 1)
 	}
 
-	/*
-		RootCmd.PersistentFlags().VarP(cliflags.NewRepoFlag(), "repo", "r", "filesystem path to bacalhau repo")
-		// Bind the repo flag to viper for access by child commands
-		if err := viper.BindPFlag("repo", RootCmd.PersistentFlags().Lookup("repo")); err != nil {
-			util.Fatal(RootCmd, err, 1)
-		}
-		if err := viper.BindEnv("repo", "BACALHAU_DIR"); err != nil {
-			util.Fatal(RootCmd, err, 1)
-		}
-	*/
-
 	// flag definitions with a corresponding field in the config file.
 	// when these flags are provided their value will be used instead of the value present in the config file.
 	// If no flg is provided, and the config file doesn't have a value defined then the default value will be used.
 	rootFlags := map[string][]configflags.Definition{
-		//"api":     configflags.ClientAPIFlags,
 		"api":     configflags.APIFlags,
 		"logging": configflags.LogFlags,
 		"repo":    configflags.DataDirFlag,
@@ -81,10 +68,6 @@ func NewRootCmd() *cobra.Command {
 		if err := configflags.BindFlags(viper.GetViper(), rootFlags); err != nil {
 			return err
 		}
-
-		// TODO [fixme] this value is a constant and never read from the flag
-		// TODO make persistent flag allowing child commands to operate at different logs levels based on user input
-		logger.ConfigureLogging(util.LoggingMode)
 
 		return nil
 	}

@@ -47,7 +47,7 @@ var Default = Bacalhau{
 		},
 	},
 	Compute: Compute{
-		Enabled:       true,
+		Enabled:       false,
 		Orchestrators: []string{"nats://127.0.0.1:4222"},
 		Heartbeat: Heartbeat{
 			InfoUpdateInterval:     Minute,
@@ -112,8 +112,8 @@ var Default = Bacalhau{
 		},
 	},
 	Logging: Logging{
-		Level:                "INFO",
-		Mode:                 "Default",
+		Level:                "error",
+		Mode:                 "default",
 		LogDebugInfoInterval: 0,
 	},
 	UpdateConfig: UpdateConfig{
