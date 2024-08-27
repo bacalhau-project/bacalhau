@@ -92,7 +92,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	args := []string{
 		"serve",
-		"--repo", s.T().TempDir(),
+		"--repo", s.repoPath,
 		"--api-address", fmt.Sprintf("http://127.0.0.1:%d", port),
 	}
 	args = append(args, extraArgs...)

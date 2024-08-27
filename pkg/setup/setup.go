@@ -2,12 +2,9 @@ package setup
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/configv2"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
@@ -62,10 +59,7 @@ func SetupBacalhauRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
 func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	// create a temporary dir to serve as bacalhau repo whose name includes the current time to avoid collisions with
 	/// other tests
-	tmpDir, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fatal(errors.Wrap(err, "failed to create temporary directory in test setup"))
-	}
+	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
 	// disable update checks in testing.
@@ -91,13 +85,6 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Cleanup(func() {
-		// This may fail on windows, and if so then we'll log the error but not fail the test.
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Logf("failed to clean up repo at: %s: %s", path, err)
-		}
-	})
 
 	return fsRepo, cfg
 }
