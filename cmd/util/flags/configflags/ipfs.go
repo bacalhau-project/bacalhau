@@ -6,6 +6,13 @@ import (
 
 var IPFSFlags = []Definition{
 	{
+		FlagName:          "ipfs-connect",
+		ConfigPath:        "ipfs.connect.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "Use one of: ipfs-connect-storage, ipfs-connect-publisher, ipfs-connect-downloader",
+	},
+	{
 		FlagName:             "ipfs-connect-storage",
 		ConfigPath:           "InputSources.IPFS.Endpoint",
 		DefaultValue:         types2.Default.InputSources.IPFS.Endpoint,

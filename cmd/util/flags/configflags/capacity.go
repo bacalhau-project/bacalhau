@@ -6,27 +6,57 @@ import (
 
 var CapacityFlags = []Definition{
 	{
-		FlagName:     "capacity-cpu",
+		FlagName:     "limit-total-cpu",
 		ConfigPath:   "Compute.AllocatedCapacity.CPU",
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.CPU,
 		Description:  `Total CPU core limit to run all jobs (e.g. 500m, 2, 8, 80%, 10%).`,
 	},
 	{
-		FlagName:     "capacity-memory",
+		FlagName:     "limit-total-memory",
 		ConfigPath:   "Compute.AllocatedCapacity.Memory",
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.Memory,
 		Description:  `Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
-		FlagName:     "capacity-disk",
+		FlagName:     "limit-total-disk",
 		ConfigPath:   "Compute.AllocatedCapacity.Disk",
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.Disk,
 		Description:  `Total Disk limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
-		FlagName:     "capacity-gpu",
+		FlagName:     "limit-total-gpu",
 		ConfigPath:   "Compute.AllocatedCapacity.GPU",
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.GPU,
 		Description:  `Total GPU limit to run all jobs (e.g. 1, 2, 80%, 10%).`,
+	},
+
+	// deprecated
+	{
+		FlagName:          "limit-job-cpu",
+		ConfigPath:        "limit.job.cpu.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "use limit-total-cpu.",
+	},
+	{
+		FlagName:          "limit-job-memory",
+		ConfigPath:        "limit.job.memory.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "use limit-total-memory.",
+	},
+	{
+		FlagName:          "limit-job-disk",
+		ConfigPath:        "limit.job.disk.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "use limit-total-disk.",
+	},
+	{
+		FlagName:          "limit-job-gpu",
+		ConfigPath:        "limit.job.gpu.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "use limit-total-gpu.",
 	},
 }

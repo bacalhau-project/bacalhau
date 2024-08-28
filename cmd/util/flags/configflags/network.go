@@ -4,7 +4,7 @@ import (
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 )
 
-var OrchestratorFlags = []Definition{
+var NetworkFlags = []Definition{
 	{
 		FlagName:     "orchestrator",
 		ConfigPath:   "Orchestrator.Enabled",

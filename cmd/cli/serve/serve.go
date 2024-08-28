@@ -51,21 +51,24 @@ var (
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
-		"orchestrator":          configflags.OrchestratorFlags,
-		"compute":               configflags.ComputeFlags,
 		"local_publisher":       configflags.LocalPublisherFlags,
+		"publishing":            configflags.PublishingFlags,
 		"requester-tls":         configflags.RequesterTLSFlags,
 		"server-api":            configflags.ServerAPIFlags,
-		"list-local":            configflags.AllowListLocalPathsFlags,
-		"capacity":              configflags.CapacityFlags,
+		"network":               configflags.NetworkFlags,
 		"ipfs":                  configflags.IPFSFlags,
-		"disable-features":      configflags.DisabledFeatureFlags,
+		"capacity":              configflags.CapacityFlags,
 		"job-selection":         configflags.JobSelectionFlags,
+		"disable-features":      configflags.DisabledFeatureFlags,
 		"labels":                configflags.LabelFlags,
+		"list-local":            configflags.AllowListLocalPathsFlags,
+		"compute-store":         configflags.ComputeStorageFlags,
+		"requester-store":       configflags.RequesterJobStorageFlags,
 		"web-ui":                configflags.WebUIFlags,
 		"node-name":             configflags.NodeNameFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
+		"compute":               configflags.ComputeFlags,
 	}
 	serveCmd := &cobra.Command{
 		Use:     "serve",

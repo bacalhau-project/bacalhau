@@ -7,9 +7,8 @@ import (
 
 var DataDirFlag = []Definition{
 	{
-		FlagName:   "repo",
-		ConfigPath: "DataDir",
-		// TODO consider including this in the default config for consistency
+		FlagName:             "repo",
+		ConfigPath:           "DataDir",
 		DefaultValue:         getDefaultRepo(),
 		Description:          "The filesystem path bacalhau inits or opens a repo in",
 		EnvironmentVariables: []string{"BACALHAU_DIR"},

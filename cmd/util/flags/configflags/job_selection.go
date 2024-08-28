@@ -6,6 +6,13 @@ import (
 
 var JobSelectionFlags = []Definition{
 	{
+		FlagName:          "job-selection-data-locality",
+		ConfigPath:        "job.selection.data.locality.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "Locality is no longer configurable.",
+	},
+	{
 		FlagName:     "job-selection-reject-stateless",
 		ConfigPath:   "JobAdmissionControl.RejectStatelessJobs",
 		DefaultValue: types2.Default.JobAdmissionControl.RejectStatelessJobs,
