@@ -33,8 +33,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-const maxServeTime = 30 * time.Hour
-const maxTestTime = 60 * time.Hour
+const maxServeTime = 30 * time.Second
+const maxTestTime = 60 * time.Second
 const RETURN_ERROR_FLAG = "RETURN_ERROR"
 
 type ServeSuite struct {
@@ -44,6 +44,7 @@ type ServeSuite struct {
 
 	ctx      context.Context
 	repoPath string
+	protocol string
 	config   types2.Bacalhau
 }
 
@@ -57,6 +58,7 @@ func (s *ServeSuite) SetupTest() {
 	repoPath, err := fsRepo.Path()
 	s.Require().NoError(err)
 	s.repoPath = repoPath
+	s.protocol = "http"
 	s.config = c
 
 	var cancel context.CancelFunc
@@ -133,7 +135,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			s.FailNow("Server did not start in time")
 
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/livez", port))
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
 			if string(livezText) == "OK" && statusCode == http.StatusOK {
 				return port, nil
 			}
@@ -206,6 +208,12 @@ func (s *ServeSuite) TestCanSubmitJob() {
 		Job: job,
 	})
 	s.NoError(err)
+}
+
+func (s *ServeSuite) TestSelfSignedRequester() {
+	s.protocol = "https"
+	_, err := s.serve("--orchestrator", "--self-signed")
+	s.Require().NoError(err)
 }
 
 // Begin WebUI Tests

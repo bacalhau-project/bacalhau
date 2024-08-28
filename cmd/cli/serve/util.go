@@ -3,9 +3,6 @@ package serve
 import (
 	"context"
 	"fmt"
-	"net"
-	"net/url"
-	"strconv"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
@@ -132,40 +129,22 @@ func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.Requeste
 }
 
 func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
-	_, portStr, err := net.SplitHostPort(cfg.Orchestrator.Listen)
-	if err != nil {
-		return node.NetworkConfig{}, fmt.Errorf("failed to parse orchestrator listen address: %w", err)
-	}
-	listenPort, err := strconv.ParseInt(portStr, 10, 64)
-	if err != nil {
-		return node.NetworkConfig{}, err
-	}
 	storeDir, err := cfg.NetworkTransportDir()
 	if err != nil {
 		return node.NetworkConfig{}, err
 	}
-	ntwkCfg := node.NetworkConfig{
-		Port:                     int(listenPort),
+	return node.NetworkConfig{
+		Port:                     cfg.Orchestrator.Port,
 		AdvertisedAddress:        cfg.Orchestrator.Advertise,
 		Orchestrators:            cfg.Compute.Orchestrators,
 		StoreDir:                 storeDir,
+		AuthSecret:               cfg.Orchestrator.AuthSecret,
+		ClusterName:              cfg.Orchestrator.Cluster.Name,
+		ClusterPort:              cfg.Orchestrator.Cluster.Port,
 		ClusterAdvertisedAddress: cfg.Orchestrator.Cluster.Advertise,
 		ClusterPeers:             cfg.Orchestrator.Cluster.Peers,
-	}
-	if cfg.Orchestrator.Cluster.Listen != "" {
-		parsedURL, err := url.Parse(cfg.Orchestrator.Cluster.Listen)
-		if err != nil {
-			return node.NetworkConfig{}, fmt.Errorf("failed to parse cluster listen address: %w", err)
-		}
-		clusterListenPort, err := strconv.ParseInt(parsedURL.Port(), 10, 64)
-		if err != nil {
-			return node.NetworkConfig{}, err
-		}
-		ntwkCfg.ClusterPort = int(clusterListenPort)
-	}
-	return ntwkCfg, nil
+	}, nil
 }
-
 func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types2.ResourceScaler) (models.Resources, error) {
 	// if the system capacity is zero we should fail as it means the compute node will be unable to accept any work.
 	if systemCapacity.IsZero() {

@@ -54,15 +54,15 @@ func buildPathMap(v reflect.Value, prefix string, paths map[string]reflect.Type)
 }
 
 type API struct {
-	Host string     `yaml:"Address,omitempty"`
+	Host string     `yaml:"Host,omitempty"`
 	Port int        `yaml:"Port,omitempty"`
 	TLS  TLS        `yaml:"TLS,omitempty"`
 	Auth AuthConfig `yaml:"Auth,omitempty"`
 }
 
 type TLS struct {
-	CertFile string `yaml:"Certificate,omitempty"`
-	KeyFile  string `yaml:"Key,omitempty"`
+	CertFile string `yaml:"CertFile,omitempty"`
+	KeyFile  string `yaml:"KeyFile,omitempty"`
 	CAFile   string `yaml:"CAFile,omitempty"`
 
 	// client only

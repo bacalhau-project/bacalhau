@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 )
 
 // ConfigAutoComplete provides auto-completion suggestions for configuration keys.
@@ -93,14 +94,12 @@ func (cf *ConfigFlag) Parse() error {
 }
 
 func setIfValid(v *viper.Viper, key string, value any) error {
-	/*
-		if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
-			if _, err := os.Stat(key); err == nil {
-				return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
-			}
-			return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
+	if _, ok := types2.AllKeys()[strings.ToLower(key)]; !ok {
+		if _, err := os.Stat(key); err == nil {
+			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
 		}
-	*/
+		return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
+	}
 	configMap := v.GetStringMap(RootCommandConfigValues)
 	configMap[key] = value
 	v.Set(RootCommandConfigValues, configMap)

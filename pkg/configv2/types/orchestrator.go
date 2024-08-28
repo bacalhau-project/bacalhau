@@ -5,6 +5,7 @@ type Orchestrator struct {
 	Host             string           `yaml:"Host,omitempty"`
 	Port             int              `yaml:"Port,omitempty"`
 	Advertise        string           `yaml:"Advertise,omitempty"`
+	AuthSecret       string           `yaml:"AuthSecret,omitempty"`
 	TLS              TLS              `yaml:"TLS,omitempty"`
 	Cluster          Cluster          `yaml:"Cluster,omitempty"`
 	NodeManager      NodeManager      `yaml:"NodeManager,omitempty"`
