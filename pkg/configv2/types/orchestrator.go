@@ -2,7 +2,8 @@ package types
 
 type Orchestrator struct {
 	Enabled          bool             `yaml:"Enabled,omitempty"`
-	Listen           string           `yaml:"Listen,omitempty"`
+	Host             string           `yaml:"Host,omitempty"`
+	Port             int              `yaml:"Port,omitempty"`
 	Advertise        string           `yaml:"Advertise,omitempty"`
 	TLS              TLS              `yaml:"TLS,omitempty"`
 	Cluster          Cluster          `yaml:"Cluster,omitempty"`
@@ -12,9 +13,10 @@ type Orchestrator struct {
 }
 
 type Cluster struct {
-	Listen    string   `yaml:"Listen,omitempty"`
+	Name      string   `yaml:"Name,omitempty"`
+	Host      string   `yaml:"Host,omitempty"`
+	Port      int      `yaml:"Port,omitempty"`
 	Advertise string   `yaml:"Advertise,omitempty"`
-	TLS       TLS      `yaml:"TLS,omitempty"`
 	Peers     []string `yaml:"Peers,omitempty"`
 }
 

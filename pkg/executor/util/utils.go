@@ -63,19 +63,12 @@ func NewStandardStorageProvider(cfg types2.Bacalhau) (storage.StorageProvider, e
 	}
 
 	if cfg.InputSources.Enabled(models.StorageSourceLocalDirectory) {
-		// TODO(review): seems like this could make the case that volumes are a part of input source, rather than compute.
-		if len(cfg.Compute.Volumes) > 0 {
-			allowedPaths := make([]localdirectory.AllowedPath, 0, len(cfg.Compute.Volumes))
-			for _, v := range cfg.Compute.Volumes {
-				// TODO(review): at some point we want to include the name in the allowed paths, right?
-				allowedPaths = append(allowedPaths, localdirectory.AllowedPath{
-					Path:      v.Path,
-					ReadWrite: v.ReadWrite,
-				})
-			}
+		if len(cfg.Compute.AllowListedLocalPaths) > 0 {
 			var err error
 			providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
-				localdirectory.StorageProviderParams{AllowedPaths: allowedPaths})
+				localdirectory.StorageProviderParams{
+					AllowedPaths: localdirectory.ParseAllowPaths(cfg.Compute.AllowListedLocalPaths),
+				})
 			if err != nil {
 				return nil, err
 			}

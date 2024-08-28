@@ -101,7 +101,8 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
 		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
-		"--api", fmt.Sprintf("http://%s:%d", s.Node.APIServer.Address, s.Node.APIServer.Port),
+		"--api-host", s.Node.APIServer.Address,
+		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")

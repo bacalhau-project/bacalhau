@@ -1,13 +1,13 @@
 package types
 
 type Compute struct {
-	Enabled           bool              `yaml:"Enabled,omitempty"`
-	Orchestrators     []string          `yaml:"Orchestrators,omitempty"`
-	TLS               TLS               `yaml:"TLS,omitempty"`
-	Heartbeat         Heartbeat         `yaml:"Heartbeat,omitempty"`
-	Labels            map[string]string `yaml:"Labels,omitempty"`
-	AllocatedCapacity ResourceScaler    `yaml:"AllocatedCapacity,omitempty"`
-	Volumes           []Volume          `yaml:"Volumes,omitempty"`
+	Enabled               bool              `yaml:"Enabled,omitempty"`
+	Orchestrators         []string          `yaml:"Orchestrators,omitempty"`
+	TLS                   TLS               `yaml:"TLS,omitempty"`
+	Heartbeat             Heartbeat         `yaml:"Heartbeat,omitempty"`
+	Labels                map[string]string `yaml:"Labels,omitempty"`
+	AllocatedCapacity     ResourceScaler    `yaml:"AllocatedCapacity,omitempty"`
+	AllowListedLocalPaths []string          `yaml:"AllowListedLocalPaths"`
 }
 
 type Heartbeat struct {

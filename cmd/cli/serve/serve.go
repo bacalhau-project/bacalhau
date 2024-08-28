@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -50,19 +51,21 @@ var (
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
-		"local_publisher":  configflags.LocalPublisherFlags,
-		"requester-tls":    configflags.RequesterTLSFlags,
-		"server-api":       configflags.ServerAPIFlags,
-		"orchestrator":     configflags.OrchestratorFlags,
-		"capacity":         configflags.CapacityFlags,
-		"ipfs":             configflags.IPFSFlags,
-		"compute":          configflags.ComputeFlags,
-		"disable-features": configflags.DisabledFeatureFlags,
-		"job-selection":    configflags.JobSelectionFlags,
-		"labels":           configflags.LabelFlags,
-		"web-ui":           configflags.WebUIFlags,
-		"node-name":        configflags.NodeNameFlags,
-		"translations":     configflags.JobTranslationFlags,
+		"orchestrator":          configflags.OrchestratorFlags,
+		"compute":               configflags.ComputeFlags,
+		"local_publisher":       configflags.LocalPublisherFlags,
+		"requester-tls":         configflags.RequesterTLSFlags,
+		"server-api":            configflags.ServerAPIFlags,
+		"list-local":            configflags.AllowListLocalPathsFlags,
+		"capacity":              configflags.CapacityFlags,
+		"ipfs":                  configflags.IPFSFlags,
+		"disable-features":      configflags.DisabledFeatureFlags,
+		"job-selection":         configflags.JobSelectionFlags,
+		"labels":                configflags.LabelFlags,
+		"web-ui":                configflags.WebUIFlags,
+		"node-name":             configflags.NodeNameFlags,
+		"translations":          configflags.JobTranslationFlags,
+		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
 	serveCmd := &cobra.Command{
 		Use:     "serve",
@@ -113,7 +116,6 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		return err
 	}
 
-	// TODO(review) should we build this type iff isComputeNodei == true?
 	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
@@ -124,6 +126,11 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
+	// Create node config from cmd arguments
+	hostAddress, err := parseServerAPIHost(cfg.API.Host)
+	if err != nil {
+		return err
+	}
 	nodeConfig := node.NodeConfig{
 		NodeID:         nodeName,
 		CleanupManager: cm,
@@ -132,16 +139,16 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			Publishers: cfg.Publishers.Disabled,
 			Storages:   cfg.InputSources.Disabled,
 		},
-		HostAddress:         cfg.API.Host,
+		HostAddress:         hostAddress,
 		APIPort:             uint16(cfg.API.Port),
 		ComputeConfig:       computeConfig,
 		RequesterNodeConfig: requesterConfig,
 		AuthConfig:          cfg.API.Auth,
 		IsComputeNode:       isComputeNode,
 		IsRequesterNode:     isRequesterNode,
+		RequesterSelfSign:   cfg.API.TLS.SelfSigned,
 		Labels:              cfg.Compute.Labels,
 		NetworkConfig:       networkConfig,
-		RequesterSelfSign:   cfg.API.TLS.SelfSigned,
 	}
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
@@ -194,7 +201,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		}()
 	}
 
-	connectCmd, err := buildConnectCommand(ctx, &nodeConfig)
+	connectCmd, err := buildConnectCommand(&nodeConfig)
 	if err != nil {
 		return err
 	}
@@ -208,7 +215,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	return nil
 }
 
-func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (string, error) {
+func buildConnectCommand(nodeConfig *node.NodeConfig) (string, error) {
 	headerB := strings.Builder{}
 	cmdB := strings.Builder{}
 	if nodeConfig.IsRequesterNode {
@@ -282,4 +289,30 @@ func GetTLSCertificate(ctx context.Context, cfg types2.Bacalhau, nodeConfig *nod
 	}
 	cert = certFile.Name()
 	return cert, key, nil
+}
+
+func parseServerAPIHost(host string) (string, error) {
+	if net.ParseIP(host) == nil {
+		// We should check that the value gives us an address type
+		// we can use to get our IP address. If it doesn't, we should
+		// panic.
+		atype, ok := network.AddressTypeFromString(host)
+		if !ok {
+			return "", fmt.Errorf("invalid address type in Server API Host config: %s", host)
+		}
+
+		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
+		if err != nil {
+			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", host, err)
+		}
+
+		if len(addr) == 0 {
+			return "", fmt.Errorf("no %s addresses found for Server API Host", host)
+		}
+
+		// Use the first address
+		host = addr[0]
+	}
+
+	return host, nil
 }

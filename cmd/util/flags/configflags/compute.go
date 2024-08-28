@@ -11,10 +11,4 @@ var ComputeFlags = []Definition{
 		DefaultValue: types2.Default.Compute.Enabled,
 		Description:  "When true the compute service will be enabled.",
 	},
-	{
-		FlagName:     "orchestrators",
-		ConfigPath:   "Compute.Orchestrators",
-		DefaultValue: types2.Default.Compute.Orchestrators,
-		Description:  `Comma-separated list of orchestrators to connect to. Applies to compute nodes.`,
-	},
 }

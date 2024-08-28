@@ -31,9 +31,9 @@ var Default = Bacalhau{
 	NameProvider: "puuid",
 	DataDir:      getDefaultDataDir(),
 	Orchestrator: Orchestrator{
-		Enabled:   true,
-		Listen:    "0.0.0.0:4222",
-		Advertise: "0.0.0.0:4222",
+		Enabled: true,
+		Host:    "0.0.0.0",
+		Port:    4222,
 		NodeManager: NodeManager{
 			DisconnectTimeout: Minute,
 		},

@@ -66,7 +66,8 @@ type TLS struct {
 	CAFile   string `yaml:"CAFile,omitempty"`
 
 	// client only
-	UseTLS bool `yaml:"UseTLS,omitempty"`
+	UseTLS   bool `yaml:"UseTLS,omitempty"`
+	Insecure bool `yaml:"Insecure"`
 
 	// orchestrator only fields
 	SelfSigned        bool   `yaml:"SelfSigned,omitempty"`

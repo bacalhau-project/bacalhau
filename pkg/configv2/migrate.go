@@ -43,16 +43,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
 				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
-			Volumes: func(paths []string) []types.Volume {
-				out := make([]types.Volume, len(paths))
-				for i, p := range paths {
-					out[i] = types.Volume{
-						Name: p,
-						Path: p,
-					}
-				}
-				return out
-			}(in.Node.AllowListedLocalPaths),
+			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
 		},
 		WebUI: types.WebUI{
 			Enabled: in.Node.WebUI.Enabled,
@@ -92,7 +83,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 func migrateCluster(in v1types.NetworkClusterConfig) types.Cluster {
 	var out types.Cluster
 	if in.Port != 0 {
-		out.Listen = fmt.Sprintf("0.0.0.0:%d", in.Port)
+		out.Port = in.Port
 	}
 	if len(in.Peers) != 0 {
 		out.Peers = in.Peers
