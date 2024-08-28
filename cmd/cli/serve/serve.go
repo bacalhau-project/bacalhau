@@ -17,8 +17,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -124,10 +122,18 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
-	// Create node config from cmd arguments
 	parsedURL, err := url.Parse(cfg.API.Address)
 	if err != nil {
-		return fmt.Errorf("failed to parse API address: %w", err)
+		// means the user didn't provide a protocol on the address
+		if !strings.Contains(err.Error(), "first path segment in URL cannot contain colon") {
+			return fmt.Errorf("failed to parse API address: %w", err)
+		}
+		// so assume they mean http?
+		parsedURL, err = url.Parse(fmt.Sprintf("http://%s", cfg.API.Address))
+		// means something else is invalid
+		if err != nil {
+			return fmt.Errorf("failed to parse API address: %w", err)
+		}
 	}
 	port, err := strconv.ParseUint(parsedURL.Port(), 10, 63)
 	if err != nil {
@@ -227,23 +233,9 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	cmd.Println()
 	cmd.Println(connectCmd)
 
-	envVars, err := buildEnvVariables(cfg.API, &nodeConfig)
-	if err != nil {
-		return err
-	}
 	cmd.Println()
 	cmd.Println("To connect to this node from the client, run the following commands in your shell:")
-	cmd.Println(envVars)
 
-	ripath, err := fsRepo.WriteRunInfo(ctx, envVars)
-	if err != nil {
-		return fmt.Errorf("writing run info to repo: %w", err)
-	} else {
-		cmd.Printf("A copy of these variables have been written to: %s\n", ripath)
-	}
-	cm.RegisterCallback(func() error {
-		return os.Remove(ripath)
-	})
 	<-ctx.Done() // block until killed
 	return nil
 }
@@ -263,38 +255,6 @@ func buildConnectCommand(ctx context.Context, nodeConfig *node.NodeConfig) (stri
 	}
 
 	return headerB.String() + cmdB.String(), nil
-}
-
-func buildEnvVariables(
-	cfg types2.API,
-	nodeConfig *node.NodeConfig,
-) (string, error) {
-	parsedURL, err := url.Parse(cfg.Address)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse API address: %w", err)
-	}
-	// build shell variables to connect to this node
-	envVarBuilder := strings.Builder{}
-	envVarBuilder.WriteString(fmt.Sprintf(
-		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIHost),
-		parsedURL.Hostname(),
-	))
-	envVarBuilder.WriteString(fmt.Sprintf(
-		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIPort),
-		parsedURL.Port(),
-	))
-
-	if nodeConfig.IsRequesterNode {
-		envVarBuilder.WriteString(fmt.Sprintf(
-			"export %s=%s\n",
-			config.KeyAsEnvVar(types.NodeNetworkOrchestrators),
-			getPublicNATSOrchestratorURL(nodeConfig).String(),
-		))
-	}
-
-	return envVarBuilder.String(), nil
 }
 
 func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
