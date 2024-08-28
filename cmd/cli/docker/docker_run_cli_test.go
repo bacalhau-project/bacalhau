@@ -51,6 +51,9 @@ var (
 )
 
 func TestJobFlagParsing(t *testing.T) {
+	// disable the update checker in testing
+	t.Setenv("BACALHAU_UPDATECONFIG_INTERVAL", "0")
+
 	repoPath := t.TempDir()
 	viper.Set("repo", repoPath)
 	tests := []struct {

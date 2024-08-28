@@ -154,14 +154,8 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		AuthConfig:          cfg.API.Auth,
 		IsComputeNode:       isComputeNode,
 		IsRequesterNode:     isRequesterNode,
-		// TODO(review): previously we supported the generation of self signed config, we have moved away from this
-		// with the new config. Does this remain the intention
-		RequesterSelfSign: false,
-		//RequesterSelfSign:     cfg.Node.ServerAPI.TLS.SelfSigned,
-		Labels: cfg.Compute.Labels,
-		// TODO(forrest): make this work
-		//AllowListedLocalPaths: cfg.Compute.Volumes,
-		NetworkConfig: networkConfig,
+		Labels:              cfg.Compute.Labels,
+		NetworkConfig:       networkConfig,
 	}
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
