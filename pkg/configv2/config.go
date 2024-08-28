@@ -27,7 +27,7 @@ type Config struct {
 	// viper instance for holding user provided configuration.
 	base *viper.Viper
 	// the default configuration values to initialize with.
-	defaultCfg types.Validatable
+	defaultCfg interface{}
 
 	// paths to configuration files merged from [0] to [N]
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
@@ -44,7 +44,7 @@ type Config struct {
 type Option = func(s *Config)
 
 // WithDefault sets the default config to be used when no values are provided.
-func WithDefault(cfg types.Validatable) Option {
+func WithDefault(cfg interface{}) Option {
 	return func(c *Config) {
 		c.defaultCfg = cfg
 	}
@@ -161,7 +161,7 @@ func (c *Config) Merge(path string) error {
 
 // Unmarshal returns the current configuration.
 // Unmarshal returns an error if the configuration cannot be unmarshalled.
-func (c *Config) Unmarshal(out types.Validatable) error {
+func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err
 	}

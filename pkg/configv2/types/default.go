@@ -18,7 +18,8 @@ const (
 // Default is the default configuration for a bacalhau node.
 var Default = Bacalhau{
 	API: API{
-		Address: "http://0.0.0.0:1234",
+		Host: "0.0.0.0",
+		Port: 1234,
 		Auth: AuthConfig{
 			Methods: map[string]AuthenticatorConfig{
 				"ClientKey": {

@@ -50,10 +50,12 @@ var (
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
+		"local_publisher":  configflags.LocalPublisherFlags,
+		"requester-tls":    configflags.RequesterTLSFlags,
+		"server-api":       configflags.ServerAPIFlags,
 		"orchestrator":     configflags.OrchestratorFlags,
 		"capacity":         configflags.CapacityFlags,
 		"ipfs":             configflags.IPFSFlags,
-		"local-publisher":  configflags.LocalPublisherFlags,
 		"compute":          configflags.ComputeFlags,
 		"disable-features": configflags.DisabledFeatureFlags,
 		"job-selection":    configflags.JobSelectionFlags,
@@ -122,23 +124,6 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
 
-	parsedURL, err := url.Parse(cfg.API.Address)
-	if err != nil {
-		// means the user didn't provide a protocol on the address
-		if !strings.Contains(err.Error(), "first path segment in URL cannot contain colon") {
-			return fmt.Errorf("failed to parse API address: %w", err)
-		}
-		// so assume they mean http?
-		parsedURL, err = url.Parse(fmt.Sprintf("http://%s", cfg.API.Address))
-		// means something else is invalid
-		if err != nil {
-			return fmt.Errorf("failed to parse API address: %w", err)
-		}
-	}
-	port, err := strconv.ParseUint(parsedURL.Port(), 10, 63)
-	if err != nil {
-		return err
-	}
 	nodeConfig := node.NodeConfig{
 		NodeID:         nodeName,
 		CleanupManager: cm,
@@ -147,8 +132,8 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			Publishers: cfg.Publishers.Disabled,
 			Storages:   cfg.InputSources.Disabled,
 		},
-		HostAddress:         parsedURL.Hostname(),
-		APIPort:             uint16(port),
+		HostAddress:         cfg.API.Host,
+		APIPort:             uint16(cfg.API.Port),
 		ComputeConfig:       computeConfig,
 		RequesterNodeConfig: requesterConfig,
 		AuthConfig:          cfg.API.Auth,
@@ -156,13 +141,13 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		IsRequesterNode:     isRequesterNode,
 		Labels:              cfg.Compute.Labels,
 		NetworkConfig:       networkConfig,
+		RequesterSelfSign:   cfg.API.TLS.SelfSigned,
 	}
 	if isRequesterNode {
 		// We only want auto TLS for the requester node, but this info doesn't fit well
 		// with the other data in the requesterConfig.
-		// TODO(review) do we still want to enable a requester to automatically get a certificate?
-		//nodeConfig.RequesterAutoCert = cfg.Node.ServerAPI.TLS.AutoCert
-		//nodeConfig.RequesterAutoCertCache = cfg.Node.ServerAPI.TLS.AutoCertCachePath
+		nodeConfig.RequesterAutoCert = cfg.API.TLS.AutoCert
+		nodeConfig.RequesterAutoCertCache = cfg.API.TLS.AutoCertCachePath
 		// If there are configuration values for autocert we should return and let autocert
 		// do what it does later on in the setup.
 		if nodeConfig.RequesterAutoCert == "" {
@@ -179,17 +164,6 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
 	}
-
-	/*
-		// Persist the node config after the node is created and its config is valid.
-		repoDir, err := fsRepo.Path()
-		if err != nil {
-			return err
-		}
-		if err = persistConfigs(repoDir, cfg); err != nil {
-			return fmt.Errorf("error persisting configs: %w", err)
-		}
-	*/
 
 	// Start node
 	if err := standardNode.Start(ctx); err != nil {

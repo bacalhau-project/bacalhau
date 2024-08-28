@@ -105,17 +105,12 @@ func migrateCluster(in v1types.NetworkClusterConfig) types.Cluster {
 
 // TODO(review): what api should we migrate, the server or the client?
 func migrateAPI(in v1types.BacalhauConfig) types.API {
-	protocol := "http"
 	var (
-		address string
-		host    string
-		port    int
+		host string
+		port int
 	)
 	// check for a client config
 	if in.Node.ClientAPI.Host != "" && in.Node.ClientAPI.Port != 0 {
-		if in.Node.ClientAPI.ClientTLS.UseTLS {
-			protocol = "https"
-		}
 		host = in.Node.ClientAPI.Host
 		port = in.Node.ClientAPI.Port
 
@@ -127,16 +122,14 @@ func migrateAPI(in v1types.BacalhauConfig) types.API {
 			in.Node.ServerAPI.TLS.ServerCertificate != "" ||
 			in.Node.ServerAPI.TLS.AutoCertCachePath != "" ||
 			in.Node.ServerAPI.TLS.AutoCert != "" {
-			protocol = "https"
 		}
 		host = in.Node.ServerAPI.Host
 		port = in.Node.ServerAPI.Port
 	}
-	if host != "" && port != 0 {
-		address = fmt.Sprintf("%s://%s:%d", protocol, host, port)
-	}
+
 	return types.API{
-		Address: address,
+		Host: host,
+		Port: port,
 		Auth: types.AuthConfig{
 			TokensPath: in.Auth.TokensPath,
 			Methods: func(cfg map[string]v1types.AuthenticatorConfig) map[string]types.AuthenticatorConfig {

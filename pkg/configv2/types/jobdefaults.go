@@ -1,12 +1,5 @@
 package types
 
-import (
-	"fmt"
-	"strings"
-
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-)
-
 type JobDefaults struct {
 	Batch   BatchJobDefaultsConfig       `yaml:"Batch,omitempty"`
 	Ops     BatchJobDefaultsConfig       `yaml:"Ops,omitempty"`
@@ -44,20 +37,4 @@ type ResourcesConfig struct {
 
 type DefaultPublisherConfig struct {
 	Type string `yaml:"Type,omitempty"`
-}
-
-func (c DefaultPublisherConfig) Validate() error {
-	if c.Type == "" {
-		return fmt.Errorf("default publisher type cannot be empty")
-	}
-	isValidType := false
-	for _, expected := range models.PublisherNames {
-		if strings.ToLower(c.Type) == strings.ToLower(expected) {
-			isValidType = true
-		}
-	}
-	if !isValidType {
-		return fmt.Errorf("default publisher type %q unknow. must be one of: %v", c.Type, models.PublisherNames)
-	}
-	return nil
 }

@@ -44,7 +44,7 @@ func NewRootCmd() *cobra.Command {
 	// when these flags are provided their value will be used instead of the value present in the config file.
 	// If no flg is provided, and the config file doesn't have a value defined then the default value will be used.
 	rootFlags := map[string][]configflags.Definition{
-		"api":     configflags.APIFlags,
+		"api":     configflags.ClientAPIFlags,
 		"logging": configflags.LogFlags,
 		"repo":    configflags.DataDirFlag,
 	}

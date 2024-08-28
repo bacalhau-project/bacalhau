@@ -96,9 +96,13 @@ func (s *BaseSuite) Execute(args ...string) (stdout string, stderr string, err e
 	root.SetOut(stdoutBuf)
 	root.SetErr(stderrBuf)
 
-	var arguments []string
-	if !slices.Contains(args, "--api-address") {
-		arguments = append(arguments, "--api-address", fmt.Sprintf("http://%s:%d", s.Host, s.Port))
+	arguments := []string{}
+	if !slices.Contains(args, "--api-host") {
+		arguments = append(arguments, "--api-host", s.Host)
+	}
+
+	if !slices.Contains(args, "--api-port") {
+		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
 	}
 	arguments = append(arguments, args...)
 	root.SetArgs(arguments)
@@ -132,9 +136,13 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	root.SetErr(buf)
 	root.SetIn(stdin)
 
-	var arguments []string
-	if !slices.Contains(args, "--api-address") {
-		arguments = append(arguments, "--api-address", fmt.Sprintf("http://%s:%d", s.Host, s.Port))
+	arguments := []string{}
+	if !slices.Contains(args, "--api-host") {
+		arguments = append(arguments, "--api-host", s.Host)
+	}
+
+	if !slices.Contains(args, "--api-port") {
+		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
 	}
 
 	arguments = append(arguments, args...)
