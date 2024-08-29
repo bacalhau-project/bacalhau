@@ -40,6 +40,7 @@ type Compute struct {
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecutorProvider
 	Storages           storage.StorageProvider
+	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
@@ -255,6 +256,7 @@ func NewComputeNode(
 		ExecutionStore:     executionStore,
 		Executors:          executors,
 		Storages:           storages,
+		Publishers:         publishers,
 		Bidder:             bidder,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,

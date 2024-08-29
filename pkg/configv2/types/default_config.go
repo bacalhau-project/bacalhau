@@ -113,7 +113,7 @@ var Default = Bacalhau{
 		},
 	},
 	Logging: Logging{
-		Level:                "error",
+		Level:                "info",
 		Mode:                 "default",
 		LogDebugInfoInterval: 0,
 	},

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -173,6 +172,7 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			nodeConfig.RequesterTLSKeyFile = key
 		}
 	}
+	log.Info().Msg("starting bacalhau...")
 	// Create node
 	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 	if err != nil {
@@ -208,35 +208,33 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 		}()
 	}
 
-	connectCmd, err := buildConnectCommand(&nodeConfig)
-	if err != nil {
-		return err
+	startupLog := log.Info().
+		Str("name", nodeName).
+		Str("address", fmt.Sprintf("%s:%d", hostAddress, cfg.API.Port)).
+		Bool("compute_enabled", cfg.Compute.Enabled).
+		Bool("orchestrator_enabled", cfg.Orchestrator.Enabled).
+		Bool("webui_enabled", cfg.WebUI.Enabled)
+	if cfg.Compute.Enabled {
+		capacity := standardNode.ComputeNode.Capacity.GetMaxCapacity(ctx)
+		startupLog.
+			Strs("engines", standardNode.ComputeNode.Executors.Keys(ctx)).
+			Strs("publishers", standardNode.ComputeNode.Publishers.Keys(ctx)).
+			Strs("storages", standardNode.ComputeNode.Storages.Keys(ctx)).
+			Strs("orchestrators", cfg.Compute.Orchestrators).
+			Str("capacity", capacity.String())
+
+		if len(cfg.Compute.AllowListedLocalPaths) > 0 {
+			startupLog.Strs("volumes", cfg.Compute.AllowListedLocalPaths)
+		}
+
 	}
-	cmd.Println()
-	cmd.Println(connectCmd)
-
-	cmd.Println()
-	cmd.Println("To connect to this node from the client, run the following commands in your shell:")
-
+	if cfg.Orchestrator.Enabled {
+		startupLog.Str("orchestrator_address",
+			fmt.Sprintf("%s:%d", cfg.Orchestrator.Host, cfg.Orchestrator.Port))
+	}
+	startupLog.Msg("bacalhau node running")
 	<-ctx.Done() // block until killed
 	return nil
-}
-
-func buildConnectCommand(nodeConfig *node.NodeConfig) (string, error) {
-	headerB := strings.Builder{}
-	cmdB := strings.Builder{}
-	if nodeConfig.IsRequesterNode {
-		cmdB.WriteString(fmt.Sprintf("%s serve ", os.Args[0]))
-		// other nodes can be just compute nodes
-		// no need to spawn 1+ requester nodes
-		cmdB.WriteString(fmt.Sprintf("--compute "))
-
-		advertisedAddr := getPublicNATSOrchestratorURL(nodeConfig)
-		headerB.WriteString("To connect a compute node to this orchestrator, run the following command in your shell:\n")
-		cmdB.WriteString(fmt.Sprintf("--orchestrators=%s ", advertisedAddr.String()))
-	}
-
-	return headerB.String() + cmdB.String(), nil
 }
 
 func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
