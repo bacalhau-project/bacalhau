@@ -29,7 +29,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
 		LocalPublisher: cfgtypes.LocalPublisher{
-			Address:   "public",
+			Address:   "0.0.0.0",
 			Port:      6001,
 			Directory: path.Join(storagePath, "bacalhau-local-publisher"),
 		},
