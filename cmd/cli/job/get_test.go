@@ -54,7 +54,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config %s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
+		"--config", fmt.Sprintf("%s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -101,7 +101,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config %s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
+		"--config", fmt.Sprintf("%s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),

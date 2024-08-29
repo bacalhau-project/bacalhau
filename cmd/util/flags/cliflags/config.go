@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 )
 
@@ -18,7 +17,7 @@ func ConfigAutoComplete(cmd *cobra.Command, args []string, toComplete string) ([
 	var completions []string
 
 	// Iterate over the ConfigDescriptions map to find matching keys
-	for key, description := range types.ConfigDescriptions {
+	for key, description := range types2.ConfigDescriptions {
 		if strings.HasPrefix(key, toComplete) {
 			completion := fmt.Sprintf("%s\t%s", key, description)
 			completions = append(completions, completion)
@@ -94,7 +93,7 @@ func (cf *ConfigFlag) Parse() error {
 }
 
 func setIfValid(v *viper.Viper, key string, value any) error {
-	if _, ok := types2.AllKeys()[strings.ToLower(key)]; !ok {
+	if _, ok := types2.ConfigDescriptions[strings.ToLower(key)]; !ok {
 		if _, err := os.Stat(key); err == nil {
 			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
 		}
