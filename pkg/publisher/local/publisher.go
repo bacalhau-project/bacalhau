@@ -28,9 +28,10 @@ type Publisher struct {
 func NewLocalPublisher(ctx context.Context, directory string, host string, port int) (*Publisher, error) {
 	p := &Publisher{
 		baseDirectory: directory,
-		host:          ResolveAddress(ctx, host),
-		port:          port,
-		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
+		// TODO: this field is only written to, never read. It could be deleted.
+		host:      ResolveAddress(ctx, host),
+		port:      port,
+		urlPrefix: fmt.Sprintf("http://%s:%d", host, port),
 	}
 
 	if info, err := os.Stat(p.baseDirectory); err != nil {
