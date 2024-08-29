@@ -58,14 +58,30 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 		Publishers:        migratePublishers(in.Node),
 		Engines:           migrateEngines(in.Node),
 		ResultDownloaders: migrateDownloadConfig(in.Node),
-		// TODO(forrest) [review]: currently both the compute and requester have a job selection policy
-		// it is not clear whose policy should be migrated here.
-		JobAdmissionControl: types.JobAdmissionControl{
-			RejectStatelessJobs: in.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
-			AcceptNetworkedJobs: in.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
-			ProbeHTTP:           in.Node.Requester.JobSelectionPolicy.ProbeHTTP,
-			ProbeExec:           in.Node.Requester.JobSelectionPolicy.ProbeExec,
-		},
+		JobAdmissionControl: func(config v1types.NodeConfig) types.JobAdmissionControl {
+			out := types.JobAdmissionControl{
+				RejectStatelessJobs: in.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
+				AcceptNetworkedJobs: in.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
+				ProbeHTTP:           in.Node.Requester.JobSelectionPolicy.ProbeHTTP,
+				ProbeExec:           in.Node.Requester.JobSelectionPolicy.ProbeExec,
+			}
+
+			// compute node configuration takes precedence.
+			if in.Node.Compute.JobSelection.RejectStatelessJobs {
+				out.RejectStatelessJobs = in.Node.Compute.JobSelection.RejectStatelessJobs
+			}
+			if in.Node.Compute.JobSelection.AcceptNetworkedJobs {
+				out.RejectStatelessJobs = in.Node.Compute.JobSelection.AcceptNetworkedJobs
+			}
+			if in.Node.Compute.JobSelection.ProbeHTTP != "" {
+				out.ProbeHTTP = in.Node.Compute.JobSelection.ProbeHTTP
+			}
+			if in.Node.Compute.JobSelection.ProbeExec != "" {
+				out.ProbeExec = in.Node.Compute.JobSelection.ProbeExec
+			}
+
+			return out
+		}(in.Node),
 		Logging: types.Logging{
 			Mode:                 string(in.Node.LoggingMode),
 			LogDebugInfoInterval: types.Duration(in.Node.Compute.Logging.LogRunningExecutionsInterval),
