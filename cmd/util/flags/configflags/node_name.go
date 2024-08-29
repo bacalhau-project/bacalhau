@@ -7,7 +7,7 @@ import (
 var NodeNameFlags = []Definition{
 	{
 		FlagName:     "name-provider",
-		ConfigPath:   "NameProvider",
+		ConfigPath:   types2.NameProviderKey,
 		DefaultValue: types2.Default.NameProvider,
 		Description:  `The name provider to use to generate the node name when the node initializes.`,
 	},

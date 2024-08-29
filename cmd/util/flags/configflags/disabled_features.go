@@ -7,19 +7,19 @@ import (
 var DisabledFeatureFlags = []Definition{
 	{
 		FlagName:     "disable-engine",
-		ConfigPath:   "Executors.Disabled",
+		ConfigPath:   types2.EnginesDisabledKey,
 		DefaultValue: types2.Default.Engines.Disabled,
 		Description:  "Engine types to disable",
 	},
 	{
 		FlagName:     "disabled-publisher",
-		ConfigPath:   "Publishers.Disabled",
+		ConfigPath:   types2.PublishersDisabledKey,
 		DefaultValue: types2.Default.Publishers.Disabled,
 		Description:  "Publisher types to disable",
 	},
 	{
 		FlagName:     "disable-storage",
-		ConfigPath:   "InputSources.Disabled",
+		ConfigPath:   types2.InputSourcesDisabledKey,
 		DefaultValue: types2.Default.InputSources.Disabled,
 		Description:  "Storage types to disable",
 	},

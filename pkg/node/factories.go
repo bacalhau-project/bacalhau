@@ -126,6 +126,7 @@ func NewStandardPublishersFactory(cfg types2.Bacalhau) PublishersFactory {
 				executionDir,
 				nodeConfig.CleanupManager,
 				cfg.Publishers,
+				nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {
 				return nil, err

@@ -7,13 +7,13 @@ import (
 var WebUIFlags = []Definition{
 	{
 		FlagName:     "web-ui",
-		ConfigPath:   "WebUI.Enabled",
+		ConfigPath:   types2.WebUIEnabledKey,
 		DefaultValue: types2.Default.WebUI.Enabled,
 		Description:  `Whether to start the web UI alongside the bacalhau node.`,
 	},
 	{
 		FlagName:     "web-ui-listen",
-		ConfigPath:   "WebUI.Listen",
+		ConfigPath:   types2.WebUIListenKey,
 		DefaultValue: types2.Default.WebUI.Listen,
 		Description:  `The address to listen on for web-ui connections.`,
 	},

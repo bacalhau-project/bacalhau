@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/configv2"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
@@ -172,8 +174,8 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			nodeConfig.RequesterTLSKeyFile = key
 		}
 	}
-	log.Info().Msg("starting bacalhau...")
 	// Create node
+	log.Info().Msg("starting bacalhau...")
 	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
@@ -233,21 +235,24 @@ func serve(cmd *cobra.Command, cfg types2.Bacalhau, fsRepo *repo.FsRepo) error {
 			fmt.Sprintf("%s:%d", cfg.Orchestrator.Host, cfg.Orchestrator.Port))
 	}
 	startupLog.Msg("bacalhau node running")
+
+	envvars := buildEnvVariables(cfg)
+	cmd.Println()
+	cmd.Println("To connect to this node from the local client, run the following commands in your shell:")
+	cmd.Println(envvars)
+
+	riPath, err := fsRepo.WriteRunInfo(ctx, envvars)
+	if err != nil {
+		return err
+	}
+	cmd.Println()
+	cmd.Println()
+	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
+	defer os.Remove(riPath)
+
 	<-ctx.Done() // block until killed
+	log.Info().Msg("bacalhau node shutting down...")
 	return nil
-}
-
-func getPublicNATSOrchestratorURL(nodeConfig *node.NodeConfig) *url.URL {
-	orchestrator := &url.URL{
-		Scheme: "nats",
-		Host:   nodeConfig.NetworkConfig.AdvertisedAddress,
-	}
-
-	if nodeConfig.NetworkConfig.AdvertisedAddress == "" {
-		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", nodeConfig.NetworkConfig.Port)
-	}
-
-	return orchestrator
 }
 
 func GetTLSCertificate(ctx context.Context, cfg types2.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
@@ -320,4 +325,39 @@ func parseServerAPIHost(host string) (string, error) {
 	}
 
 	return host, nil
+}
+
+func buildEnvVariables(
+	cfg types2.Bacalhau,
+) string {
+	// build shell variables to connect to this node
+	var envvars strings.Builder
+	envvars.WriteString(fmt.Sprintf("export %s=%s\n", configv2.KeyAsEnvVar(types2.APIHostKey), getAPIURL(cfg.API)))
+	envvars.WriteString(fmt.Sprintf("export %s=%d\n", configv2.KeyAsEnvVar(types2.APIPortKey), cfg.API.Port))
+	if cfg.Orchestrator.Enabled {
+		envvars.WriteString(fmt.Sprintf("export %s=%s\n",
+			configv2.KeyAsEnvVar(types2.ComputeOrchestratorsKey), getPublicNATSOrchestratorURL(cfg.Orchestrator)))
+	}
+	return envvars.String()
+}
+
+func getAPIURL(cfg types2.API) string {
+	if cfg.Host == "0.0.0.0" {
+		return "127.0.0.1"
+	} else {
+		return cfg.Host
+	}
+}
+
+func getPublicNATSOrchestratorURL(cfg types2.Orchestrator) *url.URL {
+	orchestrator := &url.URL{
+		Scheme: "nats",
+		Host:   cfg.Advertise,
+	}
+
+	if cfg.Advertise == "" {
+		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", cfg.Port)
+	}
+
+	return orchestrator
 }

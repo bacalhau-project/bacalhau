@@ -147,6 +147,9 @@ func NewComputeConfigWith(executionDir string, params ComputeConfigParams) (Comp
 	if params.LocalPublisher.Address == "" {
 		params.LocalPublisher.Address = defaults.LocalPublisher.Address
 	}
+	if params.LocalPublisher.Port <= 0 {
+		params.LocalPublisher.Port = defaults.LocalPublisher.Port
+	}
 	if params.LocalPublisher.Directory == "" {
 		params.LocalPublisher.Directory = defaults.LocalPublisher.Directory
 		if err := os.MkdirAll(params.LocalPublisher.Directory, localPublishFolderPerm); err != nil {

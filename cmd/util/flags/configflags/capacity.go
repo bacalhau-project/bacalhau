@@ -7,25 +7,25 @@ import (
 var CapacityFlags = []Definition{
 	{
 		FlagName:     "limit-total-cpu",
-		ConfigPath:   "Compute.AllocatedCapacity.CPU",
+		ConfigPath:   types2.ComputeAllocatedCapacityCPUKey,
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.CPU,
 		Description:  `Total CPU core limit to run all jobs (e.g. 500m, 2, 8, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-memory",
-		ConfigPath:   "Compute.AllocatedCapacity.Memory",
+		ConfigPath:   types2.ComputeAllocatedCapacityMemoryKey,
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.Memory,
 		Description:  `Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-disk",
-		ConfigPath:   "Compute.AllocatedCapacity.Disk",
+		ConfigPath:   types2.ComputeAllocatedCapacityDiskKey,
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.Disk,
 		Description:  `Total Disk limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-gpu",
-		ConfigPath:   "Compute.AllocatedCapacity.GPU",
+		ConfigPath:   types2.ComputeAllocatedCapacityGPUKey,
 		DefaultValue: types2.Default.Compute.AllocatedCapacity.GPU,
 		Description:  `Total GPU limit to run all jobs (e.g. 1, 2, 80%, 10%).`,
 	},

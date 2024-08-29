@@ -24,6 +24,7 @@ func NewPublisherProvider(
 	storagePath string,
 	cm *system.CleanupManager,
 	cfg types2.PublishersConfig,
+	localPublisherCfg types2.LocalPublisher,
 ) (publisher.PublisherProvider, error) {
 	providers := make(map[string]publisher.Publisher)
 
@@ -40,15 +41,12 @@ func NewPublisherProvider(
 	}
 
 	if cfg.Enabled(models.PublisherLocal) {
-		if cfg.Local.Installed() {
-			providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
-				ctx,
-				cfg.Local.Directory,
-				cfg.Local.Address,
-				cfg.Local.Port,
-			))
-		}
-		// else the publisher will be populated with a default from NewDefaultComputeParam
+		providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
+			ctx,
+			localPublisherCfg.Directory,
+			localPublisherCfg.Address,
+			localPublisherCfg.Port,
+		))
 	}
 
 	if cfg.Enabled(models.PublisherIPFS) {
