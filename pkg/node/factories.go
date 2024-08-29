@@ -52,6 +52,9 @@ func NewStandardStorageProvidersFactory(cfg types2.Bacalhau) StorageProvidersFac
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
+		if len(cfg.Compute.AllowListedLocalPaths) == 0 {
+			cfg.Compute.AllowListedLocalPaths = nodeConfig.AllowListedLocalPaths
+		}
 		pr, err := executor_util.NewStandardStorageProvider(cfg)
 		if err != nil {
 			return nil, err

@@ -148,6 +148,10 @@ func NewCmd() *cobra.Command {
 		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
 		"File to save memory profiling to",
 	)
+	devstackCmd.PersistentFlags().StringSliceVar(
+		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
+		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
+	)
 	devstackCmd.PersistentFlags().BoolVar(
 		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
 		"Will use pluggable executors when set to true",
