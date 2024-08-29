@@ -71,6 +71,7 @@ var NetworkFlags = []Definition{
 		ConfigPath:        "network.store.deprecated",
 		DefaultValue:      "",
 		Description:       `Directory that network can use for storage`,
+		FailIfUsed:        true,
 		Deprecated:        true,
 		DeprecatedMessage: "network path is no longer configurable, location: $BACALHAU_DIR/orchestrator/nats-store",
 	},

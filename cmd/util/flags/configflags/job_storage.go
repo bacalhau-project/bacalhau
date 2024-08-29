@@ -7,6 +7,7 @@ var RequesterJobStorageFlags = []Definition{
 		ConfigPath:        "requester.job.store.type.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
+		FailIfUsed:        true,
 		DeprecatedMessage: "type is no longer configurable. bacalhau uses BoltDB",
 	},
 	{
@@ -14,6 +15,7 @@ var RequesterJobStorageFlags = []Definition{
 		ConfigPath:        "requester.job.store.path.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
+		FailIfUsed:        true,
 		DeprecatedMessage: "path is no longer configurable. location $BACALHAU_DIR/orchestrator/state_boltdb.db",
 	},
 }

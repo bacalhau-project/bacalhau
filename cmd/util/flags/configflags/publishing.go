@@ -7,6 +7,7 @@ var PublishingFlags = []Definition{
 		ConfigPath:        "default.publisher.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
+		FailIfUsed:        true,
 		DeprecatedMessage: "Use -c Job.Defaults.<job_type>.Task.Publisher.Type=<publisher_type> to configure a default publisher for a job.",
 	},
 }

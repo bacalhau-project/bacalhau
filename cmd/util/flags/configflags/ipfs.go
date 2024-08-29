@@ -9,6 +9,7 @@ var IPFSFlags = []Definition{
 		FlagName:          "ipfs-connect",
 		ConfigPath:        "ipfs.connect.deprecated",
 		DefaultValue:      "",
+		FailIfUsed:        true,
 		Deprecated:        true,
 		DeprecatedMessage: "Use one of: ipfs-connect-storage, ipfs-connect-publisher, ipfs-connect-downloader",
 	},
@@ -21,7 +22,7 @@ var IPFSFlags = []Definition{
 	},
 	{
 		FlagName:             "ipfs-connect-publisher",
-		ConfigPath:           "Publisher.IPFS.Endpoint",
+		ConfigPath:           "Publishers.IPFS.Endpoint",
 		DefaultValue:         types2.Default.Publishers.IPFS.Endpoint,
 		Description:          "The ipfs host multiaddress to connect to for publishing, otherwise an in-process IPFS node will be created if not set.",
 		EnvironmentVariables: []string{"BACALHAU_NODE_IPFS_CONNECT"},

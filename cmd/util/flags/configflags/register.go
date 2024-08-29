@@ -40,6 +40,7 @@ type Definition struct {
 	EnvironmentVariables []string
 	Deprecated           bool
 	DeprecatedMessage    string
+	FailIfUsed           bool
 }
 
 func BindFlags(v *viper.Viper, register map[string][]Definition) error {

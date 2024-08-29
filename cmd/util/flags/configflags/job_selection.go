@@ -9,6 +9,7 @@ var JobSelectionFlags = []Definition{
 		FlagName:          "job-selection-data-locality",
 		ConfigPath:        "job.selection.data.locality.deprecated",
 		DefaultValue:      "",
+		FailIfUsed:        true,
 		Deprecated:        true,
 		DeprecatedMessage: "Locality is no longer configurable.",
 	},

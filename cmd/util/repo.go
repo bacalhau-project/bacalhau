@@ -72,7 +72,10 @@ func SetupConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
 		opts = append(opts, configv2.WithPaths(configFiles...))
 	}
 
-	configFlags := getConfigFlags(v, cmd)
+	configFlags, err := getConfigFlags(v, cmd)
+	if err != nil {
+		return types2.Bacalhau{}, err
+	}
 	if len(configFlags) > 0 {
 		opts = append(opts, configv2.WithFlags(configFlags))
 	}
@@ -103,17 +106,20 @@ func getConfigValues(v *viper.Viper) map[string]any {
 	return v.GetStringMap(cliflags.RootCommandConfigValues)
 }
 
-func getConfigFlags(v *viper.Viper, cmd *cobra.Command) map[string]*pflag.Flag {
+func getConfigFlags(v *viper.Viper, cmd *cobra.Command) (map[string]*pflag.Flag, error) {
 	flagDefs := v.Get(cliflags.RootCommandConfigFlags)
 	if flagDefs == nil {
-		return nil
+		return nil, nil
 	}
 	flagsConfigs := flagDefs.([]configflags.Definition)
 	out := make(map[string]*pflag.Flag)
 	for _, flag := range flagsConfigs {
+		if cmd.Flags().Changed(flag.FlagName) && flag.FailIfUsed && flag.Deprecated {
+			return nil, fmt.Errorf("flag %s is deprecated: %s", flag.FlagName, flag.DeprecatedMessage)
+		}
 		out[flag.ConfigPath] = cmd.Flags().Lookup(flag.FlagName)
 	}
-	return out
+	return out, nil
 }
 
 func getConfigEnvVars(v *viper.Viper) map[string][]string {
