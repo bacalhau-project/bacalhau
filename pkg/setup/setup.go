@@ -63,10 +63,10 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
+	// disable update checks in testing.
+	t.Setenv("BACALHAU_UPDATECONFIG_INTERVAL", "0")
 	cfgValues := map[string]any{
 		"DataDir": path,
-		// disable update checks in testing.
-		"updateconfig.interval": 0,
 	}
 
 	// the BACALHAU_NODE_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.
