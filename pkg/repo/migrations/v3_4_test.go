@@ -13,9 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -68,7 +67,7 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithDefaultRepo() {
 	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
 	suite.FileExists(filepath.Join(suite.TempDir, "update.json"))
 	suite.FileExists(filepath.Join(suite.TempDir, "user_id.pem"))
-	configPath := filepath.Join(suite.TempDir, config.FileName)
+	configPath := filepath.Join(suite.TempDir, config.DefaultFileName)
 
 	// define a config in the repo we are migrating with the correct paths defined in it
 	// based on the old directory structure.
@@ -118,18 +117,18 @@ Auth:
 
 	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
 	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config.FileName)
+	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
 	suite.FileExists(newConfigPath)
-	c, err := configv2.New(configv2.WithPaths(newConfigPath))
+	c, err := config.New(config.WithPaths(newConfigPath))
 	suite.Require().NoError(err)
-	var bacCfg types2.Bacalhau
+	var bacCfg cfgtypes.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
 	suite.Require().Equal("1.2.3.4", bacCfg.API.Host)
 	suite.Require().Equal(9999, bacCfg.API.Port)
 
 	// verify database files are present
-	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
-	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
+	suite.FileExists(filepath.Join(suite.TempDir, cfgtypes.OrchestratorDirName, cfgtypes.JobStoreFileName))
+	suite.FileExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName, cfgtypes.ExecutionStoreFileName))
 
 	// verify old file were removed
 	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
@@ -145,8 +144,8 @@ Auth:
 
 	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
-	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
-	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
+	suite.DirExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName))
+	suite.DirExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName, cfgtypes.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.
 	actualInstallationID, err := suite.repo.ReadInstallationID()

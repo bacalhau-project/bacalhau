@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -46,7 +46,7 @@ type ScenarioTestSuite interface {
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx    context.Context
-	Config types2.Bacalhau
+	Config cfgtypes.Bacalhau
 	Repo   *repo.FsRepo
 }
 

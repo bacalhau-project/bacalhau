@@ -4,8 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -35,7 +34,7 @@ type StandardExecutorOptions struct {
 	DockerID string
 }
 
-func NewStandardStorageProvider(cfg types2.Bacalhau) (storage.StorageProvider, error) {
+func NewStandardStorageProvider(cfg cfgtypes.Bacalhau) (storage.StorageProvider, error) {
 	providers := make(map[string]storage.Storage)
 
 	// NB(forrest): defaults taken from v1 config
@@ -103,22 +102,22 @@ func NewNoopStorageProvider(
 }
 
 func NewStandardExecutorProvider(
-	cfg types2.EngineConfig,
+	cfg cfgtypes.EngineConfig,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
 	providers := make(map[string]executor.Executor)
 
 	if cfg.Enabled(models.EngineDocker) {
-		cacheConfig := types.DockerCacheConfig{
-			Size:      1000,
-			Duration:  types.Duration(1 * time.Hour),
-			Frequency: types.Duration(1 * time.Hour),
+		cacheConfig := cfgtypes.DockerManifestCache{
+			Size:    1000,
+			TTL:     cfgtypes.Duration(1 * time.Hour),
+			Refresh: cfgtypes.Duration(1 * time.Hour),
 		}
 		if cfg.Docker.Installed() {
-			cacheConfig = types.DockerCacheConfig{
-				Size:      cfg.Docker.ManifestCache.Size,
-				Duration:  types.Duration(cfg.Docker.ManifestCache.TTL),
-				Frequency: types.Duration(cfg.Docker.ManifestCache.Refresh),
+			cacheConfig = cfgtypes.DockerManifestCache{
+				Size:    cfg.Docker.ManifestCache.Size,
+				TTL:     cfg.Docker.ManifestCache.TTL,
+				Refresh: cfg.Docker.ManifestCache.Refresh,
 			}
 		}
 		var err error

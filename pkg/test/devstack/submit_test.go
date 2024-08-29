@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -25,7 +25,7 @@ import (
 type DevstackSubmitSuite struct {
 	suite.Suite
 	Repo   *repo.FsRepo
-	Config types2.Bacalhau
+	Config cfgtypes.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -1,26 +1,26 @@
 package configflags
 
 import (
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
 var DisabledFeatureFlags = []Definition{
 	{
 		FlagName:     "disable-engine",
-		ConfigPath:   types2.EnginesDisabledKey,
-		DefaultValue: types2.Default.Engines.Disabled,
+		ConfigPath:   cfgtypes.EnginesDisabledKey,
+		DefaultValue: cfgtypes.Default.Engines.Disabled,
 		Description:  "Engine types to disable",
 	},
 	{
 		FlagName:     "disabled-publisher",
-		ConfigPath:   types2.PublishersDisabledKey,
-		DefaultValue: types2.Default.Publishers.Disabled,
+		ConfigPath:   cfgtypes.PublishersDisabledKey,
+		DefaultValue: cfgtypes.Default.Publishers.Disabled,
 		Description:  "Publisher types to disable",
 	},
 	{
 		FlagName:     "disable-storage",
-		ConfigPath:   types2.InputSourcesDisabledKey,
-		DefaultValue: types2.Default.InputSources.Disabled,
+		ConfigPath:   cfgtypes.InputSourcesDisabledKey,
+		DefaultValue: cfgtypes.Default.InputSources.Disabled,
 		Description:  "Storage types to disable",
 	},
 }

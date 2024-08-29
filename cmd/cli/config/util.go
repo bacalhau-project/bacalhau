@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 )
 
 // NewViperWithDefaultConfig create a viper instance to serve as a schema and load in the default configuration
 // to our viper schema instance. This method is useful for inspecting default config values.
-func NewViperWithDefaultConfig(cfg types.BacalhauConfig) *viper.Viper {
+func NewViperWithDefaultConfig(cfg legacy_types.BacalhauConfig) *viper.Viper {
 	viperSchema := viper.New()
-	types.SetDefaults(cfg, types.WithViper(viperSchema))
+	legacy_types.SetDefaults(cfg, legacy_types.WithViper(viperSchema))
 	return viperSchema
 }
 

@@ -8,8 +8,8 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -17,7 +17,7 @@ import (
 )
 
 type RequesterConfigParams struct {
-	JobDefaults types2.JobDefaults
+	JobDefaults cfgtypes.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	HousekeepingTimeoutBuffer          time.Duration
@@ -65,7 +65,7 @@ type RequesterConfigParams struct {
 	// or for when operators are ready to control node approval.
 	DefaultApprovalState models.NodeMembershipState
 
-	ControlPlaneSettings types.RequesterControlPlaneConfig
+	ControlPlaneSettings legacy_types.RequesterControlPlaneConfig
 }
 
 type RequesterConfig struct {

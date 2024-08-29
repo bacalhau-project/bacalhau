@@ -14,9 +14,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -78,7 +78,13 @@ func (s *ComputeSuite) setupNode() {
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
 
-	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, configenv.Testing.Node.Compute.ManifestCache)
+	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID,
+		cfgtypes.DockerManifestCache{
+			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
+			TTL:     cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+			Refresh: cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+		},
+	)
 	s.Require().NoError(err)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
@@ -117,10 +123,10 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.Require().NoError(err)
 
-	c, err := configv2.New()
+	c, err := config.New()
 	s.Require().NoError(err)
 
-	var cfg types2.Bacalhau
+	var cfg cfgtypes.Bacalhau
 	s.Require().NoError(c.Unmarshal(&cfg))
 
 	err = r.Init(cfg)

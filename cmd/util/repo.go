@@ -13,21 +13,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
-func SetupRepoConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
+func SetupRepoConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
 	cfg, err := SetupConfig(cmd)
 	if err != nil {
-		return types2.Bacalhau{}, err
+		return cfgtypes.Bacalhau{}, err
 	}
 	// create or open the bacalhau repo and load the config
 	r, err := SetupRepo(cfg)
 	if err != nil {
-		return types2.Bacalhau{}, fmt.Errorf("failed to reconcile repo: %w", err)
+		return cfgtypes.Bacalhau{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
 
 	// TODO(forrest): we need to start this hook somewhere else as not all CLI methods call this parent method.
@@ -36,7 +36,7 @@ func SetupRepoConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
 	return cfg, nil
 }
 
-func SetupRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
+func SetupRepo(cfg cfgtypes.Bacalhau) (*repo.FsRepo, error) {
 	// create or open the bacalhau repo and load the config
 	r, err := setup.SetupBacalhauRepo(cfg)
 	if err != nil {
@@ -45,8 +45,8 @@ func SetupRepo(cfg types2.Bacalhau) (*repo.FsRepo, error) {
 	return r, nil
 }
 
-func SetupConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
-	var opts []configv2.Option
+func SetupConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
+	var opts []config.Option
 	v := viper.GetViper()
 	// check if the user specified config files via the --config flag
 	configFiles := getConfigFiles(v)
@@ -55,11 +55,11 @@ func SetupConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
 	if len(configFiles) == 0 {
 		xdgPath, err := os.UserConfigDir()
 		if err == nil {
-			path := filepath.Join(xdgPath, "bacalhau", config.FileName)
+			path := filepath.Join(xdgPath, "bacalhau", config_legacy.FileName)
 			if _, err := os.Stat(path); err != nil {
 				// if the file exists and could not be read, return an error
 				if !os.IsNotExist(err) {
-					return types2.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
+					return cfgtypes.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
 				}
 			} else {
 				// the file exists, use it.
@@ -69,35 +69,35 @@ func SetupConfig(cmd *cobra.Command) (types2.Bacalhau, error) {
 	}
 	// if a config file is present, apply it to the config
 	if len(configFiles) > 0 {
-		opts = append(opts, configv2.WithPaths(configFiles...))
+		opts = append(opts, config.WithPaths(configFiles...))
 	}
 
 	configFlags, err := getConfigFlags(v, cmd)
 	if err != nil {
-		return types2.Bacalhau{}, err
+		return cfgtypes.Bacalhau{}, err
 	}
 	if len(configFlags) > 0 {
-		opts = append(opts, configv2.WithFlags(configFlags))
+		opts = append(opts, config.WithFlags(configFlags))
 	}
 
 	configEnvVar := getConfigEnvVars(v)
 	if len(configEnvVar) > 0 {
-		opts = append(opts, configv2.WithEnvironmentVariables(configEnvVar))
+		opts = append(opts, config.WithEnvironmentVariables(configEnvVar))
 	}
 
 	configValues := getConfigValues(v)
 	if len(configValues) > 0 {
-		opts = append(opts, configv2.WithValues(configValues))
+		opts = append(opts, config.WithValues(configValues))
 	}
 
-	cfg, err := configv2.New(opts...)
+	cfg, err := config.New(opts...)
 	if err != nil {
-		return types2.Bacalhau{}, err
+		return cfgtypes.Bacalhau{}, err
 	}
 
-	var out types2.Bacalhau
+	var out cfgtypes.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
-		return types2.Bacalhau{}, err
+		return cfgtypes.Bacalhau{}, err
 	}
 	return out, nil
 }

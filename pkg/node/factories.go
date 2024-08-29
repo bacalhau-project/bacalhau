@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -47,7 +47,7 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory(cfg types2.Bacalhau) StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg cfgtypes.Bacalhau) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
@@ -63,7 +63,7 @@ func NewStandardStorageProvidersFactory(cfg types2.Bacalhau) StorageProvidersFac
 	})
 }
 
-func NewStandardExecutorsFactory(cfg types2.EngineConfig) ExecutorsFactory {
+func NewStandardExecutorsFactory(cfg cfgtypes.EngineConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
@@ -112,7 +112,7 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types2.Bacalhau) PublishersFactory {
+func NewStandardPublishersFactory(cfg cfgtypes.Bacalhau) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,

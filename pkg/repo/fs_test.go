@@ -7,14 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
 func TestNewFS(t *testing.T) {
-	c, err := configv2.New()
+	c, err := config.New()
 	repoPath := t.TempDir() + t.Name()
-	var bacCfg types2.Bacalhau
+	var bacCfg cfgtypes.Bacalhau
 	require.NoError(t, c.Unmarshal(&bacCfg))
 	bacCfg.DataDir = repoPath
 	require.NoError(t, err)

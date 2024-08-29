@@ -13,8 +13,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -51,7 +51,7 @@ type NodeConfig struct {
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
-	AuthConfig                  types2.AuthConfig
+	AuthConfig                  cfgtypes.AuthConfig
 	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool
@@ -78,7 +78,7 @@ type NodeDependencyInjector struct {
 }
 
 func NewExecutorPluginNodeDependencyInjector(
-	cfg types2.Bacalhau,
+	cfg cfgtypes.Bacalhau,
 	userKey *baccrypto.UserKey,
 	pluginPath string,
 ) NodeDependencyInjector {
@@ -90,7 +90,7 @@ func NewExecutorPluginNodeDependencyInjector(
 	}
 }
 
-func NewStandardNodeDependencyInjector(cfg types2.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg cfgtypes.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
@@ -115,7 +115,7 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	bacalhauConfig types2.Bacalhau,
+	bacalhauConfig cfgtypes.Bacalhau,
 	config NodeConfig,
 	fsr *repo.FsRepo,
 ) (*Node, error) {
@@ -168,8 +168,8 @@ func NewNode(
 			config.NodeID,
 			apiServer,
 			config,
-			// TODO(review): we not longer have a config for this, and the default was always DevNull, can we remove this?
-			types.MetricsConfig{
+			// TODO: we not longer have a config for this, and the default was always DevNull - remove this
+			legacy_types.MetricsConfig{
 				EventTracerPath: os.DevNull,
 			},
 			config.RequesterNodeConfig,
@@ -332,7 +332,7 @@ func NewNode(
 	return node, nil
 }
 
-func prepareConfig(config *NodeConfig, bacalhauConfig types2.Bacalhau) error {
+func prepareConfig(config *NodeConfig, bacalhauConfig cfgtypes.Bacalhau) error {
 	userKeyPath, err := bacalhauConfig.UserKeyPath()
 	if err != nil {
 		return err

@@ -15,8 +15,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -70,7 +70,7 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
-	cfg types2.Bacalhau,
+	cfg cfgtypes.Bacalhau,
 	cm *system.CleanupManager,
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
@@ -187,7 +187,7 @@ func Setup(
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-			cfg.Publishers.Local = types2.LocalPublisher{
+			cfg.Publishers.Local = cfgtypes.LocalPublisher{
 				Port:      fport,
 				Address:   "127.0.0.1",
 				Directory: path.Join(repoPath, fmt.Sprintf("local-publisher-%d", i)),
@@ -218,8 +218,8 @@ func Setup(
 			DisabledFeatures:      stackConfig.DisabledFeatures,
 			AllowListedLocalPaths: stackConfig.AllowListedLocalPaths,
 			NetworkConfig:         clusterConfig,
-			AuthConfig: types2.AuthConfig{
-				Methods: map[string]types2.AuthenticatorConfig{
+			AuthConfig: cfgtypes.AuthConfig{
+				Methods: map[string]cfgtypes.AuthenticatorConfig{
 					"ClientKey": {
 						Type: string(authn.MethodTypeChallenge),
 					},
@@ -280,7 +280,7 @@ func Setup(
 	}, nil
 }
 
-func setStorePaths(ctx context.Context, cfg types2.Bacalhau, nodeConfig *node.NodeConfig) error {
+func setStorePaths(ctx context.Context, cfg cfgtypes.Bacalhau, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
 	orchestratorDir, err := cfg.OrchestratorDir()
 	if err != nil {
@@ -308,7 +308,7 @@ func setStorePaths(ctx context.Context, cfg types2.Bacalhau, nodeConfig *node.No
 
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
-	if !config.DevstackGetShouldPrintInfo() {
+	if !config_legacy.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
 
@@ -337,12 +337,12 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryBuilder := strings.Builder{}
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIHost),
+		config.KeyAsEnvVar(cfgtypes.APIHostKey),
 		devStackAPIHost,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIPort),
+		config.KeyAsEnvVar(cfgtypes.APIPortKey),
 		devStackAPIPort,
 	))
 

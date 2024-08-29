@@ -1,45 +1,45 @@
 package configflags
 
 import (
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
 var ClientAPIFlags = []Definition{
 	{
 		FlagName:     "api-host",
-		DefaultValue: types2.Default.API.Host,
-		ConfigPath:   types2.APIHostKey,
+		DefaultValue: cfgtypes.Default.API.Host,
+		ConfigPath:   cfgtypes.APIHostKey,
 		Description: `The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_HOST"},
 	},
 	{
 		FlagName:     "api-port",
-		DefaultValue: types2.Default.API.Port,
-		ConfigPath:   types2.APIPortKey,
+		DefaultValue: cfgtypes.Default.API.Port,
+		ConfigPath:   cfgtypes.APIPortKey,
 		Description: `The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_PORT"},
 	},
 	{
 		FlagName:             "tls",
-		DefaultValue:         types2.Default.API.TLS.UseTLS,
-		ConfigPath:           types2.APITLSUseTLSKey,
+		DefaultValue:         cfgtypes.Default.API.TLS.UseTLS,
+		ConfigPath:           cfgtypes.APITLSUseTLSKey,
 		Description:          `Instructs the client to use TLS`,
 		EnvironmentVariables: []string{"BACALHAU_API_TLS"},
 	},
 	{
 		FlagName:     "cacert",
-		DefaultValue: types2.Default.API.TLS.CAFile,
-		ConfigPath:   types2.APITLSCAFileKey,
+		DefaultValue: cfgtypes.Default.API.TLS.CAFile,
+		ConfigPath:   cfgtypes.APITLSCAFileKey,
 		Description: `The location of a CA certificate file when self-signed certificates
 	are used by the server`,
 		EnvironmentVariables: []string{"BACALHAU_API_CACERT"},
 	},
 	{
 		FlagName:             "insecure",
-		DefaultValue:         types2.Default.API.TLS.Insecure,
-		ConfigPath:           types2.APITLSInsecureKey,
+		DefaultValue:         cfgtypes.Default.API.TLS.Insecure,
+		ConfigPath:           cfgtypes.APITLSInsecureKey,
 		Description:          `Enables TLS but does not verify certificates`,
 		EnvironmentVariables: []string{"BACALHAU_API_INSECURE"},
 	},
@@ -48,15 +48,15 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 var ServerAPIFlags = []Definition{
 	{
 		FlagName:             "port",
-		DefaultValue:         types2.Default.API.Port,
-		ConfigPath:           types2.APIPortKey,
+		DefaultValue:         cfgtypes.Default.API.Port,
+		ConfigPath:           cfgtypes.APIPortKey,
 		Description:          `The port to server on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_PORT"},
 	},
 	{
 		FlagName:             "host",
-		DefaultValue:         types2.Default.API.Host,
-		ConfigPath:           types2.APIHostKey,
+		DefaultValue:         cfgtypes.Default.API.Host,
+		ConfigPath:           cfgtypes.APIHostKey,
 		Description:          `The host to serve on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_HOST"},
 	},
@@ -65,30 +65,30 @@ var ServerAPIFlags = []Definition{
 var RequesterTLSFlags = []Definition{
 	{
 		FlagName:     "autocert",
-		DefaultValue: types2.Default.API.TLS.AutoCert,
-		ConfigPath:   types2.APITLSAutoCertKey,
+		DefaultValue: cfgtypes.Default.API.TLS.AutoCert,
+		ConfigPath:   cfgtypes.APITLSAutoCertKey,
 		Description: `Specifies a host name for which ACME is used to obtain a TLS Certificate.
 Using this option results in the API serving over HTTPS`,
 		EnvironmentVariables: []string{"BACALHAU_AUTO_TLS"},
 	},
 	{
 		FlagName:             "tlscert",
-		DefaultValue:         types2.Default.API.TLS.CertFile,
-		ConfigPath:           types2.APITLSCertFileKey,
+		DefaultValue:         cfgtypes.Default.API.TLS.CertFile,
+		ConfigPath:           cfgtypes.APITLSCertFileKey,
 		Description:          `Specifies a TLS certificate file to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_CERT"},
 	},
 	{
 		FlagName:             "tlskey",
-		DefaultValue:         types2.Default.API.TLS.KeyFile,
-		ConfigPath:           types2.APITLSKeyFileKey,
+		DefaultValue:         cfgtypes.Default.API.TLS.KeyFile,
+		ConfigPath:           cfgtypes.APITLSKeyFileKey,
 		Description:          `Specifies a TLS key file matching the certificate to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_KEY"},
 	},
 	{
 		FlagName:             "self-signed",
-		DefaultValue:         types2.Default.API.TLS.SelfSigned,
-		ConfigPath:           types2.APITLSSelfSignedKey,
+		DefaultValue:         cfgtypes.Default.API.TLS.SelfSigned,
+		ConfigPath:           cfgtypes.APITLSSelfSignedKey,
 		Description:          `Specifies whether to auto-generate a self-signed certificate for the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_SELFSIGNED"},
 	},

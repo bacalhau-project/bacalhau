@@ -10,8 +10,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
 func newListCmd() *cobra.Command {
@@ -48,10 +48,10 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 		Mode: table.Asc,
 	}}
 	var cfgList []configListEntry
-	for key, description := range types2.ConfigDescriptions {
+	for key, description := range cfgtypes.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
-			EnvVar:      configv2.KeyAsEnvVar(key),
+			EnvVar:      config.KeyAsEnvVar(key),
 			Description: description,
 		})
 	}

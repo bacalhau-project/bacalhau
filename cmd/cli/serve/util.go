@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -20,7 +20,7 @@ import (
 
 func GetComputeConfig(
 	ctx context.Context,
-	cfg types2.Bacalhau,
+	cfg cfgtypes.Bacalhau,
 	createExecutionStore bool,
 ) (node.ComputeConfig, error) {
 	var executionStore store.ExecutionStore
@@ -64,7 +64,7 @@ func GetComputeConfig(
 	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
 	if cfg.Publishers.Enabled(models.PublisherLocal) {
 		if cfg.Publishers.Local.Installed() {
-			params.LocalPublisher = types2.LocalPublisher{
+			params.LocalPublisher = cfgtypes.LocalPublisher{
 				Address:   cfg.Publishers.Local.Address,
 				Port:      cfg.Publishers.Local.Port,
 				Directory: cfg.Publishers.Local.Directory,
@@ -75,7 +75,7 @@ func GetComputeConfig(
 	return node.NewComputeConfigWith(executionsPath, params)
 }
 
-func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.RequesterConfig, error) {
+func GetRequesterConfig(cfg cfgtypes.Bacalhau, createJobStore bool) (node.RequesterConfig, error) {
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
@@ -127,7 +127,7 @@ func GetRequesterConfig(cfg types2.Bacalhau, createJobStore bool) (node.Requeste
 	return requesterConfig, nil
 }
 
-func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
+func getNetworkConfig(cfg cfgtypes.Bacalhau) (node.NetworkConfig, error) {
 	storeDir, err := cfg.NetworkTransportDir()
 	if err != nil {
 		return node.NetworkConfig{}, err
@@ -144,7 +144,7 @@ func getNetworkConfig(cfg types2.Bacalhau) (node.NetworkConfig, error) {
 		ClusterPeers:             cfg.Orchestrator.Cluster.Peers,
 	}, nil
 }
-func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types2.ResourceScaler) (models.Resources, error) {
+func scaleCapacityByAllocation(systemCapacity models.Resources, scaler cfgtypes.ResourceScaler) (models.Resources, error) {
 	// if the system capacity is zero we should fail as it means the compute node will be unable to accept any work.
 	if systemCapacity.IsZero() {
 		return models.Resources{}, fmt.Errorf("system capacity is zero")

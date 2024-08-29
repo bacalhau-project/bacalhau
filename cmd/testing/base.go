@@ -16,7 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -30,7 +30,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node            *node.Node
 	ClientV2        clientv2.API
-	Config          types2.Bacalhau
+	Config          cfgtypes.Bacalhau
 	Host            string
 	Port            uint16
 	AllowListedPath string
@@ -52,7 +52,7 @@ func (s *BaseSuite) SetupTest() {
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
-		LocalPublisher: types2.LocalPublisher{
+		LocalPublisher: cfgtypes.LocalPublisher{
 			Address: "127.0.0.1",
 		},
 	})

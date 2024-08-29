@@ -14,8 +14,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -72,9 +72,9 @@ type ComputeConfigParams struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types2.LocalPublisher
+	LocalPublisher cfgtypes.LocalPublisher
 
-	ControlPlaneSettings types.ComputeControlPlaneConfig
+	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }
 
 type ComputeConfig struct {
@@ -113,9 +113,9 @@ type ComputeConfig struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types2.LocalPublisher
+	LocalPublisher cfgtypes.LocalPublisher
 
-	ControlPlaneSettings types.ComputeControlPlaneConfig
+	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }
 
 func NewComputeConfigWithDefaults(executionDir string) (ComputeConfig, error) {

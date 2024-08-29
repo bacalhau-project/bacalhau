@@ -7,8 +7,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -28,33 +28,33 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
-		LocalPublisher: types2.LocalPublisher{
+		LocalPublisher: cfgtypes.LocalPublisher{
 			Address:   "127.0.0.1",
 			Port:      6001,
 			Directory: path.Join(storagePath, "bacalhau-local-publisher"),
 		},
-		ControlPlaneSettings: types.ComputeControlPlaneConfig{
-			InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
-			ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
-			HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			InfoUpdateFrequency:     legacy_types.Duration(60 * time.Second), //nolint:gomnd
+			ResourceUpdateFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
+			HeartbeatFrequency:      legacy_types.Duration(15 * time.Second), //nolint:gomnd
 			HeartbeatTopic:          "heartbeat",
 		},
 	}
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	JobDefaults: types2.JobDefaults{
-		Batch: types2.BatchJobDefaultsConfig{
-			Task: types2.BatchTaskDefaultConfig{
-				Timeouts: types2.TaskTimeoutConfig{
-					TotalTimeout: types2.Duration(models.NoTimeout),
+	JobDefaults: cfgtypes.JobDefaults{
+		Batch: cfgtypes.BatchJobDefaultsConfig{
+			Task: cfgtypes.BatchTaskDefaultConfig{
+				Timeouts: cfgtypes.TaskTimeoutConfig{
+					TotalTimeout: cfgtypes.Duration(models.NoTimeout),
 				},
 			},
 		},
-		Ops: types2.BatchJobDefaultsConfig{
-			Task: types2.BatchTaskDefaultConfig{
-				Timeouts: types2.TaskTimeoutConfig{
-					TotalTimeout: types2.Duration(models.NoTimeout),
+		Ops: cfgtypes.BatchJobDefaultsConfig{
+			Task: cfgtypes.BatchTaskDefaultConfig{
+				Timeouts: cfgtypes.TaskTimeoutConfig{
+					TotalTimeout: cfgtypes.Duration(models.NoTimeout),
 				},
 			},
 		},
@@ -86,10 +86,10 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 	TranslationEnabled: false,
 
-	ControlPlaneSettings: types.RequesterControlPlaneConfig{
-		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
-		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
 	NodeInfoStoreTTL:     10 * time.Minute,
@@ -97,18 +97,18 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
-	JobDefaults: types2.JobDefaults{
-		Batch: types2.BatchJobDefaultsConfig{
-			Task: types2.BatchTaskDefaultConfig{
-				Timeouts: types2.TaskTimeoutConfig{
-					TotalTimeout: types2.Duration(30 * time.Second),
+	JobDefaults: cfgtypes.JobDefaults{
+		Batch: cfgtypes.BatchJobDefaultsConfig{
+			Task: cfgtypes.BatchTaskDefaultConfig{
+				Timeouts: cfgtypes.TaskTimeoutConfig{
+					TotalTimeout: cfgtypes.Duration(30 * time.Second),
 				},
 			},
 		},
-		Ops: types2.BatchJobDefaultsConfig{
-			Task: types2.BatchTaskDefaultConfig{
-				Timeouts: types2.TaskTimeoutConfig{
-					TotalTimeout: types2.Duration(30 * time.Second),
+		Ops: cfgtypes.BatchJobDefaultsConfig{
+			Task: cfgtypes.BatchTaskDefaultConfig{
+				Timeouts: cfgtypes.TaskTimeoutConfig{
+					TotalTimeout: cfgtypes.Duration(30 * time.Second),
 				},
 			},
 		},
@@ -140,10 +140,10 @@ var TestRequesterConfig = RequesterConfigParams{
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
-	ControlPlaneSettings: types.RequesterControlPlaneConfig{
-		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
-		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
 	DefaultApprovalState: models.NodeMembership.APPROVED,

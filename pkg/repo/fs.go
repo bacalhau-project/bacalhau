@@ -11,9 +11,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -85,14 +85,14 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(cfg types2.Bacalhau) error {
+func (fsr *FsRepo) Init(cfg cfgtypes.Bacalhau) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
 		return fmt.Errorf("cannot init repo: repo already exists")
 	}
 
-	log.Info().Msgf("Initializing repo at '%s' for environment '%s'", fsr.path, config.GetConfigEnvironment())
+	log.Info().Msgf("Initializing repo at %s", fsr.path)
 
 	// if it takes longer than 5 seconds to get the node name from a provider, fail
 	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -197,19 +197,19 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 }
 
 // EnsureRepoPathsConfigured modifies the config to include keys for accessing repo paths
-func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
-	c.SetIfAbsent(types.AuthTokensPath, fsr.join(config.TokensPath))
-	c.SetIfAbsent(types.UserKeyPath, fsr.join(config.UserPrivateKeyFileName))
-	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(config.PluginsPath))
+func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
+	c.SetIfAbsent(legacy_types.AuthTokensPath, fsr.join(config_legacy.TokensPath))
+	c.SetIfAbsent(legacy_types.UserKeyPath, fsr.join(config_legacy.UserPrivateKeyFileName))
+	c.SetIfAbsent(legacy_types.NodeExecutorPluginPath, fsr.join(config_legacy.PluginsPath))
 
 	// NB(forrest): pay attention to the subtle name difference here
-	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
+	c.SetIfAbsent(legacy_types.NodeComputeStoragePath, fsr.join(config_legacy.ComputeStoragesPath))
 
-	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
-	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
+	c.SetIfAbsent(legacy_types.NodeClientAPITLSAutoCertCachePath, fsr.join(config_legacy.AutoCertCachePath))
+	c.SetIfAbsent(legacy_types.NodeNetworkStoreDir, fsr.join(config_legacy.OrchestratorStorePath, config_legacy.NetworkTransportStore))
 
-	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
-	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
+	c.SetIfAbsent(legacy_types.NodeRequesterJobStorePath, fsr.join(config_legacy.OrchestratorStorePath, "jobs.db"))
+	c.SetIfAbsent(legacy_types.NodeComputeExecutionStorePath, fsr.join(config_legacy.ComputeStorePath, "executions.db"))
 }
 
 // join joins path elements with fsr.path

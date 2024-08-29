@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
@@ -25,7 +25,7 @@ import (
 
 type ParallelStorageSuite struct {
 	suite.Suite
-	cfg      types2.Bacalhau
+	cfg      cfgtypes.Bacalhau
 	provider provider.Provider[storage.Storage]
 }
 

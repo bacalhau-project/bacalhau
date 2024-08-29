@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -60,7 +60,7 @@ func NewRequesterNode(
 	nodeID string,
 	apiServer *publicapi.Server,
 	nodeConfig NodeConfig,
-	metricsConfig types.MetricsConfig,
+	metricsConfig legacy_types.MetricsConfig,
 	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,

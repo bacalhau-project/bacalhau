@@ -9,8 +9,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/configv2"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -73,7 +74,7 @@ var V3Migration = repo.NewMigration(
 			// if the user didn't provide a path, no copy required as the location of the file in the repo
 			// is unchanged.
 			if fileCfg.User.KeyPath != "" {
-				if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, types.UserKeyFileName)); err != nil {
+				if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, cfgtypes.UserKeyFileName)); err != nil {
 					return fmt.Errorf("copying user key file: %w", err)
 				}
 			}
@@ -82,7 +83,7 @@ var V3Migration = repo.NewMigration(
 			// if the user didn't provide a path, no copy required as the location of the file in the repo
 			// is unchanged.
 			if fileCfg.Auth.TokensPath != "" {
-				if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, types.AuthTokensFileName)); err != nil {
+				if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, cfgtypes.AuthTokensFileName)); err != nil {
 					return fmt.Errorf("copying auth tokens file: %w", err)
 				}
 			}
@@ -98,7 +99,7 @@ var V3Migration = repo.NewMigration(
 
 		// iff there is a config file in the repo, try and move it to $XDG_CONFIG_HOME/bacalhau
 		{
-			oldConfigFilePath := filepath.Join(repoPath, config.FileName)
+			oldConfigFilePath := filepath.Join(repoPath, config_legacy.FileName)
 			if _, err := os.Stat(oldConfigFilePath); err == nil {
 				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
 					return fmt.Errorf("migrating installation id: %w", err)
@@ -106,7 +107,7 @@ var V3Migration = repo.NewMigration(
 				if err := r.WriteNodeName(fileCfg.Node.Name); err != nil {
 					return fmt.Errorf("migrating node name: %w", err)
 				}
-				newConfigType, err := configv2.MigrateV1(fileCfg)
+				newConfigType, err := config.MigrateV1(fileCfg)
 				if err != nil {
 					return fmt.Errorf("migrating to new config: %w", err)
 				}
@@ -118,7 +119,7 @@ var V3Migration = repo.NewMigration(
 					if err := os.Mkdir(newConfigDir, util.OS_USER_RWX); err != nil {
 						return err
 					}
-					newConfigFilePath := filepath.Join(newConfigDir, config.FileName)
+					newConfigFilePath := filepath.Join(newConfigDir, config_legacy.FileName)
 					if err := os.Rename(oldConfigFilePath, newConfigFilePath); err != nil {
 						return err
 					}
@@ -142,7 +143,7 @@ var V3Migration = repo.NewMigration(
 	},
 )
 
-func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
+func migrateComputeStore(repoPath string, config legacy_types.JobStoreConfig) error {
 	oldComputeDir := filepath.Join(repoPath, "compute_store")
 	oldExecutionStorePath := config.Path
 	if oldExecutionStorePath == "" {
@@ -153,7 +154,7 @@ func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
 		return err
 	}
 
-	newComputeDir := filepath.Join(repoPath, types.ComputeDirName)
+	newComputeDir := filepath.Join(repoPath, cfgtypes.ComputeDirName)
 	if err := os.Rename(oldComputeDir, newComputeDir); err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
 	return nil
 }
 
-func migrateOrchestratorStore(repoPath string, config types.JobStoreConfig) error {
+func migrateOrchestratorStore(repoPath string, config legacy_types.JobStoreConfig) error {
 	oldOrchestratorDir := filepath.Join(repoPath, "orchestrator_store")
 	oldJobStorePath := config.Path
 	if oldJobStorePath == "" {
@@ -177,7 +178,7 @@ func migrateOrchestratorStore(repoPath string, config types.JobStoreConfig) erro
 		return err
 	}
 
-	newOrchestratorDir := filepath.Join(repoPath, types.OrchestratorDirName)
+	newOrchestratorDir := filepath.Join(repoPath, cfgtypes.OrchestratorDirName)
 	if err := os.Rename(oldOrchestratorDir, newOrchestratorDir); err != nil {
 		return err
 	}

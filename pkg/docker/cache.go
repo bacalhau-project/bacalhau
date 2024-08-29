@@ -3,16 +3,16 @@ package docker
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/cache"
 	"github.com/bacalhau-project/bacalhau/pkg/cache/basic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
-func NewManifestCache(cfg types.DockerCacheConfig) cache.Cache[ImageManifest] {
+func NewManifestCache(cfg cfgtypes.DockerManifestCache) cache.Cache[ImageManifest] {
 	// Used by compute nodes to map requester provided image identifiers (with
 	// digest) to
 	c, _ := basic.NewCache[ImageManifest](
-		basic.WithCleanupFrequency(cfg.Frequency.AsTimeDuration()),
+		basic.WithCleanupFrequency(cfg.Refresh.AsTimeDuration()),
 		basic.WithMaxCost(cfg.Size),
-		basic.WithTTL(cfg.Duration.AsTimeDuration()),
+		basic.WithTTL(cfg.TTL.AsTimeDuration()),
 	)
 	return c
 }

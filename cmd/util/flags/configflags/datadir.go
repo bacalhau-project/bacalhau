@@ -4,13 +4,13 @@ import (
 	"os"
 	"path/filepath"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 )
 
 var DataDirFlag = []Definition{
 	{
 		FlagName:             "repo",
-		ConfigPath:           types2.DataDirKey,
+		ConfigPath:           cfgtypes.DataDirKey,
 		DefaultValue:         getDefaultRepo(),
 		Description:          "The filesystem path bacalhau inits or opens a repo in",
 		EnvironmentVariables: []string{"BACALHAU_DIR"},

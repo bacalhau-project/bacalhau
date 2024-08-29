@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -23,8 +23,8 @@ func NewPublisherProvider(
 	ctx context.Context,
 	storagePath string,
 	cm *system.CleanupManager,
-	cfg types2.PublishersConfig,
-	localPublisherCfg types2.LocalPublisher,
+	cfg cfgtypes.PublishersConfig,
+	localPublisherCfg cfgtypes.LocalPublisher,
 ) (publisher.PublisherProvider, error) {
 	providers := make(map[string]publisher.Publisher)
 
