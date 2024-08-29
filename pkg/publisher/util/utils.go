@@ -41,12 +41,16 @@ func NewPublisherProvider(
 	}
 
 	if cfg.Enabled(models.PublisherLocal) {
-		providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
+		localPublisher, err := local.NewLocalPublisher(
 			ctx,
 			localPublisherCfg.Directory,
 			localPublisherCfg.Address,
 			localPublisherCfg.Port,
-		))
+		)
+		if err != nil {
+			return nil, err
+		}
+		providers[models.PublisherLocal] = tracing.Wrap(localPublisher)
 	}
 
 	if cfg.Enabled(models.PublisherIPFS) {

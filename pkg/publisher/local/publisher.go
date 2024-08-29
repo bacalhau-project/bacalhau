@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 type Publisher struct {
@@ -24,7 +25,7 @@ type Publisher struct {
 	server        *LocalPublisherServer
 }
 
-func NewLocalPublisher(ctx context.Context, directory string, host string, port int) *Publisher {
+func NewLocalPublisher(ctx context.Context, directory string, host string, port int) (*Publisher, error) {
 	p := &Publisher{
 		baseDirectory: directory,
 		host:          ResolveAddress(ctx, host),
@@ -32,10 +33,21 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 		urlPrefix:     fmt.Sprintf("http://%s:%d", host, port),
 	}
 
+	if info, err := os.Stat(p.baseDirectory); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to create local pubisher with path %s: path could not be read: %w", directory, err)
+		}
+		log.Warn().Msgf("local publisher was configured with a directory that doesn't exits. attempting to create one at %s", directory)
+		if err := os.MkdirAll(p.baseDirectory, util.OS_USER_RWX); err != nil {
+			return nil, fmt.Errorf("failed to create directory for local publisher: %w", err)
+		}
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("failed to create local publisher with path: %s: path is not a directoy", directory)
+	}
 	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.port)
 	go p.server.Run(ctx)
 
-	return p
+	return p, nil
 }
 
 // IsInstalled checks if the publisher is installed and it determines
@@ -44,9 +56,9 @@ func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Ctx(ctx).Warn().Msg("local publisher not installed because the base directory does not exist")
+			log.Ctx(ctx).Error().Err(err).Msgf("local publisher not installed because the base directory %s does not exist", p.baseDirectory)
 		} else {
-			log.Ctx(ctx).Error().Err(err).Msg("local publisher failed to check if the base directory exists")
+			log.Ctx(ctx).Error().Err(err).Msgf("local publisher failed to check if the base directory %s exists", p.baseDirectory)
 		}
 
 		return false, nil
