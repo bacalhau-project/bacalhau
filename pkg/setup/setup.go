@@ -64,7 +64,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
 	// disable update checks in testing.
-	t.Setenv("BACALHAU_UPDATECONFIG_INTERVAL", "0")
+	t.Setenv(configv2.KeyAsEnvVar(types2.UpdateConfigIntervalKey), "0")
 	cfgValues := map[string]any{
 		"DataDir": path,
 	}
@@ -75,9 +75,9 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	// from this flag to the dedicated flags like "BACALHAU_PUBLISHER_IPFS_ENDPOINT",
 	// "BACALHAU_INPUTSOURCES_IPFS_ENDPOINT", etc which have a direct mapping to the config key based on their name.
 	if connect := os.Getenv("BACALHAU_NODE_IPFS_CONNECT"); connect != "" {
-		cfgValues["Publishers.IPFS.Endpoint"] = connect
-		cfgValues["ResultDownloaders.IPFS.Endpoint"] = connect
-		cfgValues["InputSources.IPFS.Endpoint"] = connect
+		cfgValues[types2.PublishersIPFSEndpointKey] = connect
+		cfgValues[types2.ResultDownloadersIPFSEndpointKey] = connect
+		cfgValues[types2.InputSourcesIPFSEndpointKey] = connect
 	}
 
 	// init a config with this viper instance using the local configuration as default

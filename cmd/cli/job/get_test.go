@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -53,7 +54,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
+		fmt.Sprintf("--config %s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -76,7 +77,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--config", fmt.Sprintf("ResultDownloaders.IPFS.Endpoint=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
+		"--config", fmt.Sprintf("%s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -100,7 +101,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
+		fmt.Sprintf("--config %s=%s", types2.ResultDownloadersIPFSEndpointKey, s.Config.ResultDownloaders.IPFS.Endpoint),
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),

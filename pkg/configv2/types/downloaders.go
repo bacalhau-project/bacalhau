@@ -8,9 +8,9 @@ import (
 var _ Provider = (*ResultDownloaders)(nil)
 
 type ResultDownloaders struct {
-	Disabled []string `yaml:"Disabled,omitempty"`
-	Timeout  Duration `yaml:"Timeout,omitempty"`
-	IPFS     IpfsDownloader
+	Disabled []string       `yaml:"Disabled,omitempty"`
+	Timeout  Duration       `yaml:"Timeout,omitempty"`
+	IPFS     IpfsDownloader `yaml:"IPFS,omitempty"`
 }
 
 func (r ResultDownloaders) Enabled(kind string) bool {
@@ -23,7 +23,7 @@ var _ Configurable = (*IpfsDownloader)(nil)
 
 type IpfsDownloader struct {
 	// Endpoint is the multiaddress to connect to for IPFS.
-	Endpoint string `yaml:"Connect,omitempty"`
+	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
 func (i IpfsDownloader) Installed() bool {

@@ -167,3 +167,10 @@ func (c *Config) Unmarshal(out interface{}) error {
 	}
 	return nil
 }
+
+// KeyAsEnvVar returns the environment variable corresponding to a config key
+func KeyAsEnvVar(key string) string {
+	return strings.ToUpper(
+		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
+	)
+}

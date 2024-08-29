@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// NB: Developers, after making changes to this struct or any of its children, run go generate.
+
+//go:generate go run gen/generate.go ./
 type Bacalhau struct {
 	API                 API                    `yaml:"API,omitempty"`
 	NameProvider        string                 `yaml:"NameProvider,omitempty"`
