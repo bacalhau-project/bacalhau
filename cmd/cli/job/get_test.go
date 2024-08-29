@@ -76,7 +76,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		fmt.Sprintf("--config resultdownloaders.config.ipfs.connect=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
+		"--config", fmt.Sprintf("ResultDownloaders.IPFS.Endpoint=%s", s.Config.ResultDownloaders.IPFS.Endpoint),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")

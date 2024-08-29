@@ -2,6 +2,7 @@ package setup
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -62,14 +63,29 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types2.Bacalhau) {
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
-	// disable update checks in testing.
-	t.Setenv("BACALHAU_UPDATECONFIG_INTERVAL", "0")
+	opts := []configv2.Option{
+		configv2.WithValues(map[string]any{
+			"DataDir": path,
+			// disable update checks in testing.
+			"updateconfig.interval": 0,
+		}),
+	}
 
-	// configure the repo on the testing viper insance
+	// the BACALHAU_NODE_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.
+	// This is because viper cannot bind its value to any existing keys via viper.AutomaticEnv() since the
+	// environment variable doesn't map to a key in the config, so we add special handling here until we move away
+	// from this flag to the dedicated flags like "BACALHAU_PUBLISHER_IPFS_ENDPOINT",
+	// "BACALHAU_INPUTSOURCES_IPFS_ENDPOINT", etc which have a direct mapping to the config key based on their name.
+	if connect := os.Getenv("BACALHAU_NODE_IPFS_CONNECT"); connect != "" {
+		opts = append(opts, configv2.WithValues(map[string]any{
+			"Publishers.IPFS.Endpoint":        connect,
+			"ResultDownloaders.IPFS.Endpoint": connect,
+			"InputSources.IPFS.Endpoint":      connect,
+		}))
+	}
+
 	// init a config with this viper instance using the local configuration as default
-	c, err := configv2.New(configv2.WithValues(map[string]any{
-		"DataDir": path,
-	}))
+	c, err := configv2.New(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

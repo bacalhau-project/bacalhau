@@ -28,7 +28,7 @@ type Docker struct {
 }
 
 func (d Docker) Installed() bool {
-	return d == Docker{}
+	return d != Docker{}
 }
 
 // DockerManifestCache represents the configuration settings for the Docker manifest cache.

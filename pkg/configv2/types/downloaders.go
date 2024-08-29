@@ -27,5 +27,5 @@ type IpfsDownloader struct {
 }
 
 func (i IpfsDownloader) Installed() bool {
-	return i == IpfsDownloader{}
+	return i != IpfsDownloader{}
 }
