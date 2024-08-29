@@ -20,11 +20,14 @@ import (
 func TestAdditiveSet(t *testing.T) {
 	cfgFilePath := filepath.Join(t.TempDir(), "config.yaml")
 
-	err := setConfig(cfgFilePath, "api.address", "http://127.0.0.1:1234")
+	err := setConfig(cfgFilePath, "api.host", "127.0.0.1")
+	require.NoError(t, err)
+	err = setConfig(cfgFilePath, "api.port", "1234")
 	require.NoError(t, err)
 
 	expected := types2.Bacalhau{API: types2.API{
-		Address: "http://127.0.0.1:1234",
+		Host: "127.0.0.1",
+		Port: 1234,
 	}}
 	actual := unmarshalConfigFile(t, cfgFilePath)
 
@@ -37,7 +40,8 @@ func TestAdditiveSet(t *testing.T) {
 
 	expected = types2.Bacalhau{
 		API: types2.API{
-			Address: "http://127.0.0.1:1234",
+			Host: "127.0.0.1",
+			Port: 1234,
 		},
 		Compute: types2.Compute{
 			Enabled: true,

@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -46,7 +47,7 @@ type ComputeConfigParams struct {
 	JobResourceLimits         models.Resources
 	DefaultJobResourceLimits  models.Resources
 	PhysicalResourcesProvider capacity.Provider
-	// Deprecated: this feature is no longer supported, delete
+	// Deprecated: this feature is no longer supported, but still used in several tests and thus preserved
 	IgnorePhysicalResourceLimits bool
 
 	// Timeout config
@@ -71,7 +72,7 @@ type ComputeConfigParams struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types.LocalPublisherConfig
+	LocalPublisher types2.LocalPublisher
 
 	ControlPlaneSettings types.ComputeControlPlaneConfig
 }
@@ -112,7 +113,7 @@ type ComputeConfig struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types.LocalPublisherConfig
+	LocalPublisher types2.LocalPublisher
 
 	ControlPlaneSettings types.ComputeControlPlaneConfig
 }

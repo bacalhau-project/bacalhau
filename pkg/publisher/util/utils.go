@@ -47,16 +47,8 @@ func NewPublisherProvider(
 				cfg.Local.Address,
 				cfg.Local.Port,
 			))
-		} else {
-			providers[models.PublisherLocal] = tracing.Wrap(local.NewLocalPublisher(
-				// TODO(review): what is the default configuration for a local publisher?
-				// who/what makes the path it serves from?
-				ctx,
-				"TODO",
-				"TODO",
-				-1,
-			))
 		}
+		// else the publisher will be populated with a default from NewDefaultComputeParam
 	}
 
 	if cfg.Enabled(models.PublisherIPFS) {

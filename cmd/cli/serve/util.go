@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
@@ -65,7 +64,7 @@ func GetComputeConfig(
 	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
 	if cfg.Publishers.Enabled(models.PublisherLocal) {
 		if cfg.Publishers.Local.Installed() {
-			params.LocalPublisher = types.LocalPublisherConfig{
+			params.LocalPublisher = types2.LocalPublisher{
 				Address:   cfg.Publishers.Local.Address,
 				Port:      cfg.Publishers.Local.Port,
 				Directory: cfg.Publishers.Local.Directory,

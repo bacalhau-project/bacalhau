@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	types2 "github.com/bacalhau-project/bacalhau/pkg/configv2/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -53,7 +52,7 @@ func (s *BaseSuite) SetupTest() {
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
-		LocalPublisher: types.LocalPublisherConfig{
+		LocalPublisher: types2.LocalPublisher{
 			Address: "127.0.0.1",
 		},
 	})

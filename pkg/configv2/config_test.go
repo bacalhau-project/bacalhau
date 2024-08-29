@@ -32,12 +32,14 @@ func TestConfigWithDefaults(t *testing.T) {
 func TestConfigWithValueOverrides(t *testing.T) {
 	overrideRepo := "overrideRepo"
 	overrideName := "puuid"
-	overrideClientAddress := "http://1.1.1.1:1234"
+	overrideClientAddress := "1.1.1.1"
+	overrideClientPort := 1234
 
 	defaultConfig := types.Bacalhau{
 		DataDir: "defaultRepo",
 		API: types.API{
-			Address: "http://0.0.0.0:1234",
+			Host: "0.0.0.0",
+			Port: 1234,
 		},
 		Logging: types.Logging{
 			Level: "info",
@@ -46,7 +48,8 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	overrideValues := map[string]any{
 		"datadir":      overrideRepo,
 		"nameprovider": overrideName,
-		"api.address":  overrideClientAddress,
+		"api.host":     overrideClientAddress,
+		"api.port":     overrideClientPort,
 	}
 
 	cfg, err := configv2.New(
@@ -60,7 +63,8 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, overrideRepo, actual.DataDir)
-	assert.Equal(t, overrideClientAddress, actual.API.Address)
+	assert.Equal(t, overrideClientAddress, actual.API.Host)
+	assert.Equal(t, overrideClientPort, actual.API.Port)
 	assert.Empty(t, actual.Orchestrator)
 	assert.Empty(t, actual.Compute)
 }

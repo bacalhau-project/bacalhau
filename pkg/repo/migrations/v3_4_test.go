@@ -124,7 +124,8 @@ Auth:
 	suite.Require().NoError(err)
 	var bacCfg types2.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
-	suite.Require().Equal("http://1.2.3.4:9999", bacCfg.API.Address)
+	suite.Require().Equal("1.2.3.4", bacCfg.API.Host)
+	suite.Require().Equal(9999, bacCfg.API.Port)
 
 	// verify database files are present
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
