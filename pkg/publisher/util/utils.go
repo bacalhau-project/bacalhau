@@ -24,7 +24,6 @@ func NewPublisherProvider(
 	storagePath string,
 	cm *system.CleanupManager,
 	cfg cfgtypes.PublishersConfig,
-	localPublisherCfg cfgtypes.LocalPublisher,
 ) (publisher.PublisherProvider, error) {
 	providers := make(map[string]publisher.Publisher)
 
@@ -43,9 +42,9 @@ func NewPublisherProvider(
 	if cfg.Enabled(models.PublisherLocal) {
 		localPublisher, err := local.NewLocalPublisher(
 			ctx,
-			localPublisherCfg.Directory,
-			localPublisherCfg.Address,
-			localPublisherCfg.Port,
+			cfg.Local.Directory,
+			cfg.Local.Address,
+			cfg.Local.Port,
 		)
 		if err != nil {
 			return nil, err
