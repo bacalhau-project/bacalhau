@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -22,7 +22,7 @@ import (
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 	apiV2 clientv2.API,
 	jobID string,
 	downloadSettings *cliflags.DownloaderSettings,

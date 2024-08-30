@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -23,7 +23,7 @@ type Versions struct {
 	UpdateMessage string                   `json:"updateMessage,omitempty"`
 }
 
-func GetAllVersions(ctx context.Context, cfg cfgtypes.Bacalhau, api clientv2.API, r *repo.FsRepo) (Versions, error) {
+func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r *repo.FsRepo) (Versions, error) {
 	var err error
 	versions := Versions{ClientVersion: version.Get()}
 

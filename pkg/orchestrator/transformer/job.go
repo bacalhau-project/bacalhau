@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -19,7 +19,7 @@ func IDGenerator(_ context.Context, job *models.Job) error {
 }
 
 // DefaultsApplier is a transformer that applies default values to the job.
-func DefaultsApplier(defaults cfgtypes.JobDefaults) JobTransformer {
+func DefaultsApplier(defaults types.JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		switch job.Type {
 		case models.JobTypeBatch:
@@ -39,7 +39,7 @@ func DefaultsApplier(defaults cfgtypes.JobDefaults) JobTransformer {
 	return JobFn(f)
 }
 
-func applyBatchJobDefaults(defaults cfgtypes.BatchJobDefaultsConfig, job *models.Job) {
+func applyBatchJobDefaults(defaults types.BatchJobDefaultsConfig, job *models.Job) {
 	if job.Priority == 0 {
 		job.Priority = defaults.Priority
 	}
@@ -48,7 +48,7 @@ func applyBatchJobDefaults(defaults cfgtypes.BatchJobDefaultsConfig, job *models
 	}
 }
 
-func applyBatchTaskDefaults(defaults cfgtypes.BatchTaskDefaultConfig, task *models.Task) {
+func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.Task) {
 	if task.ResourcesConfig.CPU == "" {
 		task.ResourcesConfig.CPU = defaults.Resources.CPU
 	}
@@ -72,7 +72,7 @@ func applyBatchTaskDefaults(defaults cfgtypes.BatchTaskDefaultConfig, task *mode
 	}
 }
 
-func applyLongRunningJobDefaults(defaults cfgtypes.LongRunningJobDefaultsConfig, job *models.Job) {
+func applyLongRunningJobDefaults(defaults types.LongRunningJobDefaultsConfig, job *models.Job) {
 	if job.Priority == 0 {
 		job.Priority = defaults.Priority
 	}
@@ -81,7 +81,7 @@ func applyLongRunningJobDefaults(defaults cfgtypes.LongRunningJobDefaultsConfig,
 	}
 }
 
-func applyLongRunningTaskDefaults(defaults cfgtypes.LongRunningTaskDefaultConfig, task *models.Task) {
+func applyLongRunningTaskDefaults(defaults types.LongRunningTaskDefaultConfig, task *models.Task) {
 	if task.ResourcesConfig.CPU == "" {
 		task.ResourcesConfig.CPU = defaults.Resources.CPU
 	}

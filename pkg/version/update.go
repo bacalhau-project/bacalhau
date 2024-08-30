@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -115,7 +115,7 @@ type UpdateStore interface {
 // (e.g. because the node running the update check is the server).
 func RunUpdateChecker(
 	ctx context.Context,
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 	store UpdateStore,
 	getServerVersion func(context.Context) (*models.BuildVersionInfo, error),
 	responseCallback func(context.Context, *UpdateCheckResponse),

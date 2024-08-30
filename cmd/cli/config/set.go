@@ -13,7 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func newSetCmd() *cobra.Command {
@@ -45,7 +45,7 @@ func newSetCmd() *cobra.Command {
 
 func setConfig(cfgFilePath, key string, value ...string) error {
 	// get a map of all allowed config keys and their value type, a poor mans schema.
-	typ, ok := cfgtypes.AllKeys()[key]
+	typ, ok := types.AllKeys()[key]
 	if !ok {
 		return fmt.Errorf("%q is not a valid config key", key)
 	}
@@ -57,7 +57,7 @@ func setConfig(cfgFilePath, key string, value ...string) error {
 			return err
 		}
 	}
-	if typ == reflect.TypeOf(cfgtypes.Duration(0)) {
+	if typ == reflect.TypeOf(types.Duration(0)) {
 		duration, err := time.ParseDuration(value[0])
 		if err != nil {
 			return fmt.Errorf("Failed to parse duration for path %s: %v\n", key, err)

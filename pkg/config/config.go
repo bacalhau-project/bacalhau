@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 const (
@@ -90,7 +90,7 @@ func New(opts ...Option) (*Config, error) {
 
 	c := &Config{
 		base:       base,
-		defaultCfg: cfgtypes.Default,
+		defaultCfg: types.Default,
 		paths:      make([]string, 0),
 	}
 	for _, opt := range opts {

@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 type Provider interface {
 	Enabled(kind string) bool

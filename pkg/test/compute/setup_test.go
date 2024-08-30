@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
@@ -79,10 +79,10 @@ func (s *ComputeSuite) setupNode() {
 	s.failureChannel = make(chan compute.ComputeError)
 
 	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID,
-		cfgtypes.DockerManifestCache{
+		types.DockerManifestCache{
 			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-			TTL:     cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-			Refresh: cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
 		},
 	)
 	s.Require().NoError(err)
@@ -126,7 +126,7 @@ func (s *ComputeSuite) setupNode() {
 	c, err := config.New()
 	s.Require().NoError(err)
 
-	var cfg cfgtypes.Bacalhau
+	var cfg types.Bacalhau
 	s.Require().NoError(c.Unmarshal(&cfg))
 
 	err = r.Init(cfg)

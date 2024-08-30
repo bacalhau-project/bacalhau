@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -58,10 +58,10 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	s.executor, err = NewExecutor(
 		"bacalhau-executor-unit-test",
-		cfgtypes.DockerManifestCache{
+		types.DockerManifestCache{
 			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-			TTL:     cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-			Refresh: cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
 		},
 	)
 	require.NoError(s.T(), err)

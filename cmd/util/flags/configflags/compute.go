@@ -1,14 +1,14 @@
 package configflags
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 var ComputeFlags = []Definition{
 	{
 		FlagName:     "compute",
-		ConfigPath:   cfgtypes.ComputeEnabledKey,
-		DefaultValue: cfgtypes.Default.Compute.Enabled,
+		ConfigPath:   types.ComputeEnabledKey,
+		DefaultValue: types.Default.Compute.Enabled,
 		Description:  "When true the compute service will be enabled.",
 	},
 }

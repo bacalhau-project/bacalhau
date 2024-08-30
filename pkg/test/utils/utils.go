@@ -11,7 +11,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -34,7 +34,7 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 
 // MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.
 // Otherwise it returns an IPFS connect string
-func MustHaveIPFS(t testing.TB, cfg cfgtypes.Bacalhau) {
+func MustHaveIPFS(t testing.TB, cfg types.Bacalhau) {
 	downloaderConfigured := cfg.ResultDownloaders.Enabled(models.StorageSourceIPFS) &&
 		cfg.ResultDownloaders.IPFS.Installed()
 	inputSourceConfigured := cfg.InputSources.Enabled(models.StorageSourceIPFS) &&

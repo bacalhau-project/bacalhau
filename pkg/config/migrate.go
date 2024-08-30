@@ -5,47 +5,47 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	v1types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 )
 
-func MigrateV1(in v1types.BacalhauConfig) (cfgtypes.Bacalhau, error) {
-	out := cfgtypes.Bacalhau{
+func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
+	out := types.Bacalhau{
 		// TODO(forrest) [review]: when migrating should the address come from the server or client when both are present?
 		API: migrateAPI(in),
-		Orchestrator: cfgtypes.Orchestrator{
+		Orchestrator: types.Orchestrator{
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
 				return strings.ToLower(s) == "requester"
 			}),
 			Advertise: in.Node.Network.AdvertisedAddress,
 			Cluster:   migrateCluster(in.Node.Network.Cluster),
-			NodeManager: cfgtypes.NodeManager{
-				DisconnectTimeout: cfgtypes.Duration(in.Node.Requester.ControlPlaneSettings.NodeDisconnectedAfter),
+			NodeManager: types.NodeManager{
+				DisconnectTimeout: types.Duration(in.Node.Requester.ControlPlaneSettings.NodeDisconnectedAfter),
 				ManualApproval:    in.Node.Requester.ManualNodeApproval,
 			},
-			Scheduler: cfgtypes.Scheduler{
+			Scheduler: types.Scheduler{
 				WorkerCount:          in.Node.Requester.Worker.WorkerCount,
-				HousekeepingInterval: cfgtypes.Duration(in.Node.Requester.HousekeepingBackgroundTaskInterval),
+				HousekeepingInterval: types.Duration(in.Node.Requester.HousekeepingBackgroundTaskInterval),
 			},
-			EvaluationBroker: cfgtypes.EvaluationBroker{
-				VisibilityTimeout: cfgtypes.Duration(in.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
+			EvaluationBroker: types.EvaluationBroker{
+				VisibilityTimeout: types.Duration(in.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
 				MaxRetryCount:     in.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
 			},
 		},
-		Compute: cfgtypes.Compute{
+		Compute: types.Compute{
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
 				return strings.ToLower(s) == "compute"
 			}),
 			Orchestrators: in.Node.Network.Orchestrators,
 			Labels:        in.Node.Labels,
-			Heartbeat: cfgtypes.Heartbeat{
-				Interval:               cfgtypes.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
-				ResourceUpdateInterval: cfgtypes.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
-				InfoUpdateInterval:     cfgtypes.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
+			Heartbeat: types.Heartbeat{
+				Interval:               types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
+				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
+				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
 			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
 		},
-		WebUI: cfgtypes.WebUI{
+		WebUI: types.WebUI{
 			Enabled: in.Node.WebUI.Enabled,
 			Listen: func(enabled bool, port int) string {
 				if enabled {
@@ -58,8 +58,8 @@ func MigrateV1(in v1types.BacalhauConfig) (cfgtypes.Bacalhau, error) {
 		Publishers:        migratePublishers(in.Node),
 		Engines:           migrateEngines(in.Node),
 		ResultDownloaders: migrateDownloadConfig(in.Node),
-		JobAdmissionControl: func(config v1types.NodeConfig) cfgtypes.JobAdmissionControl {
-			out := cfgtypes.JobAdmissionControl{
+		JobAdmissionControl: func(config v1types.NodeConfig) types.JobAdmissionControl {
+			out := types.JobAdmissionControl{
 				RejectStatelessJobs: in.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
 				AcceptNetworkedJobs: in.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
 				ProbeHTTP:           in.Node.Requester.JobSelectionPolicy.ProbeHTTP,
@@ -82,22 +82,22 @@ func MigrateV1(in v1types.BacalhauConfig) (cfgtypes.Bacalhau, error) {
 
 			return out
 		}(in.Node),
-		Logging: cfgtypes.Logging{
+		Logging: types.Logging{
 			Mode:                 string(in.Node.LoggingMode),
-			LogDebugInfoInterval: cfgtypes.Duration(in.Node.Compute.Logging.LogRunningExecutionsInterval),
+			LogDebugInfoInterval: types.Duration(in.Node.Compute.Logging.LogRunningExecutionsInterval),
 		},
-		UpdateConfig: cfgtypes.UpdateConfig{
-			Interval: cfgtypes.Duration(in.Update.CheckFrequency),
+		UpdateConfig: types.UpdateConfig{
+			Interval: types.Duration(in.Update.CheckFrequency),
 		},
-		FeatureFlags: cfgtypes.FeatureFlags{
+		FeatureFlags: types.FeatureFlags{
 			ExecTranslation: in.Node.Requester.TranslationEnabled,
 		},
 	}
 	return out, nil
 }
 
-func migrateCluster(in v1types.NetworkClusterConfig) cfgtypes.Cluster {
-	var out cfgtypes.Cluster
+func migrateCluster(in v1types.NetworkClusterConfig) types.Cluster {
+	var out types.Cluster
 	if in.Port != 0 {
 		out.Port = in.Port
 	}
@@ -111,7 +111,7 @@ func migrateCluster(in v1types.NetworkClusterConfig) cfgtypes.Cluster {
 }
 
 // TODO(review): what api should we migrate, the server or the client?
-func migrateAPI(in v1types.BacalhauConfig) cfgtypes.API {
+func migrateAPI(in v1types.BacalhauConfig) types.API {
 	var (
 		host string
 		port int
@@ -134,15 +134,15 @@ func migrateAPI(in v1types.BacalhauConfig) cfgtypes.API {
 		port = in.Node.ServerAPI.Port
 	}
 
-	return cfgtypes.API{
+	return types.API{
 		Host: host,
 		Port: port,
-		Auth: cfgtypes.AuthConfig{
+		Auth: types.AuthConfig{
 			TokensPath: in.Auth.TokensPath,
-			Methods: func(cfg map[string]v1types.AuthenticatorConfig) map[string]cfgtypes.AuthenticatorConfig {
-				out := make(map[string]cfgtypes.AuthenticatorConfig)
+			Methods: func(cfg map[string]v1types.AuthenticatorConfig) map[string]types.AuthenticatorConfig {
+				out := make(map[string]types.AuthenticatorConfig)
 				for k, v := range cfg {
-					out[k] = cfgtypes.AuthenticatorConfig{
+					out[k] = types.AuthenticatorConfig{
 						Type:       string(v.Type),
 						PolicyPath: v.PolicyPath,
 					}
@@ -154,32 +154,32 @@ func migrateAPI(in v1types.BacalhauConfig) cfgtypes.API {
 	}
 }
 
-func migrateDownloadConfig(in v1types.NodeConfig) cfgtypes.ResultDownloaders {
-	var out cfgtypes.ResultDownloaders
+func migrateDownloadConfig(in v1types.NodeConfig) types.ResultDownloaders {
+	var out types.ResultDownloaders
 
-	out.Timeout = cfgtypes.Duration(in.DownloadURLRequestTimeout)
+	out.Timeout = types.Duration(in.DownloadURLRequestTimeout)
 	out.IPFS.Endpoint = in.IPFS.Connect
 
 	return out
 }
 
-func migrateEngines(in v1types.NodeConfig) cfgtypes.EngineConfig {
-	var out cfgtypes.EngineConfig
+func migrateEngines(in v1types.NodeConfig) types.EngineConfig {
+	var out types.EngineConfig
 
 	// migrate any disabled engines
 	out.Disabled = in.DisabledFeatures.Engines
 
-	out.Docker.ManifestCache = cfgtypes.DockerManifestCache{
+	out.Docker.ManifestCache = types.DockerManifestCache{
 		Size:    in.Compute.ManifestCache.Size,
-		TTL:     cfgtypes.Duration(in.Compute.ManifestCache.Duration),
-		Refresh: cfgtypes.Duration(in.Compute.ManifestCache.Frequency),
+		TTL:     types.Duration(in.Compute.ManifestCache.Duration),
+		Refresh: types.Duration(in.Compute.ManifestCache.Frequency),
 	}
 
 	return out
 }
 
-func migratePublishers(in v1types.NodeConfig) cfgtypes.PublishersConfig {
-	var out cfgtypes.PublishersConfig
+func migratePublishers(in v1types.NodeConfig) types.PublishersConfig {
+	var out types.PublishersConfig
 
 	// migrate any disabled publishers
 	out.Disabled = in.DisabledFeatures.Publishers
@@ -193,14 +193,14 @@ func migratePublishers(in v1types.NodeConfig) cfgtypes.PublishersConfig {
 	out.Local.Directory = in.Compute.LocalPublisher.Directory
 
 	// s3
-	out.S3.PreSignedURLExpiration = cfgtypes.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
+	out.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
 	out.S3.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
 
 	return out
 }
 
-func migrateInputSources(in v1types.NodeConfig) cfgtypes.InputSourcesConfig {
-	var out cfgtypes.InputSourcesConfig
+func migrateInputSources(in v1types.NodeConfig) types.InputSourcesConfig {
+	var out types.InputSourcesConfig
 
 	// migrate any disabled storages
 	out.Disabled = in.DisabledFeatures.Storages

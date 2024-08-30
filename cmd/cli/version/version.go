@@ -24,7 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -77,7 +77,7 @@ func NewCmd() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(cmd *cobra.Command, cfg cfgtypes.Bacalhau, r *repo.FsRepo, api clientv2.API, oV *VersionOptions) error {
+func runVersion(cmd *cobra.Command, cfg types.Bacalhau, r *repo.FsRepo, api clientv2.API, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
 	err := oV.Run(ctx, cmd, cfg, r, api)
@@ -111,7 +111,7 @@ var updateMessageColumn = output.TableColumn[util.Versions]{
 func (oV *VersionOptions) Run(
 	ctx context.Context,
 	cmd *cobra.Command,
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 	r *repo.FsRepo,
 	api clientv2.API,
 ) error {

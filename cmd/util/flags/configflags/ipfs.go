@@ -1,7 +1,7 @@
 package configflags
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 var IPFSFlags = []Definition{
@@ -15,22 +15,22 @@ var IPFSFlags = []Definition{
 	},
 	{
 		FlagName:             "ipfs-connect-storage",
-		ConfigPath:           cfgtypes.InputSourcesIPFSEndpointKey,
-		DefaultValue:         cfgtypes.Default.InputSources.IPFS.Endpoint,
+		ConfigPath:           types.InputSourcesIPFSEndpointKey,
+		DefaultValue:         types.Default.InputSources.IPFS.Endpoint,
 		Description:          "The ipfs host multiaddress to connect to for inputs, otherwise an in-process IPFS node will be created if not set.",
 		EnvironmentVariables: []string{"BACALHAU_NODE_IPFS_CONNECT"},
 	},
 	{
 		FlagName:             "ipfs-connect-publisher",
-		ConfigPath:           cfgtypes.PublishersIPFSEndpointKey,
-		DefaultValue:         cfgtypes.Default.Publishers.IPFS.Endpoint,
+		ConfigPath:           types.PublishersIPFSEndpointKey,
+		DefaultValue:         types.Default.Publishers.IPFS.Endpoint,
 		Description:          "The ipfs host multiaddress to connect to for publishing, otherwise an in-process IPFS node will be created if not set.",
 		EnvironmentVariables: []string{"BACALHAU_NODE_IPFS_CONNECT"},
 	},
 	{
 		FlagName:             "ipfs-connect-downloader",
-		ConfigPath:           cfgtypes.ResultDownloadersIPFSEndpointKey,
-		DefaultValue:         cfgtypes.Default.ResultDownloaders.IPFS.Endpoint,
+		ConfigPath:           types.ResultDownloadersIPFSEndpointKey,
+		DefaultValue:         types.Default.ResultDownloaders.IPFS.Endpoint,
 		Description:          "The ipfs host multiaddress to connect to for downloading, otherwise an in-process IPFS node will be created if not set.",
 		EnvironmentVariables: []string{"BACALHAU_NODE_IPFS_CONNECT"},
 	},

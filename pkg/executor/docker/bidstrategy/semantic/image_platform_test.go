@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -36,10 +36,10 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 	require.NoError(t, err)
 
 	strategy := semantic.NewImagePlatformBidStrategy(client,
-		cfgtypes.DockerManifestCache{
+		types.DockerManifestCache{
 			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-			TTL:     cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-			Refresh: cfgtypes.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
 		},
 	)
 

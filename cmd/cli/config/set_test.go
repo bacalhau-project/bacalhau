@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 // TestAdditiveSet calls sets on the config system sequentially with different values
@@ -25,7 +25,7 @@ func TestAdditiveSet(t *testing.T) {
 	err = setConfig(cfgFilePath, "api.port", "1234")
 	require.NoError(t, err)
 
-	expected := cfgtypes.Bacalhau{API: cfgtypes.API{
+	expected := types.Bacalhau{API: types.API{
 		Host: "127.0.0.1",
 		Port: 1234,
 	}}
@@ -38,12 +38,12 @@ func TestAdditiveSet(t *testing.T) {
 	err = setConfig(cfgFilePath, "compute.orchestrators", "http://127.0.0.1:1234", "http://1.1.1.1:1234")
 	require.NoError(t, err)
 
-	expected = cfgtypes.Bacalhau{
-		API: cfgtypes.API{
+	expected = types.Bacalhau{
+		API: types.API{
 			Host: "127.0.0.1",
 			Port: 1234,
 		},
-		Compute: cfgtypes.Compute{
+		Compute: types.Compute{
 			Enabled: true,
 			Orchestrators: []string{
 				"http://127.0.0.1:1234",
@@ -64,7 +64,7 @@ func TestSetFailure(t *testing.T) {
 	require.Error(t, err)
 }
 
-func unmarshalConfigFile(t testing.TB, path string) cfgtypes.Bacalhau {
+func unmarshalConfigFile(t testing.TB, path string) types.Bacalhau {
 
 	configFile, err := os.Open(path)
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func unmarshalConfigFile(t testing.TB, path string) cfgtypes.Bacalhau {
 	})
 	configData, err := io.ReadAll(configFile)
 	require.NoError(t, err)
-	var cfg cfgtypes.Bacalhau
+	var cfg types.Bacalhau
 	err = yaml.Unmarshal(configData, &cfg)
 	require.NoError(t, err)
 	return cfg

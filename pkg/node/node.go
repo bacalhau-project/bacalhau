@@ -13,7 +13,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
@@ -51,7 +51,7 @@ type NodeConfig struct {
 	ComputeConfig               ComputeConfig
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
-	AuthConfig                  cfgtypes.AuthConfig
+	AuthConfig                  types.AuthConfig
 	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool
@@ -78,7 +78,7 @@ type NodeDependencyInjector struct {
 }
 
 func NewExecutorPluginNodeDependencyInjector(
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 	userKey *baccrypto.UserKey,
 	pluginPath string,
 ) NodeDependencyInjector {
@@ -90,7 +90,7 @@ func NewExecutorPluginNodeDependencyInjector(
 	}
 }
 
-func NewStandardNodeDependencyInjector(cfg cfgtypes.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
@@ -115,7 +115,7 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	bacalhauConfig cfgtypes.Bacalhau,
+	bacalhauConfig types.Bacalhau,
 	config NodeConfig,
 	fsr *repo.FsRepo,
 ) (*Node, error) {
@@ -332,7 +332,7 @@ func NewNode(
 	return node, nil
 }
 
-func prepareConfig(config *NodeConfig, bacalhauConfig cfgtypes.Bacalhau) error {
+func prepareConfig(config *NodeConfig, bacalhauConfig types.Bacalhau) error {
 	userKeyPath, err := bacalhauConfig.UserKeyPath()
 	if err != nil {
 		return err

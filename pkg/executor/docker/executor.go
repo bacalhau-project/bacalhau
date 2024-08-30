@@ -17,7 +17,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -53,12 +53,12 @@ type Executor struct {
 	activeFlags       map[string]chan struct{}
 	complete          map[string]chan struct{}
 	client            *docker.Client
-	dockerCacheConfig cfgtypes.DockerManifestCache
+	dockerCacheConfig types.DockerManifestCache
 }
 
 func NewExecutor(
 	id string,
-	dockerCacheCfg cfgtypes.DockerManifestCache,
+	dockerCacheCfg types.DockerManifestCache,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {

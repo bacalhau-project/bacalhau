@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func newListCmd() *cobra.Command {
@@ -48,7 +48,7 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 		Mode: table.Asc,
 	}}
 	var cfgList []configListEntry
-	for key, description := range cfgtypes.ConfigDescriptions {
+	for key, description := range types.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
 			EnvVar:      config.KeyAsEnvVar(key),

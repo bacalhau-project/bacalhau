@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dm "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_s3 "github.com/bacalhau-project/bacalhau/pkg/s3"
@@ -54,7 +54,7 @@ var (
 
 func TestJobFlagParsing(t *testing.T) {
 	// disable the update checker in testing
-	t.Setenv(config.KeyAsEnvVar(cfgtypes.UpdateConfigIntervalKey), "0")
+	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
 
 	repoPath := t.TempDir()
 	viper.Set("repo", repoPath)

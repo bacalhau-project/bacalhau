@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -74,7 +74,7 @@ var V3Migration = repo.NewMigration(
 			// if the user didn't provide a path, no copy required as the location of the file in the repo
 			// is unchanged.
 			if fileCfg.User.KeyPath != "" {
-				if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, cfgtypes.UserKeyFileName)); err != nil {
+				if err := copyFile(fileCfg.User.KeyPath, filepath.Join(repoPath, types.UserKeyFileName)); err != nil {
 					return fmt.Errorf("copying user key file: %w", err)
 				}
 			}
@@ -83,7 +83,7 @@ var V3Migration = repo.NewMigration(
 			// if the user didn't provide a path, no copy required as the location of the file in the repo
 			// is unchanged.
 			if fileCfg.Auth.TokensPath != "" {
-				if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, cfgtypes.AuthTokensFileName)); err != nil {
+				if err := copyFile(fileCfg.Auth.TokensPath, filepath.Join(repoPath, types.AuthTokensFileName)); err != nil {
 					return fmt.Errorf("copying auth tokens file: %w", err)
 				}
 			}
@@ -154,7 +154,7 @@ func migrateComputeStore(repoPath string, config legacy_types.JobStoreConfig) er
 		return err
 	}
 
-	newComputeDir := filepath.Join(repoPath, cfgtypes.ComputeDirName)
+	newComputeDir := filepath.Join(repoPath, types.ComputeDirName)
 	if err := os.Rename(oldComputeDir, newComputeDir); err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func migrateOrchestratorStore(repoPath string, config legacy_types.JobStoreConfi
 		return err
 	}
 
-	newOrchestratorDir := filepath.Join(repoPath, cfgtypes.OrchestratorDirName)
+	newOrchestratorDir := filepath.Join(repoPath, types.OrchestratorDirName)
 	if err := os.Rename(oldOrchestratorDir, newOrchestratorDir); err != nil {
 		return err
 	}

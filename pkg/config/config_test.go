@@ -11,18 +11,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 func TestConfigWithDefaults(t *testing.T) {
-	expected := cfgtypes.Default
+	expected := types.Default
 
 	cfg, err := config.New(
 		config.WithDefault(expected),
 	)
 	require.NoError(t, err)
 
-	var actual cfgtypes.Bacalhau
+	var actual types.Bacalhau
 	err = cfg.Unmarshal(&actual)
 	require.NoError(t, err)
 
@@ -35,13 +35,13 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	overrideClientAddress := "1.1.1.1"
 	overrideClientPort := 1234
 
-	defaultConfig := cfgtypes.Bacalhau{
+	defaultConfig := types.Bacalhau{
 		DataDir: "defaultRepo",
-		API: cfgtypes.API{
+		API: types.API{
 			Host: "0.0.0.0",
 			Port: 1234,
 		},
-		Logging: cfgtypes.Logging{
+		Logging: types.Logging{
 			Level: "info",
 		},
 	}
@@ -58,7 +58,7 @@ func TestConfigWithValueOverrides(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	var actual cfgtypes.Bacalhau
+	var actual types.Bacalhau
 	err = cfg.Unmarshal(&actual)
 	require.NoError(t, err)
 

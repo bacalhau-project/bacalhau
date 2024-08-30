@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -23,7 +23,7 @@ var _ bidstrategy.SemanticBidStrategy = (*ImagePlatformBidStrategy)(nil)
 var ManifestCache cache.Cache[docker.ImageManifest]
 var mu sync.Mutex
 
-func NewImagePlatformBidStrategy(client *docker.Client, cfg cfgtypes.DockerManifestCache) *ImagePlatformBidStrategy {
+func NewImagePlatformBidStrategy(client *docker.Client, cfg types.DockerManifestCache) *ImagePlatformBidStrategy {
 	mu.Lock()
 	// We will create the local reference to a manifest cache on demand,
 	// ensuring that we lock access to the cache here to avoid race

@@ -9,13 +9,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func GetAPIClientV2(cmd *cobra.Command, cfg cfgtypes.Bacalhau) (clientv2.API, error) {
+func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
 	tlsCfg := cfg.API.TLS
 	apiHost := cfg.API.Host
 	apiPort := cfg.API.Port

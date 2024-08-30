@@ -7,7 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -28,7 +28,7 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
-		LocalPublisher: cfgtypes.LocalPublisher{
+		LocalPublisher: types.LocalPublisher{
 			Address:   "127.0.0.1",
 			Port:      6001,
 			Directory: path.Join(storagePath, "bacalhau-local-publisher"),
@@ -43,18 +43,18 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	JobDefaults: cfgtypes.JobDefaults{
-		Batch: cfgtypes.BatchJobDefaultsConfig{
-			Task: cfgtypes.BatchTaskDefaultConfig{
-				Timeouts: cfgtypes.TaskTimeoutConfig{
-					TotalTimeout: cfgtypes.Duration(models.NoTimeout),
+	JobDefaults: types.JobDefaults{
+		Batch: types.BatchJobDefaultsConfig{
+			Task: types.BatchTaskDefaultConfig{
+				Timeouts: types.TaskTimeoutConfig{
+					TotalTimeout: types.Duration(models.NoTimeout),
 				},
 			},
 		},
-		Ops: cfgtypes.BatchJobDefaultsConfig{
-			Task: cfgtypes.BatchTaskDefaultConfig{
-				Timeouts: cfgtypes.TaskTimeoutConfig{
-					TotalTimeout: cfgtypes.Duration(models.NoTimeout),
+		Ops: types.BatchJobDefaultsConfig{
+			Task: types.BatchTaskDefaultConfig{
+				Timeouts: types.TaskTimeoutConfig{
+					TotalTimeout: types.Duration(models.NoTimeout),
 				},
 			},
 		},
@@ -97,18 +97,18 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
-	JobDefaults: cfgtypes.JobDefaults{
-		Batch: cfgtypes.BatchJobDefaultsConfig{
-			Task: cfgtypes.BatchTaskDefaultConfig{
-				Timeouts: cfgtypes.TaskTimeoutConfig{
-					TotalTimeout: cfgtypes.Duration(30 * time.Second),
+	JobDefaults: types.JobDefaults{
+		Batch: types.BatchJobDefaultsConfig{
+			Task: types.BatchTaskDefaultConfig{
+				Timeouts: types.TaskTimeoutConfig{
+					TotalTimeout: types.Duration(30 * time.Second),
 				},
 			},
 		},
-		Ops: cfgtypes.BatchJobDefaultsConfig{
-			Task: cfgtypes.BatchTaskDefaultConfig{
-				Timeouts: cfgtypes.TaskTimeoutConfig{
-					TotalTimeout: cfgtypes.Duration(30 * time.Second),
+		Ops: types.BatchJobDefaultsConfig{
+			Task: types.BatchTaskDefaultConfig{
+				Timeouts: types.TaskTimeoutConfig{
+					TotalTimeout: types.Duration(30 * time.Second),
 				},
 			},
 		},

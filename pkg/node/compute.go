@@ -18,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -54,7 +54,7 @@ func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,

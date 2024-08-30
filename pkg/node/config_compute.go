@@ -14,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -72,7 +72,7 @@ type ComputeConfigParams struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher cfgtypes.LocalPublisher
+	LocalPublisher types.LocalPublisher
 
 	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }
@@ -113,7 +113,7 @@ type ComputeConfig struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher cfgtypes.LocalPublisher
+	LocalPublisher types.LocalPublisher
 
 	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }

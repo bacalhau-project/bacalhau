@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package cfgtypes
+package types
 
 import (
 	"testing"

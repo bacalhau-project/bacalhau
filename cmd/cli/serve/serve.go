@@ -18,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -104,7 +104,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:funlen,gocyclo
-func serve(cmd *cobra.Command, cfg cfgtypes.Bacalhau, fsRepo *repo.FsRepo) error {
+func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
@@ -255,7 +255,7 @@ func serve(cmd *cobra.Command, cfg cfgtypes.Bacalhau, fsRepo *repo.FsRepo) error
 	return nil
 }
 
-func GetTLSCertificate(ctx context.Context, cfg cfgtypes.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
+func GetTLSCertificate(ctx context.Context, cfg types.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
 	cert := cfg.API.TLS.CertFile
 	key := cfg.API.TLS.KeyFile
 	if cert != "" && key != "" {
@@ -328,20 +328,20 @@ func parseServerAPIHost(host string) (string, error) {
 }
 
 func buildEnvVariables(
-	cfg cfgtypes.Bacalhau,
+	cfg types.Bacalhau,
 ) string {
 	// build shell variables to connect to this node
 	var envvars strings.Builder
-	envvars.WriteString(fmt.Sprintf("export %s=%s\n", config.KeyAsEnvVar(cfgtypes.APIHostKey), getAPIURL(cfg.API)))
-	envvars.WriteString(fmt.Sprintf("export %s=%d\n", config.KeyAsEnvVar(cfgtypes.APIPortKey), cfg.API.Port))
+	envvars.WriteString(fmt.Sprintf("export %s=%s\n", config.KeyAsEnvVar(types.APIHostKey), getAPIURL(cfg.API)))
+	envvars.WriteString(fmt.Sprintf("export %s=%d\n", config.KeyAsEnvVar(types.APIPortKey), cfg.API.Port))
 	if cfg.Orchestrator.Enabled {
 		envvars.WriteString(fmt.Sprintf("export %s=%s\n",
-			config.KeyAsEnvVar(cfgtypes.ComputeOrchestratorsKey), getPublicNATSOrchestratorURL(cfg.Orchestrator)))
+			config.KeyAsEnvVar(types.ComputeOrchestratorsKey), getPublicNATSOrchestratorURL(cfg.Orchestrator)))
 	}
 	return envvars.String()
 }
 
-func getAPIURL(cfg cfgtypes.API) string {
+func getAPIURL(cfg types.API) string {
 	if cfg.Host == "0.0.0.0" {
 		return "127.0.0.1"
 	} else {
@@ -349,7 +349,7 @@ func getAPIURL(cfg cfgtypes.API) string {
 	}
 }
 
-func getPublicNATSOrchestratorURL(cfg cfgtypes.Orchestrator) *url.URL {
+func getPublicNATSOrchestratorURL(cfg types.Orchestrator) *url.URL {
 	orchestrator := &url.URL{
 		Scheme: "nats",
 		Host:   cfg.Advertise,

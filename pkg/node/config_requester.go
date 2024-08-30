@@ -8,7 +8,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
@@ -17,7 +17,7 @@ import (
 )
 
 type RequesterConfigParams struct {
-	JobDefaults cfgtypes.JobDefaults
+	JobDefaults types.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	HousekeepingTimeoutBuffer          time.Duration

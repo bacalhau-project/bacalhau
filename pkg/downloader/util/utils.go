@@ -3,7 +3,7 @@ package util
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/ipfs"
@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-func NewStandardDownloaders(ctx context.Context, cfg cfgtypes.ResultDownloaders) (downloader.DownloaderProvider, error) {
+func NewStandardDownloaders(ctx context.Context, cfg types.ResultDownloaders) (downloader.DownloaderProvider, error) {
 	providers := make(map[string]downloader.Downloader)
 
 	if cfg.Enabled(models.StorageSourceS3PreSigned) {

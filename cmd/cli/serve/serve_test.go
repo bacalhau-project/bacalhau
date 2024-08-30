@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"

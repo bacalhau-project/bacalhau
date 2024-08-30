@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -55,10 +55,10 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 		suite.Require().NoError(err)
 
 		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-			JobDefaults: cfgtypes.JobDefaults{
-				Batch: cfgtypes.BatchJobDefaultsConfig{
-					Task: cfgtypes.BatchTaskDefaultConfig{
-						Timeouts: cfgtypes.TaskTimeoutConfig{TotalTimeout: cfgtypes.Duration(testCase.requesterDefaultJobExecutionTimeout)},
+			JobDefaults: types.JobDefaults{
+				Batch: types.BatchJobDefaultsConfig{
+					Task: types.BatchTaskDefaultConfig{
+						Timeouts: types.TaskTimeoutConfig{TotalTimeout: types.Duration(testCase.requesterDefaultJobExecutionTimeout)},
 					},
 				},
 			},

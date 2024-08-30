@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -85,7 +85,7 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(cfg cfgtypes.Bacalhau) error {
+func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {

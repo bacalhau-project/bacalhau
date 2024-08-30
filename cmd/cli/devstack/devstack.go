@@ -10,7 +10,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -164,7 +164,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, cfg cfgtypes.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)

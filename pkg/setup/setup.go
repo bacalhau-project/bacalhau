@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
@@ -24,7 +24,7 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 }
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
-func SetupBacalhauRepo(cfg cfgtypes.Bacalhau) (*repo.FsRepo, error) {
+func SetupBacalhauRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 	if err := logger.ConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
 		return nil, fmt.Errorf("failed to configure logging: %w", err)
 	}
@@ -57,14 +57,14 @@ func SetupBacalhauRepo(cfg cfgtypes.Bacalhau) (*repo.FsRepo, error) {
 	return fsRepo, nil
 }
 
-func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, cfgtypes.Bacalhau) {
+func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	// create a temporary dir to serve as bacalhau repo whose name includes the current time to avoid collisions with
 	/// other tests
 	tmpDir := t.TempDir()
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
 	// disable update checks in testing.
-	t.Setenv(config.KeyAsEnvVar(cfgtypes.UpdateConfigIntervalKey), "0")
+	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
 	cfgValues := map[string]any{
 		"DataDir": path,
 	}
@@ -75,9 +75,9 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, cfgtypes.Bacalhau)
 	// from this flag to the dedicated flags like "BACALHAU_PUBLISHER_IPFS_ENDPOINT",
 	// "BACALHAU_INPUTSOURCES_IPFS_ENDPOINT", etc which have a direct mapping to the config key based on their name.
 	if connect := os.Getenv("BACALHAU_NODE_IPFS_CONNECT"); connect != "" {
-		cfgValues[cfgtypes.PublishersIPFSEndpointKey] = connect
-		cfgValues[cfgtypes.ResultDownloadersIPFSEndpointKey] = connect
-		cfgValues[cfgtypes.InputSourcesIPFSEndpointKey] = connect
+		cfgValues[types.PublishersIPFSEndpointKey] = connect
+		cfgValues[types.ResultDownloadersIPFSEndpointKey] = connect
+		cfgValues[types.InputSourcesIPFSEndpointKey] = connect
 	}
 
 	// init a config with this viper instance using the local configuration as default
@@ -88,7 +88,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, cfgtypes.Bacalhau)
 
 	t.Logf("creating repo for testing at: %s", path)
 
-	var cfg cfgtypes.Bacalhau
+	var cfg types.Bacalhau
 	if err := c.Unmarshal(&cfg); err != nil {
 		t.Fatal(err)
 	}

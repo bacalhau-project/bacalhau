@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 // AuthConfig is config that controls user authentication and authorization.
 type AuthConfig struct {

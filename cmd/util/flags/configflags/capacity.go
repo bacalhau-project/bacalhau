@@ -1,32 +1,32 @@
 package configflags
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 var CapacityFlags = []Definition{
 	{
 		FlagName:     "limit-total-cpu",
-		ConfigPath:   cfgtypes.ComputeAllocatedCapacityCPUKey,
-		DefaultValue: cfgtypes.Default.Compute.AllocatedCapacity.CPU,
+		ConfigPath:   types.ComputeAllocatedCapacityCPUKey,
+		DefaultValue: types.Default.Compute.AllocatedCapacity.CPU,
 		Description:  `Total CPU core limit to run all jobs (e.g. 500m, 2, 8, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-memory",
-		ConfigPath:   cfgtypes.ComputeAllocatedCapacityMemoryKey,
-		DefaultValue: cfgtypes.Default.Compute.AllocatedCapacity.Memory,
+		ConfigPath:   types.ComputeAllocatedCapacityMemoryKey,
+		DefaultValue: types.Default.Compute.AllocatedCapacity.Memory,
 		Description:  `Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-disk",
-		ConfigPath:   cfgtypes.ComputeAllocatedCapacityDiskKey,
-		DefaultValue: cfgtypes.Default.Compute.AllocatedCapacity.Disk,
+		ConfigPath:   types.ComputeAllocatedCapacityDiskKey,
+		DefaultValue: types.Default.Compute.AllocatedCapacity.Disk,
 		Description:  `Total Disk limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 	},
 	{
 		FlagName:     "limit-total-gpu",
-		ConfigPath:   cfgtypes.ComputeAllocatedCapacityGPUKey,
-		DefaultValue: cfgtypes.Default.Compute.AllocatedCapacity.GPU,
+		ConfigPath:   types.ComputeAllocatedCapacityGPUKey,
+		DefaultValue: types.Default.Compute.AllocatedCapacity.GPU,
 		Description:  `Total GPU limit to run all jobs (e.g. 1, 2, 80%, 10%).`,
 	},
 

@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 type Orchestrator struct {
 	Enabled          bool             `yaml:"Enabled,omitempty"`

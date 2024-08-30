@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc"
 )
@@ -31,10 +31,10 @@ func main() { // Create an hclog.Logger
 		Level:  hclog.Trace,
 	})
 
-	cfg := cfgtypes.DockerManifestCache{
+	cfg := types.DockerManifestCache{
 		Size:    1000,
-		TTL:     cfgtypes.Duration(1 * time.Hour),
-		Refresh: cfgtypes.Duration(1 * time.Hour),
+		TTL:     types.Duration(1 * time.Hour),
+		Refresh: types.Duration(1 * time.Hour),
 	}
 	dockerExecutor, err := docker.NewExecutor(
 		"bacalhau-pluggable-executor-docker",

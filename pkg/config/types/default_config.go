@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 import (
 	"os"

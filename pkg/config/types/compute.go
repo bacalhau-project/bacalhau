@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 type Compute struct {
 	Enabled               bool              `yaml:"Enabled,omitempty"`

@@ -1,4 +1,4 @@
-package cfgtypes
+package types
 
 type JobDefaults struct {
 	Batch   BatchJobDefaultsConfig       `yaml:"Batch,omitempty"`

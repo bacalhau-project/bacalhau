@@ -12,7 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
@@ -81,7 +81,7 @@ func NewGetCmd() *cobra.Command {
 	return getCmd
 }
 
-func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg cfgtypes.Bacalhau, OG *GetOptions) error {
+func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalhau, OG *GetOptions) error {
 	ctx := cmd.Context()
 
 	jobID := cmdArgs[0]

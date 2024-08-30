@@ -13,21 +13,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
-func SetupRepoConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
+func SetupRepoConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	cfg, err := SetupConfig(cmd)
 	if err != nil {
-		return cfgtypes.Bacalhau{}, err
+		return types.Bacalhau{}, err
 	}
 	// create or open the bacalhau repo and load the config
 	r, err := SetupRepo(cfg)
 	if err != nil {
-		return cfgtypes.Bacalhau{}, fmt.Errorf("failed to reconcile repo: %w", err)
+		return types.Bacalhau{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
 
 	// TODO(forrest): we need to start this hook somewhere else as not all CLI methods call this parent method.
@@ -36,7 +36,7 @@ func SetupRepoConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
 	return cfg, nil
 }
 
-func SetupRepo(cfg cfgtypes.Bacalhau) (*repo.FsRepo, error) {
+func SetupRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 	// create or open the bacalhau repo and load the config
 	r, err := setup.SetupBacalhauRepo(cfg)
 	if err != nil {
@@ -45,7 +45,7 @@ func SetupRepo(cfg cfgtypes.Bacalhau) (*repo.FsRepo, error) {
 	return r, nil
 }
 
-func SetupConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
+func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	var opts []config.Option
 	v := viper.GetViper()
 	// check if the user specified config files via the --config flag
@@ -59,7 +59,7 @@ func SetupConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
 			if _, err := os.Stat(path); err != nil {
 				// if the file exists and could not be read, return an error
 				if !os.IsNotExist(err) {
-					return cfgtypes.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
+					return types.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
 				}
 			} else {
 				// the file exists, use it.
@@ -74,7 +74,7 @@ func SetupConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
 
 	configFlags, err := getConfigFlags(v, cmd)
 	if err != nil {
-		return cfgtypes.Bacalhau{}, err
+		return types.Bacalhau{}, err
 	}
 	if len(configFlags) > 0 {
 		opts = append(opts, config.WithFlags(configFlags))
@@ -92,12 +92,12 @@ func SetupConfig(cmd *cobra.Command) (cfgtypes.Bacalhau, error) {
 
 	cfg, err := config.New(opts...)
 	if err != nil {
-		return cfgtypes.Bacalhau{}, err
+		return types.Bacalhau{}, err
 	}
 
-	var out cfgtypes.Bacalhau
+	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
-		return cfgtypes.Bacalhau{}, err
+		return types.Bacalhau{}, err
 	}
 	return out, nil
 }

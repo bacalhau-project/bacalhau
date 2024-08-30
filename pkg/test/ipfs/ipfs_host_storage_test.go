@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -25,7 +25,7 @@ import (
 type IPFSHostStorageSuite struct {
 	suite.Suite
 	client *ipfs.Client
-	Config cfgtypes.Bacalhau
+	Config types.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 // createTempConfig creates a temporary config file with the given content
@@ -41,7 +41,7 @@ func setupTestCommand() *cobra.Command {
 }
 
 // loadConfig loads the configuration from viper
-func loadConfig() (*cfgtypes.Bacalhau, error) {
+func loadConfig() (*types.Bacalhau, error) {
 	configFiles := viper.GetStringSlice(RootCommandConfigFiles)
 	for _, f := range configFiles {
 		viper.SetConfigFile(f)
@@ -57,7 +57,7 @@ func loadConfig() (*cfgtypes.Bacalhau, error) {
 	if err := viper.MergeConfigMap(base); err != nil {
 		return nil, err
 	}
-	var config cfgtypes.Bacalhau
+	var config types.Bacalhau
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
 	}

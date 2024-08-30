@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/cfgtypes"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
@@ -121,14 +121,14 @@ Auth:
 	suite.FileExists(newConfigPath)
 	c, err := config.New(config.WithPaths(newConfigPath))
 	suite.Require().NoError(err)
-	var bacCfg cfgtypes.Bacalhau
+	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
 	suite.Require().Equal("1.2.3.4", bacCfg.API.Host)
 	suite.Require().Equal(9999, bacCfg.API.Port)
 
 	// verify database files are present
-	suite.FileExists(filepath.Join(suite.TempDir, cfgtypes.OrchestratorDirName, cfgtypes.JobStoreFileName))
-	suite.FileExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName, cfgtypes.ExecutionStoreFileName))
+	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
+	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
 	// verify old file were removed
 	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
@@ -144,8 +144,8 @@ Auth:
 
 	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
-	suite.DirExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName))
-	suite.DirExists(filepath.Join(suite.TempDir, cfgtypes.ComputeDirName, cfgtypes.ExecutionDirName))
+	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
+	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.
 	actualInstallationID, err := suite.repo.ReadInstallationID()
