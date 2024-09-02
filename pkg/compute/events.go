@@ -1,25 +1,34 @@
 package compute
 
 import (
-	"time"
-
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 const (
+	EventTopicExecution            models.EventTopic = "Execution"
 	EventTopicExecutionBidding     models.EventTopic = "Requesting Node"
 	EventTopicExecutionDownloading models.EventTopic = "Downloading Inputs"
 	EventTopicExecutionPreparing   models.EventTopic = "Preparing Environment"
 	EventTopicExecutionRunning     models.EventTopic = "Running Execution"
 	EventTopicExecutionPublishing  models.EventTopic = "Publishing Results"
+	EventTopicRestart              models.EventTopic = "Restart"
 )
 
-func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
-	return models.Event{
-		Message:   response.Reason,
-		Topic:     EventTopicExecutionBidding,
-		Timestamp: time.Now(),
-		Details:   map[string]string{},
-	}
+const (
+	execCompletedMessage        = "Completed successfully"
+	execRunningMessage          = "Running"
+	execFailingDueToNodeRestart = "Failing due to node restart"
+)
+
+func ExecCompletedEvent() *models.Event {
+	return models.NewEvent(EventTopicExecution).WithMessage(execCompletedMessage)
+}
+
+func ExecRunningEvent() *models.Event {
+	return models.NewEvent(EventTopicExecution).WithMessage(execRunningMessage)
+}
+
+// ExecFailedDueToNodeRestartEvent returns an event indicating that the execution failed due to a node restart
+func ExecFailedDueToNodeRestartEvent() *models.Event {
+	return models.NewEvent(EventTopicExecution).WithMessage(execFailingDueToNodeRestart).WithFailsExecution(true)
 }

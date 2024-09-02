@@ -17,7 +17,7 @@ func NewClient(nodeID string, publisher ncl.Publisher) *HeartbeatClient {
 
 func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) error {
 	message := ncl.NewMessage(Heartbeat{NodeID: h.nodeID, Sequence: sequence})
-	return h.publisher.Publish(ctx, message)
+	return h.publisher.Publish(ctx, ncl.NewPublishRequest(message))
 }
 
 var _ Client = (*HeartbeatClient)(nil)

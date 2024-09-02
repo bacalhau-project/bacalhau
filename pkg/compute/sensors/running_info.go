@@ -4,9 +4,26 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+// Summary of an execution
+type executionSummary struct {
+	ExecutionID        string
+	JobID              string
+	State              string
+	AllocatedResources models.AllocatedResources
+}
+
+// newExecutionSummary creates a new executionSummary from an execution
+func newExecutionSummary(execution *models.Execution) executionSummary {
+	return executionSummary{
+		ExecutionID:        execution.ID,
+		JobID:              execution.JobID,
+		State:              execution.ComputeState.StateType.String(),
+		AllocatedResources: *execution.AllocatedResources,
+	}
+}
 
 type RunningExecutionsInfoProviderParams struct {
 	Name          string
@@ -29,9 +46,9 @@ func NewRunningExecutionsInfoProvider(params RunningExecutionsInfoProviderParams
 
 func (r RunningExecutionsInfoProvider) GetDebugInfo(ctx context.Context) (models.DebugInfo, error) {
 	executions := r.backendBuffer.RunningExecutions()
-	summaries := make([]store.ExecutionSummary, 0, len(executions))
+	summaries := make([]executionSummary, 0, len(executions))
 	for _, execution := range executions {
-		summaries = append(summaries, execution.ToSummary())
+		summaries = append(summaries, newExecutionSummary(execution))
 	}
 
 	return models.DebugInfo{

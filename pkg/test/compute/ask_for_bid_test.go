@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -33,9 +34,9 @@ func (s *AskForBidSuite) TestAskForBid() {
 }
 
 func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Resources) {
-	localState, err := s.node.ExecutionStore.GetExecution(context.Background(), response.ExecutionID)
+	execution, err := s.node.ExecutionStore.GetExecution(context.Background(), response.ExecutionID)
 	s.NoError(err)
-	s.Equal(expected, *localState.Execution.TotalAllocatedResources())
+	s.Equal(expected, *execution.TotalAllocatedResources())
 }
 
 func (s *AskForBidSuite) TestPopulateResourceUsage() {
@@ -92,12 +93,12 @@ func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.
 		s.Equal(!testCase.rejected, result.Accepted)
 
 		// check execution state
-		localExecutionState, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
+		execution, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
 		if testCase.rejected {
 			s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
 		} else {
 			s.NoError(err)
-			s.Equal(store.ExecutionStateCreated, localExecutionState.State)
+			s.Equal(models.ExecutionStateNew, execution.ComputeState.StateType)
 		}
 	})
 

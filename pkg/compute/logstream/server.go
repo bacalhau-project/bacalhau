@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 type ServerParams struct {
@@ -16,15 +17,15 @@ type ServerParams struct {
 	Buffer         int
 }
 
-type Server struct {
+type server struct {
 	executionStore store.ExecutionStore
 	executors      executor.ExecutorProvider
 	buffer         int
 }
 
 // NewServer creates a new log stream server
-func NewServer(params ServerParams) *Server {
-	return &Server{
+func NewServer(params ServerParams) Server {
+	return &server{
 		executionStore: params.ExecutionStore,
 		executors:      params.Executors,
 		buffer:         params.Buffer,
@@ -32,17 +33,17 @@ func NewServer(params ServerParams) *Server {
 }
 
 // GetLogStream returns a stream of logs for a given execution
-func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (
+func (s *server) GetLogStream(ctx context.Context, request requests.LogStreamRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return nil, err
 	}
 
-	if localExecutionState.State.IsTerminal() {
+	if execution.IsTerminalComputeState() {
 		return nil, fmt.Errorf("can't stream logs for completed execution: %s", request.ExecutionID)
 	}
-	engineType := localExecutionState.Execution.Job.Task().Engine.Type
+	engineType := execution.Job.Task().Engine.Type
 	exec, err := s.executors.Get(ctx, engineType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find executor for engine: %s. %w", engineType, err)
@@ -59,3 +60,6 @@ func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamReq
 
 	return streamer.Stream(ctx), nil
 }
+
+// compile time check
+var _ Server = &server{}

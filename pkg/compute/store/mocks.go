@@ -7,119 +7,12 @@ package store
 import (
 	context "context"
 	reflect "reflect"
-	time "time"
 
+	boltdblib "github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
-
-// MockTxContext is a mock of TxContext interface.
-type MockTxContext struct {
-	ctrl     *gomock.Controller
-	recorder *MockTxContextMockRecorder
-}
-
-// MockTxContextMockRecorder is the mock recorder for MockTxContext.
-type MockTxContextMockRecorder struct {
-	mock *MockTxContext
-}
-
-// NewMockTxContext creates a new mock instance.
-func NewMockTxContext(ctrl *gomock.Controller) *MockTxContext {
-	mock := &MockTxContext{ctrl: ctrl}
-	mock.recorder = &MockTxContextMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockTxContext) EXPECT() *MockTxContextMockRecorder {
-	return m.recorder
-}
-
-// Commit mocks base method.
-func (m *MockTxContext) Commit() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Commit indicates an expected call of Commit.
-func (mr *MockTxContextMockRecorder) Commit() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockTxContext)(nil).Commit))
-}
-
-// Deadline mocks base method.
-func (m *MockTxContext) Deadline() (time.Time, bool) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deadline")
-	ret0, _ := ret[0].(time.Time)
-	ret1, _ := ret[1].(bool)
-	return ret0, ret1
-}
-
-// Deadline indicates an expected call of Deadline.
-func (mr *MockTxContextMockRecorder) Deadline() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deadline", reflect.TypeOf((*MockTxContext)(nil).Deadline))
-}
-
-// Done mocks base method.
-func (m *MockTxContext) Done() <-chan struct{} {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Done")
-	ret0, _ := ret[0].(<-chan struct{})
-	return ret0
-}
-
-// Done indicates an expected call of Done.
-func (mr *MockTxContextMockRecorder) Done() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Done", reflect.TypeOf((*MockTxContext)(nil).Done))
-}
-
-// Err mocks base method.
-func (m *MockTxContext) Err() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Err")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Err indicates an expected call of Err.
-func (mr *MockTxContextMockRecorder) Err() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Err", reflect.TypeOf((*MockTxContext)(nil).Err))
-}
-
-// Rollback mocks base method.
-func (m *MockTxContext) Rollback() error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rollback")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Rollback indicates an expected call of Rollback.
-func (mr *MockTxContextMockRecorder) Rollback() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockTxContext)(nil).Rollback))
-}
-
-// Value mocks base method.
-func (m *MockTxContext) Value(key any) any {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Value", key)
-	ret0, _ := ret[0].(any)
-	return ret0
-}
-
-// Value indicates an expected call of Value.
-func (mr *MockTxContextMockRecorder) Value(key interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Value", reflect.TypeOf((*MockTxContext)(nil).Value), key)
-}
 
 // MockExecutionStore is a mock of ExecutionStore interface.
 type MockExecutionStore struct {
@@ -144,11 +37,30 @@ func (m *MockExecutionStore) EXPECT() *MockExecutionStoreMockRecorder {
 	return m.recorder
 }
 
+// AddExecutionEvent mocks base method.
+func (m *MockExecutionStore) AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, executionID}
+	for _, a := range events {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "AddExecutionEvent", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddExecutionEvent indicates an expected call of AddExecutionEvent.
+func (mr *MockExecutionStoreMockRecorder) AddExecutionEvent(ctx, executionID interface{}, events ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, executionID}, events...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddExecutionEvent", reflect.TypeOf((*MockExecutionStore)(nil).AddExecutionEvent), varargs...)
+}
+
 // BeginTx mocks base method.
-func (m *MockExecutionStore) BeginTx(ctx context.Context) (TxContext, error) {
+func (m *MockExecutionStore) BeginTx(ctx context.Context) (boltdblib.TxContext, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BeginTx", ctx)
-	ret0, _ := ret[0].(TxContext)
+	ret0, _ := ret[0].(boltdblib.TxContext)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -174,17 +86,22 @@ func (mr *MockExecutionStoreMockRecorder) Close(ctx interface{}) *gomock.Call {
 }
 
 // CreateExecution mocks base method.
-func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution LocalExecutionState) error {
+func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution models.Execution, events ...models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateExecution", ctx, execution)
+	varargs := []interface{}{ctx, execution}
+	for _, a := range events {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateExecution", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateExecution indicates an expected call of CreateExecution.
-func (mr *MockExecutionStoreMockRecorder) CreateExecution(ctx, execution interface{}) *gomock.Call {
+func (mr *MockExecutionStoreMockRecorder) CreateExecution(ctx, execution interface{}, events ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockExecutionStore)(nil).CreateExecution), ctx, execution)
+	varargs := append([]interface{}{ctx, execution}, events...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateExecution", reflect.TypeOf((*MockExecutionStore)(nil).CreateExecution), varargs...)
 }
 
 // DeleteExecution mocks base method.
@@ -216,10 +133,10 @@ func (mr *MockExecutionStoreMockRecorder) GetEventStore() *gomock.Call {
 }
 
 // GetExecution mocks base method.
-func (m *MockExecutionStore) GetExecution(ctx context.Context, id string) (LocalExecutionState, error) {
+func (m *MockExecutionStore) GetExecution(ctx context.Context, id string) (*models.Execution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecution", ctx, id)
-	ret0, _ := ret[0].(LocalExecutionState)
+	ret0, _ := ret[0].(*models.Execution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -231,7 +148,7 @@ func (mr *MockExecutionStoreMockRecorder) GetExecution(ctx, id interface{}) *gom
 }
 
 // GetExecutionCount mocks base method.
-func (m *MockExecutionStore) GetExecutionCount(ctx context.Context, state LocalExecutionStateType) (uint64, error) {
+func (m *MockExecutionStore) GetExecutionCount(ctx context.Context, state models.ExecutionStateType) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecutionCount", ctx, state)
 	ret0, _ := ret[0].(uint64)
@@ -245,11 +162,26 @@ func (mr *MockExecutionStoreMockRecorder) GetExecutionCount(ctx, state interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExecutionCount", reflect.TypeOf((*MockExecutionStore)(nil).GetExecutionCount), ctx, state)
 }
 
+// GetExecutionEvents mocks base method.
+func (m *MockExecutionStore) GetExecutionEvents(ctx context.Context, executionID string) ([]*models.Event, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetExecutionEvents", ctx, executionID)
+	ret0, _ := ret[0].([]*models.Event)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetExecutionEvents indicates an expected call of GetExecutionEvents.
+func (mr *MockExecutionStoreMockRecorder) GetExecutionEvents(ctx, executionID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetExecutionEvents", reflect.TypeOf((*MockExecutionStore)(nil).GetExecutionEvents), ctx, executionID)
+}
+
 // GetExecutions mocks base method.
-func (m *MockExecutionStore) GetExecutions(ctx context.Context, jobID string) ([]LocalExecutionState, error) {
+func (m *MockExecutionStore) GetExecutions(ctx context.Context, jobID string) ([]*models.Execution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetExecutions", ctx, jobID)
-	ret0, _ := ret[0].([]LocalExecutionState)
+	ret0, _ := ret[0].([]*models.Execution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -261,10 +193,10 @@ func (mr *MockExecutionStoreMockRecorder) GetExecutions(ctx, jobID interface{}) 
 }
 
 // GetLiveExecutions mocks base method.
-func (m *MockExecutionStore) GetLiveExecutions(ctx context.Context) ([]LocalExecutionState, error) {
+func (m *MockExecutionStore) GetLiveExecutions(ctx context.Context) ([]*models.Execution, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLiveExecutions", ctx)
-	ret0, _ := ret[0].([]LocalExecutionState)
+	ret0, _ := ret[0].([]*models.Execution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -276,7 +208,7 @@ func (mr *MockExecutionStoreMockRecorder) GetLiveExecutions(ctx interface{}) *go
 }
 
 // UpdateExecutionState mocks base method.
-func (m *MockExecutionStore) UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error {
+func (m *MockExecutionStore) UpdateExecutionState(ctx context.Context, request UpdateExecutionRequest) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateExecutionState", ctx, request)
 	ret0, _ := ret[0].(error)

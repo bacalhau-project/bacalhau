@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc/proto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 const (
@@ -137,7 +138,7 @@ func (s *GRPCServer) ShouldBidBasedOnUsage(
 
 func (s *GRPCServer) GetLogStream(request *proto.OutputStreamRequest, server proto.Executor_GetOutputStreamServer) error {
 	ctx := server.Context()
-	result, err := s.Impl.GetLogStream(ctx, executor.LogStreamRequest{
+	result, err := s.Impl.GetLogStream(ctx, requests.LogStreamRequest{
 		ExecutionID: request.ExecutionID,
 		Tail:        request.History,
 		Follow:      request.Follow,

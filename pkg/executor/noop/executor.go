@@ -11,6 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -229,7 +230,7 @@ func (e *NoopExecutor) Run(
 	return &models.RunCommandResult{}, nil
 }
 
-func (e *NoopExecutor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (e *NoopExecutor) GetLogStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	return nil, fmt.Errorf("not implemented for NoopExecutor")
 }
 

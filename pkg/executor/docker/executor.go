@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -243,7 +244,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
-func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (e *Executor) GetLogStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	// It's possible we've recorded the execution as running, but have not yet added the handler to
 	// the handler map because we're still waiting for the container to start. We will try and wait
 	// for a few seconds to see if the handler is added to the map.

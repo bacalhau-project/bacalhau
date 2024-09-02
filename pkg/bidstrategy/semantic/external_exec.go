@@ -8,8 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 )
@@ -46,8 +47,7 @@ func (s *ExternalCommandStrategy) ShouldBid(
 
 	// TODO: Use context to trace exec call
 
-	data := bidstrategy.GetJobSelectionPolicyProbeData(request)
-	jsonData, err := marshaller.JSONMarshalWithMax(data)
+	jsonData, err := marshaller.JSONMarshalWithMax(request)
 
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{},

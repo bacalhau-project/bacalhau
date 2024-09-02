@@ -5,8 +5,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ChainedBidStrategy struct {
@@ -57,9 +58,7 @@ func (c *ChainedBidStrategy) ShouldBid(ctx context.Context, request BidStrategyR
 			return BidStrategyResponse{}, err
 		}
 		var status string
-		if response.ShouldWait {
-			status = "should wait"
-		} else if !response.ShouldBid {
+		if !response.ShouldBid {
 			status = "should not bid"
 		}
 		if status != "" {
@@ -86,9 +85,7 @@ func (c *ChainedBidStrategy) ShouldBidBasedOnUsage(
 			return BidStrategyResponse{}, err
 		}
 		var status string
-		if response.ShouldWait {
-			status = "should wait"
-		} else if !response.ShouldBid {
+		if !response.ShouldBid {
 			status = "should not bid"
 		}
 		if status != "" {

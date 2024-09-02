@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,6 @@ import (
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher/handlers"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -33,15 +31,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
-const (
-	computeLoggerWatcherID    = "compute-logger"
-	executionApplierWatcherID = "execution-applier"
-)
-
 type Compute struct {
 	// Visible for testing
 	ID                 string
-	LocalEndpoint      compute.Endpoint
+	LogstreamServer    logstream.Server
 	Capacity           capacity.Tracker
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecutorProvider
@@ -66,19 +59,12 @@ func NewComputeNode(
 	executors executor.ExecutorProvider,
 	publishers publisher.PublisherProvider,
 	natsConn *nats.Conn,
-	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
 	configuredLabels map[string]string,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
 	executionStore := config.ExecutionStore
 	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
-
-	_, err := watcherRegistry.Watch(ctx, computeLoggerWatcherID, handlers.NewLoggingHandler(log.Logger),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, err
-	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
@@ -92,7 +78,6 @@ func NewComputeNode(
 	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     nodeID,
-		Callback:               computeCallback,
 		Store:                  executionStore,
 		StorageDirectory:       storagePath,
 		Storages:               storages,
@@ -105,7 +90,7 @@ func NewComputeNode(
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
 		ID:                         nodeID,
 		DelegateExecutor:           baseExecutor,
-		Callback:                   computeCallback,
+		Store:                      executionStore,
 		RunningCapacityTracker:     runningCapacityTracker,
 		EnqueuedUsageTracker:       enqueuedUsageTracker,
 		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
@@ -120,19 +105,6 @@ func NewComputeNode(
 			Interval:     config.LogRunningExecutionsInterval,
 		})
 		go loggingSensor.Start(ctx)
-	}
-
-	// TODO: Add checkpointing or else events will be missed
-	_, err = watcherRegistry.Watch(ctx, executionApplierWatcherID, compute.NewExecutionStateHandler(bufferRunner),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectLocalExecutionState},
-			Operations:  []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, err
 	}
 
 	// endpoint/frontend
@@ -169,22 +141,9 @@ func NewComputeNode(
 		publishers,
 		storages,
 		executors,
-		runningCapacityTracker,
-		nodeID,
 		executionStore,
-		computeCallback,
-		bufferRunner,
-		apiServer,
 		capacityCalculator,
 	)
-	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
-		ID:              nodeID,
-		ExecutionStore:  executionStore,
-		UsageCalculator: capacityCalculator,
-		Bidder:          bidder,
-		Executor:        bufferRunner,
-		LogServer:       logserver,
-	})
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []models.DebugInfoProvider{
@@ -251,8 +210,58 @@ func NewComputeNode(
 	}
 	go managementClient.Start(ctx)
 
+	// compute -> orchestrator ncl publisher
+	nclPublisher, err := ncl.NewPublisher(natsConn,
+		ncl.WithPublisherName(nodeID),
+		ncl.WithPublisherDestinationPrefix(computeOutSubject(nodeID)),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	_, err = watcherRegistry.Watch(ctx, executionForwarderWatcherID, compute.NewForwarder(nclPublisher),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
+	// orchestrator -> compute ncl subscriber
+	nclSubscriber, err := ncl.NewSubscriber(natsConn,
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
+		ncl.WithSubscriberMessageHandlers(compute.NewMessageHandler(executionStore)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err = nclSubscriber.Subscribe(computeInSubscription(nodeID)); err != nil {
+		return nil, err
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	executionHandler := compute.NewExecutionUpsertHandler(bufferRunner, bidder)
+	_, err = watcherRegistry.Watch(ctx, executionHandlerWatcherID, executionHandler,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if err = nclSubscriber.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to close ncl subscriber")
+		}
 		if err = watcherRegistry.Stop(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to stop watcher registry")
 		}
@@ -267,7 +276,7 @@ func NewComputeNode(
 
 	return &Compute{
 		ID:                 nodeID,
-		LocalEndpoint:      baseEndpoint,
+		LogstreamServer:    logserver,
 		Capacity:           runningCapacityTracker,
 		ExecutionStore:     executionStore,
 		Executors:          executors,
@@ -290,12 +299,7 @@ func NewBidder(
 	publishers publisher.PublisherProvider,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	runningCapacityTracker capacity.Tracker,
-	nodeID string,
 	executionStore store.ExecutionStore,
-	computeCallback compute.Callback,
-	bufferRunner *compute.ExecutorBuffer,
-	apiServer *publicapi.Server,
 	calculator capacity.UsageCalculator,
 ) compute.Bidder {
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
@@ -344,15 +348,9 @@ func NewBidder(
 	}
 
 	return compute.NewBidder(compute.BidderParams{
-		NodeID:           nodeID,
 		SemanticStrategy: semanticBidStrats,
 		ResourceStrategy: resourceBidStrats,
+		UsageCalculator:  calculator,
 		Store:            executionStore,
-		Callback:         computeCallback,
-		Executor:         bufferRunner,
-		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
-		},
-		UsageCalculator: calculator,
 	})
 }

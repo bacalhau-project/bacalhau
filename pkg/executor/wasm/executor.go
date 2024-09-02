@@ -13,6 +13,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
@@ -195,7 +196,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
-func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (e *Executor) GetLogStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(request.ExecutionID)
 	if !found {
 		return nil, fmt.Errorf("getting outputs for execution (%s): %w", request.ExecutionID, executor.ErrNotFound)

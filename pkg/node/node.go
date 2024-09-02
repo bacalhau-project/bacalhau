@@ -152,10 +152,9 @@ func NewNode(
 			config.NodeID,
 			apiServer,
 			config,
-			bacalhauConfig.Metrics,
 			config.RequesterNodeConfig,
 			transportLayer,
-			transportLayer.ComputeProxy(),
+			transportLayer.LogstreamServer(),
 			messageSerDeRegistry,
 		)
 		if err != nil {
@@ -212,7 +211,6 @@ func NewNode(
 			executors,
 			publishers,
 			transportLayer.Client(),
-			transportLayer.CallbackProxy(),
 			transportLayer.ManagementProxy(),
 			config.Labels,
 			messageSerDeRegistry,
@@ -221,7 +219,7 @@ func NewNode(
 			return nil, err
 		}
 
-		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
+		err = transportLayer.RegisterLogstreamServer(ctx, computeNode.LogstreamServer)
 		if err != nil {
 			return nil, err
 		}

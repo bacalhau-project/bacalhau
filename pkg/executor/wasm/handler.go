@@ -20,6 +20,7 @@ import (
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -233,6 +234,6 @@ func (h *executionHandler) kill(ctx context.Context) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (h *executionHandler) outputStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	return h.logManager.GetMuxedReader(request.Follow), nil
 }

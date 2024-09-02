@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
@@ -14,21 +16,21 @@ import (
 )
 
 type bufferTask struct {
-	localExecutionState store.LocalExecutionState
-	enqueuedAt          time.Time
+	execution  *models.Execution
+	enqueuedAt time.Time
 }
 
-func newBufferTask(execution store.LocalExecutionState) *bufferTask {
+func newBufferTask(execution *models.Execution) *bufferTask {
 	return &bufferTask{
-		localExecutionState: execution,
-		enqueuedAt:          time.Now(),
+		execution:  execution,
+		enqueuedAt: time.Now(),
 	}
 }
 
 type ExecutorBufferParams struct {
 	ID                         string
 	DelegateExecutor           Executor
-	Callback                   Callback
+	Store                      store.ExecutionStore
 	RunningCapacityTracker     capacity.Tracker
 	EnqueuedUsageTracker       capacity.UsageTracker
 	DefaultJobExecutionTimeout time.Duration
@@ -45,7 +47,7 @@ type ExecutorBuffer struct {
 	runningCapacity            capacity.Tracker
 	enqueuedCapacity           capacity.UsageTracker
 	delegateService            Executor
-	callback                   Callback
+	store                      store.ExecutionStore
 	running                    map[string]*bufferTask
 	queuedTasks                *collections.HashedPriorityQueue[string, *bufferTask]
 	defaultJobExecutionTimeout time.Duration
@@ -54,7 +56,7 @@ type ExecutorBuffer struct {
 
 func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 	indexer := func(b *bufferTask) string {
-		return b.localExecutionState.Execution.ID
+		return b.execution.ID
 	}
 
 	r := &ExecutorBuffer{
@@ -62,7 +64,7 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		runningCapacity:            params.RunningCapacityTracker,
 		enqueuedCapacity:           params.EnqueuedUsageTracker,
 		delegateService:            params.DelegateExecutor,
-		callback:                   params.Callback,
+		store:                      params.Store,
 		running:                    make(map[string]*bufferTask),
 		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
 		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
@@ -72,23 +74,24 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 }
 
 // Run enqueues the execution and tries to run it if there is enough capacity.
-func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.LocalExecutionState) error {
+func (s *ExecutorBuffer) Run(ctx context.Context, execution *models.Execution) error {
 	var err error
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	execution := localExecutionState.Execution
 
 	defer func() {
 		if err != nil {
-			s.callback.OnComputeFailure(ctx, ComputeError{
-				ExecutionMetadata: NewExecutionMetadata(execution),
-				RoutingMetadata: RoutingMetadata{
-					SourcePeerID: s.ID,
-					TargetPeerID: localExecutionState.RequesterNodeID,
+			updateErr := s.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+				ExecutionID: execution.ID,
+				NewValues: models.Execution{
+					ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(err.Error()),
 				},
-				Event: models.EventFromError(EventTopicExecutionPreparing, err),
+				Events: []models.Event{*models.NewEvent(EventTopicExecutionPreparing).WithError(err)},
 			})
+			if updateErr != nil {
+				log.Ctx(ctx).Error().Err(updateErr).Msg("failed to update execution state while handling error")
+			}
 		}
 	}()
 
@@ -108,14 +111,14 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 		return err
 	}
 	s.enqueuedCapacity.Add(ctx, *execution.TotalAllocatedResources())
-	s.queuedTasks.Enqueue(newBufferTask(localExecutionState), int64(execution.Job.Priority))
+	s.queuedTasks.Enqueue(newBufferTask(execution), int64(execution.Job.Priority))
 	s.deque()
 	return err
 }
 
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
-	job := task.localExecutionState.Execution.Job
+	job := task.execution.Job
 	ctx = system.AddJobIDToBaggage(ctx, job.ID)
 	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
 	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
@@ -135,7 +138,7 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 	ch := make(chan error)
 	go func() {
-		ch <- s.delegateService.Run(innerCtx, task.localExecutionState)
+		ch <- s.delegateService.Run(innerCtx, task.execution)
 	}()
 
 	// no need to check for run errors as they are already handled by the delegate backend.Executor and
@@ -144,8 +147,8 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.runningCapacity.Remove(ctx, *task.localExecutionState.Execution.TotalAllocatedResources())
-	delete(s.running, task.localExecutionState.Execution.ID)
+	s.runningCapacity.Remove(ctx, *task.execution.TotalAllocatedResources())
+	delete(s.running, task.execution.ID)
 	s.deque()
 }
 
@@ -160,7 +163,7 @@ func (s *ExecutorBuffer) deque() {
 	for i := 0; i < max; i++ {
 		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
 			// If we don't have enough resources to run this task, then we will skip it
-			queuedResources := task.localExecutionState.Execution.TotalAllocatedResources()
+			queuedResources := task.execution.TotalAllocatedResources()
 			allocatedResources := s.runningCapacity.AddIfHasCapacity(ctx, *queuedResources)
 			if allocatedResources == nil {
 				return false
@@ -168,8 +171,8 @@ func (s *ExecutorBuffer) deque() {
 
 			// Update the execution to include all the resources that have
 			// actually been allocated
-			task.localExecutionState.Execution.AllocateResources(
-				task.localExecutionState.Execution.Job.Task().Name,
+			task.execution.AllocateResources(
+				task.execution.Job.Task().Name,
 				*allocatedResources,
 			)
 
@@ -188,16 +191,15 @@ func (s *ExecutorBuffer) deque() {
 
 		// Move the execution to the running list and remove from the list of enqueued IDs
 		// before we actually run the task
-		execID := task.localExecutionState.Execution.ID
+		execID := task.execution.ID
 		s.running[execID] = task
 
 		go s.doRun(logger.ContextWithNodeIDLogger(context.Background(), s.ID), task)
 	}
 }
 
-func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.LocalExecutionState) error {
+func (s *ExecutorBuffer) Cancel(_ context.Context, execution *models.Execution) error {
 	// TODO: Enqueue cancel tasks
-	execution := localExecutionState.Execution
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
 		ctx = system.AddJobIDToBaggage(ctx, execution.Job.ID)
@@ -205,7 +207,7 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.Loc
 		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
 
-		err := s.delegateService.Cancel(ctx, localExecutionState)
+		err := s.delegateService.Cancel(ctx, execution)
 		if err == nil {
 			s.mu.Lock()
 			defer s.mu.Unlock()
@@ -217,7 +219,7 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.Loc
 }
 
 // RunningExecutions return list of running executions
-func (s *ExecutorBuffer) RunningExecutions() []store.LocalExecutionState {
+func (s *ExecutorBuffer) RunningExecutions() []*models.Execution {
 	return s.mapValues(s.running)
 }
 
@@ -226,12 +228,12 @@ func (s *ExecutorBuffer) EnqueuedExecutionsCount() int {
 	return s.queuedTasks.Len()
 }
 
-func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []store.LocalExecutionState {
+func (s *ExecutorBuffer) mapValues(m map[string]*bufferTask) []*models.Execution {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	executions := make([]store.LocalExecutionState, 0, len(m))
+	executions := make([]*models.Execution, 0, len(m))
 	for _, v := range m {
-		executions = append(executions, v.localExecutionState)
+		executions = append(executions, v.execution)
 	}
 	return executions
 }

@@ -97,7 +97,7 @@ func (s *CancelSuite) TestStates() {
 	ctx := context.Background()
 
 	for _, tc := range []struct {
-		state      store.LocalExecutionStateType
+		state      models.ExecutionStateType
 		shouldFail bool
 	}{
 		// These states should allow the execution to be cancelled
@@ -113,7 +113,7 @@ func (s *CancelSuite) TestStates() {
 	} {
 		s.Run(tc.state.String(), func() {
 			executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-			err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 				ExecutionID: executionID,
 				NewState:    tc.state,
 			})

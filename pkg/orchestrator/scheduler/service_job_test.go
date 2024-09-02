@@ -22,7 +22,9 @@ func (s *ServiceJobSchedulerTestSuite) SetupTest() {
 }
 
 func TestServiceSchedulerTestSuite(t *testing.T) {
-	suite.Run(t, new(ServiceJobSchedulerTestSuite))
+	s := new(ServiceJobSchedulerTestSuite)
+	s.jobType = models.JobTypeService
+	suite.Run(t, s)
 }
 
 func (s *ServiceJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {

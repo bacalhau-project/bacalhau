@@ -23,7 +23,9 @@ func (s *BatchJobSchedulerTestSuite) SetupTest() {
 }
 
 func TestBatchJobSchedulerTestSuite(t *testing.T) {
-	suite.Run(t, new(BatchJobSchedulerTestSuite))
+	s := new(BatchJobSchedulerTestSuite)
+	s.jobType = models.JobTypeBatch
+	suite.Run(t, s)
 }
 
 func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {

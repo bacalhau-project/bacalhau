@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -43,13 +44,13 @@ func (s *BidRejectedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
-	for _, state := range []store.LocalExecutionStateType{
+	for _, state := range []models.ExecutionStateType{
 		store.ExecutionStatePublishing,
 		store.ExecutionStateCancelled,
 		store.ExecutionStateCompleted,
 	} {
 		executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 			ExecutionID: executionID,
 			NewState:    state,
 		})

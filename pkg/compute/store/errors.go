@@ -1,6 +1,10 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
 
 // ErrNilExecution is returned when the execution is nil
 type ErrNilExecution struct{}
@@ -68,11 +72,11 @@ func (e ErrExecutionAlreadyExists) Error() string {
 // ErrInvalidExecutionState is returned when an execution is in an invalid state.
 type ErrInvalidExecutionState struct {
 	ExecutionID string
-	Actual      LocalExecutionStateType
-	Expected    []LocalExecutionStateType
+	Actual      models.ExecutionStateType
+	Expected    []models.ExecutionStateType
 }
 
-func NewErrInvalidExecutionState(id string, actual LocalExecutionStateType, expected ...LocalExecutionStateType) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, expected ...models.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
@@ -83,11 +87,11 @@ func (e ErrInvalidExecutionState) Error() string {
 // ErrInvalidExecutionRevision is returned when an execution has an invalid revision.
 type ErrInvalidExecutionRevision struct {
 	ExecutionID string
-	Actual      int
-	Expected    int
+	Actual      uint64
+	Expected    uint64
 }
 
-func NewErrInvalidExecutionRevision(id string, actual int, expected int) ErrInvalidExecutionRevision {
+func NewErrInvalidExecutionRevision(id string, actual, expected uint64) ErrInvalidExecutionRevision {
 	return ErrInvalidExecutionRevision{ExecutionID: id, Actual: actual, Expected: expected}
 }
 
@@ -98,12 +102,12 @@ func (e ErrInvalidExecutionRevision) Error() string {
 // ErrExecutionAlreadyTerminal is returned when an execution is already in terminal state and cannot be updated.
 type ErrExecutionAlreadyTerminal struct {
 	ExecutionID string
-	Actual      LocalExecutionStateType
-	NewState    LocalExecutionStateType
+	Actual      models.ExecutionStateType
+	NewState    models.ExecutionStateType
 }
 
 func NewErrExecutionAlreadyTerminal(
-	id string, actual LocalExecutionStateType, newState LocalExecutionStateType) ErrExecutionAlreadyTerminal {
+	id string, actual models.ExecutionStateType, newState models.ExecutionStateType) ErrExecutionAlreadyTerminal {
 	return ErrExecutionAlreadyTerminal{ExecutionID: id, Actual: actual, NewState: newState}
 }
 

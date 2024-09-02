@@ -308,17 +308,17 @@ func (mr *MockEventStoreMockRecorder) StoreCheckpoint(ctx, watcherID, eventSeqNu
 }
 
 // StoreEvent mocks base method.
-func (m *MockEventStore) StoreEvent(ctx context.Context, operation Operation, objectType string, object interface{}) error {
+func (m *MockEventStore) StoreEvent(ctx context.Context, event StoreEventRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreEvent", ctx, operation, objectType, object)
+	ret := m.ctrl.Call(m, "StoreEvent", ctx, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StoreEvent indicates an expected call of StoreEvent.
-func (mr *MockEventStoreMockRecorder) StoreEvent(ctx, operation, objectType, object interface{}) *gomock.Call {
+func (mr *MockEventStoreMockRecorder) StoreEvent(ctx, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreEvent", reflect.TypeOf((*MockEventStore)(nil).StoreEvent), ctx, operation, objectType, object)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreEvent", reflect.TypeOf((*MockEventStore)(nil).StoreEvent), ctx, event)
 }
 
 // MockSerializer is a mock of Serializer interface.

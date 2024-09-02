@@ -7,9 +7,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 )
+
+// TxContext is a transactional context that can be used to commit or rollback
+type TxContext interface {
+	context.Context
+	Commit() error
+	Rollback() error
+}
 
 // contextKey is a custom type to avoid key collisions in context values.
 type contextKey int
@@ -17,14 +22,14 @@ type contextKey int
 // txContextKey is the key used to store the transaction context in the context.
 const txContextKey contextKey = 0
 
-// TxContext extends context.Context with transaction specific functionality.
+// txContext extends context.Context with transaction specific functionality.
 // Note:
 // boltdb transactions are not thread-safe, and we have to synchronize access to the transaction
 // while trying to rollback the transaction on context cancellation.
 // This might add some overhead, and it might make sense to delegate the handling of context cancellation
 // to the caller, but this is a trade-off to ensure that the transaction is always rolled back on context cancellation.
 // TODO: Evaluate the trade-offs and consider delegating the handling of context cancellation to the caller.
-type TxContext struct {
+type txContext struct {
 	context.Context
 	tx      *bolt.Tx
 	closed  bool
@@ -34,9 +39,9 @@ type TxContext struct {
 
 // NewTxContext creates a new transactional context for a BoltDB transaction.
 // It embeds a standard context and manages transaction commit/rollback based on the context's lifecycle.
-func NewTxContext(ctx context.Context, tx *bolt.Tx) *TxContext {
+func NewTxContext(ctx context.Context, tx *bolt.Tx) TxContext {
 	innerCtx := context.WithValue(ctx, txContextKey, tx)
-	txCtx := &TxContext{
+	txCtx := &txContext{
 		Context: innerCtx,
 		tx:      tx,
 		closeCh: make(chan struct{}),
@@ -66,7 +71,7 @@ func TxFromContext(ctx context.Context) (*bolt.Tx, bool) {
 
 // Commit commits the transaction and cancels the context.
 // Commit will return an error if the transaction is already committed or rolled back.
-func (b *TxContext) Commit() error {
+func (b *txContext) Commit() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	defer b.close()
@@ -75,12 +80,12 @@ func (b *TxContext) Commit() error {
 
 // Rollback rolls back the transaction and cancels the context.
 // Rollback is a no-op if the transaction is already committed or rolled back.
-func (b *TxContext) Rollback() error {
+func (b *txContext) Rollback() error {
 	return b.doRollback()
 }
 
 // doRollback is a helper function to rollback the transaction without cancelling the context.
-func (b *TxContext) doRollback() error {
+func (b *txContext) doRollback() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	defer b.close()
@@ -92,12 +97,9 @@ func (b *TxContext) doRollback() error {
 
 // close closes the transactional context.
 // already called with the mutex held.
-func (b *TxContext) close() {
+func (b *txContext) close() {
 	if !b.closed {
 		close(b.closeCh)
 		b.closed = true
 	}
 }
-
-// compile time check whether the TxContext implements the TxContext interface from the jobstore package.
-var _ jobstore.TxContext = &TxContext{}

@@ -9,6 +9,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/plugins/grpc/proto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 // TODO: Complete protobuf structure, rather than merely wrapping serialized JSON bytes in protobuf containers.
@@ -151,7 +152,7 @@ func (c *GRPCClient) Cancel(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *GRPCClient) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (c *GRPCClient) GetLogStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	respStream, err := c.client.GetOutputStream(ctx, &proto.OutputStreamRequest{
 		ExecutionID: request.ExecutionID,
 		History:     request.Tail,

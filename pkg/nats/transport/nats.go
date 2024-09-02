@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
@@ -77,8 +78,7 @@ type NATSTransport struct {
 	nodeID            string
 	natsServer        *nats_helper.ServerManager
 	natsClient        *nats_helper.ClientManager
-	computeProxy      compute.Endpoint
-	callbackProxy     compute.Callback
+	logstreamProxy    logstream.Server
 	nodeInfoPubSub    pubsub.PubSub[models.NodeState]
 	nodeInfoDecorator models.NodeInfoDecorator
 	managementProxy   compute.ManagementEndpoint
@@ -153,17 +153,12 @@ func NewNATSTransport(ctx context.Context,
 	}
 
 	// compute proxy
-	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
+	logStreamProxy, err := proxy.NewLogStreamProxy(proxy.LogStreamProxyParams{
 		Conn: nc.Client,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Callback to send compute events (i.e. requester endpoint)
-	computeCallback := proxy.NewCallbackProxy(proxy.CallbackProxyParams{
-		Conn: nc.Client,
-	})
 
 	// A proxy to register and unregister compute nodes with the requester
 	managementProxy := proxy.NewManagementProxy(proxy.ManagementProxyParams{
@@ -175,8 +170,7 @@ func NewNATSTransport(ctx context.Context,
 		natsServer:        sm,
 		natsClient:        nc,
 		Config:            config,
-		computeProxy:      computeProxy,
-		callbackProxy:     computeCallback,
+		logstreamProxy:    logStreamProxy,
 		nodeInfoPubSub:    nodeInfoPubSub,
 		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
 		managementProxy:   managementProxy,
@@ -220,22 +214,12 @@ func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore 
 	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
 }
 
-// RegisterComputeCallback registers a compute callback with the transport layer.
-func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error {
-	_, err := proxy.NewCallbackHandler(proxy.CallbackHandlerParams{
-		Name:     t.nodeID,
-		Conn:     t.natsClient.Client,
-		Callback: callback,
-	})
-	return err
-}
-
-// RegisterComputeEndpoint registers a compute endpoint with the transport layer.
-func (t *NATSTransport) RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error {
-	_, err := proxy.NewComputeHandler(ctx, proxy.ComputeHandlerParams{
+// RegisterLogstreamServer registers a compute logstream server with the transport layer.
+func (t *NATSTransport) RegisterLogstreamServer(ctx context.Context, logstreamServer logstream.Server) error {
+	_, err := proxy.NewLogStreamHandler(ctx, proxy.LogStreamHandlerParams{
 		Name:            t.nodeID,
 		Conn:            t.natsClient.Client,
-		ComputeEndpoint: endpoint,
+		LogstreamServer: logstreamServer,
 	})
 	return err
 }
@@ -249,14 +233,9 @@ func (t *NATSTransport) RegisterManagementEndpoint(endpoint compute.ManagementEn
 	return err
 }
 
-// ComputeProxy returns the compute proxy.
-func (t *NATSTransport) ComputeProxy() compute.Endpoint {
-	return t.computeProxy
-}
-
-// CallbackProxy returns the callback proxy.
-func (t *NATSTransport) CallbackProxy() compute.Callback {
-	return t.callbackProxy
+// LogstreamServer returns the compute logstream server.
+func (t *NATSTransport) LogstreamServer() logstream.Server {
+	return t.logstreamProxy
 }
 
 // RegistrationProxy returns the previoously created registration proxy.

@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -28,9 +29,9 @@ func (s *AskForBidPreApprovedSuite) TestAskForBid() {
 }
 
 func (s *AskForBidPreApprovedSuite) verify(executionID string, expected models.Resources) {
-	localState, err := s.node.ExecutionStore.GetExecution(context.Background(), executionID)
+	execution, err := s.node.ExecutionStore.GetExecution(context.Background(), executionID)
 	s.NoError(err)
-	s.Equal(expected, *localState.Execution.TotalAllocatedResources())
+	s.Equal(expected, *execution.TotalAllocatedResources())
 }
 
 func (s *AskForBidPreApprovedSuite) TestPopulateResourceUsage() {
@@ -97,12 +98,12 @@ func (s *AskForBidPreApprovedSuite) runAskForBidTest(testCase bidResponseTestCas
 		s.Fail("did not receive bid, completion or failure")
 	}
 
-	localExecutionState, err := s.node.ExecutionStore.GetExecution(ctx, execution.ID)
+	execution, err := s.node.ExecutionStore.GetExecution(ctx, execution.ID)
 	if testCase.rejected {
 		s.ErrorIs(err, store.NewErrExecutionNotFound(execution.ID))
 	} else {
 		s.NoError(err)
-		s.Equal(store.ExecutionStateCompleted, localExecutionState.State)
+		s.Equal(store.ExecutionStateCompleted, execution.State)
 	}
 	return execution.ID
 }

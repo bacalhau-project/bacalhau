@@ -71,13 +71,13 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 
 func (s *WatcherTestSuite) TestWatcherProcessEvents() {
 	ctx := context.Background()
-	events := []watcher.Event{
+	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -94,14 +94,14 @@ func (s *WatcherTestSuite) TestWatcherProcessEvents() {
 
 func (s *WatcherTestSuite) TestWithStartSeqNum() {
 	ctx := context.Background()
-	events := []watcher.Event{
+	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -123,16 +123,16 @@ func (s *WatcherTestSuite) TestWithFilter() {
 		ObjectTypes: []string{"StringObject"},
 		Operations:  []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
 	}
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
-		{SeqNum: 3, Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
-		{SeqNum: 4, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test4"},
-		{SeqNum: 5, Operation: watcher.OperationCreate, ObjectType: "OtherStringObject", Object: "test5"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test4"},
+		{Operation: watcher.OperationCreate, ObjectType: "OtherStringObject", Object: "test5"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -151,13 +151,13 @@ func (s *WatcherTestSuite) TestWithFilter() {
 
 func (s *WatcherTestSuite) TestCheckpoint() {
 	ctx := context.Background()
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -193,14 +193,14 @@ func (s *WatcherTestSuite) TestCheckpoint() {
 
 func (s *WatcherTestSuite) TestSeekToOffset() {
 	ctx := context.Background()
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
-		{SeqNum: 3, Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -281,16 +281,16 @@ func (s *WatcherTestSuite) TestCheckpointAndStartSeqNum() {
 			s.SetupTest()
 
 			// Create some initial events
-			events := []watcher.Event{
-				{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-				{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
-				{SeqNum: 3, Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
-				{SeqNum: 4, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test4"},
-				{SeqNum: 5, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test5"},
+			events := []watcher.StoreEventRequest{
+				{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+				{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+				{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
+				{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test4"},
+				{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test5"},
 			}
 
 			for _, event := range events {
-				err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+				err := s.mockStore.StoreEvent(ctx, event)
 				s.Require().NoError(err)
 			}
 
@@ -318,13 +318,13 @@ func (s *WatcherTestSuite) TestCheckpointAndStartSeqNum() {
 
 func (s *WatcherTestSuite) TestHandleEventErrorWithBlockStrategy() {
 	ctx := context.Background()
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -357,7 +357,7 @@ func (s *WatcherTestSuite) TestHandleEventErrorWithBlockStrategy() {
 
 func (s *WatcherTestSuite) TestDifferentIteratorTypes() {
 	ctx := context.Background()
-	events := []watcher.Event{
+	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
@@ -365,7 +365,7 @@ func (s *WatcherTestSuite) TestDifferentIteratorTypes() {
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -465,13 +465,13 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 
 func (s *WatcherTestSuite) TestHandleEventErrorWithSkipStrategy() {
 	ctx := context.Background()
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -511,8 +511,9 @@ func (s *WatcherTestSuite) TestBatchOptions() {
 			s.SetupTest()
 
 			for i := 0; i < tc.eventCount; i++ {
-				err := s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", fmt.Sprintf("test%d", i+1))
-				s.Require().NoError(err)
+				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: fmt.Sprintf("test%d", i+1),
+				}))
 			}
 
 			getEventsCallCount := 0
@@ -540,13 +541,13 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 	testCases := []struct {
 		name           string
 		filter         watcher.EventFilter
-		events         []watcher.Event
+		events         []watcher.StoreEventRequest
 		expectedEvents int
 	}{
 		{
 			name:   "Empty filter",
 			filter: watcher.EventFilter{},
-			events: []watcher.Event{
+			events: []watcher.StoreEventRequest{
 				{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 				{Operation: watcher.OperationUpdate, ObjectType: "OtherStringObject", Object: "test2"},
 			},
@@ -558,7 +559,7 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 				ObjectTypes: []string{"StringObject"},
 				Operations:  []watcher.Operation{watcher.OperationCreate},
 			},
-			events: []watcher.Event{
+			events: []watcher.StoreEventRequest{
 				{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 				{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 				{Operation: watcher.OperationCreate, ObjectType: "OtherStringObject", Object: "test3"},
@@ -568,7 +569,7 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 		{
 			name:   "No matching events",
 			filter: watcher.EventFilter{ObjectTypes: []string{"NonExistentType"}},
-			events: []watcher.Event{
+			events: []watcher.StoreEventRequest{
 				{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 				{Operation: watcher.OperationUpdate, ObjectType: "OtherStringObject", Object: "test2"},
 			},
@@ -583,7 +584,7 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 
 		s.Run(tc.name, func() {
 			for _, event := range tc.events {
-				err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+				err := s.mockStore.StoreEvent(ctx, event)
 				s.Require().NoError(err)
 			}
 
@@ -602,13 +603,13 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 
 func (s *WatcherTestSuite) TestRestartBehavior() {
 	ctx := context.Background()
-	events := []watcher.Event{
+	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -645,8 +646,11 @@ func (s *WatcherTestSuite) TestListenAndStoreConcurrently() {
 	done := make(chan struct{})
 	go func() {
 		for i := 0; i < eventCount; i++ {
-			err = s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", fmt.Sprintf("test%d", i))
-			s.Require().NoError(err)
+			s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+				Operation:  watcher.OperationCreate,
+				ObjectType: "StringObject",
+				Object:     fmt.Sprintf("test%d", i),
+			}))
 		}
 		close(done)
 	}()
@@ -669,8 +673,12 @@ func (s *WatcherTestSuite) TestEventStoreConsistency() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).DoAndReturn(
 			func(ctx context.Context, event watcher.Event) error {
 				// Store more events while processing
-				s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", "test")
-				s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", "test")
+				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
+				}))
+				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
+				}))
 				return nil
 			}).Times(1),
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
@@ -679,8 +687,12 @@ func (s *WatcherTestSuite) TestEventStoreConsistency() {
 	)
 
 	// Store initial events
-	s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", "test")
-	s.mockStore.StoreEvent(ctx, watcher.OperationCreate, "StringObject", "test")
+	s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+		Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
+	}))
+	s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+		Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
+	}))
 
 	s.waitAndStop(ctx, w, 4)
 }

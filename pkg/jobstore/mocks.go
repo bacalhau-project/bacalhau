@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -294,6 +295,20 @@ func (m *MockStore) GetEvaluation(ctx context.Context, id string) (models.Evalua
 func (mr *MockStoreMockRecorder) GetEvaluation(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluation", reflect.TypeOf((*MockStore)(nil).GetEvaluation), ctx, id)
+}
+
+// GetEventStore mocks base method.
+func (m *MockStore) GetEventStore() watcher.EventStore {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEventStore")
+	ret0, _ := ret[0].(watcher.EventStore)
+	return ret0
+}
+
+// GetEventStore indicates an expected call of GetEventStore.
+func (mr *MockStoreMockRecorder) GetEventStore() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEventStore", reflect.TypeOf((*MockStore)(nil).GetEventStore))
 }
 
 // GetExecutions mocks base method.

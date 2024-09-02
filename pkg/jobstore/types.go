@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -126,6 +127,9 @@ type Store interface {
 	// DeleteEvaluation deletes the specified evaluation
 	DeleteEvaluation(ctx context.Context, id string) error
 
+	// GetEventStore returns the event store for the execution store
+	GetEventStore() watcher.EventStore
+
 	// Close provides an interface to cleanup any resources in use when the
 	// store is no longer required
 	Close(ctx context.Context) error
@@ -142,12 +146,19 @@ type UpdateExecutionRequest struct {
 	ExecutionID string
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
+	Events      []*models.Event
 }
 
 type UpdateJobCondition struct {
 	ExpectedState    models.JobStateType
 	UnexpectedStates []models.JobStateType
 	ExpectedRevision uint64
+}
+
+type ExecutionUpsert struct {
+	Current  *models.Execution
+	Previous *models.Execution
+	Events   []models.Event
 }
 
 // Validate checks if the condition matches the given job

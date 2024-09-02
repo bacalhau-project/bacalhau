@@ -6,30 +6,37 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type ExecutionStateHandler struct {
+type ExecutionUpsertHandler struct {
 	executor Executor
+	bidder   Bidder
 }
 
-func NewExecutionStateHandler(executor Executor) *ExecutionStateHandler {
-	return &ExecutionStateHandler{
+func NewExecutionUpsertHandler(executor Executor, bidder Bidder) *ExecutionUpsertHandler {
+	return &ExecutionUpsertHandler{
 		executor: executor,
+		bidder:   bidder,
 	}
 }
 
-func (h *ExecutionStateHandler) HandleEvent(ctx context.Context, event watcher.Event) error {
+func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.Event) error {
 	// TODO: filter out old events, or make sure we don't get them during node startup
-	localExecution, ok := event.Object.(store.LocalExecutionState)
+	upsert, ok := event.Object.(store.ExecutionUpsert)
 	if !ok {
-		return fmt.Errorf("failed to cast event object to LocalExecutionState. Found type %T", event.Object)
+		return fmt.Errorf("failed to cast event object to store.ExecutionUpsert. Found type %T", event.Object)
 	}
 
-	switch localExecution.State {
-	case store.ExecutionStateBidAccepted:
-		return h.executor.Run(ctx, localExecution)
-	case store.ExecutionStateCancelled:
-		return h.executor.Cancel(ctx, localExecution)
+	execution := upsert.Current
+
+	switch execution.ComputeState.StateType {
+	case models.ExecutionStateNew:
+		h.bidder.RunBidding(ctx, execution)
+	case models.ExecutionStateBidAccepted:
+		return h.executor.Run(ctx, execution)
+	case models.ExecutionStateCancelled:
+		return h.executor.Cancel(ctx, execution)
 	default:
 	}
 

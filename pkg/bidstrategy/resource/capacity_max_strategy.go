@@ -26,15 +26,13 @@ func (s *MaxCapacityStrategy) ShouldBidBasedOnUsage(
 	ctx context.Context, request bidstrategy.BidStrategyRequest, usage models.Resources) (bidstrategy.BidStrategyResponse, error) {
 	if usage.LessThanEq(s.maxJobRequirements) {
 		return bidstrategy.BidStrategyResponse{
-			ShouldBid:  true,
-			ShouldWait: false,
-			Reason:     "",
+			ShouldBid: true,
+			Reason:    "",
 		}, nil
 	}
 	return bidstrategy.BidStrategyResponse{
-		ShouldBid:  false,
-		ShouldWait: false,
-		Reason:     fmt.Sprintf("insufficient resources - requested: %s, available: %s", usage.String(), s.maxJobRequirements.String()),
+		ShouldBid: false,
+		Reason:    fmt.Sprintf("insufficient resources - requested: %s, available: %s", usage.String(), s.maxJobRequirements.String()),
 	}, nil
 }
 

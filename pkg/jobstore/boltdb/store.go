@@ -3,7 +3,9 @@ package boltjobstore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -20,6 +22,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -37,12 +41,17 @@ const (
 	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
 	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
+
+	// Event-related buckets
+	eventsBucket      = "v1_events"
+	checkpointsBucket = "v1_checkpoints"
 )
 
 var SpecKey = []byte("spec")
 
 type BoltJobStore struct {
 	database        *bolt.DB
+	eventStore      *boltdb_watcher.EventStore
 	clock           clock.Clock
 	marshaller      marshaller.Marshaller
 	watchersManager *jobstore.WatchersManager
@@ -131,6 +140,21 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.tagsIndex = NewIndex(BucketTagsIndex)
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
+
+	eventObjectSerializer := watcher.NewJSONSerializer()
+	err = errors.Join(
+		eventObjectSerializer.RegisterType(jobstore.EventObjectExecutionUpsert, reflect.TypeOf(jobstore.ExecutionUpsert{})),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register event object types: %w", err)
+	}
+
+	eventStore, err := boltdb_watcher.NewEventStore(store.database,
+		boltdb_watcher.WithEventsBucket(eventsBucket),
+		boltdb_watcher.WithCheckpointBucket(checkpointsBucket),
+		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
+	)
+	store.eventStore = eventStore
 
 	return store, err
 }
@@ -995,8 +1019,6 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 	if execution.Revision == 0 {
 		execution.Revision = 1
 	}
-	// Ensure the job is not included in the execution when persisting it
-	execution.Job = nil
 	execution.Normalize()
 	err := execution.Validate()
 	if err != nil {
@@ -1041,6 +1063,14 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 
 		// Add an index for the execution ID to the job id
 		if err = b.executionsIndex.Add(tx, []byte(execution.JobID), []byte(execution.ID)); err != nil {
+			return err
+		}
+
+		if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+			Operation:  watcher.OperationCreate,
+			ObjectType: jobstore.EventObjectExecutionUpsert,
+			Object:     jobstore.ExecutionUpsert{Current: &execution},
+		}); err != nil {
 			return err
 		}
 	}
@@ -1104,6 +1134,16 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		if err != nil {
 			return err
 		}
+	}
+
+	if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationUpdate,
+		ObjectType: jobstore.EventObjectExecutionUpsert,
+		Object: jobstore.ExecutionUpsert{
+			Current: &newExecution, Previous: &existingExecution,
+		},
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -1273,6 +1313,11 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 	}
 
 	return nil
+}
+
+// GetEventStore returns the event store
+func (b *BoltJobStore) GetEventStore() watcher.EventStore {
+	return b.eventStore
 }
 
 func (b *BoltJobStore) Close(ctx context.Context) error {

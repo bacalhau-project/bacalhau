@@ -10,11 +10,11 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 )
@@ -22,8 +22,7 @@ import (
 type BaseEndpointParams struct {
 	ID                string
 	Store             jobstore.Store
-	EventEmitter      EventEmitter
-	ComputeProxy      compute.Endpoint
+	LogstreamServer   logstream.Server
 	JobTransformer    transformer.JobTransformer
 	TaskTranslator    translation.TranslatorProvider
 	ResultTransformer transformer.ResultTransformer
@@ -32,8 +31,7 @@ type BaseEndpointParams struct {
 type BaseEndpoint struct {
 	id                string
 	store             jobstore.Store
-	eventEmitter      EventEmitter
-	computeProxy      compute.Endpoint
+	logstreamServer   logstream.Server
 	jobTransformer    transformer.JobTransformer
 	taskTranslator    translation.TranslatorProvider
 	resultTransformer transformer.ResultTransformer
@@ -43,8 +41,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
 		id:                params.ID,
 		store:             params.Store,
-		eventEmitter:      params.EventEmitter,
-		computeProxy:      params.ComputeProxy,
+		logstreamServer:   params.LogstreamServer,
 		jobTransformer:    params.JobTransformer,
 		taskTranslator:    params.TaskTranslator,
 		resultTransformer: params.ResultTransformer,
@@ -130,7 +127,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return &SubmitJobResponse{
 		JobID:        job.ID,
 		EvaluationID: eval.ID,
@@ -208,12 +204,6 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		return StopJobResponse{}, err
 	}
 
-	e.eventEmitter.EmitEventSilently(ctx, models.JobEvent{
-		JobID:     request.JobID,
-		EventName: models.JobEventCanceled,
-		Status:    request.Reason,
-		EventTime: time.Now(),
-	})
 	return StopJobResponse{
 		EvaluationID: evalID,
 	}, nil
@@ -260,17 +250,16 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 		})
 		return streamer.Stream(ctx), nil
 	}
-	req := compute.ExecutionLogsRequest{
-		RoutingMetadata: compute.RoutingMetadata{
-			SourcePeerID: e.id,
-			TargetPeerID: execution.NodeID,
+	req := requests.LogStreamRequest{
+		RoutingMetadata: requests.RoutingMetadata{
+			NodeID: execution.NodeID,
 		},
 		ExecutionID: execution.ID,
 		Tail:        request.Tail,
 		Follow:      request.Follow,
 	}
 
-	return e.computeProxy.ExecutionLogs(ctx, req)
+	return e.logstreamServer.GetLogStream(ctx, req)
 }
 
 // GetResults returns the results of a job

@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 )
 
 type executionHandler struct {
@@ -200,7 +201,7 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 	return nil
 }
 
-func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (h *executionHandler) outputStream(ctx context.Context, request requests.LogStreamRequest) (io.ReadCloser, error) {
 	since := "1"
 	if request.Tail {
 		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd

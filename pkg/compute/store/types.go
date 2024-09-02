@@ -3,134 +3,85 @@ package store
 
 import (
 	"context"
-	"fmt"
-	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type LocalExecutionState struct {
-	Execution       *models.Execution
-	PublishedResult *models.SpecConfig
-	RunOutput       *models.RunCommandResult
-	RequesterNodeID string
-	State           LocalExecutionStateType
-	Revision        int
-	CreateTime      time.Time
-	UpdateTime      time.Time
-	LatestComment   string
-}
-
-func NewLocalExecutionState(execution *models.Execution, requesterNodeID string) *LocalExecutionState {
-	now := time.Now().UTC()
-	return &LocalExecutionState{
-		Execution:       execution,
-		RequesterNodeID: requesterNodeID,
-		State:           ExecutionStateCreated,
-		Revision:        1,
-		CreateTime:      now,
-		UpdateTime:      now,
-	}
-}
-
-// Normalize normalizes the execution state
-func (e *LocalExecutionState) Normalize() {
-	if e.Execution == nil {
-		return
-	}
-	e.Execution.Normalize()
-}
-
-// string returns a string representation of the execution
-func (e *LocalExecutionState) String() string {
-	return fmt.Sprintf("{ID: %s, Job: %s}", e.Execution.ID, e.Execution.JobID)
-}
-
-// ToSummary returns a summary of the execution
-func (e *LocalExecutionState) ToSummary() ExecutionSummary {
-	return ExecutionSummary{
-		ExecutionID:        e.Execution.ID,
-		JobID:              e.Execution.JobID,
-		State:              e.State.String(),
-		AllocatedResources: *e.Execution.AllocatedResources,
-	}
-}
-
-// Summary of an execution that is used in logging and debugging.
-type ExecutionSummary struct {
-	ExecutionID        string
-	JobID              string
-	State              string
-	AllocatedResources models.AllocatedResources
-}
-
-type UpdateExecutionStateRequest struct {
-	ExecutionID      string
-	NewState         LocalExecutionStateType
-	ExpectedStates   []LocalExecutionStateType
-	ExpectedRevision int
-	PublishedResult  *models.SpecConfig
-	RunOutput        *models.RunCommandResult
-	Comment          string
-}
-
-// Validate checks if the condition matches the given execution
-func (condition UpdateExecutionStateRequest) Validate(localExecutionState LocalExecutionState) error {
-	execution := localExecutionState.Execution
-	if len(condition.ExpectedStates) > 0 {
-		validState := false
-		for _, s := range condition.ExpectedStates {
-			if s == localExecutionState.State {
-				validState = true
-				break
-			}
-		}
-		if !validState {
-			return NewErrInvalidExecutionState(execution.ID, localExecutionState.State, condition.ExpectedStates...)
-		}
-	}
-
-	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != localExecutionState.Revision {
-		return NewErrInvalidExecutionRevision(execution.ID, localExecutionState.Revision, condition.ExpectedRevision)
-	}
-	return nil
-}
-
-// TxContext is a transactional context that can be used to commit or rollback
-type TxContext interface {
-	context.Context
-	Commit() error
-	Rollback() error
-}
-
 // ExecutionStore A metadata store of job executions handled by the current compute node
 type ExecutionStore interface {
 	// BeginTx starts a new transaction and returns a transactional context
-	BeginTx(ctx context.Context) (TxContext, error)
+	BeginTx(ctx context.Context) (boltdblib.TxContext, error)
 	// GetExecution returns the execution for a given id
-	GetExecution(ctx context.Context, id string) (LocalExecutionState, error)
+	GetExecution(ctx context.Context, id string) (*models.Execution, error)
 	// GetExecutions returns all the executions for a given job
-	GetExecutions(ctx context.Context, jobID string) ([]LocalExecutionState, error)
+	GetExecutions(ctx context.Context, jobID string) ([]*models.Execution, error)
 	// GetLiveExecutions gets an array of the executions currently in the
 	// active state (ExecutionStateBidAccepted)
-	GetLiveExecutions(ctx context.Context) ([]LocalExecutionState, error)
+	GetLiveExecutions(ctx context.Context) ([]*models.Execution, error)
 	// AddExecutionEvent adds an event to the execution
 	AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error
 	// GetExecutionEvents returns the history of an execution
-	GetExecutionEvents(ctx context.Context, executionID string) ([]models.Event, error)
+	GetExecutionEvents(ctx context.Context, executionID string) ([]*models.Event, error)
 	// CreateExecution creates a new execution for a given job
-	CreateExecution(ctx context.Context, execution LocalExecutionState) error
+	CreateExecution(ctx context.Context, execution models.Execution, events ...models.Event) error
 	// UpdateExecutionState updates the execution state
-	UpdateExecutionState(ctx context.Context, request UpdateExecutionStateRequest) error
+	UpdateExecutionState(ctx context.Context, request UpdateExecutionRequest) error
 	// DeleteExecution deletes an execution
 	DeleteExecution(ctx context.Context, id string) error
-	// GetExecutionCount returns a count of all executions that are in the specified
-	// state
-	GetExecutionCount(ctx context.Context, state LocalExecutionStateType) (uint64, error)
+	// GetExecutionCount returns a count of all executions that are in the specified state
+	GetExecutionCount(ctx context.Context, state models.ExecutionStateType) (uint64, error)
 	// GetEventStore returns the event store for the execution store
 	GetEventStore() watcher.EventStore
 	// Close provides the opportunity for the underlying store to cleanup
 	// any resources as the compute node is shutting down
 	Close(ctx context.Context) error
+}
+
+type UpdateExecutionRequest struct {
+	ExecutionID string
+	Condition   UpdateExecutionCondition
+	NewValues   models.Execution
+	Events      []models.Event
+}
+
+type ExecutionUpsert struct {
+	Current  *models.Execution
+	Previous *models.Execution
+	Events   []*models.Event
+}
+
+type UpdateExecutionCondition struct {
+	ExpectedStates   []models.ExecutionStateType
+	ExpectedRevision uint64
+	UnexpectedStates []models.ExecutionStateType
+}
+
+// Validate checks if the condition matches the given execution
+func (condition UpdateExecutionCondition) Validate(execution *models.Execution) error {
+	if len(condition.ExpectedStates) > 0 {
+		validState := false
+		for _, s := range condition.ExpectedStates {
+			if s == execution.ComputeState.StateType {
+				validState = true
+				break
+			}
+		}
+		if !validState {
+			return NewErrInvalidExecutionState(execution.ID, execution.ComputeState.StateType, condition.ExpectedStates...)
+		}
+	}
+
+	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != execution.Revision {
+		return NewErrInvalidExecutionRevision(execution.ID, execution.Revision, condition.ExpectedRevision)
+	}
+	if len(condition.UnexpectedStates) > 0 {
+		for _, s := range condition.UnexpectedStates {
+			if s == execution.ComputeState.StateType {
+				return NewErrInvalidExecutionState(execution.ID, execution.ComputeState.StateType)
+			}
+		}
+	}
+	return nil
 }

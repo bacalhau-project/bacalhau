@@ -65,9 +65,9 @@ func (s *BoltDBEventStoreTestSuite) TestFilterEvents() {
 	s.Require().NoError(s.serializer.RegisterType("TypeA", reflect.TypeOf("")))
 	s.Require().NoError(s.serializer.RegisterType("TypeB", reflect.TypeOf("")))
 
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TypeA", "event1"))
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationUpdate, "TypeB", "event2"))
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationDelete, "TypeA", "event3"))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{Operation: watcher.OperationCreate, ObjectType: "TypeA", Object: "event1"}))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{Operation: watcher.OperationUpdate, ObjectType: "TypeB", Object: "event2"}))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{Operation: watcher.OperationDelete, ObjectType: "TypeA", Object: "event3"}))
 
 	testCases := []struct {
 		name           string
@@ -170,7 +170,11 @@ func (s *BoltDBEventStoreTestSuite) TestNotifyOnStore() {
 
 	s.assertChannelsEmpty(respCh, errCh)
 
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Name: "new event"}))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: "TestObject",
+		Object:     watchertest.TestObject{Name: "new event"},
+	}))
 
 	resp := s.assertResponseReceived(respCh, errCh)
 	s.assertEventsResponse(resp, 1, watcher.AfterSequenceNumberIterator(1))
@@ -212,7 +216,11 @@ func (s *BoltDBEventStoreTestSuite) TestGarbageCollection() {
 	s.storeEvents(5, watcher.OperationCreate, "TestObject")
 
 	s.clock.Add(2 * time.Hour)
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Name: "recent"}))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: "TestObject",
+		Object:     watchertest.TestObject{Name: "recent"},
+	}))
 
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher1", 3))
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher2", 6))
@@ -239,8 +247,11 @@ func (s *BoltDBEventStoreTestSuite) TestConcurrentOperations() {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			err := s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", watchertest.TestObject{Value: i + 1})
-			s.Require().NoError(err)
+			s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+				Operation:  watcher.OperationCreate,
+				ObjectType: "TestObject",
+				Object:     watchertest.TestObject{Value: i + 1},
+			}))
 		}(i)
 	}
 
@@ -264,8 +275,11 @@ func (s *BoltDBEventStoreTestSuite) TestConcurrentOperations() {
 
 func (s *BoltDBEventStoreTestSuite) TestGetLatestEventNum() {
 	for i := 1; i <= 5; i++ {
-		err := s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", i)
-		s.Require().NoError(err)
+		s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+			Operation:  watcher.OperationCreate,
+			ObjectType: "TestObject",
+			Object:     watchertest.TestObject{Value: i},
+		}))
 
 		latestNum, err := s.store.GetLatestEventNum(s.ctx)
 		s.Require().NoError(err)
@@ -289,7 +303,11 @@ func (s *BoltDBEventStoreTestSuite) TestZeroLimit() {
 }
 
 func (s *BoltDBEventStoreTestSuite) TestWithSingleEvent() {
-	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.OperationCreate, "TestObject", 1))
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: "TestObject",
+		Object:     watchertest.TestObject{Value: 1},
+	}))
 	s.store.options.longPollingTimeout = 0
 
 	testCases := []struct {
@@ -380,7 +398,11 @@ func (s *BoltDBEventStoreTestSuite) TestNoCaching() {
 
 func (s *BoltDBEventStoreTestSuite) storeEvents(count int, operation watcher.Operation, objectType string) {
 	for i := 1; i <= count; i++ {
-		err := s.store.StoreEvent(s.ctx, operation, objectType, watchertest.TestObject{Value: i})
+		err := s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+			Operation:  operation,
+			ObjectType: objectType,
+			Object:     watchertest.TestObject{Value: i},
+		})
 		s.Require().NoError(err)
 	}
 }

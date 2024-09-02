@@ -8,10 +8,11 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -35,8 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
@@ -60,24 +59,15 @@ func NewRequesterNode(
 	nodeID string,
 	apiServer *publicapi.Server,
 	nodeConfig NodeConfig,
-	metricsConfig types.MetricsConfig,
 	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
-	computeProxy compute.Endpoint,
+	logstreamServer logstream.Server,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Requester, error) {
 	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	// prepare event handlers
-	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
-	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
-
-	eventEmitter := orchestrator.NewEventEmitter(orchestrator.EventEmitterParams{
-		EventConsumer: localJobEventConsumer,
-	})
 
 	jobStore := requesterConfig.JobStore
 
@@ -105,20 +95,6 @@ func NewRequesterNode(
 	planners := planner.NewChain(
 		// planner that persist the desired state as defined by the scheduler
 		planner.NewStateUpdater(jobStore),
-
-		// planner that forwards the desired state to the compute nodes,
-		// and updates the observed state if the compute node accepts the desired state
-		planner.NewComputeForwarder(planner.ComputeForwarderParams{
-			ID:             nodeID,
-			ComputeService: computeProxy,
-			JobStore:       jobStore,
-		}),
-
-		// planner that publishes events on job completion or failure
-		planner.NewEventEmitter(planner.EventEmitterParams{
-			ID:           nodeID,
-			EventEmitter: eventEmitter,
-		}),
 
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
@@ -227,11 +203,10 @@ func NewRequesterNode(
 		jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 	}
 
-	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
+	endpoint := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
 		Store:             jobStore,
-		EventEmitter:      eventEmitter,
-		ComputeProxy:      computeProxy,
+		LogstreamServer:   logstreamServer,
 		JobTransformer:    jobTransformers,
 		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
@@ -257,7 +232,7 @@ func NewRequesterNode(
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:       apiServer.Router,
-		Orchestrator: endpointV2,
+		Orchestrator: endpoint,
 		JobStore:     jobStore,
 		NodeManager:  nodeManager,
 	})
@@ -271,31 +246,51 @@ func NewRequesterNode(
 	)
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
-	// Register event handlers
-	eventTracer, err := eventhandler.NewTracer(metricsConfig.EventTracerPath)
+	// nclPublisher
+	// compute -> orchestrator ncl publisher
+	nclPublisher, err := ncl.NewPublisher(transportLayer.Client(),
+		ncl.WithPublisherName(nodeID),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	// order of event handlers is important as triggering some handlers might depend on the state of others.
-	localJobEventConsumer.AddHandlers(
-		// ends the span for the job if received a terminal event
-		tracerContextProvider,
-		// record the event in a log
-		eventTracer,
-		// dispatches events to listening websockets
-	)
+	// TODO: Add checkpointing or else events will be missed
+	messageForwarder := orchestrator.NewExecutionForwarder(nclPublisher, orchestratorOutSubjectPrefix)
+	watcherRegistry := watcher.NewRegistry(jobStore.GetEventStore())
+	_, err = watcherRegistry.Watch(ctx, orchestratorExecutionForwarderWatcherID, messageForwarder,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
 
-	// ncl
+	// ncl subscriber
 	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
 		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(heartbeatServer),
+		ncl.WithSubscriberMessageHandlers(orchestrator.NewMessageHandler(jobStore)),
 	)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
 	}
-	err = subscriber.Subscribe(requesterConfig.ControlPlaneSettings.HeartbeatTopic)
+	if err = subscriber.Subscribe(orchestratorInSubscription()); err != nil {
+		return nil, err
+	}
+
+	// ncl heartbeat subscriber
+	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(),
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
+		ncl.WithSubscriberMessageHandlers(heartbeatServer),
+	)
 	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create heartbeat ncl subscriber")
+	}
+	if err = heartbeatSubscriber.Subscribe(requesterConfig.ControlPlaneSettings.HeartbeatTopic); err != nil {
 		return nil, err
 	}
 
@@ -307,21 +302,18 @@ func NewRequesterNode(
 			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
 		}
 
+		// close the ncl heartbeat subscriber
+		cleanupErr = heartbeatSubscriber.Close(ctx)
+		if cleanupErr != nil {
+			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl heartbeat subscriber")
+		}
+
 		// stop the housekeeping background task
 		housekeeping.Stop(ctx)
 		for _, worker := range workers {
 			worker.Stop()
 		}
 		evalBroker.SetEnabled(false)
-
-		cleanupErr = tracerContextProvider.Shutdown()
-		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
-		}
-		cleanupErr = eventTracer.Shutdown()
-		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown event tracer")
-		}
 
 		// Close the jobstore after the evaluation broker is disabled
 		cleanupErr = jobStore.Close(ctx)
@@ -330,20 +322,8 @@ func NewRequesterNode(
 		}
 	}
 
-	// This endpoint implements the protocol formerly known as `bprotocol`.
-	// It provides the compute call back endpoints for interacting with compute nodes.
-	// e.g. bidding, job completions, cancellations, and failures
-	callback := orchestrator.NewCallback(&orchestrator.CallbackParams{
-		ID:           nodeID,
-		EventEmitter: eventEmitter,
-		Store:        jobStore,
-	})
-	if err = transportLayer.RegisterComputeCallback(callback); err != nil {
-		return nil, err
-	}
-
 	return &Requester{
-		Endpoint:           endpointV2,
+		Endpoint:           endpoint,
 		NodeDiscoverer:     nodeManager,
 		NodeInfoStore:      nodeManager,
 		JobStore:           jobStore,

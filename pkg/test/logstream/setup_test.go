@@ -40,7 +40,7 @@ func (s *LogStreamTestSuite) SetupSuite() {
 
 func waitForOutputStream(ctx context.Context, executionID string, withHistory bool, follow bool, exec executor.Executor) (chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	for i := 0; i < 10; i++ {
-		reader, err := exec.GetLogStream(ctx, executor.LogStreamRequest{
+		reader, err := exec.GetLogStream(ctx, requests.LogStreamRequest{
 			ExecutionID: executionID,
 			Tail:        withHistory,
 			Follow:      follow,
