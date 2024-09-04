@@ -61,7 +61,7 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 	if task.ResourcesConfig.GPU == "" {
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
-	if task.Publisher.IsEmpty() {
+	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 {
 		task.Publisher.Type = defaults.Publisher.Type
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
