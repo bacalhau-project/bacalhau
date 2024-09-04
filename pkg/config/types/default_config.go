@@ -17,6 +17,7 @@ const (
 
 // Default is the default configuration for a bacalhau node.
 var Default = Bacalhau{
+	DataDir: DefaultDataDir(),
 	API: API{
 		Host: "0.0.0.0",
 		Port: 1234,
@@ -29,7 +30,6 @@ var Default = Bacalhau{
 		},
 	},
 	NameProvider: "puuid",
-	DataDir:      getDefaultDataDir(),
 	Orchestrator: Orchestrator{
 		Enabled: true,
 		Host:    "0.0.0.0",
@@ -122,24 +122,18 @@ var Default = Bacalhau{
 
 const defaultBacalhauDir = ".bacalhau"
 
-// getDefaultDataDir determines the appropriate default directory for storing repository data.
+// DefaultDataDir determines the appropriate default directory for storing repository data.
 // Priority order:
 // 1. If the environment variable BACALHAU_DIR is set and non-empty, use it.
-// 3. User's home directory with .bacalhau appended.
-// 4. User-specific configuration directory with .bacalhau appended.
-// 5. If all above fail, use .bacalhau in the current directory.
-// The function logs any errors encountered during the process and always returns a usable path.
-func getDefaultDataDir() string {
+// 2. User's home directory with .bacalhau appended.
+// 3. If all above fail, use .bacalhau in the current directory.
+func DefaultDataDir() string {
 	if repoDir, set := os.LookupEnv("BACALHAU_DIR"); set && repoDir != "" {
 		return repoDir
 	}
 
 	if userHome, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(userHome, defaultBacalhauDir)
-	}
-
-	if userDir, err := os.UserConfigDir(); err == nil {
-		return filepath.Join(userDir, defaultBacalhauDir)
 	}
 
 	return defaultBacalhauDir
