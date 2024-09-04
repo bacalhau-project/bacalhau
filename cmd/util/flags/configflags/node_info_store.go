@@ -7,7 +7,6 @@ var NodeInfoStoreFlags = []Definition{
 		ConfigPath:        "node.info.store.ttl.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
-		FailIfUsed:        true,
-		DeprecatedMessage: "configuration option is deprecated.",
+		DeprecatedMessage: FeatureDeprecatedMessage,
 	},
 }

@@ -14,6 +14,15 @@ var DataDirFlag = []Definition{
 		DefaultValue:         getDefaultRepo(),
 		Description:          "The filesystem path bacalhau inits or opens a repo in",
 		EnvironmentVariables: []string{"BACALHAU_DIR"},
+		Deprecated:           true,
+		DeprecatedMessage:    "Use --data-dir=<path> to set this configuration",
+	},
+	{
+		FlagName:             "data-dir",
+		ConfigPath:           types.DataDirKey,
+		DefaultValue:         getDefaultRepo(),
+		Description:          "The filesystem path bacalhau inits or opens a repo in",
+		EnvironmentVariables: []string{"BACALHAU_DIR"},
 	},
 }
 

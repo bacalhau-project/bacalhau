@@ -24,8 +24,7 @@ type BatchTaskDefaultConfig struct {
 }
 
 type LongRunningTaskDefaultConfig struct {
-	Resources ResourcesConfig        `yaml:"Resources,omitempty"`
-	Publisher DefaultPublisherConfig `yaml:"Publisher,omitempty"`
+	Resources ResourcesConfig `yaml:"Resources,omitempty"`
 }
 
 type ResourcesConfig struct {

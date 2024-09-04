@@ -106,18 +106,15 @@ func getConfigValues(v *viper.Viper) map[string]any {
 	return v.GetStringMap(cliflags.RootCommandConfigValues)
 }
 
-func getConfigFlags(v *viper.Viper, cmd *cobra.Command) (map[string]*pflag.Flag, error) {
+func getConfigFlags(v *viper.Viper, cmd *cobra.Command) (map[string][]*pflag.Flag, error) {
 	flagDefs := v.Get(cliflags.RootCommandConfigFlags)
 	if flagDefs == nil {
 		return nil, nil
 	}
 	flagsConfigs := flagDefs.([]configflags.Definition)
-	out := make(map[string]*pflag.Flag)
+	out := make(map[string][]*pflag.Flag)
 	for _, flag := range flagsConfigs {
-		if cmd.Flags().Changed(flag.FlagName) && flag.FailIfUsed && flag.Deprecated {
-			return nil, fmt.Errorf("flag %s is deprecated: %s", flag.FlagName, flag.DeprecatedMessage)
-		}
-		out[flag.ConfigPath] = cmd.Flags().Lookup(flag.FlagName)
+		out[flag.ConfigPath] = append(out[flag.ConfigPath], cmd.Flags().Lookup(flag.FlagName))
 	}
 	return out, nil
 }

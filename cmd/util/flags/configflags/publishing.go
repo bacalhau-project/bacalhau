@@ -1,13 +1,21 @@
 package configflags
 
+import (
+	"fmt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+)
+
 // deprecated
 var PublishingFlags = []Definition{
 	{
-		FlagName:          "default-publisher",
-		ConfigPath:        "default.publisher.deprecated",
-		DefaultValue:      "",
-		Deprecated:        true,
-		FailIfUsed:        true,
-		DeprecatedMessage: "Use -c Job.Defaults.<job_type>.Task.Publisher.Type=<publisher_type> to configure a default publisher for a job.",
+		FlagName:     "default-publisher",
+		ConfigPath:   "default.publisher.deprecated",
+		DefaultValue: "",
+		Deprecated:   true,
+		DeprecatedMessage: fmt.Sprintf("Use one or more of the following options, all are accepted %s, %s",
+			makeConfigFlagDeprecationCommand(types.JobDefaultsBatchTaskPublisherTypeKey),
+			makeConfigFlagDeprecationCommand(types.JobDefaultsOpsTaskPublisherTypeKey),
+		),
 	},
 }

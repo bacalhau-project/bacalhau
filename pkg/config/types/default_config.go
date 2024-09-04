@@ -94,9 +94,6 @@ var Default = Bacalhau{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
-				Publisher: DefaultPublisherConfig{
-					Type: models.PublisherLocal,
-				},
 			},
 		},
 		Service: LongRunningJobDefaultsConfig{
@@ -105,9 +102,6 @@ var Default = Bacalhau{
 				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
-				},
-				Publisher: DefaultPublisherConfig{
-					Type: models.PublisherLocal,
 				},
 			},
 		},
@@ -122,6 +116,10 @@ var Default = Bacalhau{
 	},
 	DefaultPublisher: DefaultPublisherConfig{
 		Type: models.PublisherLocal,
+	},
+	WebUI: WebUI{
+		Enabled: false,
+		Listen:  "0.0.0.0:8438",
 	},
 }
 

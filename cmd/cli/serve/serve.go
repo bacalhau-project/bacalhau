@@ -39,14 +39,14 @@ var (
 		# Start a private bacalhau requester node
 		bacalhau serve
 		# or
-		bacalhau serve --orchestrator
+		bacalhau serve --config Orchestrator.Enabled
 
 		# Start a private bacalhau hybrid node that acts as both compute and requester
-		bacalhau serve --orchestrator --compute
+		bacalhau serve --config Orchestrator.Enabled --config Compute.Enabled
 		# or
 
-		# Start a public bacalhau node with the WebUI on port 3000 (default:8483)
-		bacalhau serve --web-ui --web-ui-port=3000
+		# Start a public bacalhau node with the WebUI on port 3000 (default:0.0.0.0:8483)
+		bacalhau serve --config WebUI.Enabled --config WebUI.Listen=0.0.0.0:3000
 `))
 )
 

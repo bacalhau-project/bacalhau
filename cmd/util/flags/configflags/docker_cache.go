@@ -11,6 +11,8 @@ var DockerManifestCacheFlags = []Definition{
 		DefaultValue:         types.Default.Engines.Docker.ManifestCache.Size,
 		Description:          `Specifies the number of items that can be held in the manifest cache`,
 		EnvironmentVariables: []string{"BACALHAU_DOCKER_MANIFEST_CACHE_SIZE"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.EnginesDockerManifestCacheSizeKey),
 	},
 	{
 		FlagName:             "docker-manifest-cache-duration",
@@ -18,6 +20,8 @@ var DockerManifestCacheFlags = []Definition{
 		DefaultValue:         types.Default.Engines.Docker.ManifestCache.TTL,
 		Description:          `The default time-to-live for each record in the manifest cache`,
 		EnvironmentVariables: []string{"BACALHAU_DOCKER_MANIFEST_CACHE_DURATION"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.EnginesDockerManifestCacheTTLKey),
 	},
 	{
 		FlagName:             "docker-manifest-cache-frequency",
@@ -25,5 +29,7 @@ var DockerManifestCacheFlags = []Definition{
 		DefaultValue:         types.Default.Engines.Docker.ManifestCache.Refresh,
 		Description:          `The frequency that the checks for stale records is performed`,
 		EnvironmentVariables: []string{"BACALHAU_DOCKER_MANIFEST_CACHE_FREQUENCY"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.EnginesDockerManifestCacheRefreshKey),
 	},
 }

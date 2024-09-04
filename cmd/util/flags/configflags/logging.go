@@ -6,10 +6,12 @@ import (
 
 var LogFlags = []Definition{
 	{
-		FlagName:     "log-mode",
-		DefaultValue: types.Default.Logging.Mode,
-		ConfigPath:   types.LoggingModeKey,
-		Description:  `Log format: 'default','station','json','combined','event'`,
+		FlagName:          "log-mode",
+		DefaultValue:      types.Default.Logging.Mode,
+		ConfigPath:        types.LoggingModeKey,
+		Description:       `Log format: 'default','station','json','combined','event'`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.LoggingModeKey),
 	},
 	{
 		FlagName:             "log-level",
@@ -17,5 +19,7 @@ var LogFlags = []Definition{
 		ConfigPath:           types.LoggingLevelKey,
 		Description:          `Log level: 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic'`,
 		EnvironmentVariables: []string{"LOG_LEVEL"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.LoggingLevelKey),
 	},
 }

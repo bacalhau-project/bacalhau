@@ -66,7 +66,7 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	// disable update checks in testing.
 	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
 	cfgValues := map[string]any{
-		"DataDir": path,
+		types.DataDirKey: path,
 	}
 
 	// the BACALHAU_NODE_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.

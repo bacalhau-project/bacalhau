@@ -34,7 +34,7 @@ type Config struct {
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
 	paths []string
 
-	flags map[string]*pflag.Flag
+	flags map[string][]*pflag.Flag
 
 	environmentVariables map[string][]string
 
@@ -60,7 +60,7 @@ func WithPaths(path ...string) Option {
 	}
 }
 
-func WithFlags(flags map[string]*pflag.Flag) Option {
+func WithFlags(flags map[string][]*pflag.Flag) Option {
 	return func(s *Config) {
 		s.flags = flags
 	}
@@ -89,9 +89,11 @@ func New(opts ...Option) (*Config, error) {
 	base.SetEnvKeyReplacer(environmentVariableReplace)
 
 	c := &Config{
-		base:       base,
-		defaultCfg: types.Default,
-		paths:      make([]string, 0),
+		base:                 base,
+		defaultCfg:           types.Default,
+		paths:                make([]string, 0),
+		values:               make(map[string]any),
+		environmentVariables: make(map[string][]string),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -123,9 +125,58 @@ func New(opts ...Option) (*Config, error) {
 		}
 	}
 
-	for name, flag := range c.flags {
-		if err := c.base.BindPFlag(name, flag); err != nil {
-			return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+	for name, flags := range c.flags {
+		for _, flag := range flags {
+			// only if the flag has been set do we want to bind to it, this allows multiple flags
+			// to bind to the same config key.
+			if flag.Changed {
+				switch name {
+				case "ipfs.connect.deprecated":
+					// allow the deprecated --ipfs-connect flag to bind to related fields in the config.
+					for _, key := range []string{
+						// config keys we wish to bind --ipfs-connect flag to.
+						types.ResultDownloadersIPFSEndpointKey,
+						types.InputSourcesIPFSEndpointKey,
+						types.PublishersIPFSEndpointKey,
+					} {
+						if err := c.base.BindPFlag(key, flag); err != nil {
+							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+						}
+					}
+				case "node.type.deprecated":
+					// continuing to support the deprecated --node-type flag
+					// iff config values were not provided set them accordingly
+					orchestrator, compute, err := getNodeType(flag.Value.String())
+					if err != nil {
+						return nil, err
+					}
+					if orchestrator {
+						if _, ok := c.values[types.OrchestratorEnabledKey]; !ok {
+							c.values[types.OrchestratorEnabledKey] = true
+						}
+					}
+					if compute {
+						if _, ok := c.values[types.ComputeEnabledKey]; !ok {
+							c.values[types.ComputeEnabledKey] = true
+						}
+					}
+				case "default.publisher.deprecated":
+					// allow the deprecated --default-publisher flag to bind to related fields in the config.
+					for _, key := range []string{
+						// config keys we wish to bind --default-publisher flag to.
+						types.JobDefaultsBatchTaskPublisherTypeKey,
+						types.JobDefaultsOpsTaskPublisherTypeKey,
+					} {
+						if err := c.base.BindPFlag(key, flag); err != nil {
+							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+						}
+					}
+				default:
+					if err := c.base.BindPFlag(name, flag); err != nil {
+						return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+					}
+				}
+			}
 		}
 	}
 
@@ -135,6 +186,29 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	return c, nil
+}
+
+func getNodeType(input string) (requester, compute bool, err error) {
+	requester = false
+	compute = false
+	err = nil
+
+	// Split the string by commas, lowercase it, and clean up any extra spaces
+	tokens := strings.Split(input, ",")
+	for i, token := range tokens {
+		tokens[i] = strings.ToLower(strings.TrimSpace(token))
+	}
+
+	for _, nodeType := range tokens {
+		if nodeType == "compute" {
+			compute = true
+		} else if nodeType == "requester" {
+			requester = true
+		} else {
+			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
+		}
+	}
+	return
 }
 
 // Load reads in the configuration file specified by `path` overriding any previously set configuration with the values

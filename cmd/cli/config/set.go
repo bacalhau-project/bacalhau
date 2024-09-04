@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 func newSetCmd() *cobra.Command {
@@ -31,15 +32,20 @@ func newSetCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			return setConfig(cmd.PersistentFlags().Lookup("path").Value.String(), args[0], args[1:]...)
+			return setConfig(cmd.PersistentFlags().Lookup("config").Value.String(), args[0], args[1:]...)
 		},
 	}
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
 		cfgDir = ""
 	}
-	configFilePath := filepath.Join(cfgDir, "bacalhau", "config.yaml")
-	showCmd.PersistentFlags().String("path", configFilePath, "Optionally provide a path to a config file to use")
+	// TODO(forrest): fix this
+	configFileDirPath := filepath.Join(cfgDir, "bacalhau")
+	if err := os.MkdirAll(configFileDirPath, util2.OS_USER_RWX); err != nil {
+		panic(err)
+	}
+	configFilePath := filepath.Join(configFileDirPath, "config.yaml")
+	showCmd.PersistentFlags().String("config", configFilePath, "Optionally provide a path to a config file to use")
 	return showCmd
 }
 

@@ -7,7 +7,6 @@ var ComputeStorageFlags = []Definition{
 		ConfigPath:        "compute.execution.store.type.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
-		FailIfUsed:        true,
 		DeprecatedMessage: "type is no longer configurable. bacalhau uses BoltDB",
 	},
 	{
@@ -15,7 +14,6 @@ var ComputeStorageFlags = []Definition{
 		ConfigPath:        "compute.execution.store.path.deprecated",
 		DefaultValue:      "",
 		Deprecated:        true,
-		FailIfUsed:        true,
 		DeprecatedMessage: "path is no longer configurable. location $BACALHAU_DIR/compute/state_boltdb.db",
 	},
 }

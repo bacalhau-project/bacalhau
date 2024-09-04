@@ -138,9 +138,9 @@ boolValue: false
 		err := flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=200", "--boolValue=false"})
 		require.NoError(t, err)
 
-		flags := make(map[string]*pflag.Flag)
+		flags := make(map[string][]*pflag.Flag)
 		flagSet.VisitAll(func(f *pflag.Flag) {
-			flags[f.Name] = f
+			flags[f.Name] = []*pflag.Flag{f}
 		})
 
 		cfg, err := config.New(
@@ -336,9 +336,9 @@ boolValue: false
 	err = flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=300", "--boolValue=false"})
 	require.NoError(t, err)
 
-	flags := make(map[string]*pflag.Flag)
+	flags := make(map[string][]*pflag.Flag)
 	flagSet.VisitAll(func(f *pflag.Flag) {
-		flags[f.Name] = f
+		flags[f.Name] = []*pflag.Flag{f}
 	})
 
 	// Set up explicit values

@@ -94,9 +94,6 @@ func applyLongRunningTaskDefaults(defaults types.LongRunningTaskDefaultConfig, t
 	if task.ResourcesConfig.GPU == "" {
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
-	if task.Publisher.IsEmpty() {
-		task.Publisher.Type = defaults.Publisher.Type
-	}
 }
 
 // RequesterInfo is a transformer that sets the requester ID in the job meta.

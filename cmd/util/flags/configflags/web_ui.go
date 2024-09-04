@@ -6,15 +6,19 @@ import (
 
 var WebUIFlags = []Definition{
 	{
-		FlagName:     "web-ui",
-		ConfigPath:   types.WebUIEnabledKey,
-		DefaultValue: types.Default.WebUI.Enabled,
-		Description:  `Whether to start the web UI alongside the bacalhau node.`,
+		FlagName:          "web-ui",
+		ConfigPath:        types.WebUIEnabledKey,
+		DefaultValue:      types.Default.WebUI.Enabled,
+		Description:       `Whether to start the web UI alongside the bacalhau node.`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.WebUIEnabledKey),
 	},
 	{
-		FlagName:     "web-ui-listen",
-		ConfigPath:   types.WebUIListenKey,
-		DefaultValue: types.Default.WebUI.Listen,
-		Description:  `The address to listen on for web-ui connections.`,
+		FlagName:          "web-ui-listen",
+		ConfigPath:        types.WebUIListenKey,
+		DefaultValue:      types.Default.WebUI.Listen,
+		Description:       `The address to listen on for web-ui connections.`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.WebUIListenKey),
 	},
 }
