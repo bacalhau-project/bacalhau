@@ -11,7 +11,6 @@ import (
 
 func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 	out := types.Bacalhau{
-		// TODO(forrest) [review]: when migrating should the address come from the server or client when both are present?
 		API: migrateAPI(in),
 		Orchestrator: types.Orchestrator{
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
@@ -110,48 +109,67 @@ func migrateCluster(in v1types.NetworkClusterConfig) types.Cluster {
 	return out
 }
 
-// TODO(review): what api should we migrate, the server or the client?
 func migrateAPI(in v1types.BacalhauConfig) types.API {
 	var (
-		host string
-		port int
+		out types.API
 	)
-	// check for a client config
-	if in.Node.ClientAPI.Host != "" && in.Node.ClientAPI.Port != 0 {
-		host = in.Node.ClientAPI.Host
-		port = in.Node.ClientAPI.Port
-
-	}
-	// check for server config
-	if in.Node.ServerAPI.Host != "" && in.Node.ServerAPI.Port != 0 {
-		if in.Node.ServerAPI.TLS.ServerKey != "" ||
-			in.Node.ServerAPI.TLS.SelfSigned ||
-			in.Node.ServerAPI.TLS.ServerCertificate != "" ||
-			in.Node.ServerAPI.TLS.AutoCertCachePath != "" ||
-			in.Node.ServerAPI.TLS.AutoCert != "" {
-		}
-		host = in.Node.ServerAPI.Host
-		port = in.Node.ServerAPI.Port
-	}
-
-	return types.API{
-		Host: host,
-		Port: port,
-		Auth: types.AuthConfig{
-			TokensPath: in.Auth.TokensPath,
-			Methods: func(cfg map[string]v1types.AuthenticatorConfig) map[string]types.AuthenticatorConfig {
-				out := make(map[string]types.AuthenticatorConfig)
-				for k, v := range cfg {
-					out[k] = types.AuthenticatorConfig{
-						Type:       string(v.Type),
-						PolicyPath: v.PolicyPath,
-					}
+	// migrate the existing auth methods
+	if len(in.Auth.Methods) > 0 {
+		out.Auth.Methods = func(cfg map[string]v1types.AuthenticatorConfig) map[string]types.AuthenticatorConfig {
+			out := make(map[string]types.AuthenticatorConfig)
+			for k, v := range cfg {
+				out[k] = types.AuthenticatorConfig{
+					Type:       string(v.Type),
+					PolicyPath: v.PolicyPath,
 				}
-				return out
-			}(in.Auth.Methods),
-			AccessPolicyPath: in.Auth.AccessPolicyPath,
-		},
+			}
+			return out
+		}(in.Auth.Methods)
 	}
+	out.Auth.AccessPolicyPath = in.Auth.AccessPolicyPath
+	out.Auth.TokensPath = in.Auth.TokensPath
+
+	// check for a client config, taking lowest precedence.
+	if in.Node.ClientAPI.Host != "" {
+		out.Host = in.Node.ClientAPI.Host
+	}
+	if in.Node.ClientAPI.Port != 0 {
+		out.Port = in.Node.ClientAPI.Port
+	}
+	if in.Node.ClientAPI.ClientTLS.UseTLS {
+		out.TLS.UseTLS = in.Node.ClientAPI.ClientTLS.UseTLS
+	}
+	if in.Node.ClientAPI.ClientTLS.CACert != "" {
+		out.TLS.CAFile = in.Node.ClientAPI.ClientTLS.CACert
+	}
+	if in.Node.ClientAPI.ClientTLS.Insecure {
+		out.TLS.Insecure = in.Node.ClientAPI.ClientTLS.Insecure
+	}
+
+	// check for a server config, taking highest precedence.
+	if in.Node.ServerAPI.Host != "" {
+		out.Host = in.Node.ServerAPI.Host
+	}
+	if in.Node.ServerAPI.Port != 0 {
+		out.Port = in.Node.ServerAPI.Port
+	}
+	if in.Node.ServerAPI.TLS.ServerKey != "" {
+		out.TLS.KeyFile = in.Node.ServerAPI.TLS.ServerKey
+	}
+	if in.Node.ServerAPI.TLS.SelfSigned {
+		out.TLS.SelfSigned = in.Node.ServerAPI.TLS.SelfSigned
+	}
+	if in.Node.ServerAPI.TLS.ServerCertificate != "" {
+		out.TLS.CertFile = in.Node.ServerAPI.TLS.ServerCertificate
+	}
+	if in.Node.ServerAPI.TLS.AutoCertCachePath != "" {
+		out.TLS.AutoCertCachePath = in.Node.ServerAPI.TLS.AutoCertCachePath
+	}
+	if in.Node.ServerAPI.TLS.AutoCert != "" {
+		out.TLS.AutoCert = in.Node.ServerAPI.TLS.AutoCert
+	}
+
+	return out
 }
 
 func migrateDownloadConfig(in v1types.NodeConfig) types.ResultDownloaders {
