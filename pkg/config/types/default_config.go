@@ -112,6 +112,19 @@ var Default = Bacalhau{
 			},
 		},
 	},
+	InputSources: InputSourcesConfig{
+		ReadTimeout: Duration(5 * time.Minute),
+	},
+	Engines: EngineConfig{
+		Types: EngineConfigTypes{
+			Docker: Docker{
+				ManifestCache: DockerManifestCache{
+					Size:    1000,
+					TTL:     Duration(1 * time.Hour),
+					Refresh: Duration(1 * time.Hour),
+				}},
+		},
+	},
 	Logging: Logging{
 		Level:                "info",
 		Mode:                 "default",

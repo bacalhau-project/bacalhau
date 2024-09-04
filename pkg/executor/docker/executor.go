@@ -58,7 +58,7 @@ type Executor struct {
 
 func NewExecutor(
 	id string,
-	dockerCacheCfg types.DockerManifestCache,
+	dockerCacheCfg types.Docker,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -70,7 +70,7 @@ func NewExecutor(
 		client:            dockerClient,
 		activeFlags:       make(map[string]chan struct{}),
 		complete:          make(map[string]chan struct{}),
-		dockerCacheConfig: dockerCacheCfg,
+		dockerCacheConfig: dockerCacheCfg.ManifestCache,
 	}
 
 	return de, nil

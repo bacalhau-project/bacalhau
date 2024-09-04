@@ -8,12 +8,16 @@ import (
 var _ Provider = (*EngineConfig)(nil)
 
 type EngineConfig struct {
-	Disabled []string `yaml:"Disabled,omitempty"`
-	Docker   Docker   `yaml:"Docker,omitempty"`
-	WASM     WASM     `yaml:"WASM,omitempty"`
+	Disabled []string          `yaml:"Disabled,omitempty"`
+	Types    EngineConfigTypes `yaml:"Types,omitempty"`
 }
 
-func (e EngineConfig) Enabled(kind string) bool {
+type EngineConfigTypes struct {
+	Docker Docker `yaml:"Docker,omitempty"`
+	WASM   WASM   `yaml:"WASM,omitempty"`
+}
+
+func (e EngineConfig) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(e.Disabled, func(s string) bool {
 		return strings.ToLower(s) == strings.ToLower(kind)
 	})
@@ -27,7 +31,7 @@ type Docker struct {
 	ManifestCache DockerManifestCache `yaml:"ManifestCache,omitempty"`
 }
 
-func (d Docker) Installed() bool {
+func (d Docker) IsConfigured() bool {
 	return d != Docker{}
 }
 
@@ -46,6 +50,6 @@ var _ Configurable = (*WASM)(nil)
 type WASM struct {
 }
 
-func (W WASM) Installed() bool {
+func (W WASM) IsConfigured() bool {
 	return true
 }

@@ -18,7 +18,7 @@ type PublisherTypes struct {
 	Local LocalPublisher `yaml:"Local,omitempty"`
 }
 
-func (p PublishersConfig) Enabled(kind string) bool {
+func (p PublishersConfig) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(p.Disabled, func(s string) bool {
 		return strings.ToLower(s) == strings.ToLower(kind)
 	})
@@ -31,7 +31,7 @@ type IPFSPublisher struct {
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
-func (c IPFSPublisher) Installed() bool {
+func (c IPFSPublisher) IsConfigured() bool {
 	return c != IPFSPublisher{}
 }
 
@@ -44,7 +44,7 @@ type S3Publisher struct {
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty"`
 }
 
-func (c S3Publisher) Installed() bool {
+func (c S3Publisher) IsConfigured() bool {
 	return c != S3Publisher{}
 }
 
@@ -59,6 +59,6 @@ type LocalPublisher struct {
 	Directory string `yaml:"Directory,omitempty"`
 }
 
-func (l LocalPublisher) Installed() bool {
+func (l LocalPublisher) IsConfigured() bool {
 	return l != LocalPublisher{}
 }

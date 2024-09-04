@@ -58,10 +58,12 @@ func (s *ExecutorTestSuite) SetupTest() {
 
 	s.executor, err = NewExecutor(
 		"bacalhau-executor-unit-test",
-		types.DockerManifestCache{
-			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+		types.Docker{
+			ManifestCache: types.DockerManifestCache{
+				Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
+				TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+				Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+			},
 		},
 	)
 	require.NoError(s.T(), err)

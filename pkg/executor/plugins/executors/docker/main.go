@@ -38,7 +38,7 @@ func main() { // Create an hclog.Logger
 	}
 	dockerExecutor, err := docker.NewExecutor(
 		"bacalhau-pluggable-executor-docker",
-		cfg,
+		types.Docker{ManifestCache: cfg},
 	)
 	if err != nil {
 		logger.Error(err.Error())

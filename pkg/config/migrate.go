@@ -187,7 +187,7 @@ func migrateEngines(in v1types.NodeConfig) types.EngineConfig {
 	// migrate any disabled engines
 	out.Disabled = in.DisabledFeatures.Engines
 
-	out.Docker.ManifestCache = types.DockerManifestCache{
+	out.Types.Docker.ManifestCache = types.DockerManifestCache{
 		Size:    in.Compute.ManifestCache.Size,
 		TTL:     types.Duration(in.Compute.ManifestCache.Duration),
 		Refresh: types.Duration(in.Compute.ManifestCache.Frequency),

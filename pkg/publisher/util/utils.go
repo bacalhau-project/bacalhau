@@ -28,11 +28,11 @@ func NewPublisherProvider(
 ) (publisher.PublisherProvider, error) {
 	providers := make(map[string]publisher.Publisher)
 
-	if cfg.Enabled(models.PublisherNoop) {
+	if cfg.IsNotDisabled(models.PublisherNoop) {
 		providers[models.PublisherNoop] = noop.NewNoopPublisher()
 	}
 
-	if cfg.Enabled(models.PublisherS3) {
+	if cfg.IsNotDisabled(models.PublisherS3) {
 		s3Publisher, err := configureS3Publisher(storagePath, cm)
 		if err != nil {
 			return nil, err
@@ -40,12 +40,12 @@ func NewPublisherProvider(
 		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
 	}
 
-	if cfg.Enabled(models.PublisherLocal) {
+	if cfg.IsNotDisabled(models.PublisherLocal) {
 		var (
 			localPublisher *local.Publisher
 			err            error
 		)
-		if cfg.Types.Local.Installed() {
+		if cfg.Types.Local.IsConfigured() {
 			localPublisher, err = local.NewLocalPublisher(
 				ctx,
 				cfg.Types.Local.Directory,
@@ -66,8 +66,8 @@ func NewPublisherProvider(
 		providers[models.PublisherLocal] = tracing.Wrap(localPublisher)
 	}
 
-	if cfg.Enabled(models.PublisherIPFS) {
-		if cfg.Types.IPFS.Installed() {
+	if cfg.IsNotDisabled(models.PublisherIPFS) {
+		if cfg.Types.IPFS.IsConfigured() {
 			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err

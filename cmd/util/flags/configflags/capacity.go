@@ -34,15 +34,6 @@ var CapacityFlags = []Definition{
 	// deprecated, the feature is no longer supported
 	{
 		FlagName:             "ignore-physical-resource-limits",
-		ConfigPath:           "ignore.physical.resources.limit.deprecated",
-		DefaultValue:         "",
-		Description:          `When set the compute node will ignore is physical resource limits`,
-		EnvironmentVariables: []string{"BACALHAU_CAPACITY_MANAGER_OVER_COMMIT"},
-		Deprecated:           true,
-		DeprecatedMessage:    FeatureDeprecatedMessage,
-	},
-	{
-		FlagName:             "ignore-physical-resource-limits",
 		ConfigPath:           "ignore.physical.resource.limits.deprecated",
 		Description:          `When set the compute node will ignore is physical resource limits`,
 		EnvironmentVariables: []string{"BACALHAU_CAPACITY_MANAGER_OVER_COMMIT"},

@@ -37,20 +37,18 @@ type StandardExecutorOptions struct {
 func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, error) {
 	providers := make(map[string]storage.Storage)
 
-	// NB(forrest): defaults taken from v1 config
-	getVolumeTimeout := 2 * time.Minute
-	urlDownloadTimeout := 5 * time.Minute
-	urlMaxRetries := 3
-
-	if cfg.InputSources.Enabled(models.StorageSourceURL) {
-		providers[models.StorageSourceURL] = tracing.Wrap(urldownload.NewStorage(urlDownloadTimeout, urlMaxRetries))
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceURL) {
+		providers[models.StorageSourceURL] = tracing.Wrap(urldownload.NewStorage(
+			time.Duration(cfg.InputSources.ReadTimeout),
+			cfg.InputSources.MaxRetryCount,
+		))
 	}
 
-	if cfg.InputSources.Enabled(models.StorageSourceInline) {
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceInline) {
 		providers[models.StorageSourceInline] = tracing.Wrap(inline.NewStorage())
 	}
 
-	if cfg.InputSources.Enabled(models.StorageSourceS3) {
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceS3) {
 		s3Cfg, err := s3helper.DefaultAWSConfig()
 		if err != nil {
 			return nil, err
@@ -58,29 +56,30 @@ func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, er
 		clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
 			AWSConfig: s3Cfg,
 		})
-		providers[models.StorageSourceS3] = tracing.Wrap(s3.NewStorage(getVolumeTimeout, clientProvider))
+		providers[models.StorageSourceS3] = tracing.Wrap(s3.NewStorage(
+			time.Duration(cfg.InputSources.ReadTimeout),
+			clientProvider,
+		))
 	}
 
-	if cfg.InputSources.Enabled(models.StorageSourceLocalDirectory) {
-		if len(cfg.Compute.AllowListedLocalPaths) > 0 {
-			var err error
-			providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
-				localdirectory.StorageProviderParams{
-					AllowedPaths: localdirectory.ParseAllowPaths(cfg.Compute.AllowListedLocalPaths),
-				})
-			if err != nil {
-				return nil, err
-			}
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceLocalDirectory) {
+		var err error
+		providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
+			localdirectory.StorageProviderParams{
+				AllowedPaths: localdirectory.ParseAllowPaths(cfg.Compute.AllowListedLocalPaths),
+			})
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	if cfg.InputSources.Enabled(models.StorageSourceIPFS) {
-		if cfg.InputSources.Types.IPFS.Installed() {
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceIPFS) {
+		if cfg.InputSources.Types.IPFS.IsConfigured() {
 			ipfsClient, err := ipfs.NewClient(context.Background(), cfg.InputSources.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err
 			}
-			ipfsStorage, err := ipfs_storage.NewStorage(*ipfsClient, getVolumeTimeout)
+			ipfsStorage, err := ipfs_storage.NewStorage(*ipfsClient, time.Duration(cfg.InputSources.ReadTimeout))
 			if err != nil {
 				return nil, err
 			}
@@ -107,34 +106,20 @@ func NewStandardExecutorProvider(
 ) (executor.ExecutorProvider, error) {
 	providers := make(map[string]executor.Executor)
 
-	if cfg.Enabled(models.EngineDocker) {
-		cacheConfig := types.DockerManifestCache{
-			Size:    1000,
-			TTL:     types.Duration(1 * time.Hour),
-			Refresh: types.Duration(1 * time.Hour),
-		}
-		if cfg.Docker.Installed() {
-			cacheConfig = types.DockerManifestCache{
-				Size:    cfg.Docker.ManifestCache.Size,
-				TTL:     cfg.Docker.ManifestCache.TTL,
-				Refresh: cfg.Docker.ManifestCache.Refresh,
-			}
-		}
+	if cfg.IsNotDisabled(models.EngineDocker) {
 		var err error
-		providers[models.EngineDocker], err = docker.NewExecutor(executorOptions.DockerID, cacheConfig)
+		providers[models.EngineDocker], err = docker.NewExecutor(executorOptions.DockerID, cfg.Types.Docker)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if cfg.Enabled(models.EngineWasm) {
-		if cfg.WASM.Installed() {
-			wasmExecutor, err := wasm.NewExecutor()
-			if err != nil {
-				return nil, err
-			}
-			providers[models.EngineWasm] = wasmExecutor
+	if cfg.IsNotDisabled(models.EngineWasm) {
+		wasmExecutor, err := wasm.NewExecutor()
+		if err != nil {
+			return nil, err
 		}
+		providers[models.EngineWasm] = wasmExecutor
 	}
 
 	return provider.NewMappedProvider(providers), nil

@@ -16,18 +16,18 @@ import (
 func NewStandardDownloaders(ctx context.Context, cfg types.ResultDownloaders) (downloader.DownloaderProvider, error) {
 	providers := make(map[string]downloader.Downloader)
 
-	if cfg.Enabled(models.StorageSourceS3PreSigned) {
+	if cfg.IsNotDisabled(models.StorageSourceS3PreSigned) {
 		providers[models.StorageSourceS3PreSigned] = s3signed.NewDownloader(s3signed.DownloaderParams{
 			HTTPDownloader: http.NewHTTPDownloader(),
 		})
 	}
 
-	if cfg.Enabled(models.StorageSourceURL) {
+	if cfg.IsNotDisabled(models.StorageSourceURL) {
 		providers[models.StorageSourceURL] = http.NewHTTPDownloader()
 	}
 
-	if cfg.Enabled(models.StorageSourceIPFS) {
-		if cfg.Types.IPFS.Installed() {
+	if cfg.IsNotDisabled(models.StorageSourceIPFS) {
+		if cfg.Types.IPFS.IsConfigured() {
 			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err

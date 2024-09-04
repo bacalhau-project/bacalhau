@@ -17,7 +17,7 @@ type ResultDownloadersTypes struct {
 	IPFS IpfsDownloader `yaml:"IPFS,omitempty"`
 }
 
-func (r ResultDownloaders) Enabled(kind string) bool {
+func (r ResultDownloaders) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(r.Disabled, func(s string) bool {
 		return strings.ToLower(s) == strings.ToLower(kind)
 	})
@@ -30,6 +30,6 @@ type IpfsDownloader struct {
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
-func (i IpfsDownloader) Installed() bool {
+func (i IpfsDownloader) IsConfigured() bool {
 	return i != IpfsDownloader{}
 }

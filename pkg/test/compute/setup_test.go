@@ -79,10 +79,12 @@ func (s *ComputeSuite) setupNode() {
 	s.failureChannel = make(chan compute.ComputeError)
 
 	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID,
-		types.DockerManifestCache{
-			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+		types.Docker{
+			ManifestCache: types.DockerManifestCache{
+				Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
+				TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+				Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+			},
 		},
 	)
 	s.Require().NoError(err)

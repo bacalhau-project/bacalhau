@@ -62,8 +62,8 @@ func GetComputeConfig(
 
 	// if the local publisher is enabled and installed, populate params.
 	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
-	if cfg.Publishers.Enabled(models.PublisherLocal) {
-		if cfg.Publishers.Types.Local.Installed() {
+	if cfg.Publishers.IsNotDisabled(models.PublisherLocal) {
+		if cfg.Publishers.Types.Local.IsConfigured() {
 			params.LocalPublisher = types.LocalPublisher{
 				Address:   cfg.Publishers.Types.Local.Address,
 				Port:      cfg.Publishers.Types.Local.Port,
@@ -106,11 +106,9 @@ func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.Requester
 		JobStore:                    jobStore,
 	}
 
-	if cfg.Publishers.Enabled(models.StorageSourceS3) {
-		if cfg.Publishers.Types.S3.Installed() {
-			params.S3PreSignedURLExpiration = time.Duration(cfg.Publishers.Types.S3.PreSignedURLExpiration)
-			params.S3PreSignedURLDisabled = cfg.Publishers.Types.S3.PreSignedURLDisabled
-		}
+	if cfg.Publishers.IsNotDisabled(models.StorageSourceS3) {
+		params.S3PreSignedURLExpiration = time.Duration(cfg.Publishers.Types.S3.PreSignedURLExpiration)
+		params.S3PreSignedURLDisabled = cfg.Publishers.Types.S3.PreSignedURLDisabled
 	}
 
 	requesterConfig, err := node.NewRequesterConfigWith(params)
