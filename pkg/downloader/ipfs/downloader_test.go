@@ -34,7 +34,7 @@ func TestIPFSDownload(t *testing.T) {
 	_, cfg := setup.SetupBacalhauRepoForTesting(t)
 	testutils.MustHaveIPFS(t, cfg)
 
-	client, err := ipfs.NewClient(context.Background(), cfg.ResultDownloaders.IPFS.Endpoint)
+	client, err := ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
 	require.NoError(t, err)
 
 	text := randomText(t)

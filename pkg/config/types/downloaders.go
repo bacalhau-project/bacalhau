@@ -8,9 +8,13 @@ import (
 var _ Provider = (*ResultDownloaders)(nil)
 
 type ResultDownloaders struct {
-	Disabled []string       `yaml:"Disabled,omitempty"`
-	Timeout  Duration       `yaml:"Timeout,omitempty"`
-	IPFS     IpfsDownloader `yaml:"IPFS,omitempty"`
+	Disabled []string               `yaml:"Disabled,omitempty"`
+	Timeout  Duration               `yaml:"Timeout,omitempty"`
+	Types    ResultDownloadersTypes `yaml:"Types,omitempty"`
+}
+
+type ResultDownloadersTypes struct {
+	IPFS IpfsDownloader `yaml:"IPFS,omitempty"`
 }
 
 func (r ResultDownloaders) Enabled(kind string) bool {

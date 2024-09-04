@@ -135,9 +135,9 @@ func New(opts ...Option) (*Config, error) {
 					// allow the deprecated --ipfs-connect flag to bind to related fields in the config.
 					for _, key := range []string{
 						// config keys we wish to bind --ipfs-connect flag to.
-						types.ResultDownloadersIPFSEndpointKey,
-						types.InputSourcesIPFSEndpointKey,
-						types.PublishersIPFSEndpointKey,
+						types.ResultDownloadersTypesIPFSEndpointKey,
+						types.InputSourcesTypesIPFSEndpointKey,
+						types.PublishersTypesIPFSEndpointKey,
 					} {
 						if err := c.base.BindPFlag(key, flag); err != nil {
 							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
@@ -164,8 +164,8 @@ func New(opts ...Option) (*Config, error) {
 					// allow the deprecated --default-publisher flag to bind to related fields in the config.
 					for _, key := range []string{
 						// config keys we wish to bind --default-publisher flag to.
-						types.JobDefaultsBatchTaskPublisherTypeKey,
-						types.JobDefaultsOpsTaskPublisherTypeKey,
+						types.JobDefaultsBatchTaskPublisherConfigKey,
+						types.JobDefaultsOpsTaskPublisherConfigKey,
 					} {
 						if err := c.base.BindPFlag(key, flag); err != nil {
 							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)

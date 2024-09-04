@@ -27,8 +27,8 @@ func NewStandardDownloaders(ctx context.Context, cfg types.ResultDownloaders) (d
 	}
 
 	if cfg.Enabled(models.StorageSourceIPFS) {
-		if cfg.IPFS.Installed() {
-			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.IPFS.Endpoint)
+		if cfg.Types.IPFS.Installed() {
+			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err
 			}

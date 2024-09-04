@@ -45,12 +45,12 @@ func NewPublisherProvider(
 			localPublisher *local.Publisher
 			err            error
 		)
-		if cfg.Local.Installed() {
+		if cfg.Types.Local.Installed() {
 			localPublisher, err = local.NewLocalPublisher(
 				ctx,
-				cfg.Local.Directory,
-				cfg.Local.Address,
-				cfg.Local.Port,
+				cfg.Types.Local.Directory,
+				cfg.Types.Local.Address,
+				cfg.Types.Local.Port,
 			)
 		} else {
 			localPublisher, err = local.NewLocalPublisher(
@@ -67,8 +67,8 @@ func NewPublisherProvider(
 	}
 
 	if cfg.Enabled(models.PublisherIPFS) {
-		if cfg.IPFS.Installed() {
-			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.IPFS.Endpoint)
+		if cfg.Types.IPFS.Installed() {
+			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err
 			}

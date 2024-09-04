@@ -187,16 +187,16 @@ func Setup(
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-			cfg.Publishers.Local = types.LocalPublisher{
+			cfg.Publishers.Types.Local = types.LocalPublisher{
 				Port:      fport,
 				Address:   "127.0.0.1",
 				Directory: path.Join(repoPath, fmt.Sprintf("local-publisher-%d", i)),
 			}
 
-			err = os.MkdirAll(cfg.Publishers.Local.Directory, util.OS_USER_RWX)
+			err = os.MkdirAll(cfg.Publishers.Types.Local.Directory, util.OS_USER_RWX)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create local publisher directory %s: %w",
-					cfg.Publishers.Local.Directory, err)
+					cfg.Publishers.Types.Local.Directory, err)
 			}
 		}
 

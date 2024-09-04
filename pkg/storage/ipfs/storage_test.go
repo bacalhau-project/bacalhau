@@ -36,7 +36,7 @@ func (s *StorageSuite) SetupSuite() {
 	testutils.MustHaveIPFS(s.T(), cfg)
 
 	var err error
-	s.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.IPFS.Endpoint)
+	s.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
 	s.storage, err = NewStorage(*s.ipfsClient, 5*time.Second)
 	s.Require().NoError(err)
 }

@@ -176,7 +176,7 @@ func migrateDownloadConfig(in v1types.NodeConfig) types.ResultDownloaders {
 	var out types.ResultDownloaders
 
 	out.Timeout = types.Duration(in.DownloadURLRequestTimeout)
-	out.IPFS.Endpoint = in.IPFS.Connect
+	out.Types.IPFS.Endpoint = in.IPFS.Connect
 
 	return out
 }
@@ -203,16 +203,16 @@ func migratePublishers(in v1types.NodeConfig) types.PublishersConfig {
 	out.Disabled = in.DisabledFeatures.Publishers
 
 	// ipfs
-	out.IPFS.Endpoint = in.IPFS.Connect
+	out.Types.IPFS.Endpoint = in.IPFS.Connect
 
 	// local
-	out.Local.Port = in.Compute.LocalPublisher.Port
-	out.Local.Address = in.Compute.LocalPublisher.Address
-	out.Local.Directory = in.Compute.LocalPublisher.Directory
+	out.Types.Local.Port = in.Compute.LocalPublisher.Port
+	out.Types.Local.Address = in.Compute.LocalPublisher.Address
+	out.Types.Local.Directory = in.Compute.LocalPublisher.Directory
 
 	// s3
-	out.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
-	out.S3.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
+	out.Types.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)
+	out.Types.S3.PreSignedURLDisabled = in.Requester.StorageProvider.S3.PreSignedURLDisabled
 
 	return out
 }
@@ -224,7 +224,7 @@ func migrateInputSources(in v1types.NodeConfig) types.InputSourcesConfig {
 	out.Disabled = in.DisabledFeatures.Storages
 
 	// ipfs
-	out.IPFS.Endpoint = in.IPFS.Connect
+	out.Types.IPFS.Endpoint = in.IPFS.Connect
 
 	return out
 }

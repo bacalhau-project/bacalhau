@@ -9,9 +9,13 @@ var _ Provider = (*PublishersConfig)(nil)
 
 type PublishersConfig struct {
 	Disabled []string       `yaml:"Disabled,omitempty"`
-	IPFS     IPFSPublisher  `yaml:"IPFS,omitempty"`
-	S3       S3Publisher    `yaml:"S3,omitempty"`
-	Local    LocalPublisher `yaml:"Local,omitempty"`
+	Types    PublisherTypes `yaml:"Types,omitempty"`
+}
+
+type PublisherTypes struct {
+	IPFS  IPFSPublisher  `yaml:"IPFS,omitempty"`
+	S3    S3Publisher    `yaml:"S3,omitempty"`
+	Local LocalPublisher `yaml:"Local,omitempty"`
 }
 
 func (p PublishersConfig) Enabled(kind string) bool {

@@ -41,7 +41,7 @@ func (suite *IPFSHostStorageSuite) SetupTest() {
 	testutils.MustHaveIPFS(suite.T(), suite.Config)
 
 	var err error
-	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.InputSources.IPFS.Endpoint)
+	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.InputSources.Types.IPFS.Endpoint)
 	suite.Require().NoError(err)
 
 }

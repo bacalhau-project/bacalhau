@@ -75,8 +75,8 @@ func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, er
 	}
 
 	if cfg.InputSources.Enabled(models.StorageSourceIPFS) {
-		if cfg.InputSources.IPFS.Installed() {
-			ipfsClient, err := ipfs.NewClient(context.Background(), cfg.InputSources.IPFS.Endpoint)
+		if cfg.InputSources.Types.IPFS.Installed() {
+			ipfsClient, err := ipfs.NewClient(context.Background(), cfg.InputSources.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err
 			}

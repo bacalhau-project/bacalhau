@@ -8,9 +8,13 @@ import (
 var _ Provider = (*InputSourcesConfig)(nil)
 
 type InputSourcesConfig struct {
-	Disabled []string    `yaml:"Disabled,omitempty"`
-	IPFS     IPFSStorage `yaml:"IPFS,omitempty"`
-	S3       S3Storage   `yaml:"S3,omitempty"`
+	Disabled []string          `yaml:"Disabled,omitempty"`
+	Types    InputSourcesTypes `yaml:"Types,omitempty"`
+}
+
+type InputSourcesTypes struct {
+	IPFS IPFSStorage `yaml:"IPFS,omitempty"`
+	S3   S3Storage   `yaml:"S3,omitempty"`
 }
 
 func (i InputSourcesConfig) Enabled(kind string) bool {

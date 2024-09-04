@@ -36,11 +36,11 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 // Otherwise it returns an IPFS connect string
 func MustHaveIPFS(t testing.TB, cfg types.Bacalhau) {
 	downloaderConfigured := cfg.ResultDownloaders.Enabled(models.StorageSourceIPFS) &&
-		cfg.ResultDownloaders.IPFS.Installed()
+		cfg.ResultDownloaders.Types.IPFS.Installed()
 	inputSourceConfigured := cfg.InputSources.Enabled(models.StorageSourceIPFS) &&
-		cfg.InputSources.IPFS.Installed()
+		cfg.InputSources.Types.IPFS.Installed()
 	publisherConfigured := cfg.Publishers.Enabled(models.PublisherIPFS) &&
-		cfg.Publishers.IPFS.Installed()
+		cfg.Publishers.Types.IPFS.Installed()
 
 	if !(downloaderConfigured && inputSourceConfigured && publisherConfigured) {
 		t.Skip("Cannot run this test because it IPFS Connect is not configured")

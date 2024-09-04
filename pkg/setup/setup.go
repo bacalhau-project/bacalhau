@@ -75,9 +75,9 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	// from this flag to the dedicated flags like "BACALHAU_PUBLISHER_IPFS_ENDPOINT",
 	// "BACALHAU_INPUTSOURCES_IPFS_ENDPOINT", etc which have a direct mapping to the config key based on their name.
 	if connect := os.Getenv("BACALHAU_NODE_IPFS_CONNECT"); connect != "" {
-		cfgValues[types.PublishersIPFSEndpointKey] = connect
-		cfgValues[types.ResultDownloadersIPFSEndpointKey] = connect
-		cfgValues[types.InputSourcesIPFSEndpointKey] = connect
+		cfgValues[types.PublishersTypesIPFSEndpointKey] = connect
+		cfgValues[types.ResultDownloadersTypesIPFSEndpointKey] = connect
+		cfgValues[types.InputSourcesTypesIPFSEndpointKey] = connect
 	}
 
 	// init a config with this viper instance using the local configuration as default
