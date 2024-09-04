@@ -9,7 +9,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -215,16 +214,6 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
-	}
-
-	if requesterConfig.DefaultPublisher != "" {
-		// parse the publisher to generate a models.SpecConfig and add it to each job
-		// which is without a publisher
-		config, err := job.ParsePublisherString(requesterConfig.DefaultPublisher)
-		if err != nil {
-			return nil, fmt.Errorf("parsing default publisher spec (%s): %w", requesterConfig.DefaultPublisher, err)
-		}
-		jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{

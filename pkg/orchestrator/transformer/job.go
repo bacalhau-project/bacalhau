@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -23,9 +24,13 @@ func DefaultsApplier(defaults types.JobDefaults) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		switch job.Type {
 		case models.JobTypeBatch:
-			applyBatchJobDefaults(defaults.Batch, job)
+			if err := applyBatchJobDefaults(defaults.Batch, job); err != nil {
+				return err
+			}
 		case models.JobTypeOps:
-			applyBatchJobDefaults(defaults.Ops, job)
+			if err := applyBatchJobDefaults(defaults.Ops, job); err != nil {
+				return err
+			}
 		case models.JobTypeService:
 			applyLongRunningJobDefaults(defaults.Service, job)
 		case models.JobTypeDaemon:
@@ -39,16 +44,19 @@ func DefaultsApplier(defaults types.JobDefaults) JobTransformer {
 	return JobFn(f)
 }
 
-func applyBatchJobDefaults(defaults types.BatchJobDefaultsConfig, job *models.Job) {
+func applyBatchJobDefaults(defaults types.BatchJobDefaultsConfig, job *models.Job) error {
 	if job.Priority == 0 {
 		job.Priority = defaults.Priority
 	}
 	for _, task := range job.Tasks {
-		applyBatchTaskDefaults(defaults.Task, task)
+		if err := applyBatchTaskDefaults(defaults.Task, task); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.Task) {
+func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.Task) error {
 	if task.ResourcesConfig.CPU == "" {
 		task.ResourcesConfig.CPU = defaults.Resources.CPU
 	}
@@ -61,8 +69,15 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 	if task.ResourcesConfig.GPU == "" {
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
-	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 {
-		task.Publisher.Type = defaults.Publisher.Type
+	// TODO: several tests like DefaultPublisherSuite.TestDefaultPublisher expect the default publisher to be
+	// set even if no results paths are provided on a job, so here we ignore the result path and always set the
+	// default publisher to keep alignment with expectations of test
+	if task.Publisher.IsEmpty() {
+		config, err := job.ParsePublisherString(defaults.Publisher.Config)
+		if err != nil {
+			return fmt.Errorf("parsing default publisher spec (%s): %w", defaults.Publisher.Config, err)
+		}
+		task.Publisher = config
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
 		task.Timeouts.ExecutionTimeout = int64(time.Duration(defaults.Timeouts.ExecutionTimeout).Seconds())
@@ -70,6 +85,8 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 	if task.Timeouts.TotalTimeout <= 0 {
 		task.Timeouts.TotalTimeout = int64(time.Duration(defaults.Timeouts.TotalTimeout).Seconds())
 	}
+
+	return nil
 }
 
 func applyLongRunningJobDefaults(defaults types.LongRunningJobDefaultsConfig, job *models.Job) {

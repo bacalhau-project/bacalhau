@@ -58,8 +58,6 @@ type RequesterConfigParams struct {
 	// TODO(review): we don't use this field for anything, maybe we can delete it
 	NodeInfoStoreTTL time.Duration
 
-	DefaultPublisher string
-
 	// When new nodes join the cluster, what state do they have? By default, APPROVED, and
 	// for tests, APPROVED. We will provide an option to set this to PENDING for production
 	// or for when operators are ready to control node approval.

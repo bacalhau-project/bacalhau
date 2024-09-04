@@ -35,5 +35,5 @@ type ResourcesConfig struct {
 }
 
 type DefaultPublisherConfig struct {
-	Type string `yaml:"Type,omitempty"`
+	Config string `yaml:"Config,omitempty"`
 }

@@ -9,23 +9,22 @@ import (
 
 //go:generate go run gen/generate.go ./
 type Bacalhau struct {
-	API                 API                    `yaml:"API,omitempty"`
-	NameProvider        string                 `yaml:"NameProvider,omitempty"`
-	DataDir             string                 `yaml:"DataDir,omitempty"`
-	StrictVersionMatch  bool                   `yaml:"StrictVersionMatch,omitempty"`
-	Orchestrator        Orchestrator           `yaml:"Orchestrator,omitempty"`
-	Compute             Compute                `yaml:"Compute,omitempty"`
-	WebUI               WebUI                  `yaml:"WebUI,omitempty"`
-	InputSources        InputSourcesConfig     `yaml:"InputSources,omitempty"`
-	Publishers          PublishersConfig       `yaml:"Publishers,omitempty"`
-	Engines             EngineConfig           `yaml:"Engines,omitempty"`
-	ResultDownloaders   ResultDownloaders      `yaml:"ResultDownloaders,omitempty"`
-	JobDefaults         JobDefaults            `yaml:"JobDefaults,omitempty"`
-	JobAdmissionControl JobAdmissionControl    `yaml:"JobAdmissionControl,omitempty"`
-	Logging             Logging                `yaml:"Logging,omitempty"`
-	UpdateConfig        UpdateConfig           `yaml:"UpdateConfig,omitempty"`
-	FeatureFlags        FeatureFlags           `yaml:"FeatureFlags,omitempty"`
-	DefaultPublisher    DefaultPublisherConfig `yaml:"DefaultPublisher,omitempty"`
+	API                 API                 `yaml:"API,omitempty"`
+	NameProvider        string              `yaml:"NameProvider,omitempty"`
+	DataDir             string              `yaml:"DataDir,omitempty"`
+	StrictVersionMatch  bool                `yaml:"StrictVersionMatch,omitempty"`
+	Orchestrator        Orchestrator        `yaml:"Orchestrator,omitempty"`
+	Compute             Compute             `yaml:"Compute,omitempty"`
+	WebUI               WebUI               `yaml:"WebUI,omitempty"`
+	InputSources        InputSourcesConfig  `yaml:"InputSources,omitempty"`
+	Publishers          PublishersConfig    `yaml:"Publishers,omitempty"`
+	Engines             EngineConfig        `yaml:"Engines,omitempty"`
+	ResultDownloaders   ResultDownloaders   `yaml:"ResultDownloaders,omitempty"`
+	JobDefaults         JobDefaults         `yaml:"JobDefaults,omitempty"`
+	JobAdmissionControl JobAdmissionControl `yaml:"JobAdmissionControl,omitempty"`
+	Logging             Logging             `yaml:"Logging,omitempty"`
+	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
+	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
 }
 
 func AllKeys() map[string]reflect.Type {

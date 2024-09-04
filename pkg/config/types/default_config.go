@@ -71,7 +71,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: models.PublisherLocal,
+					Config: models.PublisherLocal,
 				},
 			},
 		},
@@ -83,7 +83,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Type: models.PublisherLocal,
+					Config: models.PublisherLocal,
 				},
 			},
 		},
@@ -113,9 +113,6 @@ var Default = Bacalhau{
 	},
 	UpdateConfig: UpdateConfig{
 		Interval: Day,
-	},
-	DefaultPublisher: DefaultPublisherConfig{
-		Type: models.PublisherLocal,
 	},
 	WebUI: WebUI{
 		Enabled: false,

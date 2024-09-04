@@ -77,8 +77,6 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config = &StackConfig{}
 	}
 
-	defaultPublisher := config.RequesterConfig.DefaultPublisher
-
 	if config.DevStackOptions == nil {
 		config.DevStackOptions = &devstack.DevStackOptions{}
 	}
@@ -103,8 +101,6 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		s.Require().NoError(err)
 		config.ComputeConfig = cfg
 	}
-
-	config.RequesterConfig.DefaultPublisher = defaultPublisher
 
 	stack := testutils.Setup(s.Ctx, s.T(), s.Repo, s.Config,
 		append(config.DevStackOptions.Options(),

@@ -49,6 +49,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(models.NoTimeout),
 				},
+				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
 			},
 		},
 		Ops: types.BatchJobDefaultsConfig{
@@ -56,6 +57,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(models.NoTimeout),
 				},
+				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
 			},
 		},
 	},
@@ -103,6 +105,7 @@ var TestRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(30 * time.Second),
 				},
+				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
 			},
 		},
 		Ops: types.BatchJobDefaultsConfig{
@@ -110,6 +113,7 @@ var TestRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(30 * time.Second),
 				},
+				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
 			},
 		},
 	},

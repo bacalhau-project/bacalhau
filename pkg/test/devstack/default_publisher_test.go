@@ -54,7 +54,8 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 	stack := scenario.StackConfig{}
-	stack.DefaultPublisher = "local"
+	stack.JobDefaults.Batch.Task.Publisher.Config = "local"
+	stack.JobDefaults.Ops.Task.Publisher.Config = "local"
 
 	testcase := scenario.Scenario{
 		Job: &models.Job{

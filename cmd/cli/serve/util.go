@@ -104,7 +104,6 @@ func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.Requester
 		WorkerCount:                 cfg.Orchestrator.Scheduler.WorkerCount,
 		TranslationEnabled:          cfg.FeatureFlags.ExecTranslation,
 		JobStore:                    jobStore,
-		DefaultPublisher:            cfg.DefaultPublisher.Type,
 	}
 
 	if cfg.Publishers.Enabled(models.StorageSourceS3) {
