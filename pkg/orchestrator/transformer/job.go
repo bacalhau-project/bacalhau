@@ -69,10 +69,8 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 	if task.ResourcesConfig.GPU == "" {
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
-	// TODO: several tests like DefaultPublisherSuite.TestDefaultPublisher expect the default publisher to be
-	// set even if no results paths are provided on a job, so here we ignore the result path and always set the
-	// default publisher to keep alignment with expectations of test
-	if task.Publisher.IsEmpty() {
+	// if the user didn't specify a publisher, but specified result path(s) assign the task a default publisher, if any.
+	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 && defaults.Publisher.Config != "" {
 		config, err := job.ParsePublisherString(defaults.Publisher.Config)
 		if err != nil {
 			return fmt.Errorf("parsing default publisher spec (%s): %w", defaults.Publisher.Config, err)
