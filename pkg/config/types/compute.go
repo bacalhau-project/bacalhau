@@ -15,9 +15,3 @@ type Heartbeat struct {
 	ResourceUpdateInterval Duration `yaml:"ResourceUpdateInterval,omitempty"`
 	Interval               Duration `yaml:"Interval,omitempty"`
 }
-
-type Volume struct {
-	Name      string `yaml:"Name,omitempty"`
-	Path      string `yaml:"Path,omitempty"`
-	ReadWrite bool   `yaml:"Write,omitempty"`
-}

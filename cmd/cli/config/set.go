@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -50,6 +52,8 @@ func newSetCmd() *cobra.Command {
 }
 
 func setConfig(cfgFilePath, key string, value ...string) error {
+	// operate on lower case keys for consistency
+	key = strings.ToLower(key)
 	// get a map of all allowed config keys and their value type, a poor mans schema.
 	typ, ok := types.AllKeys()[key]
 	if !ok {
@@ -90,6 +94,12 @@ func setConfig(cfgFilePath, key string, value ...string) error {
 			v.Set(key, parsed)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			parsed, err := strconv.ParseUint(value[0], 10, 64)
+			if err != nil {
+				return err
+			}
+			v.Set(key, parsed)
+		case reflect.Map:
+			parsed, err := parse.StringSliceToMap(value)
 			if err != nil {
 				return err
 			}

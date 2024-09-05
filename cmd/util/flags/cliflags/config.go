@@ -93,7 +93,8 @@ func (cf *ConfigFlag) Parse() error {
 }
 
 func setIfValid(v *viper.Viper, key string, value any) error {
-	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
+	key = strings.ToLower(key)
+	if _, ok := types.AllKeys()[key]; !ok {
 		if _, err := os.Stat(key); err == nil {
 			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
 		}
