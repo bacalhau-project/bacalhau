@@ -24,18 +24,10 @@ func (p PublishersConfig) IsNotDisabled(kind string) bool {
 	})
 }
 
-var _ Configurable = (*IPFSPublisher)(nil)
-
 type IPFSPublisher struct {
 	// Endpoint specifies the endpoint Multiaddress for the IPFS publisher
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
-
-func (c IPFSPublisher) IsConfigured() bool {
-	return c != IPFSPublisher{}
-}
-
-var _ Configurable = (*S3Publisher)(nil)
 
 type S3Publisher struct {
 	// PreSignedURLDisabled specifies whether pre-signed URLs are enabled for the S3 provider.
@@ -44,12 +36,6 @@ type S3Publisher struct {
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty"`
 }
 
-func (c S3Publisher) IsConfigured() bool {
-	return c != S3Publisher{}
-}
-
-var _ Configurable = (*LocalPublisher)(nil)
-
 type LocalPublisher struct {
 	// Address is the endpoint the publisher serves on.
 	Address string `yaml:"Address,omitempty"`
@@ -57,8 +43,4 @@ type LocalPublisher struct {
 	Port int `yaml:"Port,omitempty"`
 	// Directory is a path to location on disk where content is served from.
 	Directory string `yaml:"Directory,omitempty"`
-}
-
-func (l LocalPublisher) IsConfigured() bool {
-	return l != LocalPublisher{}
 }

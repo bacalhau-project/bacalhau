@@ -23,13 +23,7 @@ func (r ResultDownloaders) IsNotDisabled(kind string) bool {
 	})
 }
 
-var _ Configurable = (*IpfsDownloader)(nil)
-
 type IpfsDownloader struct {
 	// Endpoint is the multiaddress to connect to for IPFS.
 	Endpoint string `yaml:"Endpoint,omitempty"`
-}
-
-func (i IpfsDownloader) IsConfigured() bool {
-	return i != IpfsDownloader{}
 }

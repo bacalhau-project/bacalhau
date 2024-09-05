@@ -63,12 +63,23 @@ func GetComputeConfig(
 	// if the local publisher is enabled and installed, populate params.
 	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
 	if cfg.Publishers.IsNotDisabled(models.PublisherLocal) {
-		if cfg.Publishers.Types.Local.IsConfigured() {
-			params.LocalPublisher = types.LocalPublisher{
-				Address:   cfg.Publishers.Types.Local.Address,
-				Port:      cfg.Publishers.Types.Local.Port,
-				Directory: cfg.Publishers.Types.Local.Directory,
-			}
+		// use the defaults, and override any values provided by the user.
+		address := params.LocalPublisher.Address
+		port := params.LocalPublisher.Port
+		directory := params.LocalPublisher.Directory
+		if cfg.Publishers.Types.Local.Address != "" {
+			address = cfg.Publishers.Types.Local.Address
+		}
+		if cfg.Publishers.Types.Local.Port != 0 {
+			port = cfg.Publishers.Types.Local.Port
+		}
+		if cfg.Publishers.Types.Local.Directory != "" {
+			directory = cfg.Publishers.Types.Local.Directory
+		}
+		params.LocalPublisher = types.LocalPublisher{
+			Address:   address,
+			Port:      port,
+			Directory: directory,
 		}
 	}
 

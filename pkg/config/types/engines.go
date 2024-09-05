@@ -23,16 +23,10 @@ func (e EngineConfig) IsNotDisabled(kind string) bool {
 	})
 }
 
-var _ Configurable = (*Docker)(nil)
-
 // Docker represents the configuration settings for the Docker runtime provider.
 type Docker struct {
 	// ManifestCache specifies the settings for the Docker manifest cache.
 	ManifestCache DockerManifestCache `yaml:"ManifestCache,omitempty"`
-}
-
-func (d Docker) IsConfigured() bool {
-	return d != Docker{}
 }
 
 // DockerManifestCache represents the configuration settings for the Docker manifest cache.
@@ -45,11 +39,5 @@ type DockerManifestCache struct {
 	Refresh Duration `yaml:"Refresh,omitempty"`
 }
 
-var _ Configurable = (*WASM)(nil)
-
 type WASM struct {
-}
-
-func (W WASM) IsConfigured() bool {
-	return true
 }

@@ -41,25 +41,25 @@ func NewPublisherProvider(
 	}
 
 	if cfg.IsNotDisabled(models.PublisherLocal) {
-		var (
-			localPublisher *local.Publisher
-			err            error
-		)
-		if cfg.Types.Local.IsConfigured() {
-			localPublisher, err = local.NewLocalPublisher(
-				ctx,
-				cfg.Types.Local.Directory,
-				cfg.Types.Local.Address,
-				cfg.Types.Local.Port,
-			)
-		} else {
-			localPublisher, err = local.NewLocalPublisher(
-				ctx,
-				defaultLocalPublisher.Directory,
-				defaultLocalPublisher.Address,
-				defaultLocalPublisher.Port,
-			)
+		// use the defaults, and override any values provided by the user.
+		address := defaultLocalPublisher.Address
+		port := defaultLocalPublisher.Port
+		directory := defaultLocalPublisher.Directory
+		if cfg.Types.Local.Address != "" {
+			address = cfg.Types.Local.Address
 		}
+		if cfg.Types.Local.Port != 0 {
+			port = cfg.Types.Local.Port
+		}
+		if cfg.Types.Local.Directory != "" {
+			directory = cfg.Types.Local.Directory
+		}
+		localPublisher, err := local.NewLocalPublisher(
+			ctx,
+			directory,
+			address,
+			port,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +67,7 @@ func NewPublisherProvider(
 	}
 
 	if cfg.IsNotDisabled(models.PublisherIPFS) {
-		if cfg.Types.IPFS.IsConfigured() {
+		if cfg.Types.IPFS.Endpoint != "" {
 			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err

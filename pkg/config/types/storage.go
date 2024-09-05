@@ -25,18 +25,10 @@ func (i InputSourcesConfig) IsNotDisabled(kind string) bool {
 	})
 }
 
-var _ Configurable = (*IPFSStorage)(nil)
-
 type IPFSStorage struct {
 	// Endpoint specifies the endpoint Multiaddress for the IPFS input source.
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
-
-func (c IPFSStorage) IsConfigured() bool {
-	return c != IPFSStorage{}
-}
-
-var _ Configurable = (*S3Storage)(nil)
 
 type S3Storage struct {
 	// Endpoint specifies the endpoint URL for the S3 input source.
@@ -45,8 +37,4 @@ type S3Storage struct {
 	AccessKey string `yaml:"AccessKey,omitempty"`
 	// SecretKey specifies the secret key for the S3 input source.
 	SecretKey string `yaml:"SecretKey,omitempty"`
-}
-
-func (c S3Storage) IsConfigured() bool {
-	return c != S3Storage{}
 }
