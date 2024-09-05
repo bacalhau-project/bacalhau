@@ -1,21 +1,29 @@
-import React from 'react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import React from 'react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface TruncatedTextWithTooltipProps {
-  text?: string;
-  maxLength?: number;
+  text?: string
+  maxLength?: number
 }
 
-const TruncatedTextWithTooltip: React.FC<TruncatedTextWithTooltipProps> = ({ text, maxLength = 50 }) => {
-  if (!text) return null;
-  const shouldTruncate = text.length > maxLength;
-  const displayText = shouldTruncate ? `${text.slice(0, maxLength)}...` : text;
+const TruncatedTextWithTooltip: React.FC<TruncatedTextWithTooltipProps> = ({
+  text,
+  maxLength = 50,
+}) => {
+  if (!text) return null
+  const shouldTruncate = text.length > maxLength
+  const displayText = shouldTruncate ? `${text.slice(0, maxLength)}...` : text
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="cursor-help">{displayText}</span>
+          <span>{displayText}</span>
         </TooltipTrigger>
         {shouldTruncate && (
           <TooltipContent>
@@ -24,7 +32,7 @@ const TruncatedTextWithTooltip: React.FC<TruncatedTextWithTooltipProps> = ({ tex
         )}
       </Tooltip>
     </TooltipProvider>
-  );
-};
+  )
+}
 
-export default TruncatedTextWithTooltip;
+export default TruncatedTextWithTooltip

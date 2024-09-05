@@ -1,32 +1,32 @@
-import { Home, Briefcase, Server, Network } from "lucide-react";
-import React from "react";
+import { Home, Briefcase, Server, Network } from 'lucide-react'
+import React from 'react'
 
 export interface NavLinkProps {
-  href: string;
-  label: string;
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
-  badge?: React.ReactNode;
+  href: string
+  label: string
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  badge?: React.ReactNode
 }
 
 export const navLinkItems: NavLinkProps[] = [
   {
-    href: "/",
+    href: '/',
     icon: Home,
-    label: "Dashboard",
+    label: 'Dashboard',
   },
   {
-    href: "/jobs",
+    href: '/jobs',
     icon: Briefcase,
-    label: "Jobs",
+    label: 'Jobs',
   },
   {
-    href: "/executions",
+    href: '/executions',
     icon: Server,
-    label: "Executions",
+    label: 'Executions',
   },
   {
-    href: "/nodes",
+    href: '/nodes',
     icon: Network,
-    label: "Nodes",
+    label: 'Nodes',
   },
-];
+]

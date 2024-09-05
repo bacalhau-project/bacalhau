@@ -1,2 +1,2 @@
-export { ApiProvider } from './ApiProvider';
-export { ThemeProvider } from './ThemeProvider';
+export { ApiProvider } from './ApiProvider'
+export { ThemeProvider } from './ThemeProvider'
