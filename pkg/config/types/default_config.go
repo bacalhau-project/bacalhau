@@ -113,7 +113,8 @@ var Default = Bacalhau{
 		},
 	},
 	InputSources: InputSourcesConfig{
-		ReadTimeout: Duration(5 * time.Minute),
+		ReadTimeout:   Duration(5 * time.Minute),
+		MaxRetryCount: 3,
 	},
 	Engines: EngineConfig{
 		Types: EngineConfigTypes{

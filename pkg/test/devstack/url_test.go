@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
@@ -190,7 +191,7 @@ func (s *URLTestSuite) TestFlakyURLs() {
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		accessCounts := increaseCounter(r.URL.Path)
-		if accessCounts < 3 {
+		if accessCounts < types.Default.InputSources.MaxRetryCount {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("not found"))
 			return
