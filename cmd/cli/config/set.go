@@ -6,32 +6,24 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 func newSetCmd() *cobra.Command {
-	configFilePath := ".bacalhau"
 	setCmd := &cobra.Command{
-		Use:   "set",
-		Args:  cobra.MinimumNArgs(2),
-		Short: "Set a value in the config.",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := os.UserConfigDir()
-			if err != nil {
-				cfgDir = ""
-			}
-			configFileDirPath := filepath.Join(cfgDir, "bacalhau")
-			if err := os.MkdirAll(configFileDirPath, util2.OS_USER_RWX); err != nil {
-				return fmt.Errorf("failed to create bacalhau config at %s: %w", filepath.Join(configFileDirPath, "config.yaml"))
-			}
-			configFilePath = filepath.Join(configFileDirPath, "config.yaml")
-			return nil
-		},
+		Use:          "set",
+		Args:         cobra.MinimumNArgs(2),
+		Short:        "Set a value in the config.",
+		PreRunE:      hook.ClientPreRunHooks,
+		PostRunE:     hook.ClientPostRunHooks,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo. We need to ensure a repo
@@ -45,7 +37,25 @@ func newSetCmd() *cobra.Command {
 		// provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,
 	}
-	setCmd.PersistentFlags().String("config", configFilePath, "Optionally provide a path to a config file to use")
+
+	bacalhauCfgDir := "bacalhau"
+	bacalhauCfgFile := config.DefaultFileName
+
+	usrCfgDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to find user-specific configuration directory. Using current directory to write config.")
+	} else {
+		bacalhauCfgDir = filepath.Join(usrCfgDir, bacalhauCfgDir)
+		if err := os.MkdirAll(bacalhauCfgDir, util2.OS_USER_RWX); err != nil {
+			// This means we failed to create a directory either in the current directory, or the user config dir
+			// indicating a some-what serious misconfiguration of the system. We panic here to provide as much
+			// detail as possible.
+			log.Panic().Err(err).Msgf("Failed to create bacalhau configuration directory: %s", bacalhauCfgDir)
+		}
+		bacalhauCfgFile = filepath.Join(bacalhauCfgDir, bacalhauCfgFile)
+	}
+
+	setCmd.PersistentFlags().String("config", bacalhauCfgFile, "Path to the config file")
 	return setCmd
 }
 
@@ -62,7 +72,7 @@ func setConfig(cfgFilePath, key string, value ...string) error {
 		return err
 	}
 	v.Set(key, parsed)
-	if err := v.WriteConfig(); err != nil {
+	if err := v.WriteConfigAs(cfgFilePath); err != nil {
 		return err
 	}
 
