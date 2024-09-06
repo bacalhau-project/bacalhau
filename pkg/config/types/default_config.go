@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 )
 
 const (
@@ -71,7 +71,7 @@ var Default = Bacalhau{
 					Memory: "1Gb",
 				},
 				Publisher: DefaultPublisherConfig{
-					Config: models.PublisherLocal,
+					Config: *local.NewSpecConfig(),
 				},
 			},
 		},
@@ -85,7 +85,7 @@ var Default = Bacalhau{
 					GPU:    "0",
 				},
 				Publisher: DefaultPublisherConfig{
-					Config: models.PublisherLocal,
+					Config: *local.NewSpecConfig(),
 				},
 			},
 		},

@@ -8,8 +8,11 @@ import (
 var _ Provider = (*InputSourcesConfig)(nil)
 
 type InputSourcesConfig struct {
-	Disabled      []string          `yaml:"Disabled,omitempty"`
-	ReadTimeout   Duration          `yaml:"ReadTimeout,omitempty"`
+	// Disabled specifies a list of storages that are disabled.
+	Disabled []string `yaml:"Disabled,omitempty"`
+	// ReadTimeout specifies the maximum time allowed for reading from a storage.
+	ReadTimeout Duration `yaml:"ReadTimeout,omitempty"`
+	// ReadTimeout specifies the maximum number of attempts for reading from a storage.
 	MaxRetryCount int               `yaml:"MaxRetryCount,omitempty"`
 	Types         InputSourcesTypes `yaml:"Types,omitempty"`
 }
@@ -26,7 +29,7 @@ func (i InputSourcesConfig) IsNotDisabled(kind string) bool {
 }
 
 type IPFSStorage struct {
-	// Endpoint specifies the endpoint Multiaddress for the IPFS input source.
+	// Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 

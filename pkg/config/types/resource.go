@@ -12,13 +12,21 @@ import (
 )
 
 type ResourceScaler struct {
-	// CPU specifies the amount of CPU allocated as a percentage.
+	// CPU specifies the amount of CPU a compute node allocates for running jobs.
+	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "100m").
 	CPU ResourceType `yaml:"CPU,omitempty"`
-	// Memory specifies the amount of Memory allocated as a percentage.
+
+	// Memory specifies the amount of Memory a compute node allocates for running jobs.
+	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1Gi").
 	Memory ResourceType `yaml:"Memory,omitempty"`
-	// Disk specifies the amount of Disk space allocated as a percentage.
+
+	// Disk specifies the amount of Disk space a compute node allocates for running jobs.
+	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "10Gi").
 	Disk ResourceType `yaml:"Disk,omitempty"`
-	// GPU specifies the amount of GPU allocated as a percentage.
+
+	// GPU specifies the amount of GPU a compute node allocates for running jobs.
+	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1").
+	// Note: When using percentages, the result is always rounded up to the nearest whole GPU.
 	GPU ResourceType `yaml:"GPU,omitempty"`
 }
 

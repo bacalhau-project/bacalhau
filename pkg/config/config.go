@@ -164,8 +164,8 @@ func New(opts ...Option) (*Config, error) {
 					// allow the deprecated --default-publisher flag to bind to related fields in the config.
 					for _, key := range []string{
 						// config keys we wish to bind --default-publisher flag to.
-						types.JobDefaultsBatchTaskPublisherConfigKey,
-						types.JobDefaultsOpsTaskPublisherConfigKey,
+						types.JobDefaultsBatchTaskPublisherConfigTypeKey,
+						types.JobDefaultsOpsTaskPublisherConfigTypeKey,
 					} {
 						if err := c.base.BindPFlag(key, flag); err != nil {
 							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)

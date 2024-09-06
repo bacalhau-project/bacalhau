@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -49,7 +50,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(models.NoTimeout),
 				},
-				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
+				Publisher: types.DefaultPublisherConfig{Config: *local.NewSpecConfig()},
 			},
 		},
 		Ops: types.BatchJobDefaultsConfig{
@@ -57,7 +58,7 @@ var DefaultRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(models.NoTimeout),
 				},
-				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
+				Publisher: types.DefaultPublisherConfig{Config: *local.NewSpecConfig()},
 			},
 		},
 	},
@@ -105,7 +106,7 @@ var TestRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(30 * time.Second),
 				},
-				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
+				Publisher: types.DefaultPublisherConfig{Config: *local.NewSpecConfig()},
 			},
 		},
 		Ops: types.BatchJobDefaultsConfig{
@@ -113,7 +114,7 @@ var TestRequesterConfig = RequesterConfigParams{
 				Timeouts: types.TaskTimeoutConfig{
 					TotalTimeout: types.Duration(30 * time.Second),
 				},
-				Publisher: types.DefaultPublisherConfig{Config: models.PublisherLocal},
+				Publisher: types.DefaultPublisherConfig{Config: *local.NewSpecConfig()},
 			},
 		},
 	},

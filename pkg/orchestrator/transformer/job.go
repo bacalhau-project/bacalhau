@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -70,12 +69,14 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
 	// if the user didn't specify a publisher, but specified result path(s) assign the task a default publisher, if any.
-	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 && defaults.Publisher.Config != "" {
-		config, err := job.ParsePublisherString(defaults.Publisher.Config)
-		if err != nil {
-			return fmt.Errorf("parsing default publisher spec (%s): %w", defaults.Publisher.Config, err)
-		}
-		task.Publisher = config
+	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 && !defaults.Publisher.Config.IsEmpty() {
+		/*
+			config, err := job.ParsePublisherString(defaults.Publisher.Config)
+			if err != nil {
+				return fmt.Errorf("parsing default publisher spec (%s): %w", defaults.Publisher.Config, err)
+			}
+		*/
+		task.Publisher = &defaults.Publisher.Config
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
 		task.Timeouts.ExecutionTimeout = int64(time.Duration(defaults.Timeouts.ExecutionTimeout).Seconds())

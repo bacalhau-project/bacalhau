@@ -8,6 +8,7 @@ import (
 var _ Provider = (*EngineConfig)(nil)
 
 type EngineConfig struct {
+	// Disabled specifies a list of engines that are disabled.
 	Disabled []string          `yaml:"Disabled,omitempty"`
 	Types    EngineConfigTypes `yaml:"Types,omitempty"`
 }

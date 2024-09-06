@@ -8,6 +8,7 @@ import (
 var _ Provider = (*PublishersConfig)(nil)
 
 type PublishersConfig struct {
+	// Disabled specifies a list of publishers that are disabled.
 	Disabled []string       `yaml:"Disabled,omitempty"`
 	Types    PublisherTypes `yaml:"Types,omitempty"`
 }
@@ -25,7 +26,7 @@ func (p PublishersConfig) IsNotDisabled(kind string) bool {
 }
 
 type IPFSPublisher struct {
-	// Endpoint specifies the endpoint Multiaddress for the IPFS publisher
+	// Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
 	Endpoint string `yaml:"Endpoint,omitempty"`
 }
 
@@ -37,10 +38,10 @@ type S3Publisher struct {
 }
 
 type LocalPublisher struct {
-	// Address is the endpoint the publisher serves on.
+	// Address specifies the endpoint the publisher serves on.
 	Address string `yaml:"Address,omitempty"`
-	// Port is the port the publisher serves on.
+	// Port specifies the port the publisher serves on.
 	Port int `yaml:"Port,omitempty"`
-	// Directory is a path to location on disk where content is served from.
+	// Directory specifies a path to location on disk where content is served from.
 	Directory string `yaml:"Directory,omitempty"`
 }

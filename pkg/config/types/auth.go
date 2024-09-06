@@ -2,12 +2,6 @@ package types
 
 // AuthConfig is config that controls user authentication and authorization.
 type AuthConfig struct {
-	// TokensPath is the location where a state file of tokens will be stored.
-	// By default it will be local to the Bacalhau repo, but can be any location
-	// in the host filesystem. Tokens are sensitive and should be stored in a
-	// location that is only readable to the current user.
-	TokensPath string `yaml:"TokensPath,omitempty"`
-
 	// Methods maps "method names" to authenticator implementations. A method
 	// name is a human-readable string chosen by the person configuring the
 	// system that is shown to users to help them pick the authentication method

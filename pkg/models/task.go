@@ -135,9 +135,11 @@ func (t *Task) ValidateSubmission() error {
 	if err := ValidateSlice(t.ResultPaths); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("output validation failed: %v", err))
 	}
-	if len(t.ResultPaths) > 0 && t.Publisher.IsEmpty() {
-		mErr = errors.Join(mErr, errors.New("publisher must be set if result paths are set"))
-	}
+	/*
+		if len(t.ResultPaths) > 0 && t.Publisher.IsEmpty() {
+			mErr = errors.Join(mErr, errors.New("publisher must be set if result paths are set"))
+		}
+	*/
 
 	// Check for collisions in input sources
 	seenInputAliases := make(map[string]bool)
