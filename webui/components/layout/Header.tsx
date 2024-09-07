@@ -12,14 +12,16 @@ import { ThemeToggle } from './ThemeToggle'
 
 export function Header() {
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b bg-sidebar-bg md:bg-muted/40 px-4 lg:h-[60px] lg:px-6">
       <MobileNav />
-      <div className="w-full flex-1"></div>{' '}
-      {/* Empty space where the search bar used to be */}
+      <div className="w-full flex-1"></div>
       <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="w-9 px-0">
+          <Button
+            variant="ghost"
+            className="w-9 px-0 text-sidebar-text md:text-foreground"
+          >
             <HelpCircle className="h-5 w-5" />
             <span className="sr-only">Help menu</span>
           </Button>

@@ -63,8 +63,8 @@ export function JobsOverview() {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Jobs overview</h1>
+    <div className="container mx-auto">
+      <h1 className="text-3xl font-bold mb-8">Jobs</h1>
       <div className="flex justify-between items-center mb-6">
         <Input
           className="max-w-sm"

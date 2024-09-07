@@ -43,9 +43,9 @@ export function JobsTable({
   return (
     <div>
       <Table>
-        <TableHeader>
+        <TableHeader className="md:bg-muted/50">
           <TableRow>
-            <TableHead className="w-80">ID</TableHead>
+            <TableHead className="p-3 w-80">ID</TableHead>
             <TableHead className="w-32">Status</TableHead>
             <TableHead className="w-40">Created At</TableHead>
             <TableHead className="w-28">Run Time</TableHead>
@@ -57,7 +57,7 @@ export function JobsTable({
         <TableBody>
           {jobs.map((job) => (
             <TableRow key={job.ID}>
-              <TableCell>
+              <TableCell className="p-3">
                 <Link href={`/jobs/${job.ID}`}>
                   <TruncatedTextWithTooltip text={job.Name} maxLength={40} />
                 </Link>

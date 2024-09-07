@@ -13,6 +13,9 @@
   --color-sidebar-hover: #4a2b6e;
   --color-button-primary: #855ec3;
   --color-button-primary-hover: #7f56d9;
+
+  --color-link: #855ec3;
+  --color-link-hover: #7f56d9;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -92,4 +95,13 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+table a {
+  color: var(--color-link);
+  font-weight: 600;
+}
+
+table a:hover {
+  color: var(--color-link-hover);
 }
