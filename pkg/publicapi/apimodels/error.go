@@ -13,7 +13,6 @@ import (
 // it encapsulates:
 //   - an http status code
 //   - a human-readable error message
-//   - optional detailed error information
 //
 // purpose:
 //   - primarily used to send synchronous errors from the orchestrator endpoint
