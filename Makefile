@@ -219,7 +219,7 @@ PKG_FILES := $(shell bash -c 'comm -23 <(git ls-files pkg | sort) <(git ls-files
 .PHONY: binary
 
 binary: ${CMD_FILES} ${PKG_FILES} main.go
-	${GO} build -gcflags=all="-N -l" -trimpath -o ${BINARY_PATH} .
+	${GO} build -ldflags "${BUILD_FLAGS}" -trimpath -o ${BINARY_PATH} .
 
 binary-web: build-webui ${WEB_GO_FILES}
 
