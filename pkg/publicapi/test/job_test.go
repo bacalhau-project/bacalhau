@@ -4,6 +4,8 @@ package test
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -80,4 +82,19 @@ func (s *ServerSuite) TestJobOperations() {
 	// stop the job should fail as it is already complete
 	_, err = s.client.Jobs().Stop(ctx, &apimodels.StopJobRequest{JobID: putResponse.JobID})
 	s.Require().Error(err)
+}
+
+func (s *ServerSuite) TestJobOperationsHttpHandler() {
+
+	ctx := context.Background()
+	job := mock.Job()
+
+	// retrieve a non existent job
+	_, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: job.ID})
+	s.Require().Error(err)
+
+	var apiError *apimodels.APIError
+	s.Require().True(errors.As(err, &apiError))
+	s.Require().Equal(http.StatusNotFound, apiError.HTTPStatusCode, "Expected 404 Not Found status")
+	s.Require().Contains(apiError.Message, "not found", "Error message should indicate resource not found")
 }
