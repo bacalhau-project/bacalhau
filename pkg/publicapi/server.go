@@ -140,6 +140,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
 	)
 
+	// Add custom http error handler. This is a centralized error handler for
+	// the server
+	server.Router.HTTPErrorHandler = middleware.CustomHTTPErrorHandler
+
 	var tlsConfig *tls.Config
 	if params.AutoCertDomain != "" {
 		log.Ctx(context.TODO()).Debug().Msgf("Setting up auto-cert for %s", params.AutoCertDomain)

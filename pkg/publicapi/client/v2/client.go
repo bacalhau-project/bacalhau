@@ -55,12 +55,25 @@ type httpClient struct {
 // and deserialize the response into a response object
 func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetRequest, out apimodels.GetResponse) error {
 	r := in.ToHTTPRequest()
-	_, resp, err := requireOK(c.doRequest(ctx, http.MethodGet, endpoint, r)) //nolint:bodyclose // this is being closed
-	if err != nil && resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return apimodels.ErrInvalidToken
-	} else if err != nil {
-		return err
+
+	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r) //nolint:bodyclose // this is being closed
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return apimodels.NewUnauthorizedError("invalid token")
 	}
+
+	var apiError *apimodels.APIError
+	if resp.StatusCode != http.StatusOK {
+		apiError, err = apimodels.FromHttpResponse(resp)
+		if err != nil {
+			return err
+		}
+	}
+
+	if apiError != nil {
+		return apiError
+	}
+
 	defer resp.Body.Close()
 
 	if out != nil {

@@ -1,6 +1,7 @@
 package job
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -108,7 +109,7 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 		jobID,
 		OG.DownloadSettings,
 	); err != nil {
-		return fmt.Errorf("downloading job: %w", err)
+		return errors.New(err.Error())
 	}
 
 	return nil
