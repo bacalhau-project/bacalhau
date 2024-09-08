@@ -1,0 +1,85 @@
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { StopCircle } from 'lucide-react';
+import { isTerminalJobState } from '@/lib/api/utils';
+import { models_Job } from '@/lib/api/generated';
+import { OrchestratorService } from '@/lib/api/generated/services/OrchestratorService';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () => void }) => {
+  const jobID = job.ID;
+  if (jobID === undefined) {
+    return null;
+  }
+  const [isStoppingJob, setIsStoppingJob] = useState(false);
+  const [stopJobError, setStopJobError] = useState<string | null>(null);
+
+  const handleStopJob = async () => {
+    setIsStoppingJob(true);
+    setStopJobError(null);
+    try {
+      await OrchestratorService.orchestratorStopJob(jobID, 'User requested stop');
+      onJobUpdated(); // Trigger re-render of parent component
+    } catch (error) {
+      console.error('Error stopping job:', error);
+      setStopJobError('Failed to stop the job. Please try again.');
+    } finally {
+      setIsStoppingJob(false);
+    }
+  };
+
+  const handleDownloadResults = async () => {
+    console.log('Downloading results for job:', job.ID);
+    // Implement download functionality here
+  };
+
+  return (
+    <div className="space-y-4">
+      {stopJobError && (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{stopJobError}</AlertDescription>
+        </Alert>
+      )}
+      <div className="flex space-x-2">
+        {!isTerminalJobState(job.State?.StateType) && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <StopCircle className="mr-2 h-4 w-4" />
+                Stop Job
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to stop this job?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. The job will be stopped and cannot be resumed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleStopJob} disabled={isStoppingJob}>
+                  {isStoppingJob ? 'Stopping...' : 'Stop Job'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default JobActions;

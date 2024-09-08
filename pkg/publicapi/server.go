@@ -113,7 +113,9 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	middlewareLogger := log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))
 	// base middle after routing
 	server.Router.Use(
-		echomiddelware.CORS(),
+		echomiddelware.CORSWithConfig(echomiddelware.CORSConfig{
+			AllowOrigins: []string{AllowedCORSOrigin},
+		}),
 		echomiddelware.Recover(),
 		echomiddelware.RequestID(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
@@ -192,7 +194,7 @@ func (apiServer *Server) GetURI() *url.URL {
 //	@contact.email	team@bacalhau.org
 //	@license.name	Apache 2.0
 //	@license.url	https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE
-//	@host			bootstrap.production.bacalhau.org:1234
+//	@host			localhost:1234
 //	@BasePath		/
 //	@schemes		http
 //

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table'
 import TruncatedTextWithTooltip from '@/components/TruncatedTextWithTooltip'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
-import { formatTimestamp, getJobRunTime, shortID } from '@/lib/api/utils'
+import { formatTimestamp, getJobRunTime } from '@/lib/api/utils'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,7 +43,7 @@ export function JobsTable({
   return (
     <div>
       <Table>
-        <TableHeader className="md:bg-muted/50">
+        <TableHeader className="bg-muted/50">
           <TableRow>
             <TableHead className="p-3 w-80">ID</TableHead>
             <TableHead className="w-32">Status</TableHead>
@@ -59,7 +59,7 @@ export function JobsTable({
             <TableRow key={job.ID}>
               <TableCell className="p-3">
                 <Link href={`/jobs/${job.ID}`}>
-                  <TruncatedTextWithTooltip text={job.Name} maxLength={40} />
+                  <TruncatedTextWithTooltip text={job.Name} maxLength={25} />
                 </Link>
               </TableCell>
               <TableCell>
@@ -74,7 +74,6 @@ export function JobsTable({
                 />
               </TableCell>
               <TableCell>
-                {' '}
                 <JobEngineDisplay job={job} />
               </TableCell>
               <TableCell>{job.Type}</TableCell>
