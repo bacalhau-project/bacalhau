@@ -10,7 +10,6 @@ import (
 
 func CustomHTTPErrorHandler(err error, c echo.Context) {
 
-	log.Info().Msg("HELLO THIS IS CALLED")
 	var code int
 	var message string
 
