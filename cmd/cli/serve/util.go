@@ -7,6 +7,7 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -86,7 +87,7 @@ func GetComputeConfig(
 	return node.NewComputeConfigWith(executionsPath, params)
 }
 
-func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.RequesterConfig, error) {
+func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool, recorder analytics.Recorder) (node.RequesterConfig, error) {
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
@@ -94,7 +95,7 @@ func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.Requester
 		if err != nil {
 			return node.RequesterConfig{}, err
 		}
-		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreDBPath)
+		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreDBPath, boltjobstore.WithRecorder(recorder))
 		if err != nil {
 			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}

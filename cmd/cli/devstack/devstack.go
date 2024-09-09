@@ -10,6 +10,7 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -191,7 +192,7 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(cfg, true)
+	requesterConfig, err := serve.GetRequesterConfig(cfg, true, &analytics.NoopRecorder{})
 	if err != nil {
 		return err
 	}

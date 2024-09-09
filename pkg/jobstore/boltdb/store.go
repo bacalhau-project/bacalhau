@@ -15,6 +15,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -45,6 +46,7 @@ type BoltJobStore struct {
 	clock           clock.Clock
 	marshaller      marshaller.Marshaller
 	watchersManager *jobstore.WatchersManager
+	recorder        analytics.Recorder
 
 	inProgressIndex  *Index
 	namespacesIndex  *Index
@@ -58,6 +60,12 @@ type Option func(store *BoltJobStore)
 func WithClock(clock clock.Clock) Option {
 	return func(store *BoltJobStore) {
 		store.clock = clock
+	}
+}
+
+func WithRecorder(r analytics.Recorder) Option {
+	return func(store *BoltJobStore) {
+		store.recorder = r
 	}
 }
 
@@ -93,6 +101,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 		clock:           clock.New(),
 		marshaller:      marshaller.NewJSONMarshaller(),
 		watchersManager: jobstore.NewWatchersManager(),
+		recorder:        &analytics.NoopRecorder{},
 	}
 
 	for _, opt := range options {
@@ -1000,6 +1009,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if job.IsTerminal() {
+		b.recorder.EmitJobEvent(context.TODO(), analytics.JobComplete, job)
 		// Remove the job from the in progress index, first checking for legacy items
 		// and then removing the composite.  Once we are confident no legacy items
 		// are left in the old index we can stick to just the composite
