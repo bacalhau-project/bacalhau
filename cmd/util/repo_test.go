@@ -108,14 +108,14 @@ Node:
 
 			// create config files for test case if provided
 			if tc.repoConfig != "" {
-				_, err := createTempConfig(repoPath, tc.repoConfig)
+				_, err := createTempConfig(repoPath, tc.repoConfig, false)
 				require.NoError(t, err)
 			}
 
 			if tc.xdgConfig != "" {
 				xdgDir := t.TempDir()
 				setXDGConfigEnv(t, xdgDir)
-				_, err := createTempConfig(xdgDir, tc.xdgConfig)
+				_, err := createTempConfig(xdgDir, tc.xdgConfig, true)
 				require.NoError(t, err)
 			}
 
@@ -124,7 +124,7 @@ Node:
 
 			if tc.flagConfig != "" {
 				flagConfigDir := t.TempDir()
-				flagConfigFile, err := createTempConfig(flagConfigDir, tc.flagConfig)
+				flagConfigFile, err := createTempConfig(flagConfigDir, tc.flagConfig, false)
 				require.NoError(t, err)
 				cmd.SetArgs([]string{"--config", flagConfigFile})
 			}
@@ -152,7 +152,22 @@ func setupTestCommand() (*cobra.Command, error) {
 	return cmd, nil
 }
 
-func createTempConfig(path, content string) (string, error) {
+func createTempConfig(path, content string, xdg bool) (string, error) {
+	if xdg {
+		// NB: see impl of the function os.UserConfigDir() to understand why this is needed.
+		switch runtime.GOOS {
+		case "darwin", "ios":
+			path = filepath.Join(path, "Library", "Application Support")
+			if err := os.MkdirAll(path, 0777); err != nil {
+				return "", err
+			}
+		case "plan9":
+			path = filepath.Join(path, "lib")
+			if err := os.MkdirAll(path, 0777); err != nil {
+				return "", err
+			}
+		}
+	}
 	tmpfile, err := os.Create(filepath.Join(path, config.FileName))
 	if err != nil {
 		return "", err
@@ -167,6 +182,7 @@ func createTempConfig(path, content string) (string, error) {
 }
 
 func setXDGConfigEnv(t *testing.T, xdgDir string) {
+	// NB: see impl of the function os.UserConfigDir() to understand why this is needed.
 	switch runtime.GOOS {
 	case "windows":
 		t.Setenv("AppData", xdgDir)
