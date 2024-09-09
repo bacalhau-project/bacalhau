@@ -53,7 +53,6 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 }
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
-	s.T().Skip("This test is invalid see TODO")
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -72,22 +71,6 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 				},
 			},
 		},
-		// TODO(unsure): inorder for the default publisher to apply, the task needs ResultPaths set with no publisher.
-		// We can't results paths directly on the task because scenarios use this field to override tasks result paths.
-		// So here we are setting the ResultsPath on the above task.
-		// By omitting the publisher from the task we allow allow the orchestrator to populate it with job defaults,
-		// which sets the default publisher.
-		// However, in https://github.com/bacalhau-project/bacalhau/pull/2802/files#diff-7c0b9e1e39b2a2f5a00159ab3b4bed52d426dfa345498495ee8ee69dee6cc56aR130-R131
-		// validation was added the marks tasks with result paths and no publisher as invalid, so this test can't run
-		// and thus we skip it.
-		// Conversation: https://github.com/bacalhau-project/bacalhau/pull/4333#discussion_r1745302676
-		Outputs: []*models.ResultPath{
-			{
-				Name: "outputs",
-				Path: "/outputs",
-			},
-		},
-
 		ResultsChecker: expectResultsSome,
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),

@@ -81,8 +81,6 @@ var Default = Bacalhau{
 				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
-					Disk:   "1Gb",
-					GPU:    "0",
 				},
 				Publisher: DefaultPublisherConfig{
 					Config: *local.NewSpecConfig(),
@@ -95,8 +93,6 @@ var Default = Bacalhau{
 				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
-					Disk:   "1Gb",
-					GPU:    "0",
 				},
 			},
 		},
@@ -106,8 +102,6 @@ var Default = Bacalhau{
 				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
-					Disk:   "1Gb",
-					GPU:    "0",
 				},
 			},
 		},

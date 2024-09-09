@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	v1types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 )
@@ -129,10 +127,6 @@ func migrateAPI(in v1types.BacalhauConfig) types.API {
 		}(in.Auth.Methods)
 	}
 	out.Auth.AccessPolicyPath = in.Auth.AccessPolicyPath
-	if in.Auth.TokensPath != "" {
-		log.Warn().Msgf("Migrating from config with TokensPath set. This value is no longer configurable. " +
-			"Location: $BACALHAU_REPO/tokens.json")
-	}
 
 	// check for a client config, taking lowest precedence.
 	if in.Node.ClientAPI.Host != "" {

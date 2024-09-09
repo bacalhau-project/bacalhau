@@ -68,14 +68,8 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 	if task.ResourcesConfig.GPU == "" {
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
-	// if the user didn't specify a publisher, but specified result path(s) assign the task a default publisher, if any.
-	if task.Publisher.IsEmpty() && len(task.ResultPaths) > 0 && !defaults.Publisher.Config.IsEmpty() {
-		/*
-			config, err := job.ParsePublisherString(defaults.Publisher.Config)
-			if err != nil {
-				return fmt.Errorf("parsing default publisher spec (%s): %w", defaults.Publisher.Config, err)
-			}
-		*/
+	// if the user didn't provide a publisher, and a default transformer is set - use it.
+	if task.Publisher.IsEmpty() && !defaults.Publisher.Config.IsEmpty() {
 		task.Publisher = &defaults.Publisher.Config
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
