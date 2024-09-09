@@ -14,7 +14,7 @@ annotated-types==0.6.0
     # via pydantic
 anyio==4.3.0
     # via httpx
-apache-airflow==2.9.3
+apache-airflow==2.10.1
     # via
     #   apache-airflow-providers-common-io
     #   apache-airflow-providers-common-sql
