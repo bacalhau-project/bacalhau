@@ -10,6 +10,7 @@ import (
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
@@ -25,6 +26,11 @@ func TestDefaultPublisherSuite(t *testing.T) {
 }
 
 func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
+	s.Config.JobDefaults.Batch.Task.Publisher.Config.Type = ""
+	s.Config.JobDefaults.Batch.Task.Publisher.Config.Params = make(map[string]interface{})
+	stack := &scenario.StackConfig{}
+	stack.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.Type = ""
+	stack.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.Params = make(map[string]interface{})
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -43,6 +49,7 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 				},
 			},
 		},
+		Stack:          stack,
 		ResultsChecker: expectResultsNone,
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),
@@ -53,6 +60,8 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 }
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
+	stack := &scenario.StackConfig{}
+	stack.JobDefaults.Batch.Task.Publisher.Config = *local.NewSpecConfig()
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -71,6 +80,7 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 				},
 			},
 		},
+		Stack:          stack,
 		ResultsChecker: expectResultsSome,
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),
