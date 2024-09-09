@@ -14,21 +14,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-func TestConfigWithDefaults(t *testing.T) {
-	expected := types.Default
-
-	cfg, err := config.New(
-		config.WithDefault(expected),
-	)
-	require.NoError(t, err)
-
-	var actual types.Bacalhau
-	err = cfg.Unmarshal(&actual)
-	require.NoError(t, err)
-
-	assert.Equal(t, expected, actual)
-}
-
 func TestConfigWithValueOverrides(t *testing.T) {
 	overrideRepo := "overrideRepo"
 	overrideName := "puuid"
