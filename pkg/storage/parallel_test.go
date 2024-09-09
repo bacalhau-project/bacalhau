@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -27,7 +25,7 @@ import (
 
 type ParallelStorageSuite struct {
 	suite.Suite
-	cfg      types.BacalhauConfig
+	cfg      types.Bacalhau
 	provider provider.Provider[storage.Storage]
 }
 
@@ -40,20 +38,15 @@ func (s *ParallelStorageSuite) SetupSuite() {
 	s.cfg = cfg
 
 	var err error
-	s.provider, err = executor_util.NewStandardStorageProvider(
-		time.Duration(configenv.Testing.Node.VolumeSizeRequestTimeout),
-		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-		configenv.Testing.Node.DownloadURLRequestRetries,
-		executor_util.StandardStorageProviderOptions{IPFSConnect: cfg.Node.IPFS.Connect},
-	)
+	s.provider, err = executor_util.NewStandardStorageProvider(cfg)
 	s.Require().NoError(err)
 }
 
 func (s *ParallelStorageSuite) TestIPFSCleanup() {
-	testutils.MustHaveIPFS(s.T(), s.cfg.Node.IPFS.Connect)
+	testutils.MustHaveIPFS(s.T(), s.cfg)
 
 	ctx := context.Background()
-	client, err := ipfs.NewClient(ctx, s.cfg.Node.IPFS.Connect)
+	client, err := ipfs.NewClient(ctx, s.cfg.InputSources.Types.IPFS.Endpoint)
 	require.NoError(s.T(), err)
 
 	cid, err := client.Put(ctx, "../../testdata/grep_file.txt")

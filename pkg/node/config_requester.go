@@ -9,15 +9,15 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 )
 
 type RequesterConfigParams struct {
-	JobDefaults transformer.JobDefaults
+	JobDefaults types.JobDefaults
 
 	HousekeepingBackgroundTaskInterval time.Duration
 	HousekeepingTimeoutBuffer          time.Duration
@@ -54,17 +54,16 @@ type RequesterConfigParams struct {
 	S3PreSignedURLDisabled   bool
 	S3PreSignedURLExpiration time.Duration
 
-	JobStore         jobstore.Store
+	JobStore jobstore.Store
+	// TODO(review): we don't use this field for anything, maybe we can delete it
 	NodeInfoStoreTTL time.Duration
-
-	DefaultPublisher string
 
 	// When new nodes join the cluster, what state do they have? By default, APPROVED, and
 	// for tests, APPROVED. We will provide an option to set this to PENDING for production
 	// or for when operators are ready to control node approval.
 	DefaultApprovalState models.NodeMembershipState
 
-	ControlPlaneSettings types.RequesterControlPlaneConfig
+	ControlPlaneSettings legacy_types.RequesterControlPlaneConfig
 }
 
 type RequesterConfig struct {

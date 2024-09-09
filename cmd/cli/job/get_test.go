@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -43,7 +44,7 @@ func (s *GetSuite) SetupTest() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--publisher", "ipfs",
@@ -53,7 +54,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	jobID := system.FindJobIDInTestOutput(out)
 
 	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		"--config", fmt.Sprintf("%s=%s", types.ResultDownloadersTypesIPFSEndpointKey, s.Config.ResultDownloaders.Types.IPFS.Endpoint),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
@@ -62,7 +63,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -76,7 +77,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		"--config", fmt.Sprintf("%s=%s", types.ResultDownloadersTypesIPFSEndpointKey, s.Config.ResultDownloaders.Types.IPFS.Endpoint),
 		fmt.Sprintf("%s/stdout", jobID),
 	)
 	require.NoError(s.T(), err, "Error getting results")
@@ -86,7 +87,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	testutils.MustHaveIPFS(s.T(), s.Config.Node.IPFS.Connect)
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -100,7 +101,7 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	hostID := s.Node.ID
 
 	_, getOutput, err := s.ExecuteTestCobraCommand("job", "get",
-		"--ipfs-connect", s.Config.Node.IPFS.Connect,
+		"--config", fmt.Sprintf("%s=%s", types.ResultDownloadersTypesIPFSEndpointKey, s.Config.ResultDownloaders.Types.IPFS.Endpoint),
 		"--api-host", s.Node.APIServer.Address,
 		"--api-port", fmt.Sprintf("%d", s.Node.APIServer.Port),
 		fmt.Sprintf("%s/data/apples/file.txt", jobID),

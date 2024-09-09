@@ -1,93 +1,113 @@
 package configflags
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+)
 
 var ClientAPIFlags = []Definition{
 	{
 		FlagName:     "api-host",
-		DefaultValue: Default.Node.ClientAPI.Host,
-		ConfigPath:   types.NodeClientAPIHost,
+		DefaultValue: types.Default.API.Host,
+		ConfigPath:   types.APIHostKey,
 		Description: `The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_HOST"},
 	},
 	{
 		FlagName:     "api-port",
-		DefaultValue: Default.Node.ClientAPI.Port,
-		ConfigPath:   types.NodeClientAPIPort,
+		DefaultValue: types.Default.API.Port,
+		ConfigPath:   types.APIPortKey,
 		Description: `The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
 		EnvironmentVariables: []string{"BACALHAU_API_PORT"},
 	},
 	{
 		FlagName:             "tls",
-		DefaultValue:         Default.Node.ClientAPI.ClientTLS.UseTLS,
-		ConfigPath:           types.NodeClientAPIClientTLSUseTLS,
+		DefaultValue:         types.Default.API.TLS.UseTLS,
+		ConfigPath:           types.APITLSUseTLSKey,
 		Description:          `Instructs the client to use TLS`,
 		EnvironmentVariables: []string{"BACALHAU_API_TLS"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSUseTLSKey),
 	},
 	{
 		FlagName:     "cacert",
-		DefaultValue: Default.Node.ClientAPI.ClientTLS.CACert,
-		ConfigPath:   types.NodeClientAPIClientTLSCACert,
+		DefaultValue: types.Default.API.TLS.CAFile,
+		ConfigPath:   types.APITLSCAFileKey,
 		Description: `The location of a CA certificate file when self-signed certificates
 	are used by the server`,
 		EnvironmentVariables: []string{"BACALHAU_API_CACERT"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSCAFileKey),
 	},
 	{
 		FlagName:             "insecure",
-		DefaultValue:         Default.Node.ClientAPI.ClientTLS.Insecure,
-		ConfigPath:           types.NodeClientAPIClientTLSInsecure,
+		DefaultValue:         types.Default.API.TLS.Insecure,
+		ConfigPath:           types.APITLSInsecureKey,
 		Description:          `Enables TLS but does not verify certificates`,
 		EnvironmentVariables: []string{"BACALHAU_API_INSECURE"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSInsecureKey),
 	},
 }
 
 var ServerAPIFlags = []Definition{
 	{
 		FlagName:             "port",
-		DefaultValue:         Default.Node.ServerAPI.Port,
-		ConfigPath:           types.NodeServerAPIPort,
+		DefaultValue:         types.Default.API.Port,
+		ConfigPath:           types.APIPortKey,
 		Description:          `The port to server on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_PORT"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APIPortKey),
 	},
 	{
 		FlagName:             "host",
-		DefaultValue:         Default.Node.ServerAPI.Host,
-		ConfigPath:           types.NodeServerAPIHost,
+		DefaultValue:         types.Default.API.Host,
+		ConfigPath:           types.APIHostKey,
 		Description:          `The host to serve on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_HOST"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APIHostKey),
 	},
 }
 
 var RequesterTLSFlags = []Definition{
 	{
 		FlagName:     "autocert",
-		DefaultValue: Default.Node.ServerAPI.TLS.AutoCert,
-		ConfigPath:   types.NodeServerAPITLSAutoCert,
+		DefaultValue: types.Default.API.TLS.AutoCert,
+		ConfigPath:   types.APITLSAutoCertKey,
 		Description: `Specifies a host name for which ACME is used to obtain a TLS Certificate.
 Using this option results in the API serving over HTTPS`,
 		EnvironmentVariables: []string{"BACALHAU_AUTO_TLS"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSAutoCertKey),
 	},
 	{
 		FlagName:             "tlscert",
-		DefaultValue:         Default.Node.ServerAPI.TLS.ServerCertificate,
-		ConfigPath:           types.NodeServerAPITLSServerCertificate,
+		DefaultValue:         types.Default.API.TLS.CertFile,
+		ConfigPath:           types.APITLSCertFileKey,
 		Description:          `Specifies a TLS certificate file to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_CERT"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSCertFileKey),
 	},
 	{
 		FlagName:             "tlskey",
-		DefaultValue:         Default.Node.ServerAPI.TLS.ServerKey,
-		ConfigPath:           types.NodeServerAPITLSServerKey,
+		DefaultValue:         types.Default.API.TLS.KeyFile,
+		ConfigPath:           types.APITLSKeyFileKey,
 		Description:          `Specifies a TLS key file matching the certificate to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_KEY"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSKeyFileKey),
 	},
 	{
 		FlagName:             "self-signed",
-		DefaultValue:         Default.Node.ServerAPI.TLS.SelfSigned,
-		ConfigPath:           types.NodeServerAPITLSSelfSigned,
+		DefaultValue:         types.Default.API.TLS.SelfSigned,
+		ConfigPath:           types.APITLSSelfSignedKey,
 		Description:          `Specifies whether to auto-generate a self-signed certificate for the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_SELFSIGNED"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.APITLSSelfSignedKey),
 	},
 }

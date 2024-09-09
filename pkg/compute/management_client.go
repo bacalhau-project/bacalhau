@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -24,7 +24,7 @@ type ManagementClientParams struct {
 	QueueUsageTracker        capacity.UsageTracker
 	RegistrationFilePath     string
 	HeartbeatClient          heartbeat.Client
-	ControlPlaneSettings     types.ComputeControlPlaneConfig
+	ControlPlaneSettings     legacy_types.ComputeControlPlaneConfig
 }
 
 // ManagementClient is used to call management functions with
@@ -41,7 +41,7 @@ type ManagementClient struct {
 	queueUsageTracker        capacity.UsageTracker
 	registrationFile         *RegistrationFile
 	heartbeatClient          heartbeat.Client
-	settings                 types.ComputeControlPlaneConfig
+	settings                 legacy_types.ComputeControlPlaneConfig
 }
 
 func NewManagementClient(params *ManagementClientParams) *ManagementClient {

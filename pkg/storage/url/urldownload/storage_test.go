@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -39,8 +39,8 @@ func (s *StorageSuite) SetupTest() {
 
 func (s *StorageSuite) TestHasStorageLocally() {
 	sp := NewStorage(
-		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-		configenv.Testing.Node.DownloadURLRequestRetries,
+		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
+		legacy_types.Testing.Node.DownloadURLRequestRetries,
 	)
 
 	spec := models.InputSource{
@@ -305,8 +305,8 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			s.T().Cleanup(ts.Close)
 
 			subject := NewStorage(
-				time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-				configenv.Testing.Node.DownloadURLRequestRetries,
+				time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
+				legacy_types.Testing.Node.DownloadURLRequestRetries,
 			)
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
@@ -371,8 +371,8 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 	s.T().Cleanup(ts.Close)
 
 	subject := NewStorage(
-		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-		configenv.Testing.Node.DownloadURLRequestRetries,
+		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
+		legacy_types.Testing.Node.DownloadURLRequestRetries,
 	)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)
@@ -412,8 +412,8 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 	s.T().Cleanup(ts.Close)
 
 	subject := NewStorage(
-		time.Duration(configenv.Testing.Node.DownloadURLRequestTimeout),
-		configenv.Testing.Node.DownloadURLRequestRetries,
+		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
+		legacy_types.Testing.Node.DownloadURLRequestRetries,
 	)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)

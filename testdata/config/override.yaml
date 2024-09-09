@@ -1,5 +1,4 @@
-Node:
-  ClientAPI:
-    Host: "2.2.2.2"
+NameProvider: "hostname"
+Compute:
   Labels:
     "buz": boo

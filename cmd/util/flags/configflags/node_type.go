@@ -1,12 +1,12 @@
 package configflags
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
-
+// deprecated
 var NodeTypeFlags = []Definition{
 	{
-		FlagName:     "node-type",
-		ConfigPath:   types.NodeType,
-		DefaultValue: Default.Node.Type,
-		Description:  `Whether the node is a compute, requester or both.`,
+		FlagName:          "node-type",
+		ConfigPath:        "node.type.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "Use --orchestrator and/or --compute to set the node type.",
 	},
 }

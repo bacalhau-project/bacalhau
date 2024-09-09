@@ -1,6 +1,8 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 // Duration is a wrapper type for time.Duration
 // for decoding and encoding from/to YAML, etc.

@@ -10,8 +10,8 @@ import (
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -64,12 +64,9 @@ func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
 	IsNoop := false
 	devstackFlags := map[string][]configflags.Definition{
-		"publishing":            configflags.PublishingFlags,
-		"requester-tls":         configflags.RequesterTLSFlags,
 		"job-selection":         configflags.JobSelectionFlags,
 		"disable-features":      configflags.DisabledFeatureFlags,
 		"capacity":              configflags.CapacityFlags,
-		"job-timeouts":          configflags.ComputeTimeoutFlags,
 		"translations":          configflags.JobTranslationFlags,
 		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
 	}
@@ -103,15 +100,11 @@ func NewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("setting up config: %w", err)
 			}
-			fsr, err := setup.SetupBacalhauRepo(repoPath, cfg)
+			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-			bcfg, err := cfg.Current()
-			if err != nil {
-				return fmt.Errorf("failed to load config: %w", err)
-			}
-			return runDevstack(cmd, bcfg, fsr, ODs, IsNoop)
+			return runDevstack(cmd, cfg, fsr, ODs, IsNoop)
 		},
 	}
 
@@ -171,13 +164,13 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
 	cm.RegisterCallback(telemetry.Cleanup)
 
-	config.DevstackSetShouldPrintInfo()
+	config_legacy.DevstackSetShouldPrintInfo()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
@@ -198,7 +191,7 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(ctx, cfg, true)
+	requesterConfig, err := serve.GetRequesterConfig(cfg, true)
 	if err != nil {
 		return err
 	}
@@ -238,8 +231,8 @@ func runDevstack(cmd *cobra.Command, cfg types.BacalhauConfig, fsr *repo.FsRepo,
 
 	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
 	options = append(options, devstack.WithSelfSignedCertificate(
-		cfg.Node.ServerAPI.TLS.ServerCertificate,
-		cfg.Node.ServerAPI.TLS.ServerKey,
+		cfg.API.TLS.CertFile,
+		cfg.API.TLS.KeyFile,
 	))
 
 	stack, err := devstack.Setup(ctx, cfg, cm, fsr, options...)

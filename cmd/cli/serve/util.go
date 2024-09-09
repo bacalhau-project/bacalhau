@@ -2,44 +2,27 @@ package serve
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net"
-	"path/filepath"
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
-
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
-
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 func GetComputeConfig(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	createExecutionStore bool,
 ) (node.ComputeConfig, error) {
-	totalResources, totalErr := cfg.Node.Compute.Capacity.TotalResourceLimits.ToResources()
-	jobResources, jobErr := cfg.Node.Compute.Capacity.JobResourceLimits.ToResources()
-	defaultResources, defaultErr := cfg.Node.Compute.Capacity.DefaultJobResourceLimits.ToResources()
-	if err := errors.Join(totalErr, jobErr, defaultErr); err != nil {
-		return node.ComputeConfig{}, err
-	}
-
 	var executionStore store.ExecutionStore
 	if createExecutionStore {
 		var err error
@@ -47,42 +30,63 @@ func GetComputeConfig(
 		if err != nil {
 			return node.ComputeConfig{}, err
 		}
-		executionStore, err = getExecutionStore(ctx, cfg.Node.Compute.ExecutionStore, executionStoreDBPath)
-		if err != nil {
-			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
-		}
+		executionStore, err = boltdb.NewStore(ctx, executionStoreDBPath)
 	}
 
 	executionsPath, err := cfg.ExecutionDir()
 	if err != nil {
 		return node.ComputeConfig{}, err
 	}
+	systemCapacity, err := system.NewPhysicalCapacityProvider(executionsPath).GetTotalCapacity(ctx)
+	if err != nil {
+		return node.ComputeConfig{}, fmt.Errorf("failed to determine total system capacity: %w", err)
+	}
+	allocatedResources, err := scaleCapacityByAllocation(systemCapacity, cfg.Compute.AllocatedCapacity)
+	if err != nil {
+		return node.ComputeConfig{}, err
+	}
 
-	return node.NewComputeConfigWith(executionsPath, node.ComputeConfigParams{
-		TotalResourceLimits:                   *totalResources,
-		JobResourceLimits:                     *jobResources,
-		DefaultJobResourceLimits:              *defaultResources,
-		IgnorePhysicalResourceLimits:          cfg.Node.Compute.Capacity.IgnorePhysicalResourceLimits,
-		JobNegotiationTimeout:                 time.Duration(cfg.Node.Compute.JobTimeouts.JobNegotiationTimeout),
-		MinJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MinJobExecutionTimeout),
-		MaxJobExecutionTimeout:                time.Duration(cfg.Node.Compute.JobTimeouts.MaxJobExecutionTimeout),
-		DefaultJobExecutionTimeout:            time.Duration(cfg.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout),
-		JobExecutionTimeoutClientIDBypassList: cfg.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
+	params := node.ComputeConfigParams{
+		TotalResourceLimits:      allocatedResources,
+		JobResourceLimits:        allocatedResources,
+		DefaultJobResourceLimits: allocatedResources,
+		ExecutionStore:           executionStore,
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.Node.Compute.JobSelection.Locality),
-			RejectStatelessJobs: cfg.Node.Compute.JobSelection.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.Node.Compute.JobSelection.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.Node.Compute.JobSelection.ProbeHTTP,
-			ProbeExec:           cfg.Node.Compute.JobSelection.ProbeExec,
+			Locality:            semantic.Anywhere,
+			RejectStatelessJobs: cfg.JobAdmissionControl.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobAdmissionControl.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
+			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
 		},
-		LogRunningExecutionsInterval: time.Duration(cfg.Node.Compute.Logging.LogRunningExecutionsInterval),
-		LogStreamBufferSize:          cfg.Node.Compute.LogStreamConfig.ChannelBufferSize,
-		ExecutionStore:               executionStore,
-		LocalPublisher:               cfg.Node.Compute.LocalPublisher,
-	})
+	}
+
+	// if the local publisher is enabled and installed, populate params.
+	// Otherwise, a default set of values will be used which are defined in NewComputeConfigWith.
+	if cfg.Publishers.IsNotDisabled(models.PublisherLocal) {
+		// use the defaults, and override any values provided by the user.
+		address := params.LocalPublisher.Address
+		port := params.LocalPublisher.Port
+		directory := params.LocalPublisher.Directory
+		if cfg.Publishers.Types.Local.Address != "" {
+			address = cfg.Publishers.Types.Local.Address
+		}
+		if cfg.Publishers.Types.Local.Port != 0 {
+			port = cfg.Publishers.Types.Local.Port
+		}
+		if cfg.Publishers.Types.Local.Directory != "" {
+			directory = cfg.Publishers.Types.Local.Directory
+		}
+		params.LocalPublisher = types.LocalPublisher{
+			Address:   address,
+			Port:      port,
+			Directory: directory,
+		}
+	}
+
+	return node.NewComputeConfigWith(executionsPath, params)
 }
 
-func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJobStore bool) (node.RequesterConfig, error) {
+func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.RequesterConfig, error) {
 	var err error
 	var jobStore jobstore.Store
 	if createJobStore {
@@ -90,172 +94,80 @@ func GetRequesterConfig(ctx context.Context, cfg types.BacalhauConfig, createJob
 		if err != nil {
 			return node.RequesterConfig{}, err
 		}
-		jobStore, err = getJobStore(ctx, cfg.Node.Requester.JobStore, jobStoreDBPath)
+		jobStore, err = boltjobstore.NewBoltJobStore(jobStoreDBPath)
 		if err != nil {
 			return node.RequesterConfig{}, pkgerrors.Wrapf(err, "failed to create job store")
 		}
 	}
-
-	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-		JobDefaults: transformer.JobDefaults{
-			TotalTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.TotalTimeout),
-			ExecutionTimeout: time.Duration(cfg.Node.Requester.JobDefaults.ExecutionTimeout),
-			QueueTimeout:     time.Duration(cfg.Node.Requester.JobDefaults.QueueTimeout),
-		},
-		HousekeepingBackgroundTaskInterval: time.Duration(cfg.Node.Requester.HousekeepingBackgroundTaskInterval),
-		NodeRankRandomnessRange:            cfg.Node.Requester.NodeRankRandomnessRange,
-		OverAskForBidsFactor:               cfg.Node.Requester.OverAskForBidsFactor,
+	params := node.RequesterConfigParams{
+		JobDefaults:                        cfg.JobDefaults,
+		HousekeepingBackgroundTaskInterval: time.Duration(cfg.Orchestrator.Scheduler.HousekeepingInterval),
+		HousekeepingTimeoutBuffer:          time.Duration(cfg.Orchestrator.Scheduler.HousekeepingTimeout),
 		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality:            semantic.JobSelectionDataLocality(cfg.Node.Requester.JobSelectionPolicy.Locality),
-			RejectStatelessJobs: cfg.Node.Requester.JobSelectionPolicy.RejectStatelessJobs,
-			AcceptNetworkedJobs: cfg.Node.Requester.JobSelectionPolicy.AcceptNetworkedJobs,
-			ProbeHTTP:           cfg.Node.Requester.JobSelectionPolicy.ProbeHTTP,
-			ProbeExec:           cfg.Node.Requester.JobSelectionPolicy.ProbeExec,
+			Locality:            semantic.Anywhere,
+			RejectStatelessJobs: cfg.JobAdmissionControl.RejectStatelessJobs,
+			AcceptNetworkedJobs: cfg.JobAdmissionControl.AcceptNetworkedJobs,
+			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
+			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
 		},
-		FailureInjectionConfig:         cfg.Node.Requester.FailureInjectionConfig,
-		EvalBrokerVisibilityTimeout:    time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
-		EvalBrokerInitialRetryDelay:    time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerInitialRetryDelay),
-		EvalBrokerSubsequentRetryDelay: time.Duration(cfg.Node.Requester.EvaluationBroker.EvalBrokerSubsequentRetryDelay),
-		EvalBrokerMaxRetryCount:        cfg.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
-		WorkerCount:                    cfg.Node.Requester.Worker.WorkerCount,
-		NodeOverSubscriptionFactor:     cfg.Node.Requester.Scheduler.NodeOverSubscriptionFactor,
-		WorkerEvalDequeueTimeout:       time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueTimeout),
-		WorkerEvalDequeueBaseBackoff:   time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueBaseBackoff),
-		WorkerEvalDequeueMaxBackoff:    time.Duration(cfg.Node.Requester.Worker.WorkerEvalDequeueMaxBackoff),
-		SchedulerQueueBackoff:          time.Duration(cfg.Node.Requester.Scheduler.QueueBackoff),
-		S3PreSignedURLExpiration:       time.Duration(cfg.Node.Requester.StorageProvider.S3.PreSignedURLExpiration),
-		S3PreSignedURLDisabled:         cfg.Node.Requester.StorageProvider.S3.PreSignedURLDisabled,
-		TranslationEnabled:             cfg.Node.Requester.TranslationEnabled,
-		JobStore:                       jobStore,
-		DefaultPublisher:               cfg.Node.Requester.DefaultPublisher,
-		NodeInfoStoreTTL:               time.Duration(cfg.Node.Requester.NodeInfoStoreTTL),
-	})
+		EvalBrokerVisibilityTimeout: time.Duration(cfg.Orchestrator.EvaluationBroker.VisibilityTimeout),
+		EvalBrokerMaxRetryCount:     cfg.Orchestrator.EvaluationBroker.MaxRetryCount,
+		WorkerCount:                 cfg.Orchestrator.Scheduler.WorkerCount,
+		TranslationEnabled:          cfg.FeatureFlags.ExecTranslation,
+		JobStore:                    jobStore,
+	}
+
+	if cfg.Publishers.IsNotDisabled(models.StorageSourceS3) {
+		params.S3PreSignedURLExpiration = time.Duration(cfg.Publishers.Types.S3.PreSignedURLExpiration)
+		params.S3PreSignedURLDisabled = cfg.Publishers.Types.S3.PreSignedURLDisabled
+	}
+
+	requesterConfig, err := node.NewRequesterConfigWith(params)
 	if err != nil {
 		return node.RequesterConfig{}, err
 	}
 
-	if cfg.Node.Requester.ManualNodeApproval {
+	requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
+	if cfg.Orchestrator.NodeManager.ManualApproval {
 		requesterConfig.DefaultApprovalState = models.NodeMembership.PENDING
-	} else {
-		requesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
 	}
 
 	return requesterConfig, nil
 }
 
-func getNodeType(cfg types.BacalhauConfig) (requester, compute bool, err error) {
-	requester = false
-	compute = false
-	err = nil
-
-	for _, nodeType := range cfg.Node.Type {
-		if nodeType == "compute" {
-			compute = true
-		} else if nodeType == "requester" {
-			requester = true
-		} else {
-			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
-		}
+func getNetworkConfig(cfg types.Bacalhau) (node.NetworkConfig, error) {
+	storeDir, err := cfg.NetworkTransportDir()
+	if err != nil {
+		return node.NetworkConfig{}, err
 	}
-	return
-}
-
-func getNetworkConfig(networkStorePath string, cfg types.NetworkConfig) (node.NetworkConfig, error) {
 	return node.NetworkConfig{
-		Port:                     cfg.Port,
-		AdvertisedAddress:        cfg.AdvertisedAddress,
-		Orchestrators:            cfg.Orchestrators,
-		StoreDir:                 networkStorePath,
-		AuthSecret:               cfg.AuthSecret,
-		ClusterName:              cfg.Cluster.Name,
-		ClusterPort:              cfg.Cluster.Port,
-		ClusterAdvertisedAddress: cfg.Cluster.AdvertisedAddress,
-		ClusterPeers:             cfg.Cluster.Peers,
+		Port:                     cfg.Orchestrator.Port,
+		AdvertisedAddress:        cfg.Orchestrator.Advertise,
+		Orchestrators:            cfg.Compute.Orchestrators,
+		StoreDir:                 storeDir,
+		AuthSecret:               cfg.Orchestrator.AuthSecret,
+		ClusterName:              cfg.Orchestrator.Cluster.Name,
+		ClusterPort:              cfg.Orchestrator.Cluster.Port,
+		ClusterAdvertisedAddress: cfg.Orchestrator.Cluster.Advertise,
+		ClusterPeers:             cfg.Orchestrator.Cluster.Peers,
 	}, nil
 }
-
-func getExecutionStore(ctx context.Context, storeCfg types.JobStoreConfig, path string) (store.ExecutionStore, error) {
-	if err := storeCfg.Validate(); err != nil {
-		return nil, err
+func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types.ResourceScaler) (models.Resources, error) {
+	// if the system capacity is zero we should fail as it means the compute node will be unable to accept any work.
+	if systemCapacity.IsZero() {
+		return models.Resources{}, fmt.Errorf("system capacity is zero")
 	}
 
-	switch storeCfg.Type {
-	case types.BoltDB:
-		return boltdb.NewStore(ctx, path)
-	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
-	}
-}
-
-func getJobStore(ctx context.Context, storeCfg types.JobStoreConfig, path string) (jobstore.Store, error) {
-	if err := storeCfg.Validate(); err != nil {
-		return nil, err
+	// if allocated capacity scaler is zero, return the system capacity
+	if scaler.IsZero() {
+		return systemCapacity, nil
 	}
 
-	switch storeCfg.Type {
-	case types.BoltDB:
-		log.Ctx(ctx).Debug().Str("Path", path).Msg("creating boltdb backed jobstore")
-		return boltjobstore.NewBoltJobStore(path)
-	default:
-		return nil, fmt.Errorf("unknown JobStore type: %s", storeCfg.Type)
-	}
-}
-
-func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
-	nodeNameProviders := map[string]idgen.NodeNameProvider{
-		"hostname": idgen.HostnameProvider{},
-		"aws":      idgen.NewAWSNodeNameProvider(),
-		"gcp":      idgen.NewGCPNodeNameProvider(),
-		"uuid":     idgen.UUIDNodeNameProvider{},
-		"puuid":    idgen.PUUIDNodeNameProvider{},
-	}
-	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
-	if !ok {
-		return "", fmt.Errorf(
-			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
-	}
-
-	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+	// scale the system resources based on the allocation
+	allocatedCapacity, err := scaler.ToResource(systemCapacity)
 	if err != nil {
-		return "", err
+		return models.Resources{}, fmt.Errorf("allocating system capacity: %w", err)
 	}
 
-	return nodeName, nil
-}
-
-// persistConfigs writes the resolved config to the persisted config file.
-// this will only write values that must not change between invocations,
-// such as the job store path and node name,
-// and only if they are not already set in the config file.
-func persistConfigs(repoPath string, cfg types.BacalhauConfig) error {
-	if err := config.WritePersistedConfigs(filepath.Join(repoPath, config.FileName), cfg); err != nil {
-		return fmt.Errorf("error writing persisted config: %w", err)
-	}
-	return nil
-}
-
-func parseServerAPIHost(host string) (string, error) {
-	if net.ParseIP(host) == nil {
-		// We should check that the value gives us an address type
-		// we can use to get our IP address. If it doesn't, we should
-		// panic.
-		atype, ok := network.AddressTypeFromString(host)
-		if !ok {
-			return "", fmt.Errorf("invalid address type in Server API Host config: %s", host)
-		}
-
-		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
-		if err != nil {
-			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", host, err)
-		}
-
-		if len(addr) == 0 {
-			return "", fmt.Errorf("no %s addresses found for Server API Host", host)
-		}
-
-		// Use the first address
-		host = addr[0]
-	}
-
-	return host, nil
+	return *allocatedCapacity, nil
 }

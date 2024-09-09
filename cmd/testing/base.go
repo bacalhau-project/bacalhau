@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -31,7 +30,7 @@ type BaseSuite struct {
 	suite.Suite
 	Node            *node.Node
 	ClientV2        clientv2.API
-	Config          types.BacalhauConfig
+	Config          types.Bacalhau
 	Host            string
 	Port            uint16
 	AllowListedPath string
@@ -44,10 +43,6 @@ func (s *BaseSuite) SetupTest() {
 	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
 	s.Config = cfg
 
-	// TODO: Update checker is configured with production default configs
-	//  and not respecting the test environment. This is a temporary fix
-	os.Setenv(config.KeyAsEnvVar(types.UpdateSkipChecks), "true")
-
 	s.AllowListedPath = s.T().TempDir()
 
 	executionDir, err := cfg.ExecutionDir()
@@ -57,7 +52,7 @@ func (s *BaseSuite) SetupTest() {
 		JobSelectionPolicy: node.JobSelectionPolicy{
 			Locality: semantic.Anywhere,
 		},
-		LocalPublisher: types.LocalPublisherConfig{
+		LocalPublisher: types.LocalPublisher{
 			Address: "127.0.0.1",
 		},
 	})
@@ -74,7 +69,7 @@ func (s *BaseSuite) SetupTest() {
 		devstack.WithComputeConfig(computeConfig),
 		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Node.Compute.ManifestCache),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address
@@ -134,6 +129,9 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd()
 	root.SetOut(buf)
+	// TODO(forrest): we should separate the ouputs from a command into different buffers for stderr and sdtout, otherwise
+	// log lines and other outputs (like the update checker) will be included in the returned buffer, and commands
+	// that make assertions on the output containing specific values, or being marshaller-able to yaml will fail.
 	root.SetErr(buf)
 	root.SetIn(stdin)
 
@@ -145,6 +143,7 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	if !slices.Contains(args, "--api-port") {
 		arguments = append(arguments, "--api-port", fmt.Sprintf("%d", s.Port))
 	}
+
 	arguments = append(arguments, args...)
 
 	root.SetArgs(arguments)

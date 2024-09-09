@@ -39,7 +39,7 @@ const (
 func ParseLogMode(s string) (LogMode, error) {
 	lm := []LogMode{LogModeDefault, LogModeStation, LogModeJSON, LogModeCombined, LogModeEvent}
 	for _, logMode := range lm {
-		if s == string(logMode) {
+		if strings.ToLower(s) == strings.ToLower(string(logMode)) {
 			return logMode, nil
 		}
 	}
@@ -57,11 +57,12 @@ func init() { //nolint:gochecknoinits
 		strings.HasSuffix(os.Args[0], ".test") ||
 		flag.Lookup("test.v") != nil ||
 		flag.Lookup("test.run") != nil {
-		configureLogging(defaultLogging())
+		configureLogging(zerolog.DebugLevel, defaultLogging())
 		return
 	}
 
-	configureLogging(bufferLogs())
+	// the default log level when not running a test is ERROR
+	configureLogging(zerolog.ErrorLevel, bufferLogs())
 }
 
 func ErrOrDebug(err error) zerolog.Level {
@@ -81,15 +82,25 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	configureLogging(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
+	configureLogging(zerolog.DebugLevel, zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
 	})
 }
 
-func ConfigureLogging(mode LogMode) {
+func ConfigureLogging(modeStr, levelStr string) error {
 	logModeConfig := defaultLogging()
+
+	mode, err := ParseLogMode(modeStr)
+	if err != nil {
+		return fmt.Errorf("invalid log mode: %w", err)
+	}
+	level, err := zerolog.ParseLevel(levelStr)
+	if err != nil {
+		return fmt.Errorf("invalid log level: %w", err)
+	}
+
 	switch mode {
 	case LogModeDefault:
 		logModeConfig = defaultLogging()
@@ -102,29 +113,15 @@ func ConfigureLogging(mode LogMode) {
 	case LogModeCombined:
 		logModeConfig = combinedLogging()
 	}
-	configureLogging(logModeConfig)
+	configureLogging(level, logModeConfig)
 
 	LogBufferedLogs(logModeConfig)
+	return nil
 }
 
-func configureLogging(logWriter io.Writer) {
+func configureLogging(level zerolog.Level, logWriter io.Writer) {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	logLevelString := strings.ToLower(os.Getenv("LOG_LEVEL"))
-
-	switch {
-	case logLevelString == "trace":
-		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	case logLevelString == "debug":
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case logLevelString == "error":
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	case logLevelString == "warn":
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case logLevelString == "fatal":
-		zerolog.SetGlobalLevel(zerolog.FatalLevel)
-	default:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
+	zerolog.SetGlobalLevel(level)
 
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {

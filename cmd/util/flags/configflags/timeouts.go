@@ -1,36 +1,49 @@
 package configflags
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
+import (
+	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+)
+
+// deprecated
 var ComputeTimeoutFlags = []Definition{
 	{
-		FlagName:     "job-execution-timeout-bypass-client-id",
-		ConfigPath:   types.NodeComputeJobTimeoutsJobExecutionTimeoutClientIDBypassList,
-		DefaultValue: Default.Node.Compute.JobTimeouts.JobExecutionTimeoutClientIDBypassList,
-		Description:  `List of IDs of clients that are allowed to bypass the job execution timeout check`,
+		FlagName:          "job-execution-timeout-bypass-client-id",
+		ConfigPath:        "job.execution.timeout.bypass.client.id.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: FeatureDeprecatedMessage,
 	},
 	{
-		FlagName:     "job-negotiation-timeout",
-		ConfigPath:   types.NodeComputeJobTimeoutsJobNegotiationTimeout,
-		DefaultValue: Default.Node.Compute.JobTimeouts.JobNegotiationTimeout,
-		Description:  `Timeout value to hold a bid for a job.`,
+		FlagName:          "job-negotiation-timeout",
+		ConfigPath:        "job.negotiation.timeout.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: FeatureDeprecatedMessage,
 	},
 	{
-		FlagName:     "min-job-execution-timeout",
-		ConfigPath:   types.NodeComputeJobTimeoutsMinJobExecutionTimeout,
-		DefaultValue: Default.Node.Compute.JobTimeouts.MinJobExecutionTimeout,
-		Description:  `The minimum execution timeout this compute node supports. Jobs with lower timeout requirements will not be bid on.`,
+		FlagName:          "min-job-execution-timeout",
+		ConfigPath:        "min.job.execution.timeout.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: FeatureDeprecatedMessage,
 	},
 	{
-		FlagName:     "max-job-execution-timeout",
-		ConfigPath:   types.NodeComputeJobTimeoutsMaxJobExecutionTimeout,
-		DefaultValue: Default.Node.Compute.JobTimeouts.MaxJobExecutionTimeout,
-		Description:  `The maximum execution timeout this compute node supports. Jobs with higher timeout requirements will not be bid on.`,
+		FlagName:          "max-job-execution-timeout",
+		ConfigPath:        "max.job.execution.timeout.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: FeatureDeprecatedMessage,
 	},
 	{
 		FlagName:     "default-job-execution-timeout",
-		ConfigPath:   types.NodeComputeJobTimeoutsDefaultJobExecutionTimeout,
-		DefaultValue: Default.Node.Compute.JobTimeouts.DefaultJobExecutionTimeout,
-		Description:  `default value for the execution timeout this compute node will assign to jobs with no timeout requirement defined.`,
+		ConfigPath:   "default.job.execution.timeout.deprecated",
+		DefaultValue: "",
+		Deprecated:   true,
+		DeprecatedMessage: fmt.Sprintf("Use one or more of the following options, all are accepted %s, %s",
+			makeConfigFlagDeprecationCommand(types.JobDefaultsBatchTaskTimeoutsExecutionTimeoutKey),
+			makeConfigFlagDeprecationCommand(types.JobDefaultsOpsTaskTimeoutsExecutionTimeoutKey),
+		),
 	},
 }

@@ -31,14 +31,14 @@ func main() { // Create an hclog.Logger
 		Level:  hclog.Trace,
 	})
 
-	cfg := types.DockerCacheConfig{
-		Size:      1000,
-		Duration:  types.Duration(1 * time.Hour),
-		Frequency: types.Duration(1 * time.Hour),
+	cfg := types.DockerManifestCache{
+		Size:    1000,
+		TTL:     types.Duration(1 * time.Hour),
+		Refresh: types.Duration(1 * time.Hour),
 	}
 	dockerExecutor, err := docker.NewExecutor(
 		"bacalhau-pluggable-executor-docker",
-		cfg,
+		types.Docker{ManifestCache: cfg},
 	)
 	if err != nil {
 		logger.Error(err.Error())

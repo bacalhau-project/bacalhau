@@ -69,3 +69,17 @@ after_each() {
     teardown_nodes
     clean_repo
 }
+
+start_bacalhau_serve_with_config() {
+  # Start the server in the background
+  $BACALHAU serve $@ > /dev/null 2>&1 &
+
+  SERVER_PID=$!
+
+  # Wait for the server to come online
+  # You can use a loop to check if the server is responding, e.g., using curl
+  while ! curl -s http://localhost:1234/api/v1/agent/alive; do
+    echo "Waiting for bacalhau server to come online..."
+    sleep 1
+  done
+}

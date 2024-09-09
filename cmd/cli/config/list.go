@@ -7,10 +7,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -29,12 +29,6 @@ func newListCmd() *cobra.Command {
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// initialize a new or open an existing repo. We need to ensure the config
-			// has been initialized so that the current values of it are displayed in the list command.
-			_, err := util.SetupRepoConfig(cmd)
-			if err != nil {
-				return fmt.Errorf("failed to setup repo: %w", err)
-			}
 			return list(cmd, o)
 		},
 	}
@@ -44,6 +38,7 @@ func newListCmd() *cobra.Command {
 
 type configListEntry struct {
 	Key         string
+	EnvVar      string
 	Description string
 }
 
@@ -56,6 +51,7 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 	for key, description := range types.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
+			EnvVar:      config.KeyAsEnvVar(key),
 			Description: description,
 		})
 	}
@@ -75,7 +71,13 @@ var listColumns = []output.TableColumn[configListEntry]{
 		},
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "Description", WidthMax: 40, WidthMaxEnforcer: text.WrapHard},
+		ColumnConfig: table.ColumnConfig{Name: "Environment Variable", WidthMax: 80, WidthMaxEnforcer: text.WrapHard},
+		Value: func(v configListEntry) string {
+			return fmt.Sprintf("%v", v.EnvVar)
+		},
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "Description", WidthMax: 80, WidthMaxEnforcer: text.WrapText},
 		Value: func(v configListEntry) string {
 			return fmt.Sprintf("%v", v.Description)
 		},

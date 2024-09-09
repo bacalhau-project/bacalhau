@@ -16,7 +16,7 @@ var printMessage *string = nil
 // StartUpdateCheck is a Cobra pre run hook to run an update check in the
 // background. There should be no output if the check fails or the context is
 // cancelled before the check can complete.
-func StartUpdateCheck(cmd *cobra.Command, cfg types.BacalhauConfig, store version.UpdateStore) {
+func StartUpdateCheck(cmd *cobra.Command, cfg types.Bacalhau, store version.UpdateStore) {
 	version.RunUpdateChecker(
 		cmd.Context(),
 		cfg,
