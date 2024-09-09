@@ -23,12 +23,20 @@ export interface OnCancel {
 }
 
 export class CancelablePromise<T> implements Promise<T> {
+    // ref: https://github.com/ferdikoomen/openapi-typescript-codegen/issues/1992
+    // @ts-ignore
     #isResolved: boolean;
+    // @ts-ignore
     #isRejected: boolean;
+    // @ts-ignore
     #isCancelled: boolean;
+    // @ts-ignore
     readonly #cancelHandlers: (() => void)[];
+    // @ts-ignore
     readonly #promise: Promise<T>;
+    // @ts-ignore
     #resolve?: (value: T | PromiseLike<T>) => void;
+    // @ts-ignore
     #reject?: (reason?: any) => void;
 
     constructor(

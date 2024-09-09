@@ -58,7 +58,7 @@ export function JobsTable({
           {jobs.map((job) => (
             <TableRow key={job.ID}>
               <TableCell className="p-3">
-                <Link href={`/jobs/${job.ID}`}>
+                <Link href={`/jobs?id=${job.ID}`}>
                   <TruncatedTextWithTooltip text={job.Name} maxLength={25} />
                 </Link>
               </TableCell>

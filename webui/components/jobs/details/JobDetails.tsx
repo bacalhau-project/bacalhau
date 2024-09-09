@@ -9,7 +9,7 @@ import { JobInformation } from './JobInformation'
 import JobActions from './JobActions'
 import JobTabs from './JobTabs'
 
-const JobDetailsPage = ({ jobId }: { jobId: string }) => {
+const JobDetails = ({ jobId }: { jobId: string }) => {
   const [jobData, setJobData] = useState<apimodels_GetJobResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +20,6 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
 
     setIsLoading(true)
     setError(null)
-
     try {
       const response = await OrchestratorService.orchestratorGetJob(
         jobId,
@@ -44,17 +43,9 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
     fetchJobData()
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
-
-  if (error) {
-    return <div className="text-red-500">{error}</div>
-  }
-
-  if (!jobData || !jobData.Job) {
-    return <div>Job not found.</div>
-  }
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div className="text-red-500">{error}</div>
+  if (!jobData || !jobData.Job) return <div>Job not found.</div>
 
   const { Job, History, Executions } = jobData
 
@@ -70,4 +61,4 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
   )
 }
 
-export default JobDetailsPage
+export default JobDetails

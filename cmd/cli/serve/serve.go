@@ -25,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	webui "github.com/bacalhau-project/bacalhau/webui_bk"
 )
 
 const DefaultPeerConnect = "none"
@@ -216,18 +217,18 @@ func serve(cmd *cobra.Command, cfg types.BacalhauConfig, fsRepo *repo.FsRepo) er
 
 	// Start up Dashboard - default: 8483
 	if cfg.Node.WebUI.Enabled {
-		//apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		//go func() {
-		//	// Specifically leave the host blank. The app will just use whatever
-		//	// host it is served on and replace the port and path.
-		//	apiPort := apiURL.Port()
-		//	apiPath := apiURL.Path
-		//
-		//	err := webui.ListenAndServe(ctx, "", apiPort, apiPath, cfg.Node.WebUI.Port)
-		//	if err != nil {
-		//		cmd.PrintErrln(err)
-		//	}
-		//}()
+		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
+		go func() {
+			// Specifically leave the host blank. The app will just use whatever
+			// host it is served on and replace the port and path.
+			apiPort := apiURL.Port()
+			apiPath := apiURL.Path
+
+			err := webui.ListenAndServe(ctx, "", apiPort, apiPath, cfg.Node.WebUI.Port)
+			if err != nil {
+				cmd.PrintErrln(err)
+			}
+		}()
 	}
 
 	connectCmd, err := buildConnectCommand(ctx, &nodeConfig)
