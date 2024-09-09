@@ -11,9 +11,6 @@ interface LogEntry {
 }
 
 const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
-  if (!jobId) {
-    return null;
-  }
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
@@ -22,10 +19,6 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  if (!isInitialized) {
-    return null;
-  }
-
   const scrollToBottom = () => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
@@ -33,6 +26,8 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
   };
 
   const connectWebSocket = useCallback(() => {
+    if (!jobId || !isInitialized) return;
+
     if (wsRef.current) {
       console.log('WebSocket connection already exists');
       return;
@@ -85,7 +80,7 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
     };
 
     wsRef.current = ws;
-  }, [jobId]);
+  }, [jobId, isInitialized]);
 
   const disconnectWebSocket = useCallback(() => {
     if (wsRef.current) {
@@ -113,6 +108,10 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
     disconnectWebSocket();
   };
 
+  if (!jobId || !isInitialized) {
+    return null;
+  }
+
   return (
     <Card className="bg-gray-900 text-green-400 h-full">
       <CardHeader className="p-5">
@@ -126,7 +125,7 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
               </div>
             ) : (
               <div className="flex items-center">
-                <span>Click 'Start Streaming' to fetch logs.</span>
+                <span>Click &apos;Start Streaming&apos; to fetch logs.</span>
               </div>
             )}
           </span>

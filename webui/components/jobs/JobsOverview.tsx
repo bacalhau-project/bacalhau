@@ -36,7 +36,7 @@ export function JobsOverview() {
     }
 
     fetchJobs()
-  }, [isInitialized, pageSize, pageIndex])
+  }, [isInitialized, pageSize, pageIndex, nextToken])
 
   const filteredJobs = jobs.filter(
     (job) =>

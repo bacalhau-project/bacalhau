@@ -18,18 +18,18 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () => void }) => {
-  const jobID = job.ID;
-  if (jobID === undefined) {
-    return null;
-  }
   const [isStoppingJob, setIsStoppingJob] = useState(false);
   const [stopJobError, setStopJobError] = useState<string | null>(null);
+
+  if (job.ID === undefined) {
+    return null;
+  }
 
   const handleStopJob = async () => {
     setIsStoppingJob(true);
     setStopJobError(null);
     try {
-      await OrchestratorService.orchestratorStopJob(jobID, 'User requested stop');
+      await OrchestratorService.orchestratorStopJob(job.ID!, 'User requested stop');
       onJobUpdated(); // Trigger re-render of parent component
     } catch (error) {
       console.error('Error stopping job:', error);
@@ -37,11 +37,6 @@ const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () =
     } finally {
       setIsStoppingJob(false);
     }
-  };
-
-  const handleDownloadResults = async () => {
-    console.log('Downloading results for job:', job.ID);
-    // Implement download functionality here
   };
 
   return (

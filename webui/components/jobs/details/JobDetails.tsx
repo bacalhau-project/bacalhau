@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OrchestratorService, apimodels_GetJobResponse } from '@/lib/api/generated';
 import { useApi } from '@/app/providers/ApiProvider';
 import { JobInformation } from './JobInformation';
@@ -12,7 +12,7 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
   const [error, setError] = useState<string | null>(null);
   const { isInitialized } = useApi();
 
-  const fetchJobData = async () => {
+  const fetchJobData = useCallback(async () => {
     if (!isInitialized) return;
 
     setIsLoading(true);
@@ -31,11 +31,11 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isInitialized, jobId]);
 
   useEffect(() => {
     fetchJobData();
-  }, [isInitialized, jobId]);
+  }, [fetchJobData]);
 
   const handleJobUpdated = () => {
     fetchJobData();

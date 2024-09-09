@@ -42,7 +42,7 @@ export function EnterpriseSupportCard() {
       <CardHeader className="p-4">
         <CardTitle className="text-white">Get Support</CardTitle>
         <CardDescription className="text-gray-400">
-          Get dedicated support for your organization's needs.
+          Get dedicated support for your organization&apos;s needs.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0">
