@@ -1,12 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Button } from '@/components/ui/button';
-import { Filter, X } from 'lucide-react';
-import { apimodels_ListJobHistoryResponse } from '@/lib/api/generated';
-import { shortID, formatTime } from '@/lib/api/utils';
+import React, { useState, useMemo } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
+import { Filter, X } from 'lucide-react'
+import { apimodels_ListJobHistoryResponse } from '@/lib/api/generated'
+import { shortID, formatTime } from '@/lib/api/utils'
 
 const colors = [
   'text-blue-800',
@@ -15,44 +22,58 @@ const colors = [
   'text-pink-700',
   'text-cyan-700',
   'text-yellow-700',
-];
+]
 
-const getColorForExecutionID = (executionID: string | undefined, colorMap: Record<string, string>, colorIndex: number) => {
+const getColorForExecutionID = (
+  executionID: string | undefined,
+  colorMap: Record<string, string>,
+  colorIndex: number
+) => {
   if (!executionID) {
-    return '';
+    return ''
   }
   if (colorMap[executionID]) {
-    return colorMap[executionID];
+    return colorMap[executionID]
   } else {
-    const newColor = colors[colorIndex % colors.length];
-    colorMap[executionID] = newColor;
-    return newColor;
+    const newColor = colors[colorIndex % colors.length]
+    colorMap[executionID] = newColor
+    return newColor
   }
-};
+}
 
-const JobHistory = ({ history }: { history?: apimodels_ListJobHistoryResponse }) => {
-  const [colorMap, setColorMap] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showJobOnly, setShowJobOnly] = useState(false);
-  const [filterExecutionID, setFilterExecutionID] = useState<string | null>(null);
+const JobHistory = ({
+  history,
+}: {
+  history?: apimodels_ListJobHistoryResponse
+}) => {
+  const [colorMap, setColorMap] = useState<Record<string, string>>({})
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showJobOnly, setShowJobOnly] = useState(false)
+  const [filterExecutionID, setFilterExecutionID] = useState<string | null>(
+    null
+  )
 
   const filteredHistory = useMemo(() => {
-    return history?.Items?.filter(item => {
-      const matchesSearch = item.ExecutionID?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return history?.Items?.filter((item) => {
+      const matchesSearch =
+        item.ExecutionID?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.Event?.Topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.Event?.Message?.toLowerCase().includes(searchTerm.toLowerCase());
-      const isJobEvent = !item.ExecutionID;
-      const matchesJobOnly = !showJobOnly || isJobEvent;
-      const matchesExecutionID = !filterExecutionID || item.ExecutionID === filterExecutionID;
-      return matchesSearch && matchesJobOnly && matchesExecutionID;
-    });
-  }, [history, searchTerm, showJobOnly, filterExecutionID]);
+        item.Event?.Message?.toLowerCase().includes(searchTerm.toLowerCase())
+      const isJobEvent = !item.ExecutionID
+      const matchesJobOnly = !showJobOnly || isJobEvent
+      const matchesExecutionID =
+        !filterExecutionID || item.ExecutionID === filterExecutionID
+      return matchesSearch && matchesJobOnly && matchesExecutionID
+    })
+  }, [history, searchTerm, showJobOnly, filterExecutionID])
 
   const toggleFilter = (executionID: string | null) => {
-    setFilterExecutionID(prevID => prevID === executionID ? null : executionID);
-  };
+    setFilterExecutionID((prevID) =>
+      prevID === executionID ? null : executionID
+    )
+  }
 
-  let colorIndex = 0;
+  let colorIndex = 0
 
   return (
     <Card>
@@ -85,20 +106,26 @@ const JobHistory = ({ history }: { history?: apimodels_ListJobHistoryResponse })
           </TableHeader>
           <TableBody>
             {filteredHistory?.map((item, index) => {
-              const isExecutionEvent = !!item.ExecutionID;
-              let rowClass = '';
+              const isExecutionEvent = !!item.ExecutionID
+              let rowClass = ''
 
               if (isExecutionEvent) {
-                rowClass = getColorForExecutionID(item.ExecutionID, colorMap, colorIndex);
-                colorIndex++;
+                rowClass = getColorForExecutionID(
+                  item.ExecutionID,
+                  colorMap,
+                  colorIndex
+                )
+                colorIndex++
               } else {
-                rowClass = 'font-medium';
+                rowClass = 'font-medium'
               }
 
               return (
                 <TableRow key={index} className={rowClass}>
                   <TableCell>{formatTime(item.Time, true)}</TableCell>
-                  <TableCell>{isExecutionEvent ? shortID(item.ExecutionID) : '-'}</TableCell>
+                  <TableCell>
+                    {isExecutionEvent ? shortID(item.ExecutionID) : '-'}
+                  </TableCell>
                   <TableCell>{item.Event?.Topic}</TableCell>
                   <TableCell>{item.Event?.Message}</TableCell>
                   <TableCell className="p-0 w-10">
@@ -108,20 +135,24 @@ const JobHistory = ({ history }: { history?: apimodels_ListJobHistoryResponse })
                         size="sm"
                         onClick={() => toggleFilter(item.ExecutionID!)}
                       >
-                        {filterExecutionID === item.ExecutionID ? <X size={16} /> : <Filter size={16} />}
+                        {filterExecutionID === item.ExecutionID ? (
+                          <X size={16} />
+                        ) : (
+                          <Filter size={16} />
+                        )}
                       </Button>
                     ) : (
                       <div className="h-10 w-10" /> // Placeholder for job events
                     )}
                   </TableCell>
                 </TableRow>
-              );
+              )
             })}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-  );
-};
+  )
+}
 
-export default JobHistory;
+export default JobHistory

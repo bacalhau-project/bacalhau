@@ -1,59 +1,62 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react';
-import { OrchestratorService, apimodels_GetJobResponse } from '@/lib/api/generated';
-import { useApi } from '@/app/providers/ApiProvider';
-import { JobInformation } from './JobInformation';
-import JobActions from './JobActions';
-import JobTabs from './JobTabs';
+import React, { useState, useEffect, useCallback } from 'react'
+import {
+  OrchestratorService,
+  apimodels_GetJobResponse,
+} from '@/lib/api/generated'
+import { useApi } from '@/app/providers/ApiProvider'
+import { JobInformation } from './JobInformation'
+import JobActions from './JobActions'
+import JobTabs from './JobTabs'
 
 const JobDetailsPage = ({ jobId }: { jobId: string }) => {
-  const [jobData, setJobData] = useState<apimodels_GetJobResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { isInitialized } = useApi();
+  const [jobData, setJobData] = useState<apimodels_GetJobResponse | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { isInitialized } = useApi()
 
   const fetchJobData = useCallback(async () => {
-    if (!isInitialized) return;
+    if (!isInitialized) return
 
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
 
     try {
       const response = await OrchestratorService.orchestratorGetJob(
         jobId,
         'history,executions',
         undefined // limit
-      );
-      setJobData(response);
+      )
+      setJobData(response)
     } catch (error) {
-      console.error('Error fetching job data:', error);
-      setError('Failed to fetch job data. Please try again.');
+      console.error('Error fetching job data:', error)
+      setError('Failed to fetch job data. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  }, [isInitialized, jobId]);
+  }, [isInitialized, jobId])
 
   useEffect(() => {
-    fetchJobData();
-  }, [fetchJobData]);
+    fetchJobData()
+  }, [fetchJobData])
 
   const handleJobUpdated = () => {
-    fetchJobData();
-  };
+    fetchJobData()
+  }
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return <div className="text-red-500">{error}</div>
   }
 
   if (!jobData || !jobData.Job) {
-    return <div>Job not found.</div>;
+    return <div>Job not found.</div>
   }
 
-  const { Job, History, Executions } = jobData;
+  const { Job, History, Executions } = jobData
 
   return (
     <div className="container mx-auto p-4">
@@ -64,7 +67,7 @@ const JobDetailsPage = ({ jobId }: { jobId: string }) => {
       <JobInformation job={Job} />
       <JobTabs job={Job} history={History} executions={Executions} />
     </div>
-  );
-};
+  )
+}
 
-export default JobDetailsPage;
+export default JobDetailsPage

@@ -1,21 +1,25 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { models_Job, apimodels_ListJobHistoryResponse, apimodels_ListJobExecutionsResponse } from '@/lib/api/generated';
-import JobHistory from './JobHistory';
-import JobExecutions from './JobExecutions';
-import JobInspect from './JobInspect';
-import JobLogs from './JobLogs';
+import React, { useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  models_Job,
+  apimodels_ListJobHistoryResponse,
+  apimodels_ListJobExecutionsResponse,
+} from '@/lib/api/generated'
+import JobHistory from './JobHistory'
+import JobExecutions from './JobExecutions'
+import JobInspect from './JobInspect'
+import JobLogs from './JobLogs'
 
 const JobTabs = ({
-                   job,
-                   history,
-                   executions
-                 }: {
-  job: models_Job,
-  history?: apimodels_ListJobHistoryResponse,
+  job,
+  history,
+  executions,
+}: {
+  job: models_Job
+  history?: apimodels_ListJobHistoryResponse
   executions?: apimodels_ListJobExecutionsResponse
 }) => {
-  const [activeTab, setActiveTab] = useState('history');
+  const [activeTab, setActiveTab] = useState('history')
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -42,7 +46,7 @@ const JobTabs = ({
         <JobLogs jobId={job.ID} />
       </TabsContent>
     </Tabs>
-  );
-};
+  )
+}
 
-export default JobTabs;
+export default JobTabs

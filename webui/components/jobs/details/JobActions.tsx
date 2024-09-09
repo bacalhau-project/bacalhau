@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { StopCircle } from 'lucide-react';
-import { isTerminalJobState } from '@/lib/api/utils';
-import { models_Job } from '@/lib/api/generated';
-import { OrchestratorService } from '@/lib/api/generated/services/OrchestratorService';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import React, { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { StopCircle } from 'lucide-react'
+import { isTerminalJobState } from '@/lib/api/utils'
+import { models_Job } from '@/lib/api/generated'
+import { OrchestratorService } from '@/lib/api/generated/services/OrchestratorService'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,29 +15,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog'
 
-const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () => void }) => {
-  const [isStoppingJob, setIsStoppingJob] = useState(false);
-  const [stopJobError, setStopJobError] = useState<string | null>(null);
+const JobActions = ({
+  job,
+  onJobUpdated,
+}: {
+  job: models_Job
+  onJobUpdated: () => void
+}) => {
+  const [isStoppingJob, setIsStoppingJob] = useState(false)
+  const [stopJobError, setStopJobError] = useState<string | null>(null)
 
   if (job.ID === undefined) {
-    return null;
+    return null
   }
 
   const handleStopJob = async () => {
-    setIsStoppingJob(true);
-    setStopJobError(null);
+    setIsStoppingJob(true)
+    setStopJobError(null)
     try {
-      await OrchestratorService.orchestratorStopJob(job.ID!, 'User requested stop');
-      onJobUpdated(); // Trigger re-render of parent component
+      await OrchestratorService.orchestratorStopJob(
+        job.ID!,
+        'User requested stop'
+      )
+      onJobUpdated() // Trigger re-render of parent component
     } catch (error) {
-      console.error('Error stopping job:', error);
-      setStopJobError('Failed to stop the job. Please try again.');
+      console.error('Error stopping job:', error)
+      setStopJobError('Failed to stop the job. Please try again.')
     } finally {
-      setIsStoppingJob(false);
+      setIsStoppingJob(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-4">
@@ -58,14 +67,20 @@ const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () =
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure you want to stop this job?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  Are you sure you want to stop this job?
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. The job will be stopped and cannot be resumed.
+                  This action cannot be undone. The job will be stopped and
+                  cannot be resumed.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleStopJob} disabled={isStoppingJob}>
+                <AlertDialogAction
+                  onClick={handleStopJob}
+                  disabled={isStoppingJob}
+                >
                   {isStoppingJob ? 'Stopping...' : 'Stop Job'}
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -74,7 +89,7 @@ const JobActions = ({ job, onJobUpdated }: { job: models_Job; onJobUpdated: () =
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default JobActions;
+export default JobActions

@@ -45,7 +45,8 @@ export function getExecutionState(
   status: string | number | undefined
 ): models_ExecutionStateType | undefined {
   if (typeof status === 'string') {
-    const enumKey = `ExecutionStateType${status}` as keyof typeof models_ExecutionStateType
+    const enumKey =
+      `ExecutionStateType${status}` as keyof typeof models_ExecutionStateType
     return models_ExecutionStateType[enumKey]
   } else if (typeof status === 'number') {
     return status as models_ExecutionStateType
@@ -86,7 +87,8 @@ export function getExecutionDesiredState(
   status: string | number | undefined
 ): models_ExecutionDesiredStateType | undefined {
   if (typeof status === 'string') {
-    const enumKey = `ExecutionDesiredStateType${status}` as keyof typeof models_ExecutionDesiredStateType
+    const enumKey =
+      `ExecutionDesiredStateType${status}` as keyof typeof models_ExecutionDesiredStateType
     return models_ExecutionDesiredStateType[enumKey]
   } else if (typeof status === 'number') {
     return status as models_ExecutionDesiredStateType
@@ -144,25 +146,27 @@ export function getJobRunTime(job: models_Job): string {
   return formatDuration(durationMs)
 }
 
-function normalizeTimestamp(timestamp: number) : number {
+function normalizeTimestamp(timestamp: number): number {
   // Timestamp is too small, must be in seconds, convert to milliseconds
   if (timestamp < 1e12) {
-    return timestamp * 1e3;
+    return timestamp * 1e3
   }
   // Timestamp is in nanoseconds, convert to milliseconds
   if (timestamp > 1e15) {
-    return Math.floor(timestamp / 1e6);
+    return Math.floor(timestamp / 1e6)
   }
   // Timestamp is already in milliseconds
-  return timestamp;
+  return timestamp
 }
 
-export function formatTime(timeString: string | undefined, includeSeconds: boolean = false) : string {
+export function formatTime(
+  timeString: string | undefined,
+  includeSeconds: boolean = false
+): string {
   if (!timeString) return 'N/A'
-  const date = new Date(timeString);
-  return formatTimestamp(date.getTime(), includeSeconds);
+  const date = new Date(timeString)
+  return formatTimestamp(date.getTime(), includeSeconds)
 }
-
 
 export function formatTimestamp(
   timestamp: number | undefined,

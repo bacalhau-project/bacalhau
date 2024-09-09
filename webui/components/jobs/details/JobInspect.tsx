@@ -1,8 +1,8 @@
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { models_Job } from '@/lib/api/generated';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import React from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { models_Job } from '@/lib/api/generated'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 const JobInspect = ({ job }: { job: models_Job }) => (
   <Card className="bg-gray-900 text-white">
@@ -21,6 +21,6 @@ const JobInspect = ({ job }: { job: models_Job }) => (
       </SyntaxHighlighter>
     </CardContent>
   </Card>
-);
+)
 
-export default JobInspect;
+export default JobInspect
