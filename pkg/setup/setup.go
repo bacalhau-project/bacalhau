@@ -60,7 +60,10 @@ func SetupBacalhauRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	// create a temporary dir to serve as bacalhau repo whose name includes the current time to avoid collisions with
 	/// other tests
-	tmpDir := t.TempDir()
+	tmpDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(tmpDir, fmt.Sprint(time.Now().UnixNano()))
 
 	// disable update checks in testing.
@@ -87,7 +90,12 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	}
 
 	t.Logf("creating repo for testing at: %s", path)
-
+	t.Cleanup(func() {
+		// This may fail to clean up due to nats store, log an error, don't fail testing
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("failed to clean up repo at: %s: %s", path, err)
+		}
+	})
 	var cfg types.Bacalhau
 	if err := c.Unmarshal(&cfg); err != nil {
 		t.Fatal(err)
