@@ -4,8 +4,6 @@ package test
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
