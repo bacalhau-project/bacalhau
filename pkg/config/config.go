@@ -1,16 +1,19 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -248,4 +251,26 @@ func KeyAsEnvVar(key string) string {
 	return strings.ToUpper(
 		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
 	)
+}
+
+func GetNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return nodeName, nil
 }

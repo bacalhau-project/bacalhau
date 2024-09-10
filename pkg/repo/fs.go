@@ -9,13 +9,12 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -97,7 +96,7 @@ func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 	// if it takes longer than 5 seconds to get the node name from a provider, fail
 	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	nodeName, err := getNodeID(nameCtx, cfg.NameProvider)
+	nodeName, err := config.GetNodeID(nameCtx, cfg.NameProvider)
 	if err != nil {
 		return err
 	}
@@ -215,26 +214,4 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
 // join joins path elements with fsr.path
 func (fsr *FsRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
-}
-
-func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
-	nodeNameProviders := map[string]idgen.NodeNameProvider{
-		"hostname": idgen.HostnameProvider{},
-		"aws":      idgen.NewAWSNodeNameProvider(),
-		"gcp":      idgen.NewGCPNodeNameProvider(),
-		"uuid":     idgen.UUIDNodeNameProvider{},
-		"puuid":    idgen.PUUIDNodeNameProvider{},
-	}
-	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
-	if !ok {
-		return "", fmt.Errorf(
-			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
-	}
-
-	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return nodeName, nil
 }
