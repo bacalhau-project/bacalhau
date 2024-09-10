@@ -76,7 +76,6 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	log.Info().Msg("UDIT SUCKS")
 	job, err := e.store.GetJob(ctx, jobID)
 	if err != nil {
 		log.Error().Err(err)

@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -15,10 +16,10 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 
 	switch e := err.(type) {
 
-	case *apimodels.APIError:
+	case *models.BaseError:
 		// If it is already our custom APIError, use its code and message
-		code = e.HTTPStatusCode
-		message = e.Message
+		code = e.Code().HTTPStatusCode()
+		message = e.Error()
 
 	default:
 		// In an ideal world this should never happen. We should always have are errors

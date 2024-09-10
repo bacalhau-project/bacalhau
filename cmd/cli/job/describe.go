@@ -2,7 +2,6 @@ package job
 
 import (
 	"cmp"
-	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -90,7 +89,7 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API)
 	})
 
 	if err != nil {
-		return errors.New(err.Error())
+		return err
 	}
 
 	if o.OutputOpts.Format != "" {

@@ -190,7 +190,7 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 	if idgen.ShortUUID(jobID) == jobID {
 		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
-			return "", err
+			return "", jobstore.NewBoltDbError(err.Error())
 		}
 
 		found := make([]string, 0, 1)
@@ -203,7 +203,7 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 
 		switch len(found) {
 		case 0:
-			return "", apimodels.NewJobNotFound(jobID)
+			return "", jobstore.NewErrJobNotFound(jobID)
 		case 1:
 			return found[0], nil
 		default:
@@ -224,7 +224,7 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 	}
 
 	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobExecutions).Get(tx, false); err != nil {
-		return exec, err
+		return exec, jobstore.NewBoltDbError(err.Error())
 	} else {
 		data := bkt.Get([]byte(id))
 		if data == nil {
@@ -243,11 +243,11 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error) {
 	keys, err := b.executionsIndex.List(tx, []byte(id))
 	if err != nil {
-		return "", err
+		return "", jobstore.NewBoltDbError(err.Error())
 	}
 
 	if len(keys) != 1 {
-		return "", fmt.Errorf("too many leaf nodes in execution index")
+		return "", jobstore.NewJobStoreError("too many leaf nodes in execution index")
 	}
 
 	return string(keys[0]), nil
@@ -298,7 +298,7 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
-		return nil, err
+		return nil, jobstore.NewBoltDbError(err.Error())
 	}
 
 	var execs []models.Execution
@@ -422,7 +422,7 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 	if query.ReturnAll || query.Namespace == "" {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
-			return nil, err
+			return nil, jobstore.NewBoltDbError(err.Error())
 		}
 
 		err = bkt.ForEachBucket(func(k []byte) error {
