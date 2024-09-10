@@ -22,7 +22,7 @@ import (
 func DownloadResultsHandler(
 	ctx context.Context,
 	cmd *cobra.Command,
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	apiV2 clientv2.API,
 	jobID string,
 	downloadSettings *cliflags.DownloaderSettings,
@@ -43,8 +43,7 @@ func DownloadResultsHandler(
 		cmd.Printf("\n  bacalhau job logs %s\n", jobID)
 		return nil
 	}
-
-	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.Node.IPFS.Connect)
+	downloaderProvider, err := util.NewStandardDownloaders(ctx, cfg.ResultDownloaders)
 	if err != nil {
 		return err
 	}

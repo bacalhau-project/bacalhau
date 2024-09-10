@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -12,70 +10,31 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-type ReadWriter interface {
-	Reader
-	Writer
-}
-
-var _ Reader = (*config)(nil)
-
-type Reader interface {
-	Current() (types.BacalhauConfig, error)
-}
-
-var _ Writer = (*config)(nil)
-
-type Writer interface {
-	Set(key string, value interface{})
-	SetIfAbsent(key string, value interface{})
-}
-
 const (
-	FileName = "config.yaml"
-
 	environmentVariablePrefix = "BACALHAU"
 	inferConfigTypes          = true
-
-	// user key files
-	UserPrivateKeyFileName = "user_id.pem"
-
-	// compute paths
-	ComputeStoragesPath = "executor_storages"
-	ComputeStorePath    = "compute_store"
-	PluginsPath         = "plugins"
-
-	// orchestrator paths
-	OrchestratorStorePath = "orchestrator_store"
-	AutoCertCachePath     = "autocert-cache"
-	NetworkTransportStore = "nats-store"
-
-	// auth paths
-	TokensPath = "tokens.json"
+	DefaultFileName           = "config.yaml"
 )
 
 var (
-	ComputeExecutionsStorePath = filepath.Join(ComputeStorePath, "executions.db")
-	OrchestratorJobStorePath   = filepath.Join(OrchestratorStorePath, "jobs.db")
-
 	environmentVariableReplace = strings.NewReplacer(".", "_")
 	DecoderHook                = viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc())
 )
 
-type config struct {
+type Config struct {
 	// viper instance for holding user provided configuration.
 	base *viper.Viper
 	// the default configuration values to initialize with.
-	defaultCfg types.BacalhauConfig
+	defaultCfg interface{}
 
 	// paths to configuration files merged from [0] to [N]
 	// e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
 	paths []string
 
-	flags map[string]*pflag.Flag
+	flags map[string][]*pflag.Flag
 
 	environmentVariables map[string][]string
 
@@ -83,11 +42,11 @@ type config struct {
 	values map[string]any
 }
 
-type Option = func(s *config)
+type Option = func(s *Config)
 
 // WithDefault sets the default config to be used when no values are provided.
-func WithDefault(cfg types.BacalhauConfig) Option {
-	return func(c *config) {
+func WithDefault(cfg interface{}) Option {
+	return func(c *Config) {
 		c.defaultCfg = cfg
 	}
 }
@@ -96,49 +55,59 @@ func WithDefault(cfg types.BacalhauConfig) Option {
 // paths to configuration files merged from [0] to [N]
 // e.g. file at index 1 overrides index 0, index 2 overrides index 1 and 0, etc.
 func WithPaths(path ...string) Option {
-	return func(c *config) {
+	return func(c *Config) {
 		c.paths = append(c.paths, path...)
 	}
 }
 
-func WithFlags(flags map[string]*pflag.Flag) Option {
-	return func(s *config) {
+func WithFlags(flags map[string][]*pflag.Flag) Option {
+	return func(s *Config) {
 		s.flags = flags
 	}
 }
 
 func WithEnvironmentVariables(ev map[string][]string) Option {
-	return func(s *config) {
+	return func(s *Config) {
 		s.environmentVariables = ev
 	}
 }
 
 // WithValues sets values to be injected into the config, taking precedence over all other options.
 func WithValues(values map[string]any) Option {
-	return func(c *config) {
+	return func(c *Config) {
 		c.values = values
 	}
 }
 
 // New returns a configuration with the provided options applied. If no options are provided, the returned config
 // contains only the default values.
-func New(opts ...Option) (*config, error) {
+func New(opts ...Option) (*Config, error) {
 	base := viper.New()
 	base.SetEnvPrefix(environmentVariablePrefix)
 	base.SetTypeByDefaultValue(inferConfigTypes)
 	base.AutomaticEnv()
 	base.SetEnvKeyReplacer(environmentVariableReplace)
 
-	c := &config{
-		base:       base,
-		defaultCfg: configenv.Production,
-		paths:      make([]string, 0),
+	c := &Config{
+		base:                 base,
+		defaultCfg:           types.Default,
+		paths:                make([]string, 0),
+		values:               make(map[string]any),
+		environmentVariables: make(map[string][]string),
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	c.setDefault(c.defaultCfg)
+	var defaultMap map[string]interface{}
+	err := mapstructure.Decode(c.defaultCfg, &defaultMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.base.MergeConfigMap(defaultMap); err != nil {
+		return nil, err
+	}
 
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
@@ -156,9 +125,58 @@ func New(opts ...Option) (*config, error) {
 		}
 	}
 
-	for name, flag := range c.flags {
-		if err := c.base.BindPFlag(name, flag); err != nil {
-			return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+	for name, flags := range c.flags {
+		for _, flag := range flags {
+			// only if the flag has been set do we want to bind to it, this allows multiple flags
+			// to bind to the same config key.
+			if flag.Changed {
+				switch name {
+				case "ipfs.connect.deprecated":
+					// allow the deprecated --ipfs-connect flag to bind to related fields in the config.
+					for _, key := range []string{
+						// config keys we wish to bind --ipfs-connect flag to.
+						types.ResultDownloadersTypesIPFSEndpointKey,
+						types.InputSourcesTypesIPFSEndpointKey,
+						types.PublishersTypesIPFSEndpointKey,
+					} {
+						if err := c.base.BindPFlag(key, flag); err != nil {
+							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+						}
+					}
+				case "node.type.deprecated":
+					// continuing to support the deprecated --node-type flag
+					// iff config values were not provided set them accordingly
+					orchestrator, compute, err := getNodeType(flag.Value.String())
+					if err != nil {
+						return nil, err
+					}
+					if orchestrator {
+						if _, ok := c.values[types.OrchestratorEnabledKey]; !ok {
+							c.values[types.OrchestratorEnabledKey] = true
+						}
+					}
+					if compute {
+						if _, ok := c.values[types.ComputeEnabledKey]; !ok {
+							c.values[types.ComputeEnabledKey] = true
+						}
+					}
+				case "default.publisher.deprecated":
+					// allow the deprecated --default-publisher flag to bind to related fields in the config.
+					for _, key := range []string{
+						// config keys we wish to bind --default-publisher flag to.
+						types.JobDefaultsBatchTaskPublisherConfigTypeKey,
+						types.JobDefaultsOpsTaskPublisherConfigTypeKey,
+					} {
+						if err := c.base.BindPFlag(key, flag); err != nil {
+							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+						}
+					}
+				default:
+					if err := c.base.BindPFlag(name, flag); err != nil {
+						return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
+					}
+				}
+			}
 		}
 	}
 
@@ -170,10 +188,34 @@ func New(opts ...Option) (*config, error) {
 	return c, nil
 }
 
+func getNodeType(input string) (requester, compute bool, err error) {
+	requester = false
+	compute = false
+	err = nil
+
+	// Split the string by commas, lowercase it, and clean up any extra spaces
+	tokens := strings.Split(input, ",")
+	for i, token := range tokens {
+		tokens[i] = strings.ToLower(strings.TrimSpace(token))
+	}
+
+	for _, nodeType := range tokens {
+		if nodeType == "compute" {
+			compute = true
+		} else if nodeType == "requester" {
+			requester = true
+		} else {
+			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
+		}
+	}
+	return
+}
+
 // Load reads in the configuration file specified by `path` overriding any previously set configuration with the values
 // from the read config file.
 // Load returns an error if the file cannot be read.
-func (c *config) Load(path string) error {
+func (c *Config) Load(path string) error {
+	log.Debug().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -181,7 +223,10 @@ func (c *config) Load(path string) error {
 	return nil
 }
 
-func (c *config) Merge(path string) error {
+// Merge merges a new configuration file specified by `path` with the existing config.
+// Merge returns an error if the file cannot be read
+func (c *Config) Merge(path string) error {
+	log.Debug().Msgf("merging config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		return err
@@ -189,85 +234,18 @@ func (c *config) Merge(path string) error {
 	return nil
 }
 
-// Write persists the current configuration to `path`.
-// Write returns an error if:
-//   - the path cannot be accessed
-//   - the current configuration cannot be marshaled.
-func (c *config) Write(path string) error {
-	return c.base.WriteConfigAs(path)
-}
-
-// Current returns the current configuration.
-// Current returns an error if the configuration cannot be unmarshalled.
-func (c *config) Current() (types.BacalhauConfig, error) {
-	out := new(types.BacalhauConfig)
+// Unmarshal returns the current configuration.
+// Unmarshal returns an error if the configuration cannot be unmarshalled.
+func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
-		return types.BacalhauConfig{}, err
-	}
-	return *out, nil
-}
-
-// Set sets the configuration value.
-// This value won't be persisted in the config file.
-// Will be used instead of values obtained via flags, config file, ENV, default.
-func (c *config) Set(key string, value interface{}) {
-	c.base.Set(key, value)
-}
-
-func (c *config) SetIfAbsent(key string, value interface{}) {
-	if !c.base.IsSet(key) || reflect.ValueOf(c.base.Get(key)).IsZero() {
-		c.Set(key, value)
-	}
-}
-
-// setDefault sets the default value for the configuration.
-// Default only used when no value is provided by the user via an explicit call to Set, flag, config file or ENV.
-func (c *config) setDefault(config types.BacalhauConfig) {
-	types.SetDefaults(config, types.WithViper(c.base))
-}
-
-// WritePersistedConfigs will write certain values from the resolved config to the persisted config.
-// These include fields for configurations that must not change between version updates, such as the
-// execution store and job store paths, in case we change their default values in future updates.
-func WritePersistedConfigs(configFilePath string, cfg types.BacalhauConfig) error {
-	// a viper config instance that is only based on the config file.
-	viperWriter := viper.New()
-	viperWriter.SetTypeByDefaultValue(true)
-	viperWriter.SetConfigFile(configFilePath)
-
-	// read existing config if it exists.
-	if err := viperWriter.ReadInConfig(); err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	}
-
-	var fileCfg types.BacalhauConfig
-	if err := viperWriter.Unmarshal(&fileCfg, DecoderHook); err != nil {
 		return err
 	}
-
-	// check if any of the values that we want to write are not set in the config file.
-	var doWrite bool
-	var logMessage strings.Builder
-	set := func(key string, value interface{}) {
-		viperWriter.Set(key, value)
-		logMessage.WriteString(fmt.Sprintf("\n%s:\t%v", key, value))
-		doWrite = true
-	}
-	emptyStoreConfig := types.JobStoreConfig{}
-	if fileCfg.Node.Compute.ExecutionStore == emptyStoreConfig {
-		set(types.NodeComputeExecutionStore, cfg.Node.Compute.ExecutionStore)
-	}
-	if fileCfg.Node.Requester.JobStore == emptyStoreConfig {
-		set(types.NodeRequesterJobStore, cfg.Node.Requester.JobStore)
-	}
-	if fileCfg.Node.Name == "" && cfg.Node.Name != "" {
-		set(types.NodeName, cfg.Node.Name)
-	}
-	if doWrite {
-		log.Info().Msgf("Writing to config file %s:%s", configFilePath, logMessage.String())
-		return viperWriter.WriteConfig()
-	}
 	return nil
+}
+
+// KeyAsEnvVar returns the environment variable corresponding to a config key
+func KeyAsEnvVar(key string) string {
+	return strings.ToUpper(
+		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
+	)
 }

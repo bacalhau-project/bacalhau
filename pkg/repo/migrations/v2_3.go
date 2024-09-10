@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -35,16 +35,16 @@ var V2Migration = repo.NewMigration(
 		// we load the config to resolve the libp2p node id. Loading the config this way will also
 		// use default values, args and env vars to fill in the config, so we can be sure we are
 		// reading the correct libp2p key in case the user is overriding the default value.
-		opts := []config.Option{config.WithValues(viper.AllSettings())}
-		if _, err := os.Stat(filepath.Join(repoPath, config.FileName)); err != nil {
+		opts := []config_legacy.Option{config_legacy.WithValues(viper.AllSettings())}
+		if _, err := os.Stat(filepath.Join(repoPath, config_legacy.FileName)); err != nil {
 			// if the config doesn't exist that's okay, just means we read a repo without a config in it.
 			if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("loading config from repo: %w", err)
 			}
 		} else {
-			opts = append(opts, config.WithPaths(filepath.Join(repoPath, config.FileName)))
+			opts = append(opts, config_legacy.WithPaths(filepath.Join(repoPath, config_legacy.FileName)))
 		}
-		c, err := config.New(
+		c, err := config_legacy.New(
 			opts...,
 		)
 		if err != nil {
@@ -89,7 +89,7 @@ var V2Migration = repo.NewMigration(
 			} else if err = os.MkdirAll(newStorePath, util.OS_USER_RWX); err != nil {
 				return err
 			}
-			set(types.NodeComputeExecutionStore, executionStore)
+			set(legacy_types.NodeComputeExecutionStore, executionStore)
 		}
 
 		if fileCfg.Node.Requester.JobStore.Path == "" {
@@ -112,11 +112,11 @@ var V2Migration = repo.NewMigration(
 			} else if err = os.MkdirAll(newStorePath, util.OS_USER_RWX); err != nil {
 				return err
 			}
-			set(types.NodeRequesterJobStore, jobStore)
+			set(legacy_types.NodeRequesterJobStore, jobStore)
 		}
 
 		if fileCfg.Node.Name == "" {
-			set(types.NodeName, libp2pNodeID)
+			set(legacy_types.NodeName, libp2pNodeID)
 		}
 
 		if doWrite {

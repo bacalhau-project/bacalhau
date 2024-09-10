@@ -46,11 +46,13 @@ func BindFlags(v *viper.Viper, register map[string][]Definition) error {
 	for _, defs := range register {
 		for _, def := range defs {
 			// sanity check to ensure we are not binding a config key on more than one flag.
-			if dup, ok := seen[def.ConfigPath]; ok {
+			if dup, ok := seen[def.ConfigPath]; ok && !def.Deprecated {
 				return fmt.Errorf("DEVELOPER ERROR: duplicate regsistration of config key %s for flag %s"+
 					" previously registered on on flag %s", def.ConfigPath, def.FlagName, dup.FlagName)
 			}
-			seen[def.ConfigPath] = def
+			if !def.Deprecated {
+				seen[def.ConfigPath] = def
+			}
 			flagDefs := viper.Get(cliflags.RootCommandConfigFlags)
 			if flagDefs == nil {
 				flagDefs = make([]Definition, 0)
@@ -102,8 +104,8 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 				fset.DurationVar(&v, def.FlagName, v, def.Description)
 			case types.Duration:
 				fset.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
-			case types.StorageType:
-				fset.Var(flags.StorageTypeFlag(&v), def.FlagName, def.Description)
+			case types.ResourceType:
+				fset.String(def.FlagName, string(v), def.Description)
 			default:
 				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
 			}
@@ -111,6 +113,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			if def.Deprecated {
 				flag := fset.Lookup(def.FlagName)
 				flag.Deprecated = def.DeprecatedMessage
+				flag.Hidden = true
 			}
 		}
 		cmd.PersistentFlags().AddFlagSet(fset)

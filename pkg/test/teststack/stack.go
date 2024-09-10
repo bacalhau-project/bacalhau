@@ -41,7 +41,7 @@ func Setup(
 	ctx context.Context,
 	t testing.TB,
 	fsr *repo.FsRepo,
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
 	cm := system.NewCleanupManager()
@@ -63,7 +63,7 @@ func Setup(
 	return stack
 }
 
-func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types.DockerCacheConfig) devstack.ConfigOption {
+func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types.EngineConfig) devstack.ConfigOption {
 	return devstack.WithDependencyInjector(node.NodeDependencyInjector{
 		ExecutorsFactory: &mixedExecutorFactory{
 			standardFactory: node.NewStandardExecutorsFactory(cfg),

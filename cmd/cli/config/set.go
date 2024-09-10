@@ -4,31 +4,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 func newSetCmd() *cobra.Command {
-	showCmd := &cobra.Command{
-		Use:      "set",
-		Args:     cobra.MinimumNArgs(2),
-		Short:    "Set a value in the config.",
-		PreRunE:  hook.ClientPreRunHooks,
-		PostRunE: hook.ClientPostRunHooks,
+	setCmd := &cobra.Command{
+		Use:          "set",
+		Args:         cobra.MinimumNArgs(2),
+		Short:        "Set a value in the config.",
+		PreRunE:      hook.ClientPreRunHooks,
+		PostRunE:     hook.ClientPostRunHooks,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo. We need to ensure a repo
 			// exists before we can create or modify a config file in it.
@@ -36,132 +32,63 @@ func newSetCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			return setConfig(args[0], args[1:]...)
+			return setConfig(cmd.PersistentFlags().Lookup("config").Value.String(), args[0], args[1:]...)
 		},
-	}
-	return showCmd
-}
-
-func currentValue(key string) (interface{}, error) {
-	// get the default viper schema
-	viperSchema := NewViperWithDefaultConfig(config.ForEnvironment())
-	// get a list of all valid configuration keys, same list as returned by `config list`
-	liveKeys := viperSchema.AllKeys()
-	if !slices.Contains(liveKeys, key) {
-		return nil, fmt.Errorf("invalid configuration key %q: not found", key)
+		// provide auto completion for arguments to the `set` command
+		ValidArgsFunction: setAutoComplete,
 	}
 
-	// calling `Get` on this instance will return a default value from the config structure that we can type assert on.
-	return viperSchema.Get(key), nil
+	bacalhauCfgDir := "bacalhau"
+	bacalhauCfgFile := config.DefaultFileName
+
+	usrCfgDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to find user-specific configuration directory. Using current directory to write config.")
+	} else {
+		bacalhauCfgDir = filepath.Join(usrCfgDir, bacalhauCfgDir)
+		if err := os.MkdirAll(bacalhauCfgDir, util2.OS_USER_RWX); err != nil {
+			// This means we failed to create a directory either in the current directory, or the user config dir
+			// indicating a some-what serious misconfiguration of the system. We panic here to provide as much
+			// detail as possible.
+			log.Panic().Err(err).Msgf("Failed to create bacalhau configuration directory: %s", bacalhauCfgDir)
+		}
+		bacalhauCfgFile = filepath.Join(bacalhauCfgDir, bacalhauCfgFile)
+	}
+
+	setCmd.PersistentFlags().String("config", bacalhauCfgFile, "Path to the config file")
+	return setCmd
 }
 
-func getWriter(configFile string) (*viper.Viper, error) {
-	viperWriter := viper.New()
-	viperWriter.SetTypeByDefaultValue(true)
-	viperWriter.SetConfigFile(configFile)
-	// the instance has read in a copy of the config file
-	if err := viperWriter.ReadInConfig(); err != nil {
+func setConfig(cfgFilePath, key string, value ...string) error {
+	v := viper.New()
+	v.SetConfigFile(cfgFilePath)
+	if err := v.ReadInConfig(); err != nil {
 		if !os.IsNotExist(err) {
-			return nil, err
+			return err
 		}
 	}
-	return viperWriter, nil
-}
-
-func setConfig(key string, values ...string) error {
-	// remove all spaces and make lowercase
-	key = sanitizeKey(key)
-
-	// we need special handling for the nodetype since its just a string, but carries implicit requirements in the config.
-	if strings.EqualFold(types.NodeType, key) {
-		if !validNodeTypes(values) {
-			return fmt.Errorf("setting: %q, invalid node type value: %q, must be one of: 'requester' 'compute' 'requester compute'", key, values)
-		}
-	}
-
-	curValue, err := currentValue(key)
+	parsed, err := types.CastConfigValueForKey(key, value)
 	if err != nil {
 		return err
 	}
-
-	// there may me a config file present, we'll write to that if it exists.
-	configFile := viper.ConfigFileUsed()
-	if configFile == "" {
-		// if there isn't a config file, we'll assume we add it to the current repo.
-		configFile = filepath.Join(viper.GetString("repo"), "config.yaml")
-	}
-
-	viperWriter, err := getWriter(configFile)
-	if err != nil {
+	v.Set(key, parsed)
+	if err := v.WriteConfigAs(cfgFilePath); err != nil {
 		return err
 	}
 
-	switch curValue.(type) {
-	case []string:
-		viperWriter.Set(key, values)
-	case map[string]string:
-		sts, err := parse.StringSliceToMap(values)
-		if err != nil {
-			return err
-		}
-		viperWriter.Set(key, sts)
-	case map[string]types.AuthenticatorConfig:
-		cfg := struct {
-			Method string                    `yaml:"Method"`
-			Policy types.AuthenticatorConfig `yaml:"Policy"`
-		}{}
-		if err := yaml.Unmarshal([]byte(values[0]), &cfg); err != nil {
-			return err
-		}
-		methodNamePath := fmt.Sprintf("%s.%s", types.AuthMethods, cfg.Method)
-		viperWriter.Set(methodNamePath, cfg.Policy)
-	}
-
-	parser, err := getParser(curValue, key)
-	if parser == nil || err != nil {
-		return viperWriter.WriteConfig()
-	}
-
-	value, err := singleValueOrError(values...)
-	if err != nil {
-		return fmt.Errorf("setting %q: %w", key, err)
-	}
-
-	configValue, err := parser(value)
-	if err != nil {
-		return fmt.Errorf("setting %q: %w", key, err)
-	}
-	viperWriter.Set(key, configValue)
-	return viperWriter.WriteConfig()
+	return nil
 }
 
-type parserFunc func(string) (any, error)
+func setAutoComplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var completions []string
 
-func getParser(curValue interface{}, key string) (parserFunc, error) {
-	var parser parserFunc
-
-	switch curValue.(type) {
-	case string:
-		parser = func(s string) (any, error) { return s, nil } // identity by default
-	case bool:
-		parser = func(s string) (any, error) { return strconv.ParseBool(s) }
-	case int, int8, int16, int32, int64:
-		parser = func(s string) (any, error) { return strconv.ParseInt(s, 10, 64) }
-	case uint, uint8, uint16, uint32, uint64:
-		parser = func(s string) (any, error) { return strconv.ParseUint(s, 10, 64) }
-	case float32, float64:
-		parser = func(s string) (any, error) { return strconv.ParseFloat(s, 64) }
-	case types.Duration, time.Duration:
-		parser = func(s string) (any, error) { return time.ParseDuration(s) }
-	case models.JobSelectionDataLocality:
-		parser = func(s string) (any, error) { return models.ParseJobSelectionDataLocality(s) }
-	case logger.LogMode:
-		parser = func(s string) (any, error) { return logger.ParseLogMode(s) }
-	case types.StorageType:
-		parser = func(s string) (any, error) { return types.ParseStorageType(s) }
-	default:
-		return nil, fmt.Errorf("unsupported type %T for key: %q", curValue, key)
+	// Iterate over the ConfigDescriptions map to find matching keys
+	for key, description := range types.ConfigDescriptions {
+		if strings.HasPrefix(key, toComplete) {
+			completion := fmt.Sprintf("%s\t%s", key, description)
+			completions = append(completions, completion)
+		}
 	}
 
-	return parser, nil
+	return completions, cobra.ShellCompDirectiveNoSpace
 }

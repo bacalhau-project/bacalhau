@@ -23,35 +23,63 @@ func NewPublisherProvider(
 	ctx context.Context,
 	storagePath string,
 	cm *system.CleanupManager,
-	ipfsConnect string,
-	localConfig *types.LocalPublisherConfig,
+	cfg types.PublishersConfig,
+	defaultLocalPublisher types.LocalPublisher,
 ) (publisher.PublisherProvider, error) {
-	noopPublisher := noop.NewNoopPublisher()
-	s3Publisher, err := configureS3Publisher(storagePath, cm)
-	if err != nil {
-		return nil, err
+	providers := make(map[string]publisher.Publisher)
+
+	if cfg.IsNotDisabled(models.PublisherNoop) {
+		providers[models.PublisherNoop] = noop.NewNoopPublisher()
 	}
 
-	localPublisher := local.NewLocalPublisher(ctx, localConfig.Directory, localConfig.Address, localConfig.Port)
-
-	providers := map[string]publisher.Publisher{
-		models.PublisherNoop:  tracing.Wrap(noopPublisher),
-		models.PublisherS3:    tracing.Wrap(s3Publisher),
-		models.PublisherLocal: tracing.Wrap(localPublisher),
-	}
-
-	if ipfsConnect != "" {
-		ipfsClient, err := ipfs_client.NewClient(ctx, ipfsConnect)
+	if cfg.IsNotDisabled(models.PublisherS3) {
+		s3Publisher, err := configureS3Publisher(storagePath, cm)
 		if err != nil {
 			return nil, err
 		}
-		ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, *ipfsClient)
+		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
+	}
+
+	if cfg.IsNotDisabled(models.PublisherLocal) {
+		// use the defaults, and override any values provided by the user.
+		address := defaultLocalPublisher.Address
+		port := defaultLocalPublisher.Port
+		directory := defaultLocalPublisher.Directory
+		if cfg.Types.Local.Address != "" {
+			address = cfg.Types.Local.Address
+		}
+		if cfg.Types.Local.Port != 0 {
+			port = cfg.Types.Local.Port
+		}
+		if cfg.Types.Local.Directory != "" {
+			directory = cfg.Types.Local.Directory
+		}
+		localPublisher, err := local.NewLocalPublisher(
+			ctx,
+			directory,
+			address,
+			port,
+		)
 		if err != nil {
 			return nil, err
 		}
-
-		providers[models.PublisherIPFS] = ipfsPublisher
+		providers[models.PublisherLocal] = tracing.Wrap(localPublisher)
 	}
+
+	if cfg.IsNotDisabled(models.PublisherIPFS) {
+		if cfg.Types.IPFS.Endpoint != "" {
+			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
+			if err != nil {
+				return nil, err
+			}
+			ipfsPublisher, err := ipfs.NewIPFSPublisher(ctx, *ipfsClient)
+			if err != nil {
+				return nil, err
+			}
+			providers[models.PublisherIPFS] = tracing.Wrap(ipfsPublisher)
+		}
+	}
+
 	return provider.NewMappedProvider(providers), nil
 }
 

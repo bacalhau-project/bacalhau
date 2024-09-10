@@ -23,7 +23,7 @@ func TestConfigureLogging(t *testing.T) {
 	})
 
 	var logging strings.Builder
-	configureLogging(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+	configureLogging(zerolog.InfoLevel, zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
 		defaultLogFormat(w)
 		w.Out = &logging
 		w.NoColor = true

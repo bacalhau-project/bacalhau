@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -76,7 +78,7 @@ type NodeDependencyInjector struct {
 }
 
 func NewExecutorPluginNodeDependencyInjector(
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	userKey *baccrypto.UserKey,
 	pluginPath string,
 ) NodeDependencyInjector {
@@ -88,10 +90,10 @@ func NewExecutorPluginNodeDependencyInjector(
 	}
 }
 
-func NewStandardNodeDependencyInjector(cfg types.BacalhauConfig, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
-		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Node.Compute.ManifestCache),
+		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
 		PublishersFactory:       NewStandardPublishersFactory(cfg),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
 	}
@@ -113,7 +115,7 @@ func (n *Node) Start(ctx context.Context) error {
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
-	bacalhauConfig types.BacalhauConfig,
+	bacalhauConfig types.Bacalhau,
 	config NodeConfig,
 	fsr *repo.FsRepo,
 ) (*Node, error) {
@@ -166,7 +168,10 @@ func NewNode(
 			config.NodeID,
 			apiServer,
 			config,
-			bacalhauConfig.Metrics,
+			// TODO: we not longer have a config for this, and the default was always DevNull - remove this
+			legacy_types.MetricsConfig{
+				EventTracerPath: os.DevNull,
+			},
 			config.RequesterNodeConfig,
 			transportLayer,
 			transportLayer.ComputeProxy(),
@@ -327,7 +332,7 @@ func NewNode(
 	return node, nil
 }
 
-func prepareConfig(config *NodeConfig, bacalhauConfig types.BacalhauConfig) error {
+func prepareConfig(config *NodeConfig, bacalhauConfig types.Bacalhau) error {
 	userKeyPath, err := bacalhauConfig.UserKeyPath()
 	if err != nil {
 		return err

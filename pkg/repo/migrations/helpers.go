@@ -11,8 +11,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -24,7 +24,7 @@ func getViper(r repo.FsRepo) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	configFile := filepath.Join(repoPath, config.FileName)
+	configFile := filepath.Join(repoPath, config_legacy.FileName)
 	v := viper.New()
 	v.SetTypeByDefaultValue(true)
 	v.SetConfigFile(configFile)
@@ -44,7 +44,7 @@ func configExists(r repo.FsRepo) (bool, error) {
 		return false, err
 	}
 
-	configFile := filepath.Join(repoPath, config.FileName)
+	configFile := filepath.Join(repoPath, config_legacy.FileName)
 	_, err = os.Stat(configFile)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -52,14 +52,14 @@ func configExists(r repo.FsRepo) (bool, error) {
 	return err == nil, err
 }
 
-func readConfig(r repo.FsRepo) (*viper.Viper, types.BacalhauConfig, error) {
+func readConfig(r repo.FsRepo) (*viper.Viper, legacy_types.BacalhauConfig, error) {
 	v, err := getViper(r)
 	if err != nil {
-		return nil, types.BacalhauConfig{}, err
+		return nil, legacy_types.BacalhauConfig{}, err
 	}
-	var fileCfg types.BacalhauConfig
-	if err := v.Unmarshal(&fileCfg, config.DecoderHook); err != nil {
-		return v, types.BacalhauConfig{}, fmt.Errorf("failed to unmarshal config file: %w", err)
+	var fileCfg legacy_types.BacalhauConfig
+	if err := v.Unmarshal(&fileCfg, config_legacy.DecoderHook); err != nil {
+		return v, legacy_types.BacalhauConfig{}, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
 	return v, fileCfg, nil
 }

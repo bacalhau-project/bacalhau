@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -142,7 +142,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
-			}, c.Node.Compute.ManifestCache),
+			}, c.Engines),
 		)
 
 		for _, jobResources := range testCase.jobs {
@@ -315,8 +315,8 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			GPUs:   make([]models.GPU, 1),
 		},
 		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
-		ControlPlaneSettings: types.ComputeControlPlaneConfig{
-			ResourceUpdateFrequency: types.Duration(50 * time.Millisecond),
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			ResourceUpdateFrequency: legacy_types.Duration(50 * time.Millisecond),
 		},
 	})
 	suite.Require().NoError(err)
@@ -336,7 +336,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: jobHandler,
 				},
-			}, c.Node.Compute.ManifestCache),
+			}, c.Engines),
 	)
 
 	// for the requester node to pick up the nodeInfo messages

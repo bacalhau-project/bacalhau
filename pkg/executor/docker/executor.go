@@ -18,12 +18,12 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
@@ -53,12 +53,12 @@ type Executor struct {
 	activeFlags       map[string]chan struct{}
 	complete          map[string]chan struct{}
 	client            *docker.Client
-	dockerCacheConfig types.DockerCacheConfig
+	dockerCacheConfig types.DockerManifestCache
 }
 
 func NewExecutor(
 	id string,
-	dockerCacheCfg types.DockerCacheConfig,
+	dockerCacheCfg types.Docker,
 ) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
@@ -70,7 +70,7 @@ func NewExecutor(
 		client:            dockerClient,
 		activeFlags:       make(map[string]chan struct{}),
 		complete:          make(map[string]chan struct{}),
-		dockerCacheConfig: dockerCacheCfg,
+		dockerCacheConfig: dockerCacheCfg.ManifestCache,
 	}
 
 	return de, nil
@@ -80,7 +80,7 @@ func (e *Executor) Shutdown(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := pkgUtil.NewDetachedContext(ctx)
-	if config.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
+	if config_legacy.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
 		return nil
 	}
 
@@ -165,7 +165,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		containerID: containerID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
-		keepStack:   config.ShouldKeepStack(),
+		keepStack:   config_legacy.ShouldKeepStack(),
 		waitCh:      make(chan bool),
 		activeCh:    make(chan bool),
 		running:     atomic.NewBool(false),
@@ -363,7 +363,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		dockerCreds := config.GetDockerCredentials()
+		dockerCreds := config_legacy.GetDockerCredentials()
 		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
 			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, dockerCreds, pullErr)
 		}

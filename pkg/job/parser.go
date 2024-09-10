@@ -20,6 +20,7 @@ const (
 // roundtrip through legacy structures.
 func ParsePublisherString(publisher string) (*models.SpecConfig, error) {
 	publisher = strings.Trim(publisher, " '\"")
+	publisher = strings.ToLower(publisher)
 	csvReader := csv.NewReader(strings.NewReader(publisher))
 	fields, err := csvReader.Read()
 	if err != nil {

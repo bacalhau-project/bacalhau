@@ -25,7 +25,7 @@ import (
 type IPFSHostStorageSuite struct {
 	suite.Suite
 	client *ipfs.Client
-	Config types.BacalhauConfig
+	Config types.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -38,10 +38,10 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
 	_, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
-	testutils.MustHaveIPFS(suite.T(), suite.Config.Node.IPFS.Connect)
+	testutils.MustHaveIPFS(suite.T(), suite.Config)
 
 	var err error
-	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.Node.IPFS.Connect)
+	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.InputSources.Types.IPFS.Endpoint)
 	suite.Require().NoError(err)
 
 }
@@ -54,7 +54,7 @@ func (suite *IPFSHostStorageSuite) TestIpfsApiCopyFile() {
 		func(ctx context.Context, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
+			return ipfs_storage.NewStorage(api, 3*time.Second)
 		},
 	)
 }
@@ -64,7 +64,7 @@ func (suite *IPFSHostStorageSuite) TestIPFSAPICopyFolder() {
 		func(ctx context.Context, api ipfs.Client) (
 			storage.Storage, error) {
 
-			return ipfs_storage.NewStorage(api, time.Duration(suite.Config.Node.VolumeSizeRequestTimeout))
+			return ipfs_storage.NewStorage(api, 3*time.Second)
 		},
 	)
 }

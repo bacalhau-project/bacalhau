@@ -45,9 +45,10 @@ type DownloaderSuite struct {
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
 	_, cfg := setup.SetupBacalhauRepoForTesting(ds.T())
-	if testutils.IsIPFSEnabled(cfg.Node.IPFS.Connect) {
+
+	if testutils.IsIPFSEnabled(cfg.ResultDownloaders.Types.IPFS.Endpoint) {
 		var err error
-		ds.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.Node.IPFS.Connect)
+		ds.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
 		require.NoError(ds.T(), err)
 	}
 	ds.HelperSuite.SetupSuite()

@@ -11,31 +11,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
-
-// TestConfig represents our application's configuration structure
-
-// a subset of the whole bacalhau config
-type Config struct {
-	Node Node `yaml:"Node"`
-}
-
-type Node struct {
-	Name         string    `yaml:"Name,omitempty"`
-	NameProvider string    `yaml:"NameProvider,omitempty"`
-	ClientAPI    ClientAPI `yaml:"ClientAPI,omitempty"`
-	WebUI        WebUI     `yaml:"WebUI,omitempty"`
-}
-
-type WebUI struct {
-	Enabled bool `yaml:"Enabled,omitempty"`
-	Port    int  `yaml:"Port,omitempty"`
-}
-
-type ClientAPI struct {
-	Host string `yaml:"Host,omitempty"`
-	Port int    `yaml:"Port,omitempty"`
-}
 
 // createTempConfig creates a temporary config file with the given content
 func createTempConfig(content string) (string, error) {
@@ -63,7 +41,7 @@ func setupTestCommand() *cobra.Command {
 }
 
 // loadConfig loads the configuration from viper
-func loadConfig() (*Config, error) {
+func loadConfig() (*types.Bacalhau, error) {
 	configFiles := viper.GetStringSlice(RootCommandConfigFiles)
 	for _, f := range configFiles {
 		viper.SetConfigFile(f)
@@ -79,7 +57,7 @@ func loadConfig() (*Config, error) {
 	if err := viper.MergeConfigMap(base); err != nil {
 		return nil, err
 	}
-	var config Config
+	var config types.Bacalhau
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, err
 	}
@@ -91,12 +69,11 @@ func TestConfigMerging(t *testing.T) {
 	t.Run("SingleConfigFile", func(t *testing.T) {
 		viper.Reset()
 		content := `
-Node:
-  Name: the_name
-  NameProvider: the_provider
-  ClientAPI:
-    Host: 1.1.1.1
-    Port: 1111
+DataDir: the_name
+NameProvider: the_provider
+API:
+  Host: 1.1.1.1
+  Port: 1111
 `
 		configFile, err := createTempConfig(content)
 		require.NoError(t, err)
@@ -110,27 +87,26 @@ Node:
 		config, err := loadConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, "the_name", config.Node.Name)
-		assert.Equal(t, "the_provider", config.Node.NameProvider)
-		assert.Equal(t, "1.1.1.1", config.Node.ClientAPI.Host)
-		assert.Equal(t, 1111, config.Node.ClientAPI.Port)
+		assert.Equal(t, "the_name", config.DataDir)
+		assert.Equal(t, "the_provider", config.NameProvider)
+		assert.Equal(t, "1.1.1.1", config.API.Host)
+		assert.Equal(t, 1111, config.API.Port)
 	})
 
 	// Test case 2: Multiple config files with override
 	t.Run("MultipleConfigFiles", func(t *testing.T) {
 		viper.Reset()
 		baseContent := `
-Node:
-  Name: the_name
+  DataDir: the_name
   NameProvider: the_provider
-  ClientAPI:
+  API:
     Host: 1.1.1.1
     Port: 1111
 `
 		overrideContent := `
-Node:
-  Name: override
-  ClientAPI:
+
+  DataDir: override
+  API:
     Host: 2.2.2.2
 `
 		baseConfig, err := createTempConfig(baseContent)
@@ -149,21 +125,20 @@ Node:
 		config, err := loadConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, 1111, config.Node.ClientAPI.Port)
-		assert.Equal(t, "the_provider", config.Node.NameProvider)
+		assert.Equal(t, 1111, config.API.Port)
+		assert.Equal(t, "the_provider", config.NameProvider)
 		// This field was overridden by the second config
-		assert.Equal(t, "override", config.Node.Name)
-		assert.Equal(t, "2.2.2.2", config.Node.ClientAPI.Host)
+		assert.Equal(t, "override", config.DataDir)
+		assert.Equal(t, "2.2.2.2", config.API.Host)
 	})
 
 	// Test case 3: Config file with dot notation override
 	t.Run("ConfigFileWithDotNotation", func(t *testing.T) {
 		viper.Reset()
 		content := `
-Node:
-  Name: the_name
+  DataDir: the_name
   NameProvider: the_provider
-  ClientAPI:
+  API:
     Host: 1.1.1.1
     Port: 1111
 `
@@ -172,31 +147,31 @@ Node:
 		defer os.Remove(configFile)
 
 		cmd := setupTestCommand()
-		cmd.SetArgs([]string{"-c", configFile, "-c", "Node.Name=override", "-c", "Node.ClientAPI.Host=2.2.2.2"})
+		cmd.SetArgs([]string{"-c", configFile, "-c", "DataDir=override", "-c", "API.Host=2.2.2.2"})
 		err = cmd.Execute()
 		require.NoError(t, err)
 
 		config, err := loadConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, "the_provider", config.Node.NameProvider)
-		assert.Equal(t, 1111, config.Node.ClientAPI.Port)
+		assert.Equal(t, "the_provider", config.NameProvider)
+		assert.Equal(t, 1111, config.API.Port)
 		// overrides by flag
-		assert.Equal(t, "override", config.Node.Name)
-		assert.Equal(t, "2.2.2.2", config.Node.ClientAPI.Host)
+		assert.Equal(t, "override", config.DataDir)
+		assert.Equal(t, "2.2.2.2", config.API.Host)
 	})
 
 	// Test case 4: Dot notation without value (boolean true)
 	t.Run("DotNotationWithoutValue", func(t *testing.T) {
 		viper.Reset()
 		cmd := setupTestCommand()
-		cmd.SetArgs([]string{"-c", "Node.WebUI.Enabled"})
+		cmd.SetArgs([]string{"-c", "WebUI.Enabled"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 
 		config, err := loadConfig()
 		require.NoError(t, err)
-		assert.True(t, config.Node.WebUI.Enabled)
+		assert.True(t, config.WebUI.Enabled)
 	})
 
 	// Test case 5: Multiple dot notation values
@@ -204,10 +179,10 @@ Node:
 		viper.Reset()
 		cmd := setupTestCommand()
 		cmd.SetArgs([]string{
-			"-c", "Node.WebUI.Enabled=true",
-			"-c", "Node.WebUI.Port=9090",
-			"-c", "Node.Name=node2",
-			"-c", "Node.NameProvider=the_provider",
+			"-c", "WebUI.Enabled=true",
+			"-c", "WebUI.Listen=0.0.0.0:9090",
+			"-c", "DataDir=node2",
+			"-c", "NameProvider=the_provider",
 		})
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -215,10 +190,10 @@ Node:
 		config, err := loadConfig()
 		require.NoError(t, err)
 
-		assert.True(t, config.Node.WebUI.Enabled)
-		assert.Equal(t, 9090, config.Node.WebUI.Port)
-		assert.Equal(t, "node2", config.Node.Name)
-		assert.Equal(t, "the_provider", config.Node.NameProvider)
+		assert.True(t, config.WebUI.Enabled)
+		assert.Equal(t, "0.0.0.0:9090", config.WebUI.Listen)
+		assert.Equal(t, "node2", config.DataDir)
+		assert.Equal(t, "the_provider", config.NameProvider)
 	})
 
 	// Test case 6: Mixing config file and multiple dot notation values
@@ -226,15 +201,14 @@ Node:
 	t.Run("MixedConfigFileAndDotNotation", func(t *testing.T) {
 		viper.Reset()
 		content := `
-Node:
-  Name: the_name
+  DataDir: the_name
   NameProvider: the_provider
-  ClientAPI:
+  API:
     Host: 1.1.1.1
     Port: 1111
   WebUI:
     Enabled: false
-    Port: 8888
+    Listen: 0.0.0.0:8888
 `
 		configFile, err := createTempConfig(content)
 		require.NoError(t, err)
@@ -243,9 +217,9 @@ Node:
 		cmd := setupTestCommand()
 		cmd.SetArgs([]string{
 			"-c", configFile,
-			"-c", "Node.WebUI.Enabled=true",
-			"-c", "Node.WebUI.Port=9090",
-			"-c", "Node.ClientAPI.Host=192.168.1.5",
+			"-c", "WebUI.Enabled=true",
+			"-c", "WebUI.Listen=0.0.0.0:9090",
+			"-c", "API.Host=192.168.1.5",
 		})
 		err = cmd.Execute()
 		require.NoError(t, err)
@@ -253,14 +227,14 @@ Node:
 		config, err := loadConfig()
 		require.NoError(t, err)
 
-		assert.Equal(t, "the_name", config.Node.Name)
-		assert.Equal(t, "the_provider", config.Node.NameProvider)
-		assert.Equal(t, 1111, config.Node.ClientAPI.Port)
+		assert.Equal(t, "the_name", config.DataDir)
+		assert.Equal(t, "the_provider", config.NameProvider)
+		assert.Equal(t, 1111, config.API.Port)
 
 		// overrider from flag
-		assert.True(t, config.Node.WebUI.Enabled)
-		assert.Equal(t, 9090, config.Node.WebUI.Port)
-		assert.Equal(t, "192.168.1.5", config.Node.ClientAPI.Host)
+		assert.True(t, config.WebUI.Enabled)
+		assert.Equal(t, "0.0.0.0:9090", config.WebUI.Listen)
+		assert.Equal(t, "192.168.1.5", config.API.Host)
 	})
 
 }
