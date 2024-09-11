@@ -1,9 +1,9 @@
 package webui
 
 import (
-	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -20,10 +21,40 @@ import (
 //go:embed build/**
 var buildFiles embed.FS
 
-func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPort int) error {
+type Config struct {
+	APIEndpoint string `json:"APIEndpoint"`
+	Listen      string `json:"Listen"`
+}
+
+type Server struct {
+	config     Config
+	configLock sync.RWMutex
+	mux        *http.ServeMux
+}
+
+func NewServer(cfg Config) (*Server, error) {
+	if cfg.Listen == "" {
+		return nil, fmt.Errorf("listen address cannot be empty")
+	}
+	if cfg.APIEndpoint == "" {
+		return nil, fmt.Errorf("API endpoint cannot be empty")
+	}
+
+	s := &Server{
+		config: cfg,
+		mux:    http.NewServeMux(),
+	}
+
+	s.mux.HandleFunc("/_config", s.handleConfig)
+	s.mux.HandleFunc("/", s.handleFiles)
+
+	return s, nil
+}
+
+func (s *Server) ListenAndServe(ctx context.Context) error {
 	server := &http.Server{
-		Addr:              fmt.Sprintf(":%d", listenPort),
-		Handler:           http.HandlerFunc(serveFiles),
+		Addr:              s.config.Listen,
+		Handler:           s.mux,
 		ReadTimeout:       time.Minute,
 		WriteTimeout:      time.Minute,
 		ReadHeaderTimeout: time.Minute,
@@ -31,11 +62,36 @@ func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPo
 		BaseContext:       func(l net.Listener) context.Context { return ctx },
 	}
 
-	log.Info().Int("port", listenPort).Msg("Starting ui server")
-	return server.ListenAndServe()
+	log.Info().Str("listen", s.config.Listen).Msg("Starting UI server")
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Error().Err(err).Msg("Server shutdown error")
+		}
+	}()
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("server error: %w", err)
+	}
+
+	return nil
 }
 
-func serveFiles(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
+	s.configLock.RLock()
+	defer s.configLock.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(s.config); err != nil {
+		log.Error().Err(err).Msg("Failed to encode config")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	statusCode := http.StatusOK
 	var message string
@@ -80,7 +136,7 @@ func serveFiles(w http.ResponseWriter, r *http.Request) {
 				// If still not found, serve our custom 404 page
 				statusCode = http.StatusNotFound
 				message = "File not found"
-				serve404(w, r)
+				s.serve404(w, r)
 				return
 			}
 			fsPath = htmlPath
@@ -112,26 +168,26 @@ func serveFiles(w http.ResponseWriter, r *http.Request) {
 			// If we found an index.html in this directory, serve it
 			defer indexFile.Close()
 			message = "Served index.html from directory"
-			serveFileContent(w, r, indexFile, "index.html")
+			s.serveFileContent(w, r, indexFile, "index.html")
 			return
 		}
 		// If there's no index.html in this specific directory,
 		// or if we encountered any errors, serve our custom 404 page
 		statusCode = http.StatusNotFound
 		message = "Directory without index.html"
-		serve404(w, r)
+		s.serve404(w, r)
 		return
 	}
 
 	// If we've reached here, we're dealing with a normal file (not a directory)
 	// Serve the file with its correct name
 	message = fmt.Sprintf("Served file: %s", stat.Name())
-	serveFileContent(w, r, file, stat.Name())
+	s.serveFileContent(w, r, file, stat.Name())
 }
 
 // serveFileContent reads the entire file into memory and serves it
 // This approach is used because fs.File doesn't guarantee implementation of io.ReadSeeker
-func serveFileContent(w http.ResponseWriter, r *http.Request, file fs.File, name string) {
+func (s *Server) serveFileContent(w http.ResponseWriter, r *http.Request, file fs.File, name string) {
 	// Read the entire file content
 	content, err := io.ReadAll(file)
 	if err != nil {
@@ -143,12 +199,12 @@ func serveFileContent(w http.ResponseWriter, r *http.Request, file fs.File, name
 	// Create a ReadSeeker from the content and serve it
 	// We use time.Time{} as the modtime, which will make the file always downloadable
 	// You might want to get the actual modtime if caching is important
-	http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(content))
+	http.ServeContent(w, r, name, time.Time{}, strings.NewReader(string(content)))
 }
 
 // serve404 serves the custom 404.html file
 // This is used as a fallback for non-existent paths or directories without an index.html
-func serve404(w http.ResponseWriter, r *http.Request) {
+func (s *Server) serve404(w http.ResponseWriter, r *http.Request) {
 	notFoundPath := path.Join("build", "404.html")
 	notFoundFile, err := buildFiles.Open(notFoundPath)
 	if err != nil {
@@ -172,8 +228,7 @@ func serve404(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	// Write the content
-	_, err = w.Write(content)
-	if err != nil {
+	if _, err := w.Write(content); err != nil {
 		log.Error().Err(err).Msg("Failed to write 404 page content")
 	}
 }

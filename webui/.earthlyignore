@@ -23,5 +23,6 @@ coverage
 build
 .yarn
 .storybook
+.next
 
 .git

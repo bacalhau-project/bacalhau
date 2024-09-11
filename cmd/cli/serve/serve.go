@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -193,24 +192,18 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
-		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		host, portStr, err := net.SplitHostPort(cfg.WebUI.Listen)
-		if err != nil {
-			return err
+		webuiConfig := webui.Config{
+			APIEndpoint: standardNode.APIServer.GetURI().String(),
+			Listen:      cfg.WebUI.Listen,
 		}
-		webuiPort, err := strconv.ParseInt(portStr, 10, 64)
+		webuiServer, err := webui.NewServer(webuiConfig)
 		if err != nil {
-			return err
+			// not failing the node if the webui server fails to start
+			log.Error().Err(err).Msg("Failed to start ui server")
 		}
 		go func() {
-			// Specifically leave the host blank. The app will just use whatever
-			// host it is served on and replace the port and path.
-			apiPort := apiURL.Port()
-			apiPath := apiURL.Path
-
-			err := webui.ListenAndServe(ctx, host, apiPort, apiPath, int(webuiPort))
-			if err != nil {
-				cmd.PrintErrln(err)
+			if err := webuiServer.ListenAndServe(ctx); err != nil {
+				log.Error().Err(err).Msg("ui server error")
 			}
 		}()
 	}
