@@ -22,7 +22,7 @@ type SourceSpec struct {
 
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
-		return errors.New("invalid s3 storage params: bucket cannot be empty")
+		return NewErrBadS3Request("invalid s3 storage params: bucket cannot be empty")
 	}
 	return nil
 }
@@ -38,7 +38,7 @@ type PreSignedResultSpec struct {
 
 func (c PreSignedResultSpec) Validate() error {
 	if c.PreSignedURL == "" {
-		return errors.New("invalid s3 signed storage params: signed url cannot be empty")
+		return NewErrBadS3Request("invalid s3 signed storage params: signed url cannot be empty")
 	}
 	return c.SourceSpec.Validate()
 }
@@ -49,11 +49,11 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
-		return SourceSpec{}, errors.New("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
+		return SourceSpec{}, NewErrBadS3Request("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
-		return SourceSpec{}, errors.New("invalid storage source params. cannot be nil")
+		return SourceSpec{}, NewErrBadS3Request("invalid storage source params. cannot be nil")
 	}
 
 	var c SourceSpec
@@ -72,7 +72,7 @@ func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, er
 
 	inputParams := spec.Params
 	if inputParams == nil {
-		return PreSignedResultSpec{}, errors.New("invalid signed result params. cannot be nil")
+		return PreSignedResultSpec{}, NewErrBadS3Request("invalid signed result params. cannot be nil")
 	}
 
 	var c PreSignedResultSpec
@@ -92,10 +92,10 @@ type PublisherSpec struct {
 
 func (c PublisherSpec) Validate() error {
 	if c.Bucket == "" {
-		return fmt.Errorf("invalid s3 params. bucket cannot be empty")
+		return NewErrBadS3Request("invalid s3 params. bucket cannot be empty")
 	}
 	if c.Key == "" {
-		return fmt.Errorf("invalid s3 params. key cannot be empty")
+		return NewErrBadS3Request("invalid s3 params. key cannot be empty")
 	}
 	return nil
 }
@@ -106,12 +106,12 @@ func (c PublisherSpec) ToMap() map[string]interface{} {
 
 func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	if !spec.IsType(models.PublisherS3) {
-		return PublisherSpec{}, fmt.Errorf("invalid publisher type. expected %s, but received: %s",
+		return PublisherSpec{}, NewErrBadS3Request("invalid publisher type. expected %s, but received: %s",
 			models.PublisherS3, spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
-		return PublisherSpec{}, fmt.Errorf("invalid publisher params. cannot be nil")
+		return PublisherSpec{}, NewErrBadS3Request("invalid publisher params. cannot be nil")
 	}
 
 	var c PublisherSpec
@@ -147,7 +147,7 @@ func NewPublisherSpec(bucket string, key string, opts ...PublisherOption) (*mode
 	}
 
 	if err := spec.Validate(); err != nil {
-		return nil, fmt.Errorf("failed to build %s publisher spec: %w", models.PublisherS3, err)
+		return nil, err
 	}
 
 	return &models.SpecConfig{
