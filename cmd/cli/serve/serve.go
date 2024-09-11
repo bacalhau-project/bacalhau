@@ -118,6 +118,11 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	isRequesterNode := cfg.Orchestrator.Enabled
 	isComputeNode := cfg.Compute.Enabled
 
+	if !(isComputeNode || isRequesterNode) {
+		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
+		isRequesterNode = true
+	}
+
 	networkConfig, err := getNetworkConfig(cfg)
 	if err != nil {
 		return err
