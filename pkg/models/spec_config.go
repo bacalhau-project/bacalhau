@@ -13,10 +13,10 @@ import (
 
 type SpecConfig struct {
 	// Type of the config
-	Type string `json:"Type"`
+	Type string `json:"Type" yaml:"Type,omitempty"`
 
 	// Params is a map of the config params
-	Params map[string]interface{} `json:"Params,omitempty"`
+	Params map[string]interface{} `json:"Params,omitempty" yaml:"Params,omitempty"`
 }
 
 func (s *SpecConfig) MarshalZerologObject(e *zerolog.Event) {

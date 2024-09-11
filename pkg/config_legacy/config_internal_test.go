@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package config
+package config_legacy
 
 import (
 	"os"
@@ -12,8 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 )
 
 func TestConfigWithNoValues(t *testing.T) {
@@ -21,7 +20,7 @@ func TestConfigWithNoValues(t *testing.T) {
 	viper.Reset()
 	defer viper.Reset()
 
-	defaultConfig := configenv.Testing
+	defaultConfig := legacy_types.Testing
 
 	// Create the config without any file
 	cfg, err := New(
@@ -44,12 +43,12 @@ func TestConfigWithNoFile(t *testing.T) {
 	viper.Reset()
 	defer viper.Reset()
 
-	defaultConfig := configenv.Testing
+	defaultConfig := legacy_types.Testing
 
 	// simulate a user setting a value from the command line with goes to the global viper instance
 	// e.g. bacalhau -c node.clientapi.port=123456 -c node.clientapi.host=HOST
-	viper.Set(types.NodeClientAPIPort, 123456)
-	viper.Set(types.NodeClientAPIHost, "HOST")
+	viper.Set(legacy_types.NodeClientAPIPort, 123456)
+	viper.Set(legacy_types.NodeClientAPIHost, "HOST")
 
 	// set and env var to ensure it overrides the default config
 	t.Setenv("BACALHAU_NODE_WEBUI_ENABLED", "true")
@@ -85,12 +84,12 @@ func TestConfigWithSingleFile(t *testing.T) {
 	// Set up temporary directory for config file
 	tempDir := t.TempDir()
 
-	defaultConfig := configenv.Testing
+	defaultConfig := legacy_types.Testing
 
 	// simulate a user setting a value from the command line with goes to the global viper instance
 	// e.g. bacalhau -c node.clientapi.port=123456 -c node.clientapi.host=HOST
-	viper.Set(types.NodeClientAPIPort, 123456)
-	viper.Set(types.NodeClientAPIHost, "HOST")
+	viper.Set(legacy_types.NodeClientAPIPort, 123456)
+	viper.Set(legacy_types.NodeClientAPIHost, "HOST")
 
 	// set and env var to ensure it overrides the default config
 	t.Setenv("BACALHAU_NODE_WEBUI_ENABLED", "true")
@@ -147,12 +146,12 @@ func TestConfigMultipleFiles(t *testing.T) {
 	// Set up temporary directory for config files
 	tempDir := t.TempDir()
 
-	defaultConfig := configenv.Testing
+	defaultConfig := legacy_types.Testing
 
 	// simulate a user setting a value from the command line with goes to the global viper instance
 	// e.g. bacalhau -c node.clientapi.port=123456 -c node.clientapi.host=HOST
-	viper.Set(types.NodeClientAPIPort, 123456)
-	viper.Set(types.NodeClientAPIHost, "HOST")
+	viper.Set(legacy_types.NodeClientAPIPort, 123456)
+	viper.Set(legacy_types.NodeClientAPIHost, "HOST")
 
 	// set and env var to ensure it overrides the default config
 	t.Setenv("BACALHAU_NODE_WEBUI_ENABLED", "true")

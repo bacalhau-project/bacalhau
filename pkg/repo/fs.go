@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -82,39 +85,43 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(c config.ReadWriter) error {
+func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
 		return fmt.Errorf("cannot init repo: repo already exists")
 	}
 
-	log.Info().Msgf("Initializing repo at '%s' for environment '%s'", fsr.path, config.GetConfigEnvironment())
+	log.Info().Msgf("Initializing repo at %s", fsr.path)
+
+	// if it takes longer than 5 seconds to get the node name from a provider, fail
+	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	nodeName, err := getNodeID(nameCtx, cfg.NameProvider)
+	if err != nil {
+		return err
+	}
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
 		return err
 	}
 
-	cfg, err := c.Current()
-	if err != nil {
-		return err
-	}
-
-	// in the event a user has provided a config without a path we need to set it here based on what the repo was
-	// initialized with.
-	if cfg.DataDir == "" {
-		cfg.DataDir = fsr.path
-		c.Set("DataDir", fsr.path)
-	}
-
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
-	return fsr.WriteVersion(Version4)
+
+	if err := fsr.WriteVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist repo version: %w", err)
+	}
+
+	if err := fsr.WriteNodeName(nodeName); err != nil {
+		return fmt.Errorf("failed to persist node name: %w", err)
+	}
+	return nil
 }
 
 // Open opens an existing repo, returning an error if the repo is uninitialized.
-func (fsr *FsRepo) Open(c config.ReadWriter) error {
+func (fsr *FsRepo) Open() error {
 	// if the repo does not exist we cannot open it.
 	if exists, err := fsr.Exists(); err != nil {
 		return err
@@ -126,25 +133,6 @@ func (fsr *FsRepo) Open(c config.ReadWriter) error {
 		if err := fsr.Migrations.Migrate(*fsr); err != nil {
 			return fmt.Errorf("failed to migrate repo: %w", err)
 		}
-	}
-
-	cfg, err := c.Current()
-	if err != nil {
-		return err
-	}
-
-	// in the event a user has provided a config without a path we need to set it here based on what the repo was
-	// initialized with.
-	if cfg.DataDir == "" {
-		cfg.DataDir = fsr.path
-		c.Set("DataDir", fsr.path)
-	}
-
-	// derive an installationID from the client ID loaded from the repo.
-	if cfg.User.InstallationID == "" {
-		ID, _ := config.GetClientID(cfg.User.KeyPath)
-		uuidFromUserID := uuid.NewSHA1(uuid.New(), []byte(ID))
-		c.Set(types.UserInstallationID, uuidFromUserID.String())
 	}
 
 	// TODO this should be a part of the config.
@@ -209,22 +197,44 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 }
 
 // EnsureRepoPathsConfigured modifies the config to include keys for accessing repo paths
-func (fsr *FsRepo) EnsureRepoPathsConfigured(c config.ReadWriter) {
-	c.SetIfAbsent(types.AuthTokensPath, fsr.join(config.TokensPath))
-	c.SetIfAbsent(types.UserKeyPath, fsr.join(config.UserPrivateKeyFileName))
-	c.SetIfAbsent(types.NodeExecutorPluginPath, fsr.join(config.PluginsPath))
+func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
+	c.SetIfAbsent(legacy_types.AuthTokensPath, fsr.join(config_legacy.TokensPath))
+	c.SetIfAbsent(legacy_types.UserKeyPath, fsr.join(config_legacy.UserPrivateKeyFileName))
+	c.SetIfAbsent(legacy_types.NodeExecutorPluginPath, fsr.join(config_legacy.PluginsPath))
 
 	// NB(forrest): pay attention to the subtle name difference here
-	c.SetIfAbsent(types.NodeComputeStoragePath, fsr.join(config.ComputeStoragesPath))
+	c.SetIfAbsent(legacy_types.NodeComputeStoragePath, fsr.join(config_legacy.ComputeStoragesPath))
 
-	c.SetIfAbsent(types.NodeClientAPITLSAutoCertCachePath, fsr.join(config.AutoCertCachePath))
-	c.SetIfAbsent(types.NodeNetworkStoreDir, fsr.join(config.OrchestratorStorePath, config.NetworkTransportStore))
+	c.SetIfAbsent(legacy_types.NodeClientAPITLSAutoCertCachePath, fsr.join(config_legacy.AutoCertCachePath))
+	c.SetIfAbsent(legacy_types.NodeNetworkStoreDir, fsr.join(config_legacy.OrchestratorStorePath, config_legacy.NetworkTransportStore))
 
-	c.SetIfAbsent(types.NodeRequesterJobStorePath, fsr.join(config.OrchestratorStorePath, "jobs.db"))
-	c.SetIfAbsent(types.NodeComputeExecutionStorePath, fsr.join(config.ComputeStorePath, "executions.db"))
+	c.SetIfAbsent(legacy_types.NodeRequesterJobStorePath, fsr.join(config_legacy.OrchestratorStorePath, "jobs.db"))
+	c.SetIfAbsent(legacy_types.NodeComputeExecutionStorePath, fsr.join(config_legacy.ComputeStorePath, "executions.db"))
 }
 
 // join joins path elements with fsr.path
 func (fsr *FsRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
+}
+
+func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return nodeName, nil
 }

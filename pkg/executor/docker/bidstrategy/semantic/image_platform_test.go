@@ -8,7 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/configenv"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -34,7 +35,13 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 	client, err := docker.NewDockerClient()
 	require.NoError(t, err)
 
-	strategy := semantic.NewImagePlatformBidStrategy(client, configenv.Testing.Node.Compute.ManifestCache)
+	strategy := semantic.NewImagePlatformBidStrategy(client,
+		types.DockerManifestCache{
+			Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
+			TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
+			Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
+		},
+	)
 
 	t.Run("positive response for supported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{

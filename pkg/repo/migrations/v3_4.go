@@ -6,8 +6,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 // V3Migration updates the repo, replacing repo.version and update.json with system_metadata.yaml.
@@ -90,11 +96,54 @@ var V3Migration = repo.NewMigration(
 				return err
 			}
 		}
+
+		// iff there is a config file in the repo, try and move it to $XDG_CONFIG_HOME/bacalhau
+		{
+			oldConfigFilePath := filepath.Join(repoPath, config_legacy.FileName)
+			if _, err := os.Stat(oldConfigFilePath); err == nil {
+				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+					return fmt.Errorf("migrating installation id: %w", err)
+				}
+				if err := r.WriteNodeName(fileCfg.Node.Name); err != nil {
+					return fmt.Errorf("migrating node name: %w", err)
+				}
+				newConfigType, err := config.MigrateV1(fileCfg)
+				if err != nil {
+					return fmt.Errorf("migrating to new config: %w", err)
+				}
+				// ensure the repo path of the config points to the repo
+				newConfigType.DataDir = repoPath
+				userConfigDir, err := os.UserConfigDir()
+				if err == nil {
+					newConfigDir := filepath.Join(userConfigDir, "bacalhau")
+					if err := os.Mkdir(newConfigDir, util.OS_USER_RWX); err != nil {
+						return err
+					}
+					newConfigFilePath := filepath.Join(newConfigDir, config_legacy.FileName)
+					if err := os.Rename(oldConfigFilePath, newConfigFilePath); err != nil {
+						return err
+					}
+					newConfigBytes, err := yaml.Marshal(&newConfigType)
+					if err != nil {
+						return err
+					}
+					newConfigFile, err := os.OpenFile(newConfigFilePath, os.O_RDWR|os.O_TRUNC, util.OS_USER_RWX)
+					if err != nil {
+						return err
+					}
+					defer newConfigFile.Close()
+					if _, err := newConfigFile.Write(newConfigBytes); err != nil {
+						return err
+					}
+				}
+			}
+
+		}
 		return nil
 	},
 )
 
-func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
+func migrateComputeStore(repoPath string, config legacy_types.JobStoreConfig) error {
 	oldComputeDir := filepath.Join(repoPath, "compute_store")
 	oldExecutionStorePath := config.Path
 	if oldExecutionStorePath == "" {
@@ -118,7 +167,7 @@ func migrateComputeStore(repoPath string, config types.JobStoreConfig) error {
 	return nil
 }
 
-func migrateOrchestratorStore(repoPath string, config types.JobStoreConfig) error {
+func migrateOrchestratorStore(repoPath string, config legacy_types.JobStoreConfig) error {
 	oldOrchestratorDir := filepath.Join(repoPath, "orchestrator_store")
 	oldJobStorePath := config.Path
 	if oldJobStorePath == "" {

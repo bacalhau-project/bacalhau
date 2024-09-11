@@ -35,6 +35,7 @@ type SystemMetadata struct {
 	RepoVersion     int       `yaml:"RepoVersion"`
 	InstallationID  string    `yaml:"InstallationID"`
 	LastUpdateCheck time.Time `yaml:"LastUpdateCheck"`
+	NodeName        string    `yaml:"NodeName"`
 }
 
 // WriteVersion updates the RepoVersion in the SystemMetadataFile.
@@ -94,6 +95,20 @@ func (fsr *FsRepo) ReadInstallationID() (string, error) {
 func (fsr *FsRepo) WriteInstallationID(id string) error {
 	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
 		sysmeta.InstallationID = id
+	})
+}
+
+func (fsr *FsRepo) ReadNodeName() (string, error) {
+	sysmeta, err := fsr.readMetadata()
+	if err != nil {
+		return "", err
+	}
+	return sysmeta.NodeName, nil
+}
+
+func (fsr *FsRepo) WriteNodeName(name string) error {
+	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
+		sysmeta.NodeName = name
 	})
 }
 

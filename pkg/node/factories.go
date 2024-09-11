@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
@@ -48,20 +47,15 @@ type (
 )
 
 // Standard implementations used in prod and when testing prod behavior
-func NewStandardStorageProvidersFactory(cfg types.BacalhauConfig) StorageProvidersFactory {
+func NewStandardStorageProvidersFactory(cfg types.Bacalhau) StorageProvidersFactory {
 	return StorageProvidersFactoryFunc(func(
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
-		pr, err := executor_util.NewStandardStorageProvider(
-			time.Duration(cfg.Node.VolumeSizeRequestTimeout),
-			time.Duration(cfg.Node.DownloadURLRequestTimeout),
-			cfg.Node.DownloadURLRequestRetries,
-			executor_util.StandardStorageProviderOptions{
-				IPFSConnect:           cfg.Node.IPFS.Connect,
-				AllowListedLocalPaths: nodeConfig.AllowListedLocalPaths,
-			},
-		)
+		if len(cfg.Compute.AllowListedLocalPaths) == 0 {
+			cfg.Compute.AllowListedLocalPaths = nodeConfig.AllowListedLocalPaths
+		}
+		pr, err := executor_util.NewStandardStorageProvider(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +63,7 @@ func NewStandardStorageProvidersFactory(cfg types.BacalhauConfig) StorageProvide
 	})
 }
 
-func NewStandardExecutorsFactory(cfg types.DockerCacheConfig) ExecutorsFactory {
+func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
@@ -118,7 +112,7 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
+func NewStandardPublishersFactory(cfg types.Bacalhau) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
@@ -131,8 +125,8 @@ func NewStandardPublishersFactory(cfg types.BacalhauConfig) PublishersFactory {
 				ctx,
 				executionDir,
 				nodeConfig.CleanupManager,
-				cfg.Node.IPFS.Connect,
-				&nodeConfig.ComputeConfig.LocalPublisher,
+				cfg.Publishers,
+				nodeConfig.ComputeConfig.LocalPublisher,
 			)
 			if err != nil {
 				return nil, err
@@ -149,7 +143,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
 			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
 				switch authnConfig.Type {
-				case authn.MethodTypeChallenge:
+				case string(authn.MethodTypeChallenge):
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)
 					if err != nil {
 						allErr = errors.Join(allErr, err)
@@ -162,7 +156,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 						userKey.PrivateKey(),
 						nodeConfig.NodeID,
 					)
-				case authn.MethodTypeAsk:
+				case string(authn.MethodTypeAsk):
 					methodPolicy, err := policy.FromPath(authnConfig.PolicyPath)
 					if err != nil {
 						allErr = errors.Join(allErr, err)

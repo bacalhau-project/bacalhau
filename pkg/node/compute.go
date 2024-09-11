@@ -40,6 +40,7 @@ type Compute struct {
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecutorProvider
 	Storages           storage.StorageProvider
+	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
@@ -53,7 +54,7 @@ func NewComputeNode(
 	ctx context.Context,
 	nodeID string,
 	apiServer *publicapi.Server,
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	config ComputeConfig,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
@@ -255,6 +256,7 @@ func NewComputeNode(
 		ExecutionStore:     executionStore,
 		Executors:          executors,
 		Storages:           storages,
+		Publishers:         publishers,
 		Bidder:             bidder,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
@@ -286,9 +288,8 @@ func NewBidder(
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
 			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
 			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout:                config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout:                config.MinJobExecutionTimeout,
-				JobExecutionTimeoutClientIDBypassList: config.JobExecutionTimeoutClientIDBypassList,
+				MaxJobExecutionTimeout: config.MaxJobExecutionTimeout,
+				MinJobExecutionTimeout: config.MinJobExecutionTimeout,
 			}),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,

@@ -15,16 +15,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API, error) {
-	tlsCfg := cfg.Node.ClientAPI.ClientTLS
-	apiHost := cfg.Node.ClientAPI.Host
-	apiPort := cfg.Node.ClientAPI.Port
+func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
+	tlsCfg := cfg.API.TLS
+	apiHost := cfg.API.Host
+	apiPort := cfg.API.Port
 
-	if tlsCfg.CACert != "" {
-		if _, err := os.Stat(tlsCfg.CACert); os.IsNotExist(err) {
-			return nil, fmt.Errorf("CA certificate file %q does not exists", tlsCfg.CACert)
+	if tlsCfg.CAFile != "" {
+		if _, err := os.Stat(tlsCfg.CAFile); os.IsNotExist(err) {
+			return nil, fmt.Errorf("CA certificate file %q does not exists", tlsCfg.CAFile)
 		} else if err != nil {
-			return nil, fmt.Errorf("CA certificate file %q cannot be read: %w", tlsCfg.CACert, err)
+			return nil, fmt.Errorf("CA certificate file %q cannot be read: %w", tlsCfg.CAFile, err)
 		}
 	}
 
@@ -44,7 +44,7 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.BacalhauConfig) (clientv2.API,
 	}
 
 	opts := []clientv2.OptionFn{
-		clientv2.WithCACertificate(tlsCfg.CACert),
+		clientv2.WithCACertificate(tlsCfg.CAFile),
 		clientv2.WithInsecureTLS(tlsCfg.Insecure),
 		clientv2.WithTLS(tlsCfg.UseTLS),
 		clientv2.WithHeaders(headers),

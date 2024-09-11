@@ -7,12 +7,12 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
@@ -46,7 +46,7 @@ type ScenarioTestSuite interface {
 type ScenarioRunner struct {
 	suite.Suite
 	Ctx    context.Context
-	Config types.BacalhauConfig
+	Config types.Bacalhau
 	Repo   *repo.FsRepo
 }
 
@@ -77,8 +77,6 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config = &StackConfig{}
 	}
 
-	defaultPublisher := config.RequesterConfig.DefaultPublisher
-
 	if config.DevStackOptions == nil {
 		config.DevStackOptions = &devstack.DevStackOptions{}
 	}
@@ -87,16 +85,19 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.DevStackOptions.NumberOfHybridNodes = 1
 	}
 
-	if config.RequesterConfig.JobDefaults.TotalTimeout == 0 {
+	if config.RequesterConfig.JobDefaults.Batch.Task.Timeouts.TotalTimeout == 0 {
 		cfg, err := node.NewRequesterConfigWithDefaults()
 		s.Require().NoError(err)
 
+		if !config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.IsEmpty() {
+			cfg.JobDefaults.Batch.Task.Publisher.Config = config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config
+		}
 		config.RequesterConfig = cfg
 	}
 
 	if config.ComputeConfig.TotalResourceLimits.IsZero() {
-		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the whole thing.
-		// we probably want to merge these instead.
+		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the entire compute
+		// config settings.
 		executionDir, err := s.Config.ExecutionDir()
 		s.Require().NoError(err)
 		cfg, err := node.NewComputeConfigWithDefaults(executionDir)
@@ -104,13 +105,11 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		config.ComputeConfig = cfg
 	}
 
-	config.RequesterConfig.DefaultPublisher = defaultPublisher
-
 	stack := testutils.Setup(s.Ctx, s.T(), s.Repo, s.Config,
 		append(config.DevStackOptions.Options(),
 			devstack.WithComputeConfig(config.ComputeConfig),
 			devstack.WithRequesterConfig(config.RequesterConfig),
-			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Node.Compute.ManifestCache),
+			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Engines),
 		)...,
 	)
 

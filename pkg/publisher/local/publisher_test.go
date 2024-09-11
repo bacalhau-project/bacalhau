@@ -32,7 +32,9 @@ func TestPublisherTestSuite(t *testing.T) {
 func (s *PublisherTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.baseDir = s.T().TempDir()
-	s.pub = local.NewLocalPublisher(s.ctx, s.baseDir, defaultHost, defaultPort)
+	var err error
+	s.pub, err = local.NewLocalPublisher(s.ctx, s.baseDir, defaultHost, defaultPort)
+	s.Require().NoError(err)
 }
 
 func (s *PublisherTestSuite) TestAddressResolving() {

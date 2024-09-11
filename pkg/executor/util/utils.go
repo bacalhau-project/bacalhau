@@ -34,59 +34,61 @@ type StandardExecutorOptions struct {
 	DockerID string
 }
 
-func NewStandardStorageProvider(
-	getVolumeTimeout time.Duration,
-	urlDownloadTimeout time.Duration,
-	urlMaxRetries int,
-	options StandardStorageProviderOptions,
-) (storage.StorageProvider, error) {
-	urlDownloadStorage := urldownload.NewStorage(urlDownloadTimeout, urlMaxRetries)
+func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, error) {
+	providers := make(map[string]storage.Storage)
 
-	inlineStorage := inline.NewStorage()
-
-	s3Storage, err := configureS3StorageProvider(getVolumeTimeout)
-	if err != nil {
-		return nil, err
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceURL) {
+		providers[models.StorageSourceURL] = tracing.Wrap(urldownload.NewStorage(
+			time.Duration(cfg.InputSources.ReadTimeout),
+			cfg.InputSources.MaxRetryCount,
+		))
 	}
 
-	localDirectoryStorage, err := localdirectory.NewStorageProvider(localdirectory.StorageProviderParams{
-		AllowedPaths: localdirectory.ParseAllowPaths(options.AllowListedLocalPaths),
-	})
-	if err != nil {
-		return nil, err
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceInline) {
+		providers[models.StorageSourceInline] = tracing.Wrap(inline.NewStorage())
 	}
 
-	providers := map[string]storage.Storage{
-		models.StorageSourceURL:            tracing.Wrap(urlDownloadStorage),
-		models.StorageSourceInline:         tracing.Wrap(inlineStorage),
-		models.StorageSourceS3:             tracing.Wrap(s3Storage),
-		models.StorageSourceLocalDirectory: tracing.Wrap(localDirectoryStorage),
-	}
-
-	if options.IPFSConnect != "" {
-		ipfsClient, err := ipfs.NewClient(context.Background(), options.IPFSConnect)
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceS3) {
+		s3Cfg, err := s3helper.DefaultAWSConfig()
 		if err != nil {
 			return nil, err
 		}
-		ipfsStorage, err := ipfs_storage.NewStorage(*ipfsClient, getVolumeTimeout)
+		clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
+			AWSConfig: s3Cfg,
+		})
+		providers[models.StorageSourceS3] = tracing.Wrap(s3.NewStorage(
+			time.Duration(cfg.InputSources.ReadTimeout),
+			clientProvider,
+		))
+	}
+
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceLocalDirectory) {
+		var err error
+		providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
+			localdirectory.StorageProviderParams{
+				AllowedPaths: localdirectory.ParseAllowPaths(cfg.Compute.AllowListedLocalPaths),
+			})
 		if err != nil {
 			return nil, err
 		}
-		providers[models.StorageSourceIPFS] = tracing.Wrap(ipfsStorage)
 	}
+
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceIPFS) {
+		if cfg.InputSources.Types.IPFS.Endpoint != "" {
+			ipfsClient, err := ipfs.NewClient(context.Background(), cfg.InputSources.Types.IPFS.Endpoint)
+			if err != nil {
+				return nil, err
+			}
+			ipfsStorage, err := ipfs_storage.NewStorage(*ipfsClient, time.Duration(cfg.InputSources.ReadTimeout))
+			if err != nil {
+				return nil, err
+			}
+			providers[models.StorageSourceIPFS] = tracing.Wrap(ipfsStorage)
+
+		}
+	}
+
 	return provider.NewMappedProvider(providers), nil
-}
-
-func configureS3StorageProvider(getVolumeTimeout time.Duration) (*s3.StorageProvider, error) {
-	cfg, err := s3helper.DefaultAWSConfig()
-	if err != nil {
-		return nil, err
-	}
-	clientProvider := s3helper.NewClientProvider(s3helper.ClientProviderParams{
-		AWSConfig: cfg,
-	})
-	s3Storage := s3.NewStorage(getVolumeTimeout, clientProvider)
-	return s3Storage, nil
 }
 
 func NewNoopStorageProvider(
@@ -99,23 +101,28 @@ func NewNoopStorageProvider(
 }
 
 func NewStandardExecutorProvider(
-	dockerCacheCfg types.DockerCacheConfig,
+	cfg types.EngineConfig,
 	executorOptions StandardExecutorOptions,
 ) (executor.ExecutorProvider, error) {
-	dockerExecutor, err := docker.NewExecutor(executorOptions.DockerID, dockerCacheCfg)
-	if err != nil {
-		return nil, err
+	providers := make(map[string]executor.Executor)
+
+	if cfg.IsNotDisabled(models.EngineDocker) {
+		var err error
+		providers[models.EngineDocker], err = docker.NewExecutor(executorOptions.DockerID, cfg.Types.Docker)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	wasmExecutor, err := wasm.NewExecutor()
-	if err != nil {
-		return nil, err
+	if cfg.IsNotDisabled(models.EngineWasm) {
+		wasmExecutor, err := wasm.NewExecutor()
+		if err != nil {
+			return nil, err
+		}
+		providers[models.EngineWasm] = wasmExecutor
 	}
 
-	return provider.NewMappedProvider(map[string]executor.Executor{
-		models.EngineDocker: dockerExecutor,
-		models.EngineWasm:   wasmExecutor,
-	}), nil
+	return provider.NewMappedProvider(providers), nil
 }
 
 // return noop executors for all engines

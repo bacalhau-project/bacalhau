@@ -8,8 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/job"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -60,7 +59,7 @@ func NewRequesterNode(
 	nodeID string,
 	apiServer *publicapi.Server,
 	nodeConfig NodeConfig,
-	metricsConfig types.MetricsConfig,
+	metricsConfig legacy_types.MetricsConfig,
 	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
@@ -215,16 +214,6 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
-	}
-
-	if requesterConfig.DefaultPublisher != "" {
-		// parse the publisher to generate a models.SpecConfig and add it to each job
-		// which is without a publisher
-		config, err := job.ParsePublisherString(requesterConfig.DefaultPublisher)
-		if err != nil {
-			return nil, fmt.Errorf("parsing default publisher spec (%s): %w", requesterConfig.DefaultPublisher, err)
-		}
-		jobTransformers = append(jobTransformers, transformer.DefaultPublisher(config))
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{

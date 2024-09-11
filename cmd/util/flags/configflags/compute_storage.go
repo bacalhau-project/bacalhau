@@ -1,20 +1,19 @@
 package configflags
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
-
+// deprecated
 var ComputeStorageFlags = []Definition{
 	{
-		FlagName:             "compute-execution-store-type",
-		ConfigPath:           types.NodeComputeExecutionStoreType,
-		DefaultValue:         Default.Node.Compute.ExecutionStore.Type,
-		Description:          "The type of store used by the compute node (BoltDB)",
-		EnvironmentVariables: []string{"BACALHAU_COMPUTE_STORE_TYPE"},
+		FlagName:          "compute-execution-store-type",
+		ConfigPath:        "compute.execution.store.type.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "type is no longer configurable. bacalhau uses BoltDB",
 	},
 	{
-		FlagName:             "compute-execution-store-path",
-		ConfigPath:           types.NodeComputeExecutionStorePath,
-		DefaultValue:         Default.Node.Compute.ExecutionStore.Path,
-		Description:          "The path used for the compute execution store when using BoltDB",
-		EnvironmentVariables: []string{"BACALHAU_COMPUTE_STORE_PATH"},
+		FlagName:          "compute-execution-store-path",
+		ConfigPath:        "compute.execution.store.path.deprecated",
+		DefaultValue:      "",
+		Deprecated:        true,
+		DeprecatedMessage: "path is no longer configurable. location $BACALHAU_DIR/compute/state_boltdb.db",
 	},
 }

@@ -31,7 +31,7 @@ import (
 	"go.ptx.dk/multierrgroup"
 	"golang.org/x/exp/slices"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -39,7 +39,7 @@ import (
 type ImageUnavailableError struct {
 	Verb  string
 	Image string
-	Creds config.DockerCredentials
+	Creds config_legacy.DockerCredentials
 	Err   error
 }
 
@@ -55,14 +55,14 @@ func (die ImageUnavailableError) Error() string {
 func (die ImageUnavailableError) Hint() string {
 	if !die.Creds.IsValid() {
 		return "If the image is private, supply the node with valid Docker login credentials " +
-			"using the " + config.DockerUsernameEnvVar + " and " + config.DockerPasswordEnvVar +
+			"using the " + config_legacy.DockerUsernameEnvVar + " and " + config_legacy.DockerPasswordEnvVar +
 			" environment variables"
 	}
 
 	return ""
 }
 
-func NewImageInspectError(image string, creds config.DockerCredentials, err error) error {
+func NewImageInspectError(image string, creds config_legacy.DockerCredentials, err error) error {
 	return ImageUnavailableError{
 		Verb:  "inspect",
 		Image: image,
@@ -71,7 +71,7 @@ func NewImageInspectError(image string, creds config.DockerCredentials, err erro
 	}
 }
 
-func NewImagePullError(image string, creds config.DockerCredentials, err error) error {
+func NewImagePullError(image string, creds config_legacy.DockerCredentials, err error) error {
 	return ImageUnavailableError{
 		Verb:  "pull",
 		Image: image,
@@ -248,7 +248,7 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config.DockerCredentials) ([]v1.Platform, error) {
+func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config_legacy.DockerCredentials) ([]v1.Platform, error) {
 	info, _, err := c.ImageInspectWithRaw(ctx, image)
 	if err == nil {
 		return []v1.Platform{
@@ -346,7 +346,7 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 //
 // This is the image that will finally be installed.
 func (c *Client) ImageDistribution(
-	ctx context.Context, image string, creds config.DockerCredentials,
+	ctx context.Context, image string, creds config_legacy.DockerCredentials,
 ) (*ImageManifest, error) {
 	// Check whether the requested image (e.g. ubuntu:kinetic) is available from
 	// the local docker daemon from a previous download, and use that digest.
@@ -394,7 +394,7 @@ func (c *Client) ImageDistribution(
 	return manifest, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config.DockerCredentials) error {
+func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_legacy.DockerCredentials) error {
 	_, _, err := c.ImageInspectWithRaw(ctx, img)
 	if err == nil {
 		// If there is no error, then return immediately as it means we have the docker image
@@ -496,7 +496,7 @@ func logImagePullStatus(ctx context.Context, m *sync.Map) {
 	e.Msg("Pulling layers")
 }
 
-func getAuthToken(ctx context.Context, image string, dockerCreds config.DockerCredentials) string {
+func getAuthToken(ctx context.Context, image string, dockerCreds config_legacy.DockerCredentials) string {
 	if dockerCreds.IsValid() {
 		// We only currently support auth for the default registry, so any
 		// pulls for `image` or `user/image` should be okay, anything trying

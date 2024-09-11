@@ -15,19 +15,19 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
+	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
-	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -45,7 +45,7 @@ type ServeSuite struct {
 	ctx      context.Context
 	repoPath string
 	protocol string
-	config   cfgtypes.BacalhauConfig
+	config   cfgtypes.Bacalhau
 }
 
 func TestServeSuite(t *testing.T) {
@@ -181,24 +181,9 @@ func (s *ServeSuite) TestHealthcheck() {
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
-func (s *ServeSuite) TestAPIPrintedForComputeNode() {
-	s.T().Skip("bacalhau is no longer used by station")
-	port, _ := s.serve("--node-type", "compute,requester", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/api/v1/compute/debug", port)
-	actualUrl := s.out.String()
-
-	s.Require().Contains(actualUrl, expectedURL)
-}
-
-func (s *ServeSuite) TestAPINotPrintedForRequesterNode() {
-	port, _ := s.serve("--node-type", "requester", "--log-mode", string(logger.LogModeStation))
-	expectedURL := fmt.Sprintf("API: http://0.0.0.0:%d/compute/debug", port)
-	s.Require().NotContains(s.out.String(), expectedURL)
-}
-
 func (s *ServeSuite) TestCanSubmitJob() {
 	docker.MustHaveDocker(s.T())
-	port, err := s.serve("--node-type", "requester,compute")
+	port, err := s.serve("--orchestrator", "--compute")
 	s.Require().NoError(err)
 
 	client := clientv2.New(fmt.Sprintf("http://127.0.0.1:%d", port))
@@ -227,7 +212,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 func (s *ServeSuite) TestSelfSignedRequester() {
 	s.protocol = "https"
-	_, err := s.serve("--node-type", "requester", "--self-signed")
+	_, err := s.serve("--orchestrator", "--self-signed")
 	s.Require().NoError(err)
 }
 
@@ -248,23 +233,10 @@ func (s *ServeSuite) Test200ForRoot() {
 	if err != nil {
 		s.T().Fatal(err, "Could not get port for web-ui")
 	}
-	_, err = s.serve("--web-ui", "--web-ui-port", fmt.Sprintf("%d", webUIPort))
+	_, err = s.serve("-c", "webui.enabled=true", "-c", fmt.Sprintf("webui.listen=127.0.0.1:%d", webUIPort))
 	s.Require().NoError(err, "Error starting server")
 
 	_, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", webUIPort))
 	s.Require().NoError(err, "Error curling root endpoint")
 	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
-
-// TODO: Can't figure out how to make this test work, it spits out the help text
-// func (s *ServeSuite) TestBadBacalhauDir() {
-// 	badDirString := "/BADDIR"
-
-// 	// if we set the peer connect to "env" it should return the peers from the env
-// 	originalEnv := os.Getenv("BACALHAU_ENVIRONMENT")
-// 	defer os.Setenv("BACALHAU_ENVIRONMENT", originalEnv)
-// 	os.Setenv("BACALHAU_DIR", badDirString)
-// 	_, err := s.serve("--node-type", "requester", "--node-type", "compute", RETURN_ERROR_FLAG)
-// 	s.Require().Contains(s.out.String(), "Could not write to")
-// 	s.Error(err)
-// }

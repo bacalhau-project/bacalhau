@@ -33,6 +33,7 @@ func TestDevstackJobSelectionSuite(t *testing.T) {
 
 // Reuse the docker executor tests but full end to end with transport layer and 3 nodes
 func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
+	suite.T().Skip("Test makes assertions on data locality, a feature no longer supported.")
 	type TestCase struct {
 		name      string
 		policy    node.JobSelectionPolicy

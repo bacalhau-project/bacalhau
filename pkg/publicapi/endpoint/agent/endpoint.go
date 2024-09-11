@@ -17,14 +17,14 @@ type EndpointParams struct {
 	Router             *echo.Echo
 	NodeStateProvider  models.NodeStateProvider
 	DebugInfoProviders []models.DebugInfoProvider
-	BacalhauConfig     types.BacalhauConfig
+	BacalhauConfig     types.Bacalhau
 }
 
 type Endpoint struct {
 	router             *echo.Echo
 	nodeStateProvider  models.NodeStateProvider
 	debugInfoProviders []models.DebugInfoProvider
-	bacalhauConfig     types.BacalhauConfig
+	bacalhauConfig     types.Bacalhau
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
