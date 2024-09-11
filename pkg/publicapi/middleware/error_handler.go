@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -37,7 +36,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		message = "internal server error"
 		code = c.Response().Status
 
-		if isDebugMode() {
+		if c.Echo().Debug {
 			message = err.Error()
 		}
 	}
@@ -61,8 +60,4 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		}
 	}
 
-}
-
-func isDebugMode() bool {
-	return os.Getenv("BACALHAU_DEBUG") == "true"
 }

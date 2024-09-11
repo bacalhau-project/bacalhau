@@ -8,7 +8,6 @@ import (
 
 const (
 	JOB_STORE_COMPONENT = "JBS"
-	BOLTDB_COMPONENT    = "BDB"
 )
 
 func NewErrJobNotFound(id string) *models.BaseError {
@@ -69,10 +68,6 @@ func NewErrInvalidExecutionVersion(id string, actual, expected uint64) *models.B
 
 func NewErrExecutionAlreadyTerminal(id string, actual models.ExecutionStateType, newState models.ExecutionStateType) *models.BaseError {
 	return models.NewBaseError("execution %s is in terminal state %s and cannot transition to %s", id, actual, newState)
-}
-
-func NewBoltDbError(message string) *models.BaseError {
-	return models.NewBaseError(message).WithCode(models.NewErrorCode(BOLTDB_COMPONENT, 500))
 }
 
 func NewJobStoreError(message string) *models.BaseError {

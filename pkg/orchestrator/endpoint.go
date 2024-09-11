@@ -155,7 +155,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
-		return StopJobResponse{}, jobstore.NewBoltDbError(err.Error())
+		return StopJobResponse{}, jobstore.NewJobStoreError(err.Error())
 	}
 
 	defer func() {

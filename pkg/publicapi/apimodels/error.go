@@ -30,14 +30,14 @@ import (
 type APIError struct {
 	// httpstatuscode is the http status code associated with this error.
 	// it should correspond to standard http status codes (e.g., 400, 404, 500).
-	HTTPStatusCode int `json:"code"`
+	HTTPStatusCode int `json:"-"`
 
 	// message is a short, human-readable description of the error.
 	// it should be concise and provide a clear indication of what went wrong.
 	Message string `json:"message"`
 
 	// RequestID is the request ID of the request that caused the error.
-	RequestID string `json:"request_id"`
+	RequestID string `json:"-"`
 }
 
 // NewAPIError creates a new APIError with the given HTTP status code and message.

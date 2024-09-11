@@ -90,12 +90,13 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
-	// enable debug mode to get clearer error messages
-	// TODO: disable debug mode after we implement our own error handler
-	server.Router.Debug = true
-
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
+	if logLevel == zerolog.DebugLevel {
+		// enable debug mode to get clearer error messages
+		server.Router.Debug = true
+	}
+
 	if err != nil {
 		return nil, err
 	}
