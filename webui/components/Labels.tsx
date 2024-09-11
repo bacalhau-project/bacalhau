@@ -1,11 +1,11 @@
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
+import React from 'react'
+import { Badge } from '@/components/ui/badge'
 
-type Label = string | [string, string];
+type Label = string | [string, string]
 
 interface LabelsProps {
-  labels: Label[] | Record<string, string> | undefined;
-  color?: string; // New prop for specifying a uniform color
+  labels: Label[] | Record<string, string> | undefined
+  color?: string // New prop for specifying a uniform color
 }
 
 const getColorForLabel = (key: string) => {
@@ -16,46 +16,49 @@ const getColorForLabel = (key: string) => {
     'bg-purple-100 text-purple-800',
     'bg-pink-100 text-pink-800',
     'bg-indigo-100 text-indigo-800',
-  ];
+  ]
 
   const hash = key
     .split('')
-    .reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0);
-  return colors[Math.abs(hash) % colors.length];
-};
+    .reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)
+  return colors[Math.abs(hash) % colors.length]
+}
 
 const Labels: React.FC<LabelsProps> = ({ labels, color }) => {
-  if (!labels || (Array.isArray(labels) && labels.length === 0) || (typeof labels === 'object' && Object.keys(labels).length === 0)) {
-    return null;
+  if (
+    !labels ||
+    (Array.isArray(labels) && labels.length === 0) ||
+    (typeof labels === 'object' && Object.keys(labels).length === 0)
+  ) {
+    return null
   }
 
   const renderLabel = (key: string, value?: string) => (
-    <Badge
-      key={key}
-      className={`text-xs ${color || getColorForLabel(key)}`}
-    >
+    <Badge key={key} className={`text-xs ${color || getColorForLabel(key)}`}>
       {value ? `${key}: ${value}` : key}
     </Badge>
-  );
+  )
 
   const renderLabels = () => {
     if (Array.isArray(labels)) {
       return labels.map((label) => {
         if (typeof label === 'string') {
-          return renderLabel(label);
+          return renderLabel(label)
         } else if (Array.isArray(label)) {
-          const [key, value] = label;
-          return renderLabel(key, value);
+          const [key, value] = label
+          return renderLabel(key, value)
         }
-        return null;
-      });
+        return null
+      })
     } else if (typeof labels === 'object') {
-      return Object.entries(labels).map(([key, value]) => renderLabel(key, value));
+      return Object.entries(labels).map(([key, value]) =>
+        renderLabel(key, value)
+      )
     }
-    return null;
-  };
+    return null
+  }
 
-  return <div className="flex flex-wrap gap-2">{renderLabels()}</div>;
-};
+  return <div className="flex flex-wrap gap-2">{renderLabels()}</div>
+}
 
-export default Labels;
+export default Labels

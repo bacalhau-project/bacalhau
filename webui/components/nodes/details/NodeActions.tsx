@@ -1,7 +1,7 @@
 import React from 'react'
 import { models_NodeState, OrchestratorService } from '@/lib/api/generated'
 import { Button } from '@/components/ui/button'
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from '@/hooks/use-toast'
 
 // TODO: Implement the NodeActions component
 interface NodeActionsProps {
@@ -13,10 +13,13 @@ const NodeActions: React.FC<NodeActionsProps> = ({ node, onNodeUpdated }) => {
   const { toast } = useToast()
   const handleApprove = async () => {
     try {
-      await OrchestratorService.orchestratorUpdateNode(node.Info?.NodeID ?? '', {
-        Action: 'approve',
-        NodeID: node.Info?.NodeID,
-      })
+      await OrchestratorService.orchestratorUpdateNode(
+        node.Info?.NodeID ?? '',
+        {
+          Action: 'approve',
+          NodeID: node.Info?.NodeID,
+        }
+      )
       toast({
         title: 'Node Approved',
         description: `Node ${node.Info?.NodeID} has been approved.`,
@@ -34,10 +37,13 @@ const NodeActions: React.FC<NodeActionsProps> = ({ node, onNodeUpdated }) => {
 
   const handleReject = async () => {
     try {
-      await OrchestratorService.orchestratorUpdateNode(node.Info?.NodeID ?? '', {
-        Action: 'reject',
-        NodeID: node.Info?.NodeID,
-      })
+      await OrchestratorService.orchestratorUpdateNode(
+        node.Info?.NodeID ?? '',
+        {
+          Action: 'reject',
+          NodeID: node.Info?.NodeID,
+        }
+      )
       toast({
         title: 'Node Rejected',
         description: `Node ${node.Info?.NodeID} has been rejected.`,

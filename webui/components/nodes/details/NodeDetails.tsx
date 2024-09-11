@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import { OrchestratorService, models_NodeState } from '@/lib/api/generated'
 import { useApi } from '@/app/providers/ApiProvider'
 import NodeInformation from './NodeInformation'

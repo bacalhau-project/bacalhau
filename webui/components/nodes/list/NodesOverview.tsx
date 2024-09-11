@@ -54,7 +54,8 @@ export function NodesOverview() {
   useRefreshContent('nodes', handleRefresh)
 
   const filteredNodes = nodes.filter(
-    (node) => node.Info?.NodeID?.toLowerCase().includes(search.toLowerCase()) ?? false
+    (node) =>
+      node.Info?.NodeID?.toLowerCase().includes(search.toLowerCase()) ?? false
   )
 
   const handlePreviousPage = () => {

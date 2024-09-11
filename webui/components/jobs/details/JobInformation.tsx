@@ -5,7 +5,7 @@ import { models_Job } from '@/lib/api/generated'
 import { formatTimestamp, getJobRunTime } from '@/lib/api/utils'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
-import Labels  from '@/components/Labels'
+import Labels from '@/components/Labels'
 import InfoItem from '@/components/InfoItem'
 
 interface JobInformationProps {
@@ -52,6 +52,5 @@ const JobInformation: React.FC<JobInformationProps> = ({ job }) => (
     </CardContent>
   </Card>
 )
-
 
 export { JobInformation }

@@ -17,8 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ConnectionStatus, MembershipStatus } from '@/components/nodes/NodeStatus'
-import Labels  from '@/components/Labels'
+import {
+  ConnectionStatus,
+  MembershipStatus,
+} from '@/components/nodes/NodeStatus'
+import Labels from '@/components/Labels'
 import { NodeResources } from '@/components/nodes/NodeResources'
 import { getNodeType } from '@/lib/api/utils'
 
@@ -33,14 +36,14 @@ interface NodesTableProps {
 }
 
 export function NodesTable({
-                             nodes = [],
-                             pageSize,
-                             setPageSize,
-                             pageIndex,
-                             onPreviousPage,
-                             onNextPage,
-                             hasNextPage,
-                           }: NodesTableProps) {
+  nodes = [],
+  pageSize,
+  setPageSize,
+  pageIndex,
+  onPreviousPage,
+  onNextPage,
+  hasNextPage,
+}: NodesTableProps) {
   return (
     <div>
       <Table>
@@ -59,13 +62,22 @@ export function NodesTable({
             <TableRow key={node.Info?.NodeID}>
               <TableCell className="p-3">
                 <Link href={`/nodes?id=${node.Info?.NodeID}`}>
-                  <TruncatedTextWithTooltip text={node.Info?.NodeID ?? ''} maxLength={10} />
+                  <TruncatedTextWithTooltip
+                    text={node.Info?.NodeID ?? ''}
+                    maxLength={10}
+                  />
                 </Link>
               </TableCell>
               <TableCell>{getNodeType(node)}</TableCell>
-              <TableCell><MembershipStatus node={node} /></TableCell>
-              <TableCell><ConnectionStatus node={node} /></TableCell>
-              <TableCell className="p-2"><NodeResources node={node} /></TableCell>
+              <TableCell>
+                <MembershipStatus node={node} />
+              </TableCell>
+              <TableCell>
+                <ConnectionStatus node={node} />
+              </TableCell>
+              <TableCell className="p-2">
+                <NodeResources node={node} />
+              </TableCell>
               <TableCell>
                 <Labels labels={node.Info?.Labels} />
               </TableCell>

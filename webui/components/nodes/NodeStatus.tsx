@@ -1,7 +1,13 @@
 import React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { models_NodeState, models_NodeMembershipState } from '@/lib/api/generated'
-import { getNodeConnectionStatus, getNodeMembershipStatus } from '@/lib/api/utils'
+import {
+  models_NodeState,
+  models_NodeMembershipState,
+} from '@/lib/api/generated'
+import {
+  getNodeConnectionStatus,
+  getNodeMembershipStatus,
+} from '@/lib/api/utils'
 
 const getColorForStatus = (status: string): string => {
   const colors: Record<string, string> = {
@@ -25,11 +31,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ node }) => {
   const status = getNodeConnectionStatus(node)
   const colorClass = getColorForStatus(status)
 
-  return (
-    <Badge className={`text-xs ${colorClass}`}>
-      {status}
-    </Badge>
-  )
+  return <Badge className={`text-xs ${colorClass}`}>{status}</Badge>
 }
 
 // Membership Status Component
@@ -41,9 +43,5 @@ export const MembershipStatus: React.FC<MembershipStatusProps> = ({ node }) => {
   const status = getNodeMembershipStatus(node)
   const colorClass = getColorForStatus(status)
 
-  return (
-    <Badge className={`text-xs ${colorClass}`}>
-      {status}
-    </Badge>
-  )
+  return <Badge className={`text-xs ${colorClass}`}>{status}</Badge>
 }
