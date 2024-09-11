@@ -17,7 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 )
 
 func (s *LogStreamTestSuite) TestWasmOutputStream() {

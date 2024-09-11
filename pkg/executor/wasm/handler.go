@@ -17,7 +17,6 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -29,7 +28,7 @@ type executionHandler struct {
 	// runtime configured with resource-limits
 	runtime wazero.Runtime
 	// arguments used to instantiate and run the wasm module
-	arguments *wasmmodels.EngineArguments
+	arguments *EngineArguments
 	// virtual filesystem exposed to wasm module
 	fs fs.FS
 	// wasm modules imported by main wasm module

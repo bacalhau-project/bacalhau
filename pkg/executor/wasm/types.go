@@ -1,4 +1,4 @@
-package models
+package wasm
 
 import (
 	"encoding/json"

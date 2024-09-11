@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"

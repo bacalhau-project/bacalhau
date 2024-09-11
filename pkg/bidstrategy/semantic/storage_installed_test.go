@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"

@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"

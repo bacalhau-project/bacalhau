@@ -14,7 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -80,7 +80,7 @@ func prepareInputVolumes(
 func prepareWasmVolumes(
 	ctx context.Context,
 	strgprovider storage.StorageProvider,
-	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
+	storageDirectory string, wasmEngine wasm.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error,
 ) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
@@ -156,7 +156,7 @@ func PrepareRunArguments(
 	*/
 	var engineArgs *models.SpecConfig
 	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
-		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
+		wasmEngine, err := wasm.DecodeSpec(execution.Job.Task().Engine)
 		if err != nil {
 			return nil, nil, err
 		}

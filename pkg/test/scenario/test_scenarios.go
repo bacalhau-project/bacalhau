@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"

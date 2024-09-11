@@ -19,7 +19,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -91,7 +90,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
 	}
 
-	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
+	engineParams, err := DecodeArguments(request.EngineParams)
 	if err != nil {
 		return fmt.Errorf("decoding wasm arguments: %w", err)
 	}
