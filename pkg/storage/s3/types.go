@@ -1,12 +1,13 @@
 package s3
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type SourceSpec struct {
@@ -21,7 +22,7 @@ type SourceSpec struct {
 
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
-		return errors.New("invalid s3 storage params: bucket cannot be empty")
+		return storage.NewErrBadS3StorageRequest("invalid s3 storage params: bucket cannot be empty")
 	}
 	return nil
 }
@@ -32,11 +33,11 @@ func (c SourceSpec) ToMap() map[string]interface{} {
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
-		return SourceSpec{}, errors.New("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
+		return SourceSpec{}, storage.NewErrBadS3StorageRequest("invalid storage source type. expected " + models.StorageSourceS3 + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
-		return SourceSpec{}, errors.New("invalid storage source params. cannot be nil")
+		return SourceSpec{}, storage.NewErrBadS3StorageRequest("invalid storage source params. cannot be nil")
 	}
 
 	var c SourceSpec
@@ -54,7 +55,7 @@ type PreSignedResultSpec struct {
 
 func (c PreSignedResultSpec) Validate() error {
 	if c.PreSignedURL == "" {
-		return errors.New("invalid s3 signed storage params: signed url cannot be empty")
+		return storage.NewErrBadS3StorageRequest("invalid s3 signed storage params: signed url cannot be empty")
 	}
 	return c.SourceSpec.Validate()
 }
@@ -65,13 +66,14 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
-		return PreSignedResultSpec{}, errors.New(
-			"invalid storage source type. expected " + models.StorageSourceS3PreSigned + ", but received: " + spec.Type)
+		return PreSignedResultSpec{}, storage.NewErrBadS3StorageRequest(
+			fmt.Sprintf("invalid storage source type. expected %s, but received: %s",
+				models.StorageSourceS3PreSigned, spec.Type))
 	}
 
 	inputParams := spec.Params
 	if inputParams == nil {
-		return PreSignedResultSpec{}, errors.New("invalid signed result params. cannot be nil")
+		return PreSignedResultSpec{}, storage.NewErrBadS3StorageRequest("invalid signed result params. cannot be nil")
 	}
 
 	var c PreSignedResultSpec
