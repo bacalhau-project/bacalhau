@@ -108,7 +108,7 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 		jobID,
 		OG.DownloadSettings,
 	); err != nil {
-		return fmt.Errorf("downloading job: %w", err)
+		return err
 	}
 
 	return nil

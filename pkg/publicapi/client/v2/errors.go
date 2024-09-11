@@ -165,13 +165,6 @@ func requireOK(d time.Duration, resp *http.Response, e error) (time.Duration, *h
 // response codes and validates that the received response code is among them
 func requireStatusIn(statuses ...int) doRequestWrapper {
 	return func(d time.Duration, resp *http.Response, e error) (time.Duration, *http.Response, error) {
-		if e != nil {
-			if resp != nil {
-				_ = resp.Body.Close()
-			}
-			return d, nil, e
-		}
-
 		for _, status := range statuses {
 			if resp.StatusCode == status {
 				return d, resp, nil

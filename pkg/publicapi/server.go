@@ -90,12 +90,13 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
-	// enable debug mode to get clearer error messages
-	// TODO: disable debug mode after we implement our own error handler
-	server.Router.Debug = true
-
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
+	if logLevel == zerolog.DebugLevel {
+		// enable debug mode to get clearer error messages
+		server.Router.Debug = true
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +140,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		// logs requests made by clients with different versions than the server
 		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
 	)
+
+	// Add custom http error handler. This is a centralized error handler for
+	// the server
+	server.Router.HTTPErrorHandler = middleware.CustomHTTPErrorHandler
 
 	var tlsConfig *tls.Config
 	if params.AutoCertDomain != "" {
