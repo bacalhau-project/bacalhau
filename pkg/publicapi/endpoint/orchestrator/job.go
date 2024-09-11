@@ -78,7 +78,6 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 	}
 	job, err := e.store.GetJob(ctx, jobID)
 	if err != nil {
-		log.Error().Err(err)
 		return err
 	}
 	response := apimodels.GetJobResponse{
