@@ -3,6 +3,7 @@ import {
   models_Job,
   models_ExecutionStateType,
   models_ExecutionDesiredStateType,
+  models_NodeState, models_NodeConnectionState, models_NodeMembershipState
 } from './generated'
 
 export function getJobState(
@@ -129,6 +130,40 @@ export function shortID(id: string | undefined): string {
   if (!id) return 'N/A'
   return id.split('-').slice(0, 2).join('-')
 }
+
+export const getNodeConnectionStatus = (node: models_NodeState): string => {
+  // Use type assertion to tell TypeScript that Connection might be a string
+  const connection = node.Connection as unknown as string;
+
+  if (connection) {
+    return connection.toUpperCase();
+  }
+
+  // Fallback for unexpected cases
+  return 'UNKNOWN';
+};
+
+export const getNodeMembershipStatus = (node: models_NodeState): string => {
+  // Use type assertion to tell TypeScript that Membership might be a string
+  const membership = node.Membership as unknown as string;
+  if (membership) {
+    return membership.toUpperCase();
+  }
+
+  // Fallback for unexpected cases
+  return 'UNKNOWN';
+};
+
+export const getNodeType = (node: models_NodeState): string => {
+  const nodeType = node.Info?.NodeType as unknown as string;
+  if (nodeType) {
+    if (nodeType === 'Requester') {
+      return 'Orchestrator';
+    }
+    return nodeType;
+  }
+  return 'Unknown';
+};
 
 export function getJobRunTime(job: models_Job): string {
   if (!job.State?.StateType || !job.CreateTime) {

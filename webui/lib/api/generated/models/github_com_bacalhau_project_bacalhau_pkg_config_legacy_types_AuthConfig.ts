@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { types_AuthenticatorConfig } from './types_AuthenticatorConfig';
-export type types_AuthConfig = {
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig';
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthConfig = {
     /**
      * AccessPolicyPath is the path to a file or directory that will be loaded as
      * the policy to apply to all inbound API requests. If unspecified, a policy
@@ -27,7 +27,7 @@ export type types_AuthConfig = {
      * By default, only a single authentication method that accepts
      * authentication via client keys will be enabled.
      */
-    methods?: Record<string, types_AuthenticatorConfig>;
+    methods?: Record<string, github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig>;
     /**
      * TokensPath is the location where a state file of tokens will be stored.
      * By default it will be local to the Bacalhau repo, but can be any location

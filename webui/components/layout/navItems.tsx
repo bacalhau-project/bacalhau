@@ -1,4 +1,4 @@
-import { Home, Briefcase, Server, Network } from 'lucide-react'
+import { Home, Briefcase, Network } from 'lucide-react'
 import React from 'react'
 
 export interface NavLinkProps {
@@ -18,11 +18,6 @@ export const navLinkItems: NavLinkProps[] = [
     href: '/jobs',
     icon: Briefcase,
     label: 'Jobs',
-  },
-  {
-    href: '/executions',
-    icon: Server,
-    label: 'Executions',
   },
   {
     href: '/nodes',

@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export type apimodels_PutNodeResponse = {
-    error?: string;
-    success?: boolean;
+    Error?: string;
+    Success?: boolean;
 };
 

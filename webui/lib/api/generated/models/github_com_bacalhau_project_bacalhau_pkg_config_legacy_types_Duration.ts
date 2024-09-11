@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export enum types_Duration {
+export enum github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration {
     minDuration = -9223372036854776000,
     maxDuration = 9223372036854776000,
     Nanosecond = 1,

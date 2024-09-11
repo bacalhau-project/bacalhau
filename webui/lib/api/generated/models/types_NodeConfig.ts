@@ -2,10 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration';
 import type { logger_LogMode } from './logger_LogMode';
 import type { types_APIConfig } from './types_APIConfig';
 import type { types_ComputeConfig } from './types_ComputeConfig';
-import type { types_Duration } from './types_Duration';
 import type { types_FeatureConfig } from './types_FeatureConfig';
 import type { types_IpfsConfig } from './types_IpfsConfig';
 import type { types_NetworkConfig } from './types_NetworkConfig';
@@ -28,7 +28,7 @@ export type types_NodeConfig = {
      */
     disabledFeatures?: types_FeatureConfig;
     downloadURLRequestRetries?: number;
-    downloadURLRequestTimeout?: types_Duration;
+    downloadURLRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * Deprecated: replaced by cfg.PluginsDir()
      */
@@ -49,7 +49,7 @@ export type types_NodeConfig = {
      * Type is "compute", "requester" or both
      */
     type?: Array<string>;
-    volumeSizeRequestTimeout?: types_Duration;
+    volumeSizeRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * Configuration for the web UI
      */

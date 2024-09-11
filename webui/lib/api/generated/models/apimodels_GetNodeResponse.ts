@@ -4,6 +4,6 @@
 /* eslint-disable */
 import type { models_NodeState } from './models_NodeState';
 export type apimodels_GetNodeResponse = {
-    node?: models_NodeState;
+    Node?: models_NodeState;
 };
 

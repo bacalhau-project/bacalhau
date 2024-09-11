@@ -5,7 +5,8 @@ import { models_Job } from '@/lib/api/generated'
 import { formatTimestamp, getJobRunTime } from '@/lib/api/utils'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
-import { JobLabels } from '@/components/jobs/JobLabels'
+import Labels  from '@/components/Labels'
+import InfoItem from '@/components/InfoItem'
 
 interface JobInformationProps {
   job: models_Job
@@ -37,7 +38,7 @@ const JobInformation: React.FC<JobInformationProps> = ({ job }) => (
           </InfoItem>
           {job.Labels && Object.keys(job.Labels).length > 0 && (
             <InfoItem label="Labels">
-              <JobLabels labels={job.Labels} />
+              <Labels labels={job.Labels} />
             </InfoItem>
           )}
         </div>
@@ -52,16 +53,5 @@ const JobInformation: React.FC<JobInformationProps> = ({ job }) => (
   </Card>
 )
 
-interface InfoItemProps {
-  label: string
-  children: React.ReactNode
-}
-
-const InfoItem: React.FC<InfoItemProps> = ({ label, children }) => (
-  <div className="grid grid-cols-[120px,1fr] items-center py-1">
-    <span className="text-sm  ont-semibold text-gray-500">{label}:</span>
-    <span className="text-sm text-gray-900">{children}</span>
-  </div>
-)
 
 export { JobInformation }

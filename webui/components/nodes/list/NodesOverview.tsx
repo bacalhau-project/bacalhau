@@ -1,63 +1,60 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { JobsTable } from './JobsTable'
+import { NodesTable } from './NodesTable'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { models_Job, OrchestratorService } from '@/lib/api/generated'
+import { models_NodeState, OrchestratorService } from '@/lib/api/generated'
 import { useApi } from '@/app/providers/ApiProvider'
 import { useRefreshContent } from '@/hooks/useRefreshContent'
-import { RefreshCw, Plus } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 
-export function JobsOverview() {
-  const [jobs, setJobs] = useState<models_Job[]>([])
+export function NodesOverview() {
+  const [nodes, setNodes] = useState<models_NodeState[]>([])
   const [search, setSearch] = useState('')
   const { isInitialized } = useApi()
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(20)
   const [pageIndex, setPageIndex] = useState(0)
   const [nextToken, setNextToken] = useState<string | undefined>(undefined)
   const [isRefreshDisabled, setIsRefreshDisabled] = useState(false)
 
-  const fetchJobs = useCallback(async () => {
+  const fetchNodes = useCallback(async () => {
     if (!isInitialized) return
 
     try {
-      const response = await OrchestratorService.orchestratorListJobs(
-        undefined, // namespace
+      const response = await OrchestratorService.orchestratorListNodes(
         pageSize,
         pageIndex === 0 ? undefined : nextToken,
         true, // reverse
-        undefined // orderBy
+        undefined, // orderBy
+        undefined, // filterApproval
+        undefined // filterStatus
       )
-      setJobs(response.Items ?? [])
+      setNodes(response.Nodes ?? [])
       setNextToken(response.NextToken)
     } catch (error) {
-      console.error('Error fetching jobs:', error)
-      setJobs([])
+      console.error('Error fetching nodes:', error)
+      setNodes([])
     }
   }, [isInitialized, pageSize, pageIndex, nextToken])
 
   useEffect(() => {
-    fetchJobs()
-  }, [fetchJobs])
+    fetchNodes()
+  }, [fetchNodes])
 
   const handleRefresh = useCallback(() => {
     setIsRefreshDisabled(true)
     setPageIndex(0)
     setNextToken(undefined)
-    fetchJobs().then(() => {
-      // Re-enable the refresh button after a short delay
+    fetchNodes().then(() => {
       setTimeout(() => setIsRefreshDisabled(false), 1000)
     })
-  }, [fetchJobs])
+  }, [fetchNodes])
 
-  // Use the custom hook
-  useRefreshContent('jobs', handleRefresh)
+  useRefreshContent('nodes', handleRefresh)
 
-  const filteredJobs = jobs.filter(
-    (job) =>
-      (job.ID?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-      (job.Name?.toLowerCase().includes(search.toLowerCase()) ?? false)
+  const filteredNodes = nodes.filter(
+    (node) => node.Info?.NodeID?.toLowerCase().includes(search.toLowerCase()) ?? false
   )
 
   const handlePreviousPage = () => {
@@ -80,7 +77,7 @@ export function JobsOverview() {
 
   return (
     <div className="container mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Jobs</h1>
+      <h1 className="text-3xl font-bold mb-8">Nodes</h1>
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-2">
           <Input
@@ -88,26 +85,21 @@ export function JobsOverview() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter jobs..."
+            placeholder="Filter nodes..."
           />
           <Button
             onClick={handleRefresh}
             disabled={isRefreshDisabled}
             variant="outline"
             size="icon"
-            aria-label="Refresh jobs"
+            aria-label="Refresh nodes"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
-        {/*TODO: implement submit job*/}
-        {/*<Button className="space-x-2">*/}
-        {/*  <Plus className="h-4 w-4" />*/}
-        {/*  <span>Submit Job</span>*/}
-        {/*</Button>*/}
       </div>
-      <JobsTable
-        jobs={filteredJobs}
+      <NodesTable
+        nodes={filteredNodes}
         pageSize={pageSize}
         setPageSize={handlePageSizeChange}
         pageIndex={pageIndex}

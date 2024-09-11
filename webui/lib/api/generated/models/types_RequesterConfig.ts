@@ -2,12 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration';
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults';
 import type { models_FailureInjectionRequesterConfig } from './models_FailureInjectionRequesterConfig';
 import type { models_JobSelectionPolicy } from './models_JobSelectionPolicy';
 import type { types_DockerCacheConfig } from './types_DockerCacheConfig';
-import type { types_Duration } from './types_Duration';
 import type { types_EvaluationBrokerConfig } from './types_EvaluationBrokerConfig';
-import type { types_JobDefaults } from './types_JobDefaults';
 import type { types_JobStoreConfig } from './types_JobStoreConfig';
 import type { types_RequesterControlPlaneConfig } from './types_RequesterControlPlaneConfig';
 import type { types_SchedulerConfig } from './types_SchedulerConfig';
@@ -22,8 +22,8 @@ export type types_RequesterConfig = {
      */
     externalVerifierHook?: string;
     failureInjectionConfig?: models_FailureInjectionRequesterConfig;
-    housekeepingBackgroundTaskInterval?: types_Duration;
-    jobDefaults?: types_JobDefaults;
+    housekeepingBackgroundTaskInterval?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    jobDefaults?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults;
     /**
      * How the node decides what jobs to run.
      */
@@ -35,7 +35,7 @@ export type types_RequesterConfig = {
      * true, nodes will need to be manually approved before they are included in node selection.
      */
     manualNodeApproval?: boolean;
-    nodeInfoStoreTTL?: types_Duration;
+    nodeInfoStoreTTL?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     nodeRankRandomnessRange?: number;
     overAskForBidsFactor?: number;
     scheduler?: types_SchedulerConfig;

@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { types_Duration } from './types_Duration';
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration';
 export type types_RequesterControlPlaneConfig = {
     /**
      * This setting is the time period after which a compute node is considered to be unresponsive.
@@ -10,7 +10,7 @@ export type types_RequesterControlPlaneConfig = {
      * node should have a frequency setting less than this one to ensure that it does not keep
      * switching between unknown and active too frequently.
      */
-    heartbeatCheckFrequency?: types_Duration;
+    heartbeatCheckFrequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
      */
@@ -19,6 +19,6 @@ export type types_RequesterControlPlaneConfig = {
      * This is the time period after which a compute node is considered to be disconnected. If the compute
      * node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
      */
-    nodeDisconnectedAfter?: types_Duration;
+    nodeDisconnectedAfter?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 

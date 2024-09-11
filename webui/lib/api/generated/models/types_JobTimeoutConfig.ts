@@ -2,13 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { types_Duration } from './types_Duration';
+import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration';
 export type types_JobTimeoutConfig = {
     /**
      * DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
      * no timeout requirement defined.
      */
-    defaultJobExecutionTimeout?: types_Duration;
+    defaultJobExecutionTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
      * check.
@@ -17,16 +17,16 @@ export type types_JobTimeoutConfig = {
     /**
      * JobNegotiationTimeout default timeout value to hold a bid for a job
      */
-    jobNegotiationTimeout?: types_Duration;
+    jobNegotiationTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
      * higher timeout requirements will not be bid on.
      */
-    maxJobExecutionTimeout?: types_Duration;
+    maxJobExecutionTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
      * lower timeout requirements will not be bid on.
      */
-    minJobExecutionTimeout?: types_Duration;
+    minJobExecutionTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 

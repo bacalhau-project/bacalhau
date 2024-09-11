@@ -5,6 +5,6 @@
 import type { models_NodeState } from './models_NodeState';
 export type apimodels_ListNodesResponse = {
     NextToken?: string;
-    nodes?: Array<models_NodeState>;
+    Nodes?: Array<models_NodeState>;
 };
 

@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { authn_MethodType } from './authn_MethodType';
-export type types_AuthenticatorConfig = {
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig = {
     policyPath?: string;
     type?: authn_MethodType;
 };

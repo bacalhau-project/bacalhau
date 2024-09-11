@@ -3,8 +3,8 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration } from './github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration';
-export type types_SchedulerConfig = {
-    nodeOverSubscriptionFactor?: number;
-    queueBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_UpdateConfig = {
+    checkFrequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    skipChecks?: boolean;
 };
 

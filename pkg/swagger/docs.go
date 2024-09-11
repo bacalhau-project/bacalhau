@@ -991,7 +991,7 @@ const docTemplate = `{
         "apimodels.GetNodeResponse": {
             "type": "object",
             "properties": {
-                "node": {
+                "Node": {
                     "$ref": "#/definitions/models.NodeState"
                 }
             }
@@ -1111,7 +1111,7 @@ const docTemplate = `{
                 "NextToken": {
                     "type": "string"
                 },
-                "nodes": {
+                "Nodes": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.NodeState"
@@ -1156,7 +1156,13 @@ const docTemplate = `{
         "apimodels.PutNodeRequest": {
             "type": "object",
             "properties": {
-                "action": {
+                "Action": {
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "NodeID": {
                     "type": "string"
                 },
                 "credential": {
@@ -1165,13 +1171,7 @@ const docTemplate = `{
                 "idempotencyToken": {
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
-                },
                 "namespace": {
-                    "type": "string"
-                },
-                "nodeID": {
                     "type": "string"
                 }
             }
@@ -1179,10 +1179,10 @@ const docTemplate = `{
         "apimodels.PutNodeResponse": {
             "type": "object",
             "properties": {
-                "error": {
+                "Error": {
                     "type": "string"
                 },
-                "success": {
+                "Success": {
                     "type": "boolean"
                 }
             }
@@ -1205,6 +1205,85 @@ const docTemplate = `{
                 "MethodTypeChallenge",
                 "MethodTypeAsk"
             ]
+        },
+        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.AuthConfig": {
+            "type": "object",
+            "properties": {
+                "accessPolicyPath": {
+                    "description": "AccessPolicyPath is the path to a file or directory that will be loaded as\nthe policy to apply to all inbound API requests. If unspecified, a policy\nthat permits access to all API endpoints to both authenticated and\nunauthenticated users (the default as of v1.2.0) will be used.",
+                    "type": "string"
+                },
+                "methods": {
+                    "description": "Methods maps \"method names\" to authenticator implementations. A method\nname is a human-readable string chosen by the person configuring the\nsystem that is shown to users to help them pick the authentication method\nthey want to use. There can be multiple usages of the same Authenticator\n*type* but with different configs and parameters, each identified with a\nunique method name.\n\nFor example, if an implementation wants to allow users to log in with\nGithub or Bitbucket, they might both use an authenticator implementation\nof type \"oidc\", and each would appear once on this provider with key /\nmethod name \"github\" and \"bitbucket\".\n\nBy default, only a single authentication method that accepts\nauthentication via client keys will be enabled.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.AuthenticatorConfig"
+                    }
+                },
+                "tokensPath": {
+                    "description": "TokensPath is the location where a state file of tokens will be stored.\nBy default it will be local to the Bacalhau repo, but can be any location\nin the host filesystem. Tokens are sensitive and should be stored in a\nlocation that is only readable to the current user.\nDeprecated: replaced by cfg.AuthTokensPath()",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.AuthenticatorConfig": {
+            "type": "object",
+            "properties": {
+                "policyPath": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/authn.MethodType"
+                }
+            }
+        },
+        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
+        },
+        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.JobDefaults": {
+            "type": "object",
+            "properties": {
+                "executionTimeout": {
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                },
+                "queueTimeout": {
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                },
+                "totalTimeout": {
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                }
+            }
+        },
+        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.UpdateConfig": {
+            "type": "object",
+            "properties": {
+                "checkFrequency": {
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                },
+                "skipChecks": {
+                    "type": "boolean"
+                }
+            }
         },
         "logger.LogMode": {
             "type": "string",
@@ -2231,42 +2310,11 @@ const docTemplate = `{
                 }
             }
         },
-        "types.AuthConfig": {
-            "type": "object",
-            "properties": {
-                "accessPolicyPath": {
-                    "description": "AccessPolicyPath is the path to a file or directory that will be loaded as\nthe policy to apply to all inbound API requests. If unspecified, a policy\nthat permits access to all API endpoints to both authenticated and\nunauthenticated users (the default as of v1.2.0) will be used.",
-                    "type": "string"
-                },
-                "methods": {
-                    "description": "Methods maps \"method names\" to authenticator implementations. A method\nname is a human-readable string chosen by the person configuring the\nsystem that is shown to users to help them pick the authentication method\nthey want to use. There can be multiple usages of the same Authenticator\n*type* but with different configs and parameters, each identified with a\nunique method name.\n\nFor example, if an implementation wants to allow users to log in with\nGithub or Bitbucket, they might both use an authenticator implementation\nof type \"oidc\", and each would appear once on this provider with key /\nmethod name \"github\" and \"bitbucket\".\n\nBy default, only a single authentication method that accepts\nauthentication via client keys will be enabled.",
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/types.AuthenticatorConfig"
-                    }
-                },
-                "tokensPath": {
-                    "description": "TokensPath is the location where a state file of tokens will be stored.\nBy default it will be local to the Bacalhau repo, but can be any location\nin the host filesystem. Tokens are sensitive and should be stored in a\nlocation that is only readable to the current user.\nDeprecated: replaced by cfg.AuthTokensPath()",
-                    "type": "string"
-                }
-            }
-        },
-        "types.AuthenticatorConfig": {
-            "type": "object",
-            "properties": {
-                "policyPath": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/authn.MethodType"
-                }
-            }
-        },
         "types.BacalhauConfig": {
             "type": "object",
             "properties": {
                 "auth": {
-                    "$ref": "#/definitions/types.AuthConfig"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.AuthConfig"
                 },
                 "dataDir": {
                     "description": "NB(forrest): this field shouldn't be persisted yet.",
@@ -2279,7 +2327,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/types.NodeConfig"
                 },
                 "update": {
-                    "$ref": "#/definitions/types.UpdateConfig"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.UpdateConfig"
                 },
                 "user": {
                     "$ref": "#/definitions/types.UserConfig"
@@ -2369,7 +2417,7 @@ const docTemplate = `{
                     "description": "How often the compute node will send a heartbeat to the requester node to let it know\nthat the compute node is still alive. This should be less than the requester's configured\nheartbeat timeout to avoid flapping.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2381,7 +2429,7 @@ const docTemplate = `{
                     "description": "The frequency with which the compute node will send node info (inc current labels)\nto the controlling requester node.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2389,7 +2437,7 @@ const docTemplate = `{
                     "description": "How often the compute node will send current resource availability to the requester node.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 }
@@ -2399,53 +2447,30 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "duration": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "frequency": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "size": {
                     "type": "integer"
                 }
             }
         },
-        "types.Duration": {
-            "type": "integer",
-            "enum": [
-                -9223372036854775808,
-                9223372036854775807,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "minDuration",
-                "maxDuration",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
-        },
         "types.EvaluationBrokerConfig": {
             "type": "object",
             "properties": {
                 "evalBrokerInitialRetryDelay": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "evalBrokerMaxRetryCount": {
                     "type": "integer"
                 },
                 "evalBrokerSubsequentRetryDelay": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "evalBrokerVisibilityTimeout": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 }
             }
         },
@@ -2500,20 +2525,6 @@ const docTemplate = `{
                 }
             }
         },
-        "types.JobDefaults": {
-            "type": "object",
-            "properties": {
-                "executionTimeout": {
-                    "$ref": "#/definitions/types.Duration"
-                },
-                "queueTimeout": {
-                    "$ref": "#/definitions/types.Duration"
-                },
-                "totalTimeout": {
-                    "$ref": "#/definitions/types.Duration"
-                }
-            }
-        },
         "types.JobStoreConfig": {
             "type": "object",
             "properties": {
@@ -2532,7 +2543,7 @@ const docTemplate = `{
                     "description": "DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with\nno timeout requirement defined.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2547,7 +2558,7 @@ const docTemplate = `{
                     "description": "JobNegotiationTimeout default timeout value to hold a bid for a job",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2555,7 +2566,7 @@ const docTemplate = `{
                     "description": "MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with\nhigher timeout requirements will not be bid on.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2563,7 +2574,7 @@ const docTemplate = `{
                     "description": "MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with\nlower timeout requirements will not be bid on.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 }
@@ -2599,7 +2610,7 @@ const docTemplate = `{
                     "description": "logging running executions",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 }
@@ -2705,7 +2716,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "downloadURLRequestTimeout": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "executorPluginPath": {
                     "description": "Deprecated: replaced by cfg.PluginsDir()",
@@ -2750,7 +2761,7 @@ const docTemplate = `{
                     }
                 },
                 "volumeSizeRequestTimeout": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "webUI": {
                     "description": "Configuration for the web UI",
@@ -2782,10 +2793,10 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.FailureInjectionRequesterConfig"
                 },
                 "housekeepingBackgroundTaskInterval": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "jobDefaults": {
-                    "$ref": "#/definitions/types.JobDefaults"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.JobDefaults"
                 },
                 "jobSelectionPolicy": {
                     "description": "How the node decides what jobs to run.",
@@ -2803,7 +2814,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "nodeInfoStoreTTL": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "nodeRankRandomnessRange": {
                     "type": "integer"
@@ -2835,7 +2846,7 @@ const docTemplate = `{
                     "description": "This setting is the time period after which a compute node is considered to be unresponsive.\nIf the compute node misses two of these frequencies, it will be marked as unknown.  The compute\nnode should have a frequency setting less than this one to ensure that it does not keep\nswitching between unknown and active too frequently.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 },
@@ -2847,7 +2858,7 @@ const docTemplate = `{
                     "description": "This is the time period after which a compute node is considered to be disconnected. If the compute\nnode does not deliver a heartbeat every ` + "`" + `NodeDisconnectedAfter` + "`" + ` then it is considered disconnected.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/types.Duration"
+                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                         }
                     ]
                 }
@@ -2860,7 +2871,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "preSignedURLExpiration": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 }
             }
         },
@@ -2871,7 +2882,7 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "queueBackoff": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 }
             }
         },
@@ -2919,17 +2930,6 @@ const docTemplate = `{
                 }
             }
         },
-        "types.UpdateConfig": {
-            "type": "object",
-            "properties": {
-                "checkFrequency": {
-                    "$ref": "#/definitions/types.Duration"
-                },
-                "skipChecks": {
-                    "type": "boolean"
-                }
-            }
-        },
         "types.UserConfig": {
             "type": "object",
             "properties": {
@@ -2960,13 +2960,13 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "workerEvalDequeueBaseBackoff": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "workerEvalDequeueMaxBackoff": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 },
                 "workerEvalDequeueTimeout": {
-                    "$ref": "#/definitions/types.Duration"
+                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
                 }
             }
         }

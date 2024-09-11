@@ -23,6 +23,7 @@ export interface OnCancel {
 }
 
 export class CancelablePromise<T> implements Promise<T> {
+    // Manually added
     // ref: https://github.com/ferdikoomen/openapi-typescript-codegen/issues/1992
     // @ts-ignore
     #isResolved: boolean;
