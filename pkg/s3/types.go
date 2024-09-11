@@ -106,8 +106,8 @@ func (c PublisherSpec) ToMap() map[string]interface{} {
 
 func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	if !spec.IsType(models.PublisherS3) {
-		return PublisherSpec{}, NewErrBadS3Request("invalid publisher type. expected %s, but received: %s",
-			models.PublisherS3, spec.Type)
+		return PublisherSpec{}, NewErrBadS3Request(fmt.Sprintf("invalid publisher type. expected %s, but received: %s",
+			models.PublisherS3, spec.Type))
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
