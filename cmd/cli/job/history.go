@@ -1,6 +1,7 @@
 package job
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -160,7 +161,7 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) 
 		},
 	})
 	if err != nil {
-		return err
+		return errors.New(err.Error())
 	}
 
 	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.Items); err != nil {
