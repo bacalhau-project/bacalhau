@@ -28,6 +28,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		message = "internal server error"
 	}
 
+	requestID := c.Request().Header.Get(echo.HeaderXRequestID)
+
 	// Don't override the status code if it is already been set.
 	// This is something that is advised by ECHO framework.
 	if !c.Response().Committed {
@@ -38,6 +40,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 			err = c.JSON(code, apimodels.APIError{
 				HTTPStatusCode: code,
 				Message:        message,
+				RequestID:      requestID,
 			})
 		}
 		if err != nil {

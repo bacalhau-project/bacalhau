@@ -35,6 +35,9 @@ type APIError struct {
 	// message is a short, human-readable description of the error.
 	// it should be concise and provide a clear indication of what went wrong.
 	Message string `json:"message"`
+
+	// RequestID is the request ID of the request that caused the error.
+	RequestID string `json:"request_id"`
 }
 
 // NewAPIError creates a new APIError with the given HTTP status code and message.

@@ -66,6 +66,13 @@ func (ec ErrorCode) Component() string {
 	return ec.component
 }
 
+func (ec ErrorCode) String() string {
+	if ec.httpStatusCode == 0 {
+		return fmt.Sprintf("%s-500", ec.component)
+	}
+	return fmt.Sprintf("%s-%d", ec.component, ec.httpStatusCode)
+}
+
 // BaseError is a custom error type in Go that provides additional fields
 // and methods for more detailed error handling. It implements the error
 // interface, as well as additional interfaces for providing a hint,
