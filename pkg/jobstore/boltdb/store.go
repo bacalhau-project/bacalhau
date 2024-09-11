@@ -168,6 +168,7 @@ func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error
 }
 
 func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
+
 	var job models.Job
 
 	jobID, err := b.reifyJobID(tx, jobID)
@@ -207,7 +208,7 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 		case 1:
 			return found[0], nil
 		default:
-			return "", bacerrors.NewMultipleJobsFound(jobID, found)
+			return "", jobstore.NewErrMultipleJobsFound(jobID)
 		}
 	}
 
@@ -430,12 +431,12 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, jobstore.NewBoltDbError(err.Error())
 		}
 	} else {
 		ids, err := b.namespacesIndex.List(tx, []byte(query.Namespace))
 		if err != nil {
-			return nil, err
+			return nil, jobstore.NewBoltDbError(err.Error())
 		}
 
 		for _, k := range ids {
@@ -456,7 +457,7 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
-			return nil, err
+			return nil, jobstore.NewBoltDbError(err.Error())
 		}
 
 		for _, k := range ids {
@@ -484,7 +485,7 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
-			return nil, err
+			return nil, jobstore.NewBoltDbError(err.Error())
 		}
 
 		for _, k := range ids {
@@ -585,7 +586,7 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.
 
 	keys, err := b.inProgressIndex.List(tx)
 	if err != nil {
-		return nil, err
+		return nil, jobstore.NewBoltDbError(err.Error())
 	}
 
 	for _, jobIDKey := range keys {
@@ -778,7 +779,7 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 	tx, externalTx = txFromContext(ctx)
 	if externalTx {
 		if !tx.Writable() {
-			return fmt.Errorf("readonly transaction provided in context for update operation")
+			return jobstore.NewBoltDbError("readonly transaction provided in context for update operation")
 		}
 	} else {
 		tx, err = b.database.Begin(true)
@@ -818,7 +819,7 @@ func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) e
 	if !externalTx {
 		tx, err = b.database.Begin(false)
 		if err != nil {
-			return err
+			return jobstore.NewBoltDbError(err.Error())
 		}
 	}
 
@@ -845,21 +846,21 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 
 	jobIDKey := []byte(job.ID)
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, true); err != nil {
-		return err
+		return jobstore.NewBoltDbError(err.Error())
 	} else {
 		// Create the evaluations and executions buckets and so forth
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobExecutions)); err != nil {
 			return err
 		}
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobEvaluations)); err != nil {
-			return err
+			return jobstore.NewBoltDbError(err.Error())
 		}
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobHistory)); err != nil {
-			return err
+			return jobstore.NewBoltDbError(err.Error())
 		}
 
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketExecutionHistory)); err != nil {
-			return err
+			return jobstore.NewBoltDbError(err.Error())
 		}
 	}
 
@@ -870,7 +871,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	}
 
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
-		return err
+		return jobstore.NewBoltDbError(err.Error())
 	} else {
 		if err = bkt.Put(SpecKey, jobData); err != nil {
 			return err
@@ -880,11 +881,11 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	// Create a composite key for the in progress index
 	jobkey := createInProgressIndexKey(&job)
 	if err = b.inProgressIndex.Add(tx, []byte(jobkey)); err != nil {
-		return err
+		return jobstore.NewBoltDbError(err.Error())
 	}
 
 	if err = b.namespacesIndex.Add(tx, jobIDKey, []byte(job.Namespace)); err != nil {
-		return err
+		return jobstore.NewBoltDbError(err.Error())
 	}
 
 	// Write sentinels keys for specific tags
@@ -919,7 +920,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	// Delete the Job bucket (and everything within it)
 	if bkt, err := NewBucketPath(BucketJobs).Get(tx, false); err != nil {
-		return err
+		return jobstore.NewBoltDbError(err.Error())
 	} else {
 		if err = bkt.DeleteBucket([]byte(jobID)); err != nil {
 			return err

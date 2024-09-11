@@ -6,15 +6,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-const JOB_STORE_COMPONENT = "JBS"
-
-// ErrJobNotFound is returned when the job is not found
-type ErrJobNotFound struct {
-	JobID string
-}
+const (
+	JOB_STORE_COMPONENT = "JBS"
+	BOLTDB_COMPONENT    = "BDB"
+)
 
 func NewErrJobNotFound(id string) *models.BaseError {
 	return models.NewBaseError("job not found: %s", id).WithCode(models.NewErrorCode(JOB_STORE_COMPONENT, 404))
+}
+
+func NewErrMultipleJobsFound(id string) *models.BaseError {
+	return models.NewBaseError("multiple jobs found for id %s", id).WithCode(models.NewErrorCode(JOB_STORE_COMPONENT, 400))
 }
 
 func NewErrJobAlreadyExists(id string) *models.BaseError {
@@ -70,7 +72,7 @@ func NewErrExecutionAlreadyTerminal(id string, actual models.ExecutionStateType,
 }
 
 func NewBoltDbError(message string) *models.BaseError {
-	return models.NewBaseError(message)
+	return models.NewBaseError(message).WithCode(models.NewErrorCode(BOLTDB_COMPONENT, 500))
 }
 
 func NewJobStoreError(message string) *models.BaseError {
