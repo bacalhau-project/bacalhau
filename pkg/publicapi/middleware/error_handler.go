@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -35,6 +36,10 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// and map it to APIError and send in appropriate message.= http.StatusInternalServerError
 		message = "internal server error"
 		code = c.Response().Status
+
+		if isDebugMode() {
+			message = err.Error()
+		}
 	}
 
 	requestID := c.Request().Header.Get(echo.HeaderXRequestID)
@@ -42,7 +47,6 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	// Don't override the status code if it is already been set.
 	// This is something that is advised by ECHO framework.
 	if !c.Response().Committed {
-
 		if c.Request().Method == http.MethodHead {
 			err = c.NoContent(code)
 		} else {
@@ -57,4 +61,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		}
 	}
 
+}
+
+func isDebugMode() bool {
+	return os.Getenv("BACALHAU_DEBUG") == "true"
 }
