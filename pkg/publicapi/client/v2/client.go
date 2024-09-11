@@ -57,6 +57,9 @@ func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetR
 	r := in.ToHTTPRequest()
 
 	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r) //nolint:bodyclose // this is being closed
+	if err != nil {
+		return err
+	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return apimodels.NewUnauthorizedError("invalid token")
@@ -93,13 +96,28 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 	if r.BodyObj == nil && r.Body == nil {
 		r.BodyObj = in
 	}
-	_, resp, err := requireOK(c.doRequest(ctx, verb, endpoint, r)) //nolint:bodyclose // this is being closed
-	if err != nil && resp != nil && resp.StatusCode == http.StatusUnauthorized {
-		return apimodels.ErrInvalidToken
-	} else if err != nil {
+
+	_, resp, err := c.doRequest(ctx, verb, endpoint, r) //nolint:bodyclose // this is being closed
+	defer resp.Body.Close()
+	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return apimodels.ErrInvalidToken
+	}
+
+	var apiError *apimodels.APIError
+	if resp.StatusCode != http.StatusOK {
+		apiError, err = apimodels.FromHttpResponse(resp)
+		if err != nil {
+			return err
+		}
+	}
+
+	if apiError != nil {
+		return apiError
+	}
 
 	if out != nil {
 		if err := decodeBody(resp, &out); err != nil {
@@ -107,6 +125,7 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 		}
 		out.Normalize()
 	}
+
 	return nil
 }
 

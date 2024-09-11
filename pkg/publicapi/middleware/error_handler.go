@@ -21,11 +21,18 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		code = e.Code().HTTPStatusCode()
 		message = e.Error()
 
+	case *echo.HTTPError:
+		// This is needed, in case any other middleware throws an error. In
+		// such a scenario we just use it as the error code.
+		code = e.Code
+		message = e.Message.(string)
+
 	default:
 		// In an ideal world this should never happen. We should always have are errors
 		// from server as APIError. If output is this generic string, one should evaluate
 		// and map it to APIError and send in appropriate message.= http.StatusInternalServerError
 		message = "internal server error"
+		code = c.Response().Status
 	}
 
 	requestID := c.Request().Header.Get(echo.HeaderXRequestID)

@@ -760,7 +760,7 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
 	job.Normalize()
 	err := job.Validate()
 	if err != nil {
-		return err
+		return jobstore.NewJobStoreError(err.Error())
 	}
 	return b.update(ctx, func(tx *bolt.Tx) (err error) {
 		return b.createJob(tx, job)

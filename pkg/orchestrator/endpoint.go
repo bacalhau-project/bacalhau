@@ -148,14 +148,14 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		// no need to stop a job that is already stopped
 		return StopJobResponse{}, nil
 	case models.JobStateTypeCompleted:
-		return StopJobResponse{}, fmt.Errorf("cannot stop job in state %s", job.State.StateType)
+		return StopJobResponse{}, models.NewBaseError("cannot stop job in state %s", job.State.StateType)
 	default:
 		// continue
 	}
 
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
-		return StopJobResponse{}, fmt.Errorf("failed to begin transaction: %w", err)
+		return StopJobResponse{}, jobstore.NewBoltDbError(err.Error())
 	}
 
 	defer func() {
