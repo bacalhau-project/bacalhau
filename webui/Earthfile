@@ -19,7 +19,7 @@ install-deps:
 
 copy-code:
     FROM +install-deps
-    COPY --dir app components hooks lib public test ./
+    COPY --dir app components hooks lib public ./
     COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json ./
     COPY .eslintrc.json .prettierrc ./
 
@@ -34,6 +34,7 @@ build-artifacts:
 # TODO: let all build from run-tests when we have tests
 run-tests:
     FROM +build-artifacts
+    COPY --dir test ./
     RUN yarn test
 
 all:
