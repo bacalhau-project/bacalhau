@@ -50,6 +50,10 @@ func NewValidateCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	validateCmd.SilenceUsage = true
+	validateCmd.SilenceErrors = true
+
 	return validateCmd
 }
 

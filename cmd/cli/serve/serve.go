@@ -97,6 +97,9 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
+	serveCmd.SilenceUsage = true
+	serveCmd.SilenceErrors = true
+
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}

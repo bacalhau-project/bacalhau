@@ -75,6 +75,10 @@ func NewDescribeCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
+
+	jobCmd.SilenceUsage = true
+	jobCmd.SilenceErrors = true
+
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd
 }

@@ -60,6 +60,10 @@ func NewListCmd() *cobra.Command {
 			return o.run(cmd, api)
 		},
 	}
+
+	nodeCmd.SilenceUsage = true
+	nodeCmd.SilenceErrors = true
+
 	nodeCmd.Flags().StringSliceVar(&o.ColumnGroups, "show", o.ColumnGroups,
 		fmt.Sprintf("What column groups to show. Zero or more of: %q", maps.Keys(toggleColumns)))
 	nodeCmd.Flags().StringVar(&o.Labels, "labels", o.Labels,

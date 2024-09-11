@@ -76,6 +76,9 @@ func NewStopCmd() *cobra.Command {
 		},
 	}
 
+	stopCmd.SilenceUsage = true
+	stopCmd.SilenceErrors = true
+
 	stopCmd.PersistentFlags().BoolVar(&o.Quiet, "quiet", o.Quiet,
 		`Do not print anything to stdout or stderr`,
 	)

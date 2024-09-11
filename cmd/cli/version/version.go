@@ -71,6 +71,10 @@ func NewCmd() *cobra.Command {
 			return runVersion(cmd, cfg, r, api, oV)
 		},
 	}
+
+	versionCmd.SilenceUsage = true
+	versionCmd.SilenceErrors = true
+
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
 	versionCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&oV.OutputOpts))
 

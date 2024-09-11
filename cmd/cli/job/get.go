@@ -72,6 +72,9 @@ func NewGetCmd() *cobra.Command {
 		},
 	}
 
+	getCmd.SilenceUsage = true
+	getCmd.SilenceErrors = true
+
 	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
 
 	if err := configflags.RegisterFlags(getCmd, getFlags); err != nil {
