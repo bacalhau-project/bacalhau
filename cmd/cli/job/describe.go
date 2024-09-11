@@ -82,13 +82,14 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 	jobID := args[0]
+
 	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
 		Include: "executions,history",
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not get job %s: %w", jobID, err)
+		return err
 	}
 
 	if o.OutputOpts.Format != "" {
