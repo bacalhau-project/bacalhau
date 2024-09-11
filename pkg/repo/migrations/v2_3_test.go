@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
@@ -45,9 +45,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	c, err := config.New()
-	suite.Require().NoError(err)
-	suite.Require().NoError(suite.repo.Open(c))
+	suite.Require().NoError(suite.repo.Open())
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
@@ -56,8 +54,8 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithDefaultRepo() {
 	// verify configs where updated as expected
 	_, cfg, err := readConfig(*suite.repo)
 	suite.Require().NoError(err)
-	suite.Equal(filepath.Join(suite.TempDir, config.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
-	suite.Equal(filepath.Join(suite.TempDir, config.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
 	suite.Equal(libp2pPeerID, cfg.Node.Name)
 
 	// verify the old directories were renamed
@@ -78,9 +76,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	c, err := config.New()
-	suite.Require().NoError(err)
-	suite.Require().NoError(suite.repo.Open(c))
+	suite.Require().NoError(suite.repo.Open())
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -90,8 +86,8 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomConfig() {
 	// verify configs where updated as expected, and that network port was not changed
 	_, cfg, err := readConfig(*suite.repo)
 	suite.Require().NoError(err)
-	suite.Equal(filepath.Join(suite.TempDir, config.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
-	suite.Equal(filepath.Join(suite.TempDir, config.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
 	suite.Equal(libp2pPeerID, cfg.Node.Name)
 	suite.Equal(123456789, cfg.Node.Network.Port)
 
@@ -113,9 +109,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWitCustomStores() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	c, err := config.New()
-	suite.Require().NoError(err)
-	suite.Require().NoError(suite.repo.Open(c))
+	suite.Require().NoError(suite.repo.Open())
 
 	// verify the repo version was updated
 	repoVersion, err := suite.repo.Version()
@@ -147,9 +141,7 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 	suite.verifyInitialState(libp2pPeerID)
 
 	// open the repo to trigger the migration
-	c, err := config.New()
-	suite.Require().NoError(err)
-	suite.Require().NoError(suite.repo.Open(c))
+	suite.Require().NoError(suite.repo.Open())
 
 	repoVersion, err := suite.repo.Version()
 	suite.Require().NoError(err)
@@ -158,8 +150,8 @@ func (suite *V2MigrationsTestSuite) TestV2MigrationWithEmptyStorePaths() {
 	// verify configs where updated as expected
 	_, cfg, err := readConfig(*suite.repo)
 	suite.Require().NoError(err)
-	suite.Equal(filepath.Join(suite.TempDir, config.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
-	suite.Equal(filepath.Join(suite.TempDir, config.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.ComputeExecutionsStorePath), cfg.Node.Compute.ExecutionStore.Path)
+	suite.Equal(filepath.Join(suite.TempDir, config_legacy.OrchestratorJobStorePath), cfg.Node.Requester.JobStore.Path)
 	suite.Equal(libp2pPeerID, cfg.Node.Name)
 
 	// verify the old directories were renamed

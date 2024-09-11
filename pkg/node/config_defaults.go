@@ -8,8 +8,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	compute_system "github.com/bacalhau-project/bacalhau/pkg/compute/capacity/system"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -28,23 +28,21 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 
 		LogRunningExecutionsInterval: 10 * time.Second,
 		JobSelectionPolicy:           NewDefaultJobSelectionPolicy(),
-		LocalPublisher: types.LocalPublisherConfig{
+		LocalPublisher: types.LocalPublisher{
+			Address:   "127.0.0.1",
+			Port:      6001,
 			Directory: path.Join(storagePath, "bacalhau-local-publisher"),
 		},
-		ControlPlaneSettings: types.ComputeControlPlaneConfig{
-			InfoUpdateFrequency:     types.Duration(60 * time.Second), //nolint:gomnd
-			ResourceUpdateFrequency: types.Duration(30 * time.Second), //nolint:gomnd
-			HeartbeatFrequency:      types.Duration(15 * time.Second), //nolint:gomnd
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			InfoUpdateFrequency:     legacy_types.Duration(60 * time.Second), //nolint:gomnd
+			ResourceUpdateFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
+			HeartbeatFrequency:      legacy_types.Duration(15 * time.Second), //nolint:gomnd
 			HeartbeatTopic:          "heartbeat",
 		},
 	}
 }
 
 var DefaultRequesterConfig = RequesterConfigParams{
-	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: models.NoTimeout,
-	},
-
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          2 * time.Minute,
 	NodeRankRandomnessRange:            5,
@@ -64,15 +62,17 @@ var DefaultRequesterConfig = RequesterConfigParams{
 	WorkerEvalDequeueBaseBackoff: 1 * time.Second,
 	WorkerEvalDequeueMaxBackoff:  30 * time.Second,
 
+	NodeOverSubscriptionFactor: 1.5,
+
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
 	TranslationEnabled: false,
 
-	ControlPlaneSettings: types.RequesterControlPlaneConfig{
-		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
-		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
 	NodeInfoStoreTTL:     10 * time.Minute,
@@ -80,9 +80,6 @@ var DefaultRequesterConfig = RequesterConfigParams{
 }
 
 var TestRequesterConfig = RequesterConfigParams{
-	JobDefaults: transformer.JobDefaults{
-		TotalTimeout: 30 * time.Second,
-	},
 	HousekeepingBackgroundTaskInterval: 30 * time.Second,
 	HousekeepingTimeoutBuffer:          100 * time.Millisecond,
 	NodeRankRandomnessRange:            5,
@@ -109,10 +106,10 @@ var TestRequesterConfig = RequesterConfigParams{
 	S3PreSignedURLDisabled:   false,
 	S3PreSignedURLExpiration: 30 * time.Minute,
 
-	ControlPlaneSettings: types.RequesterControlPlaneConfig{
-		HeartbeatCheckFrequency: types.Duration(30 * time.Second), //nolint:gomnd
+	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
 		HeartbeatTopic:          "heartbeat",
-		NodeDisconnectedAfter:   types.Duration(30 * time.Second), //nolint:gomnd
+		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
 	DefaultApprovalState: models.NodeMembership.APPROVED,

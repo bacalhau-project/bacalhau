@@ -81,7 +81,7 @@ func NewGetCmd() *cobra.Command {
 	return getCmd
 }
 
-func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.BacalhauConfig, OG *GetOptions) error {
+func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalhau, OG *GetOptions) error {
 	ctx := cmd.Context()
 
 	jobID := cmdArgs[0]

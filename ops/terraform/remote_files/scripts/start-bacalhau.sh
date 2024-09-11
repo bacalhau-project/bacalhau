@@ -26,6 +26,7 @@ TRUSTED_CLIENT_IDS="\
 b43517b5449d383ab00ca1d2b1c558d710ba79f51c800fbf4c35ed4d0198aec5"
 
   # nats related config as set as env vars in main.tf and no need to pass them to serve command
+  # TODO these flags will need to be adjusted to match the new config
 bacalhau serve \
   --node-type "${BACALHAU_NODE_TYPE}" \
   --job-selection-data-locality anywhere \
@@ -39,5 +40,8 @@ bacalhau serve \
   --web-ui-port 80 \
   --labels owner=bacalhau \
   --requester-job-translation-enabled \
-  --default-publisher local \
+  --config Job.Defaults.Batch.Task.Publisher.Type=local \
+  --config Job.Defaults.Ops.Task.Publisher.Type=local \
+  --config Job.Defaults.Service.Task.Publisher.Type=local \
+  --config Job.Defaults.Daemon.Task.Publisher.Type=local \
   --local-publisher-address "${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"

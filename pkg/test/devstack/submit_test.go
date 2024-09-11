@@ -25,7 +25,7 @@ import (
 type DevstackSubmitSuite struct {
 	suite.Suite
 	Repo   *repo.FsRepo
-	Config types.BacalhauConfig
+	Config types.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create

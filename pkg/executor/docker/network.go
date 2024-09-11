@@ -14,9 +14,9 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -104,7 +104,7 @@ func (e *Executor) createHTTPGateway(
 	networkConfig *models.NetworkConfig,
 ) (*network.Inspect, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage, config.GetDockerCredentials())
+	err := e.client.PullImage(ctx, httpGatewayImage, config_legacy.GetDockerCredentials())
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "error pulling gateway image")
 	}

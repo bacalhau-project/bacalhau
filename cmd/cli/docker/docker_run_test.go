@@ -505,7 +505,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 
-	s.Require().Equal(node.TestRequesterConfig.JobDefaults.TotalTimeout, j.Task().Timeouts.GetTotalTimeout(),
+	s.Require().EqualValues(node.TestRequesterConfig.JobDefaults.Batch.Task.Timeouts.TotalTimeout, j.Task().Timeouts.GetTotalTimeout(),
 		"Did not fall back to default timeout value")
 }
 

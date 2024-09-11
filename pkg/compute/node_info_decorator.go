@@ -43,6 +43,8 @@ func NewNodeInfoDecorator(params NodeInfoDecoratorParams) *NodeInfoDecorator {
 }
 
 func (n *NodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo models.NodeInfo) models.NodeInfo {
+	// TODO(forrest): this method takes 10 seconds to run: https://github.com/bacalhau-project/bacalhau/issues/4153
+	// because the Keys() methods are slow when s3 is considered since we need to check for credentials.
 	nodeInfo.NodeType = models.NodeTypeCompute
 	nodeInfo.ComputeNodeInfo = &models.ComputeNodeInfo{
 		ExecutionEngines:   n.executors.Keys(ctx),

@@ -13,8 +13,7 @@ func NewCmd() *cobra.Command {
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 	}
-	configCmd.AddCommand(newListCmd())
 	configCmd.AddCommand(newSetCmd())
-	configCmd.AddCommand(newAutoResourceCmd())
+	configCmd.AddCommand(newListCmd())
 	return configCmd
 }

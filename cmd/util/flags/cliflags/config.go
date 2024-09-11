@@ -19,7 +19,7 @@ func ConfigAutoComplete(cmd *cobra.Command, args []string, toComplete string) ([
 	// Iterate over the ConfigDescriptions map to find matching keys
 	for key, description := range types.ConfigDescriptions {
 		if strings.HasPrefix(key, toComplete) {
-			completion := fmt.Sprintf("%s\t%s", key, description)
+			completion := fmt.Sprintf("%s=\t%s", key, description)
 			completions = append(completions, completion)
 		}
 	}
@@ -93,14 +93,20 @@ func (cf *ConfigFlag) Parse() error {
 }
 
 func setIfValid(v *viper.Viper, key string, value any) error {
-	if _, ok := types.ConfigDescriptions[strings.ToLower(key)]; !ok {
+	key = strings.ToLower(key)
+	_, ok := types.AllKeys()[key]
+	if !ok {
 		if _, err := os.Stat(key); err == nil {
 			return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
 		}
 		return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
 	}
+	parsed, err := types.CastConfigValueForKey(key, value)
+	if err != nil {
+		return err
+	}
 	configMap := v.GetStringMap(RootCommandConfigValues)
-	configMap[key] = value
+	configMap[key] = parsed
 	v.Set(RootCommandConfigValues, configMap)
 	return nil
 }

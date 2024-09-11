@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -70,8 +70,8 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 		IgnorePhysicalResourceLimits: true,
 		TotalResourceLimits:          *nodeCapacity,
 		DefaultJobResourceLimits:     *nodeCapacity,
-		ControlPlaneSettings: types.ComputeControlPlaneConfig{
-			ResourceUpdateFrequency: types.Duration(s.resourceUpdateFrequency),
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			ResourceUpdateFrequency: legacy_types.Duration(s.resourceUpdateFrequency),
 		},
 	})
 	s.Require().NoError(err)
@@ -86,7 +86,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: noop_executor.DelayedJobHandler(s.jobRunDuration),
 				},
-			}, c.Node.Compute.ManifestCache),
+			}, c.Engines),
 	)
 
 	s.requester = stack.Nodes[0]

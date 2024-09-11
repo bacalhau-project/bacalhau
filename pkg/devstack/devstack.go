@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -69,7 +70,7 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
-	cfg types.BacalhauConfig,
+	cfg types.Bacalhau,
 	cm *system.CleanupManager,
 	fsRepo *repo.FsRepo,
 	opts ...ConfigOption,
@@ -186,19 +187,17 @@ func Setup(
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-
-			localPublisherConfig := types.LocalPublisherConfig{
+			cfg.Publishers.Types.Local = types.LocalPublisher{
 				Port:      fport,
-				Address:   "127.0.0.1", //nolint:gomnd
+				Address:   "127.0.0.1",
 				Directory: path.Join(repoPath, fmt.Sprintf("local-publisher-%d", i)),
 			}
-			err = os.MkdirAll(localPublisherConfig.Directory, util.OS_USER_RWX)
+
+			err = os.MkdirAll(cfg.Publishers.Types.Local.Directory, util.OS_USER_RWX)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create local publisher directory %s: %w",
-					localPublisherConfig.Directory, err)
+					cfg.Publishers.Types.Local.Directory, err)
 			}
-
-			stackConfig.ComputeConfig.LocalPublisher = localPublisherConfig
 		}
 
 		nodeConfig := node.NodeConfig{
@@ -222,7 +221,7 @@ func Setup(
 			AuthConfig: types.AuthConfig{
 				Methods: map[string]types.AuthenticatorConfig{
 					"ClientKey": {
-						Type: authn.MethodTypeChallenge,
+						Type: string(authn.MethodTypeChallenge),
 					},
 				},
 			},
@@ -281,7 +280,7 @@ func Setup(
 	}, nil
 }
 
-func setStorePaths(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *node.NodeConfig) error {
+func setStorePaths(ctx context.Context, cfg types.Bacalhau, nodeConfig *node.NodeConfig) error {
 	nodeID := nodeConfig.NodeID
 	orchestratorDir, err := cfg.OrchestratorDir()
 	if err != nil {
@@ -309,7 +308,7 @@ func setStorePaths(ctx context.Context, cfg types.BacalhauConfig, nodeConfig *no
 
 //nolint:funlen
 func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
-	if !config.DevstackGetShouldPrintInfo() {
+	if !config_legacy.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
 
@@ -338,12 +337,12 @@ export BACALHAU_API_PORT_%d=%d`,
 	summaryBuilder := strings.Builder{}
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIHost),
+		config.KeyAsEnvVar(types.APIHostKey),
 		devStackAPIHost,
 	))
 	summaryBuilder.WriteString(fmt.Sprintf(
 		"export %s=%s\n",
-		config.KeyAsEnvVar(types.NodeClientAPIPort),
+		config.KeyAsEnvVar(types.APIPortKey),
 		devStackAPIPort,
 	))
 

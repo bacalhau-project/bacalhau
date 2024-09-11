@@ -1,24 +1,32 @@
 package configflags
 
-import "github.com/bacalhau-project/bacalhau/pkg/config/types"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+)
 
 var LocalPublisherFlags = []Definition{
 	{
-		FlagName:     "local-publisher-address",
-		DefaultValue: Default.Node.Compute.LocalPublisher.Address,
-		ConfigPath:   types.NodeComputeLocalPublisherAddress,
-		Description:  `The address for the local publisher's server to bind to`,
+		FlagName:          "local-publisher-address",
+		DefaultValue:      types.Default.Publishers.Types.Local.Address,
+		ConfigPath:        types.PublishersTypesLocalAddressKey,
+		Description:       `The address for the local publisher's server to bind to.`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.PublishersTypesLocalAddressKey),
 	},
 	{
-		FlagName:     "local-publisher-port",
-		DefaultValue: Default.Node.Compute.LocalPublisher.Port,
-		ConfigPath:   types.NodeComputeLocalPublisherPort,
-		Description:  `The port for the local publisher's server to bind to (default: 6001)`,
+		FlagName:          "local-publisher-port",
+		DefaultValue:      types.Default.Publishers.Types.Local.Port,
+		ConfigPath:        types.PublishersTypesLocalPortKey,
+		Description:       `The port for the local publisher's server to bind to.`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.PublishersTypesLocalPortKey),
 	},
 	{
-		FlagName:     "local-publisher-directory",
-		DefaultValue: Default.Node.Compute.LocalPublisher.Directory,
-		ConfigPath:   types.NodeComputeLocalPublisherDirectory,
-		Description:  `The directory where the local publisher will store content`,
+		FlagName:          "local-publisher-directory",
+		DefaultValue:      types.Default.Publishers.Types.Local.Directory,
+		ConfigPath:        types.PublishersTypesLocalDirectoryKey,
+		Description:       `The directory where the local publisher will store content.`,
+		Deprecated:        true,
+		DeprecatedMessage: makeDeprecationMessage(types.PublishersTypesLocalDirectoryKey),
 	},
 }

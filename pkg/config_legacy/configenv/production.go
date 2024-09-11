@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-var Staging = types.BacalhauConfig{
+var Production = types.BacalhauConfig{
 	Metrics: types.MetricsConfig{
 		EventTracerPath: os.DevNull,
 	},
@@ -30,7 +30,7 @@ var Staging = types.BacalhauConfig{
 	Node: types.NodeConfig{
 		NameProvider: "puuid",
 		ClientAPI: types.APIConfig{
-			Host: "bootstrap.staging.bacalhau.org",
+			Host: "bootstrap.production.bacalhau.org",
 			Port: 1234,
 		},
 		ServerAPI: types.APIConfig{
@@ -56,8 +56,8 @@ var Staging = types.BacalhauConfig{
 		IPFS: types.IpfsConfig{
 			Connect: "",
 		},
-		Compute:   StagingComputeConfig,
-		Requester: StagingRequesterConfig,
+		Compute:   ProductionComputeConfig,
+		Requester: ProductionRequesterConfig,
 		WebUI: types.WebUIConfig{
 			Enabled: false,
 			Port:    8483,
@@ -66,7 +66,7 @@ var Staging = types.BacalhauConfig{
 	},
 }
 
-var StagingComputeConfig = types.ComputeConfig{
+var ProductionComputeConfig = types.ComputeConfig{
 	Capacity: types.CapacityConfig{
 		IgnorePhysicalResourceLimits: false,
 		TotalResourceLimits: models.ResourcesConfig{
@@ -129,7 +129,7 @@ var StagingComputeConfig = types.ComputeConfig{
 	},
 }
 
-var StagingRequesterConfig = types.RequesterConfig{
+var ProductionRequesterConfig = types.RequesterConfig{
 	ExternalVerifierHook: "",
 	JobSelectionPolicy: models.JobSelectionPolicy{
 		Locality:            models.Anywhere,

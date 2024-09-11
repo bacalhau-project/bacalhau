@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -42,10 +43,11 @@ type JobSelectionPolicy struct {
 
 type ComputeConfigParams struct {
 	// Capacity config
-	TotalResourceLimits          models.Resources
-	JobResourceLimits            models.Resources
-	DefaultJobResourceLimits     models.Resources
-	PhysicalResourcesProvider    capacity.Provider
+	TotalResourceLimits       models.Resources
+	JobResourceLimits         models.Resources
+	DefaultJobResourceLimits  models.Resources
+	PhysicalResourcesProvider capacity.Provider
+	// Deprecated: this feature is no longer supported, but still used in several tests and thus preserved
 	IgnorePhysicalResourceLimits bool
 
 	// Timeout config
@@ -53,8 +55,6 @@ type ComputeConfigParams struct {
 	MinJobExecutionTimeout     time.Duration
 	MaxJobExecutionTimeout     time.Duration
 	DefaultJobExecutionTimeout time.Duration
-
-	JobExecutionTimeoutClientIDBypassList []string
 
 	// Bid strategies config
 	JobSelectionPolicy JobSelectionPolicy
@@ -72,9 +72,9 @@ type ComputeConfigParams struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types.LocalPublisherConfig
+	LocalPublisher types.LocalPublisher
 
-	ControlPlaneSettings types.ComputeControlPlaneConfig
+	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }
 
 type ComputeConfig struct {
@@ -96,10 +96,6 @@ type ComputeConfig struct {
 	// no timeout requirement defined.
 	DefaultJobExecutionTimeout time.Duration
 
-	// JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
-	// check.
-	JobExecutionTimeoutClientIDBypassList []string
-
 	// Bid strategies config
 	JobSelectionPolicy JobSelectionPolicy
 
@@ -117,9 +113,9 @@ type ComputeConfig struct {
 
 	ExecutionStore store.ExecutionStore
 
-	LocalPublisher types.LocalPublisherConfig
+	LocalPublisher types.LocalPublisher
 
-	ControlPlaneSettings types.ComputeControlPlaneConfig
+	ControlPlaneSettings legacy_types.ComputeControlPlaneConfig
 }
 
 func NewComputeConfigWithDefaults(executionDir string) (ComputeConfig, error) {
@@ -150,6 +146,9 @@ func NewComputeConfigWith(executionDir string, params ComputeConfigParams) (Comp
 
 	if params.LocalPublisher.Address == "" {
 		params.LocalPublisher.Address = defaults.LocalPublisher.Address
+	}
+	if params.LocalPublisher.Port <= 0 {
+		params.LocalPublisher.Port = defaults.LocalPublisher.Port
 	}
 	if params.LocalPublisher.Directory == "" {
 		params.LocalPublisher.Directory = defaults.LocalPublisher.Directory
@@ -205,8 +204,6 @@ func NewComputeConfigWith(executionDir string, params ComputeConfigParams) (Comp
 		MinJobExecutionTimeout:     params.MinJobExecutionTimeout,
 		MaxJobExecutionTimeout:     params.MaxJobExecutionTimeout,
 		DefaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-
-		JobExecutionTimeoutClientIDBypassList: params.JobExecutionTimeoutClientIDBypassList,
 
 		JobSelectionPolicy: params.JobSelectionPolicy,
 
