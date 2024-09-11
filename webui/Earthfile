@@ -1,40 +1,41 @@
 VERSION 0.8
-FROM node:21.5.0
+FROM node:20.8.1
 
 WORKDIR /code
 
-# All files to be copied are in the .earthlyignore file - with ! in front of them
-# 19f48dbd5049613c1a285ec9d92d716879965456cd7ff60169e14503b588f40e - calculated on 2024-02-18
-install-yarn:
-    RUN curl -fsSL https://yarnpkg.com/install.sh -o install.sh \
-    && echo "19f48dbd5049613c1a285ec9d92d716879965456cd7ff60169e14503b588f40e install.sh" | sha256sum -c - \
-    && bash install.sh
+setup-yarn:
+    RUN corepack enable && \
+        yarn init -2 && \
+        yarn set version 4.4.1
+    COPY .yarnrc.yml ./
+
+copy-deps-files:
+    FROM +setup-yarn
+    COPY package.json yarn.lock ./
 
 install-deps:
-    FROM +install-yarn
-    COPY package.json yarn.lock tsconfig.json ./
-    RUN yarn set version berry && \
-    yarn config set nodeLinker node-modules && \
-    yarn install
+    FROM +copy-deps-files
+    RUN yarn install
 
 copy-code:
     FROM +install-deps
-    COPY --dir src tests vite public config ./ # Copy in important directories
-    COPY index.html *.ts *.mjs jest.* ./ # Copy in files at the root level only
+    COPY --dir app components hooks lib public test ./
+    COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json ./
+    COPY .eslintrc.json .prettierrc ./
 
 run-linter:
     FROM +copy-code
-    RUN yarn eslint
+    RUN yarn lint
 
 build-artifacts:
     FROM +run-linter
     RUN yarn build
 
+# TODO: let all build from run-tests when we have tests
 run-tests:
     FROM +build-artifacts
     RUN yarn test
 
 all:
-    FROM +run-tests
-    BUILD +run-tests
+    FROM +build-artifacts
     SAVE ARTIFACT /code/build AS LOCAL build

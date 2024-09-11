@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 //go:embed build/**
@@ -30,34 +31,74 @@ func ListenAndServe(ctx context.Context, host, apiPort, apiPath string, listenPo
 		BaseContext:       func(l net.Listener) context.Context { return ctx },
 	}
 
-	log.Printf("Starting server on port %d", listenPort)
+	log.Info().Int("port", listenPort).Msg("Starting ui server")
 	return server.ListenAndServe()
 }
 
 func serveFiles(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	statusCode := http.StatusOK
+	var message string
+	var attemptedPaths []string
+
+	defer func() {
+		duration := time.Since(startTime)
+		logEvent := log.With().
+			Str("path", r.URL.Path).
+			Int("status", statusCode).
+			Dur("duration", duration)
+
+		if len(attemptedPaths) > 0 {
+			logEvent = logEvent.Strs("attempted_paths", attemptedPaths)
+		}
+
+		logger := logEvent.Logger()
+
+		switch {
+		case statusCode >= 500:
+			logger.Error().Msg(message)
+		case statusCode == http.StatusNotFound:
+			logger.Warn().Msg(message)
+		default:
+			logger.Trace().Msg(message)
+		}
+	}()
+
 	// Adjust the requested path to look inside the 'build' directory
-	// This assumes all our static files are in a 'build' subdirectory
 	fsPath := path.Join("build", strings.TrimPrefix(r.URL.Path, "/"))
+	attemptedPaths = append(attemptedPaths, fsPath)
 
 	// Attempt to open the file at the computed path
 	file, err := buildFiles.Open(fsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// If the file doesn't exist, we serve our custom 404 page
-			serve404(w, r)
+			// If the file doesn't exist, try with .html extension
+			htmlPath := fsPath + ".html"
+			attemptedPaths = append(attemptedPaths, htmlPath)
+			file, err = buildFiles.Open(htmlPath)
+			if err != nil {
+				// If still not found, serve our custom 404 page
+				statusCode = http.StatusNotFound
+				message = "File not found"
+				serve404(w, r)
+				return
+			}
+			fsPath = htmlPath
+		} else {
+			// For any other kind of error, log it and return a 500 error
+			statusCode = http.StatusInternalServerError
+			message = fmt.Sprintf("Failed to open file: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-		// For any other kind of error, log it and return a 500 error
-		log.Printf("Error opening file %s: %v", fsPath, err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
 	}
 	defer file.Close()
 
 	// Get the file info to check if it's a directory and for modification time
 	stat, err := file.Stat()
 	if err != nil {
-		log.Printf("Error getting file info for %s: %v", fsPath, err)
+		statusCode = http.StatusInternalServerError
+		message = fmt.Sprintf("Failed to get file info: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -65,21 +106,26 @@ func serveFiles(w http.ResponseWriter, r *http.Request) {
 	if stat.IsDir() {
 		// If the path is a directory, we try to serve an index.html file from that directory
 		indexPath := path.Join(fsPath, "index.html")
+		attemptedPaths = append(attemptedPaths, indexPath)
 		indexFile, err := buildFiles.Open(indexPath)
 		if err == nil {
 			// If we found an index.html in this directory, serve it
 			defer indexFile.Close()
+			message = "Served index.html from directory"
 			serveFileContent(w, r, indexFile, "index.html")
 			return
 		}
 		// If there's no index.html in this specific directory,
 		// or if we encountered any errors, serve our custom 404 page
+		statusCode = http.StatusNotFound
+		message = "Directory without index.html"
 		serve404(w, r)
 		return
 	}
 
 	// If we've reached here, we're dealing with a normal file (not a directory)
 	// Serve the file with its correct name
+	message = fmt.Sprintf("Served file: %s", stat.Name())
 	serveFileContent(w, r, file, stat.Name())
 }
 
@@ -89,7 +135,7 @@ func serveFileContent(w http.ResponseWriter, r *http.Request, file fs.File, name
 	// Read the entire file content
 	content, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Error reading file %s: %v", name, err)
+		log.Error().Err(err).Str("filename", name).Msg("Failed to read file content")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -107,7 +153,7 @@ func serve404(w http.ResponseWriter, r *http.Request) {
 	notFoundFile, err := buildFiles.Open(notFoundPath)
 	if err != nil {
 		// If we can't find the 404.html, fall back to standard NotFound response
-		log.Printf("404 page not found: %s", notFoundPath)
+		log.Warn().Str("path", notFoundPath).Msg("Custom 404 page not found")
 		http.NotFound(w, r)
 		return
 	}
@@ -116,7 +162,7 @@ func serve404(w http.ResponseWriter, r *http.Request) {
 	// Read the content of the 404 page
 	content, err := io.ReadAll(notFoundFile)
 	if err != nil {
-		log.Printf("Error reading 404 page: %v", err)
+		log.Error().Err(err).Msg("Failed to read 404 page content")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -128,6 +174,6 @@ func serve404(w http.ResponseWriter, r *http.Request) {
 	// Write the content
 	_, err = w.Write(content)
 	if err != nil {
-		log.Printf("Error writing 404 page: %v", err)
+		log.Error().Err(err).Msg("Failed to write 404 page content")
 	}
 }
