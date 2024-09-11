@@ -23,7 +23,9 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 
 	case *echo.HTTPError:
 		// This is needed, in case any other middleware throws an error. In
-		// such a scenario we just use it as the error code.
+		// such a scenario we just use it as the error code and the message.
+		// One such example being when request body size is larger then the max
+		// size accepted
 		code = e.Code
 		message = e.Message.(string)
 

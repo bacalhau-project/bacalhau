@@ -116,7 +116,7 @@ func FromHttpResponse(resp *http.Response) (*APIError, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w")
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	var apiErr APIError
