@@ -1,4 +1,4 @@
-package main
+package webui
 
 import (
 	"bytes"
@@ -129,15 +129,5 @@ func serve404(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(content)
 	if err != nil {
 		log.Printf("Error writing 404 page: %v", err)
-	}
-}
-
-func main() {
-	log.Println("Starting application")
-
-	ctx := context.Background()
-	err := ListenAndServe(ctx, "localhost", "1234", "", 8080)
-	if err != nil {
-		log.Fatalf("Server error: %v", err)
 	}
 }

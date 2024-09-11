@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { JobsOverview } from '@/components/jobs/JobsOverview'
+import { JobsOverview } from '@/components/jobs/list/JobsOverview'
 import JobDetails from '@/components/jobs/details/JobDetails'
 
 function JobsContent() {

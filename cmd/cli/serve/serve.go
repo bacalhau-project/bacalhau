@@ -27,7 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
-	webui "github.com/bacalhau-project/bacalhau/webui_bk"
+	"github.com/bacalhau-project/bacalhau/webui"
 )
 
 var (

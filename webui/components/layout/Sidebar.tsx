@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
@@ -6,10 +8,20 @@ import { NavLinkProps, navLinkItems } from './navItems'
 import { EnterpriseSupportCard } from './EnterpriseSupportCard'
 
 export function NavLink({ href, icon: Icon, label, badge }: NavLinkProps) {
+  const handleClick = () => {
+    // Dispatch a custom event when any nav link is clicked
+    window.dispatchEvent(
+      new CustomEvent('refreshContent', {
+        detail: { page: label.toLowerCase() },
+      })
+    )
+  }
+
   return (
     <Link
       href={href}
       className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-text transition-all hover:bg-sidebar-hover hover:text-white"
+      onClick={handleClick}
     >
       <Icon className="h-5 w-5" />
       <span className="flex-grow">{label}</span>
