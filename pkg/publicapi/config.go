@@ -1,8 +1,25 @@
 package publicapi
 
 import (
+	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
+
+const (
+	// AllowedCORSOrigin is the allowed origin for CORS requests.
+	// Used to allow webui to connect to the backend API server.
+	// TODO: make this more restricted or configurable
+	AllowedCORSOrigin = "*"
+)
+
+var WebsocketUpgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// TODO: make this more restricted or configurable
+		return true
+	},
+}
 
 type Config struct {
 	// These are TCP connection deadlines and not HTTP timeouts. They don't control the time it takes for our handlers

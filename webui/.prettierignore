@@ -1,0 +1,11 @@
+# Ignore generated API files
+/lib/api/generated
+
+# Ignore API schema files
+/lib/api/schema
+
+# Other common ignore patterns
+node_modules
+.next
+build
+dist
