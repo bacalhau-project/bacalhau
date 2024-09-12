@@ -114,6 +114,15 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
 	}
+	if nodeName == "" {
+		nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+		if err != nil {
+			return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+		}
+		if err := fsRepo.WriteNodeName(nodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		}
+	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
