@@ -79,6 +79,9 @@ func NewHistoryCmd() *cobra.Command {
 		},
 	}
 
+	nodeCmd.SilenceUsage = true
+	nodeCmd.SilenceErrors = true
+
 	nodeCmd.Flags().StringVar(&o.EventType, "event-type", o.EventType,
 		"The type of history events to return. One of: all, job, execution")
 	nodeCmd.Flags().StringVar(&o.ExecutionID, "execution-id", o.ExecutionID,

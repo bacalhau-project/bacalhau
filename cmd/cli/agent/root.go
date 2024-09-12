@@ -10,8 +10,6 @@ func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "agent",
 		Short:              "Commands to query agent information.",
-		SilenceErrors:      true,
-		SilenceUsage:       true,
 		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
 		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}

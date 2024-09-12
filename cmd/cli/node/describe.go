@@ -46,6 +46,9 @@ func NewDescribeCmd() *cobra.Command {
 		},
 	}
 
+	nodeCmd.SilenceUsage = true
+	nodeCmd.SilenceErrors = true
+
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }

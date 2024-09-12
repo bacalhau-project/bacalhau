@@ -84,6 +84,9 @@ func NewListCmd() *cobra.Command {
 		},
 	}
 
+	listCmd.SilenceUsage = true
+	listCmd.SilenceErrors = true
+
 	listCmd.Flags().StringVar(&o.Labels, "labels", o.Labels,
 		"Filter nodes by labels. See https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/ for more information.")
 

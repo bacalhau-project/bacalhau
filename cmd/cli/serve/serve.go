@@ -82,8 +82,6 @@ func NewCmd() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
-		SilenceUsage:  true,
-		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := util.SetupConfig(cmd)
 			if err != nil {
@@ -98,6 +96,9 @@ func NewCmd() *cobra.Command {
 			return serve(cmd, cfg, fsr)
 		},
 	}
+
+	serveCmd.SilenceUsage = true
+	serveCmd.SilenceErrors = true
 
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)

@@ -10,8 +10,6 @@ func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "job",
 		Short:              "Commands to submit, query and update jobs.",
-		SilenceUsage:       true,
-		SilenceErrors:      true,
 		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
 		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
