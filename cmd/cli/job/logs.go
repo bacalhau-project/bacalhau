@@ -37,10 +37,12 @@ func NewLogCmd() *cobra.Command {
 	options := LogCommandOptions{}
 
 	logsCmd := &cobra.Command{
-		Use:     "logs [id]",
-		Short:   logsShortDesc,
-		Example: logsExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "logs [id]",
+		Short:         logsShortDesc,
+		Example:       logsExample,
+		Args:          cobra.ExactArgs(1),
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			opts := util.LogOptions{
 				JobID:       cmdArgs[0],

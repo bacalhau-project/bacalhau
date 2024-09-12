@@ -57,11 +57,13 @@ func NewExecutionCmd() *cobra.Command {
 	o := NewExecutionOptions()
 
 	nodeCmd := &cobra.Command{
-		Use:     "executions [id]",
-		Short:   executionShort,
-		Long:    executionLong,
-		Example: executionExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "executions [id]",
+		Short:         executionShort,
+		Long:          executionLong,
+		Example:       executionExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -76,6 +78,9 @@ func NewExecutionCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
+
+	nodeCmd.SilenceUsage = true
+	nodeCmd.SilenceErrors = true
 
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
