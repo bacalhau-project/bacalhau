@@ -117,16 +117,16 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	nodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+	// Attempt to read the node name from the repo
+	nodeName, err := fsRepo.ReadNodeName()
+	if err != nil {
+		return fmt.Errorf("failed to get node name: %w", err)
+	}
 	if nodeName == "" {
-		var err error
-		// Attempt to read the node name from the repo
-		nodeName, err = fsRepo.ReadNodeName()
-		if err != nil {
-			return fmt.Errorf("failed to get node name: %w", err)
-		}
-		// If no name is found, generate and persist a new one
+		// name isn't set in repo, check if a flag was provided.
+		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
 		if nodeName == "" {
+			// no flag provided, we need to generate it and persist
 			log.Info().Msgf("generating node name using provider %s", cfg.NameProvider)
 			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
 			if err != nil {
@@ -136,22 +136,21 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
 			}
 			log.Info().Msgf("persisted node name %s", nodeName)
-		}
-	} else {
-		// Check if a name already exists in the repo
-		existingName, err := fsRepo.ReadNodeName()
-		if err != nil {
-			return fmt.Errorf("failed to read existing node name: %w", err)
-		}
-		if existingName != "" && existingName != nodeName {
-			log.Warn().Msgf("overriding existing node name '%s' with user-provided name '%s'", existingName, nodeName)
-			// Persist the user-provided name
+		} else {
+			// the flag was provided with the name, persist it
+			log.Info().Msgf("persisting node name from flag %s", nodeName)
 			if err := fsRepo.WriteNodeName(nodeName); err != nil {
 				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
 			}
 			log.Info().Msgf("persisted node name %s", nodeName)
 		}
+	} else {
+		// warn the user if they passed a flag and a name already exists
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" {
+			log.Warn().Msgf("--name flag with value %s ignored. name %s already exists", flagNodeName, nodeName)
+		}
 	}
+
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
