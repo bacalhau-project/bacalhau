@@ -38,6 +38,12 @@ type APIError struct {
 
 	// RequestID is the request ID of the request that caused the error.
 	RequestID string `json:"-"`
+
+	// Code is the error code of the error.
+	Code string `json:"code"`
+
+	// Component is the component that caused the error.
+	Component string `json:"component"`
 }
 
 // NewAPIError creates a new APIError with the given HTTP status code and message.

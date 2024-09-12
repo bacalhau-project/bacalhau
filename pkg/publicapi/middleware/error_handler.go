@@ -13,13 +13,16 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 
 	var code int
 	var message string
+	var errorCode string
+	var component string
 
 	switch e := err.(type) {
 
 	case *models.BaseError:
 		// If it is already our custom APIError, use its code and message
-		code = e.Code().HTTPStatusCode()
+		code = e.HTTPStatusCode()
 		message = e.Error()
+		errorCode = string(e.Code())
 
 	case *echo.HTTPError:
 		// This is needed, in case any other middleware throws an error. In
@@ -28,6 +31,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// size accepted
 		code = e.Code
 		message = e.Message.(string)
+		errorCode = string(models.InternalError)
+		component = "APIServer"
 
 	default:
 		// In an ideal world this should never happen. We should always have are errors
@@ -35,6 +40,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// and map it to APIError and send in appropriate message.= http.StatusInternalServerError
 		message = "internal server error"
 		code = c.Response().Status
+		errorCode = string(models.InternalError)
+		component = "Unknown"
 
 		if c.Echo().Debug {
 			message = err.Error()
@@ -53,6 +60,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 				HTTPStatusCode: code,
 				Message:        message,
 				RequestID:      requestID,
+				Code:           errorCode,
+				Component:      component,
 			})
 		}
 		if err != nil {

@@ -28,9 +28,11 @@ func NewDescribeCmd() *cobra.Command {
 	o := NewDescribeOptions()
 
 	nodeCmd := &cobra.Command{
-		Use:   "describe [id]",
-		Short: "Get the info of a node by id.",
-		Args:  cobra.ExactArgs(1),
+		Use:           "describe [id]",
+		Short:         "Get the info of a node by id.",
+		Args:          cobra.ExactArgs(1),
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -45,6 +47,10 @@ func NewDescribeCmd() *cobra.Command {
 			return o.runDescribe(cmd, args, api)
 		},
 	}
+
+	nodeCmd.SilenceUsage = true
+	nodeCmd.SilenceErrors = true
+
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return nodeCmd
 }

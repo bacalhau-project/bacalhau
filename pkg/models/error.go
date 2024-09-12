@@ -1,12 +1,33 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
+
+type ErrorCode string
 
 const (
 	DetailsKeyIsError        = "IsError"
 	DetailsKeyHint           = "Hint"
 	DetailsKeyRetryable      = "Retryable"
 	DetailsKeyFailsExecution = "FailsExecution"
+)
+
+const (
+	BadRequestError    ErrorCode = "BadRequest"
+	InternalError      ErrorCode = "InternalError"
+	NotFoundError      ErrorCode = "NotFound"
+	ServiceUnavailable ErrorCode = "ServiceUnavailable"
+	NotImplemented     ErrorCode = "NotImplemented"
+	ResourceExhausted  ErrorCode = "ResourceExhausted"
+	ResourceInUse      ErrorCode = "ResourceInUse"
+	VersionMismatch    ErrorCode = "VersionMismatch"
+	ValidationFailed   ErrorCode = "ValidationFailed"
+	TooManyRequests    ErrorCode = "TooManyRequests"
+	NetworkFailure     ErrorCode = "NetworkFailure"
+	ConfigurationError ErrorCode = "ConfigurationError"
+	DatastoreFailure   ErrorCode = "DatastoreFailure"
 )
 
 type HasHint interface {
@@ -43,34 +64,15 @@ type HasDetails interface {
 
 type HasCode interface {
 	// Details a code
-	Code() int
+	Code() ErrorCode
 }
 
-type ErrorCode struct {
-	component      string
-	httpStatusCode int
-}
-
-func NewErrorCode(component string, httpStatusCode int) ErrorCode {
-	return ErrorCode{component: component, httpStatusCode: httpStatusCode}
-}
-
-func (ec ErrorCode) HTTPStatusCode() int {
-	if ec.httpStatusCode == 0 {
-		return 500
-	}
-	return ec.httpStatusCode
-}
-
-func (ec ErrorCode) Component() string {
-	return ec.component
-}
-
-func (ec ErrorCode) String() string {
-	if ec.httpStatusCode == 0 {
-		return fmt.Sprintf("%s-500", ec.component)
-	}
-	return fmt.Sprintf("%s-%d", ec.component, ec.httpStatusCode)
+// HasHTTPStatusCode is an interface that defines a method for retrieving
+// an HTTP status code associated with an error.
+type HasHTTPStatusCode interface {
+	// HTTPStatusCode returns the HTTP status code associated with the error.
+	// This can be useful for mapping internal errors to appropriate HTTP responses.
+	HTTPStatusCode() int
 }
 
 // BaseError is a custom error type in Go that provides additional fields
@@ -83,6 +85,8 @@ type BaseError struct {
 	hint           string
 	retryable      bool
 	failsExecution bool
+	component      string
+	httpStatusCode int
 	details        map[string]string
 	code           ErrorCode
 }
@@ -90,7 +94,11 @@ type BaseError struct {
 // NewBaseError is a constructor function that creates a new BaseError with
 // only the message field set.
 func NewBaseError(format string, a ...any) *BaseError {
-	return &BaseError{message: fmt.Sprintf(format, a...)}
+	return &BaseError{
+		httpStatusCode: 0,
+		component:      "Bacalhau",
+		message:        fmt.Sprintf(format, a...),
+	}
 }
 
 // WithHint is a method that sets the hint field of BaseError and returns
@@ -128,6 +136,24 @@ func (e *BaseError) WithCode(code ErrorCode) *BaseError {
 	return e
 }
 
+// WithHTTPStatusCode is a method that sets the httpStatusCode field of BaseError and
+// returns the BaseError itself for chaining. This method allows setting a specific
+// HTTP status code associated with the error, which can be useful when translating
+// the error into an HTTP response.
+func (e *BaseError) WithHTTPStatusCode(statusCode int) *BaseError {
+	e.httpStatusCode = statusCode
+	return e
+}
+
+// WithComponent is a method that sets the component field of BaseError and
+// returns the BaseError itself for chaining. This method allows specifying
+// which component of the system generated the error, providing more context
+// for debugging and error handling.
+func (e *BaseError) WithComponent(component string) *BaseError {
+	e.component = component
+	return e
+}
+
 // Error is a method that returns the message field of BaseError. This
 // method makes BaseError satisfy the error interface.
 func (e *BaseError) Error() string {
@@ -157,4 +183,34 @@ func (e *BaseError) Details() map[string]string {
 // Details a Unique Code to identify the error
 func (e *BaseError) Code() ErrorCode {
 	return e.code
+}
+
+// HTTPStatusCode is a method that returns the httpStatusCode field of BaseError.
+// If no specific HTTP status code has been set, it returns 0.
+// This method can be used to retrieve the HTTP status code associated with the error,
+// which is useful when translating the error into an HTTP response.
+func (e *BaseError) HTTPStatusCode() int {
+	if e.httpStatusCode != 0 {
+		return e.httpStatusCode
+	}
+	return inferHTTPStatusCode(e.code)
+}
+
+func inferHTTPStatusCode(code ErrorCode) int {
+	switch code {
+	case BadRequestError, ValidationFailed:
+		return http.StatusBadRequest
+	case NotFoundError:
+		return http.StatusNotFound
+	case ServiceUnavailable:
+		return http.StatusServiceUnavailable
+	case NotImplemented:
+		return http.StatusNotImplemented
+	case ResourceExhausted:
+		return http.StatusTooManyRequests
+	case ResourceInUse:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
 }
