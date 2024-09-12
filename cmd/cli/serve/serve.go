@@ -50,6 +50,13 @@ var (
 `))
 )
 
+const (
+	NameFlagName        = "name"
+	NameFlagDescription = `The node's name.
+If unset, it will be read from .bacalhau/system_metadata.yaml, or automatically generated if no name exists.
+If set, the provided value will override the current name in .bacalhau/system_metadata.yaml.`
+)
+
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"local_publisher":       configflags.LocalPublisherFlags,
@@ -97,6 +104,8 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
+	serveCmd.PersistentFlags().String(NameFlagName, "", NameFlagDescription)
+
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
@@ -108,17 +117,39 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	nodeName, err := fsRepo.ReadNodeName()
-	if err != nil {
-		return fmt.Errorf("failed to get node name: %w", err)
-	}
+	nodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
 	if nodeName == "" {
-		nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+		var err error
+		// Attempt to read the node name from the repo
+		nodeName, err = fsRepo.ReadNodeName()
 		if err != nil {
-			return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+			return fmt.Errorf("failed to get node name: %w", err)
 		}
-		if err := fsRepo.WriteNodeName(nodeName); err != nil {
-			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		// If no name is found, generate and persist a new one
+		if nodeName == "" {
+			log.Info().Msgf("generating node name using provider %s", cfg.NameProvider)
+			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+			if err != nil {
+				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+			}
+			if err := fsRepo.WriteNodeName(nodeName); err != nil {
+				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+			}
+			log.Info().Msgf("persisted node name %s", nodeName)
+		}
+	} else {
+		// Check if a name already exists in the repo
+		existingName, err := fsRepo.ReadNodeName()
+		if err != nil {
+			return fmt.Errorf("failed to read existing node name: %w", err)
+		}
+		if existingName != "" && existingName != nodeName {
+			log.Warn().Msgf("overriding existing node name '%s' with user-provided name '%s'", existingName, nodeName)
+			// Persist the user-provided name
+			if err := fsRepo.WriteNodeName(nodeName); err != nil {
+				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+			}
+			log.Info().Msgf("persisted node name %s", nodeName)
 		}
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
