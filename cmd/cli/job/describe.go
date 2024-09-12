@@ -56,11 +56,13 @@ func NewDescribeOptions() *DescribeOptions {
 func NewDescribeCmd() *cobra.Command {
 	o := NewDescribeOptions()
 	jobCmd := &cobra.Command{
-		Use:     "describe [id]",
-		Short:   "Get the info of a job by id.",
-		Long:    describeLong,
-		Example: describeExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "describe [id]",
+		Short:         "Get the info of a job by id.",
+		Long:          describeLong,
+		Example:       describeExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -75,6 +77,7 @@ func NewDescribeCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
+
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd
 }
@@ -82,13 +85,14 @@ func NewDescribeCmd() *cobra.Command {
 func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 	jobID := args[0]
+
 	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
 		JobID:   jobID,
 		Include: "executions,history",
 	})
 
 	if err != nil {
-		return fmt.Errorf("could not get job %s: %w", jobID, err)
+		return err
 	}
 
 	if o.OutputOpts.Format != "" {

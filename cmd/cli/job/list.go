@@ -64,11 +64,13 @@ func NewListOptions() *ListOptions {
 func NewListCmd() *cobra.Command {
 	o := NewListOptions()
 	listCmd := &cobra.Command{
-		Use:     "list",
-		Short:   listShort,
-		Long:    listLong,
-		Example: listExample,
-		Args:    cobra.NoArgs,
+		Use:           "list",
+		Short:         listShort,
+		Long:          listLong,
+		Example:       listExample,
+		Args:          cobra.NoArgs,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
