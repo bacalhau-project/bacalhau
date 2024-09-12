@@ -54,7 +54,7 @@ const (
 	NameFlagName        = "name"
 	NameFlagDescription = `The node's name.
 If unset, it will be read from .bacalhau/system_metadata.yaml, or automatically generated if no name exists.
-If set, the provided value will override the current name in .bacalhau/system_metadata.yaml.`
+If set, and a name isn't present in .bacalhau/system_metadata.yaml the value is persisted, else ignored.`
 )
 
 func NewCmd() *cobra.Command {
