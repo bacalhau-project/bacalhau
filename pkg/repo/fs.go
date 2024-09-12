@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -84,7 +81,7 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
+func (fsr *FsRepo) Init() error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -92,14 +89,6 @@ func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 	}
 
 	log.Info().Msgf("Initializing repo at %s", fsr.path)
-
-	// if it takes longer than 5 seconds to get the node name from a provider, fail
-	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	nodeName, err := config.GenerateNodeID(nameCtx, cfg.NameProvider)
-	if err != nil {
-		return err
-	}
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
@@ -113,9 +102,6 @@ func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 		return fmt.Errorf("failed to persist repo version: %w", err)
 	}
 
-	if err := fsr.WriteNodeName(nodeName); err != nil {
-		return fmt.Errorf("failed to persist node name: %w", err)
-	}
 	return nil
 }
 

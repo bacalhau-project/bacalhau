@@ -34,7 +34,7 @@ func TestNewFS(t *testing.T) {
 	// can init a repo
 	// TODO(forrest) [refactor]: assert the repo initializes the expected values
 	// in the config, such as paths and keys.
-	err = repo.Init(bacCfg)
+	err = repo.Init()
 	require.NoError(t, err)
 
 	// it better exist now
@@ -47,6 +47,6 @@ func TestNewFS(t *testing.T) {
 	require.NoError(t, err)
 
 	// cannot init an already init'ed repo.
-	err = repo.Init(bacCfg)
+	err = repo.Init()
 	require.Error(t, err)
 }
