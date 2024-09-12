@@ -96,7 +96,7 @@ func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 	// if it takes longer than 5 seconds to get the node name from a provider, fail
 	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	nodeName, err := config.GetNodeID(nameCtx, cfg.NameProvider)
+	nodeName, err := config.GenerateNodeID(nameCtx, cfg.NameProvider)
 	if err != nil {
 		return err
 	}

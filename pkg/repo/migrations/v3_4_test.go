@@ -233,9 +233,10 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
 
+	// check that the migration doesn't create a node name if a config file wasn't present.
 	actualNodeName, err := suite.repo.ReadNodeName()
 	suite.Require().NoError(err)
-	suite.Require().NotEmpty(actualNodeName)
+	suite.Require().Empty(actualNodeName)
 }
 
 // repo resulting from `bacalhau serve --node-type=requester`

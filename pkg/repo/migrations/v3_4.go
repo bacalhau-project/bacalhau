@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -139,16 +138,7 @@ var V3Migration = repo.NewMigration(
 				}
 			} else if !os.IsNotExist(err) {
 				// if there was an error other than the file not existing, abort.
-				return err
-			} else {
-				// we still need to write a node name to the system_metadata.yaml file.
-				nodeID, err := config.GetNodeID(context.Background(), types.Default.NameProvider)
-				if err != nil {
-					return err
-				}
-				if err := r.WriteNodeName(nodeID); err != nil {
-					return fmt.Errorf("migrating node name: %w", err)
-				}
+				return fmt.Errorf("failed to read config file %s while migrating: %w", oldConfigFilePath, err)
 			}
 
 		}

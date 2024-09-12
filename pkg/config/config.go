@@ -253,7 +253,7 @@ func KeyAsEnvVar(key string) string {
 	)
 }
 
-func GetNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
+func GenerateNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
 	nodeNameProviders := map[string]idgen.NodeNameProvider{
 		"hostname": idgen.HostnameProvider{},
 		"aws":      idgen.NewAWSNodeNameProvider(),
