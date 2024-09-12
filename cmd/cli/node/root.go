@@ -11,6 +11,8 @@ func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "node",
 		Short:              "Commands to query and update nodes information.",
+		SilenceUsage:       true,
+		SilenceErrors:      true,
 		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
 		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}

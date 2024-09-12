@@ -62,9 +62,6 @@ func NewLogCmd() *cobra.Command {
 		},
 	}
 
-	logsCmd.SilenceUsage = true
-	logsCmd.SilenceErrors = true
-
 	logsCmd.PersistentFlags().StringVarP(
 		&options.ExecutionID, "execution-id", "e", "",
 		"Retrieve logs from a specific execution of the job.",

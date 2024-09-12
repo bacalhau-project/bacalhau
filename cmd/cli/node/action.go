@@ -40,9 +40,6 @@ func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
 		},
 	}
 
-	cmd.SilenceUsage = true
-	cmd.SilenceErrors = true
-
 	cmd.Flags().StringVarP(&actionCmd.message, "message", "m", "", "Message to include with the action")
 	return cmd
 }

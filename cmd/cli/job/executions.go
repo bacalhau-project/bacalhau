@@ -77,9 +77,6 @@ func NewExecutionCmd() *cobra.Command {
 		},
 	}
 
-	nodeCmd.SilenceUsage = true
-	nodeCmd.SilenceErrors = true
-
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
 	return nodeCmd

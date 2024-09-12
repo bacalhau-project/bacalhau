@@ -75,9 +75,6 @@ func NewRunCmd() *cobra.Command {
 		},
 	}
 
-	runCmd.SilenceUsage = true
-	runCmd.SilenceErrors = true
-
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
 	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
 	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
