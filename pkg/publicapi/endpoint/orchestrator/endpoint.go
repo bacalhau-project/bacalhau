@@ -1,11 +1,12 @@
 package orchestrator
 
 import (
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {

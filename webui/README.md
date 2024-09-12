@@ -1,49 +1,36 @@
-# Bacalhau WebUI
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## Dependencies
-You will need to install all the dependencies in the `.tool-versions` file.
-```bash
-asdf install
-```
+## Getting Started
 
-Then install corepack which you'll need for the latest yarn version.
-```bash
-npm install -g corepack
-corepack prepare yarn@latest --activate
-```
-
-## Install all yarn dependencies
-```bash
-yarn install
-```
-
-
-## Spinning up the Dashboard for Development:
-
-For spinning up & testing the dashboard with the API connection to the bacalhau network you can run:
+First, run the development server:
 
 ```bash
-cd webui
-
-yarn run build
-
-cd..
-
-make build
-
-./bin/$(go env GOOS)/$(go env GOARCH)/bacalhau serve --node-type=requester,compute --peer=none --web-ui
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-The above will spin up your own bacalhau cluster. This will use the default port `1234`. Visit `http://127.0.0.1/` to see WebUI.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Interaction with Bacalhau
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-In [`bacalhau.ts`](https://github.com/bacalhau-project/bacalhau/blob/e61b1ebb669043b8b4113437b3035064c0d28f46/dashboard/src/pages/api/bacalhau.ts) you will find Bacalhau API configuration.
-
-[`webui.go`](https://github.com/bacalhau-project/bacalhau/blob/b6c52302c0bc20a82c3b3eb8b674c7919aab5747/webui/webui.go) serves as a web server to deliver the webui (React code), handling both the serving of static assets embedded in the binary and dynamic routing for client-side navigation.
+This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
 ## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+To learn more about Next.js, take a look at the following resources:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
