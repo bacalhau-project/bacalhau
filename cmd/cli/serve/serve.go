@@ -74,10 +74,12 @@ func NewCmd() *cobra.Command {
 		"compute":               configflags.ComputeFlags,
 	}
 	serveCmd := &cobra.Command{
-		Use:     "serve",
-		Short:   "Start the bacalhau compute node",
-		Long:    serveLong,
-		Example: serveExample,
+		Use:           "serve",
+		Short:         "Start the bacalhau compute node",
+		Long:          serveLong,
+		Example:       serveExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
@@ -110,6 +112,15 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	nodeName, err := fsRepo.ReadNodeName()
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
+	}
+	if nodeName == "" {
+		nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+		if err != nil {
+			return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+		}
+		if err := fsRepo.WriteNodeName(nodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		}
 	}
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 

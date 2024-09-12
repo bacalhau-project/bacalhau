@@ -116,7 +116,7 @@ var V3Migration = repo.NewMigration(
 				userConfigDir, err := os.UserConfigDir()
 				if err == nil {
 					newConfigDir := filepath.Join(userConfigDir, "bacalhau")
-					if err := os.Mkdir(newConfigDir, util.OS_USER_RWX); err != nil {
+					if err := os.MkdirAll(newConfigDir, util.OS_USER_RWX); err != nil {
 						return err
 					}
 					newConfigFilePath := filepath.Join(newConfigDir, config_legacy.FileName)
@@ -136,6 +136,9 @@ var V3Migration = repo.NewMigration(
 						return err
 					}
 				}
+			} else if !os.IsNotExist(err) {
+				// if there was an error other than the file not existing, abort.
+				return fmt.Errorf("failed to read config file %s while migrating: %w", oldConfigFilePath, err)
 			}
 
 		}
@@ -149,11 +152,15 @@ func migrateComputeStore(repoPath string, config legacy_types.JobStoreConfig) er
 	if oldExecutionStorePath == "" {
 		oldExecutionStorePath = filepath.Join(oldComputeDir, "executions.db")
 	}
-	newExecutionStorePath := filepath.Join(oldComputeDir, "state_boltdb.db")
-	if err := os.Rename(oldExecutionStorePath, newExecutionStorePath); err != nil {
+	// if a store is present migrate it.
+	if _, err := os.Stat(oldExecutionStorePath); err == nil {
+		newExecutionStorePath := filepath.Join(oldComputeDir, "state_boltdb.db")
+		if err := os.Rename(oldExecutionStorePath, newExecutionStorePath); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
 		return err
 	}
-
 	newComputeDir := filepath.Join(repoPath, types.ComputeDirName)
 	if err := os.Rename(oldComputeDir, newComputeDir); err != nil {
 		return err
@@ -173,11 +180,15 @@ func migrateOrchestratorStore(repoPath string, config legacy_types.JobStoreConfi
 	if oldJobStorePath == "" {
 		oldJobStorePath = filepath.Join(oldOrchestratorDir, "jobs.db")
 	}
-	newJobStorePath := filepath.Join(oldOrchestratorDir, "state_boltdb.db")
-	if err := os.Rename(oldJobStorePath, newJobStorePath); err != nil {
+	// if a store is present migrate it.
+	if _, err := os.Stat(oldJobStorePath); err == nil {
+		newJobStorePath := filepath.Join(oldOrchestratorDir, "state_boltdb.db")
+		if err := os.Rename(oldJobStorePath, newJobStorePath); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(err) {
 		return err
 	}
-
 	newOrchestratorDir := filepath.Join(repoPath, types.OrchestratorDirName)
 	if err := os.Rename(oldOrchestratorDir, newOrchestratorDir); err != nil {
 		return err

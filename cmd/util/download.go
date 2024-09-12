@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func DownloadResultsHandler(
 		JobID: jobID,
 	})
 	if err != nil {
-		Fatal(cmd, fmt.Errorf("could not get results for job %s: %w", jobID, err), 1)
+		return errors.New(err.Error())
 	}
 
 	if len(response.Items) == 0 {

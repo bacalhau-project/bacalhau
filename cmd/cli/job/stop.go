@@ -56,11 +56,13 @@ func NewStopCmd() *cobra.Command {
 	o := NewStopOptions()
 
 	stopCmd := &cobra.Command{
-		Use:     "stop [id]",
-		Short:   "Stop a previously submitted job",
-		Long:    stopLong,
-		Example: stopExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "stop [id]",
+		Short:         "Stop a previously submitted job",
+		Long:          stopLong,
+		Example:       stopExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -75,6 +77,9 @@ func NewStopCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
+
+	stopCmd.SilenceUsage = true
+	stopCmd.SilenceErrors = true
 
 	stopCmd.PersistentFlags().BoolVar(&o.Quiet, "quiet", o.Quiet,
 		`Do not print anything to stdout or stderr`,
