@@ -75,10 +75,12 @@ func NewCmd() *cobra.Command {
 		"compute":               configflags.ComputeFlags,
 	}
 	serveCmd := &cobra.Command{
-		Use:     "serve",
-		Short:   "Start the bacalhau compute node",
-		Long:    serveLong,
-		Example: serveExample,
+		Use:           "serve",
+		Short:         "Start the bacalhau compute node",
+		Long:          serveLong,
+		Example:       serveExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
@@ -96,9 +98,6 @@ func NewCmd() *cobra.Command {
 			return serve(cmd, cfg, fsr)
 		},
 	}
-
-	serveCmd.SilenceUsage = true
-	serveCmd.SilenceErrors = true
 
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)

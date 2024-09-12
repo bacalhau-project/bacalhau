@@ -190,10 +190,13 @@ func (e *BaseError) Code() ErrorCode {
 // This method can be used to retrieve the HTTP status code associated with the error,
 // which is useful when translating the error into an HTTP response.
 func (e *BaseError) HTTPStatusCode() int {
-	return e.httpStatusCode
+	if e.httpStatusCode != 0 {
+		return e.httpStatusCode
+	}
+	return inferHTTPStatusCode(e.code)
 }
 
-func InferHTTPStatusCode(code ErrorCode) int {
+func inferHTTPStatusCode(code ErrorCode) int {
 	switch code {
 	case BadRequestError, ValidationFailed:
 		return http.StatusBadRequest

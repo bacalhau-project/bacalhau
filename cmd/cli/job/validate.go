@@ -28,15 +28,12 @@ const JobSpecLink = "https://docs.bacalhau.org/setting-up/jobs/job"
 
 func NewValidateCmd() *cobra.Command {
 	validateCmd := &cobra.Command{
-		Use:     "validate",
-		Short:   "validate a job using a json or yaml file.",
-		Long:    validateLong,
-		Example: validateExample,
-		Args:    cobra.MinimumNArgs(1),
-		// so we don't print the usage when a job is invalid, just print the validation errors
-		// --help will still show usage
-		SilenceUsage: true,
-		// so we don't print the error twice
+		Use:           "validate",
+		Short:         "validate a job using a json or yaml file.",
+		Long:          validateLong,
+		Example:       validateExample,
+		Args:          cobra.MinimumNArgs(1),
+		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			err := run(cmd, cmdArgs)

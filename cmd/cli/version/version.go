@@ -49,10 +49,12 @@ func NewVersionOptions() *VersionOptions {
 func NewCmd() *cobra.Command {
 	oV := NewVersionOptions()
 	versionCmd := &cobra.Command{
-		Use:    "version",
-		Short:  "Get the client and server version.",
-		Args:   cobra.NoArgs,
-		PreRun: hook.ApplyPorcelainLogLevel,
+		Use:           "version",
+		Short:         "Get the client and server version.",
+		Args:          cobra.NoArgs,
+		PreRun:        hook.ApplyPorcelainLogLevel,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupConfig(cmd)
@@ -71,9 +73,6 @@ func NewCmd() *cobra.Command {
 			return runVersion(cmd, cfg, r, api, oV)
 		},
 	}
-
-	versionCmd.SilenceUsage = true
-	versionCmd.SilenceErrors = true
 
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
 	versionCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&oV.OutputOpts))

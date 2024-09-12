@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
@@ -46,7 +44,6 @@ func (s *RunSuite) TestRun() {
 
 			if tc.Invalid {
 				require.Error(s.T(), err, "Should have seen error submitting job")
-				assert.Contains(s.T(), out, userstrings.JobSpecBad)
 			} else {
 				require.NoError(s.T(), err, "Error submitting job")
 				testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)

@@ -8,9 +8,9 @@ import (
 
 const JobStoreComponent = "JobStore"
 const (
-	InvalidJobState   models.ErrorCode = "InvalidJobState"
-	MultipleJobsFound models.ErrorCode = "MultipleJobsFound"
-	InvalidJobVersion models.ErrorCode = "InvalidJobVersion"
+	ConflictJobState   models.ErrorCode = "ConflictJobState"
+	MultipleJobsFound  models.ErrorCode = "MultipleJobsFound"
+	ConflictJobVersion models.ErrorCode = "ConflictJobVersion"
 )
 
 func NewErrJobNotFound(id string) *models.BaseError {
@@ -40,21 +40,21 @@ func NewErrInvalidJobState(id string, actual models.JobStateType, expected model
 	}
 
 	return models.NewBaseError(errorFormat, id, actual).
-		WithCode(InvalidJobState).
+		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrInvalidJobVersion(id string, actual, expected uint64) *models.BaseError {
 	errorMessage := fmt.Sprintf("job %s has version %d but expected %d", id, actual, expected)
 	return models.NewBaseError(errorMessage).
-		WithCode(InvalidJobVersion).
+		WithCode(ConflictJobVersion).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrJobAlreadyTerminal(id string, actual models.JobStateType, newState models.JobStateType) *models.BaseError {
 	errorMessage := fmt.Sprintf("job %s is in terminal state %s and cannot transition to %s", id, actual, newState)
 	return models.NewBaseError(errorMessage).
-		WithCode(InvalidJobState).
+		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
@@ -78,19 +78,19 @@ func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, ex
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
 	}
 	return models.NewBaseError(errorMessage).
-		WithCode(InvalidJobState).
+		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrInvalidExecutionVersion(id string, actual, expected uint64) *models.BaseError {
 	return models.NewBaseError("execution %s has version %d but expected %d", id, actual, expected).
-		WithCode(InvalidJobVersion).
+		WithCode(ConflictJobVersion).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrExecutionAlreadyTerminal(id string, actual models.ExecutionStateType, newState models.ExecutionStateType) *models.BaseError {
 	return models.NewBaseError("execution %s is in terminal state %s and cannot transition to %s", id, actual, newState).
-		WithCode(InvalidJobState).
+		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 

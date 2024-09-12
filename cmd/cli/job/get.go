@@ -50,13 +50,15 @@ func NewGetCmd() *cobra.Command {
 	}
 
 	getCmd := &cobra.Command{
-		Use:      "get [id]",
-		Short:    "Get the results of a job",
-		Long:     getLong,
-		Example:  getExample,
-		Args:     cobra.ExactArgs(1),
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), getFlags)),
-		PostRunE: hook.RemoteCmdPostRunHooks,
+		Use:           "get [id]",
+		Short:         "Get the results of a job",
+		Long:          getLong,
+		Example:       getExample,
+		Args:          cobra.ExactArgs(1),
+		PreRunE:       hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), getFlags)),
+		PostRunE:      hook.RemoteCmdPostRunHooks,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -71,9 +73,6 @@ func NewGetCmd() *cobra.Command {
 			return get(cmd, cmdArgs, api, cfg, OG)
 		},
 	}
-
-	getCmd.SilenceUsage = true
-	getCmd.SilenceErrors = true
 
 	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
 

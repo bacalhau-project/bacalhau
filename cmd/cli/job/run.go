@@ -55,11 +55,13 @@ func NewRunCmd() *cobra.Command {
 	o := NewRunOptions()
 
 	runCmd := &cobra.Command{
-		Use:     "run",
-		Short:   "Run a job using a json or yaml file.",
-		Long:    runLong,
-		Example: runExample,
-		Args:    cobra.MinimumNArgs(0),
+		Use:           "run",
+		Short:         "Run a job using a json or yaml file.",
+		Long:          runLong,
+		Example:       runExample,
+		Args:          cobra.MinimumNArgs(0),
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -74,9 +76,6 @@ func NewRunCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
-
-	runCmd.SilenceUsage = true
-	runCmd.SilenceErrors = true
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
 	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")

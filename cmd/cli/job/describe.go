@@ -56,11 +56,13 @@ func NewDescribeOptions() *DescribeOptions {
 func NewDescribeCmd() *cobra.Command {
 	o := NewDescribeOptions()
 	jobCmd := &cobra.Command{
-		Use:     "describe [id]",
-		Short:   "Get the info of a job by id.",
-		Long:    describeLong,
-		Example: describeExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "describe [id]",
+		Short:         "Get the info of a job by id.",
+		Long:          describeLong,
+		Example:       describeExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -75,9 +77,6 @@ func NewDescribeCmd() *cobra.Command {
 			return o.run(cmd, args, api)
 		},
 	}
-
-	jobCmd.SilenceUsage = true
-	jobCmd.SilenceErrors = true
 
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd

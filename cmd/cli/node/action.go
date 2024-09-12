@@ -22,9 +22,11 @@ func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   fmt.Sprintf("%s [id]", action),
-		Short: action.Description(),
-		Args:  cobra.ExactArgs(1),
+		Use:           fmt.Sprintf("%s [id]", action),
+		Short:         action.Description(),
+		Args:          cobra.ExactArgs(1),
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -39,9 +41,6 @@ func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
 			return actionCmd.run(cmd, args, api)
 		},
 	}
-
-	cmd.SilenceUsage = true
-	cmd.SilenceErrors = true
 
 	cmd.Flags().StringVarP(&actionCmd.message, "message", "m", "", "Message to include with the action")
 	return cmd

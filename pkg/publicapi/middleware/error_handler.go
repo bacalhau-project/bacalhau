@@ -20,7 +20,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 
 	case *models.BaseError:
 		// If it is already our custom APIError, use its code and message
-		code = models.InferHTTPStatusCode(e.Code())
+		code = e.HTTPStatusCode()
 		message = e.Error()
 		errorCode = string(e.Code())
 
@@ -32,7 +32,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		code = e.Code
 		message = e.Message.(string)
 		errorCode = string(models.InternalError)
-		component = "Echo"
+		component = "APIServer"
 
 	default:
 		// In an ideal world this should never happen. We should always have are errors
