@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -74,16 +73,10 @@ type RunCommandRequest struct {
 	OutputLimits OutputLimits              // Output size limits for the execution.
 }
 
-// Error variables for execution states.
-var (
-	// ErrAlreadyStarted is returned when trying to start an already started execution.
-	ErrAlreadyStarted = fmt.Errorf("execution already started")
-
-	ErrAlreadyCancelled = fmt.Errorf("execution already cancelled")
-
-	// ErrAlreadyComplete is returned when action is attempted on an execution that is already complete.
-	ErrAlreadyComplete = fmt.Errorf("execution already complete")
-
-	// ErrNotFound is returned when the execution ID provided does not match any existing execution.
-	ErrNotFound = fmt.Errorf("execution not found")
+// Common Error Codes for Execution States
+const (
+	ExecutionAlreadyStarted   models.ErrorCode = "ExecutionAlreadyStarted"
+	ExecutionAlreadyCancelled models.ErrorCode = "ExecutionAlreadyCancelled"
+	ExecutionAlreadyComplete  models.ErrorCode = "ExecutionAlreadyComplete"
+	ExecutionNotFound         models.ErrorCode = "ExecutionNotFound"
 )

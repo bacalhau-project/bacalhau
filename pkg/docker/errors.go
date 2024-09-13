@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/errdefs"
 )
 
-const DockerComponent = "executor/docker"
+const DockerComponent = "Docker"
 
 // Docker-specific error codes
 const (
