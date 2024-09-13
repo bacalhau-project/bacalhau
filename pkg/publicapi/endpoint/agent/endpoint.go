@@ -97,7 +97,7 @@ func (e *Endpoint) node(c echo.Context) error {
 //	@Summary	Returns debug information on what the current node is doing.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	model.DebugInfo
+//	@Success	200	{object}	models.DebugInfo
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/debug [get]
 func (e *Endpoint) debug(c echo.Context) error {

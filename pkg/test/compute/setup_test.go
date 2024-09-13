@@ -131,7 +131,7 @@ func (s *ComputeSuite) setupNode() {
 	var cfg types.Bacalhau
 	s.Require().NoError(c.Unmarshal(&cfg))
 
-	err = r.Init(cfg)
+	err = r.Init()
 	s.Require().NoError(err)
 
 	// create the compute node
