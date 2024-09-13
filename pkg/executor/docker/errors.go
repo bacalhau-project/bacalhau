@@ -2,7 +2,7 @@ package docker
 
 import "github.com/bacalhau-project/bacalhau/pkg/models"
 
-const DOCKER_EXECUTOR_COMPONENT = "executor/docker"
+const DOCKER_EXECUTOR_COMPONENT = "Executor/Docker"
 
 const (
 	ExectorSpecValidationErr = "ExectorSpecValidationErr"
