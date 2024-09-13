@@ -124,32 +124,28 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
 	}
+
 	if nodeName == "" {
-		// name isn't set in repo, check if a flag was provided.
+		// Check if a flag was provided
 		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
 		if nodeName == "" {
-			// no flag provided, we need to generate it and persist
-			log.Info().Msgf("generating node name using provider %s", cfg.NameProvider)
+			// No flag provided, generate and persist node name
 			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
 			if err != nil {
 				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
 			}
-			if err := fsRepo.WriteNodeName(nodeName); err != nil {
-				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
-			}
-			log.Info().Msgf("persisted node name %s", nodeName)
 		} else {
-			// the flag was provided with the name, persist it
-			log.Info().Msgf("persisting node name from flag %s", nodeName)
-			if err := fsRepo.WriteNodeName(nodeName); err != nil {
-				return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
-			}
-			log.Info().Msgf("persisted node name %s", nodeName)
 		}
+		// Persist the node name
+		if err := fsRepo.WriteNodeName(nodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		}
+		log.Info().Msgf("persisted node name %s", nodeName)
+
 	} else {
-		// warn the user if they passed a flag and a name already exists
-		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" {
-			log.Warn().Msgf("--name flag with value %s ignored. name %s already exists", flagNodeName, nodeName)
+		// Warn if the flag was provided but node name already exists
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != nodeName {
+			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, nodeName)
 		}
 	}
 
