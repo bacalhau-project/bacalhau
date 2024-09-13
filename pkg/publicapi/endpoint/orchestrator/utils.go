@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
-
-var upgrader = websocket.Upgrader{}
 
 // parseLabels parses labels params into a label selector.
 func parseLabels(c echo.Context) (labels.Selector, error) {
