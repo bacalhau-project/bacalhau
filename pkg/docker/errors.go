@@ -28,6 +28,13 @@ const (
 	DockerUnknownError      = "DockerUnknownError"
 )
 
+// Custom Docker error codes
+const (
+	DockerBridgeNetworkUnattached = "DockerBridgeNetworkUnattached"
+	DockerContainerNotRunning     = "DockerContainerNotRunning"
+	DockerImageDigestMismatch     = "DockerImageDigestMismatch"
+)
+
 func NewDockerError(err error) *models.BaseError {
 	switch {
 	case errdefs.IsNotFound(err):
@@ -83,6 +90,12 @@ func NewDockerError(err error) *models.BaseError {
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithComponent(DockerComponent)
 	}
+}
+
+func NewCustomDockerError(code models.ErrorCode, message string) *models.BaseError {
+	return models.NewBaseError(message).
+		WithCode(code).
+		WithComponent(DockerComponent)
 }
 
 func handleNotFoundError(err error) *models.BaseError {
