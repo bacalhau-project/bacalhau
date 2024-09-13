@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
@@ -292,6 +293,20 @@ func NewNode(
 		version.LogUpdateResponse,
 	)
 
+	if !bacalhauConfig.DisableAnalytics {
+		installationID, err := fsr.ReadInstallationID()
+		if err != nil {
+			log.Trace().Err(err).Msg("failed to read installationID")
+		}
+		if err := analytics.SetupAnalyticsProvider(ctx,
+			analytics.WithNodeNodeID(config.NodeID),
+			analytics.WithNodeType(config.IsRequesterNode, config.IsComputeNode),
+			analytics.WithInstallationID(installationID),
+			analytics.WithVersion(version.Get()),
+		); err != nil {
+			log.Trace().Err(err).Msg("failed to setup analytics provider")
+		}
+	}
 	// Cleanup libp2p resources in the desired order
 	config.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
 		if computeNode != nil {
@@ -310,6 +325,9 @@ func NewNode(
 
 		if apiServer != nil {
 			err = errors.Join(err, apiServer.Shutdown(ctx))
+		}
+		if err := analytics.ShutdownAnalyticsProvider(ctx); err != nil {
+			log.Trace().Err(err).Msg("failed to shutdown analytics provider")
 		}
 
 		cancel()

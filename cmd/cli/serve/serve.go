@@ -17,7 +17,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -124,29 +123,12 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		return err
 	}
 
-	installationID, err := fsRepo.ReadInstallationID()
-	if err != nil {
-		return err
-	}
-
 	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure compute node")
 	}
 
-	var recorder analytics.Recorder
-	if cfg.DisableAnalytics {
-		recorder = &analytics.NoopRecorder{}
-	} else {
-		recorder, err = analytics.New(ctx, analytics.WithNodeNodeID(nodeName),
-			analytics.WithInstallationID(installationID), analytics.WithNodeType(isRequesterNode, isComputeNode))
-		if err != nil {
-			// if we fail here for some reason, do so silently and use the noop recorder.
-			recorder = &analytics.NoopRecorder{}
-		}
-	}
-
-	requesterConfig, err := GetRequesterConfig(cfg, isRequesterNode, recorder)
+	requesterConfig, err := GetRequesterConfig(cfg, isRequesterNode)
 	if err != nil {
 		return errors.Wrapf(err, "failed to configure requester node")
 	}
