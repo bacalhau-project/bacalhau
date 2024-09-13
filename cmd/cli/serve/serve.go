@@ -133,7 +133,6 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 			if err != nil {
 				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
 			}
-		} else {
 		}
 		// Persist the node name
 		if err := fsRepo.WriteNodeName(nodeName); err != nil {
