@@ -10,6 +10,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
+const EXECUTOR_COMPONENT = "Executor"
+
 // ExecutorProvider returns a executor for the given engine type
 type ExecutorProvider = provider.Provider[Executor]
 
@@ -73,10 +75,15 @@ type RunCommandRequest struct {
 	OutputLimits OutputLimits              // Output size limits for the execution.
 }
 
-// Common Error Codes for Execution States
+// Common Error Codes for Executor
 const (
 	ExecutionAlreadyStarted   models.ErrorCode = "ExecutionAlreadyStarted"
 	ExecutionAlreadyCancelled models.ErrorCode = "ExecutionAlreadyCancelled"
 	ExecutionAlreadyComplete  models.ErrorCode = "ExecutionAlreadyComplete"
 	ExecutionNotFound         models.ErrorCode = "ExecutionNotFound"
+	ExecutorSpecValidationErr models.ErrorCode = "ExecutorSpecValidationErr"
 )
+
+func NewExecutorError(code models.ErrorCode, message string) *models.BaseError {
+	return models.NewBaseError(message).WithCode(code).WithComponent(EXECUTOR_COMPONENT)
+}

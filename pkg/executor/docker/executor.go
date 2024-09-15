@@ -129,9 +129,9 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		// failing that will create a new container.
 		if handler, found := e.handlers.Get(request.ExecutionID); found {
 			if handler.active() {
-				return NewDockerExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
+				return executor.NewExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			} else {
-				return NewDockerExecutorError(executor.ExecutionAlreadyComplete, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
+				return executor.NewExecutorError(executor.ExecutionAlreadyComplete, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			}
 		}
 
@@ -193,7 +193,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 	errCh := make(chan error, 1)
 
 	if !found {
-		errCh <- NewDockerExecutorError(executor.ExecutionNotFound, fmt.Sprintf("waiting on execution (%s)", executionID))
+		errCh <- executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("waiting on execution (%s)", executionID))
 		return resultCh, errCh
 	}
 
@@ -233,9 +233,9 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return NewDockerExecutorError(executor.ExecutionNotFound, fmt.Sprintf("canceling execution (%s)", executionID))
+		return executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("canceling execution (%s)", executionID))
 	}
-	handler.cancelFunc(NewDockerExecutorError(executor.ExecutionAlreadyCancelled, "execution already cancelled"))
+	handler.cancelFunc(executor.NewExecutorError(executor.ExecutionAlreadyCancelled, "execution already cancelled"))
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamR
 		chExit <- struct{}{}
 	}
 
-	return nil, NewDockerExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
+	return nil, executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
 }
 
 // Run initiates and waits for the completion of an execution in one call.
