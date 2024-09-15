@@ -13,7 +13,8 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Filter, X } from 'lucide-react'
 import { apimodels_ListJobHistoryResponse } from '@/lib/api/generated'
-import { shortID, formatTime } from '@/lib/api/utils'
+import { shortID } from '@/lib/api/utils'
+import { formatTime } from '@/lib/time'
 
 const colors = [
   'text-blue-800',

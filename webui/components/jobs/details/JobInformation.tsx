@@ -1,12 +1,12 @@
 import React from 'react'
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { models_Job } from '@/lib/api/generated'
-import { formatTimestamp, getJobRunTime } from '@/lib/api/utils'
+import { getJobRunTime } from '@/lib/api/utils'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
 import Labels from '@/components/Labels'
 import InfoItem from '@/components/InfoItem'
+import { formatTimestamp } from '@/lib/time'
 
 interface JobInformationProps {
   job: models_Job

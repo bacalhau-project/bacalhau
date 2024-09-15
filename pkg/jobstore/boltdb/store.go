@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -179,7 +178,7 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 
 	data := GetBucketData(tx, NewBucketPath(BucketJobs, jobID), SpecKey)
 	if data == nil {
-		return job, apimodels.NewJobNotFound(jobID)
+		return job, jobstore.NewErrJobNotFound(jobID)
 	}
 
 	err = b.marshaller.Unmarshal(data, &job)
@@ -912,7 +911,10 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	job, err := b.getJob(tx, jobID)
 	if err != nil {
-		apimodels.NewJobNotFound(jobID)
+		if models.IsBaseError(err) {
+			return err
+		}
+		return NewBoltDbError(err)
 	}
 
 	tx.OnCommit(func() {

@@ -9,9 +9,10 @@
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "generate-api": "openapi --input ./lib/api/schema/swagger.json --output ./lib/api/generated --client axios"
+    "generate-api": "openapi-ts"
   },
   "dependencies": {
+    "@hey-api/client-fetch": "^0.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.1.1",
@@ -35,6 +36,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "^0.53.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
