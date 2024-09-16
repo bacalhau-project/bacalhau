@@ -1,9 +1,0 @@
-@import "./variables";
-
-@mixin container {
-  overflow: auto; // This allows scrolling if the content is larger than the container.
-  padding: 15px;
-  margin-top: 20px;
-  box-shadow: 0 0 10px 5px $table-color;
-  border-radius: 10px;
-}

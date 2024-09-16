@@ -13,7 +13,7 @@ type GetNodeRequest struct {
 
 type GetNodeResponse struct {
 	BaseGetResponse
-	Node *models.NodeState
+	Node *models.NodeState `json:"Node"`
 }
 
 type ListNodesRequest struct {
@@ -44,20 +44,20 @@ func (o *ListNodesRequest) ToHTTPRequest() *HTTPRequest {
 
 type ListNodesResponse struct {
 	BaseListResponse
-	Nodes []*models.NodeState
+	Nodes []*models.NodeState `json:"Nodes"`
 }
 
 type PutNodeRequest struct {
 	BasePutRequest
-	Action  string
-	Message string
-	NodeID  string
+	Action  string `json:"Action"`
+	Message string `json:"Message"`
+	NodeID  string `json:"NodeID"`
 }
 
 type PutNodeResponse struct {
 	BasePutResponse
-	Success bool
-	Error   string
+	Success bool   `json:"Success"`
+	Error   string `json:"Error,omitempty"`
 }
 
 type NodeAction string
