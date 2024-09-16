@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { JobsTable } from './JobsTable'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { models_Job, OrchestratorService } from '@/lib/api/generated'
+import { Orchestrator, models_Job } from '@/lib/api/generated'
 import { useApi } from '@/app/providers/ApiProvider'
 import { useRefreshContent } from '@/hooks/useRefreshContent'
 import { RefreshCw, Plus } from 'lucide-react'
@@ -15,27 +15,30 @@ export function JobsOverview() {
   const { isInitialized } = useApi()
   const [pageSize, setPageSize] = useState(10)
   const [pageIndex, setPageIndex] = useState(0)
-  const [nextToken, setNextToken] = useState<string | undefined>(undefined)
+  const [tokens, setTokens] = useState<(string | undefined)[]>([undefined])
   const [isRefreshDisabled, setIsRefreshDisabled] = useState(false)
 
   const fetchJobs = useCallback(async () => {
     if (!isInitialized) return
 
     try {
-      const response = await OrchestratorService.orchestratorListJobs(
-        undefined, // namespace
-        pageSize,
-        pageIndex === 0 ? undefined : nextToken,
-        true, // reverse
-        undefined // orderBy
-      )
-      setJobs(response.Items ?? [])
-      setNextToken(response.NextToken)
+      const response = await Orchestrator.listJobs({
+        query: {
+          limit: pageSize,
+          next_token: tokens[pageIndex],
+          reverse: true,
+        },
+        throwOnError: true,
+      })
+      setJobs(response.data.Items ?? [])
+      if (response.data.NextToken && pageIndex === tokens.length - 1) {
+        setTokens([...tokens, response.data.NextToken])
+      }
     } catch (error) {
       console.error('Error fetching jobs:', error)
       setJobs([])
     }
-  }, [isInitialized, pageSize, pageIndex, nextToken])
+  }, [isInitialized, pageSize, pageIndex, tokens])
 
   useEffect(() => {
     fetchJobs()
@@ -44,7 +47,7 @@ export function JobsOverview() {
   const handleRefresh = useCallback(() => {
     setIsRefreshDisabled(true)
     setPageIndex(0)
-    setNextToken(undefined)
+    setTokens([undefined])
     fetchJobs().then(() => {
       // Re-enable the refresh button after a short delay
       setTimeout(() => setIsRefreshDisabled(false), 1000)
@@ -67,7 +70,7 @@ export function JobsOverview() {
   }
 
   const handleNextPage = () => {
-    if (nextToken) {
+    if (pageIndex < tokens.length - 1) {
       setPageIndex(pageIndex + 1)
     }
   }
@@ -75,7 +78,7 @@ export function JobsOverview() {
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize)
     setPageIndex(0)
-    setNextToken(undefined)
+    setTokens([undefined])
   }
 
   return (
@@ -113,7 +116,7 @@ export function JobsOverview() {
         pageIndex={pageIndex}
         onPreviousPage={handlePreviousPage}
         onNextPage={handleNextPage}
-        hasNextPage={!!nextToken}
+        hasNextPage={pageIndex < tokens.length - 1}
       />
     </div>
   )

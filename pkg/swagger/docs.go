@@ -55,7 +55,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/apimodels.IsAliveResponse"
                         }
                     }
                 }
@@ -1045,6 +1045,14 @@ const docTemplate = `{
                 },
                 "value": {
                     "description": "For authorization schemes that only provide a single value, such as\nBasic, the single string value providing the credential",
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.IsAliveResponse": {
+            "type": "object",
+            "properties": {
+                "Status": {
                     "type": "string"
                 }
             }

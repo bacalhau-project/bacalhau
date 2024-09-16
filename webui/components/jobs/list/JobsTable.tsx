@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table'
 import TruncatedTextWithTooltip from '@/components/TruncatedTextWithTooltip'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
-import { formatTimestamp, getJobRunTime } from '@/lib/api/utils'
+import { getJobRunTime } from '@/lib/api/utils'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { formatTimestamp } from '@/lib/time'
 
 interface JobsTableProps {
   jobs: models_Job[]

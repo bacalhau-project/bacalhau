@@ -1,9 +1,6 @@
 import React from 'react'
 import { Badge } from '@/components/ui/badge'
-import {
-  models_NodeState,
-  models_NodeMembershipState,
-} from '@/lib/api/generated'
+import { models_NodeState } from '@/lib/api/generated'
 import {
   getNodeConnectionStatus,
   getNodeMembershipStatus,

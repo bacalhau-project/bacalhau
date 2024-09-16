@@ -2,8 +2,7 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { StopCircle } from 'lucide-react'
 import { isTerminalJobState } from '@/lib/api/utils'
-import { models_Job } from '@/lib/api/generated'
-import { OrchestratorService } from '@/lib/api/generated/services/OrchestratorService'
+import { Orchestrator, models_Job } from '@/lib/api/generated'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -28,17 +27,25 @@ const JobActions = ({
   const [stopJobError, setStopJobError] = useState<string | null>(null)
 
   if (job.ID === undefined) {
-    return null
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          Job ID is undefined. Cannot perform actions.
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   const handleStopJob = async () => {
     setIsStoppingJob(true)
     setStopJobError(null)
     try {
-      await OrchestratorService.orchestratorStopJob(
-        job.ID!,
-        'User requested stop'
-      )
+      await Orchestrator.stopJob({
+        path: { id: job.ID! },
+        query: { reason: 'User requested stop' },
+        throwOnError: true,
+      })
       onJobUpdated() // Trigger re-render of parent component
     } catch (error) {
       console.error('Error stopping job:', error)

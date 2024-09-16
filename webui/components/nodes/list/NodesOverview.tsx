@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { NodesTable } from './NodesTable'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { models_NodeState, OrchestratorService } from '@/lib/api/generated'
+import { Orchestrator, models_NodeState } from '@/lib/api/generated'
 import { useApi } from '@/app/providers/ApiProvider'
 import { useRefreshContent } from '@/hooks/useRefreshContent'
 import { RefreshCw } from 'lucide-react'
@@ -22,16 +22,17 @@ export function NodesOverview() {
     if (!isInitialized) return
 
     try {
-      const response = await OrchestratorService.orchestratorListNodes(
-        pageSize,
-        pageIndex === 0 ? undefined : nextToken,
-        true, // reverse
-        undefined, // orderBy
-        undefined, // filterApproval
-        undefined // filterStatus
-      )
-      setNodes(response.Nodes ?? [])
-      setNextToken(response.NextToken)
+      const response = await Orchestrator.listNodes({
+        query: {
+          limit: pageSize,
+          next_token: pageIndex === 0 ? undefined : nextToken,
+          reverse: true,
+        },
+        throwOnError: true,
+      })
+
+      setNodes(response.data.Nodes ?? [])
+      setNextToken(response.data.NextToken)
     } catch (error) {
       console.error('Error fetching nodes:', error)
       setNodes([])

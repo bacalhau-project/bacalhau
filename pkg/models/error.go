@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -89,6 +90,13 @@ type BaseError struct {
 	httpStatusCode int
 	details        map[string]string
 	code           ErrorCode
+}
+
+// IsBaseError is a helper function that checks if an error is a BaseError.
+func IsBaseError(err error) bool {
+	var baseError *BaseError
+	ok := errors.As(err, &baseError)
+	return ok
 }
 
 // NewBaseError is a constructor function that creates a new BaseError with
@@ -180,9 +188,14 @@ func (e *BaseError) Details() map[string]string {
 	return e.details
 }
 
-// Details a Unique Code to identify the error
+// Code returns a unique code to identify the error
 func (e *BaseError) Code() ErrorCode {
 	return e.code
+}
+
+// Component is a method that returns the component field of BaseError.
+func (e *BaseError) Component() string {
+	return e.component
 }
 
 // HTTPStatusCode is a method that returns the httpStatusCode field of BaseError.
@@ -213,4 +226,15 @@ func inferHTTPStatusCode(code ErrorCode) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+func IsErrorWithCode(err error, code ErrorCode) bool {
+	var baseErr *BaseError
+	if errors.As(err, &baseErr) {
+		errCode := baseErr.Code()
+		if errCode == code {
+			return true
+		}
+	}
+	return false
 }

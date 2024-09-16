@@ -7,7 +7,7 @@ export type apimodels_GetJobResponse = {
 };
 
 export type apimodels_GetNodeResponse = {
-    node?: models_NodeState;
+    Node?: models_NodeState;
 };
 
 export type apimodels_GetVersionResponse = {
@@ -40,6 +40,10 @@ export type apimodels_HTTPCredential = {
     value?: string;
 };
 
+export type apimodels_IsAliveResponse = {
+    Status?: string;
+};
+
 export type apimodels_ListJobExecutionsResponse = {
     Items?: Array<models_Execution>;
     NextToken?: string;
@@ -62,7 +66,7 @@ export type apimodels_ListJobsResponse = {
 
 export type apimodels_ListNodesResponse = {
     NextToken?: string;
-    nodes?: Array<models_NodeState>;
+    Nodes?: Array<models_NodeState>;
 };
 
 export type apimodels_PutJobRequest = {
@@ -79,26 +83,99 @@ export type apimodels_PutJobResponse = {
 };
 
 export type apimodels_PutNodeRequest = {
-    action?: string;
+    Action?: string;
+    Message?: string;
+    NodeID?: string;
     credential?: apimodels_HTTPCredential;
     idempotencyToken?: string;
-    message?: string;
     namespace?: string;
-    nodeID?: string;
 };
 
 export type apimodels_PutNodeResponse = {
-    error?: string;
-    success?: boolean;
+    Error?: string;
+    Success?: boolean;
 };
 
 export type apimodels_StopJobResponse = {
     EvaluationID?: string;
 };
 
-export type authn_MethodType = 'challenge' | 'ask';
+export enum authn_MethodType {
+    MethodTypeChallenge = 'challenge',
+    MethodTypeAsk = 'ask'
+}
 
-export type logger_LogMode = 'default' | 'station' | 'json' | 'combined' | 'event';
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthConfig = {
+    /**
+     * AccessPolicyPath is the path to a file or directory that will be loaded as
+     * the policy to apply to all inbound API requests. If unspecified, a policy
+     * that permits access to all API endpoints to both authenticated and
+     * unauthenticated users (the default as of v1.2.0) will be used.
+     */
+    accessPolicyPath?: string;
+    /**
+     * Methods maps "method names" to authenticator implementations. A method
+     * name is a human-readable string chosen by the person configuring the
+     * system that is shown to users to help them pick the authentication method
+     * they want to use. There can be multiple usages of the same Authenticator
+     * *type* but with different configs and parameters, each identified with a
+     * unique method name.
+     *
+     * For example, if an implementation wants to allow users to log in with
+     * Github or Bitbucket, they might both use an authenticator implementation
+     * of type "oidc", and each would appear once on this provider with key /
+     * method name "github" and "bitbucket".
+     *
+     * By default, only a single authentication method that accepts
+     * authentication via client keys will be enabled.
+     */
+    methods?: {
+        [key: string]: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig;
+    };
+    /**
+     * TokensPath is the location where a state file of tokens will be stored.
+     * By default it will be local to the Bacalhau repo, but can be any location
+     * in the host filesystem. Tokens are sensitive and should be stored in a
+     * location that is only readable to the current user.
+     * Deprecated: replaced by cfg.AuthTokensPath()
+     */
+    tokensPath?: string;
+};
+
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig = {
+    policyPath?: string;
+    type?: authn_MethodType;
+};
+
+export enum github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration {
+    minDuration = -9223372036854776000,
+    maxDuration = 9223372036854776000,
+    Nanosecond = 1,
+    Microsecond = 1000,
+    Millisecond = 1000000,
+    Second = 1000000000,
+    Minute = 60000000000,
+    Hour = 3600000000000
+}
+
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults = {
+    executionTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    queueTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    totalTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+};
+
+export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_UpdateConfig = {
+    checkFrequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    skipChecks?: boolean;
+};
+
+export enum logger_LogMode {
+    LogModeDefault = 'default',
+    LogModeStation = 'station',
+    LogModeJSON = 'json',
+    LogModeCombined = 'combined',
+    LogModeEvent = 'event'
+}
 
 export type models_AllocatedResources = {
     Tasks?: {
@@ -237,16 +314,35 @@ export type models_Execution = {
     RunOutput?: (models_RunCommandResult);
 };
 
-export type models_ExecutionDesiredStateType = 0 | 1 | 2;
+export enum models_ExecutionDesiredStateType {
+    ExecutionDesiredStatePending = 0,
+    ExecutionDesiredStateRunning = 1,
+    ExecutionDesiredStateStopped = 2
+}
 
 export type models_ExecutionLog = {
     line?: string;
     type?: models_ExecutionLogType;
 };
 
-export type models_ExecutionLogType = 0 | 1 | 2;
+export enum models_ExecutionLogType {
+    executionLogTypeUnknown = 0,
+    ExecutionLogTypeSTDOUT = 1,
+    ExecutionLogTypeSTDERR = 2
+}
 
-export type models_ExecutionStateType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export enum models_ExecutionStateType {
+    ExecutionStateUndefined = 0,
+    ExecutionStateNew = 1,
+    ExecutionStateAskForBid = 2,
+    ExecutionStateAskForBidAccepted = 3,
+    ExecutionStateAskForBidRejected = 4,
+    ExecutionStateBidAccepted = 5,
+    ExecutionStateBidRejected = 6,
+    ExecutionStateCompleted = 7,
+    ExecutionStateFailed = 8,
+    ExecutionStateCancelled = 9
+}
 
 export type models_FailureInjectionRequesterConfig = {
     isBadActor?: boolean;
@@ -276,7 +372,11 @@ export type models_GPU = {
     vendor?: (models_GPUVendor);
 };
 
-export type models_GPUVendor = 'NVIDIA' | 'AMD/ATI' | 'Intel';
+export enum models_GPUVendor {
+    GPUVendorNvidia = 'NVIDIA',
+    GPUVendorAMDATI = 'AMD/ATI',
+    GPUVendorIntel = 'Intel'
+}
 
 export type models_InputSource = {
     /**
@@ -377,9 +477,16 @@ export type models_JobHistory = {
     Type?: models_JobHistoryType;
 };
 
-export type models_JobHistoryType = 0 | 1 | 2;
+export enum models_JobHistoryType {
+    JobHistoryTypeUndefined = 0,
+    JobHistoryTypeJobLevel = 1,
+    JobHistoryTypeExecutionLevel = 2
+}
 
-export type models_JobSelectionDataLocality = 0 | 1;
+export enum models_JobSelectionDataLocality {
+    Local = 0,
+    Anywhere = 1
+}
 
 export type models_JobSelectionPolicy = {
     /**
@@ -406,7 +513,15 @@ export type models_JobSelectionPolicy = {
     reject_stateless_jobs?: boolean;
 };
 
-export type models_JobStateType = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+export enum models_JobStateType {
+    JobStateTypeUndefined = 0,
+    JobStateTypePending = 1,
+    JobStateTypeQueued = 2,
+    JobStateTypeRunning = 3,
+    JobStateTypeCompleted = 4,
+    JobStateTypeFailed = 5,
+    JobStateTypeStopped = 6
+}
 
 export type models_LabelSelectorRequirement = {
     /**
@@ -426,7 +541,11 @@ export type models_LabelSelectorRequirement = {
     Values?: Array<(string)>;
 };
 
-export type models_Network = 0 | 1 | 2;
+export enum models_Network {
+    NetworkNone = 0,
+    NetworkFull = 1,
+    NetworkHTTP = 2
+}
 
 export type models_NetworkConfig = {
     Domains?: Array<(string)>;
@@ -460,7 +579,11 @@ export type models_NodeState = {
     Membership?: models_NodeMembershipState;
 };
 
-export type models_NodeType = 0 | 1 | 2;
+export enum models_NodeType {
+    nodeTypeUndefined = 0,
+    NodeTypeRequester = 1,
+    NodeTypeCompute = 2
+}
 
 export type models_Resources = {
     /**
@@ -648,7 +771,17 @@ export type models_TimeoutConfig = {
     TotalTimeout?: number;
 };
 
-export type selection_Operator = '!' | '=' | '==' | 'in' | '!=' | 'notin' | 'exists' | 'gt' | 'lt';
+export enum selection_Operator {
+    DoesNotExist = '!',
+    Equals = '=',
+    DoubleEquals = '==',
+    In = 'in',
+    NotEquals = '!=',
+    NotIn = 'notin',
+    Exists = 'exists',
+    GreaterThan = 'gt',
+    LessThan = 'lt'
+}
 
 export type shared_VersionRequest = {
     client_id?: string;
@@ -679,57 +812,15 @@ export type types_APIConfig = {
     tls?: (types_TLSConfiguration);
 };
 
-export type types_AuthConfig = {
-    /**
-     * AccessPolicyPath is the path to a file or directory that will be loaded as
-     * the policy to apply to all inbound API requests. If unspecified, a policy
-     * that permits access to all API endpoints to both authenticated and
-     * unauthenticated users (the default as of v1.2.0) will be used.
-     */
-    accessPolicyPath?: string;
-    /**
-     * Methods maps "method names" to authenticator implementations. A method
-     * name is a human-readable string chosen by the person configuring the
-     * system that is shown to users to help them pick the authentication method
-     * they want to use. There can be multiple usages of the same Authenticator
-     * *type* but with different configs and parameters, each identified with a
-     * unique method name.
-     *
-     * For example, if an implementation wants to allow users to log in with
-     * Github or Bitbucket, they might both use an authenticator implementation
-     * of type "oidc", and each would appear once on this provider with key /
-     * method name "github" and "bitbucket".
-     *
-     * By default, only a single authentication method that accepts
-     * authentication via client keys will be enabled.
-     */
-    methods?: {
-        [key: string]: types_AuthenticatorConfig;
-    };
-    /**
-     * TokensPath is the location where a state file of tokens will be stored.
-     * By default it will be local to the Bacalhau repo, but can be any location
-     * in the host filesystem. Tokens are sensitive and should be stored in a
-     * location that is only readable to the current user.
-     * Deprecated: replaced by cfg.AuthTokensPath()
-     */
-    tokensPath?: string;
-};
-
-export type types_AuthenticatorConfig = {
-    policyPath?: string;
-    type?: authn_MethodType;
-};
-
 export type types_BacalhauConfig = {
-    auth?: types_AuthConfig;
+    auth?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthConfig;
     /**
      * NB(forrest): this field shouldn't be persisted yet.
      */
     dataDir?: string;
     metrics?: types_MetricsConfig;
     node?: types_NodeConfig;
-    update?: types_UpdateConfig;
+    update?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_UpdateConfig;
     user?: types_UserConfig;
 };
 
@@ -782,7 +873,7 @@ export type types_ComputeControlPlaneConfig = {
      * that the compute node is still alive. This should be less than the requester's configured
      * heartbeat timeout to avoid flapping.
      */
-    heartbeatFrequency?: (types_Duration);
+    heartbeatFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
      */
@@ -791,26 +882,24 @@ export type types_ComputeControlPlaneConfig = {
      * The frequency with which the compute node will send node info (inc current labels)
      * to the controlling requester node.
      */
-    infoUpdateFrequency?: (types_Duration);
+    infoUpdateFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * How often the compute node will send current resource availability to the requester node.
      */
-    resourceUpdateFrequency?: (types_Duration);
+    resourceUpdateFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
 };
 
 export type types_DockerCacheConfig = {
-    duration?: types_Duration;
-    frequency?: types_Duration;
+    duration?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    frequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     size?: number;
 };
 
-export type types_Duration = -9223372036854776000 | 9223372036854776000 | 1 | 1000 | 1000000 | 1000000000 | 60000000000 | 3600000000000;
-
 export type types_EvaluationBrokerConfig = {
-    evalBrokerInitialRetryDelay?: types_Duration;
+    evalBrokerInitialRetryDelay?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     evalBrokerMaxRetryCount?: number;
-    evalBrokerSubsequentRetryDelay?: types_Duration;
-    evalBrokerVisibilityTimeout?: types_Duration;
+    evalBrokerSubsequentRetryDelay?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    evalBrokerVisibilityTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 
 export type types_FeatureConfig = {
@@ -835,12 +924,6 @@ export type types_IpfsConfig = {
     connect?: string;
 };
 
-export type types_JobDefaults = {
-    executionTimeout?: types_Duration;
-    queueTimeout?: types_Duration;
-    totalTimeout?: types_Duration;
-};
-
 export type types_JobStoreConfig = {
     path?: string;
     type?: types_StorageType;
@@ -851,7 +934,7 @@ export type types_JobTimeoutConfig = {
      * DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
      * no timeout requirement defined.
      */
-    defaultJobExecutionTimeout?: (types_Duration);
+    defaultJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
      * check.
@@ -860,17 +943,17 @@ export type types_JobTimeoutConfig = {
     /**
      * JobNegotiationTimeout default timeout value to hold a bid for a job
      */
-    jobNegotiationTimeout?: (types_Duration);
+    jobNegotiationTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
      * higher timeout requirements will not be bid on.
      */
-    maxJobExecutionTimeout?: (types_Duration);
+    maxJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
      * lower timeout requirements will not be bid on.
      */
-    minJobExecutionTimeout?: (types_Duration);
+    minJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
 };
 
 export type types_LocalPublisherConfig = {
@@ -890,7 +973,7 @@ export type types_LoggingConfig = {
     /**
      * logging running executions
      */
-    logRunningExecutionsInterval?: (types_Duration);
+    logRunningExecutionsInterval?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
 };
 
 export type types_MetricsConfig = {
@@ -936,7 +1019,7 @@ export type types_NodeConfig = {
      */
     disabledFeatures?: (types_FeatureConfig);
     downloadURLRequestRetries?: number;
-    downloadURLRequestTimeout?: types_Duration;
+    downloadURLRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * Deprecated: replaced by cfg.PluginsDir()
      */
@@ -959,7 +1042,7 @@ export type types_NodeConfig = {
      * Type is "compute", "requester" or both
      */
     type?: Array<(string)>;
-    volumeSizeRequestTimeout?: types_Duration;
+    volumeSizeRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     /**
      * Configuration for the web UI
      */
@@ -975,8 +1058,8 @@ export type types_RequesterConfig = {
      */
     externalVerifierHook?: string;
     failureInjectionConfig?: models_FailureInjectionRequesterConfig;
-    housekeepingBackgroundTaskInterval?: types_Duration;
-    jobDefaults?: types_JobDefaults;
+    housekeepingBackgroundTaskInterval?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    jobDefaults?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults;
     /**
      * How the node decides what jobs to run.
      */
@@ -988,7 +1071,7 @@ export type types_RequesterConfig = {
      * true, nodes will need to be manually approved before they are included in node selection.
      */
     manualNodeApproval?: boolean;
-    nodeInfoStoreTTL?: types_Duration;
+    nodeInfoStoreTTL?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
     nodeRankRandomnessRange?: number;
     overAskForBidsFactor?: number;
     scheduler?: types_SchedulerConfig;
@@ -1005,7 +1088,7 @@ export type types_RequesterControlPlaneConfig = {
      * node should have a frequency setting less than this one to ensure that it does not keep
      * switching between unknown and active too frequently.
      */
-    heartbeatCheckFrequency?: (types_Duration);
+    heartbeatCheckFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
     /**
      * This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
      */
@@ -1014,24 +1097,27 @@ export type types_RequesterControlPlaneConfig = {
      * This is the time period after which a compute node is considered to be disconnected. If the compute
      * node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
      */
-    nodeDisconnectedAfter?: (types_Duration);
+    nodeDisconnectedAfter?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
 };
 
 export type types_S3StorageProviderConfig = {
     preSignedURLDisabled?: boolean;
-    preSignedURLExpiration?: types_Duration;
+    preSignedURLExpiration?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 
 export type types_SchedulerConfig = {
     nodeOverSubscriptionFactor?: number;
-    queueBackoff?: types_Duration;
+    queueBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 
 export type types_StorageProviderConfig = {
     s3?: types_S3StorageProviderConfig;
 };
 
-export type types_StorageType = 0 | 1;
+export enum types_StorageType {
+    UnknownStorage = 0,
+    BoltDB = 1
+}
 
 export type types_TLSConfiguration = {
     /**
@@ -1062,11 +1148,6 @@ export type types_TLSConfiguration = {
     serverKey?: string;
 };
 
-export type types_UpdateConfig = {
-    checkFrequency?: types_Duration;
-    skipChecks?: boolean;
-};
-
 export type types_UserConfig = {
     installationID?: string;
     /**
@@ -1083,235 +1164,309 @@ export type types_WebUIConfig = {
 
 export type types_WorkerConfig = {
     workerCount?: number;
-    workerEvalDequeueBaseBackoff?: types_Duration;
-    workerEvalDequeueMaxBackoff?: types_Duration;
-    workerEvalDequeueTimeout?: types_Duration;
+    workerEvalDequeueBaseBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    workerEvalDequeueMaxBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+    workerEvalDequeueTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
 };
 
 export type HomeResponse = (string);
 
-export type AgentAliveResponse = (string);
-
-export type AgentConfigResponse = (types_BacalhauConfig);
-
-export type AgentDebugResponse = (models_DebugInfo);
-
-export type AgentNodeResponse = (models_NodeInfo);
-
-export type AgentVersionResponse = (apimodels_GetVersionResponse);
-
-export type ApiServerDebugResponse = (string);
+export type HomeError = unknown;
 
 export type HealthzResponse = (types_HealthInfo);
 
+export type HealthzError = unknown;
+
 export type IdResponse = (string);
+
+export type IdError = (string);
 
 export type LivezResponse = (string);
 
+export type LivezError = unknown;
+
 export type NodeInfoResponse = (models_NodeInfo);
 
+export type NodeInfoError = (string);
+
+export type AgentAliveResponse = (apimodels_IsAliveResponse);
+
+export type AgentAliveError = unknown;
+
+export type AgentConfigResponse = (types_BacalhauConfig);
+
+export type AgentConfigError = (string);
+
+export type AgentDebugResponse = (models_DebugInfo);
+
+export type AgentDebugError = (string);
+
+export type AgentNodeResponse = (models_NodeInfo);
+
+export type AgentNodeError = (string);
+
+export type AgentVersionResponse = (apimodels_GetVersionResponse);
+
+export type AgentVersionError = (string);
+
+export type ApiServerDebugResponse = (string);
+
+export type ApiServerDebugError = (string);
+
 export type OrchestratorListJobsData = {
-    /**
-     * Limit the number of jobs returned
-     */
-    limit?: number;
-    /**
-     * Namespace to get the jobs for
-     */
-    namespace?: string;
-    /**
-     * Token to get the next page of jobs
-     */
-    nextToken?: string;
-    /**
-     * Order the jobs by the given field
-     */
-    orderBy?: string;
-    /**
-     * Reverse the order of the jobs
-     */
-    reverse?: boolean;
+    query?: {
+        /**
+         * Limit the number of jobs returned
+         */
+        limit?: number;
+        /**
+         * Namespace to get the jobs for
+         */
+        namespace?: string;
+        /**
+         * Token to get the next page of jobs
+         */
+        next_token?: string;
+        /**
+         * Order the jobs by the given field
+         */
+        order_by?: string;
+        /**
+         * Reverse the order of the jobs
+         */
+        reverse?: boolean;
+    };
 };
 
 export type OrchestratorListJobsResponse = (apimodels_ListJobsResponse);
+
+export type OrchestratorListJobsError = (string);
 
 export type OrchestratorPutJobData = {
     /**
      * Job to submit
      */
-    putJobRequest: apimodels_PutJobRequest;
+    body: apimodels_PutJobRequest;
 };
 
 export type OrchestratorPutJobResponse = (apimodels_PutJobResponse);
 
+export type OrchestratorPutJobError = (string);
+
 export type OrchestratorGetJobData = {
-    /**
-     * ID to get the job for
-     */
-    id: string;
-    /**
-     * Takes history and executions as options. If empty will not include anything else.
-     */
-    include?: string;
-    /**
-     * Number of history or executions to fetch. Should be used in conjugation with include
-     */
-    limit?: number;
+    path: {
+        /**
+         * ID to get the job for
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Takes history and executions as options. If empty will not include anything else.
+         */
+        include?: string;
+        /**
+         * Number of history or executions to fetch. Should be used in conjugation with include
+         */
+        limit?: number;
+    };
 };
 
 export type OrchestratorGetJobResponse = (apimodels_GetJobResponse);
 
+export type OrchestratorGetJobError = (string);
+
 export type OrchestratorStopJobData = {
-    /**
-     * ID to stop the job for
-     */
-    id: string;
-    /**
-     * Reason for stopping the job
-     */
-    reason?: string;
+    path: {
+        /**
+         * ID to stop the job for
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Reason for stopping the job
+         */
+        reason?: string;
+    };
 };
 
 export type OrchestratorStopJobResponse = (apimodels_StopJobResponse);
 
+export type OrchestratorStopJobError = (string);
+
 export type OrchestratorJobExecutionsData = {
-    /**
-     * ID to get the job executions for
-     */
-    id: string;
-    /**
-     * Limit the number of executions returned
-     */
-    limit?: number;
-    /**
-     * Namespace to get the jobs for
-     */
-    namespace?: string;
-    /**
-     * Token to get the next page of executions
-     */
-    nextToken?: string;
-    /**
-     * Order the executions by the given field
-     */
-    orderBy: string;
-    /**
-     * Reverse the order of the executions
-     */
-    reverse?: boolean;
+    path: {
+        /**
+         * ID to get the job executions for
+         */
+        id: string;
+    };
+    query: {
+        /**
+         * Limit the number of executions returned
+         */
+        limit?: number;
+        /**
+         * Namespace to get the jobs for
+         */
+        namespace?: string;
+        /**
+         * Token to get the next page of executions
+         */
+        next_token?: string;
+        /**
+         * Order the executions by the given field
+         */
+        order_by: string;
+        /**
+         * Reverse the order of the executions
+         */
+        reverse?: boolean;
+    };
 };
 
 export type OrchestratorJobExecutionsResponse = (apimodels_ListJobExecutionsResponse);
 
+export type OrchestratorJobExecutionsError = (string);
+
 export type OrchestratorJobHistoryData = {
-    /**
-     * Only return history of this event type
-     */
-    eventType?: string;
-    /**
-     * Only return history of this execution ID
-     */
-    executionId?: string;
-    /**
-     * ID to get the job history for
-     */
-    id: string;
-    /**
-     * Token to get the next page of the jobs
-     */
-    nextToken?: string;
-    /**
-     * Only return history since this time
-     */
-    since?: string;
+    path: {
+        /**
+         * ID to get the job history for
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Only return history of this event type
+         */
+        event_type?: string;
+        /**
+         * Only return history of this execution ID
+         */
+        execution_id?: string;
+        /**
+         * Token to get the next page of the jobs
+         */
+        next_token?: string;
+        /**
+         * Only return history since this time
+         */
+        since?: string;
+    };
 };
 
 export type OrchestratorJobHistoryResponse = (apimodels_ListJobHistoryResponse);
 
+export type OrchestratorJobHistoryError = (string);
+
 export type OrchestratorLogsData = {
-    /**
-     * Fetch logs for a specific execution
-     */
-    executionId?: string;
-    /**
-     * Follow the logs
-     */
-    follow?: boolean;
-    /**
-     * ID of the job to stream logs for
-     */
-    id: string;
-    /**
-     * Fetch historical logs
-     */
-    tail?: boolean;
+    path: {
+        /**
+         * ID of the job to stream logs for
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Fetch logs for a specific execution
+         */
+        execution_id?: string;
+        /**
+         * Follow the logs
+         */
+        follow?: boolean;
+        /**
+         * Fetch historical logs
+         */
+        tail?: boolean;
+    };
 };
 
 export type OrchestratorJobResultsData = {
-    /**
-     * ID to get the job results for
-     */
-    id: string;
+    path: {
+        /**
+         * ID to get the job results for
+         */
+        id: string;
+    };
 };
 
 export type OrchestratorJobResultsResponse = (apimodels_ListJobResultsResponse);
 
+export type OrchestratorJobResultsError = (string);
+
 export type OrchestratorListNodesData = {
-    /**
-     * Filter Approval
-     */
-    filterApproval?: string;
-    /**
-     * Filter Status
-     */
-    filterStatus?: string;
-    /**
-     * Limit the number of node returned
-     */
-    limit?: number;
-    /**
-     * Token to get the next page of nodes
-     */
-    nextToken?: string;
-    /**
-     * Order the nodes by given field
-     */
-    orderBy?: string;
-    /**
-     * Reverse the order of the nodes
-     */
-    reverse?: boolean;
+    query?: {
+        /**
+         * Filter Approval
+         */
+        filter_approval?: string;
+        /**
+         * Filter Status
+         */
+        'filter-status'?: string;
+        /**
+         * Limit the number of node returned
+         */
+        limit?: number;
+        /**
+         * Token to get the next page of nodes
+         */
+        next_token?: string;
+        /**
+         * Order the nodes by given field
+         */
+        order_by?: string;
+        /**
+         * Reverse the order of the nodes
+         */
+        reverse?: boolean;
+    };
 };
 
 export type OrchestratorListNodesResponse = (apimodels_ListNodesResponse);
 
+export type OrchestratorListNodesError = (string);
+
 export type OrchestratorUpdateNodeData = {
-    /**
-     * ID of the orchestrator node.
-     */
-    id: string;
     /**
      * Put Node Request
      */
-    putNodeRequest: apimodels_PutNodeRequest;
+    body: apimodels_PutNodeRequest;
+    path: {
+        /**
+         * ID of the orchestrator node.
+         */
+        id: string;
+    };
 };
 
 export type OrchestratorUpdateNodeResponse = (apimodels_PutNodeResponse);
 
+export type OrchestratorUpdateNodeError = (string);
+
 export type OrchestratorGetNodeData = {
-    /**
-     * ID of the orchestrator node to fetch for.
-     */
-    id: string;
+    path: {
+        /**
+         * ID of the orchestrator node to fetch for.
+         */
+        id: string;
+    };
 };
 
 export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
+
+export type OrchestratorGetNodeError = (string);
 
 export type ApiServerVersionData = {
     /**
      * Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
      */
-    versionRequest: shared_VersionRequest;
+    body: shared_VersionRequest;
 };
 
 export type ApiServerVersionResponse = (shared_VersionResponse);
+
+export type ApiServerVersionError = (string);

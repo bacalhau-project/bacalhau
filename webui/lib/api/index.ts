@@ -1,26 +1,36 @@
-import { OpenAPI } from './generated'
+import { client } from './generated'
 import { useState, useEffect } from 'react'
 
 interface Config {
   APIEndpoint: string
 }
 
-export async function initializeApi() {
+const DEFAULT_API_URL = 'http://localhost:1234'
+
+async function fetchConfig(): Promise<Config | null> {
   try {
     const response = await fetch('/_config')
     if (!response.ok) {
-      throw new Error('Failed to fetch config')
+      throw new Error(`Failed to fetch config: ${response.statusText}`)
     }
-    const config: Config = await response.json()
-    OpenAPI.BASE = config.APIEndpoint || 'http://localhost:1234'
-    console.log('API initialized with URL:', OpenAPI.BASE)
+    return await response.json()
   } catch (error) {
-    console.error('Error initializing API:', error)
-    OpenAPI.BASE = 'http://localhost:1234' // Fallback to default
+    console.warn('Config fetch failed, assuming standalone mode:', error)
+    return null
   }
 }
 
-export { OpenAPI }
+let apiUrl: string | null = null
+
+export async function initializeApi(): Promise<string> {
+  const config = await fetchConfig()
+  apiUrl = config?.APIEndpoint || DEFAULT_API_URL
+
+  client.setConfig({ baseUrl: apiUrl })
+
+  console.log('API initialized with URL:', apiUrl)
+  return apiUrl
+}
 
 export function useApiInitialization() {
   const [isInitialized, setIsInitialized] = useState(false)
@@ -30,4 +40,8 @@ export function useApiInitialization() {
   }, [])
 
   return isInitialized
+}
+
+export function useApiUrl() {
+  return apiUrl
 }
