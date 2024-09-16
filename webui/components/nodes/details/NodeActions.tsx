@@ -1,5 +1,5 @@
 import React from 'react'
-import { models_NodeState, OrchestratorService } from '@/lib/api/generated'
+import { models_NodeState, Orchestrator } from '@/lib/api/generated'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 
@@ -11,53 +11,34 @@ interface NodeActionsProps {
 
 const NodeActions: React.FC<NodeActionsProps> = ({ node, onNodeUpdated }) => {
   const { toast } = useToast()
-  const handleApprove = async () => {
+
+  const handleUpdateNode = async (action: 'approve' | 'reject') => {
     try {
-      await OrchestratorService.orchestratorUpdateNode(
-        node.Info?.NodeID ?? '',
-        {
-          Action: 'approve',
+      await Orchestrator.updateNode({
+        path: { id: node.Info?.NodeID ?? '' },
+        body: {
+          Action: action,
           NodeID: node.Info?.NodeID,
-        }
-      )
+        },
+        throwOnError: true,
+      })
       toast({
-        title: 'Node Approved',
-        description: `Node ${node.Info?.NodeID} has been approved.`,
+        title: `Node ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+        description: `Node ${node.Info?.NodeID} has been ${action === 'approve' ? 'approved' : 'rejected'}.`,
       })
       onNodeUpdated()
     } catch (error) {
-      console.error('Error approving node:', error)
+      console.error(`Error ${action}ing node:`, error)
       toast({
         title: 'Error',
-        description: 'Failed to approve the node. Please try again.',
+        description: `Failed to ${action} the node. Please try again.`,
         variant: 'destructive',
       })
     }
   }
 
-  const handleReject = async () => {
-    try {
-      await OrchestratorService.orchestratorUpdateNode(
-        node.Info?.NodeID ?? '',
-        {
-          Action: 'reject',
-          NodeID: node.Info?.NodeID,
-        }
-      )
-      toast({
-        title: 'Node Rejected',
-        description: `Node ${node.Info?.NodeID} has been rejected.`,
-      })
-      onNodeUpdated()
-    } catch (error) {
-      console.error('Error rejecting node:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to reject the node. Please try again.',
-        variant: 'destructive',
-      })
-    }
-  }
+  const handleApprove = () => handleUpdateNode('approve')
+  const handleReject = () => handleUpdateNode('reject')
 
   return (
     <div className="space-x-2">

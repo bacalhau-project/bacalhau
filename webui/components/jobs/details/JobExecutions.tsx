@@ -10,12 +10,11 @@ import {
 } from '@/components/ui/table'
 import { apimodels_ListJobExecutionsResponse } from '@/lib/api/generated'
 import {
-  formatTimestamp,
   getExecutionDesiredStateLabel,
   getExecutionStateLabel,
-  getJobStateLabel,
   shortID,
 } from '@/lib/api/utils'
+import { formatTimestamp } from '@/lib/time'
 
 const JobExecutions = ({
   executions,
