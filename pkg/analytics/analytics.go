@@ -2,14 +2,12 @@ package analytics
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 
 	"github.com/Masterminds/semver"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	otellog "go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/log/global"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -20,6 +18,7 @@ import (
 )
 
 const ProviderKey = "bacalhau-analytics"
+const DefaultOtelCollectorEndpoint = "t.bacalhau.dev:4317"
 
 const (
 	NodeInstallationIDKey = "installation_id"
@@ -88,7 +87,8 @@ func WithVersion(bv *models.BuildVersionInfo) Option {
 
 func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 	config := &Config{
-		otlpEndpoint: "t.bacalhau.dev:4318", // Default endpoint - http
+		// TODO switch to t.bacalhau.org:4317
+		otlpEndpoint: DefaultOtelCollectorEndpoint, // Default endpoint - grpc
 		attributes:   make([]attribute.KeyValue, 0),
 	}
 	// Apply options
@@ -96,9 +96,8 @@ func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 		opt(config)
 	}
 
-	exporter, err := otlploghttp.New(ctx,
-		otlploghttp.WithEndpoint(config.otlpEndpoint),
-		otlploghttp.WithTLSClientConfig(&tls.Config{}),
+	exporter, err := otlploggrpc.New(ctx,
+		otlploggrpc.WithEndpoint(config.otlpEndpoint),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
@@ -123,17 +122,9 @@ func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 	return nil
 }
 
-type shutdownLoggerProvider interface {
-	otellog.LoggerProvider
-	Shutdown(ctx context.Context) error
-}
-
 func ShutdownAnalyticsProvider(ctx context.Context) error {
 	provider, ok := global.GetLoggerProvider().(*sdklog.LoggerProvider)
 	if ok {
-		if err := provider.ForceFlush(ctx); err != nil {
-			log.Trace().Err(err).Msg("failed to flush analytics log provider")
-		}
 		if err := provider.Shutdown(ctx); err != nil {
 			log.Trace().Err(err).Msg("failed to shutdown analytics log provider")
 		}

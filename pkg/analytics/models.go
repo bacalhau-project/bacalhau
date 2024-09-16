@@ -14,7 +14,7 @@ import (
 type EventType string
 
 const (
-	JobEventType = "job"
+	JobEventType = "job_v1"
 )
 
 type Event struct {

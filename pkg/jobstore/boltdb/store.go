@@ -1006,6 +1006,7 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if job.IsTerminal() {
+		// TODO to include execution telemetry
 		analytics.EmitEvent(context.TODO(), analytics.NewJobTerminalEvent(job))
 		// Remove the job from the in progress index, first checking for legacy items
 		// and then removing the composite.  Once we are confident no legacy items
