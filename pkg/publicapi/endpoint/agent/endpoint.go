@@ -51,7 +51,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 //	@ID			agent/alive
 //	@Tags		Ops
 //	@Produce	text/plain
-//	@Success	200	{string}	string	"OK"
+//	@Success	200	{object}	apimodels.IsAliveResponse
 //	@Router		/api/v1/agent/alive [get]
 func (e *Endpoint) alive(c echo.Context) error {
 	return c.JSON(http.StatusOK, &apimodels.IsAliveResponse{
