@@ -263,7 +263,7 @@ func (cl Client) HasCID(ctx context.Context, cidStr string) (bool, error) {
 	}
 	c, err := cid.Decode(cidStr)
 	if err != nil {
-		return false, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
+		return false, errors.Wrap(err, fmt.Sprintf("unable to decode CID: %s", cidStr))
 	}
 	// attempt to stat the block in the local IPFS, if it's not found w/ the offlineAPI then the content
 	// is not local to the IPFS node.
