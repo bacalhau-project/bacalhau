@@ -5,7 +5,7 @@ import "github.com/bacalhau-project/bacalhau/pkg/models"
 // IsAliveResponse is the response to the IsAlive request.
 type IsAliveResponse struct {
 	BaseGetResponse `json:",omitempty,inline" yaml:",omitempty,inline"`
-	Status          string
+	Status          string `json:"Status"`
 }
 
 func (r *IsAliveResponse) IsReady() bool {

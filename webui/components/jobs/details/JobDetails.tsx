@@ -1,51 +1,40 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
-import {
-  OrchestratorService,
-  apimodels_GetJobResponse,
-} from '@/lib/api/generated'
-import { useApi } from '@/app/providers/ApiProvider'
+import React, { useEffect, useCallback } from 'react'
+import { Orchestrator, apimodels_GetJobResponse } from '@/lib/api/generated'
 import { JobInformation } from './JobInformation'
 import JobActions from './JobActions'
 import JobTabs from './JobTabs'
+import { useApiOperation } from '@/hooks/useApiOperation'
+import { ErrorDisplay } from '@/components/ErrorDisplay'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const JobDetails = ({ jobId }: { jobId: string }) => {
-  const [jobData, setJobData] = useState<apimodels_GetJobResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { isInitialized } = useApi()
+  const {
+    data: jobData,
+    isLoading,
+    error,
+    execute,
+  } = useApiOperation<apimodels_GetJobResponse>()
 
-  const fetchJobData = useCallback(async () => {
-    if (!isInitialized) return
-
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await OrchestratorService.orchestratorGetJob(
-        jobId,
-        'history,executions',
-        undefined // limit
-      )
-      setJobData(response)
-    } catch (error) {
-      console.error('Error fetching job data:', error)
-      setError('Failed to fetch job data. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isInitialized, jobId])
+  const fetchJobData = useCallback(() => {
+    execute(() =>
+      Orchestrator.getJob({
+        path: { id: jobId },
+        query: {
+          include: 'history,executions',
+        },
+        throwOnError: true,
+      }).then((response) => response.data)
+    )
+  }, [execute, jobId])
 
   useEffect(() => {
     fetchJobData()
   }, [fetchJobData])
 
-  const handleJobUpdated = () => {
-    fetchJobData()
-  }
-
-  if (isLoading) return <div>Loading...</div>
-  if (error) return <div className="text-red-500">{error}</div>
-  if (!jobData || !jobData.Job) return <div>Job not found.</div>
+  if (isLoading) return <JobDetailsSkeleton />
+  if (error) return <ErrorDisplay error={error} />
+  if (!jobData || !jobData.Job) return
 
   const { Job, History, Executions } = jobData
 
@@ -53,12 +42,24 @@ const JobDetails = ({ jobId }: { jobId: string }) => {
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{Job.Name}</h1>
-        <JobActions job={Job} onJobUpdated={handleJobUpdated} />
+        <JobActions job={Job} onJobUpdated={fetchJobData} />
       </div>
       <JobInformation job={Job} />
       <JobTabs job={Job} history={History} executions={Executions} />
     </div>
   )
 }
+
+const JobDetailsSkeleton = () => (
+  <div className="container mx-auto p-4">
+    <div className="flex justify-between items-center mb-4">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-10 w-32" />
+    </div>
+    <Skeleton className="h-40 w-full mb-4" />
+    <Skeleton className="h-8 w-full mb-2" />
+    <Skeleton className="h-[300px] w-full" />
+  </div>
+)
 
 export default JobDetails

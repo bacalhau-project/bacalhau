@@ -1,52 +1,42 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Alert } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { OrchestratorService, models_NodeState } from '@/lib/api/generated'
-import { useApi } from '@/app/providers/ApiProvider'
+import { Orchestrator, models_NodeState } from '@/lib/api/generated'
 import NodeInformation from './NodeInformation'
 import NodeInspect from './NodeInspect'
-import NodeActions from './NodeActions'
+import { useApiOperation } from '@/hooks/useApiOperation'
+import { ErrorDisplay } from '@/components/ErrorDisplay'
 
 const NodeDetails = ({ nodeId }: { nodeId: string }) => {
-  const [nodeData, setNodeData] = useState<models_NodeState | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { isInitialized } = useApi()
+  const {
+    data: nodeData,
+    isLoading,
+    error,
+    execute,
+  } = useApiOperation<models_NodeState>()
 
-  const fetchNodeData = useCallback(async () => {
-    if (!isInitialized) return
-
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await OrchestratorService.orchestratorGetNode(nodeId)
-      setNodeData(response.Node!)
-    } catch (error) {
-      console.error('Error fetching node data:', error)
-      setError('Failed to fetch node data. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [isInitialized, nodeId])
+  const fetchNodeData = useCallback(() => {
+    execute(() =>
+      Orchestrator.getNode({
+        path: { id: nodeId },
+        throwOnError: true,
+      }).then((response) => response.data.Node!)
+    )
+  }, [execute, nodeId])
 
   useEffect(() => {
     fetchNodeData()
   }, [fetchNodeData])
 
-  const handleNodeUpdated = () => {
-    fetchNodeData()
-  }
-
   if (isLoading) return <NodeDetailsSkeleton />
-  if (error) return <Alert variant="destructive">{error}</Alert>
-  if (!nodeData) return <Alert>Node not found.</Alert>
+  if (error) return <ErrorDisplay error={error} />
+  if (!nodeData) return
 
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{nodeData.Info?.NodeID}</h1>
-        {/*<NodeActions node={nodeData} onNodeUpdated={handleNodeUpdated} />*/}
+        {/*<NodeActions node={nodeData} onNodeUpdated={fetchNodeData} />*/}
       </div>
 
       <Tabs defaultValue="information">

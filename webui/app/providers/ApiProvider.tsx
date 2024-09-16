@@ -7,15 +7,24 @@ import {
   useState,
   useEffect,
 } from 'react'
-import { useApiInitialization } from '@/lib/api'
+import { useApiInitialization, useApiUrl } from '@/lib/api'
 
-const ApiContext = createContext({ isInitialized: false })
+interface ApiContextType {
+  isInitialized: boolean
+  apiUrl: string | null
+}
+
+const ApiContext = createContext<ApiContextType>({
+  isInitialized: false,
+  apiUrl: null,
+})
 
 export function ApiProvider({ children }: { children: ReactNode }) {
   const isInitialized = useApiInitialization()
+  const apiUrl = useApiUrl()
 
   return (
-    <ApiContext.Provider value={{ isInitialized }}>
+    <ApiContext.Provider value={{ isInitialized, apiUrl }}>
       {children}
     </ApiContext.Provider>
   )
