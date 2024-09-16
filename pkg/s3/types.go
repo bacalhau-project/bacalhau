@@ -21,7 +21,7 @@ type SourceSpec struct {
 
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
-		return NewS3PublisherError(S3BadRequest, "invalid s3 storage params: bucket cannot be empty")
+		return NewS3InputSpecError(S3BadRequest, "invalid s3 storage params: bucket cannot be empty")
 	}
 	return nil
 }
@@ -37,7 +37,7 @@ type PreSignedResultSpec struct {
 
 func (c PreSignedResultSpec) Validate() error {
 	if c.PreSignedURL == "" {
-		return NewS3PublisherError(S3BadRequest, "invalid s3 signed storage params: signed url cannot be empty")
+		return NewS3DownloaderError(S3BadRequest, "invalid s3 signed storage params: signed url cannot be empty")
 	}
 	return c.SourceSpec.Validate()
 }
@@ -48,11 +48,11 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
-		return SourceSpec{}, NewS3PublisherError(S3BadRequest, "invalid storage source type. expected "+models.StorageSourceS3+" but received: "+spec.Type)
+		return SourceSpec{}, NewS3InputSpecError(S3BadRequest, "invalid storage source type. expected "+models.StorageSourceS3+" but received: "+spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
-		return SourceSpec{}, NewS3PublisherError(S3BadRequest, "invalid storage source params. cannot be nil")
+		return SourceSpec{}, NewS3InputSpecError(S3BadRequest, "invalid storage source params. cannot be nil")
 	}
 
 	var c SourceSpec
@@ -65,13 +65,13 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
-		return PreSignedResultSpec{}, NewS3PublisherError(S3BadRequest,
+		return PreSignedResultSpec{}, NewS3InputSpecError(S3BadRequest,
 			"invalid storage source type. expected "+models.StorageSourceS3PreSigned+" but received: "+spec.Type)
 	}
 
 	inputParams := spec.Params
 	if inputParams == nil {
-		return PreSignedResultSpec{}, NewS3PublisherError(S3BadRequest, "invalid signed result params. cannot be nil")
+		return PreSignedResultSpec{}, NewS3InputSpecError(S3BadRequest, "invalid signed result params. cannot be nil")
 	}
 
 	var c PreSignedResultSpec
