@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
-	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	otellog "go.opentelemetry.io/otel/log"
 	"go.opentelemetry.io/otel/log/global"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -89,19 +88,12 @@ func WithVersion(bv *models.BuildVersionInfo) Option {
 
 func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 	config := &Config{
-		otlpEndpoint: "localhost:4318", // Default endpoint
+		otlpEndpoint: "t.bacalhau.dev:4318", // Default endpoint - http
 		attributes:   make([]attribute.KeyValue, 0),
 	}
 	// Apply options
 	for _, opt := range opts {
 		opt(config)
-	}
-
-	// Create the file exporter
-	// TODO before merging we'll need to disable this
-	stdoutExporter, err := stdoutlog.New()
-	if err != nil {
-		return fmt.Errorf("failed to create stdout exporter: %w", err)
 	}
 
 	exporter, err := otlploghttp.New(ctx,
@@ -125,7 +117,6 @@ func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 	loggerProvider := sdklog.NewLoggerProvider(
 		sdklog.WithResource(res),
 		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(stdoutExporter)),
 	)
 
 	global.SetLoggerProvider(loggerProvider)
