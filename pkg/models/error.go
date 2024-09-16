@@ -227,3 +227,14 @@ func inferHTTPStatusCode(code ErrorCode) int {
 		return http.StatusInternalServerError
 	}
 }
+
+func IsErrorWithCode(err error, code ErrorCode) bool {
+	var baseErr *BaseError
+	if errors.As(err, &baseErr) {
+		errCode := baseErr.Code()
+		if errCode == code {
+			return true
+		}
+	}
+	return false
+}
