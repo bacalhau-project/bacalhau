@@ -49,6 +49,13 @@ var (
 `))
 )
 
+const (
+	NameFlagName        = "name"
+	NameFlagDescription = `The node's name.
+If unset, it will be read from .bacalhau/system_metadata.yaml, or automatically generated if no name exists.
+If set, and a name isn't present in .bacalhau/system_metadata.yaml the value is persisted, else ignored.`
+)
+
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"local_publisher":       configflags.LocalPublisherFlags,
@@ -98,6 +105,8 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
+	serveCmd.PersistentFlags().String(NameFlagName, "", NameFlagDescription)
+
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
@@ -109,19 +118,35 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
+	// Attempt to read the node name from the repo
 	nodeName, err := fsRepo.ReadNodeName()
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
 	}
+
 	if nodeName == "" {
-		nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
-		if err != nil {
-			return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+		// Check if a flag was provided
+		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if nodeName == "" {
+			// No flag provided, generate and persist node name
+			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+			if err != nil {
+				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+			}
 		}
+		// Persist the node name
 		if err := fsRepo.WriteNodeName(nodeName); err != nil {
 			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
 		}
+		log.Info().Msgf("persisted node name %s", nodeName)
+
+	} else {
+		// Warn if the flag was provided but node name already exists
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != nodeName {
+			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, nodeName)
+		}
 	}
+
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
