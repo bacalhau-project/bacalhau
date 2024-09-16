@@ -71,9 +71,9 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	if handler, found := e.handlers.Get(request.ExecutionID); found {
 		if handler.active() {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
+			return executor.NewExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 		} else {
-			return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
+			return executor.NewExecutorError(executor.ExecutionAlreadyComplete, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 		}
 	}
 
@@ -147,7 +147,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 	errCh := make(chan error, 1)
 
 	if !found {
-		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.ErrNotFound)
+		errCh <- executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("waiting on execution (%s)", executionID))
 		return outCh, errCh
 	}
 
@@ -186,7 +186,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.ErrNotFound)
+		return executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("canceling execution (%s)", executionID))
 	}
 	return handler.kill(ctx)
 }
@@ -198,7 +198,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(request.ExecutionID)
 	if !found {
-		return nil, fmt.Errorf("getting outputs for execution (%s): %w", request.ExecutionID, executor.ErrNotFound)
+		return nil, executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
 	}
 	return handler.outputStream(ctx, request)
 }

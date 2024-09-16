@@ -1,6 +1,7 @@
 package job
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -58,11 +59,13 @@ func NewHistoryOptions() *HistoryOptions {
 func NewHistoryCmd() *cobra.Command {
 	o := NewHistoryOptions()
 	nodeCmd := &cobra.Command{
-		Use:     "history [id]",
-		Short:   historyShort,
-		Long:    historyLong,
-		Example: historyExample,
-		Args:    cobra.ExactArgs(1),
+		Use:           "history [id]",
+		Short:         historyShort,
+		Long:          historyLong,
+		Example:       historyExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -160,7 +163,7 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) 
 		},
 	})
 	if err != nil {
-		return err
+		return errors.New(err.Error())
 	}
 
 	if err = output.Output(cmd, historyColumns, o.OutputOptions, response.Items); err != nil {

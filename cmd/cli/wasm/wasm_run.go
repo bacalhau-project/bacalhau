@@ -117,6 +117,9 @@ func newRunCmd() *cobra.Command {
 		},
 	}
 
+	wasmRunCmd.SilenceUsage = true
+	wasmRunCmd.SilenceErrors = true
+
 	cliflags.RegisterJobFlags(wasmRunCmd, opts.JobSettings)
 	cliflags.RegisterTaskFlags(wasmRunCmd, opts.TaskSettings)
 	wasmRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
@@ -280,6 +283,9 @@ func newValidateCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	validateWasmCommand.SilenceUsage = true
+	validateWasmCommand.SilenceErrors = true
 
 	validateWasmCommand.PersistentFlags().StringVar(
 		&opts.Entrypoint, "entry-point", opts.Entrypoint,

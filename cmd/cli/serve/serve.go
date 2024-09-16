@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -50,6 +49,13 @@ var (
 `))
 )
 
+const (
+	NameFlagName        = "name"
+	NameFlagDescription = `The node's name.
+If unset, it will be read from .bacalhau/system_metadata.yaml, or automatically generated if no name exists.
+If set, and a name isn't present in .bacalhau/system_metadata.yaml the value is persisted, else ignored.`
+)
+
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
 		"local_publisher":       configflags.LocalPublisherFlags,
@@ -75,10 +81,12 @@ func NewCmd() *cobra.Command {
 		"compute":               configflags.ComputeFlags,
 	}
 	serveCmd := &cobra.Command{
-		Use:     "serve",
-		Short:   "Start the bacalhau compute node",
-		Long:    serveLong,
-		Example: serveExample,
+		Use:           "serve",
+		Short:         "Start the bacalhau compute node",
+		Long:          serveLong,
+		Example:       serveExample,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
@@ -97,6 +105,8 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
+	serveCmd.PersistentFlags().String(NameFlagName, "", NameFlagDescription)
+
 	if err := configflags.RegisterFlags(serveCmd, serveFlags); err != nil {
 		util.Fatal(serveCmd, err, 1)
 	}
@@ -108,15 +118,45 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
+	// Attempt to read the node name from the repo
 	nodeName, err := fsRepo.ReadNodeName()
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
 	}
+
+	if nodeName == "" {
+		// Check if a flag was provided
+		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if nodeName == "" {
+			// No flag provided, generate and persist node name
+			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+			if err != nil {
+				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
+			}
+		}
+		// Persist the node name
+		if err := fsRepo.WriteNodeName(nodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		}
+		log.Info().Msgf("persisted node name %s", nodeName)
+
+	} else {
+		// Warn if the flag was provided but node name already exists
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != nodeName {
+			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, nodeName)
+		}
+	}
+
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
 
 	// configure node type
 	isRequesterNode := cfg.Orchestrator.Enabled
 	isComputeNode := cfg.Compute.Enabled
+
+	if !(isComputeNode || isRequesterNode) {
+		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
+		isRequesterNode = true
+	}
 
 	networkConfig, err := getNetworkConfig(cfg)
 	if err != nil {
@@ -188,24 +228,18 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
-		apiURL := standardNode.APIServer.GetURI().JoinPath("api", "v1")
-		host, portStr, err := net.SplitHostPort(cfg.WebUI.Listen)
-		if err != nil {
-			return err
+		webuiConfig := webui.Config{
+			APIEndpoint: standardNode.APIServer.GetURI().String(),
+			Listen:      cfg.WebUI.Listen,
 		}
-		webuiPort, err := strconv.ParseInt(portStr, 10, 64)
+		webuiServer, err := webui.NewServer(webuiConfig)
 		if err != nil {
-			return err
+			// not failing the node if the webui server fails to start
+			log.Error().Err(err).Msg("Failed to start ui server")
 		}
 		go func() {
-			// Specifically leave the host blank. The app will just use whatever
-			// host it is served on and replace the port and path.
-			apiPort := apiURL.Port()
-			apiPath := apiURL.Path
-
-			err := webui.ListenAndServe(ctx, host, apiPort, apiPath, int(webuiPort))
-			if err != nil {
-				cmd.PrintErrln(err)
+			if err := webuiServer.ListenAndServe(ctx); err != nil {
+				log.Error().Err(err).Msg("ui server error")
 			}
 		}()
 	}

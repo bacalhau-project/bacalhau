@@ -10,7 +10,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -23,8 +22,13 @@ func newListCmd() *cobra.Command {
 		Wide:       false,
 	}
 	listCmd := &cobra.Command{
-		Use:      "list",
-		Short:    "List all config keys.",
+		Use:   "list",
+		Short: "List all config keys and their descriptions",
+		Long: `The config list command displays all available configuration keys along with their detailed descriptions.
+This comprehensive list helps you understand the settings you can adjust to customize the bacalhau's behavior. 
+Each key shown can be used with: 
+- bacalhau config set <key> <value> to directly set the value
+- bacalhau --config=<key>=<value> to temporarily modify the setting for a single command execution`,
 		Args:     cobra.MinimumNArgs(0),
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
@@ -38,7 +42,6 @@ func newListCmd() *cobra.Command {
 
 type configListEntry struct {
 	Key         string
-	EnvVar      string
 	Description string
 }
 
@@ -51,7 +54,6 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 	for key, description := range types.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
-			EnvVar:      config.KeyAsEnvVar(key),
 			Description: description,
 		})
 	}
@@ -68,12 +70,6 @@ var listColumns = []output.TableColumn[configListEntry]{
 		ColumnConfig: table.ColumnConfig{Name: "Key"},
 		Value: func(s configListEntry) string {
 			return s.Key
-		},
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Environment Variable", WidthMax: 80, WidthMaxEnforcer: text.WrapHard},
-		Value: func(v configListEntry) string {
-			return fmt.Sprintf("%v", v.EnvVar)
 		},
 	},
 	{

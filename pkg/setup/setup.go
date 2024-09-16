@@ -46,7 +46,7 @@ func SetupBacalhauRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
-		if err := fsRepo.Init(cfg); err != nil {
+		if err := fsRepo.Init(); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}
 	} else {
@@ -70,6 +70,8 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
 	cfgValues := map[string]any{
 		types.DataDirKey: path,
+		// callers of this method currently assume it creates an orchestrator node.
+		types.OrchestratorEnabledKey: true,
 	}
 
 	// the BACALHAU_NODE_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.

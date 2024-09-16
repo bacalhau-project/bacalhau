@@ -31,7 +31,7 @@ var Default = Bacalhau{
 	},
 	NameProvider: "puuid",
 	Orchestrator: Orchestrator{
-		Enabled: true,
+		Enabled: false,
 		Host:    "0.0.0.0",
 		Port:    4222,
 		NodeManager: NodeManager{

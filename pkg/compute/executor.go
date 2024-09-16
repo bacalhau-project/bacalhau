@@ -302,8 +302,10 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
 	topic := EventTopicExecutionRunning
 	defer func() {
-		if err != nil && err.Error() != executor.ErrAlreadyCancelled.Error() {
-			e.handleFailure(ctx, state, err, topic)
+		if err != nil {
+			if !models.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
+				e.handleFailure(ctx, state, err, topic)
+			}
 		}
 		dur := stopwatch()
 		log.Ctx(ctx).Debug().
@@ -320,7 +322,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}()
 	if err := res.Err; err != nil {
-		if errors.Is(err, executor.ErrAlreadyStarted) {
+		if models.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
 			// we allow duplicate calls to `Run` to be idempotent and fall through to the below `Wait` call.
 			log.Ctx(ctx).Warn().Err(err).Str("execution", execution.ID).

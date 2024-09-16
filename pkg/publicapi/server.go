@@ -90,12 +90,13 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
-	// enable debug mode to get clearer error messages
-	// TODO: disable debug mode after we implement our own error handler
-	server.Router.Debug = true
-
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
+	if logLevel == zerolog.DebugLevel {
+		// enable debug mode to get clearer error messages
+		server.Router.Debug = true
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,9 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	middlewareLogger := log.Ctx(logger.ContextWithNodeIDLogger(context.Background(), params.HostID))
 	// base middle after routing
 	server.Router.Use(
-		echomiddelware.CORS(),
+		echomiddelware.CORSWithConfig(echomiddelware.CORSConfig{
+			AllowOrigins: []string{AllowedCORSOrigin},
+		}),
 		echomiddelware.Recover(),
 		echomiddelware.RequestID(),
 		echomiddelware.BodyLimit(server.config.MaxBytesToReadInBody),
@@ -139,6 +142,10 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		// logs requests made by clients with different versions than the server
 		middleware.VersionNotifyLogger(middlewareLogger, *serverVersion),
 	)
+
+	// Add custom http error handler. This is a centralized error handler for
+	// the server
+	server.Router.HTTPErrorHandler = middleware.CustomHTTPErrorHandler
 
 	var tlsConfig *tls.Config
 	if params.AutoCertDomain != "" {
@@ -192,7 +199,7 @@ func (apiServer *Server) GetURI() *url.URL {
 //	@contact.email	team@bacalhau.org
 //	@license.name	Apache 2.0
 //	@license.url	https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE
-//	@host			bootstrap.production.bacalhau.org:1234
+//	@host			localhost:1234
 //	@BasePath		/
 //	@schemes		http
 //

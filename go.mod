@@ -13,6 +13,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0

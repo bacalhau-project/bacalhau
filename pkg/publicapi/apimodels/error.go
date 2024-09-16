@@ -1,0 +1,93 @@
+package apimodels
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+)
+
+// APIError represents a standardized error response for the api.
+//
+// it encapsulates:
+//   - an http status code
+//   - a human-readable error message
+//
+// purpose:
+//   - primarily used to send synchronous errors from the orchestrator endpoint
+//   - provides a structured json error response to http clients
+//
+// usage:
+//   - when the cli interacts with an orchestrator node via an http client:
+//     1. the http client receives this structured json error
+//     2. the human-readable message is output to stdout
+//     3. the http status code allows for programmatic handling of different error types
+//
+// benefits:
+//   - ensures consistent error formatting across the api
+//   - facilitates both user-friendly error messages and machine-readable error codes
+type APIError struct {
+	// httpstatuscode is the http status code associated with this error.
+	// it should correspond to standard http status codes (e.g., 400, 404, 500).
+	HTTPStatusCode int `json:"Status"`
+
+	// message is a short, human-readable description of the error.
+	// it should be concise and provide a clear indication of what went wrong.
+	Message string `json:"Message"`
+
+	// RequestID is the request ID of the request that caused the error.
+	RequestID string `json:"RequestID"`
+
+	// Code is the error code of the error.
+	Code string `json:"Code"`
+
+	// Component is the component that caused the error.
+	Component string `json:"Component"`
+}
+
+// NewAPIError creates a new APIError with the given HTTP status code and message.
+func NewAPIError(statusCode int, message string) *APIError {
+	return &APIError{
+		HTTPStatusCode: statusCode,
+		Message:        message,
+	}
+}
+
+// NewUnauthorizedError creates an APIError for Unauthorized (401) errors.
+func NewUnauthorizedError(message string) *APIError {
+	return NewAPIError(http.StatusUnauthorized, message)
+}
+
+// Error implements the error interface, allowing APIError to be used as a standard Go error.
+func (e *APIError) Error() string {
+	return e.Message
+}
+
+// Parse HTTP Resposne to APIError
+func FromHttpResponse(resp *http.Response) (*APIError, error) {
+
+	if resp == nil {
+		return nil, errors.New("response is nil, cannot be unmarsheld to APIError")
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	var apiErr APIError
+	err = json.Unmarshal(body, &apiErr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing response body: %w", err)
+	}
+
+	// If the JSON didn't include a status code, use the HTTP Status
+	if apiErr.HTTPStatusCode == 0 {
+		apiErr.HTTPStatusCode = resp.StatusCode
+	}
+
+	return &apiErr, nil
+}

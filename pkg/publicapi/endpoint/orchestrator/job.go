@@ -408,22 +408,22 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 // godoc for Orchestrator JobLogs
 //
 //	@ID				orchestrator/logs
-//	@Summary		Displays the logs for a current job/execution
-//	@Description	Shows the output from the job specified by `id`
-//	@Description	The output will be continuous until either, the client disconnects or the execution completes.
+//	@Summary		Streams the logs for a current job/execution via WebSocket
+//	@Description	Establishes a WebSocket connection to stream output from the job specified by `id`
+//	@Description	The stream will continue until either the client disconnects or the execution completes
 //	@Tags			Orchestrator
 //	@Accept			json
-//	@Produce		json
-//	@Param			id				path		string	true	"ID to get the job logs for"
+//	@Produce		octet-stream
+//	@Param			id				path		string	true	"ID of the job to stream logs for"
 //	@Param			execution_id	query		string	false	"Fetch logs for a specific execution"
 //	@Param			tail			query		bool	false	"Fetch historical logs"
 //	@Param			follow			query		bool	false	"Follow the logs"
-//	@Success		200				{object}	string
-//	@Failure		400				{object}	string
-//	@Failure		500				{object}	string
+//	@Success		101				{object}	models.ExecutionLog	"Switching Protocols to WebSocket"
+//	@Failure		400				{object}	string	"Bad Request"
+//	@Failure		500				{object}	string	"Internal Server Error"
 //	@Router			/api/v1/orchestrator/jobs/{id}/logs [get]
 func (e *Endpoint) logs(c echo.Context) error {
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	ws, err := publicapi.WebsocketUpgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade websocket connection: %w", err)
 	}

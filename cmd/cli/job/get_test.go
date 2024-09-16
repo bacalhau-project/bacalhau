@@ -53,13 +53,12 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 	require.NoError(s.T(), err, "Error submitting job")
 	jobID := system.FindJobIDInTestOutput(out)
 
-	_, getoutput, err := s.ExecuteTestCobraCommand("job", "get",
+	_, _, err = s.ExecuteTestCobraCommand("job", "get",
 		"--config", fmt.Sprintf("%s=%s", types.ResultDownloadersTypesIPFSEndpointKey, s.Config.ResultDownloaders.Types.IPFS.Endpoint),
 		fmt.Sprintf("%s/missing", jobID),
 	)
 
 	require.Error(s.T(), err, "expected error but it wasn't returned")
-	require.Contains(s.T(), getoutput, "Error: downloading job")
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
