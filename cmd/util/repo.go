@@ -30,8 +30,12 @@ func SetupRepoConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 		return types.Bacalhau{}, fmt.Errorf("failed to reconcile repo: %w", err)
 	}
 
+	metastore, err := r.MetadataStore()
+	if err != nil {
+		return types.Bacalhau{}, err
+	}
 	// TODO(forrest): we need to start this hook somewhere else as not all CLI methods call this parent method.
-	hook.StartUpdateCheck(cmd, cfg, r)
+	hook.StartUpdateCheck(cmd, cfg, metastore)
 
 	return cfg, nil
 }

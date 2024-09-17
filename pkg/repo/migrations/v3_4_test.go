@@ -148,18 +148,20 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
+	metastore, err := suite.repo.MetadataStore()
+	suite.Require().NoError(err)
 	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	actualInstallationID, err := metastore.ReadInstallationID()
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
+	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
+	actualNodeName, err := metastore.ReadNodeName()
 	suite.Require().NoError(err)
 	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
 }
@@ -225,16 +227,19 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	metastore, err := suite.repo.MetadataStore()
+	suite.Require().NoError(err)
+
+	actualInstallationID, err := metastore.ReadInstallationID()
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
+	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
 
 	// check that the migration doesn't create a node name if a config file wasn't present.
-	actualNodeName, err := suite.repo.ReadNodeName()
+	actualNodeName, err := metastore.ReadNodeName()
 	suite.Require().NoError(err)
 	suite.Require().Empty(actualNodeName)
 }
@@ -346,18 +351,20 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
+	metastore, err := suite.repo.MetadataStore()
+	suite.Require().NoError(err)
 	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	actualInstallationID, err := metastore.ReadInstallationID()
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
+	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
+	actualNodeName, err := metastore.ReadNodeName()
 	suite.Require().NoError(err)
 	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
 }
@@ -465,23 +472,25 @@ Auth:
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator", "nats-store"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
 
+	metastore, err := suite.repo.MetadataStore()
+	suite.Require().NoError(err)
 	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	actualInstallationID, err := metastore.ReadInstallationID()
 	suite.Require().NoError(err)
 	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
+	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
 	suite.Require().NoError(err)
 	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
+	actualNodeName, err := metastore.ReadNodeName()
 	suite.Require().NoError(err)
 	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
 }

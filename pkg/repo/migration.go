@@ -48,7 +48,11 @@ func (m *MigrationManager) Migrate(repo FsRepo) error {
 			return err
 		}
 		currentVersion = migration.ToVersion
-		err = repo.WriteVersion(currentVersion)
+		metaStore, err := repo.MetadataStore()
+		if err != nil {
+			return err
+		}
+		err = metaStore.WriteVersion(currentVersion)
 		if err != nil {
 			return err
 		}

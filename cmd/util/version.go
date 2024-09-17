@@ -50,7 +50,11 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}
 
-	installationID, err := r.ReadInstallationID()
+	metastore, err := r.MetadataStore()
+	if err != nil {
+		return versions, err
+	}
+	installationID, err := metastore.ReadInstallationID()
 	if err != nil {
 		return versions, fmt.Errorf("reading installationID: %w", err)
 	}

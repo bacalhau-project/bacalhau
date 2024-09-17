@@ -18,7 +18,7 @@ type Version struct {
 }
 
 // readLegacyVersion reads the repo version from the LegacyVersionFile.
-func (fsr *FsRepo) readLegacyVersion() (int, error) {
+func (fsr *MetadataStore) readLegacyVersion() (int, error) {
 	versionPath := fsr.join(LegacyVersionFile)
 	versionBytes, err := os.ReadFile(versionPath)
 	if err != nil {
@@ -35,7 +35,7 @@ func (fsr *FsRepo) readLegacyVersion() (int, error) {
 }
 
 // writeLegacyVersion writes the repo version to LegacyVersionFile.
-func (fsr *FsRepo) writeLegacyVersion(version int) error {
+func (fsr *MetadataStore) writeLegacyVersion(version int) error {
 	repoVersion := Version{Version: version}
 	versionJSON, err := json.Marshal(repoVersion)
 	if err != nil {

@@ -120,8 +120,12 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
+	metastore, err := fsRepo.MetadataStore()
+	if err != nil {
+		return err
+	}
 	// Attempt to read the node name from the repo
-	nodeName, err := fsRepo.ReadNodeName()
+	nodeName, err := metastore.ReadNodeName()
 	if err != nil {
 		return fmt.Errorf("failed to get node name: %w", err)
 	}
@@ -137,7 +141,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 			}
 		}
 		// Persist the node name
-		if err := fsRepo.WriteNodeName(nodeName); err != nil {
+		if err := metastore.WriteNodeName(nodeName); err != nil {
 			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
 		}
 		log.Info().Msgf("persisted node name %s", nodeName)
@@ -247,11 +251,11 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	if !cfg.DisableAnalytics {
-		installationID, err := fsRepo.ReadInstallationID()
+		installationID, err := metastore.ReadInstallationID()
 		if err != nil {
 			log.Trace().Err(err).Msg("failed to read installationID")
 		}
-		instanceID, err := fsRepo.ReadInstanceID()
+		instanceID, err := metastore.ReadInstanceID()
 		if err != nil {
 			log.Trace().Err(err).Msg("failed to read instanceID")
 		}

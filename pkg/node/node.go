@@ -283,11 +283,15 @@ func NewNode(
 	}
 
 	// Start periodic software update checks.
+	metaStore, err := fsr.MetadataStore()
+	if err != nil {
+		return nil, err
+	}
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,
 		bacalhauConfig,
-		fsr,
+		metaStore,
 		func(ctx context.Context) (*models.BuildVersionInfo, error) { return nil, nil },
 		version.LogUpdateResponse,
 	)

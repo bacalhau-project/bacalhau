@@ -45,17 +45,21 @@ var V3Migration = repo.NewMigration(
 		if err != nil {
 			return err
 		}
+		metaStore, err := r.MetadataStore()
+		if err != nil {
+			return err
+		}
 		// migrate from the repo.version file to the system_metadata.yaml file.
 		{
 			// Initialize the SystemMetadataFile in the staging directory
-			if err := r.WriteVersion(repo.Version4); err != nil {
+			if err := metaStore.WriteVersion(repo.Version4); err != nil {
 				return err
 			}
-			if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
+			if err := metaStore.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
 				return err
 			}
 			if fileCfg.User.InstallationID != "" {
-				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+				if err := metaStore.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
 					return err
 				}
 			}
@@ -101,10 +105,10 @@ var V3Migration = repo.NewMigration(
 		{
 			oldConfigFilePath := filepath.Join(repoPath, config_legacy.FileName)
 			if _, err := os.Stat(oldConfigFilePath); err == nil {
-				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
+				if err := metaStore.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
 					return fmt.Errorf("migrating installation id: %w", err)
 				}
-				if err := r.WriteNodeName(fileCfg.Node.Name); err != nil {
+				if err := metaStore.WriteNodeName(fileCfg.Node.Name); err != nil {
 					return fmt.Errorf("migrating node name: %w", err)
 				}
 				newConfigType, err := config.MigrateV1(fileCfg)
