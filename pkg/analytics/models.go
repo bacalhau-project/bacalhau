@@ -14,8 +14,10 @@ import (
 type EventType string
 
 const (
-	JobEventType       = "job_v1"
-	SubmitJobEventType = "submit_job_v1"
+	// SubmitJobEventType is the event type for a job that has been submitted to an orchestrator.
+	SubmitJobEventType = "bacalhau.job_v1.submit"
+	// TerminalJobEventType is the event type for a job that has reached a terminal state.
+	TerminalJobEventType = "bacalhau.job_v1.terminal"
 )
 
 type Event struct {
@@ -137,7 +139,7 @@ func NewJobTerminalEvent(j models.Job) *Event {
 		TaskTotalTimeout:     t.Timeouts.TotalTimeout,
 	}
 
-	return NewEvent(JobEventType, terminalJobEvent)
+	return NewEvent(TerminalJobEventType, terminalJobEvent)
 }
 
 type SubmitJobEvent struct {
@@ -221,6 +223,4 @@ func NewSubmitJobEvent(j models.Job, warnings ...string) SubmitJobEvent {
 		TaskTotalTimeout:     t.Timeouts.TotalTimeout,
 		Warnings:             warnings,
 	}
-
-	// return NewEvent(SubmitJobEventType, submitEvent)
 }
