@@ -205,7 +205,7 @@ func getNodeType(input string) (requester, compute bool, err error) {
 	for _, nodeType := range tokens {
 		if nodeType == "compute" {
 			compute = true
-		} else if nodeType == "requester" {
+		} else if nodeType == "requester" || nodeType == "orchestrator" {
 			requester = true
 		} else {
 			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
@@ -218,7 +218,7 @@ func getNodeType(input string) (requester, compute bool, err error) {
 // from the read config file.
 // Load returns an error if the file cannot be read.
 func (c *Config) Load(path string) error {
-	log.Debug().Msgf("loading config file: %q", path)
+	log.Info().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -229,12 +229,20 @@ func (c *Config) Load(path string) error {
 // Merge merges a new configuration file specified by `path` with the existing config.
 // Merge returns an error if the file cannot be read
 func (c *Config) Merge(path string) error {
-	log.Debug().Msgf("merging config file: %q", path)
+	log.Info().Msgf("merging config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (c *Config) Get(key string) any {
+	return c.base.Get(key)
+}
+
+func (c *Config) ConfigFileUsed() string {
+	return c.base.ConfigFileUsed()
 }
 
 // Unmarshal returns the current configuration.
