@@ -77,6 +77,9 @@ type RequesterControlPlaneConfig struct {
 	// switching between unknown and active too frequently.
 	HeartbeatCheckFrequency Duration `yaml:"HeartbeatFrequency"`
 
+	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
+	HeartbeatTopic string `yaml:"HeartbeatTopic"`
+
 	// This is the time period after which a compute node is considered to be disconnected. If the compute
 	// node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
 	NodeDisconnectedAfter Duration `yaml:"NodeDisconnectedAfter"`

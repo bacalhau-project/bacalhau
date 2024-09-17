@@ -70,4 +70,7 @@ type ComputeControlPlaneConfig struct {
 	// that the compute node is still alive. This should be less than the requester's configured
 	// heartbeat timeout to avoid flapping.
 	HeartbeatFrequency Duration `yaml:"HeartbeatFrequency"`
+
+	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
+	HeartbeatTopic string `yaml:"HeartbeatTopic"`
 }
