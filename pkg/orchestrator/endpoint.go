@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -52,14 +53,20 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 }
 
 // SubmitJob submits a job to the evaluation broker.
-func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (*SubmitJobResponse, error) {
+func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (_ *SubmitJobResponse, err error) {
 	job := request.Job
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
+	submitEvent := analytics.NewSubmitJobEvent(*job, warnings...)
+	defer func() {
+		analytics.EmitEvent(ctx, analytics.NewEvent(analytics.SubmitJobEventType, submitEvent))
+	}()
 
 	if err := e.jobTransformer.Transform(ctx, job); err != nil {
+		submitEvent.Error = err.Error()
 		return nil, err
 	}
+	submitEvent.ID = job.ID
 
 	var translationEvent models.Event
 
