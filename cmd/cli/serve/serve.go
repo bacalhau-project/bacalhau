@@ -16,6 +16,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -26,6 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/bacalhau-project/bacalhau/webui"
 )
 
@@ -240,6 +242,26 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		go func() {
 			if err := webuiServer.ListenAndServe(ctx); err != nil {
 				log.Error().Err(err).Msg("ui server error")
+			}
+		}()
+	}
+
+	if !cfg.DisableAnalytics {
+		installationID, err := fsRepo.ReadInstallationID()
+		if err != nil {
+			log.Trace().Err(err).Msg("failed to read installationID")
+		}
+		if err := analytics.SetupAnalyticsProvider(ctx,
+			analytics.WithNodeNodeID(nodeName),
+			analytics.WithNodeType(isRequesterNode, isComputeNode),
+			analytics.WithInstallationID(installationID),
+			analytics.WithVersion(version.Get()),
+		); err != nil {
+			log.Trace().Err(err).Msg("failed to setup analytics provider")
+		}
+		defer func() {
+			if err := analytics.ShutdownAnalyticsProvider(ctx); err != nil {
+				log.Trace().Err(err).Msg("failed to shutdown analytics provider")
 			}
 		}()
 	}

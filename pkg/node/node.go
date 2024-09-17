@@ -311,7 +311,6 @@ func NewNode(
 		if apiServer != nil {
 			err = errors.Join(err, apiServer.Shutdown(ctx))
 		}
-
 		cancel()
 		return err
 	})
