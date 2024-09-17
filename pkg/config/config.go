@@ -237,6 +237,10 @@ func (c *Config) Merge(path string) error {
 	return nil
 }
 
+func (c *Config) Get(key string) any {
+	return c.base.Get(key)
+}
+
 // Unmarshal returns the current configuration.
 // Unmarshal returns an error if the configuration cannot be unmarshalled.
 func (c *Config) Unmarshal(out interface{}) error {
