@@ -127,6 +127,11 @@ func NewNode(
 		}
 	}()
 
+	metaStore, err := fsr.MetadataStore()
+	if err != nil {
+		return nil, err
+	}
+
 	if err = prepareConfig(&config, bacalhauConfig); err != nil {
 		return nil, err
 	}
@@ -176,6 +181,7 @@ func NewNode(
 			transportLayer,
 			transportLayer.ComputeProxy(),
 			messageSerDeRegistry,
+			metaStore,
 		)
 		if err != nil {
 			return nil, err
@@ -283,10 +289,6 @@ func NewNode(
 	}
 
 	// Start periodic software update checks.
-	metaStore, err := fsr.MetadataStore()
-	if err != nil {
-		return nil, err
-	}
 	updateCheckCtx, stopUpdateChecks := context.WithCancel(ctx)
 	version.RunUpdateChecker(
 		updateCheckCtx,

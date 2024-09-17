@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -34,13 +35,24 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 	}
 	base := fmt.Sprintf("%s://%s:%d", apiSheme, apiHost, apiPort)
 
+	metastore := repo.NewMetadataStore(cfg.DataDir)
+	installationID, err := metastore.ReadInstallationID()
+	if err != nil {
+		return nil, err
+	}
+	instanceID, err := metastore.ReadInstanceID()
+	if err != nil {
+		return nil, err
+	}
 	bv := version.Get()
 	headers := map[string][]string{
-		apimodels.HTTPHeaderBacalhauGitVersion: {bv.GitVersion},
-		apimodels.HTTPHeaderBacalhauGitCommit:  {bv.GitCommit},
-		apimodels.HTTPHeaderBacalhauBuildDate:  {bv.BuildDate.UTC().String()},
-		apimodels.HTTPHeaderBacalhauBuildOS:    {bv.GOOS},
-		apimodels.HTTPHeaderBacalhauArch:       {bv.GOARCH},
+		apimodels.HTTPHeaderBacalhauGitVersion:          {bv.GitVersion},
+		apimodels.HTTPHeaderBacalhauGitCommit:           {bv.GitCommit},
+		apimodels.HTTPHeaderBacalhauBuildDate:           {bv.BuildDate.UTC().String()},
+		apimodels.HTTPHeaderBacalhauBuildOS:             {bv.GOOS},
+		apimodels.HTTPHeaderBacalhauArch:                {bv.GOARCH},
+		apimodels.HTTPHeaderBacalhauBuildInstallationID: {installationID},
+		apimodels.HTTPHeaderBacalhauInstanceID:          {instanceID},
 	}
 
 	opts := []clientv2.OptionFn{

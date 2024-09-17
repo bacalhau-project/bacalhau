@@ -24,4 +24,7 @@ const (
 	HTTPHeaderBacalhauBuildOS = "X-Bacalhau-Build-OS"
 	// HTTPHeaderBacalhauArch is the header used to pass the agent architecture
 	HTTPHeaderBacalhauArch = "X-Bacalhau-Arch"
+
+	HTTPHeaderBacalhauBuildInstallationID = "X-Bacalhau-InstallationID"
+	HTTPHeaderBacalhauInstanceID          = "X-Bacalhau-InstanceID"
 )

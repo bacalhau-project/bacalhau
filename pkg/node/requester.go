@@ -53,6 +53,11 @@ type Requester struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
+type MetaStore interface {
+	ReadInstallationID() (string, error)
+	ReadInstanceID() (string, error)
+}
+
 //nolint:funlen,gocyclo
 func NewRequesterNode(
 	ctx context.Context,
@@ -64,6 +69,7 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
+	metaStore MetaStore,
 ) (*Requester, error) {
 	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
@@ -209,11 +215,21 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
+	instanceID, err := metaStore.ReadInstanceID()
+	if err != nil {
+		return nil, err
+	}
+	installationID, err := metaStore.ReadInstallationID()
+	if err != nil {
+		return nil, err
+	}
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
-		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
+		transformer.OrchestratorInstanceID(instanceID),
+		transformer.OrchestratorInstallationID(installationID),
+		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{

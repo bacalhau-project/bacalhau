@@ -62,6 +62,9 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		analytics.EmitEvent(ctx, analytics.NewEvent(analytics.SubmitJobEventType, submitEvent))
 	}()
 
+	job.Meta[models.MetaClientInstallationID] = request.ClientInstallationID
+	job.Meta[models.MetaClientInstanceID] = request.ClientInstanceID
+
 	if err := e.jobTransformer.Transform(ctx, job); err != nil {
 		submitEvent.Error = err.Error()
 		return nil, err
