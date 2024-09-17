@@ -18,7 +18,7 @@ import (
 )
 
 const ProviderKey = "bacalhau-analytics"
-const DefaultOtelCollectorEndpoint = "t.bacalhau.dev:4317"
+const DefaultOtelCollectorEndpoint = "t.bacalhau.org:4317"
 
 const (
 	NodeInstallationIDKey = "installation_id"
@@ -87,7 +87,6 @@ func WithVersion(bv *models.BuildVersionInfo) Option {
 
 func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 	config := &Config{
-		// TODO switch to t.bacalhau.org:4317
 		otlpEndpoint: DefaultOtelCollectorEndpoint, // Default endpoint - grpc
 		attributes:   make([]attribute.KeyValue, 0),
 	}

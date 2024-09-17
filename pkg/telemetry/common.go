@@ -26,13 +26,10 @@ func SetupFromEnvs() {
 		case *url.Error:
 			if strings.Contains(e.URL, analytics.DefaultOtelCollectorEndpoint) {
 				return
-			} else {
-				log.Err(err).Msg("Error occurred while handling spans")
 			}
 		default:
-			// fall through and log the error
+			log.Err(err).Msg("Error occurred while handling spans")
 		}
-		log.Err(err).Msg("Error occurred while handling spans")
 	}))
 }
 
