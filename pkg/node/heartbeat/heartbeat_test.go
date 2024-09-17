@@ -41,17 +41,18 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	var err error
 	s.clock = clock.NewMock()
 
+	// Setup NATS server and client
+	s.natsServer, s.natsConn = testutils.StartNats(s.T())
+
 	// Setup heartbeat server
 	s.heartbeatServer, err = NewServer(HeartbeatServerParams{
 		Clock:                 s.clock,
+		Client:                s.natsConn,
 		CheckFrequency:        1 * time.Second,
 		NodeDisconnectedAfter: 10 * time.Second,
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.heartbeatServer.Start(context.Background()))
-
-	// setup nats server and client
-	s.natsServer, s.natsConn = testutils.StartNats(s.T())
 
 	// Setup NATS publisher and subscriber
 	s.messageSerDeRegistry = ncl.NewMessageSerDeRegistry()
@@ -70,7 +71,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 	s.Require().NoError(s.subscriber.Subscribe(TestTopic))
-
+	s.Require().NoError(s.subscriber.Subscribe(legacyHeartbeatTopic))
 }
 
 func (s *HeartbeatTestSuite) TearDownTest() {
@@ -123,7 +124,8 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 	for i, tc := range testcases {
 		nodeID := "node-" + strconv.Itoa(i)
-		client := NewClient(nodeID, s.publisher)
+		client, err := NewClient(s.natsConn, nodeID, s.publisher)
+		s.Require().NoError(err)
 
 		s.T().Run(tc.name, func(t *testing.T) {
 			var seq uint64 = 1
@@ -153,11 +155,12 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 func (s *HeartbeatTestSuite) TestSendHeartbeatError() {
 	ctx := context.Background()
-	client := NewClient("test-node", s.publisher)
+	client, err := NewClient(s.natsConn, "test-node", s.publisher)
+	s.Require().NoError(err)
 
 	// Close the NATS connection to force an error
 	s.natsConn.Close()
 
-	err := client.SendHeartbeat(ctx, 1)
+	err = client.SendHeartbeat(ctx, 1)
 	s.Error(err)
 }

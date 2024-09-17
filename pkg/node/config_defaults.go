@@ -37,7 +37,6 @@ func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
 			InfoUpdateFrequency:     legacy_types.Duration(60 * time.Second), //nolint:gomnd
 			ResourceUpdateFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
 			HeartbeatFrequency:      legacy_types.Duration(15 * time.Second), //nolint:gomnd
-			HeartbeatTopic:          "heartbeat",
 		},
 	}
 }
@@ -71,7 +70,6 @@ var DefaultRequesterConfig = RequesterConfigParams{
 
 	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
-		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 
@@ -108,7 +106,6 @@ var TestRequesterConfig = RequesterConfigParams{
 
 	ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: legacy_types.Duration(30 * time.Second), //nolint:gomnd
-		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   legacy_types.Duration(30 * time.Second), //nolint:gomnd
 	},
 

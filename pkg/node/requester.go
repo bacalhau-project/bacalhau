@@ -299,7 +299,7 @@ func NewRequesterNode(
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
 	}
-	err = subscriber.Subscribe(requesterConfig.ControlPlaneSettings.HeartbeatTopic)
+	err = subscriber.Subscribe(orchestratorHeartbeatSubscription())
 	if err != nil {
 		return nil, err
 	}
@@ -394,6 +394,7 @@ func createNodeManager(ctx context.Context,
 
 	// heartbeat service
 	heartbeatParams := heartbeat.HeartbeatServerParams{
+		Client:                transportLayer.Client(),
 		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
 		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
 	}
