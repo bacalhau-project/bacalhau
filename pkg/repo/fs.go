@@ -98,13 +98,18 @@ func (fsr *FsRepo) Init() error {
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
-	// never fail here as this isn't critical to node start up.
-	if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
-		log.Trace().Err(err).Msgf("failed to write instanceID")
-	}
-
 	if err := fsr.WriteVersion(Version4); err != nil {
 		return fmt.Errorf("failed to persist repo version: %w", err)
+	}
+
+	// these calls must happen after version write for the file to exist
+	if err := fsr.WriteInstallationID(ReadInstallationID()); err != nil {
+		log.Trace().Err(err).Msg("failed to write installationID")
+	}
+
+	// never fail here as this isn't critical to node start up.
+	if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
+		log.Trace().Err(err).Msg("failed to write instanceID")
 	}
 
 	return nil
@@ -132,6 +137,16 @@ func (fsr *FsRepo) Open() error {
 	} else if instanceID == "" {
 		if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
 			log.Trace().Err(err).Msgf("failed to write instanceID")
+		}
+	}
+
+	// check if an installationID exists attempting to persist one if not found.
+	// never fail here as this isn't critical to node start up.
+	if installationID, err := fsr.ReadInstallationID(); err != nil {
+		log.Trace().Err(err).Msgf("failed to read installationID")
+	} else if installationID == "" {
+		if err := fsr.WriteInstallationID(ReadInstallationID()); err != nil {
+			log.Trace().Err(err).Msg("failed to write installationID")
 		}
 	}
 
