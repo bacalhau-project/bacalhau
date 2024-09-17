@@ -69,6 +69,7 @@ func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	}
 	// if a config file is present, apply it to the config
 	if len(configFiles) > 0 {
+		cmd.Printf("Config file(s) found at path(s): %s\n", configFiles)
 		opts = append(opts, config.WithPaths(configFiles...))
 	}
 
