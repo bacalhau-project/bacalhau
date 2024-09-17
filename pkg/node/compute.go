@@ -208,13 +208,16 @@ func NewComputeNode(
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
 		ncl.WithPublisherName(nodeID),
-		ncl.WithPublisherDestination(config.ControlPlaneSettings.HeartbeatTopic),
+		ncl.WithPublisherDestination(computeHeartbeatTopic(nodeID)),
 		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
 	)
 	if err != nil {
 		return nil, err
 	}
-	heartbeatClient := heartbeat.NewClient(nodeID, heartbeatPublisher)
+	heartbeatClient, err := heartbeat.NewClient(natsConn, nodeID, heartbeatPublisher)
+	if err != nil {
+		return nil, err
+	}
 
 	// Set up the management client which will attempt to register this node
 	// with the requester node, and then if successful will send regular node
