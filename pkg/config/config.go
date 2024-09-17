@@ -205,7 +205,7 @@ func getNodeType(input string) (requester, compute bool, err error) {
 	for _, nodeType := range tokens {
 		if nodeType == "compute" {
 			compute = true
-		} else if nodeType == "requester" {
+		} else if nodeType == "requester" || nodeType == "orchestrator" {
 			requester = true
 		} else {
 			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
