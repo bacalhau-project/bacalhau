@@ -167,9 +167,6 @@ func NewComputeConfigWith(executionDir string, params ComputeConfigParams) (Comp
 	if params.ControlPlaneSettings.ResourceUpdateFrequency == 0 {
 		params.ControlPlaneSettings.ResourceUpdateFrequency = defaults.ControlPlaneSettings.ResourceUpdateFrequency
 	}
-	if params.ControlPlaneSettings.HeartbeatTopic == "" {
-		params.ControlPlaneSettings.HeartbeatTopic = defaults.ControlPlaneSettings.HeartbeatTopic
-	}
 
 	// Get available physical resources in the host
 	physicalResourcesProvider := params.PhysicalResourcesProvider
