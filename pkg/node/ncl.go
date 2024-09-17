@@ -16,16 +16,17 @@ func CreateMessageSerDeRegistry() (*ncl.MessageSerDeRegistry, error) {
 	)
 	return reg, err
 }
+const HeartbeatTopicFormat = "bacalhau.global.compute.%s.out.heartbeat"
 
 // computeHeartbeatTopic returns the subject to publish heartbeat messages to.
 // it publishes to the outgoing heartbeat subject of a specific compute node, which
 // the orchestrator subscribes to.
 func computeHeartbeatTopic(nodeID string) string {
-	return fmt.Sprintf("bacalhau.global.compute.%s.out.heartbeat", nodeID)
+	return fmt.Sprintf(HeartbeatTopicFormat, nodeID)
 }
 
 // orchestratorHeartbeatSubscription returns the subject to subscribe for compute heartbeats.
 // it subscribes for heartbeat messages from all compute nodes
 func orchestratorHeartbeatSubscription() string {
-	return "bacalhau.global.compute.*.out.heartbeat"
+	return fmt.Sprintf(HeartbeatTopicFormat, "*")
 }
