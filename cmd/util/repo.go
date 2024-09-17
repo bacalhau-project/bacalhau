@@ -45,7 +45,7 @@ func SetupRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 	return r, nil
 }
 
-func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
+func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	var opts []config.Option
 	v := viper.GetViper()
 	// check if the user specified config files via the --config flag
@@ -59,7 +59,7 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 			if _, err := os.Stat(path); err != nil {
 				// if the file exists and could not be read, return an error
 				if !os.IsNotExist(err) {
-					return types.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
+					return nil, fmt.Errorf("loading config file at %q: %w", path, err)
 				}
 			} else {
 				// the file exists, use it.
@@ -69,12 +69,13 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	}
 	// if a config file is present, apply it to the config
 	if len(configFiles) > 0 {
+		cmd.Printf("Config file(s) found at path(s): %s\n", configFiles)
 		opts = append(opts, config.WithPaths(configFiles...))
 	}
 
 	configFlags, err := getConfigFlags(v, cmd)
 	if err != nil {
-		return types.Bacalhau{}, err
+		return nil, err
 	}
 	if len(configFlags) > 0 {
 		opts = append(opts, config.WithFlags(configFlags))
@@ -92,9 +93,16 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 
 	cfg, err := config.New(opts...)
 	if err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
+	cfg, err := SetupConfigType(cmd)
+	if err != nil {
 		return types.Bacalhau{}, err
 	}
-
 	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
 		return types.Bacalhau{}, err
