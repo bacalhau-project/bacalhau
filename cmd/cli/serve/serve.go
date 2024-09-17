@@ -251,10 +251,15 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		if err != nil {
 			log.Trace().Err(err).Msg("failed to read installationID")
 		}
+		instanceID, err := fsRepo.ReadInstanceID()
+		if err != nil {
+			log.Trace().Err(err).Msg("failed to read instanceID")
+		}
 		if err := analytics.SetupAnalyticsProvider(ctx,
 			analytics.WithNodeNodeID(nodeName),
 			analytics.WithNodeType(isRequesterNode, isComputeNode),
 			analytics.WithInstallationID(installationID),
+			analytics.WithInstanceID(instanceID),
 			analytics.WithVersion(version.Get()),
 		); err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
