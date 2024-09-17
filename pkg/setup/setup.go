@@ -68,6 +68,8 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 
 	// disable update checks in testing.
 	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
+	// don't send analytics data during testing
+	t.Setenv(config.KeyAsEnvVar(types.DisableAnalyticsKey), "true")
 	cfgValues := map[string]any{
 		types.DataDirKey: path,
 		// callers of this method currently assume it creates an orchestrator node.

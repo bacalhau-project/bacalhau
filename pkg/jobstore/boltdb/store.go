@@ -16,6 +16,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -1005,6 +1006,8 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	}
 
 	if job.IsTerminal() {
+		// TODO to include execution telemetry
+		analytics.EmitEvent(context.TODO(), analytics.NewJobTerminalEvent(job))
 		// Remove the job from the in progress index, first checking for legacy items
 		// and then removing the composite.  Once we are confident no legacy items
 		// are left in the old index we can stick to just the composite
