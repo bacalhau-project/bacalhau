@@ -6,10 +6,13 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -23,7 +26,7 @@ func newListCmd() *cobra.Command {
 	}
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all config keys and their descriptions",
+		Short: "List all config keys, values, and their descriptions",
 		Long: `The config list command displays all available configuration keys along with their detailed descriptions.
 This comprehensive list helps you understand the settings you can adjust to customize the bacalhau's behavior. 
 Each key shown can be used with: 
@@ -33,7 +36,11 @@ Each key shown can be used with:
 		PreRunE:  hook.ClientPreRunHooks,
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return list(cmd, o)
+			cfg, err := util.SetupConfigType(cmd)
+			if err != nil {
+				return err
+			}
+			return list(cmd, cfg, o)
 		},
 	}
 	listCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o))
@@ -42,10 +49,26 @@ Each key shown can be used with:
 
 type configListEntry struct {
 	Key         string
+	Value       any
 	Description string
 }
 
-func list(cmd *cobra.Command, o output.OutputOptions) error {
+func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error {
+	if o.Format == output.YAMLFormat {
+		var out types.Bacalhau
+		if err := cfg.Unmarshal(&out); err != nil {
+			return err
+		}
+		bytes, err := yaml.Marshal(out)
+		if err != nil {
+			return err
+		}
+		stdout := cmd.OutOrStdout()
+		if _, err := fmt.Fprintln(stdout, string(bytes)); err != nil {
+			return err
+		}
+		return nil
+	}
 	o.SortBy = []table.SortBy{{
 		Name: "Key",
 		Mode: table.Asc,
@@ -54,6 +77,7 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 	for key, description := range types.ConfigDescriptions {
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
+			Value:       cfg.Get(key),
 			Description: description,
 		})
 	}
@@ -73,7 +97,13 @@ var listColumns = []output.TableColumn[configListEntry]{
 		},
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "Description", WidthMax: 80, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{Name: "Value"},
+		Value: func(s configListEntry) string {
+			return fmt.Sprintf("%v", s.Value)
+		},
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "Description", WidthMax: 80, WidthMaxEnforcer: text.WrapSoft},
 		Value: func(v configListEntry) string {
 			return fmt.Sprintf("%v", v.Description)
 		},
