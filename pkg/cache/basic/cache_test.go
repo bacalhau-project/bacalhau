@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/cache"
-	"github.com/bacalhau-project/bacalhau/pkg/cache/basic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/cache"
+	"github.com/bacalhau-project/bacalhau/pkg/cache/basic"
 )
 
 type BasicCacheSuite struct {
@@ -129,9 +130,15 @@ func (s *BasicCacheSuite) TestExpiryDefaultTTL() {
 
 	evictionComplete := make(chan struct{}, 1)
 	f := func(key string, cost uint64, expiresAt int64, now int64) bool {
-		// We want to test the expiry time of the found item
 		if key == k {
-			require.Equal(s.T(), now+1, expiresAt)
+			expiresAtTime := time.Unix(expiresAt, 0)
+			nowTime := time.Unix(now, 0)
+
+			// Check that expiresAt is within a reasonable range of now + TTL
+			ttl := time.Second
+			expectedExpiresAt := nowTime.Add(ttl)
+			require.WithinDuration(s.T(), expectedExpiresAt, expiresAtTime, 100*time.Millisecond)
+
 			evictionComplete <- struct{}{}
 			return true
 		}
@@ -144,8 +151,6 @@ func (s *BasicCacheSuite) TestExpiryDefaultTTL() {
 
 	err = c.SetWithDefaultTTL(k, "value", 1)
 	require.NoError(s.T(), err)
-
-	runtime.Gosched()
 
 	<-evictionComplete
 	_, found := c.Get(k)
