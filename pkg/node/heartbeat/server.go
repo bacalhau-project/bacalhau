@@ -6,15 +6,19 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 )
 
 type HeartbeatServerParams struct {
+	Client                *nats.Conn
 	Clock                 clock.Clock
 	CheckFrequency        time.Duration
 	NodeDisconnectedAfter time.Duration
@@ -22,6 +26,7 @@ type HeartbeatServerParams struct {
 
 type HeartbeatServer struct {
 	clock             clock.Clock
+	legacySubscriber  *natsPubSub.PubSub[Heartbeat]
 	pqueue            *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
 	livenessMap       *concurrency.StripedMap[models.NodeConnectionState]
 	checkFrequency    time.Duration
@@ -34,6 +39,14 @@ type TimestampedHeartbeat struct {
 }
 
 func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
+	legacySubscriber, err := natsPubSub.NewPubSub[Heartbeat](natsPubSub.PubSubParams{
+		Subject: legacyHeartbeatTopic,
+		Conn:    params.Client,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	pqueue := collections.NewHashedPriorityQueue[string, TimestampedHeartbeat](
 		func(h TimestampedHeartbeat) string {
 			return h.NodeID
@@ -48,6 +61,7 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 
 	return &HeartbeatServer{
 		clock:             clk,
+		legacySubscriber:  legacySubscriber,
 		pqueue:            pqueue,
 		livenessMap:       concurrency.NewStripedMap[models.NodeConnectionState](0), // no particular stripe count for now
 		checkFrequency:    params.CheckFrequency,
@@ -56,11 +70,21 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 }
 
 func (h *HeartbeatServer) Start(ctx context.Context) error {
-	log.Ctx(ctx).Info().Msg("Heartbeat server started")
+	if err := h.legacySubscriber.Subscribe(ctx, h); err != nil {
+		return err
+	}
 
 	tickerStartCh := make(chan struct{})
 
 	go func(ctx context.Context) {
+		defer func() {
+			if err := h.legacySubscriber.Close(ctx); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("Error during heartbeat server shutdown")
+			} else {
+				log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
+			}
+		}()
+
 		ticker := h.clock.Ticker(h.checkFrequency)
 		tickerStartCh <- struct{}{}
 		defer ticker.Stop()
@@ -77,6 +101,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	// Wait for the ticker to be created before returning
 	<-tickerStartCh
+	log.Ctx(ctx).Info().Msg("Heartbeat server started")
 
 	return nil
 }
@@ -146,12 +171,8 @@ func (h *HeartbeatServer) ShouldProcess(ctx context.Context, message *ncl.Messag
 	return message.Metadata.Get(ncl.KeyMessageType) == HeartbeatMessageType
 }
 
-func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Message) error {
-	heartbeat, ok := message.Payload.(*Heartbeat)
-	if !ok {
-		return ncl.NewErrUnexpectedPayloadType(
-			reflect.TypeOf(Heartbeat{}).String(), reflect.TypeOf(message.Payload).String())
-	}
+// Handle will handle a message received through the legacy heartbeat topic
+func (h *HeartbeatServer) Handle(ctx context.Context, heartbeat Heartbeat) error {
 	log.Ctx(ctx).Trace().Msgf("heartbeat received from %s", heartbeat.NodeID)
 
 	timestamp := h.clock.Now().UTC().Unix()
@@ -177,7 +198,7 @@ func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Messag
 
 		// We'll enqueue the heartbeat message with the current timestamp. The older
 		// the entry, the lower the timestamp (trending to 0) and the higher the priority.
-		h.pqueue.Enqueue(TimestampedHeartbeat{Heartbeat: *heartbeat, Timestamp: timestamp}, timestamp)
+		h.pqueue.Enqueue(TimestampedHeartbeat{Heartbeat: heartbeat, Timestamp: timestamp}, timestamp)
 	}
 
 	h.markNodeAs(heartbeat.NodeID, models.NodeStates.HEALTHY)
@@ -185,4 +206,15 @@ func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Messag
 	return nil
 }
 
+// HandleMessage will handle a message received through ncl and will call the Handle method
+func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Message) error {
+	heartbeat, ok := message.Payload.(*Heartbeat)
+	if !ok {
+		return ncl.NewErrUnexpectedPayloadType(
+			reflect.TypeOf(Heartbeat{}).String(), reflect.TypeOf(message.Payload).String())
+	}
+	return h.Handle(ctx, *heartbeat)
+}
+
 var _ ncl.MessageHandler = (*HeartbeatServer)(nil)
+var _ pubsub.Subscriber[Heartbeat] = (*HeartbeatServer)(nil)

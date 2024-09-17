@@ -125,7 +125,6 @@ var ProductionComputeConfig = types.ComputeConfig{
 		InfoUpdateFrequency:     types.Duration(60 * time.Second),
 		ResourceUpdateFrequency: types.Duration(30 * time.Second),
 		HeartbeatFrequency:      types.Duration(15 * time.Second),
-		HeartbeatTopic:          "heartbeat",
 	},
 }
 
@@ -174,7 +173,6 @@ var ProductionRequesterConfig = types.RequesterConfig{
 	},
 	ControlPlaneSettings: types.RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: types.Duration(30 * time.Second),
-		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   types.Duration(30 * time.Second),
 	},
 	NodeInfoStoreTTL: types.Duration(10 * time.Minute),

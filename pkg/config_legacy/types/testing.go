@@ -123,7 +123,6 @@ var TestingComputeConfig = ComputeConfig{
 		InfoUpdateFrequency:     Duration(60 * time.Second),
 		ResourceUpdateFrequency: Duration(30 * time.Second),
 		HeartbeatFrequency:      Duration(15 * time.Second),
-		HeartbeatTopic:          "heartbeat",
 	},
 }
 
@@ -172,7 +171,6 @@ var TestingRequesterConfig = RequesterConfig{
 	},
 	ControlPlaneSettings: RequesterControlPlaneConfig{
 		HeartbeatCheckFrequency: Duration(30 * time.Second),
-		HeartbeatTopic:          "heartbeat",
 		NodeDisconnectedAfter:   Duration(30 * time.Second),
 	},
 	NodeInfoStoreTTL: Duration(10 * time.Minute),
