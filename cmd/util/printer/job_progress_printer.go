@@ -109,7 +109,7 @@ func NewJobProgressPrinter(client clientv2.API, runtimeSettings *cliflags.RunTim
 
 // PrintJobProgress displays the job progress depending upon on cli runtime
 // settings
-func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string, cmd *cobra.Command) error {
+func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.Job, jobID string, cmd *cobra.Command) error {
 	// If we are in `--wait=false` print the jobID and then exit.
 	// All the code after this point is to show the progress of the job.
 	if !j.runtimeSettings.WaitForJobToFinish {
@@ -186,6 +186,13 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, jobID string,
 		cmd.Println()
 		cmd.Println("To get more details about the run executions, execute:")
 		cmd.Println("\t" + os.Args[0] + " job executions " + jobID)
+
+		// only print help for downloading the job if it contained a publisher.
+		if !lo.IsEmpty(job.Task().Publisher.Type) {
+			cmd.Println()
+			cmd.Println("To download the results, execute:")
+			cmd.Println("\t" + os.Args[0] + " job get " + jobID)
+		}
 	}
 
 	return nil
