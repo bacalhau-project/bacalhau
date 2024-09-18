@@ -146,7 +146,7 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 		if errors.Is(jobErr, context.DeadlineExceeded) {
 			cmd.Println("\nJob is still running in the background. Timeout reached.")
 			cmd.Println("To check the job status later, use:")
-			cmd.Printf("\t%s job describe %s\n", os.Args[0], jobID)
+			cmd.Printf("bacalhau job describe %s\n", os.Args[0], jobID)
 			return nil
 		}
 
