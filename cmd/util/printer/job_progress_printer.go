@@ -133,20 +133,9 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 	// i.e. don't print
 	quiet := j.runtimeSettings.PrintJobIDOnly
 
-	// Timeout the job progress printer after 1 minute
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
-	defer cancel()
-
 	jobErr := j.followProgress(ctx, jobID, cmd, quiet)
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
-			return nil
-		}
-
-		if errors.Is(jobErr, context.DeadlineExceeded) {
-			cmd.Println("\nJob is still running in the background. Timeout reached.")
-			cmd.Println("To check the job status later, use:")
-			cmd.Printf("bacalhau job describe %s\n", jobID)
 			return nil
 		}
 
@@ -256,7 +245,7 @@ To cancel the job, run:
 	var returnError error = nil
 
 	// Capture Ctrl + C if the user wants to finish the job early
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	signalChan := make(chan os.Signal, 2)
 	signal.Notify(signalChan, util.ShutdownSignals...)
 	defer func() {
@@ -292,8 +281,17 @@ To cancel the job, run:
 				}
 				cancel()
 			case <-ctx.Done():
-				return
+				cmdShuttingDown = true
+				cmd.SetOut(os.Stdout)
+
+				if !quiet {
+					cmd.Println("\n\n\rPrintout canceled due to timeout (the job is still running).")
+					cmd.Println(getMoreInfoString)
+					cmd.Println(cancelString)
+				}
+				returnError = fmt.Errorf("%s", PrintoutCanceledButRunningNormally)
 			}
+			return
 		}
 	}()
 
