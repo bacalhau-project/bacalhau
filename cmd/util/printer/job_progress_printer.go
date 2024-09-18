@@ -133,7 +133,7 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 	// i.e. don't print
 	quiet := j.runtimeSettings.PrintJobIDOnly
 
-	// Timeout the job progress printer after 10 minutes
+	// Timeout the job progress printer after 1 minute
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	defer cancel()
 
@@ -146,7 +146,7 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 		if errors.Is(jobErr, context.DeadlineExceeded) {
 			cmd.Println("\nJob is still running in the background. Timeout reached.")
 			cmd.Println("To check the job status later, use:")
-			cmd.Printf("bacalhau job describe %s\n", os.Args[0], jobID)
+			cmd.Printf("bacalhau job describe %s\n", jobID)
 			return nil
 		}
 
