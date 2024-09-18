@@ -121,7 +121,7 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, api client
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	resp, err := api.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
+	_, err = api.Jobs().Put(cmd.Context(), &apimodels.PutJobRequest{
 		Job: job,
 	})
 	if err != nil {
@@ -129,7 +129,7 @@ func exec(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, api client
 	}
 
 	jobProgressPrinter := printer.NewJobProgressPrinter(api, options.RunTimeSettings)
-	if err := jobProgressPrinter.PrintJobProgress(cmd.Context(), job, resp.JobID, cmd); err != nil {
+	if err := jobProgressPrinter.PrintJobProgress(cmd.Context(), job, cmd); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 
