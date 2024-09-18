@@ -49,7 +49,7 @@ func newSetCmd() *cobra.Command {
 			if configPath == "" {
 				// we fall back to the default config file path $BACALHAU_DIR/config.yaml
 				// this requires initializing a new or opening an existing data-dir
-				bacalhauConfig, err := util.DecodeBacalhauConfig(rawConfig)
+				bacalhauConfig, err := util.UnmarshalBacalhauConfig(rawConfig)
 				if err != nil {
 					return fmt.Errorf("failed to decode bacalhau config: %w", err)
 				}

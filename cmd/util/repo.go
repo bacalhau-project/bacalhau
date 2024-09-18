@@ -83,10 +83,10 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	if err != nil {
 		return types.Bacalhau{}, err
 	}
-	return DecodeBacalhauConfig(cfg)
+	return UnmarshalBacalhauConfig(cfg)
 }
 
-func DecodeBacalhauConfig(cfg *config.Config) (types.Bacalhau, error) {
+func UnmarshalBacalhauConfig(cfg *config.Config) (types.Bacalhau, error) {
 	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
 		return types.Bacalhau{}, err
