@@ -2,8 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
@@ -51,26 +48,9 @@ func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	// check if the user specified config files via the --config flag
 	configFiles := getConfigFiles(v)
 
-	// if none were provided look in $XDG_CONFIG_HOME/bacalhau/config.yaml
-	if len(configFiles) == 0 {
-		xdgPath, err := os.UserConfigDir()
-		if err == nil {
-			path := filepath.Join(xdgPath, "bacalhau", config_legacy.FileName)
-			if _, err := os.Stat(path); err != nil {
-				// if the file exists and could not be read, return an error
-				if !os.IsNotExist(err) {
-					return nil, fmt.Errorf("loading config file at %q: %w", path, err)
-				}
-			} else {
-				// the file exists, use it.
-				configFiles = append(configFiles, path)
-			}
-		}
-	}
-	// if a config file is present, apply it to the config
+	// apply user specified config files via the --config flag, if any
 	if len(configFiles) > 0 {
-		cmd.Printf("Config file(s) found at path(s): %s\n", configFiles)
-		opts = append(opts, config.WithPaths(configFiles...))
+		opts = append(opts, config.WithPaths(getConfigFiles(v)...))
 	}
 
 	configFlags, err := getConfigFlags(v, cmd)
@@ -103,6 +83,10 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	if err != nil {
 		return types.Bacalhau{}, err
 	}
+	return DecodeBacalhauConfig(cfg)
+}
+
+func DecodeBacalhauConfig(cfg *config.Config) (types.Bacalhau, error) {
 	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
 		return types.Bacalhau{}, err

@@ -113,28 +113,14 @@ var V3Migration = repo.NewMigration(
 				}
 				// ensure the repo path of the config points to the repo
 				newConfigType.DataDir = repoPath
-				userConfigDir, err := os.UserConfigDir()
-				if err == nil {
-					newConfigDir := filepath.Join(userConfigDir, "bacalhau")
-					if err := os.MkdirAll(newConfigDir, util.OS_USER_RWX); err != nil {
-						return err
-					}
-					newConfigFilePath := filepath.Join(newConfigDir, config_legacy.FileName)
-					if err := os.Rename(oldConfigFilePath, newConfigFilePath); err != nil {
-						return err
-					}
-					newConfigBytes, err := yaml.Marshal(&newConfigType)
-					if err != nil {
-						return err
-					}
-					newConfigFile, err := os.OpenFile(newConfigFilePath, os.O_RDWR|os.O_TRUNC, util.OS_USER_RWX)
-					if err != nil {
-						return err
-					}
-					defer newConfigFile.Close()
-					if _, err := newConfigFile.Write(newConfigBytes); err != nil {
-						return err
-					}
+
+				// Write the updated config back to the same file
+				newConfigBytes, err := yaml.Marshal(&newConfigType)
+				if err != nil {
+					return fmt.Errorf("marshaling new config: %w", err)
+				}
+				if err := os.WriteFile(oldConfigFilePath, newConfigBytes, util.OS_USER_RWX); err != nil {
+					return fmt.Errorf("writing updated config file: %w", err)
 				}
 			} else if !os.IsNotExist(err) {
 				// if there was an error other than the file not existing, abort.

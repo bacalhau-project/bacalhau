@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -42,16 +41,6 @@ func TestV3MigrationsTestSuite(t *testing.T) {
 
 // repo resulting from `bacalhau serve --node-type=compute,requester`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithFullRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_full_repo")
 	suite.copyRepo(testDataPath)
@@ -116,11 +105,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
@@ -131,11 +118,11 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
-	// verify old file were removed
+	// verify old files were removed
 	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
-	// verify the new files exists
+	// verify the new files exist
 	suite.FileExists(filepath.Join(suite.TempDir, "system_metadata.yaml"))
 
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
@@ -166,16 +153,6 @@ Auth:
 
 // repo resulting from `bacalhau version`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_minimal_repo")
 	suite.copyRepo(testDataPath)
@@ -208,8 +185,8 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.Equal(repo.Version4, repoVersion4)
 
 	// verify the config file hasn't been created
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.NoFileExists(newConfigPath)
+	configPath := filepath.Join(suite.TempDir, config_legacy.FileName)
+	suite.NoFileExists(configPath)
 
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
@@ -241,16 +218,6 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 
 // repo resulting from `bacalhau serve --node-type=requester`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithOrchestratorRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_orchestrator_repo")
 	suite.copyRepo(testDataPath)
@@ -314,11 +281,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory and contains the migrated values
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
@@ -364,16 +329,6 @@ Auth:
 
 // repo resulting from `bacalhau serve --node-type=compute --orchestrators=bootstrap.production.bacalhau.org`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithComputeRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_compute_repo")
 	suite.copyRepo(testDataPath)
@@ -438,11 +393,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory and contains the migrated values
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))

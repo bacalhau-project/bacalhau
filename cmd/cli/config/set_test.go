@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package config
+package config_test
 
 import (
 	"io"
@@ -11,61 +11,108 @@ import (
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
+	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-// TestAdditiveSet calls sets on the config system sequentially with different values
-// and asserts that after each set only the newly set value was added to the config.
-// Essentially we are testing two different things:
-func TestAdditiveSet(t *testing.T) {
-	cfgFilePath := filepath.Join(t.TempDir(), "config.yaml")
+func TestSetWithExplicitConfigPath(t *testing.T) {
+	tempDir := t.TempDir()
+	explicitConfigPath := filepath.Join(tempDir, "explicit_config.yaml")
 
-	err := setConfig(cfgFilePath, "api.host", "127.0.0.1")
-	require.NoError(t, err)
-	err = setConfig(cfgFilePath, "api.port", "1234")
+	// Create an empty config file
+	_, err := os.Create(explicitConfigPath)
 	require.NoError(t, err)
 
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "--config", explicitConfigPath, "api.host", "2.2.2.2"})
+
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	actual := unmarshalConfigFile(t, explicitConfigPath)
+	expected := types.Bacalhau{API: types.API{Host: "2.2.2.2"}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetWithDefaultConfigPath(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("BACALHAU_DIR", tempDir)
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "api.port", "5678"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{API: types.API{Port: 5678}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetMultipleValues(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("BACALHAU_DIR", tempDir)
+	defer os.Unsetenv("BACALHAU_DIR")
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "compute.orchestrators", "http://127.0.0.1:1234", "http://1.1.1.1:1234"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{Compute: types.Compute{
+		Orchestrators: []string{
+			"http://127.0.0.1:1234",
+			"http://1.1.1.1:1234",
+		},
+	}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetInvalidKey(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("BACALHAU_DIR", tempDir)
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "invalid.key", "value"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not a valid config key")
+}
+
+func TestSetAdditiveChanges(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "config.yaml")
+
+	// Create an empty config file
+	_, err := os.Create(configPath)
+	require.NoError(t, err)
+
+	// First set
+	cmd1 := cmd2.NewRootCmd()
+	cmd1.SetArgs([]string{"config", "set", "--config", configPath, "api.host", "127.0.0.1"})
+	err = cmd1.Execute()
+	require.NoError(t, err)
+
+	// Second set
+	cmd2 := cmd2.NewRootCmd()
+	cmd2.SetArgs([]string{"config", "set", "--config", configPath, "api.port", "1234"})
+	err = cmd2.Execute()
+	require.NoError(t, err)
+
+	actual := unmarshalConfigFile(t, configPath)
 	expected := types.Bacalhau{API: types.API{
 		Host: "127.0.0.1",
 		Port: 1234,
 	}}
-	actual := unmarshalConfigFile(t, cfgFilePath)
-
 	require.Equal(t, expected, actual)
-
-	err = setConfig(cfgFilePath, "compute.enabled", "true")
-	require.NoError(t, err)
-	err = setConfig(cfgFilePath, "compute.orchestrators", "http://127.0.0.1:1234", "http://1.1.1.1:1234")
-	require.NoError(t, err)
-
-	expected = types.Bacalhau{
-		API: types.API{
-			Host: "127.0.0.1",
-			Port: 1234,
-		},
-		Compute: types.Compute{
-			Enabled: true,
-			Orchestrators: []string{
-				"http://127.0.0.1:1234",
-				"http://1.1.1.1:1234",
-			},
-		},
-	}
-	actual = unmarshalConfigFile(t, cfgFilePath)
-
-	require.Equal(t, expected, actual)
-
-}
-
-func TestSetFailure(t *testing.T) {
-	cfgFilePath := filepath.Join(t.TempDir(), "config.yaml")
-	// fails as the key isn't a valid config key
-	err := setConfig(cfgFilePath, "not.a.config.key", "porkchop sandwiches")
-	require.Error(t, err)
 }
 
 func unmarshalConfigFile(t testing.TB, path string) types.Bacalhau {
-
 	configFile, err := os.Open(path)
 	require.NoError(t, err)
 	t.Cleanup(func() {
