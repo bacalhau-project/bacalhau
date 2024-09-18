@@ -29,6 +29,7 @@ import (
 )
 
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
+const PrintoutTimeoutButRunningNormally string = "but running normally"
 
 type JobProgressPrinter struct {
 	client          clientv2.API
@@ -132,9 +133,20 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 	// i.e. don't print
 	quiet := j.runtimeSettings.PrintJobIDOnly
 
+	// Timeout the job progress printer after 10 minutes
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
 	jobErr := j.followProgress(ctx, jobID, cmd, quiet)
 	if jobErr != nil {
 		if jobErr.Error() == PrintoutCanceledButRunningNormally {
+			return nil
+		}
+
+		if errors.Is(jobErr, context.DeadlineExceeded) {
+			cmd.Println("\nJob is still running in the background. Timeout reached.")
+			cmd.Println("To check the job status later, use:")
+			cmd.Printf("\t%s job describe %s\n", os.Args[0], jobID)
 			return nil
 		}
 
