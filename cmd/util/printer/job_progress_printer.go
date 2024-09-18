@@ -109,8 +109,7 @@ func NewJobProgressPrinter(client clientv2.API, runtimeSettings *cliflags.RunTim
 
 // PrintJobProgress displays the job progress depending upon on cli runtime
 // settings
-func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.Job, cmd *cobra.Command) error {
-	jobID := job.ID
+func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.Job, jobID string, cmd *cobra.Command) error {
 	// If we are in `--wait=false` print the jobID and then exit.
 	// All the code after this point is to show the progress of the job.
 	if !j.runtimeSettings.WaitForJobToFinish {
