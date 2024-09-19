@@ -44,7 +44,7 @@ type NodeManagerParams struct {
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
-	log.Info().Msgf("Nodes joining the cluster will be assigned approval state: %s",
+	log.Debug().Msgf("Nodes joining the cluster will be assigned approval state: %s",
 		params.DefaultApprovalState.String())
 	return &NodeManager{
 		resourceMap:          concurrency.NewStripedMap[trackedResources](resourceMapLockCount),
@@ -63,7 +63,7 @@ func (n *NodeManager) Start(ctx context.Context) error {
 		}
 	}
 
-	log.Ctx(ctx).Info().Msg("Node manager started")
+	log.Ctx(ctx).Debug().Msg("Node manager started")
 
 	return nil
 }

@@ -216,7 +216,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		}
 	}
 	// Create node
-	log.Info().Msg("starting bacalhau...")
+	log.Info().Msg("Starting bacalhau...")
 	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
@@ -300,8 +300,6 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return err
 	}
-	cmd.Println()
-	cmd.Println()
 	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
 	defer os.Remove(riPath)
 

@@ -22,7 +22,7 @@ func NewLoggingHandler(
 }
 
 func (p *LoggingHandler) HandleEvent(ctx context.Context, event watcher.Event) error {
-	p.logger.Info().Ctx(ctx).
+	p.logger.Debug().Ctx(ctx).
 		Str("event_type", event.ObjectType).
 		Dur("event_age", time.Since(event.Timestamp)).
 		Msgf("Processing event: %+v", event)
