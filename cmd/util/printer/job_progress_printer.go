@@ -29,6 +29,7 @@ import (
 )
 
 const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
+const PrintoutTimeoutButRunningNormally string = "but running normally"
 
 type JobProgressPrinter struct {
 	client          clientv2.API
@@ -244,7 +245,7 @@ To cancel the job, run:
 	var returnError error = nil
 
 	// Capture Ctrl + C if the user wants to finish the job early
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 	signalChan := make(chan os.Signal, 2)
 	signal.Notify(signalChan, util.ShutdownSignals...)
 	defer func() {
@@ -280,8 +281,17 @@ To cancel the job, run:
 				}
 				cancel()
 			case <-ctx.Done():
-				return
+				cmdShuttingDown = true
+				cmd.SetOut(os.Stdout)
+
+				if !quiet {
+					cmd.Println("\n\n\rPrintout canceled due to timeout (the job is still running).")
+					cmd.Println(getMoreInfoString)
+					cmd.Println(cancelString)
+				}
+				returnError = fmt.Errorf("%s", PrintoutCanceledButRunningNormally)
 			}
+			return
 		}
 	}()
 
