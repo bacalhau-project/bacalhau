@@ -27,39 +27,24 @@ func newSetCmd() *cobra.Command {
 		PostRunE:     hook.ClientPostRunHooks,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Get the value of the --config flag
-			configFlag, err := cmd.Flags().GetString("config")
-			if err != nil {
-				return fmt.Errorf("failed to get config flag: %w", err)
-			}
-
-			// If --config flag is set, use it to set the Viper key
-			if configFlag != "" {
-				viper.Set(cliflags.RootCommandConfigFiles, []string{configFlag})
-			}
-
-			var configPath string
 			// load configs to get the config file path
-			rawConfig, err := util.SetupConfigType(cmd)
+			bacalhauConfig, rawConfig, err := util.SetupConfigs(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
 
-			configPath = rawConfig.ConfigFileUsed()
+			configPath := rawConfig.ConfigFileUsed()
 			if configPath == "" {
 				// we fall back to the default config file path $BACALHAU_DIR/config.yaml
 				// this requires initializing a new or opening an existing data-dir
-				bacalhauConfig, err := util.UnmarshalBacalhauConfig(rawConfig)
-				if err != nil {
-					return fmt.Errorf("failed to decode bacalhau config: %w", err)
-				}
 				_, err = util.SetupRepo(bacalhauConfig)
 				if err != nil {
-					return fmt.Errorf("failed to setup repo: %w", err)
+					return fmt.Errorf("failed to setup data dir: %w", err)
 				}
 				configPath = filepath.Join(bacalhauConfig.DataDir, config.DefaultFileName)
 
 				// create the config file if it doesn't exist
+				// we only do this for the default config file path
 				if _, err := os.Stat(configPath); os.IsNotExist(err) {
 					if err := os.WriteFile(configPath, []byte{}, util2.OS_USER_RWX); err != nil {
 						return fmt.Errorf("failed to create default config file %s: %w", configPath, err)
@@ -73,7 +58,7 @@ func newSetCmd() *cobra.Command {
 		ValidArgsFunction: setAutoComplete,
 	}
 
-	setCmd.PersistentFlags().String("config", "", "Path to the config file (default is $BACALHAU_DIR/config.yaml)")
+	setCmd.PersistentFlags().VarP(cliflags.NewWriteConfigFlag(), "config", "c", "Path to the config file (default is $BACALHAU_DIR/config.yaml)")
 	return setCmd
 }
 

@@ -86,6 +86,18 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 	return UnmarshalBacalhauConfig(cfg)
 }
 
+func SetupConfigs(cmd *cobra.Command) (types.Bacalhau, *config.Config, error) {
+	cfg, err := SetupConfigType(cmd)
+	if err != nil {
+		return types.Bacalhau{}, nil, err
+	}
+	bacalhauCfg, err := UnmarshalBacalhauConfig(cfg)
+	if err != nil {
+		return types.Bacalhau{}, nil, err
+	}
+	return bacalhauCfg, cfg, nil
+}
+
 func UnmarshalBacalhauConfig(cfg *config.Config) (types.Bacalhau, error) {
 	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
