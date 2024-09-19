@@ -50,17 +50,9 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}
 
-	metastore, err := r.MetadataStore()
+	sysmeta, err := r.SystemMetadata()
 	if err != nil {
-		return versions, err
-	}
-	installationID, err := metastore.ReadInstallationID()
-	if err != nil {
-		return versions, fmt.Errorf("reading installationID: %w", err)
-	}
-
-	if installationID == "" {
-		return versions, errors.Wrap(err, "Installation ID not set")
+		log.Debug().Err(err).Msg("loading system metadata from repo")
 	}
 
 	updateCheck, err := version.CheckForUpdate(
@@ -68,7 +60,7 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		versions.ClientVersion,
 		versions.ServerVersion,
 		userKey.ClientID(),
-		installationID,
+		sysmeta.InstallationID,
 	)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")

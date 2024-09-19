@@ -148,22 +148,15 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	metastore, err := suite.repo.MetadataStore()
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	// verify we can read the expected installationID from it.
-	actualInstallationID, err := metastore.ReadInstallationID()
-	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
+	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := metastore.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau version`
@@ -227,21 +220,15 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	metastore, err := suite.repo.MetadataStore()
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
 
-	actualInstallationID, err := metastore.ReadInstallationID()
-	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
+	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
-	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// check that the migration doesn't create a node name if a config file wasn't present.
-	actualNodeName, err := metastore.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Empty(actualNodeName)
+	suite.Require().Empty(sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau serve --node-type=requester`
@@ -351,22 +338,16 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	metastore, err := suite.repo.MetadataStore()
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
 	// verify we can read the expected installationID from it.
-	actualInstallationID, err := metastore.ReadInstallationID()
-	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
+	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := metastore.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau serve --node-type=compute --orchestrators=bootstrap.production.bacalhau.org`
@@ -472,7 +453,7 @@ Auth:
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator", "nats-store"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
 
-	metastore, err := suite.repo.MetadataStore()
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
 	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
@@ -480,19 +461,13 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
 	// verify we can read the expected installationID from it.
-	actualInstallationID, err := metastore.ReadInstallationID()
-	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
+	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := metastore.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := metastore.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
 }
 
 // createConfig creates a config file with the given content

@@ -28,7 +28,6 @@ type FsRepoParams struct {
 type FsRepo struct {
 	path       string
 	Migrations *MigrationManager
-	metastore  *MetadataStore
 }
 
 func NewFS(params FsRepoParams) (*FsRepo, error) {
@@ -40,7 +39,6 @@ func NewFS(params FsRepoParams) (*FsRepo, error) {
 	return &FsRepo{
 		path:       expandedPath,
 		Migrations: params.Migrations,
-		metastore:  NewMetadataStore(expandedPath),
 	}, nil
 }
 
@@ -52,15 +50,6 @@ func (fsr *FsRepo) Path() (string, error) {
 		return "", fmt.Errorf("repo is uninitialized")
 	}
 	return fsr.path, nil
-}
-
-func (fsr *FsRepo) MetadataStore() (*MetadataStore, error) {
-	if exists, err := fsr.Exists(); err != nil {
-		return nil, err
-	} else if !exists {
-		return nil, fmt.Errorf("repo is uninitialized")
-	}
-	return fsr.metastore, nil
 }
 
 // Exists returns true if the repo exists and is valid, false otherwise.
@@ -88,7 +77,7 @@ func (fsr *FsRepo) Exists() (bool, error) {
 
 // Version returns the version of the repo.
 func (fsr *FsRepo) Version() (int, error) {
-	return fsr.metastore.readVersion()
+	return fsr.readVersion()
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
@@ -110,11 +99,11 @@ func (fsr *FsRepo) Init() error {
 	telemetry.SetupFromEnvs()
 
 	// never fail here as this isn't critical to node start up.
-	if err := fsr.metastore.WriteInstanceID(GenerateInstanceID()); err != nil {
+	if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
 		log.Trace().Err(err).Msgf("failed to write instanceID")
 	}
 
-	if err := fsr.metastore.WriteVersion(Version4); err != nil {
+	if err := fsr.WriteVersion(Version4); err != nil {
 		return fmt.Errorf("failed to persist repo version: %w", err)
 	}
 
@@ -138,10 +127,10 @@ func (fsr *FsRepo) Open() error {
 
 	// check if an instanceID exists persisting one if not found.
 	// never fail here as this isn't critical to node start up.
-	if instanceID, err := fsr.metastore.ReadInstanceID(); err != nil {
+	if instanceID, err := fsr.readInstanceID(); err != nil {
 		log.Trace().Err(err).Msgf("failed to read instanceID")
 	} else if instanceID == "" {
-		if err := fsr.metastore.WriteInstanceID(GenerateInstanceID()); err != nil {
+		if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
 			log.Trace().Err(err).Msgf("failed to write instanceID")
 		}
 	}

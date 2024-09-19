@@ -42,7 +42,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 		return err
 	}
 	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
-	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauBuildInstallationID)
+	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
 		Job:                  args.Job,
 		ClientInstallationID: installationID,

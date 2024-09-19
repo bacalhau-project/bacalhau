@@ -27,6 +27,7 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
@@ -53,11 +54,6 @@ type Requester struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-type MetaStore interface {
-	ReadInstallationID() (string, error)
-	ReadInstanceID() (string, error)
-}
-
 //nolint:funlen,gocyclo
 func NewRequesterNode(
 	ctx context.Context,
@@ -69,7 +65,7 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
-	metaStore MetaStore,
+	fsr *repo.FsRepo,
 ) (*Requester, error) {
 	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
@@ -215,21 +211,22 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
-	instanceID, err := metaStore.ReadInstanceID()
-	if err != nil {
-		return nil, err
-	}
-	installationID, err := metaStore.ReadInstallationID()
-	if err != nil {
-		return nil, err
-	}
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
 		transformer.RequesterInfo(nodeID),
-		transformer.OrchestratorInstanceID(instanceID),
-		transformer.OrchestratorInstallationID(installationID),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
+	}
+
+	if sysmeta, err := fsr.SystemMetadata(); err == nil {
+		if sysmeta.InstallationID != "" {
+			jobTransformers = append(jobTransformers, transformer.OrchestratorInstallationID(sysmeta.InstallationID))
+		}
+		if sysmeta.InstanceID != "" {
+			jobTransformers = append(jobTransformers, transformer.OrchestratorInstanceID(sysmeta.InstanceID))
+		}
+	} else {
+		log.Debug().Err(err).Msg("failed to read system metadata from repo")
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
