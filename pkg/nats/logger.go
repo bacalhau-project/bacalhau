@@ -20,7 +20,9 @@ func NewZeroLogger(logger zerolog.Logger, serverID string) ZeroLogger {
 }
 
 func (l ZeroLogger) Noticef(format string, v ...interface{}) {
-	l.logWithLevel(zerolog.InfoLevel, format, v)
+	// As we are mainly interested in error and warn logs from nats,
+	// we se debug level as nats notice/info logs are noisy.
+	l.logWithLevel(zerolog.DebugLevel, format, v)
 }
 
 func (l ZeroLogger) Warnf(format string, v ...interface{}) {

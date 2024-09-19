@@ -6,11 +6,12 @@ import (
 	"reflect"
 	realsync "sync"
 
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/nats-io/nats.go"
-	"github.com/rs/zerolog/log"
 )
 
 type PubSubParams struct {
@@ -109,7 +110,7 @@ func (p *PubSub[T]) Close(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Info().Msgf("done closing nats pubsub for subject %s", p.subscriptionSubject)
+	log.Ctx(ctx).Debug().Msgf("done closing nats pubsub for subject %s", p.subscriptionSubject)
 	return nil
 }
 

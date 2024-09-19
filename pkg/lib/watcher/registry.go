@@ -70,7 +70,7 @@ func (r *registry) GetWatcher(watcherID string) (Watcher, error) {
 
 // Stop gracefully shuts down the registry and all its watchers
 func (r *registry) Stop(ctx context.Context) error {
-	log.Ctx(ctx).Info().Msg("Shutting down registry")
+	log.Ctx(ctx).Debug().Msg("Shutting down registry")
 
 	done := make(chan struct{})
 
@@ -91,7 +91,7 @@ func (r *registry) Stop(ctx context.Context) error {
 
 	select {
 	case <-done:
-		log.Ctx(ctx).Info().Msg("registry shutdown complete")
+		log.Ctx(ctx).Debug().Msg("registry shutdown complete")
 		return nil
 	case <-ctx.Done():
 		log.Ctx(ctx).Warn().Msg("registry shutdown timed out")
