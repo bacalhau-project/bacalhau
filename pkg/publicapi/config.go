@@ -59,7 +59,7 @@ var defaultConfig = Config{
 	MaxBytesToReadInBody:  "10MB",
 	ThrottleLimit:         1000,
 	Protocol:              "http",
-	LogLevel:              "info",
+	LogLevel:              "debug",
 }
 
 // DefaultConfig returns the default configuration for the public API server.
