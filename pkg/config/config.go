@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -14,6 +15,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
@@ -208,6 +210,29 @@ func New(opts ...Option) (*Config, error) {
 			absoluteConfigPaths[i] = path
 		}
 	}
+
+	// allow the users to set datadir to a path like ~/.bacalhau or ~/something/idk/whatever
+	// and expand the path for them
+	dataDirPath := c.base.GetString(types.DataDirKey)
+	if dataDirPath[0] == '~' {
+		log.Info().Msgf("configuration field 'DataDir' contains '~': (%s). Attempting to expand to the home directory...", dataDirPath)
+		expanded, err := homedir.Expand(dataDirPath)
+		if err == nil {
+			dataDirPath = expanded
+			c.base.Set(types.DataDirKey, dataDirPath)
+			log.Info().Msgf("successfully expanded data directory to %s", dataDirPath)
+		}
+	}
+
+	// validate the config
+	var cfg types.Bacalhau
+	if err := c.base.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config invalid: %w", err)
+	}
+
 	log.Info().Msgf("Config loaded from: %s, and with data-dir %s", absoluteConfigPaths, c.base.Get(types.DataDirKey))
 	return c, nil
 }
@@ -269,6 +294,9 @@ func (c *Config) ConfigFileUsed() string {
 func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err
+	}
+	if v, ok := out.(models.Validatable); ok {
+		return v.Validate()
 	}
 	return nil
 }

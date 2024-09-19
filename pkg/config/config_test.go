@@ -16,13 +16,13 @@ import (
 )
 
 func TestConfigWithValueOverrides(t *testing.T) {
-	overrideRepo := "overrideRepo"
+	overrideRepo := "/overrideRepo"
 	overrideName := "puuid"
 	overrideClientAddress := "1.1.1.1"
 	overrideClientPort := 1234
 
 	defaultConfig := types.Bacalhau{
-		DataDir: "defaultRepo",
+		DataDir: "/defaultRepo",
 		API: types.API{
 			Host: "0.0.0.0",
 			Port: 1234,

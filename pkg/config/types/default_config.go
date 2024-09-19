@@ -6,6 +6,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 )
 
@@ -142,13 +145,36 @@ const defaultBacalhauDir = ".bacalhau"
 // 2. User's home directory with .bacalhau appended.
 // 3. If all above fail, use .bacalhau in the current directory.
 func DefaultDataDir() string {
+	// this method runs before root.go, so we set the level to info for these calls, then return it to previous value
+	currentLevel := zerolog.GlobalLevel()
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	defer zerolog.SetGlobalLevel(currentLevel)
+
+	// Check if the BACALHAU_DIR environment variable is set
 	if repoDir, set := os.LookupEnv("BACALHAU_DIR"); set && repoDir != "" {
 		return repoDir
+	} else if set {
+		log.Warn().Msg("BACALHAU_DIR environment variable is set but empty. Falling back to default directories.")
+	} else {
+		log.Debug().Msg("BACALHAU_DIR environment variable is not set. Trying to use $HOME.")
 	}
 
-	if userHome, err := os.UserHomeDir(); err == nil {
+	// Attempt to get the user's home directory
+	if userHome, err := os.UserHomeDir(); err == nil && filepath.IsAbs(userHome) {
+		log.Trace().Str("HomeDirectory", userHome).Msg("Successfully found $HOME. Using it for the data directory.")
 		return filepath.Join(userHome, defaultBacalhauDir)
+	} else {
+		log.Warn().Err(err).Msg("$HOME is unset or inaccessible. Falling back to current working directory.")
 	}
 
+	// Fallback: attempt to use the absolute path of the default directory
+	path, err := filepath.Abs(defaultBacalhauDir)
+	if err == nil {
+		log.Info().Str("Directory", path).Msg("Bacalhau will initialize in current working directory.")
+		return path
+	}
+
+	// If everything fails, return the default directory string
+	log.Error().Err(err).Msg("Failed to determine absolute path for the default Bacalhau directory. Using the raw default path.")
 	return defaultBacalhauDir
 }

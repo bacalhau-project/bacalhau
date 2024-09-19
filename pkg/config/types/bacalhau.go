@@ -1,5 +1,11 @@
 package types
 
+import (
+	"errors"
+	"fmt"
+	"path/filepath"
+)
+
 // NB: Developers, after making changes (comments included) to this struct or any of its children, run go generate.
 
 //go:generate go run gen/generate.go ./
@@ -24,6 +30,15 @@ type Bacalhau struct {
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
 	DisableAnalytics    bool                `yaml:"DisableAnalytics,omitempty"`
+}
+
+func (b Bacalhau) Validate() error {
+	var err error
+	if !filepath.IsAbs(b.DataDir) {
+		err = errors.Join(err, fmt.Errorf("DataDir (%q) must be an absolute path", b.DataDir))
+	}
+
+	return err
 }
 
 type API struct {
