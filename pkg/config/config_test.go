@@ -4,6 +4,7 @@ package config_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -580,4 +581,52 @@ logging:
 	assert.Equal(t, "0.0.0.0", extConfig.Server.Host)
 	assert.Equal(t, 8080, extConfig.Server.Port)
 	assert.Zero(t, extConfig.Server.Timeout, "Timeout should be zero as it's not in the original config")
+}
+
+func TestDefaultConfigPath(t *testing.T) {
+	// Create a temporary directory to act as the data directory
+	tempDir, err := os.MkdirTemp("", "bacalhau-test-")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// Create a config file in the temporary directory
+	configPath := filepath.Join(tempDir, "config.yaml")
+	err = os.WriteFile(configPath, []byte(`
+stringValue: "from_file"
+intValue: 100
+boolValue: true
+`), 0644)
+	require.NoError(t, err)
+
+	// Set environment variable
+	t.Setenv("BACALHAU_INT_VALUE", "200")
+
+	// Create the configuration with all sources
+	cfg, err := config.New(
+		config.WithDefault(TestConfig{
+			StringValue: "default",
+			IntValue:    50,
+			BoolValue:   false,
+		}),
+		config.WithValues(map[string]interface{}{
+			types.DataDirKey: tempDir,
+			"boolValue":      false,
+		}),
+		config.WithEnvironmentVariables(map[string][]string{
+			"intValue": {"BACALHAU_INT_VALUE"},
+		}),
+	)
+	require.NoError(t, err)
+
+	var testCfg TestConfig
+	err = cfg.Unmarshal(&testCfg)
+	require.NoError(t, err)
+
+	// Check precedence and file reading
+	assert.Equal(t, 200, testCfg.IntValue, "Environment variable should take precedence over file")
+	assert.False(t, testCfg.BoolValue, "Explicit config value should take precedence over file")
+	assert.Equal(t, "from_file", testCfg.StringValue, "File value should be read from file")
+
+	// Ensure the default config file was used
+	assert.Equal(t, configPath, cfg.ConfigFileUsed(), "Default config file should be used")
 }
