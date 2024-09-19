@@ -98,10 +98,10 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 	}
 
 	_, resp, err := c.doRequest(ctx, verb, endpoint, r) //nolint:bodyclose // this is being closed
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return apimodels.ErrInvalidToken
