@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 func newSetCmd() *cobra.Command {
@@ -42,14 +41,6 @@ func newSetCmd() *cobra.Command {
 					return fmt.Errorf("failed to setup data dir: %w", err)
 				}
 				configPath = filepath.Join(bacalhauConfig.DataDir, config.DefaultFileName)
-
-				// create the config file if it doesn't exist
-				// we only do this for the default config file path
-				if _, err := os.Stat(configPath); os.IsNotExist(err) {
-					if err := os.WriteFile(configPath, []byte{}, util2.OS_USER_RWX); err != nil {
-						return fmt.Errorf("failed to create default config file %s: %w", configPath, err)
-					}
-				}
 			}
 
 			return setConfig(configPath, args[0], args[1:]...)
