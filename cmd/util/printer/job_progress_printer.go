@@ -28,8 +28,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
-const PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
-const PrintoutTimeoutButRunningNormally string = "but running normally"
+const (
+	PrintoutCanceledButRunningNormally string = "printout canceled but running normally"
+	PrintoutTimeoutButRunningNormally  string = "but running normally"
+)
 
 type JobProgressPrinter struct {
 	client          clientv2.API
@@ -246,7 +248,7 @@ To cancel the job, run:
 	var returnError error = nil
 
 	// Capture Ctrl + C if the user wants to finish the job early
-	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	ctx, cancel := context.WithCancel(ctx)
 	signalChan := make(chan os.Signal, 2)
 	signal.Notify(signalChan, util.ShutdownSignals...)
 	defer func() {
@@ -282,15 +284,7 @@ To cancel the job, run:
 				}
 				cancel()
 			case <-ctx.Done():
-				cmdShuttingDown = true
-				cmd.SetOut(os.Stdout)
-
-				if !quiet {
-					cmd.Println("\n\n\rPrintout canceled due to timeout (the job is still running).")
-					cmd.Println(getMoreInfoString)
-					cmd.Println(cancelString)
-				}
-				returnError = fmt.Errorf("%s", PrintoutCanceledButRunningNormally)
+				return
 			}
 		}
 	}()
@@ -311,7 +305,6 @@ To cancel the job, run:
 		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
 			JobID: jobID,
 		})
-
 		if err != nil {
 			if _, ok := err.(*bacerrors.ContextCanceledError); ok {
 				// We're done, the user canceled the job
