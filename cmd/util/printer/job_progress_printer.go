@@ -292,7 +292,6 @@ To cancel the job, run:
 				}
 				returnError = fmt.Errorf("%s", PrintoutCanceledButRunningNormally)
 			}
-			return
 		}
 	}()
 
