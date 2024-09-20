@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -208,7 +207,6 @@ func New(opts ...Option) (*Config, error) {
 			absoluteConfigPaths[i] = path
 		}
 	}
-	log.Info().Msgf("Config loaded from: %s, and with data-dir %s", absoluteConfigPaths, c.base.Get(types.DataDirKey))
 	return c, nil
 }
 
