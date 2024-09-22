@@ -407,7 +407,7 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	}
 
 	if more {
-		response.NextOffset = query.Offset + query.Limit
+		response.NextOffset = query.Offset + uint64(query.Limit)
 	}
 
 	return response, nil
@@ -516,7 +516,7 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 }
 
 func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) ([]models.Job, bool) {
-	if query.Offset >= uint32(len(jobs)) {
+	if query.Offset >= uint64(len(jobs)) {
 		return []models.Job{}, false
 	}
 
