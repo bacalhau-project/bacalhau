@@ -41,6 +41,7 @@ type StateChange[StateType any] struct {
 // {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
+	SeqNum      uint64         `json:"SeqNum"`
 	Type        JobHistoryType `json:"Type"`
 	JobID       string         `json:"JobID"`
 	ExecutionID string         `json:"ExecutionID,omitempty"`

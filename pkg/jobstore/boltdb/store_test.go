@@ -4,8 +4,10 @@ package boltjobstore
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -217,49 +219,277 @@ func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
 	values := make([]int64, len(jobHistoryQueryResponse.JobHistory))
 	for i, h := range jobHistoryQueryResponse.JobHistory {
 		values[i] = h.Time.Unix()
+		s.Require().Equal(uint64(i+1), h.SeqNum, "Sequence numbers should be in order")
 	}
 
 	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
 }
 
+func (s *BoltJobstoreTestSuite) TestJobHistoryOffset() {
+	terminalJobID := "110"
+	ongoingJobID := "130"
+
+	testCases := []struct {
+		name           string
+		jobID          string
+		offset         uint64
+		expectedSeqNum uint64
+		expectedNext   uint64
+	}{
+		{"Start from 0", ongoingJobID, 0, 1, 2},
+		{"Start from 1", ongoingJobID, 1, 1, 2},
+		{"Offset by 2", ongoingJobID, 2, 2, 3},
+		{"Offset by 4", ongoingJobID, 4, 4, 5},
+		{"Beyond the end", ongoingJobID, 10, 0, 10},
+
+		{"Terminal job", terminalJobID, 0, 1, 2},
+		{"Terminal job - offset by 2", terminalJobID, 2, 2, 3},
+		{"Terminal job - beyond the end", terminalJobID, 10, 0, 0},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			query := jobstore.JobHistoryQuery{
+				Limit: 1,
+				NextToken: models.NewPagingToken(&models.PagingTokenParams{
+					Offset: tc.offset,
+					Limit:  1,
+				}).String(),
+			}
+
+			response, err := s.store.GetJobHistory(s.ctx, tc.jobID, query)
+			require.NoError(s.T(), err, "Failed to get job history")
+
+			if tc.expectedSeqNum == 0 {
+				require.Empty(s.T(), response.JobHistory, "No history item should be returned")
+			} else {
+				require.Len(s.T(), response.JobHistory, 1, "Should return exactly one history item")
+				require.Equal(s.T(), tc.expectedSeqNum, response.JobHistory[0].SeqNum, "Sequence number should match expected")
+			}
+
+			// Check if NextToken is set correctly
+			if tc.expectedNext == 0 {
+				require.Empty(s.T(), response.NextToken, "NextToken should be empty")
+			} else {
+				require.NotEmpty(s.T(), response.NextToken, "NextToken should be set")
+				token, err := models.NewPagingTokenFromString(response.NextToken)
+				require.NoError(s.T(), err, "Failed to parse NextToken")
+				require.Equal(s.T(), tc.expectedNext, token.Offset, "Next offset should be current offset + 1")
+				require.Equal(s.T(), uint32(1), token.Limit, "Limit should be 1")
+			}
+		})
+	}
+}
+
 func (s *BoltJobstoreTestSuite) TestJobHistoryPagination() {
-	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
-		Limit: 2,
-	})
-	require.NoError(s.T(), err, "Failed to get job history")
+	// Setup: Create two jobs - one ongoing and one terminal
+	ongoingJob, terminalExec, ongoingExec := s.createJobWithHistory(false)
+	ongoingJobEndTime := s.clock.Now()
+	terminalJob, _, _ := s.createJobWithHistory(true)
 
-	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
-	nextToken := jobHistoryQueryResponse.NextToken
-	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 2)
+	testCases := []struct {
+		name       string
+		jobID      string
+		query      jobstore.JobHistoryQuery
+		isTerminal bool
+		pageSize   int
+		expected   int
+	}{
+		{
+			name:     "Ongoing job - all events",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{},
+			pageSize: 5,
+			expected: 15,
+		},
+		{
+			name:     "Ongoing job - job-level events",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{ExcludeExecutionLevel: true},
+			pageSize: 2,
+			expected: 5,
+		},
+		{
+			name:     "Ongoing job - execution-level events",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{ExcludeJobLevel: true},
+			pageSize: 3,
+			expected: 10,
+		},
+		{
+			name:       "Terminal job - all events",
+			jobID:      terminalJob,
+			query:      jobstore.JobHistoryQuery{},
+			pageSize:   4,
+			expected:   15,
+			isTerminal: true,
+		},
+		{
+			name:       "Filter by terminal ExecutionID",
+			jobID:      ongoingJob,
+			query:      jobstore.JobHistoryQuery{ExecutionID: terminalExec},
+			pageSize:   3,
+			expected:   5,
+			isTerminal: true,
+		},
+		{
+			name:     "Filter by ongoing ExecutionID",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{ExecutionID: ongoingExec},
+			pageSize: 5,
+			expected: 5,
+		},
+		{
+			name:     "Since timestamp",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{Since: ongoingJobEndTime.Add(-5 * time.Second).Unix()},
+			pageSize: 10,
+			expected: 6, // inclusive
+		},
+		{
+			name:     "Combination of filters",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{ExecutionID: ongoingExec, ExcludeJobLevel: true, Since: ongoingJobEndTime.Add(-6 * time.Second).Unix()},
+			pageSize: 2,
+			expected: 3,
+		},
+		{
+			name:     "Large page size",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{},
+			pageSize: 100,
+			expected: 15,
+		},
+		{
+			name:     "Small page size",
+			jobID:    ongoingJob,
+			query:    jobstore.JobHistoryQuery{},
+			pageSize: 1,
+			expected: 15,
+		},
+	}
 
-	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
-		Limit:     1,
-		NextToken: nextToken,
-	})
-	require.NoError(s.T(), err, "Failed to get job history")
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			var allEvents []models.JobHistory
+			nextToken := ""
+			queryCount := 0
 
-	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
-	nextToken = jobHistoryQueryResponse.NextToken
-	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 1)
+			for {
+				queryCount++
+				query := tc.query
+				query.Limit = uint32(tc.pageSize)
+				query.NextToken = nextToken
 
-	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
-		Limit:     5,
-		NextToken: nextToken,
-	})
-	require.NoError(s.T(), err, "Failed to get job history")
+				response, err := s.store.GetJobHistory(s.ctx, tc.jobID, query)
+				s.Require().NoError(err, "Failed to get job history")
+				s.Require().LessOrEqual(len(response.JobHistory), tc.pageSize, "Unexpected number of events")
+				allEvents = append(allEvents, response.JobHistory...)
 
-	require.NotEmpty(s.T(), jobHistoryQueryResponse.NextToken, "Next Token should be populated")
-	nextToken = jobHistoryQueryResponse.NextToken
-	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 5)
+				if len(response.JobHistory) > 0 {
+					s.Require().NotEqual(nextToken, response.NextToken, "NextToken should change if there are more events")
+				}
 
-	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", jobstore.JobHistoryQuery{
-		Limit:     5,
-		NextToken: nextToken,
-	})
-	require.NoError(s.T(), err, "Failed to get job history")
-	require.Empty(s.T(), jobHistoryQueryResponse.NextToken)
-	require.Len(s.T(), jobHistoryQueryResponse.JobHistory, 0)
+				nextToken = response.NextToken
+				if len(response.JobHistory) == 0 || len(allEvents) >= tc.expected {
+					break
+				}
+			}
 
+			// verify individual events
+			for _, event := range allEvents {
+				if tc.query.ExecutionID != "" {
+					s.Require().Equal(tc.query.ExecutionID, event.ExecutionID, "Event does not match the requested ExecutionID")
+				}
+				if tc.query.Since != 0 {
+					s.Require().GreaterOrEqual(event.Time.Unix(), tc.query.Since, "Event time %d does not match the requested Since %s", event.Time.Unix(), tc.query.Since)
+				}
+				if tc.query.ExcludeJobLevel {
+					s.Require().Equal(models.JobHistoryTypeExecutionLevel, event.Type, "Unexpected event type for execution-level events")
+				}
+				if tc.query.ExcludeExecutionLevel {
+					s.Require().Equal(models.JobHistoryTypeJobLevel, event.Type, "Unexpected event type for job-level events")
+				}
+			}
+
+			// Verify the total number of events
+			s.Require().Len(allEvents, tc.expected,
+				"Unexpected total number of events. Expected %d, but got %d", tc.expected, len(allEvents))
+
+			// Verify the number of queries
+			expectedQueries := (tc.expected + tc.pageSize - 1) / tc.pageSize
+			s.Require().Equal(expectedQueries, queryCount, "Unexpected number of queries")
+
+			// if we have a next token, do one more query to ensure it's empty and nextToken doesn't move
+			// this is the case when the job is not terminal and we've read all available events
+			if nextToken != "" {
+				query := tc.query
+				query.Limit = uint32(tc.pageSize)
+				query.NextToken = nextToken
+
+				response, err := s.store.GetJobHistory(s.ctx, tc.jobID, query)
+				s.Require().NoError(err, "Failed to get job history")
+				s.Require().Empty(response.JobHistory, "Expected no more events")
+				s.Require().Equal(nextToken, response.NextToken, "NextToken should not change if there are no more events")
+			}
+
+			if tc.isTerminal {
+				s.Require().Empty(nextToken, "Terminal job should end with an empty NextToken")
+			} else {
+				s.Require().NotEmpty(nextToken, "Non-terminal job should end with a non-empty NextToken")
+			}
+
+			// Verify the order of events
+			s.Require().True(sort.SliceIsSorted(allEvents, func(i, j int) bool {
+				return allEvents[i].Time.Before(allEvents[j].Time)
+			}), "Events are not in the correct order")
+
+		})
+	}
+}
+
+// Helper function to create a job with a specified number of events
+func (s *BoltJobstoreTestSuite) createJobWithHistory(makeJobTerminal bool) (string, string, string) {
+	job := mock.Job()
+	s.Require().NoError(s.store.CreateJob(s.ctx, *job))
+
+	// create two executions
+	var executions []string
+	for i := 0; i < 2; i++ {
+		execution := mock.ExecutionForJob(job)
+		execution.ID = fmt.Sprintf("%s-%d", job.ID, i)
+		s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
+		executions = append(executions, execution.ID)
+	}
+
+	// Add events
+	eventCount := 15
+	for i := 0; i < eventCount/3; i++ {
+		s.clock.Add(time.Second)
+		s.Require().NoError(s.store.AddJobHistory(s.ctx, job.ID, *models.NewEvent("job-event").WithMessage(fmt.Sprintf("Job event %d", i))))
+		s.clock.Add(time.Second)
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, executions[0], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
+		s.clock.Add(time.Second)
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, executions[1], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
+	}
+
+	// Make the first execution terminal
+	s.Require().NoError(s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
+		ExecutionID: executions[0],
+		NewValues: models.Execution{
+			JobID:        job.ID,
+			ComputeState: models.NewExecutionState(models.ExecutionStateCompleted),
+		},
+	}))
+
+	if makeJobTerminal {
+		s.Require().NoError(s.store.UpdateJobState(s.ctx, jobstore.UpdateJobStateRequest{
+			JobID:    job.ID,
+			NewState: models.JobStateTypeCompleted,
+		}))
+	}
+
+	return job.ID, executions[0], executions[1]
 }
 
 func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
