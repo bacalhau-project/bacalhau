@@ -24,9 +24,9 @@ export function NodesOverview() {
     try {
       const response = await Orchestrator.listNodes({
         query: {
-          limit: pageSize,
+          limit: 10000, // TODO: Remove this once pagination is implemented
+          // limit: pageSize,
           next_token: pageIndex === 0 ? undefined : nextToken,
-          reverse: true,
         },
         throwOnError: true,
       })

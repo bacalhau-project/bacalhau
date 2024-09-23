@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/url"
 	"os"
 	"strings"
 
@@ -220,7 +219,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		}
 	}
 	// Create node
-	log.Info().Msg("starting bacalhau...")
+	log.Info().Msg("Starting bacalhau...")
 	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 	if err != nil {
 		return fmt.Errorf("error creating node: %w", err)
@@ -306,8 +305,6 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return err
 	}
-	cmd.Println()
-	cmd.Println()
 	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
 	defer os.Remove(riPath)
 
@@ -395,10 +392,6 @@ func buildEnvVariables(
 	var envvars strings.Builder
 	envvars.WriteString(fmt.Sprintf("export %s=%s\n", config.KeyAsEnvVar(types.APIHostKey), getAPIURL(cfg.API)))
 	envvars.WriteString(fmt.Sprintf("export %s=%d\n", config.KeyAsEnvVar(types.APIPortKey), cfg.API.Port))
-	if cfg.Orchestrator.Enabled {
-		envvars.WriteString(fmt.Sprintf("export %s=%s\n",
-			config.KeyAsEnvVar(types.ComputeOrchestratorsKey), getPublicNATSOrchestratorURL(cfg.Orchestrator)))
-	}
 	return envvars.String()
 }
 
@@ -408,17 +401,4 @@ func getAPIURL(cfg types.API) string {
 	} else {
 		return cfg.Host
 	}
-}
-
-func getPublicNATSOrchestratorURL(cfg types.Orchestrator) *url.URL {
-	orchestrator := &url.URL{
-		Scheme: "nats",
-		Host:   cfg.Advertise,
-	}
-
-	if cfg.Advertise == "" {
-		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", cfg.Port)
-	}
-
-	return orchestrator
 }

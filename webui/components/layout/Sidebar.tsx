@@ -36,7 +36,7 @@ export function NavLink({ href, icon: Icon, label, badge }: NavLinkProps) {
 
 export function InnerSidebar() {
   return (
-    <div className="flex h-full max-h-screen flex-col gap-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex h-14 items-center px-4 lg:h-[60px] lg:px-6">
         <Link
           href="/"
@@ -48,7 +48,7 @@ export function InnerSidebar() {
           />
         </Link>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start gap-1 px-4 text-sm font-medium">
           {navLinkItems.map((item) => (
             <NavLink key={item.href} {...item} />
@@ -64,7 +64,7 @@ export function InnerSidebar() {
 
 export function Sidebar() {
   return (
-    <div className="hidden border-r border-sidebar-border bg-sidebar-bg md:block">
+    <div className="hidden md:block fixed top-0 left-0 h-full w-[220px] lg:w-[280px] border-r border-sidebar-border bg-sidebar-bg overflow-y-auto z-40">
       <InnerSidebar />
     </div>
   )

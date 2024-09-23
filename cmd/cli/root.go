@@ -24,6 +24,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -69,6 +71,22 @@ func NewRootCmd() *cobra.Command {
 			return err
 		}
 
+		// Configure logging
+		// While we allow users to configure logging via the config file, they are applied
+		// and will override this configuration at a later stage when the config is loaded.
+		// This is needed to ensure any logs before the config is loaded are captured.
+		logMode := viper.GetString(types.LoggingModeKey)
+		if logMode == "" {
+			logMode = string(logger.LogModeDefault)
+		}
+		logLevel := viper.GetString(types.LoggingLevelKey)
+		if logLevel == "" {
+			logLevel = "Info"
+		}
+		if err := logger.ConfigureLogging(logMode, logLevel); err != nil {
+			return fmt.Errorf("failed to configure logging: %w", err)
+		}
+
 		return nil
 	}
 
@@ -110,6 +128,8 @@ func NewRootCmd() *cobra.Command {
 func Execute(ctx context.Context) {
 	rootCmd := NewRootCmd()
 	rootCmd.SetContext(ctx)
+	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
 	if err := rootCmd.Execute(); err != nil {
 		util.Fatal(rootCmd, err, 1)
 	}

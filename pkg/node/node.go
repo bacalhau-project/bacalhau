@@ -347,10 +347,6 @@ func prepareConfig(config *NodeConfig, bacalhauConfig types.Bacalhau) error {
 	if err != nil {
 		return err
 	}
-	// TODO: #830 Same as #829 in pkg/eventhandler/chained_handlers.go
-	if system.GetEnvironment() == system.EnvironmentTest || system.GetEnvironment() == system.EnvironmentDev {
-		config.APIServerConfig.LogLevel = "trace"
-	}
 
 	err = config.Validate()
 	if err != nil {

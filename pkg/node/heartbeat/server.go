@@ -81,7 +81,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 			if err := h.legacySubscriber.Close(ctx); err != nil {
 				log.Ctx(ctx).Error().Err(err).Msg("Error during heartbeat server shutdown")
 			} else {
-				log.Ctx(ctx).Info().Msg("Heartbeat server shutdown")
+				log.Ctx(ctx).Debug().Msg("Heartbeat server shutdown")
 			}
 		}()
 
@@ -101,7 +101,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	// Wait for the ticker to be created before returning
 	<-tickerStartCh
-	log.Ctx(ctx).Info().Msg("Heartbeat server started")
+	log.Ctx(ctx).Debug().Msg("Heartbeat server started")
 
 	return nil
 }

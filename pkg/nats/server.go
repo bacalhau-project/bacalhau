@@ -46,7 +46,7 @@ func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerM
 	if !ns.ReadyForConnections(params.ConnectionTimeout) {
 		return nil, fmt.Errorf("could not start nats server on time")
 	}
-	log.Ctx(ctx).Info().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
+	log.Ctx(ctx).Debug().Msgf("NATS server %s listening on %s", ns.ID(), ns.ClientURL())
 	return &ServerManager{
 		Server: ns,
 	}, err

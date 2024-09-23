@@ -190,6 +190,26 @@ func New(opts ...Option) (*Config, error) {
 		c.base.Set(name, value)
 	}
 
+	// if no config file was provided, we look for a config.yaml under the resolved data directory,
+	// and if it exists, we create and return a new config with the resolved path.
+	// we attempt this last to ensure the data-dir is resolved correctly from all config sources.
+	if len(c.paths) == 0 {
+		configFile := filepath.Join(c.base.GetString(types.DataDirKey), DefaultFileName)
+		if _, err := os.Stat(configFile); err == nil {
+			opts = append(opts, WithPaths(configFile))
+			return New(opts...)
+		}
+	}
+
+	// log the resolved config paths
+	absoluteConfigPaths := make([]string, len(c.paths))
+	for i, path := range c.paths {
+		absoluteConfigPaths[i], err = filepath.Abs(path)
+		if err != nil {
+			absoluteConfigPaths[i] = path
+		}
+	}
+	log.Info().Msgf("Config loaded from: %s, and with data-dir %s", absoluteConfigPaths, c.base.Get(types.DataDirKey))
 	return c, nil
 }
 
@@ -220,7 +240,6 @@ func getNodeType(input string) (requester, compute bool, err error) {
 // from the read config file.
 // Load returns an error if the file cannot be read.
 func (c *Config) Load(path string) error {
-	log.Info().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -231,7 +250,6 @@ func (c *Config) Load(path string) error {
 // Merge merges a new configuration file specified by `path` with the existing config.
 // Merge returns an error if the file cannot be read
 func (c *Config) Merge(path string) error {
-	log.Info().Msgf("merging config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		return err
