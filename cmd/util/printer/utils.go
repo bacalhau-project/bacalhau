@@ -18,14 +18,16 @@ import (
 )
 
 var (
-	none  = color.New(color.Reset)
-	red   = color.New(color.FgRed)
-	green = color.New(color.FgGreen)
+	none   = color.New(color.Reset)
+	red    = color.New(color.FgRed)
+	yellow = color.New(color.FgYellow)
+	green  = color.New(color.FgGreen)
 )
 
 const (
-	errorPrefix = "Error: "
-	hintPrefix  = "Hint: "
+	errorPrefix   = "Error: "
+	warningPrefix = "Warning: "
+	hintPrefix    = "Hint: "
 )
 
 var terminalWidth int
@@ -51,6 +53,10 @@ func PrintEvent(cmd *cobra.Command, event models.Event) {
 
 func PrintError(cmd *cobra.Command, err error) {
 	printIndentedString(cmd, errorPrefix, err.Error(), red, 0)
+}
+
+func PrintWarning(cmd *cobra.Command, msg string) {
+	printIndentedString(cmd, warningPrefix, msg, yellow, 0)
 }
 
 // Groups the executions in the job state, returning a map of printable messages

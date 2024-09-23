@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	EventTopicExecutionBidding     models.EventTopic = "Requesting Node"
-	EventTopicExecutionDownloading models.EventTopic = "Downloading Inputs"
-	EventTopicExecutionPreparing   models.EventTopic = "Preparing Environment"
-	EventTopicExecutionRunning     models.EventTopic = "Running Execution"
-	EventTopicExecutionPublishing  models.EventTopic = "Publishing Results"
+	EventTopicExecutionCompatibilityCheck models.EventTopic = "Compatibility Check"
+	EventTopicExecutionDownloading        models.EventTopic = "Downloading Inputs"
+	EventTopicExecutionPreparing          models.EventTopic = "Preparing Environment"
+	EventTopicExecutionRunning            models.EventTopic = "Running Execution"
+	EventTopicExecutionPublishing         models.EventTopic = "Publishing Results"
 )
 
 func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
 	return models.Event{
 		Message:   response.Reason,
-		Topic:     EventTopicExecutionBidding,
+		Topic:     EventTopicExecutionCompatibilityCheck,
 		Timestamp: time.Now(),
 		Details:   map[string]string{},
 	}
