@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/cols"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -49,6 +50,21 @@ type SequentialEventPrinter struct {
 func NewSequentialEventPrinter(cmd *cobra.Command) *SequentialEventPrinter {
 	spinner := NewFishSpinner(cmd.OutOrStdout())
 	spinner.Start()
+
+	eventsCols := []output.TableColumn[*models.JobHistory]{
+		cols.HistoryTimeOnly,
+		cols.HistoryExecID,
+		cols.HistoryTopic,
+		cols.HistoryEvent,
+	}
+
+	// since we print each row as a separate table, we need to set the
+	// min width of the columns to avoid inconsistent column widths.
+	// will use the same as max width for now, except for the last column.
+	for i := 0; i < len(eventsCols)-1; i++ {
+		eventsCols[i].WidthMin = eventsCols[i].WidthMax
+	}
+
 	return &SequentialEventPrinter{
 		cmd:     cmd,
 		columns: eventsCols,
@@ -135,6 +151,14 @@ type ExecutionGroup struct {
 func NewGroupedEventPrinter(cmd *cobra.Command) *GroupedEventPrinter {
 	existingOut := cmd.OutOrStdout()
 	cmd.SetOut(util.NewLiveTableWriter())
+
+	eventsCols := []output.TableColumn[*models.JobHistory]{
+		cols.HistoryTimeOnly,
+		cols.HistoryExecID,
+		cols.HistoryTopic,
+		cols.HistoryEvent,
+	}
+
 	return &GroupedEventPrinter{
 		cmd:         cmd,
 		existingOut: existingOut,

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 )
 
 // ANSI escape codes for cursor control
@@ -33,10 +35,10 @@ func NewFishSpinner(writer io.Writer) *FishSpinner {
 		frames:      []string{"🐟", "🐠", "🐡"},
 		index:       0,
 		position:    0,
-		width:       23, // Width of the animation area
+		width:       21, // Width of the animation area
 		stopChan:    make(chan struct{}),
 		writer:      writer,
-		spinnerText: "  Waiting for events  ",
+		spinnerText: output.ItalicStr(" Processing   "),
 	}
 }
 
