@@ -5,7 +5,7 @@ import "sync"
 type HashedPriorityQueue[K comparable, T any] struct {
 	identifiers map[K]struct{}
 	queue       *PriorityQueue[T]
-	mu          sync.Mutex
+	mu          sync.RWMutex
 	indexer     IndexerFunc[K, T]
 }
 
@@ -27,8 +27,8 @@ func NewHashedPriorityQueue[K comparable, T any](indexer IndexerFunc[K, T]) *Has
 // Contains will return true if the provided identifier (of type K)
 // will be found in this queue, false if it is not present.
 func (q *HashedPriorityQueue[K, T]) Contains(id K) bool {
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.mu.RLock()
+	defer q.mu.RUnlock()
 	_, ok := q.identifiers[id]
 	return ok
 }
