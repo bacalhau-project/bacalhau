@@ -258,8 +258,8 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		if sysmeta.InstanceID != "" {
 			opts = append(opts, analytics.WithInstanceID(sysmeta.InstanceID))
 		}
-		if sysmeta.InstallationID != "" {
-			opts = append(opts, analytics.WithInstallationID(sysmeta.InstallationID))
+		if installationID := config.ReadInstallationID(); installationID != "" {
+			opts = append(opts, analytics.WithInstallationID(installationID))
 		}
 		if err := analytics.SetupAnalyticsProvider(ctx, opts...); err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")

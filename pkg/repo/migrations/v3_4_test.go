@@ -150,7 +150,6 @@ Auth:
 
 	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
 	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
@@ -186,8 +185,6 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.FileExists(filepath.Join(suite.TempDir, "update.json"))
 	suite.FileExists(filepath.Join(suite.TempDir, "user_id.pem"))
 
-	expectedInstallationID := ""
-
 	// verify the repo's current version is 3
 	repoVersion3, err := suite.repo.Version()
 	suite.Require().NoError(err)
@@ -222,8 +219,6 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 
 	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-
-	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
@@ -340,8 +335,6 @@ Auth:
 
 	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	// verify we can read the expected installationID from it.
-	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
 	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
@@ -459,9 +452,6 @@ Auth:
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
-
-	// verify we can read the expected installationID from it.
-	suite.Require().Equal(expectedInstallationID, sysmeta.InstallationID)
 
 	// verify we can read the expected last update time from it.
 	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())

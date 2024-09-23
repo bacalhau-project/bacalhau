@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -219,8 +220,8 @@ func NewRequesterNode(
 	}
 
 	if sysmeta, err := fsr.SystemMetadata(); err == nil {
-		if sysmeta.InstallationID != "" {
-			jobTransformers = append(jobTransformers, transformer.OrchestratorInstallationID(sysmeta.InstallationID))
+		if installationID := config.ReadInstallationID(); installationID != "" {
+			jobTransformers = append(jobTransformers, transformer.OrchestratorInstallationID(installationID))
 		}
 		if sysmeta.InstanceID != "" {
 			jobTransformers = append(jobTransformers, transformer.OrchestratorInstanceID(sysmeta.InstanceID))

@@ -50,17 +50,11 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}
 
-	sysmeta, err := r.SystemMetadata()
-	if err != nil {
-		log.Debug().Err(err).Msg("loading system metadata from repo")
-	}
-
 	updateCheck, err := version.CheckForUpdate(
 		ctx,
 		versions.ClientVersion,
 		versions.ServerVersion,
 		userKey.ClientID(),
-		sysmeta.InstallationID,
 	)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")

@@ -54,11 +54,6 @@ var V3Migration = repo.NewMigration(
 			if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
 				return err
 			}
-			if fileCfg.User.InstallationID != "" {
-				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
-					return err
-				}
-			}
 
 			// ignore this error as the file may not exist
 			_ = os.Remove(filepath.Join(repoPath, "update.json"))
@@ -101,9 +96,6 @@ var V3Migration = repo.NewMigration(
 		{
 			oldConfigFilePath := filepath.Join(repoPath, config_legacy.FileName)
 			if _, err := os.Stat(oldConfigFilePath); err == nil {
-				if err := r.WriteInstallationID(fileCfg.User.InstallationID); err != nil {
-					return fmt.Errorf("migrating installation id: %w", err)
-				}
 				if err := r.WriteNodeName(fileCfg.Node.Name); err != nil {
 					return fmt.Errorf("migrating node name: %w", err)
 				}

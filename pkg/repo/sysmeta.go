@@ -34,7 +34,6 @@ const SystemMetadataFile = "system_metadata.yaml"
 
 type SystemMetadata struct {
 	RepoVersion     int       `yaml:"RepoVersion"`
-	InstallationID  string    `yaml:"InstallationID"`
 	InstanceID      string    `yaml:"InstanceID"`
 	LastUpdateCheck time.Time `yaml:"LastUpdateCheck"`
 	NodeName        string    `yaml:"NodeName"`
@@ -108,22 +107,6 @@ func (fsr *FsRepo) ReadLastUpdateCheck() (time.Time, error) {
 func (fsr *FsRepo) WriteLastUpdateCheck(lastUpdateCheck time.Time) error {
 	return fsr.updateExistingMetadata(func(m *SystemMetadata) {
 		m.LastUpdateCheck = lastUpdateCheck
-	})
-}
-
-func (fsr *FsRepo) ReadInstallationID() (string, error) {
-	sysmeta, err := fsr.readMetadata()
-	if err != nil {
-		return "", err
-	}
-	return sysmeta.InstallationID, nil
-}
-
-// WriteInstallationID updates the InstallationID in the metadata.
-// It fails if the metadata file doesn't exist.
-func (fsr *FsRepo) WriteInstallationID(id string) error {
-	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
-		sysmeta.InstallationID = id
 	})
 }
 
