@@ -4,7 +4,6 @@ package printer
 
 import (
 	"io"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,11 +38,11 @@ func (QuitePrinter) close() error { return nil }
 
 // SequentialEventPrinter prints job events sequentially as they occur.
 type SequentialEventPrinter struct {
-	cmd        *cobra.Command
-	columns    []output.TableColumn[*models.JobHistory]
-	lineCount  int
-	loadingMsg string
-	spinner    *FishSpinner
+	cmd                 *cobra.Command
+	columns             []output.TableColumn[*models.JobHistory]
+	lineCount           int
+	spinner             *FishSpinner
+	seenExecutionErrors bool
 }
 
 // NewSequentialEventPrinter creates a new SequentialEventPrinter.
@@ -65,13 +64,19 @@ func (p *SequentialEventPrinter) filterEvent(event *models.JobHistory) bool {
 		return true
 	}
 
-	// Always print errors
-	if event.Event.HasError() {
+	// Check for execution level errors
+	if event.IsExecutionLevel() && event.Event.HasError() {
+		p.seenExecutionErrors = true
 		return true
 	}
 
-	// Print all execution level events
-	if event.ExecutionID != "" {
+	// Print job level errors only if we haven't seen execution level errors
+	if !event.IsExecutionLevel() && event.Event.HasError() && !p.seenExecutionErrors {
+		return true
+	}
+
+	// Print all non-error execution level events
+	if event.IsExecutionLevel() {
 		return true
 	}
 
@@ -101,18 +106,6 @@ func (p *SequentialEventPrinter) printEvent(event *models.JobHistory) error {
 	p.lineCount++
 
 	return nil
-}
-
-// printLoadingMessage prints a loading message to the console.
-func (p *SequentialEventPrinter) printLoadingMessage() error {
-	_, err := p.cmd.OutOrStdout().Write([]byte(p.loadingMsg))
-	return err
-}
-
-// clearLoadingMessage clears the loading message from the console.
-func (p *SequentialEventPrinter) clearLoadingMessage() error {
-	_, err := p.cmd.OutOrStdout().Write([]byte("\r" + strings.Repeat(" ", len(p.loadingMsg)) + "\r"))
-	return err
 }
 
 // close clears the loading message when closing the printer.
