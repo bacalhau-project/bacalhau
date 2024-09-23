@@ -2,6 +2,7 @@ package boltjobstore
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"time"
@@ -127,4 +128,16 @@ func BucketSequenceString(_ *bolt.Tx, bucket *bolt.Bucket) string {
 		return ""
 	}
 	return fmt.Sprintf("%016d", seqNum)
+}
+
+// uint64ToBytes converts an uint64 to a byte slice
+func uint64ToBytes(i uint64) []byte {
+	buf := make([]byte, 8) //nolint:gomnd
+	binary.BigEndian.PutUint64(buf, i)
+	return buf
+}
+
+// bytesToUint64 converts a byte slice to an uint64
+func bytesToUint64(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b)
 }
