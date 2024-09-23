@@ -40,27 +40,28 @@ var (
 	}
 
 	eventTopicCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMin: 15, WidthMax: 15, WidthMaxEnforcer: text.WrapSoft},
+		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMin: 18, WidthMax: 18, WidthMaxEnforcer: text.WrapSoft},
 		Value: func(j *models.JobHistory) string {
 			return string(j.Event.Topic)
 		},
 	}
 
 	eventEventCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMin: 30, WidthMax: 90, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{
+			Name: "Event", WidthMin: 30, WidthMax: 90, WidthMaxEnforcer: output.WrapSoftPreserveNewlines},
 		Value: func(j *models.JobHistory) string {
 			res := j.Event.Message
 
 			if j.Event.Details != nil {
 				// if is error, then the event is in red
 				if j.Event.Details[models.DetailsKeyIsError] == "true" {
-					res = output.RedStr(res)
+					res = output.BoldStr(output.RedStr("Error: ")) + res
 				}
 
 				// print hint in green
 				if j.Event.Details[models.DetailsKeyHint] != "" {
-					res += "\n" + fmt.Sprintf(
-						"%s %s", output.BoldStr(output.GreenStr("* Hint:")), j.Event.Details[models.DetailsKeyHint])
+					res +=
+						"\n" + output.BoldStr(output.GreenStr("Hint: ")) + j.Event.Details[models.DetailsKeyHint]
 				}
 
 				// print all other details in debug mode
@@ -74,6 +75,7 @@ var (
 					}
 				}
 			}
+
 			return res
 		},
 	}

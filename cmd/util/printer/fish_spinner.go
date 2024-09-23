@@ -33,10 +33,10 @@ func NewFishSpinner(writer io.Writer) *FishSpinner {
 		frames:      []string{"🐟", "🐠", "🐡"},
 		index:       0,
 		position:    0,
-		width:       20, // Width of the animation area
+		width:       23, // Width of the animation area
 		stopChan:    make(chan struct{}),
 		writer:      writer,
-		spinnerText: " Waiting for events ",
+		spinnerText: "  Waiting for events  ",
 	}
 }
 

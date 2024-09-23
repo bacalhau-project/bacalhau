@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/term"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -108,7 +109,7 @@ func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *co
 
 	cmd.PrintErrln()
 	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
-	prefixColor.Fprintf(cmd.ErrOrStderr(), "%s", prefix)
+	prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
 	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
 		if i > 0 {
 			cmd.PrintErr(strings.Repeat(" ", blockIndent))

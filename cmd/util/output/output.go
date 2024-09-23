@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/ghodss/yaml"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 )
 
 type OutputFormat string
@@ -21,6 +22,11 @@ const (
 )
 
 const (
+	// Escape sequence start and end
+	escapeStart = "\x1b["
+	escapeEnd   = "m"
+
+	// Styling
 	bold  = "\033[1m"
 	red   = "\033[31m"
 	green = "\033[32m"

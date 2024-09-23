@@ -108,7 +108,7 @@ func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 		b.callback.OnComputeFailure(ctx, ComputeError{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
-			Event:             models.EventFromError(EventTopicExecutionCompatibilityCheck, err),
+			Event:             models.EventFromError(EventTopicExecutionScanning, err),
 		})
 		return
 	}
@@ -148,7 +148,7 @@ func (b Bidder) handleBidResult(
 			b.callback.OnComputeFailure(ctx, ComputeError{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
-				Event:             models.EventFromError(EventTopicExecutionCompatibilityCheck, err),
+				Event:             models.EventFromError(EventTopicExecutionScanning, err),
 			})
 		}
 		handleBidComplete = func(ctx context.Context, result *bidStrategyResponse) {
