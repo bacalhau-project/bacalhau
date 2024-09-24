@@ -180,6 +180,7 @@ func NewNode(
 			transportLayer,
 			transportLayer.ComputeProxy(),
 			messageSerDeRegistry,
+			fsr,
 		)
 		if err != nil {
 			return nil, err

@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
 )
@@ -27,7 +26,7 @@ func Wrap(delegate publisher.Publisher) publisher.Publisher {
 }
 
 func (t *tracingPublisher) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
 	defer span.End()
 
 	return t.delegate.IsInstalled(ctx)
@@ -42,7 +41,7 @@ func (t *tracingPublisher) PublishResult(
 ) (spec models.SpecConfig, err error) {
 	attributes := execution.Job.MetricAttributes()
 
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name),
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.PublishResult", t.name),
 		trace.WithAttributes(attributes...))
 	defer span.End()
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -22,7 +21,7 @@ func NewNodeStore(delegate routing.NodeInfoStore) *NodeStore {
 }
 
 func (r *NodeStore) Add(ctx context.Context, state models.NodeState) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.Add") //nolint:govet
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/routing.NodeInfoStore.Add") //nolint:govet
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, addNodeDurationMilliseconds)
@@ -38,7 +37,7 @@ func (r *NodeStore) Add(ctx context.Context, state models.NodeState) error {
 }
 
 func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.Get") //nolint:govet
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/routing.NodeInfoStore.Get") //nolint:govet
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, getNodeDurationMilliseconds)
@@ -54,7 +53,7 @@ func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, e
 }
 
 func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.NodeState, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.GetByPrefix") //nolint:govet
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/routing.NodeInfoStore.GetByPrefix") //nolint:govet
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, getPrefixNodeDurationMilliseconds)
@@ -70,7 +69,7 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 }
 
 func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.List") //nolint:govet
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/routing.NodeInfoStore.List") //nolint:govet
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, listNodesDurationMilliseconds)
@@ -85,7 +84,7 @@ func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter
 }
 
 func (r *NodeStore) Delete(ctx context.Context, nodeID string) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/routing.NodeInfoStore.Delete") //nolint:govet
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/routing.NodeInfoStore.Delete") //nolint:govet
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, deleteNodeDurationMilliseconds)
