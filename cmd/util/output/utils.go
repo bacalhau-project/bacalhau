@@ -2,7 +2,9 @@ package output
 
 import (
 	"fmt"
+	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -59,4 +61,58 @@ func Elapsed(t time.Time) string {
 	}
 
 	return result + " ago"
+}
+
+func WrapSoftPreserveNewlines(s string, width int) string {
+	lines := strings.Split(s, "\n")
+	var result strings.Builder
+
+	for i, line := range lines {
+		if i > 0 {
+			result.WriteString("\n")
+		}
+		result.WriteString(wrapLine(line, width))
+	}
+
+	return result.String()
+}
+
+func wrapLine(line string, width int) string {
+	var wrapped strings.Builder
+	var current strings.Builder
+	var styling strings.Builder
+	inEscape := false
+	lineLength := 0
+	escapeStartRune := []rune(escapeStart)[0]
+	escapeEndRune := []rune(escapeEnd)[0]
+
+	for _, r := range line {
+		if r == escapeStartRune {
+			inEscape = true
+			styling.WriteRune(r)
+		} else if inEscape {
+			styling.WriteRune(r)
+			if r == escapeEndRune {
+				inEscape = false
+				current.WriteString(styling.String())
+				if styling.String() == escapeStart+"0"+escapeEnd {
+					styling.Reset()
+				}
+			}
+		} else {
+			current.WriteRune(r)
+			lineLength++
+
+			if lineLength >= width && unicode.IsSpace(r) {
+				wrapped.WriteString(current.String())
+				wrapped.WriteString("\n")
+				current.Reset()
+				current.WriteString(styling.String())
+				lineLength = 0
+			}
+		}
+	}
+
+	wrapped.WriteString(current.String())
+	return wrapped.String()
 }

@@ -46,11 +46,19 @@ func (suite *TaskTestSuite) TestTaskNormalization() {
 }
 
 func (suite *TaskTestSuite) TestTaskValidation() {
+	type validationMode int
+
+	const (
+		noError validationMode = iota
+		submissionError
+		postSubmissionError
+	)
+
 	tests := []struct {
-		name    string
-		task    *Task
-		wantErr bool
-		errMsg  string
+		name           string
+		task           *Task
+		validationMode validationMode
+		errMsg         string
 	}{
 		{
 			name: "Valid task",
@@ -67,7 +75,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				},
 				Publisher: &SpecConfig{Type: "s3"},
 			},
-			wantErr: false,
+			validationMode: noError,
 		},
 		{
 			name: "Empty task name",
@@ -75,8 +83,8 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				Name:   "",
 				Engine: &SpecConfig{Type: "docker"},
 			},
-			wantErr: true,
-			errMsg:  "missing task name",
+			validationMode: submissionError,
+			errMsg:         "missing task name",
 		},
 		{
 			name: "Duplicate input source alias",
@@ -88,8 +96,8 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 					{Alias: "input1", Target: "/input2", Source: &SpecConfig{Type: "http"}},
 				},
 			},
-			wantErr: true,
-			errMsg:  "input source with alias 'input1' already exists",
+			validationMode: submissionError,
+			errMsg:         "input source with alias 'input1' already exists",
 		},
 		{
 			name: "Duplicate input source target",
@@ -101,8 +109,8 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 					{Alias: "input2", Target: "/input", Source: &SpecConfig{Type: "http"}},
 				},
 			},
-			wantErr: true,
-			errMsg:  "input source with target '/input' already exists",
+			validationMode: submissionError,
+			errMsg:         "input source with target '/input' already exists",
 		},
 		{
 			name: "Duplicate result path name",
@@ -115,8 +123,8 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				},
 				Publisher: &SpecConfig{Type: "s3"},
 			},
-			wantErr: true,
-			errMsg:  "result path with name 'output' already exists",
+			validationMode: submissionError,
+			errMsg:         "result path with name 'output' already exists",
 		},
 		{
 			name: "Duplicate result path",
@@ -129,8 +137,8 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				},
 				Publisher: &SpecConfig{Type: "s3"},
 			},
-			wantErr: true,
-			errMsg:  "result path '/output' already exists",
+			validationMode: submissionError,
+			errMsg:         "result path '/output' already exists",
 		},
 		{
 			name: "Result paths without publisher",
@@ -141,15 +149,65 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 					{Name: "output", Path: "/output"},
 				},
 			},
-			wantErr: true,
-			errMsg:  "publisher must be set if result paths are set",
+			validationMode: postSubmissionError,
+			errMsg:         "publisher must be set if result paths are set",
+		},
+		{
+			name: "Misconfigured timeouts",
+			task: &Task{
+				Name:   "invalid-timeouts",
+				Engine: &SpecConfig{Type: "docker"},
+				Timeouts: &TimeoutConfig{
+					ExecutionTimeout: 100,
+					TotalTimeout:     10,
+				},
+			},
+			validationMode: postSubmissionError,
+			errMsg:         "should be less than total timeout",
+		},
+		{
+			name: "Invalid timeouts",
+			task: &Task{
+				Name:   "invalid-timeouts",
+				Engine: &SpecConfig{Type: "docker"},
+				Timeouts: &TimeoutConfig{
+					ExecutionTimeout: -1,
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "task timeouts validation failed",
+		},
+		{
+			name: "Invalid resources",
+			task: &Task{
+				Name:   "invalid-resources",
+				Engine: &SpecConfig{Type: "docker"},
+				ResourcesConfig: &ResourcesConfig{
+					CPU: "-1",
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "task resources validation failed",
 		},
 	}
 
 	for _, tt := range tests {
 		suite.Run(tt.name, func() {
+			tt.task.Normalize()
+
+			// Test ValidateSubmission()
 			err := tt.task.ValidateSubmission()
-			if tt.wantErr {
+			if tt.validationMode == submissionError {
+				suite.Error(err)
+				suite.Contains(err.Error(), tt.errMsg)
+			} else {
+				suite.NoError(err)
+			}
+
+			// Test Validate()
+			// Should always fail if ValidateSubmission() failed
+			err = tt.task.Validate()
+			if tt.validationMode != noError {
 				suite.Error(err)
 				suite.Contains(err.Error(), tt.errMsg)
 			} else {

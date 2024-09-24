@@ -8,9 +8,11 @@ import (
 
 const JobStoreComponent = "JobStore"
 const (
-	ConflictJobState   models.ErrorCode = "ConflictJobState"
-	MultipleJobsFound  models.ErrorCode = "MultipleJobsFound"
-	ConflictJobVersion models.ErrorCode = "ConflictJobVersion"
+	ConflictJobState         models.ErrorCode = "ConflictJobState"
+	MultipleJobsFound        models.ErrorCode = "MultipleJobsFound"
+	MultipleExecutionsFound  models.ErrorCode = "MultipleExecutionsFound"
+	MultipleEvaluationsFound models.ErrorCode = "MultipleEvaluationsFound"
+	ConflictJobVersion       models.ErrorCode = "ConflictJobVersion"
 )
 
 func NewErrJobNotFound(id string) *models.BaseError {
@@ -22,7 +24,8 @@ func NewErrJobNotFound(id string) *models.BaseError {
 func NewErrMultipleJobsFound(id string) *models.BaseError {
 	return models.NewBaseError("multiple jobs found for id %s", id).
 		WithCode(MultipleJobsFound).
-		WithComponent(JobStoreComponent)
+		WithComponent(JobStoreComponent).
+		WithHint("Use full job ID")
 }
 
 func NewErrJobAlreadyExists(id string) *models.BaseError {
@@ -64,6 +67,13 @@ func NewErrExecutionNotFound(id string) *models.BaseError {
 		WithComponent(JobStoreComponent)
 }
 
+func NewErrMultipleExecutionsFound(id string) *models.BaseError {
+	return models.NewBaseError("multiple executions found for id %s", id).
+		WithCode(MultipleExecutionsFound).
+		WithComponent(JobStoreComponent).
+		WithHint("Use full execution ID")
+}
+
 func NewErrExecutionAlreadyExists(id string) *models.BaseError {
 	return models.NewBaseError("execution already exists %s", id).
 		WithCode(models.ResourceInUse).
@@ -94,8 +104,21 @@ func NewErrExecutionAlreadyTerminal(id string, actual models.ExecutionStateType,
 		WithComponent(JobStoreComponent)
 }
 
+func NewErrMultipleEvaluationsFound(id string) *models.BaseError {
+	return models.NewBaseError("multiple evaluations found for id %s", id).
+		WithCode(MultipleEvaluationsFound).
+		WithComponent(JobStoreComponent).
+		WithHint("Use full evaluation ID")
+}
+
 func NewJobStoreError(message string) *models.BaseError {
 	return models.NewBaseError(message).
 		WithCode(models.InternalError).
+		WithComponent(JobStoreComponent)
+}
+
+func NewBadRequestError(message string) *models.BaseError {
+	return models.NewBaseError(message).
+		WithCode(models.BadRequestError).
 		WithComponent(JobStoreComponent)
 }

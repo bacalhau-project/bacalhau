@@ -130,6 +130,11 @@ func Execute(ctx context.Context) {
 	rootCmd.SetContext(ctx)
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
+
+	// this is needed as cobra defaults to Stderr if no output is set.
+	rootCmd.SetOut(os.Stdout)
+	rootCmd.SetErr(os.Stderr)
+
 	if err := rootCmd.Execute(); err != nil {
 		util.Fatal(rootCmd, err, 1)
 	}

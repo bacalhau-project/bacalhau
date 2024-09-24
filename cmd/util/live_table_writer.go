@@ -34,15 +34,16 @@ func NewLiveTableWriter() *LiveTableWriter {
 	}
 }
 
-// flush writes out the table and resets the buffer. It should be called after
+// Flush writes out the table and resets the buffer. It should be called after
 // the last call to Write to ensure that any data buffered in the Writer is
 // written to the output. An error is returned if the contents of the buffer
 // cannot be written to the underlying output stream.
-func (w *LiveTableWriter) flush() error {
+func (w *LiveTableWriter) Flush() error {
 	if len(w.buf.Bytes()) == 0 {
 		return nil
 	}
 
+	defer w.buf.Reset()
 	w.clearRows()
 
 	rows := 0
@@ -53,7 +54,11 @@ func (w *LiveTableWriter) flush() error {
 	}
 	w.rowCount = rows
 	_, err := w.Out.Write(w.buf.Bytes())
-	w.buf.Reset()
+	if err == nil {
+		// Add a new line at the end
+		_, err = w.Out.Write([]byte("\n"))
+		w.rowCount++
+	}
 	return err
 }
 
@@ -62,7 +67,7 @@ func (w *LiveTableWriter) flush() error {
 func (w *LiveTableWriter) Write(buf []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_ = w.flush()
+	_ = w.Flush()
 	return w.buf.Write(buf)
 }
 

@@ -3,21 +3,17 @@ package job
 import (
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/cols"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
@@ -90,62 +86,12 @@ func NewHistoryCmd() *cobra.Command {
 	return nodeCmd
 }
 
-var (
-	historyTimeCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(time.StampMilli), WidthMaxEnforcer: output.ShortenTime},
-		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(time.StampMilli) },
-	}
-	historyLevelCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Level", WidthMax: 15, WidthMaxEnforcer: text.WrapText},
-		Value:        func(jwi *models.JobHistory) string { return jwi.Type.String() },
-	}
-	historyExecIDCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(j *models.JobHistory) string { return idgen.ShortUUID(j.ExecutionID) },
-	}
-	historyTopicCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Topic", WidthMax: 15, WidthMaxEnforcer: text.WrapSoft},
-		Value:        func(jh *models.JobHistory) string { return string(jh.Event.Topic) },
-	}
-	historyEventCol = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Event", WidthMax: 90, WidthMaxEnforcer: text.WrapText},
-		Value: func(h *models.JobHistory) string {
-			res := h.Event.Message
-
-			if h.Event.Details != nil {
-				// if is error, then the event is in red
-				if h.Event.Details[models.DetailsKeyIsError] == "true" {
-					res = output.RedStr(res)
-				}
-
-				// print hint in green
-				if h.Event.Details[models.DetailsKeyHint] != "" {
-					res += "\n" + fmt.Sprintf(
-						"%s %s", output.BoldStr(output.GreenStr("* Hint:")), h.Event.Details[models.DetailsKeyHint])
-				}
-
-				// print all other details in debug mode
-				if zerolog.GlobalLevel() <= zerolog.DebugLevel {
-					for k, v := range h.Event.Details {
-						// don't print hint and error since they are already represented
-						if k == models.DetailsKeyHint || k == models.DetailsKeyIsError {
-							continue
-						}
-						res += "\n" + fmt.Sprintf("* %s %s", output.BoldStr(k+":"), v)
-					}
-				}
-			}
-			return res
-		},
-	}
-)
-
 var historyColumns = []output.TableColumn[*models.JobHistory]{
-	historyTimeCol,
-	historyLevelCol,
-	historyExecIDCol,
-	historyTopicCol,
-	historyEventCol,
+	cols.HistoryTime,
+	cols.HistoryLevel,
+	cols.HistoryExecID,
+	cols.HistoryTopic,
+	cols.HistoryEvent,
 }
 
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) error {

@@ -154,7 +154,7 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
-	var offset uint32
+	var offset uint64
 	var err error
 
 	// If the request contains a paging token then it is decoded and used to replace
