@@ -14,31 +14,31 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-// EventPrinter defines the interface for different types of event printers.
-type EventPrinter interface {
+// eventPrinter defines the interface for different types of event printers.
+type eventPrinter interface {
 	// printEvent prints a single job history event.
 	printEvent(history *models.JobHistory) error
 	// close performs any necessary cleanup operations.
 	close() error
 }
 
-// QuitePrinter is an EventPrinter that discards all output.
-type QuitePrinter struct {
+// quitePrinter is an eventPrinter that discards all output.
+type quitePrinter struct {
 }
 
-// NewQuitePrinter creates a new QuitePrinter and sets the command output to discard.
-func NewQuitePrinter(cmd *cobra.Command) *QuitePrinter {
-	return &QuitePrinter{}
+// newQuitePrinter creates a new quitePrinter and sets the command output to discard.
+func newQuitePrinter(cmd *cobra.Command) *quitePrinter {
+	return &quitePrinter{}
 }
 
-// printEvent implements EventPrinter interface but does nothing for QuitePrinter.
-func (QuitePrinter) printEvent(*models.JobHistory) error { return nil }
+// printEvent implements eventPrinter interface but does nothing for quitePrinter.
+func (quitePrinter) printEvent(*models.JobHistory) error { return nil }
 
-// close implements EventPrinter interface but does nothing for QuitePrinter.
-func (QuitePrinter) close() error { return nil }
+// close implements eventPrinter interface but does nothing for quitePrinter.
+func (quitePrinter) close() error { return nil }
 
-// SequentialEventPrinter prints job events sequentially as they occur.
-type SequentialEventPrinter struct {
+// sequentialEventPrinter prints job events sequentially as they occur.
+type sequentialEventPrinter struct {
 	cmd                 *cobra.Command
 	columns             []output.TableColumn[*models.JobHistory]
 	lineCount           int
@@ -46,8 +46,8 @@ type SequentialEventPrinter struct {
 	seenExecutionErrors bool
 }
 
-// NewSequentialEventPrinter creates a new SequentialEventPrinter.
-func NewSequentialEventPrinter(cmd *cobra.Command) *SequentialEventPrinter {
+// newSequentialEventPrinter creates a new sequentialEventPrinter.
+func newSequentialEventPrinter(cmd *cobra.Command) *sequentialEventPrinter {
 	spinner := NewFishSpinner(cmd.OutOrStdout())
 	spinner.Start()
 
@@ -65,7 +65,7 @@ func NewSequentialEventPrinter(cmd *cobra.Command) *SequentialEventPrinter {
 		eventsCols[i].WidthMin = eventsCols[i].WidthMax
 	}
 
-	return &SequentialEventPrinter{
+	return &sequentialEventPrinter{
 		cmd:     cmd,
 		columns: eventsCols,
 		spinner: spinner,
@@ -74,7 +74,7 @@ func NewSequentialEventPrinter(cmd *cobra.Command) *SequentialEventPrinter {
 
 // filterEvent determines whether an event should be printed.
 // It filters out events that can be too noisy.
-func (p *SequentialEventPrinter) filterEvent(event *models.JobHistory) bool {
+func (p *sequentialEventPrinter) filterEvent(event *models.JobHistory) bool {
 	// Always print the first event indicating job submission
 	if p.lineCount == 0 {
 		return true
@@ -100,7 +100,7 @@ func (p *SequentialEventPrinter) filterEvent(event *models.JobHistory) bool {
 }
 
 // printEvent prints a single job history event if it passes the filter.
-func (p *SequentialEventPrinter) printEvent(event *models.JobHistory) error {
+func (p *sequentialEventPrinter) printEvent(event *models.JobHistory) error {
 	if !p.filterEvent(event) {
 		return nil
 	}
@@ -125,30 +125,30 @@ func (p *SequentialEventPrinter) printEvent(event *models.JobHistory) error {
 }
 
 // close clears the loading message when closing the printer.
-func (p *SequentialEventPrinter) close() error {
+func (p *sequentialEventPrinter) close() error {
 	p.spinner.Stop()
 	p.spinner.Clear()
 	return nil
 }
 
-// GroupedEventPrinter is an experimental printer that groups events by execution.
+// groupedEventPrinter is an experimental printer that groups events by execution.
 // UNSTABLE: This printer is still in development and may change in future versions.
-type GroupedEventPrinter struct {
+type groupedEventPrinter struct {
 	cmd         *cobra.Command
 	columns     []output.TableColumn[*models.JobHistory]
 	existingOut io.Writer
 	jobEvent    *models.JobHistory
-	executions  []*ExecutionGroup
+	executions  []*executionGroup
 }
 
-type ExecutionGroup struct {
+type executionGroup struct {
 	ExecutionID   string
 	LatestEvent   *models.JobHistory
 	DiscoveryTime time.Time
 }
 
-// NewGroupedEventPrinter creates a new GroupedEventPrinter.
-func NewGroupedEventPrinter(cmd *cobra.Command) *GroupedEventPrinter {
+// newGroupedEventPrinter creates a new groupedEventPrinter.
+func newGroupedEventPrinter(cmd *cobra.Command) *groupedEventPrinter {
 	existingOut := cmd.OutOrStdout()
 	cmd.SetOut(util.NewLiveTableWriter())
 
@@ -159,16 +159,16 @@ func NewGroupedEventPrinter(cmd *cobra.Command) *GroupedEventPrinter {
 		cols.HistoryEvent,
 	}
 
-	return &GroupedEventPrinter{
+	return &groupedEventPrinter{
 		cmd:         cmd,
 		existingOut: existingOut,
 		columns:     eventsCols,
-		executions:  make([]*ExecutionGroup, 0),
+		executions:  make([]*executionGroup, 0),
 	}
 }
 
 // printEvent adds or updates an event and renders the table.
-func (p *GroupedEventPrinter) printEvent(event *models.JobHistory) error {
+func (p *groupedEventPrinter) printEvent(event *models.JobHistory) error {
 	if event.ExecutionID == "" {
 		p.jobEvent = event
 	} else {
@@ -178,7 +178,7 @@ func (p *GroupedEventPrinter) printEvent(event *models.JobHistory) error {
 }
 
 // updateOrAddExecution updates an existing execution or adds a new one.
-func (p *GroupedEventPrinter) updateOrAddExecution(event *models.JobHistory) {
+func (p *groupedEventPrinter) updateOrAddExecution(event *models.JobHistory) {
 	for _, group := range p.executions {
 		if group.ExecutionID == event.ExecutionID {
 			group.LatestEvent = event
@@ -187,7 +187,7 @@ func (p *GroupedEventPrinter) updateOrAddExecution(event *models.JobHistory) {
 	}
 
 	// If execution not found, add a new one
-	newGroup := &ExecutionGroup{
+	newGroup := &executionGroup{
 		ExecutionID:   event.ExecutionID,
 		LatestEvent:   event,
 		DiscoveryTime: time.Now(),
@@ -196,7 +196,7 @@ func (p *GroupedEventPrinter) updateOrAddExecution(event *models.JobHistory) {
 }
 
 // renderTable outputs all events as a table with stable execution order.
-func (p *GroupedEventPrinter) renderTable() error {
+func (p *groupedEventPrinter) renderTable() error {
 	var entries []*models.JobHistory
 
 	// Add execution events in the order they were discovered
@@ -214,7 +214,7 @@ func (p *GroupedEventPrinter) renderTable() error {
 }
 
 // close resets the command's output and flushes the live writer.
-func (p *GroupedEventPrinter) close() error {
+func (p *groupedEventPrinter) close() error {
 	p.cmd.SetOut(p.existingOut)
 	return nil
 }

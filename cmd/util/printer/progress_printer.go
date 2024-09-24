@@ -164,7 +164,7 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 	}
 }
 
-func (j *JobProgressPrinter) handleEvents(ctx context.Context, printer EventPrinter, eventChan <-chan *models.JobHistory, errChan <-chan error) error {
+func (j *JobProgressPrinter) handleEvents(ctx context.Context, printer eventPrinter, eventChan <-chan *models.JobHistory, errChan <-chan error) error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, util.ShutdownSignals...)
 	defer signal.Stop(sigChan)
@@ -200,14 +200,14 @@ func (j *JobProgressPrinter) checkFinalJobState(ctx context.Context, job *models
 	return nil
 }
 
-func (j *JobProgressPrinter) createEventPrinter(cmd *cobra.Command) EventPrinter {
+func (j *JobProgressPrinter) createEventPrinter(cmd *cobra.Command) eventPrinter {
 	if j.isQuiet() {
-		return NewQuitePrinter(cmd)
+		return newQuitePrinter(cmd)
 	}
 	if j.runtimeSettings.GroupEvents {
-		return NewGroupedEventPrinter(cmd)
+		return newGroupedEventPrinter(cmd)
 	}
-	return NewSequentialEventPrinter(cmd)
+	return newSequentialEventPrinter(cmd)
 }
 
 func (j *JobProgressPrinter) printNodeDetails(ctx context.Context, cmd *cobra.Command, job *models.Job) error {

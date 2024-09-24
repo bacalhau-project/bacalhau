@@ -16,7 +16,28 @@ const (
 	showCursor = "\033[?25h"
 )
 
-// FishSpinner represents a simple fish emoji spinner
+// FishSpinner represents a simple fish emoji spinner.
+// It provides a visual indicator of ongoing processing while allowing
+// concurrent event printing.
+//
+// The FishSpinner operates in its own goroutine, continuously updating
+// and printing the spinner animation. However, it's designed to work
+// in conjunction with an event printer, which may need to write to the
+// console periodically.
+//
+// To prevent the spinner and event printer from writing to the console
+// simultaneously and causing overlapping output, the FishSpinner implements
+// a synchronization mechanism:
+//
+//  1. The event printer should call Pause() before printing a new event row.
+//     This pauses the spinner animation
+//  2. The event printer then calls clear() to remove the spinner from the console
+//  2. The event printer then prints its event row.
+//  3. After printing, the event printer should call Resume() to restart
+//     the spinner animation from where it left before pausing.
+//
+// This synchronization ensures that the spinner and event printer's outputs
+// don't interfere with each other, maintaining clean and readable console output.
 type FishSpinner struct {
 	frames      []string
 	index       int
@@ -54,14 +75,16 @@ func (s *FishSpinner) Stop() {
 	s.showCursor()
 }
 
-// Pause temporarily stops the spinner animation to allow for printing
+// Pause temporarily stops the spinner animation and clears its output
+// This function is called before the event printer wants to print a new row
 func (s *FishSpinner) Pause() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.paused = true
 }
 
-// Resume restarts the spinner animation
+// Resume restarts the spinner animation after it has been paused
+// This function is called after the event printer has finished printing
 func (s *FishSpinner) Resume() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -269,6 +269,7 @@ func (c *Config) ConfigFileUsed() string {
 }
 
 // Paths returns the paths to the configuration files merged
+// from lower index to higher index
 func (c *Config) Paths() []string {
 	return c.paths
 }
