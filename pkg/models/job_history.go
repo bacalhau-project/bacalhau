@@ -68,3 +68,13 @@ func (jh JobHistory) Occurred() time.Time {
 	}
 	return jh.Time
 }
+
+// IsJobLevel returns true if the JobHistory is at the job level.
+func (jh JobHistory) IsJobLevel() bool {
+	return jh.Type == JobHistoryTypeJobLevel
+}
+
+// IsExecutionLevel returns true if the JobHistory is at the execution level.
+func (jh JobHistory) IsExecutionLevel() bool {
+	return jh.Type == JobHistoryTypeExecutionLevel
+}
