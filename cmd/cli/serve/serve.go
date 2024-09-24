@@ -93,10 +93,14 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := util.SetupConfig(cmd)
+			cfg, rawCfg, err := util.SetupConfigs(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
+
+			log.Info().Msgf("Config loaded from: %s, and with data-dir %s",
+				rawCfg.Paths(), rawCfg.Get(types.DataDirKey))
+
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
