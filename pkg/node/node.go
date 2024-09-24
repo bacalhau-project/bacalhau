@@ -65,8 +65,10 @@ func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
 	var mErr error
 	mErr = errors.Join(mErr, validate.NotBlank(c.NodeID, "node id is required"))
-	mErr = errors.Join(mErr, c.ComputeConfig.Validate())
 	mErr = errors.Join(mErr, c.NetworkConfig.Validate())
+	if c.IsComputeNode {
+		mErr = errors.Join(mErr, c.ComputeConfig.Validate())
+	}
 	return mErr
 }
 
