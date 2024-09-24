@@ -69,7 +69,7 @@ func JobStateUpdateEvent(new models.JobStateType, message ...string) models.Even
 	}
 	return *models.NewEvent(EventTopicJobStateUpdate).
 		WithMessage(eventMessage).
-		WithDetail("NewState", new.String())
+		WithDetail(models.DetailsKeyNewState, new.String())
 }
 
 func JobStoppedEvent(reason string) models.Event {
