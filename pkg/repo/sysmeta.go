@@ -43,7 +43,7 @@ type SystemMetadata struct {
 // If the metadata file doesn't exist, it creates a new one.
 func (fsr *FsRepo) WriteVersion(version int) error {
 	if version < Version4 {
-		return fsr.writeLegacyVersion(version)
+		return fsr.WriteLegacyVersion(version)
 	}
 	return fsr.updateOrCreateMetadata(func(m *SystemMetadata) {
 		m.RepoVersion = version
@@ -58,7 +58,7 @@ func (fsr *FsRepo) readVersion() (int, error) {
 	if err != nil {
 		// if the system metadata file does not exist attempt to read the legacy version
 		if os.IsNotExist(err) {
-			return fsr.readLegacyVersion()
+			return fsr.ReadLegacyVersion()
 		}
 		return UnknownVersion, err
 	}
