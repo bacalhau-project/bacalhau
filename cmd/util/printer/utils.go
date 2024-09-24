@@ -13,19 +13,22 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/term"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 var (
-	none  = color.New(color.Reset)
-	red   = color.New(color.FgRed)
-	green = color.New(color.FgGreen)
+	none   = color.New(color.Reset)
+	red    = color.New(color.FgRed)
+	yellow = color.New(color.FgYellow)
+	green  = color.New(color.FgGreen)
 )
 
 const (
-	errorPrefix = "Error: "
-	hintPrefix  = "Hint: "
+	errorPrefix   = "Error: "
+	warningPrefix = "Warning: "
+	hintPrefix    = "Hint: "
 )
 
 var terminalWidth int
@@ -51,6 +54,10 @@ func PrintEvent(cmd *cobra.Command, event models.Event) {
 
 func PrintError(cmd *cobra.Command, err error) {
 	printIndentedString(cmd, errorPrefix, err.Error(), red, 0)
+}
+
+func PrintWarning(cmd *cobra.Command, msg string) {
+	printIndentedString(cmd, warningPrefix, msg, yellow, 0)
 }
 
 // Groups the executions in the job state, returning a map of printable messages
@@ -102,7 +109,7 @@ func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *co
 
 	cmd.PrintErrln()
 	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
-	prefixColor.Fprintf(cmd.ErrOrStderr(), "%s", prefix)
+	prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
 	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
 		if i > 0 {
 			cmd.PrintErr(strings.Repeat(" ", blockIndent))

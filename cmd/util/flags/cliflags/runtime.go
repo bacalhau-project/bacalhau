@@ -19,6 +19,7 @@ type RunTimeSettings struct {
 	PrintNodeDetails      bool
 	Follow                bool // Follow along with the output of the job
 	DryRun                bool // iff true do not submit the job, but instead print out what will be submitted.
+	GroupEvents           bool // Group events by execution
 }
 
 const DefaultRunWaitSeconds = 600
@@ -38,6 +39,8 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 	flags.BoolVar(
 		&settings.DryRun, "dry-run", settings.DryRun,
 		`Do not submit the job, but instead print out what will be submitted`)
+	flags.BoolVar(&settings.GroupEvents, "group-events", false,
+		"Group events by execution")
 
 	return flags
 }

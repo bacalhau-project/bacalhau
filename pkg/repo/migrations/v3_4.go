@@ -62,9 +62,10 @@ var V3Migration = repo.NewMigration(
 
 			// ignore this error as the file may not exist
 			_ = os.Remove(filepath.Join(repoPath, "update.json"))
-			// remove the legacy repo version file
-			if err := os.Remove(filepath.Join(repoPath, repo.LegacyVersionFile)); err != nil {
-				return fmt.Errorf("removing legacy repo version file: %w", err)
+
+			// update the legacy version file so older versions fail gracefully.
+			if err := r.WriteLegacyVersion(repo.Version4); err != nil {
+				return fmt.Errorf("updating repo.verion: %w", err)
 			}
 		}
 
