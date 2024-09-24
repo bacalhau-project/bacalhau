@@ -118,8 +118,12 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
-	// verify old files were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
+
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
 	// verify the new files exist
@@ -190,7 +194,11 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
@@ -294,8 +302,12 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	//suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
-	// verify old file were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
+
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
 	// verify the new files exists
@@ -406,8 +418,12 @@ Auth:
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
 	// verify old file were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
 	// verify the new files exists
