@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/ghodss/yaml"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 )
 
 type OutputFormat string
@@ -21,10 +22,16 @@ const (
 )
 
 const (
-	bold  = "\033[1m"
-	red   = "\033[31m"
-	green = "\033[32m"
-	reset = "\033[0m"
+	// Escape sequence start and end
+	escapeStart = "\x1b["
+	escapeEnd   = "m"
+
+	// Styling
+	bold   = "\033[1m"
+	italic = "\033[3m"
+	red    = "\033[31m"
+	green  = "\033[32m"
+	reset  = "\033[0m"
 )
 
 var AllFormats = append([]OutputFormat{TableFormat, CSVFormat}, NonTabularFormats...)
@@ -152,6 +159,16 @@ func Bold(cmd *cobra.Command, s string) {
 // BoldStr returns the given string in bold
 func BoldStr(s any) string {
 	return bold + fmt.Sprint(s) + reset
+}
+
+// Italic prints the given string in italic
+func Italic(cmd *cobra.Command, s string) {
+	cmd.Print(italic + s + reset)
+}
+
+// ItalicStr returns the given string in italic
+func ItalicStr(s any) string {
+	return italic + fmt.Sprint(s) + reset
 }
 
 // RedStr returns the given string in red
