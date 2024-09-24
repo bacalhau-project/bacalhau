@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -243,4 +244,11 @@ func validateConfig(config ComputeConfig, physicalResources models.Resources) er
 	}
 
 	return err
+}
+
+func (c *ComputeConfig) Validate() error {
+	// TODO: add more validations
+	var mErr error
+	mErr = errors.Join(mErr, validate.NotNil(c.ExecutionStore, "execution store is required"))
+	return mErr
 }
