@@ -12,10 +12,9 @@ import (
 	"github.com/tetratelabs/wazero"
 	"go.uber.org/atomic"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -66,7 +65,7 @@ const WasmMaxPagesLimit = 1 << (WasmArch / 2)
 
 // Start initiates an execution based on the provided RunCommandRequest.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.Executor.Start")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.Executor.Start")
 	defer span.End()
 
 	if handler, found := e.handlers.Get(request.ExecutionID); found {

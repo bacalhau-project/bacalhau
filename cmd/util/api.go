@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -50,11 +50,12 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		if sysmeta.InstanceID != "" {
 			headers[apimodels.HTTPHeaderBacalhauInstanceID] = []string{sysmeta.InstanceID}
 		}
-		if installationID := config.ReadInstallationID(); installationID != "" {
-			headers[apimodels.HTTPHeaderBacalhauInstallationID] = []string{installationID}
-		}
 	} else {
 		log.Debug().Err(err).Msg("failed to load system metadata from repo path")
+	}
+
+	if installationID := system.InstallationID(); installationID != "" {
+		headers[apimodels.HTTPHeaderBacalhauInstallationID] = []string{installationID}
 	}
 
 	opts := []clientv2.OptionFn{

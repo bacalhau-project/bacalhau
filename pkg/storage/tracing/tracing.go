@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/reflection"
 )
@@ -26,21 +25,21 @@ func Wrap(delegate storage.Storage) storage.Storage {
 }
 
 func (t *tracingStorage) IsInstalled(ctx context.Context) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.IsInstalled", t.name))
 	defer span.End()
 
 	return t.delegate.IsInstalled(ctx)
 }
 
 func (t *tracingStorage) HasStorageLocally(ctx context.Context, spec models.InputSource) (bool, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.HasStorageLocally", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.HasStorageLocally", t.name))
 	defer span.End()
 
 	return t.delegate.HasStorageLocally(ctx, spec)
 }
 
 func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.InputSource) (uint64, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.GetVolumeSize", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.GetVolumeSize", t.name))
 	defer span.End()
 
 	return t.delegate.GetVolumeSize(ctx, spec)
@@ -50,7 +49,7 @@ func (t *tracingStorage) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
 	spec models.InputSource) (storage.StorageVolume, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, jobStoragePrepareDurationMilliseconds, spec.Source.MetricAttributes()...)
@@ -67,7 +66,7 @@ func (t *tracingStorage) PrepareStorage(
 }
 
 func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSource, volume storage.StorageVolume) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.CleanupStorage", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.CleanupStorage", t.name))
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, jobStorageCleanupDurationMilliseconds, spec.Source.MetricAttributes()...)
@@ -83,7 +82,7 @@ func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSo
 }
 
 func (t *tracingStorage) Upload(ctx context.Context, path string) (models.SpecConfig, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), fmt.Sprintf("%s.Upload", t.name))
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.Upload", t.name))
 	defer span.End()
 
 	stopwatch := telemetry.Timer(ctx, jobStorageUploadDurationMilliseconds)

@@ -117,7 +117,9 @@ func RequesterInfo(requesterNodeID string) JobTransformer {
 
 func OrchestratorInstanceID(instanceID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-		job.Meta[models.MetaServerInstanceID] = instanceID
+		if instanceID != "" {
+			job.Meta[models.MetaServerInstanceID] = instanceID
+		}
 		return nil
 	}
 	return JobFn(f)
@@ -125,7 +127,9 @@ func OrchestratorInstanceID(instanceID string) JobTransformer {
 
 func OrchestratorInstallationID(installationID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-		job.Meta[models.MetaServerInstallationID] = installationID
+		if installationID != "" {
+			job.Meta[models.MetaServerInstallationID] = installationID
+		}
 		return nil
 	}
 	return JobFn(f)

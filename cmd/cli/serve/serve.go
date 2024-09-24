@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -249,18 +250,14 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	if !cfg.DisableAnalytics {
-		opts := []analytics.Option{
+		err = analytics.SetupAnalyticsProvider(ctx,
 			analytics.WithNodeNodeID(sysmeta.NodeName),
+			analytics.WithInstallationID(system.InstallationID()),
+			analytics.WithInstanceID(sysmeta.InstanceID),
 			analytics.WithNodeType(isRequesterNode, isComputeNode),
-			analytics.WithVersion(version.Get()),
-		}
-		if sysmeta.InstanceID != "" {
-			opts = append(opts, analytics.WithInstanceID(sysmeta.InstanceID))
-		}
-		if installationID := config.ReadInstallationID(); installationID != "" {
-			opts = append(opts, analytics.WithInstallationID(installationID))
-		}
-		if err := analytics.SetupAnalyticsProvider(ctx, opts...); err != nil {
+			analytics.WithVersion(version.Get()))
+
+		if err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
 		}
 		defer func() {

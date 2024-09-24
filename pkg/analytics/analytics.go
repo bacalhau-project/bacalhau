@@ -63,13 +63,17 @@ func WithNodeType(isRequester, isCompute bool) Option {
 
 func WithInstallationID(id string) Option {
 	return func(c *Config) {
-		c.attributes = append(c.attributes, attribute.String(NodeInstallationIDKey, id))
+		if id != "" {
+			c.attributes = append(c.attributes, attribute.String(NodeInstallationIDKey, id))
+		}
 	}
 }
 
 func WithInstanceID(id string) Option {
 	return func(c *Config) {
-		c.attributes = append(c.attributes, attribute.String(NodeInstanceIDKey, id))
+		if id != "" {
+			c.attributes = append(c.attributes, attribute.String(NodeInstanceIDKey, id))
+		}
 	}
 }
 

@@ -13,11 +13,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const (
@@ -60,7 +60,7 @@ func CheckForUpdate(
 		q.Set("serverVersion", currentServerVersion.GitVersion)
 	}
 	q.Set("clientID", clientID)
-	if installationID := config.ReadInstallationID(); installationID != "" {
+	if installationID := system.InstallationID(); installationID != "" {
 		q.Set("InstallationID", installationID)
 	}
 
