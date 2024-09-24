@@ -215,12 +215,10 @@ func New(opts ...Option) (*Config, error) {
 	// and expand the path for them
 	dataDirPath := c.base.GetString(types.DataDirKey)
 	if dataDirPath[0] == '~' {
-		log.Info().Msgf("configuration field 'DataDir' contains '~': (%s). Attempting to expand to the home directory...", dataDirPath)
 		expanded, err := homedir.Expand(dataDirPath)
 		if err == nil {
 			dataDirPath = expanded
 			c.base.Set(types.DataDirKey, dataDirPath)
-			log.Info().Msgf("successfully expanded data directory to %s", dataDirPath)
 		}
 	}
 
