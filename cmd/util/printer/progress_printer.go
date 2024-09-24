@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -165,17 +164,12 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 }
 
 func (j *JobProgressPrinter) handleEvents(ctx context.Context, printer eventPrinter, eventChan <-chan *models.JobHistory, errChan <-chan error) error {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, util.ShutdownSignals...)
-	defer signal.Stop(sigChan)
 	defer printer.close() // close the printer to clear any spinner before exiting
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-sigChan:
-			return context.Canceled
 		case event, ok := <-eventChan:
 			if !ok {
 				return nil // All events processed
