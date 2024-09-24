@@ -54,7 +54,22 @@ func (t *TimeoutConfig) Copy() *TimeoutConfig {
 	}
 }
 
+// Validate is used to check a timeout config for reasonable configuration.
+// This is called after server side defaults are applied.
 func (t *TimeoutConfig) Validate() error {
+	mErr := t.ValidateSubmission()
+	if t.TotalTimeout > 0 {
+		if (t.ExecutionTimeout + t.QueueTimeout) > t.TotalTimeout {
+			mErr = errors.Join(mErr, fmt.Errorf(
+				"execution timeout %s and queue timeout %s should be less than total timeout %s",
+				t.GetExecutionTimeout(), t.GetQueueTimeout(), t.GetTotalTimeout()))
+		}
+	}
+	return mErr
+}
+
+// ValidateSubmission is used to check a timeout config for reasonable configuration when it is submitted.
+func (t *TimeoutConfig) ValidateSubmission() error {
 	if t == nil {
 		return errors.New("missing timeout config")
 	}
@@ -67,13 +82,6 @@ func (t *TimeoutConfig) Validate() error {
 	}
 	if t.TotalTimeout < 0 {
 		mErr = errors.Join(mErr, fmt.Errorf("invalid total timeout value: %s", t.GetTotalTimeout()))
-	}
-	if t.TotalTimeout > 0 {
-		if (t.ExecutionTimeout + t.QueueTimeout) > t.TotalTimeout {
-			mErr = errors.Join(mErr, fmt.Errorf(
-				"execution timeout %s and queue timeout %s should be less than total timeout %s",
-				t.GetExecutionTimeout(), t.GetQueueTimeout(), t.GetTotalTimeout()))
-		}
 	}
 	return mErr
 }

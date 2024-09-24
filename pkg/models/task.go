@@ -113,9 +113,6 @@ func (t *Task) Validate() error {
 	if err := t.Timeouts.Validate(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
 	}
-	if err := t.ResourcesConfig.Validate(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("task resources validation failed: %v", err))
-	}
 	return mErr
 }
 
@@ -132,6 +129,12 @@ func (t *Task) ValidateSubmission() error {
 	}
 	if err := t.Publisher.ValidateAllowBlank(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("publisher validation failed: %v", err))
+	}
+	if err := t.Timeouts.ValidateSubmission(); err != nil {
+		mErr = errors.Join(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
+	}
+	if err := t.ResourcesConfig.Validate(); err != nil {
+		mErr = errors.Join(mErr, fmt.Errorf("task resources validation failed: %v", err))
 	}
 	if err := ValidateSlice(t.InputSources); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("artifact validation failed: %v", err))
