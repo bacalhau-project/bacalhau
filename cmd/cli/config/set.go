@@ -19,9 +19,27 @@ import (
 
 func newSetCmd() *cobra.Command {
 	setCmd := &cobra.Command{
-		Use:          "set",
-		Args:         cobra.MinimumNArgs(2),
-		Short:        "Set a value in the config.",
+		Use:   "set",
+		Args:  cobra.MinimumNArgs(1),
+		Short: "Set a value in the config.",
+		Long: `The 'set' command allows you to modify configuration values in your Bacalhau configuration file.
+
+This command supports two input formats for setting configuration values:
+
+1. Key-Value Pair Format:
+   You can provide the key and value as separate arguments.
+   Example:
+     bacalhau config set api.host 127.0.0.1
+     bacalhau config set compute.orchestrators http://127.0.0.1:1234 http://1.1.1.1:1234
+     bacalhau config set compute.labels foo=bar,baz=buz
+
+2. Key=Value Format:
+   Alternatively, you can pass the key and value together in a single argument using the 'key=value' format.
+   Example:
+     bacalhau config set api.host=127.0.0.1
+     bacalhau config set compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234
+     bacalhau config set compute.labels=foo=bar,baz=buz
+`,
 		PreRunE:      hook.ClientPreRunHooks,
 		PostRunE:     hook.ClientPostRunHooks,
 		SilenceUsage: true,
@@ -43,7 +61,26 @@ func newSetCmd() *cobra.Command {
 				configPath = filepath.Join(bacalhauConfig.DataDir, config.DefaultFileName)
 			}
 
-			return setConfig(configPath, args[0], args[1:]...)
+			var (
+				key   string
+				value []string
+			)
+
+			// Check if the first argument is in key=value format
+			if strings.Contains(args[0], "=") {
+				parts := strings.SplitN(args[0], "=", 2)
+				key = parts[0]
+				value = []string{parts[1]}
+			} else {
+				// Fallback to the original behavior: key and value are separate arguments
+				if len(args) < 2 {
+					return fmt.Errorf("must provide both key and value, or key=value")
+				}
+				key = args[0]
+				value = args[1:]
+			}
+
+			return setConfig(configPath, key, value...)
 		},
 		// Provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,

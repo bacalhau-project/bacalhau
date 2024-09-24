@@ -50,7 +50,7 @@ func TestSetWithDefaultConfigPath(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
-func TestSetMultipleValues(t *testing.T) {
+func TestSetMultipleSliceValues(t *testing.T) {
 	tempDir := t.TempDir()
 	os.Setenv("BACALHAU_DIR", tempDir)
 	defer os.Unsetenv("BACALHAU_DIR")
@@ -67,6 +67,28 @@ func TestSetMultipleValues(t *testing.T) {
 		Orchestrators: []string{
 			"http://127.0.0.1:1234",
 			"http://1.1.1.1:1234",
+		},
+	}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetMultipleMapValues(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("BACALHAU_DIR", tempDir)
+	defer os.Unsetenv("BACALHAU_DIR")
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "compute.labels", "foo=bar,baz=buz"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{Compute: types.Compute{
+		Labels: map[string]string{
+			"foo": "bar",
+			"baz": "buz",
 		},
 	}}
 	require.Equal(t, expected, actual)
@@ -110,6 +132,80 @@ func TestSetAdditiveChanges(t *testing.T) {
 		Port: 1234,
 	}}
 	require.Equal(t, expected, actual)
+}
+
+func TestSetWithKeyValueFormat(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("BACALHAU_DIR", tempDir)
+
+	cmd := cmd2.NewRootCmd()
+	// Using key=value format
+	cmd.SetArgs([]string{"config", "set", "api.host=1.1.1.1"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{API: types.API{Host: "1.1.1.1"}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetMultipleSliceValuesKeyValueFormat(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("BACALHAU_DIR", tempDir)
+	defer os.Unsetenv("BACALHAU_DIR")
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{Compute: types.Compute{
+		Orchestrators: []string{
+			"http://127.0.0.1:1234",
+			"http://1.1.1.1:1234",
+		},
+	}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetMultipleMapValuesKeyValueFormat(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("BACALHAU_DIR", tempDir)
+	defer os.Unsetenv("BACALHAU_DIR")
+
+	cmd := cmd2.NewRootCmd()
+	cmd.SetArgs([]string{"config", "set", "compute.labels=foo=bar,baz=buz"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
+	actual := unmarshalConfigFile(t, defaultConfigPath)
+	expected := types.Bacalhau{Compute: types.Compute{
+		Labels: map[string]string{
+			"foo": "bar",
+			"baz": "buz",
+		},
+	}}
+	require.Equal(t, expected, actual)
+}
+
+func TestSetInvalidKeyValueFormat(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("BACALHAU_DIR", tempDir)
+
+	cmd := cmd2.NewRootCmd()
+	// Using key=value format but providing an invalid key
+	cmd.SetArgs([]string{"config", "set", "invalid.key=value"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not a valid config key")
 }
 
 func unmarshalConfigFile(t testing.TB, path string) types.Bacalhau {
