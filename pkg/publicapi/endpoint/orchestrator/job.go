@@ -41,8 +41,12 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
+	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
+	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
-		Job: args.Job,
+		Job:                  args.Job,
+		ClientInstallationID: installationID,
+		ClientInstanceID:     instanceID,
 	})
 	if err != nil {
 		return err
@@ -154,7 +158,7 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
-	var offset uint32
+	var offset uint64
 	var err error
 
 	// If the request contains a paging token then it is decoded and used to replace

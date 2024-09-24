@@ -43,7 +43,7 @@ func (m *MigrationManager) Migrate(repo FsRepo) error {
 		if !ok {
 			break
 		}
-		log.Info().Msgf("Migrating repo from version %d to %d", migration.FromVersion, migration.ToVersion)
+		log.Info().Msg("Migrating repo to latest version...")
 		if err := migration.Migrate(repo); err != nil {
 			return err
 		}
@@ -52,6 +52,7 @@ func (m *MigrationManager) Migrate(repo FsRepo) error {
 		if err != nil {
 			return err
 		}
+		log.Info().Msg("Migration successful")
 	}
 	return nil
 }

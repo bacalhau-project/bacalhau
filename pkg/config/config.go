@@ -115,6 +115,18 @@ func New(opts ...Option) (*Config, error) {
 		return nil, err
 	}
 
+	// To absolute paths for better logging. This is best effort and will not return an error if it fails.
+	for i, path := range c.paths {
+		if !filepath.IsAbs(path) {
+			absPath, err := filepath.Abs(path)
+			if err != nil {
+				log.Debug().Msgf("failed to resolve absolute path for %s: %v", path, err)
+			} else {
+				c.paths[i] = absPath
+			}
+		}
+	}
+
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
 		if err := c.Merge(path); err != nil {
@@ -225,7 +237,7 @@ func New(opts ...Option) (*Config, error) {
 		}
 	}
 
-	log.Info().Msgf("Config loaded from: %s, and with data-dir %s", absoluteConfigPaths, c.base.Get(types.DataDirKey))
+	log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", c.paths, c.base.Get(types.DataDirKey))
 	return c, nil
 }
 
@@ -279,6 +291,12 @@ func (c *Config) Get(key string) any {
 
 func (c *Config) ConfigFileUsed() string {
 	return c.base.ConfigFileUsed()
+}
+
+// Paths returns the paths to the configuration files merged
+// from lower index to higher index
+func (c *Config) Paths() []string {
+	return c.paths
 }
 
 // Unmarshal returns the current configuration.

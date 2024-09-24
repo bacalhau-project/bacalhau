@@ -68,6 +68,10 @@ func parseStringSlice(key string, values []string, typ reflect.Type) (any, error
 		return parseDuration(key, values[0])
 	}
 	if typ == reflect.TypeOf([]string{}) {
+		// NB: for the case `config set` is ued like `config set compute.orchestrators=123.456.789,987.654.321`
+		if len(values) == 1 && strings.Contains(values[0], ",") {
+			return strings.Split(values[0], ","), nil
+		}
 		return values, nil
 	}
 	return parseByKind(key, values[0], typ)

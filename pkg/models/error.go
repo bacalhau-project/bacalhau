@@ -13,6 +13,7 @@ const (
 	DetailsKeyHint           = "Hint"
 	DetailsKeyRetryable      = "Retryable"
 	DetailsKeyFailsExecution = "FailsExecution"
+	DetailsKeyNewState       = "NewState"
 )
 
 const (

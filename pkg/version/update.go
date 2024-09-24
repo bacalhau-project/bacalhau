@@ -17,6 +17,7 @@ import (
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const (
@@ -43,7 +44,6 @@ func CheckForUpdate(
 	ctx context.Context,
 	currentClientVersion, currentServerVersion *models.BuildVersionInfo,
 	clientID string,
-	InstallationID string,
 ) (*UpdateCheckResponse, error) {
 	u, err := url.Parse(getUpdateCheckerEndpoint())
 	if err != nil {
@@ -60,7 +60,9 @@ func CheckForUpdate(
 		q.Set("serverVersion", currentServerVersion.GitVersion)
 	}
 	q.Set("clientID", clientID)
-	q.Set("InstallationID", InstallationID)
+	if installationID := system.InstallationID(); installationID != "" {
+		q.Set("InstallationID", installationID)
+	}
 
 	// The BACALHAU_UPDATE_CHECKER_TEST is an env variable a user can set so that we can track
 	// when the binary is being run by a non-user, to enable easier filtering of queries
@@ -105,7 +107,6 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 type UpdateStore interface {
 	ReadLastUpdateCheck() (time.Time, error)
 	WriteLastUpdateCheck(time.Time) error
-	ReadInstallationID() (string, error)
 }
 
 // RunUpdateChecker starts a goroutine that will periodically make an update
@@ -150,14 +151,7 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		installationID, err := store.ReadInstallationID()
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to read user installationID")
-			// we can continue here and still use an empty string
-			// a failure here indicates the system metadata file is un-readable
-		}
-
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID(), installationID)
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID())
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}

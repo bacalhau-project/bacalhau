@@ -27,10 +27,12 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 
@@ -64,6 +66,7 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
+	fsr *repo.FsRepo,
 ) (*Requester, error) {
 	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
 	if err != nil {
@@ -209,11 +212,19 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
+	installationID := system.InstallationID()
+	var instanceID string
+	if sysmeta, err := fsr.SystemMetadata(); err == nil {
+		instanceID = sysmeta.InstanceID
+	}
+
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
-		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 		transformer.RequesterInfo(nodeID),
+		transformer.OrchestratorInstallationID(installationID),
+		transformer.OrchestratorInstanceID(instanceID),
+		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{

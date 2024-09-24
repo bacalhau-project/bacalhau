@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
@@ -92,10 +93,14 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := util.SetupConfig(cmd)
+			cfg, rawCfg, err := util.SetupConfigs(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
+
+			log.Info().Msgf("Config loaded from: %s, and with data-dir %s",
+				rawCfg.Paths(), rawCfg.Get(types.DataDirKey))
+
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
@@ -119,36 +124,39 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	// Attempt to read the node name from the repo
-	nodeName, err := fsRepo.ReadNodeName()
+	sysmeta, err := fsRepo.SystemMetadata()
 	if err != nil {
-		return fmt.Errorf("failed to get node name: %w", err)
+		return fmt.Errorf("failed to get system metadata from repo: %w", err)
 	}
-
-	if nodeName == "" {
+	if sysmeta.NodeName == "" {
 		// Check if a flag was provided
-		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
-		if nodeName == "" {
+		sysmeta.NodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if sysmeta.NodeName == "" {
 			// No flag provided, generate and persist node name
-			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+			sysmeta.NodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
 			if err != nil {
 				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
 			}
 		}
 		// Persist the node name
-		if err := fsRepo.WriteNodeName(nodeName); err != nil {
-			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		if err := fsRepo.WriteNodeName(sysmeta.NodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", sysmeta.NodeName, err)
 		}
-		log.Info().Msgf("persisted node name %s", nodeName)
+		log.Info().Msgf("persisted node name %s", sysmeta.NodeName)
+		// now reload the system metadata since it has changed.
+		sysmeta, err = fsRepo.SystemMetadata()
+		if err != nil {
+			return fmt.Errorf("reloading system metadata after persisting name: %w", err)
+		}
 
 	} else {
 		// Warn if the flag was provided but node name already exists
-		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != nodeName {
-			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, nodeName)
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != sysmeta.NodeName {
+			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, sysmeta.NodeName)
 		}
 	}
 
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
+	ctx = logger.ContextWithNodeIDLogger(ctx, sysmeta.NodeName)
 
 	// configure node type
 	isRequesterNode := cfg.Orchestrator.Enabled
@@ -180,7 +188,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		return err
 	}
 	nodeConfig := node.NodeConfig{
-		NodeID:         nodeName,
+		NodeID:         sysmeta.NodeName,
 		CleanupManager: cm,
 		DisabledFeatures: node.FeatureConfig{
 			Engines:    cfg.Engines.Disabled,
@@ -246,16 +254,14 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	if !cfg.DisableAnalytics {
-		installationID, err := fsRepo.ReadInstallationID()
-		if err != nil {
-			log.Trace().Err(err).Msg("failed to read installationID")
-		}
-		if err := analytics.SetupAnalyticsProvider(ctx,
-			analytics.WithNodeNodeID(nodeName),
+		err = analytics.SetupAnalyticsProvider(ctx,
+			analytics.WithNodeNodeID(sysmeta.NodeName),
+			analytics.WithInstallationID(system.InstallationID()),
+			analytics.WithInstanceID(sysmeta.InstanceID),
 			analytics.WithNodeType(isRequesterNode, isComputeNode),
-			analytics.WithInstallationID(installationID),
-			analytics.WithVersion(version.Get()),
-		); err != nil {
+			analytics.WithVersion(version.Get()))
+
+		if err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
 		}
 		defer func() {
@@ -266,7 +272,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	startupLog := log.Info().
-		Str("name", nodeName).
+		Str("name", sysmeta.NodeName).
 		Str("address", fmt.Sprintf("%s:%d", hostAddress, cfg.API.Port)).
 		Bool("compute_enabled", cfg.Compute.Enabled).
 		Bool("orchestrator_enabled", cfg.Orchestrator.Enabled).
