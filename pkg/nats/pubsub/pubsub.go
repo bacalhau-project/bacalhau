@@ -11,7 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 type PubSubParams struct {
@@ -48,7 +48,7 @@ func NewPubSub[T any](params PubSubParams) (*PubSub[T], error) {
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub/nats.publish")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub/nats.publish")
 	defer span.End()
 
 	payload, err := marshaller.JSONMarshalWithMax(message)

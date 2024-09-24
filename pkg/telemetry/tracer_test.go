@@ -1,12 +1,11 @@
 //go:build unit || !integration
 
-package system
+package telemetry
 
 import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -16,7 +15,7 @@ import (
 
 func TestTracer(t *testing.T) {
 	t.Cleanup(func() {
-		assert.NoError(t, telemetry.Cleanup())
+		assert.NoError(t, Cleanup())
 	})
 
 	var sr SpanRecorder

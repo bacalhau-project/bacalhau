@@ -50,21 +50,11 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		return versions, fmt.Errorf("loading user key: %w", err)
 	}
 
-	installationID, err := r.ReadInstallationID()
-	if err != nil {
-		return versions, fmt.Errorf("reading installationID: %w", err)
-	}
-
-	if installationID == "" {
-		return versions, errors.Wrap(err, "Installation ID not set")
-	}
-
 	updateCheck, err := version.CheckForUpdate(
 		ctx,
 		versions.ClientVersion,
 		versions.ServerVersion,
 		userKey.ClientID(),
-		installationID,
 	)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")

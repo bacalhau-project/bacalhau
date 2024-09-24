@@ -115,6 +115,26 @@ func RequesterInfo(requesterNodeID string) JobTransformer {
 	return JobFn(f)
 }
 
+func OrchestratorInstanceID(instanceID string) JobTransformer {
+	f := func(ctx context.Context, job *models.Job) error {
+		if instanceID != "" {
+			job.Meta[models.MetaServerInstanceID] = instanceID
+		}
+		return nil
+	}
+	return JobFn(f)
+}
+
+func OrchestratorInstallationID(installationID string) JobTransformer {
+	f := func(ctx context.Context, job *models.Job) error {
+		if installationID != "" {
+			job.Meta[models.MetaServerInstallationID] = installationID
+		}
+		return nil
+	}
+	return JobFn(f)
+}
+
 // NameOptional is a transformer that sets the job name to the job ID if it is empty.
 func NameOptional() JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
