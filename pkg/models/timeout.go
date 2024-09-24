@@ -57,6 +57,9 @@ func (t *TimeoutConfig) Copy() *TimeoutConfig {
 // Validate is used to check a timeout config for reasonable configuration.
 // This is called after server side defaults are applied.
 func (t *TimeoutConfig) Validate() error {
+	if t == nil {
+		return errors.New("missing timeout config")
+	}
 	mErr := t.ValidateSubmission()
 	if t.TotalTimeout > 0 {
 		if (t.ExecutionTimeout + t.QueueTimeout) > t.TotalTimeout {
