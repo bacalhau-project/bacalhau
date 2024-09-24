@@ -214,21 +214,15 @@ func New(opts ...Option) (*Config, error) {
 	// allow the users to set datadir to a path like ~/.bacalhau or ~/something/idk/whatever
 	// and expand the path for them
 	dataDirPath := c.base.GetString(types.DataDirKey)
-	if dataDirPath[0] == '~' {
+	if dataDirPath != "" {
 		expanded, err := homedir.Expand(dataDirPath)
 		if err == nil {
 			dataDirPath = expanded
 			c.base.Set(types.DataDirKey, dataDirPath)
 		}
-	}
-
-	// validate the config
-	var cfg types.Bacalhau
-	if err := c.base.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config invalid: %w", err)
+		if strings.Contains(dataDirPath, "$") {
+			log.Warn().Msgf("DataDir path (%q) contains a '$' character. Note that environment variables are not expanded in this configuration. The path will be used as-is.", dataDirPath)
+		}
 	}
 
 	log.Info().Msgf("Config loaded from: %s, and with data-dir %s", absoluteConfigPaths, c.base.Get(types.DataDirKey))

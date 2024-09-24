@@ -5,6 +5,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -14,6 +15,157 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
+
+func TestConfigDataDirPath(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	// Override values with just DataDir
+	// Define test cases
+	testCases := []struct {
+		name     string
+		dataDir  string
+		isValid  bool
+		expected string
+	}{
+		// valid cases
+		{
+			name:     "Valid DataDir absolute path",
+			dataDir:  "/absolute/path",
+			expected: "/absolute/path",
+			isValid:  true,
+		},
+		{
+			name:     "Valid Tilda DataDir with path",
+			dataDir:  "~/absolute/path",
+			expected: filepath.Join(homeDir, "absolute/path"),
+			isValid:  true,
+		},
+		{
+			name:     "Valid Tilda DataDir",
+			dataDir:  "~",
+			expected: homeDir,
+			isValid:  true,
+		},
+		{
+			name:     "Valid Tilda DataDir no path",
+			dataDir:  "~/",
+			expected: homeDir,
+			isValid:  true,
+		},
+		{
+			name:     "Valid Tilda DataDir dot path",
+			dataDir:  "~/.",
+			expected: homeDir,
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with special characters",
+			dataDir:  "/path/with/special/char$",
+			expected: "/path/with/special/char$",
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with space characters",
+			dataDir:  "/path/with space",
+			expected: "/path/with space",
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with trailing slash",
+			dataDir:  "/absolute/path/",
+			expected: "/absolute/path/",
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with multiple tildes",
+			dataDir:  "~/~/path",
+			expected: filepath.Join(homeDir, "~/path"),
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with space characters and tilda",
+			dataDir:  "~/path/with space",
+			expected: filepath.Join(homeDir, "/path/with space"),
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with very long path",
+			dataDir:  "/very/long/path/" + strings.Repeat("a", 255),
+			expected: "/very/long/path/" + strings.Repeat("a", 255),
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with tilde in the middle of the path",
+			dataDir:  "/path/~to/file",
+			expected: "/path/~to/file",
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with tilde in start and the middle of the path",
+			dataDir:  "~/path/~to/file",
+			expected: filepath.Join(homeDir, "/path/~to/file"),
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with special characters",
+			dataDir:  "/path/with?invalid",
+			expected: "/path/with?invalid",
+			isValid:  true,
+		},
+		// invalid cases
+		{
+			name:    "Invalid DataDir with environment variable",
+			dataDir: "$HOME/path",
+			isValid: false,
+		},
+		{
+			name:    "Invalid DataDir empty",
+			dataDir: "",
+			isValid: false,
+		},
+		{
+			name:    "Invalid DataDir relative path",
+			dataDir: "not/absolute/path",
+			isValid: false,
+		},
+		{
+			name:    "Invalid DataDir relative dot path",
+			dataDir: "./not/absolute/path",
+			isValid: false,
+		},
+		{
+			name:    "Invalid Tilda DataDir",
+			dataDir: "~not/absolute/path",
+			isValid: false,
+		},
+	}
+
+	// Run the test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			overrideValues := map[string]any{
+				"datadir": tc.dataDir,
+			}
+
+			cfg, err := config.New(config.WithValues(overrideValues))
+			require.NoError(t, err)
+
+			// Check if we expect an error
+
+			// Unmarshal and assert the actual DataDir value
+			var actual types.Bacalhau
+			err = cfg.Unmarshal(&actual)
+			if tc.isValid {
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, actual.DataDir)
+			} else {
+				t.Logf("ERROR: %s", err)
+				require.Error(t, err)
+			}
+		})
+	}
+}
 
 func TestConfigWithValueOverrides(t *testing.T) {
 	overrideRepo := "/overrideRepo"
@@ -59,10 +211,6 @@ type TestConfig struct {
 	StringValue string
 	IntValue    int
 	BoolValue   bool
-}
-
-func (c TestConfig) Validate() error {
-	return nil
 }
 
 func TestNew(t *testing.T) {

@@ -3,7 +3,8 @@ package types
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // NB: Developers, after making changes (comments included) to this struct or any of its children, run go generate.
@@ -33,12 +34,12 @@ type Bacalhau struct {
 }
 
 func (b Bacalhau) Validate() error {
-	var err error
-	if !filepath.IsAbs(b.DataDir) {
-		err = errors.Join(err, fmt.Errorf("DataDir (%q) must be an absolute path", b.DataDir))
+	var errs error
+	if err := validate.IsValidPath(b.DataDir); err != nil {
+		errs = errors.Join(err, fmt.Errorf("DataDir (%q) must be an absolute path", b.DataDir))
 	}
 
-	return err
+	return errs
 }
 
 type API struct {
