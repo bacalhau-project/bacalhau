@@ -17,6 +17,7 @@ import (
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -52,7 +53,6 @@ type NodeConfig struct {
 	RequesterNodeConfig         RequesterConfig
 	APIServerConfig             publicapi.Config
 	AuthConfig                  types.AuthConfig
-	NodeType                    models.NodeType
 	IsRequesterNode             bool
 	IsComputeNode               bool
 	Labels                      map[string]string
@@ -64,7 +64,11 @@ type NodeConfig struct {
 func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
 	var mErr error
+	mErr = errors.Join(mErr, validate.NotBlank(c.NodeID, "node id is required"))
 	mErr = errors.Join(mErr, c.NetworkConfig.Validate())
+	if c.IsComputeNode {
+		mErr = errors.Join(mErr, c.ComputeConfig.Validate())
+	}
 	return mErr
 }
 
