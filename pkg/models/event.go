@@ -97,6 +97,29 @@ func (e *Event) WithDetail(key, value string) *Event {
 	return e
 }
 
+// HasError returns true if the event is an error.
+func (e *Event) HasError() bool {
+	return e.Details[DetailsKeyIsError] == "true"
+}
+
+// HasStateUpdate returns true if the event is a state update.
+func (e *Event) HasStateUpdate() bool {
+	_, ok := e.Details[DetailsKeyNewState]
+	return ok
+}
+
+// GetJobStateIfPresent returns the job state from the event, if it is a state update.
+func (e *Event) GetJobStateIfPresent() (JobStateType, error) {
+	if !e.HasStateUpdate() {
+		return JobStateTypeUndefined, nil
+	}
+	var jobState JobStateType
+	if err := jobState.UnmarshalText([]byte(e.Details[DetailsKeyNewState])); err != nil {
+		return JobStateTypeUndefined, err
+	}
+	return jobState, nil
+}
+
 // EventFromError converts an error into an Event tagged with the passed event
 // topic.
 //

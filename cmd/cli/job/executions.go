@@ -125,8 +125,9 @@ var (
 		Value:        func(e *models.Execution) string { return e.DesiredState.StateType.String() },
 	}
 	executionColumnComment = output.TableColumn[*models.Execution]{
-		ColumnConfig: table.ColumnConfig{Name: "Comment", WidthMax: 40, WidthMaxEnforcer: text.WrapText},
-		Value:        func(e *models.Execution) string { return e.ComputeState.Message },
+		ColumnConfig: table.ColumnConfig{
+			Name: "Comment", WidthMax: 40, WidthMaxEnforcer: output.WrapSoftPreserveNewlines},
+		Value: func(e *models.Execution) string { return e.ComputeState.Message },
 	}
 )
 

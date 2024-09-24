@@ -119,6 +119,48 @@ func (suite *EventTestSuite) TestEventFromSimpleError() {
 	suite.Len(event.Details, 1)
 }
 
+func (suite *EventTestSuite) TestHasError() {
+	// Test case for an event with an error
+	eventWithError := NewEvent(suite.topic).WithError(fmt.Errorf("Test error"))
+	suite.True(eventWithError.HasError())
+
+	// Test case for an event without an error
+	eventWithoutError := NewEvent(suite.topic)
+	suite.False(eventWithoutError.HasError())
+}
+
+func (suite *EventTestSuite) TestHasStateUpdate() {
+	// Test case for an event with a state update
+	eventWithStateUpdate := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, "Running")
+	suite.True(eventWithStateUpdate.HasStateUpdate())
+
+	// Test case for an event without a state update
+	eventWithoutStateUpdate := NewEvent(suite.topic)
+	suite.False(eventWithoutStateUpdate.HasStateUpdate())
+}
+
+func (suite *EventTestSuite) TestGetJobStateIfPresent() {
+	// Test case for an event with a valid state update
+	validState := JobStateTypeRunning
+	eventWithValidState := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, validState.String())
+	state, err := eventWithValidState.GetJobStateIfPresent()
+	suite.NoError(err)
+	suite.Equal(validState, state)
+
+	// Test case for an event without a state update
+	eventWithoutState := NewEvent(suite.topic)
+	state, err = eventWithoutState.GetJobStateIfPresent()
+	suite.NoError(err)
+	suite.Equal(JobStateTypeUndefined, state)
+
+	// Test case for an event with an invalid state update
+	invalidState := "InvalidState"
+	eventWithInvalidState := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, invalidState)
+	state, err = eventWithInvalidState.GetJobStateIfPresent()
+	suite.NoError(err) // JobStateType.UnmarshallText() does not return an error for invalid states
+	suite.Equal(JobStateTypeUndefined, state)
+}
+
 func TestEventTestSuite(t *testing.T) {
 	suite.Run(t, new(EventTestSuite))
 }
