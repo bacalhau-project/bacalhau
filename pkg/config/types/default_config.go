@@ -155,8 +155,6 @@ func DefaultDataDir() string {
 		return repoDir
 	} else if set {
 		log.Warn().Msg("BACALHAU_DIR environment variable is set but empty. Falling back to default directories.")
-	} else {
-		log.Debug().Msg("BACALHAU_DIR environment variable is not set. Trying to use $HOME.")
 	}
 
 	// Attempt to get the user's home directory
@@ -170,11 +168,10 @@ func DefaultDataDir() string {
 	// Fallback: attempt to use the absolute path of the default directory
 	path, err := filepath.Abs(defaultBacalhauDir)
 	if err == nil {
-		log.Info().Str("Directory", path).Msg("Bacalhau will initialize in current working directory.")
 		return path
 	}
 
 	// If everything fails, return the default directory string
-	log.Error().Err(err).Msg("Failed to determine absolute path for the default Bacalhau directory. Using the raw default path.")
+	log.Warn().Err(err).Msg("Failed to determine absolute path for the default Bacalhau directory. Using the current directory.")
 	return defaultBacalhauDir
 }
