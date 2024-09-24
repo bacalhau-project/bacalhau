@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
@@ -301,28 +300,4 @@ func GenerateNodeID(ctx context.Context, nodeNameProviderType string) (string, e
 	}
 
 	return nodeName, nil
-}
-
-func ReadInstallationID() string {
-	var idFile string
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		configDir := os.Getenv("XDG_CONFIG_HOME")
-		if configDir == "" {
-			configDir = filepath.Join(os.Getenv("HOME"), ".config")
-		}
-		idFile = filepath.Join(configDir, "bacalhau", "installation_id")
-	case "windows":
-		appData := os.Getenv("APPDATA")
-		idFile = filepath.Join(appData, "bacalhau", "installation_id")
-	default:
-		configDir := filepath.Join(os.Getenv("HOME"), ".config")
-		idFile = filepath.Join(configDir, "bacalhau", "installation_id")
-	}
-
-	idBytes, err := os.ReadFile(idFile)
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(idBytes))
 }

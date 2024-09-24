@@ -11,9 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/c2h5oh/datasize"
+
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 const (
@@ -55,7 +56,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 //
 //nolint:gocyclo,funlen
 func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize, stripPath bool) error {
-	_, span := system.NewSpan(ctx, system.GetTracer(), "pkg/util/targzip.compress")
+	_, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()
 
 	// tar > gzip > buf

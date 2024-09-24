@@ -27,6 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 func NewRootCmd() *cobra.Command {
@@ -148,6 +149,6 @@ func injectRootSpan(cmd *cobra.Command, ctx context.Context) context.Context {
 		names = append([]string{root.Name()}, names...)
 	}
 	name := fmt.Sprintf("bacalhau.%s", strings.Join(names, "."))
-	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), name)
+	ctx, span := telemetry.NewRootSpan(ctx, telemetry.GetTracer(), name)
 	return context.WithValue(ctx, spanKey, span)
 }

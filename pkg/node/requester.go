@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -33,6 +32,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 
@@ -212,22 +212,19 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
+	installationID := system.InstallationID()
+	var instanceID string
+	if sysmeta, err := fsr.SystemMetadata(); err == nil {
+		instanceID = sysmeta.InstanceID
+	}
+
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
 		transformer.RequesterInfo(nodeID),
+		transformer.OrchestratorInstallationID(installationID),
+		transformer.OrchestratorInstanceID(instanceID),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
-	}
-
-	if sysmeta, err := fsr.SystemMetadata(); err == nil {
-		if installationID := config.ReadInstallationID(); installationID != "" {
-			jobTransformers = append(jobTransformers, transformer.OrchestratorInstallationID(installationID))
-		}
-		if sysmeta.InstanceID != "" {
-			jobTransformers = append(jobTransformers, transformer.OrchestratorInstanceID(sysmeta.InstanceID))
-		}
-	} else {
-		log.Debug().Err(err).Msg("failed to read system metadata from repo")
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
