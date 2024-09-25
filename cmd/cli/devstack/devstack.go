@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
@@ -82,7 +83,6 @@ func NewCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// ensure we either use a temp repo for the devstack, or the repo path provided
 			// by the specific devstack flag. Never use the default bacalhau repo.
-			v := viper.GetViper()
 			repoPath := ODs.ConfigurationRepo
 			if repoPath == "" {
 				// We need to clean up the repo when the node shuts down, but we can ONLY
@@ -94,8 +94,12 @@ func NewCmd() *cobra.Command {
 				// a different path to the one we've just created. Presumably a default.
 				defer os.RemoveAll(repoPath)
 			}
+
+			v := viper.GetViper()
+			configMap := v.GetStringMap(cliflags.RootCommandConfigValues)
+			configMap[types.DataDirKey] = repoPath
+			v.Set(cliflags.RootCommandConfigValues, configMap)
 			// override the repo path set in the root command with the derived path.
-			v.Set("repo", repoPath)
 			cfg, err := util.SetupConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("setting up config: %w", err)
