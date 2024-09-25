@@ -1,8 +1,11 @@
 package node
 
 import (
+	"flag"
+	"os"
 	"path"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -10,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func NewDefaultComputeParam(storagePath string) ComputeConfigParams {
@@ -113,7 +115,10 @@ var TestRequesterConfig = RequesterConfigParams{
 }
 
 func getRequesterConfigParams() RequesterConfigParams {
-	if system.GetEnvironment() == system.EnvironmentTest {
+	if strings.Contains(os.Args[0], "/_test/") ||
+		strings.HasSuffix(os.Args[0], ".test") ||
+		flag.Lookup("test.v") != nil ||
+		flag.Lookup("test.run") != nil {
 		return TestRequesterConfig
 	}
 	return DefaultRequesterConfig
