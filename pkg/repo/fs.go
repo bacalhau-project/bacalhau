@@ -133,7 +133,7 @@ func (fsr *FsRepo) Open() error {
 	if instanceID := fsr.InstanceID(); instanceID == "" {
 		// this case will happen when a user migrated from a repo prior to instanceID existing.
 		if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
-			log.Trace().Err(err).Msgf("failed to write instanceID")
+			log.Debug().Err(err).Msgf("failed to write instanceID")
 		}
 	}
 
