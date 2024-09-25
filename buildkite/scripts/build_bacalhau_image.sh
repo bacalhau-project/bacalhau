@@ -16,6 +16,14 @@ download_artifact() {
         exit 1
     fi
     echo "Extracted bacalhau_linux_amd64.tar.gz to bacalhau_linux_amd64 folder"
+
+    # Add extraction for ARM version
+    mkdir -p bacalhau_linux_arm64
+    if ! tar xf bacalhau_linux_arm64.tar.gz -C bacalhau_linux_arm64; then
+        echo "Error: Failed to extract bacalhau_linux_arm64.tar.gz" >&2
+        exit 1
+    fi
+    echo "Extracted bacalhau_linux_arm64.tar.gz to bacalhau_linux_arm64 folder"
 }
 
 
