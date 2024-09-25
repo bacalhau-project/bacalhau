@@ -29,5 +29,9 @@ download_artifact() {
 
 
 main() {
-    download_artifact
+    if [ -z "$BUILDKITE_TAG" ]; then
+        download_artifact
+    else
+        echo "Skipping artifact download: BUILDKITE_TAG is present"
+    fi
 }
