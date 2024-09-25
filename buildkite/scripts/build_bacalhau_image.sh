@@ -35,6 +35,7 @@ main() {
     if [ -z "${BUILDKITE_TAG:-}" ]; then
         docker_context_create
         download_artifacts
+        sleep 5000
         make build-bacalhau-image
     else
         echo "Skipping artifact download: BUILDKITE_TAG is present"
