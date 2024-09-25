@@ -2,6 +2,10 @@
 
 set -e
 
+docker_context_create() {
+    docker context create buildx-build
+    docker buildx create --use buildx-build
+}
 
 download_artifact() {
     if ! buildkite-agent artifact download "*.*" . --build $BUILDKITE_BUILD_ID; then
@@ -30,6 +34,7 @@ download_artifact() {
 
 main() {
     if [ -z "$BUILDKITE_TAG" ]; then
+        docker_context_create
         download_artifact
     else
         echo "Skipping artifact download: BUILDKITE_TAG is present"

@@ -1,0 +1,12 @@
+steps:
+  - group: "Build Bacalhau Image"
+    steps:
+      - trigger: "bacalhau-golang"
+        label: ":rocket: Build CLI "
+        build:
+          message: "${BUILDKITE_MESSAGE}"
+          commit: "${BUILDKITE_COMMIT}"
+          branch: "${BUILDKITE_BRANCH}"
+      - wait: ~ 
+      - label: ":fish: Build Bacalhau Image"
+        command: "./buildkite/scripts/build_bacalhau_image.sh"
