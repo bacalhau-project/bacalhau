@@ -135,7 +135,7 @@ func (fsr *FsRepo) MustInstanceID() (string, error) {
 // writeInstanceID updates the InstanceID in the metadata.
 // It fails if the metadata file doesn't exist.
 func (fsr *FsRepo) writeInstanceID(id string) error {
-	return fsr.updateOrCreateMetadata(func(sysmeta *SystemMetadata) {
+	return fsr.updateExistingMetadata(func(sysmeta *SystemMetadata) {
 		sysmeta.InstanceID = id
 	})
 }
