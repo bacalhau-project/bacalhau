@@ -1,42 +1,44 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 docker_context_create() {
     docker context create buildx-build
     docker buildx create --use buildx-build
 }
 
-download_artifact() {
-    if ! buildkite-agent artifact download "*.*" . --build $BUILDKITE_BUILD_ID; then
+download_and_extract_artifact() {
+    local arch=$1
+    local tarball="bacalhau_linux_${arch}.tar.gz"
+    local target_dir="bin/linux/${arch}"
+
+    mkdir -p "$target_dir"
+    if ! tar xf "$tarball" -C "$target_dir"; then
+        echo "Error: Failed to extract $tarball" >&2
+        exit 1
+    fi
+    echo "Extracted $tarball to $target_dir folder"
+}
+
+download_artifacts() {
+    if ! buildkite-agent artifact download "*.*" . --build "$BUILDKITE_BUILD_ID"; then
         echo "Error: Failed to download artifacts from build pipeline" >&2
         exit 1
     fi
     echo "Downloaded artifacts from build pipeline"
 
-    mkdir -p bacalhau_linux_amd64
-    if ! tar xf bacalhau_linux_amd64.tar.gz -C bacalhau_linux_amd64; then
-        echo "Error: Failed to extract bacalhau_linux_amd64.tar.gz" >&2
-        exit 1
-    fi
-    echo "Extracted bacalhau_linux_amd64.tar.gz to bacalhau_linux_amd64 folder"
-
-    # Add extraction for ARM version
-    mkdir -p bacalhau_linux_arm64
-    if ! tar xf bacalhau_linux_arm64.tar.gz -C bacalhau_linux_arm64; then
-        echo "Error: Failed to extract bacalhau_linux_arm64.tar.gz" >&2
-        exit 1
-    fi
-    echo "Extracted bacalhau_linux_arm64.tar.gz to bacalhau_linux_arm64 folder"
+    download_and_extract_artifact "amd64"
+    download_and_extract_artifact "arm64"
 }
 
-
-
 main() {
-    if [ -z "$BUILDKITE_TAG" ]; then
+    if [ -z "${BUILDKITE_TAG:-}" ]; then
         docker_context_create
-        download_artifact
+        download_artifacts
+        make build-bacalhau-image
     else
         echo "Skipping artifact download: BUILDKITE_TAG is present"
     fi
 }
+
+main
