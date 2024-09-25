@@ -26,11 +26,6 @@ func TestDefaultPublisherSuite(t *testing.T) {
 }
 
 func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
-	s.Config.JobDefaults.Batch.Task.Publisher.Config.Type = ""
-	s.Config.JobDefaults.Batch.Task.Publisher.Config.Params = make(map[string]interface{})
-	stack := &scenario.StackConfig{}
-	stack.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.Type = ""
-	stack.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.Params = make(map[string]interface{})
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -49,7 +44,6 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 				},
 			},
 		},
-		Stack:          stack,
 		ResultsChecker: expectResultsNone,
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),

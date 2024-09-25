@@ -99,12 +99,15 @@ func (fsr *FsRepo) Init() error {
 	telemetry.SetupFromEnvs()
 
 	// never fail here as this isn't critical to node start up.
-	if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
+	if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
 		log.Trace().Err(err).Msgf("failed to write instanceID")
 	}
 
 	if err := fsr.WriteVersion(Version4); err != nil {
 		return fmt.Errorf("failed to persist repo version: %w", err)
+	}
+	if err := fsr.WriteLegacyVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist legacy repo version: %w", err)
 	}
 
 	return nil
@@ -127,10 +130,11 @@ func (fsr *FsRepo) Open() error {
 
 	// check if an instanceID exists persisting one if not found.
 	// never fail here as this isn't critical to node start up.
-	if instanceID, err := fsr.ReadInstanceID(); err != nil {
+	if instanceID, err := fsr.readInstanceID(); err != nil {
 		log.Trace().Err(err).Msgf("failed to read instanceID")
 	} else if instanceID == "" {
-		if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
+		// this case will happen when a user migrated from a repo prior to instanceID existing.
+		if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
 			log.Trace().Err(err).Msgf("failed to write instanceID")
 		}
 	}

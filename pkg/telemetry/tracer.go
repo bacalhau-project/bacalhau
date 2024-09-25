@@ -1,16 +1,15 @@
-package system
+package telemetry
 
 import (
 	"context"
-
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	oteltrace "go.opentelemetry.io/otel/trace"
+
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 // ----------------------------------------
@@ -26,30 +25,18 @@ func GetTracer() oteltrace.Tracer {
 // ----------------------------------------
 
 func NewSpan(ctx context.Context, t oteltrace.Tracer, name string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
-	for _, attributeName := range []string{telemetry.TracerAttributeNameJobID, telemetry.TracerAttributeNameNodeID} {
+	for _, attributeName := range []string{TracerAttributeNameJobID, TracerAttributeNameNodeID} {
 		if v := baggage.FromContext(ctx).Member(attributeName).Value(); v != "" {
 			opts = append(opts, oteltrace.WithAttributes(
 				attribute.String(attributeName, v),
 			))
 		}
 	}
-	opts = append(opts, oteltrace.WithAttributes(
-		attribute.String("environment", GetEnvironment().String()),
-	))
-
 	return t.Start(ctx, name, opts...)
 }
 
 func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (context.Context, oteltrace.Span) {
-	// Always include environment info in spans:
-	environment := GetEnvironment().String()
-	m0, _ := baggage.NewMember("environment", environment)
-	b, _ := baggage.New(m0)
-	ctx = baggage.ContextWithBaggage(ctx, b)
-
-	return t.Start(ctx, name, oteltrace.WithAttributes(
-		attribute.String("environment", environment),
-	))
+	return t.Start(ctx, name)
 }
 
 // Span creates and starts a new span, and a context containing it.
@@ -61,11 +48,6 @@ func NewRootSpan(ctx context.Context, t oteltrace.Tracer, name string) (context.
 // spanName: the name of the span, inside the service
 // opts: additional options to configure the span from trace.SpanStartOption
 func Span(ctx context.Context, spanName string, opts ...oteltrace.SpanStartOption) (context.Context, oteltrace.Span) {
-	// Always include environment info in spans:
-	opts = append(opts, oteltrace.WithAttributes(
-		attribute.String("environment", GetEnvironment().String()),
-	))
-
 	return GetTracer().Start(ctx, spanName, opts...)
 }
 
@@ -74,11 +56,11 @@ func Span(ctx context.Context, spanName string, opts ...oteltrace.SpanStartOptio
 // ----------------------------------------
 
 func AddNodeIDToBaggage(ctx context.Context, nodeID string) context.Context {
-	return addFieldToBaggage(ctx, telemetry.TracerAttributeNameNodeID, nodeID)
+	return addFieldToBaggage(ctx, TracerAttributeNameNodeID, nodeID)
 }
 
 func AddJobIDToBaggage(ctx context.Context, jobID string) context.Context {
-	return addFieldToBaggage(ctx, telemetry.TracerAttributeNameJobID, jobID)
+	return addFieldToBaggage(ctx, TracerAttributeNameJobID, jobID)
 }
 
 func addFieldToBaggage(ctx context.Context, key, value string) context.Context {

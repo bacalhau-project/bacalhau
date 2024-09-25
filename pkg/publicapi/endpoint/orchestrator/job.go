@@ -41,8 +41,12 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
+	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
+	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
-		Job: args.Job,
+		Job:                  args.Job,
+		ClientInstallationID: installationID,
+		ClientInstanceID:     instanceID,
 	})
 	if err != nil {
 		return err
@@ -93,10 +97,10 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 				continue
 			}
 			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryQuery{})
-			history := jobHistoryQueryResponse.JobHistory
 			if err != nil {
 				return err
 			}
+			history := jobHistoryQueryResponse.JobHistory
 			response.History = &apimodels.ListJobHistoryResponse{
 				Items: make([]*models.JobHistory, len(history)),
 			}

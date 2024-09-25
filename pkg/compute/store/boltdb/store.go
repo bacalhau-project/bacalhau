@@ -115,6 +115,10 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
 	)
 
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event store: %w", err)
+	}
+
 	return &Store{
 		database:   database,
 		marshaller: marshaller.NewJSONMarshaller(),

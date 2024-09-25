@@ -31,6 +31,9 @@ func GetComputeConfig(
 			return node.ComputeConfig{}, err
 		}
 		executionStore, err = boltdb.NewStore(ctx, executionStoreDBPath)
+		if err != nil {
+			return node.ComputeConfig{}, pkgerrors.Wrapf(err, "failed to create execution store")
+		}
 	}
 
 	executionsPath, err := cfg.ExecutionDir()

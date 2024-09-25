@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 type bufferTask struct {
@@ -116,9 +116,9 @@ func (s *ExecutorBuffer) Run(ctx context.Context, localExecutionState store.Loca
 // doRun triggers the execution by the delegate backend.Executor and frees up the capacity when the execution is done.
 func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 	job := task.localExecutionState.Execution.Job
-	ctx = system.AddJobIDToBaggage(ctx, job.ID)
-	ctx = system.AddNodeIDToBaggage(ctx, s.ID)
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
+	ctx = telemetry.AddJobIDToBaggage(ctx, job.ID)
+	ctx = telemetry.AddNodeIDToBaggage(ctx, s.ID)
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/compute.ExecutorBuffer.Run")
 	defer span.End()
 
 	innerCtx := ctx
@@ -200,9 +200,9 @@ func (s *ExecutorBuffer) Cancel(_ context.Context, localExecutionState store.Loc
 	execution := localExecutionState.Execution
 	go func() {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), s.ID)
-		ctx = system.AddJobIDToBaggage(ctx, execution.Job.ID)
-		ctx = system.AddNodeIDToBaggage(ctx, s.ID)
-		ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
+		ctx = telemetry.AddJobIDToBaggage(ctx, execution.Job.ID)
+		ctx = telemetry.AddNodeIDToBaggage(ctx, s.ID)
+		ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/compute.ExecutorBuffer.Cancel")
 		defer span.End()
 
 		err := s.delegateService.Cancel(ctx, localExecutionState)
