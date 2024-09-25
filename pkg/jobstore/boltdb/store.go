@@ -662,6 +662,12 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false)
 	if err != nil {
+		// If the bucket doesn't exist, then we return an empty response to maintain compatibility
+		// with < v1.5.0 versions as the history bucket name was renamed in v1.5.0 without migration
+		// as migration is not worth the complexity
+		if errors.Is(err, bolt.ErrBucketNotFound) {
+			return &jobstore.JobHistoryQueryResponse{}, nil
+		}
 		return nil, NewBoltDbError(err)
 	}
 

@@ -106,6 +106,9 @@ func (fsr *FsRepo) Init() error {
 	if err := fsr.WriteVersion(Version4); err != nil {
 		return fmt.Errorf("failed to persist repo version: %w", err)
 	}
+	if err := fsr.WriteLegacyVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist legacy repo version: %w", err)
+	}
 
 	return nil
 }

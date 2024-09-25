@@ -8,8 +8,6 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 )
 
 const (
@@ -73,9 +71,6 @@ var Default = Bacalhau{
 					CPU:    "500m",
 					Memory: "1Gb",
 				},
-				Publisher: DefaultPublisherConfig{
-					Config: *local.NewSpecConfig(),
-				},
 			},
 		},
 		Ops: BatchJobDefaultsConfig{
@@ -84,9 +79,6 @@ var Default = Bacalhau{
 				Resources: ResourcesConfig{
 					CPU:    "500m",
 					Memory: "1Gb",
-				},
-				Publisher: DefaultPublisherConfig{
-					Config: *local.NewSpecConfig(),
 				},
 			},
 		},
