@@ -97,10 +97,10 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 				continue
 			}
 			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryQuery{})
-			history := jobHistoryQueryResponse.JobHistory
 			if err != nil {
 				return err
 			}
+			history := jobHistoryQueryResponse.JobHistory
 			response.History = &apimodels.ListJobHistoryResponse{
 				Items: make([]*models.JobHistory, len(history)),
 			}
