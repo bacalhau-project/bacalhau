@@ -1159,6 +1159,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 		}
 	}
 
+	analytics.EmitEvent(context.TODO(), analytics.NewExecutionEvent(execution))
 	return nil
 }
 
@@ -1219,6 +1220,8 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 			return err
 		}
 	}
+
+	analytics.EmitEvent(context.TODO(), analytics.NewExecutionEvent(newExecution))
 
 	return nil
 }

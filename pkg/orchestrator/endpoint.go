@@ -73,7 +73,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		submitEvent.Error = err.Error()
 		return nil, err
 	}
-	submitEvent.ID = job.ID
+	submitEvent.JobID = job.ID
 
 	var translationEvent models.Event
 
