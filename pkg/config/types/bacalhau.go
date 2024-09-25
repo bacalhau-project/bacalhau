@@ -36,7 +36,7 @@ type Bacalhau struct {
 func (b Bacalhau) Validate() error {
 	var errs error
 	if err := validate.IsValidPath(b.DataDir); err != nil {
-		errs = errors.Join(err, fmt.Errorf("DataDir (%q) must be an absolute path", b.DataDir))
+		errs = errors.Join(err, fmt.Errorf("DataDir (%q) invalid", b.DataDir))
 	}
 
 	return errs

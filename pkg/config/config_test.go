@@ -17,6 +17,8 @@ import (
 )
 
 func TestConfigDataDirPath(t *testing.T) {
+	workingDir, err := os.Getwd()
+	require.NoError(t, err)
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 
@@ -29,6 +31,12 @@ func TestConfigDataDirPath(t *testing.T) {
 		expected string
 	}{
 		// valid cases
+		{
+			name:     "Valid DataDir at root",
+			dataDir:  "/",
+			expected: "/",
+			isValid:  true,
+		},
 		{
 			name:     "Valid DataDir absolute path",
 			dataDir:  "/absolute/path",
@@ -60,12 +68,6 @@ func TestConfigDataDirPath(t *testing.T) {
 			isValid:  true,
 		},
 		{
-			name:     "Valid DataDir with special characters",
-			dataDir:  "/path/with/special/char$",
-			expected: "/path/with/special/char$",
-			isValid:  true,
-		},
-		{
 			name:     "Valid DataDir with space characters",
 			dataDir:  "/path/with space",
 			expected: "/path/with space",
@@ -74,7 +76,7 @@ func TestConfigDataDirPath(t *testing.T) {
 		{
 			name:     "Valid DataDir with trailing slash",
 			dataDir:  "/absolute/path/",
-			expected: "/absolute/path/",
+			expected: "/absolute/path",
 			isValid:  true,
 		},
 		{
@@ -113,30 +115,51 @@ func TestConfigDataDirPath(t *testing.T) {
 			expected: "/path/with?invalid",
 			isValid:  true,
 		},
-		// invalid cases
 		{
-			name:    "Invalid DataDir with environment variable",
-			dataDir: "$HOME/path",
-			isValid: false,
+			name:     "Valid DataDir relative path - is expanded",
+			dataDir:  "not/absolute/path",
+			expected: filepath.Join(workingDir, "not/absolute/path"),
+			isValid:  true,
 		},
+		{
+			name:     "Valid DataDir relative dot path - is expanded",
+			dataDir:  "./not/absolute/path",
+			expected: filepath.Join(workingDir, "not/absolute/path"),
+			isValid:  true,
+		},
+		// valid with weird inputs
+		{
+			name:     "Invalid Tilda DataDir",
+			dataDir:  "~not/absolute/path",
+			expected: filepath.Join(workingDir, "~not/absolute/path"),
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with special characters",
+			dataDir:  "/path/with/special/char$",
+			expected: "/path/with/special/char$",
+			isValid:  true,
+		},
+		{
+			name:     "Valid DataDir with environment variable",
+			dataDir:  "$HOME/path",
+			expected: filepath.Join(workingDir, "$HOME/path"),
+			isValid:  true,
+		},
+		// invalid cases
 		{
 			name:    "Invalid DataDir empty",
 			dataDir: "",
 			isValid: false,
 		},
 		{
-			name:    "Invalid DataDir relative path",
-			dataDir: "not/absolute/path",
+			name:    "Invalid DataDir null byte",
+			dataDir: "\x00",
 			isValid: false,
 		},
 		{
-			name:    "Invalid DataDir relative dot path",
-			dataDir: "./not/absolute/path",
-			isValid: false,
-		},
-		{
-			name:    "Invalid Tilda DataDir",
-			dataDir: "~not/absolute/path",
+			name:    "Invalid DataDir, non UTF-8 path",
+			dataDir: string([]byte{0xC3, 0x28}), // 0xC3 followed by 0x28 is invalid,
 			isValid: false,
 		},
 	}

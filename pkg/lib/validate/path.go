@@ -27,7 +27,7 @@ func IsValidPath(path string) error {
 
 	// Check if the path is absolute (starts with '/')
 	if !filepath.IsAbs(path) {
-		return errors.New("path must be absolute (start with '/')")
+		return errors.New("path must be absolute")
 	}
 
 	// Handle OS-specific forbidden characters

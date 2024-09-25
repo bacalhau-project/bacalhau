@@ -227,11 +227,18 @@ func New(opts ...Option) (*Config, error) {
 	// and expand the path for them
 	dataDirPath := c.base.GetString(types.DataDirKey)
 	if dataDirPath != "" {
+		// if provided a tilda path, attempt to expand it
 		expanded, err := homedir.Expand(dataDirPath)
 		if err == nil {
 			dataDirPath = expanded
-			c.base.Set(types.DataDirKey, dataDirPath)
 		}
+		// if provided a relative path, expand to absolute
+		absPath, err := filepath.Abs(dataDirPath)
+		if err == nil {
+			dataDirPath = absPath
+		}
+
+		c.base.Set(types.DataDirKey, dataDirPath)
 		if strings.Contains(dataDirPath, "$") {
 			log.Warn().Msgf("DataDir path (%q) contains a '$' character. Note that environment variables are not expanded in this configuration. The path will be used as-is.", dataDirPath)
 		}
