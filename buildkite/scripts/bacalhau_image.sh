@@ -46,7 +46,6 @@ main() {
         docker_context_create
         download_artifacts
         make build-bacalhau-image
-        sleep 5000
         docker_login
         make push-bacalhau-image
     else
