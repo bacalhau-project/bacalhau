@@ -8,7 +8,7 @@ set_environment_variables() {
 
 docker_login() {
     export GHCR_PAT=$(buildkite-agent secret get GHCR_PAT)
-    echo "$GHCR_PAT" | docker login ghcr.io -u bacalhau-infra-bot --password-stdin
+    echo "$GHCR_PAT" | docker login ghcr.io -u expanso --password-stdin
 }
 
 docker_context_create() {
