@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+set_environment_variables() {
+    export GIT_TAG=$(git describe --tags --always)
+}
+
 docker_context_create() {
     docker context create buildx-build
     docker buildx create --use buildx-build
@@ -9,7 +13,7 @@ docker_context_create() {
 
 download_and_extract_artifact() {
     local arch=$1
-    local tarball="bacalhau_linux_${arch}.tar.gz"
+    local tarball="bacalhau_${GIT_TAG}_linux_${arch}.tar.gz"
     local target_dir="bin/linux/${arch}"
 
     mkdir -p "$target_dir"
@@ -33,6 +37,7 @@ download_artifacts() {
 
 main() {
     if [ -z "${BUILDKITE_TAG:-}" ]; then
+        set_environment_variables
         docker_context_create
         download_artifacts
         sleep 5000
