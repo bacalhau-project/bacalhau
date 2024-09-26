@@ -5,26 +5,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/pkg/errors"
 	bolt "go.etcd.io/bbolt"
 )
 
 const (
-	DefaultDatabasePermissions   = 0600
 	DefaultBucketSearchSliceSize = 16
 	BucketPathDelimiter          = "/"
 )
-
-func GetDatabase(path string) (*bolt.DB, error) {
-	database, err := bolt.Open(path, DefaultDatabasePermissions, &bolt.Options{Timeout: 2 * time.Second})
-	if err != nil {
-		//nolint:lll
-		return nil, errors.Wrap(err, fmt.Sprintf("failed to open database at %s - often caused because a bacalhau process is already running.", path))
-	}
-	return database, nil
-}
 
 // GetBucketsByPrefix will search through the provided bucket to find other buckets with
 // a name that starts with the partialname that is provided.
