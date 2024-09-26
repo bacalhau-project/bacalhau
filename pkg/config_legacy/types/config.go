@@ -31,7 +31,7 @@ type MetricsConfig struct {
 
 type UpdateConfig struct {
 	SkipChecks     bool     `yaml:"SkipChecks"`
-	CheckFrequency Duration `yaml:"CheckFrequency"`
+	CheckFrequency Duration `yaml:"CheckFrequency" swaggertype:"primitive,integer"`
 }
 
 const UserKeyFileName = "user_id.pem"

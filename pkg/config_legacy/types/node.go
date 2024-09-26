@@ -15,8 +15,8 @@ type NodeConfig struct {
 	Requester RequesterConfig `yaml:"Requester"`
 
 	DownloadURLRequestRetries int      `yaml:"DownloadURLRequestRetries"`
-	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout"`
-	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout"`
+	DownloadURLRequestTimeout Duration `yaml:"DownloadURLRequestTimeout" swaggertype:"primitive,integer"`
+	VolumeSizeRequestTimeout  Duration `yaml:"VolumeSizeRequestTimeout" swaggertype:"primitive,integer"`
 
 	// Deprecated: replaced by cfg.PluginsDir()
 	ExecutorPluginPath string `yaml:"ExecutorPluginPath"`
@@ -113,8 +113,8 @@ type FeatureConfig struct {
 
 type DockerCacheConfig struct {
 	Size      uint64   `yaml:"Size"`
-	Duration  Duration `yaml:"Duration"`
-	Frequency Duration `yaml:"Frequency"`
+	Duration  Duration `yaml:"Duration" swaggertype:"primitive,integer"`
+	Frequency Duration `yaml:"Frequency" swaggertype:"primitive,integer"`
 }
 
 type NetworkConfig struct {
