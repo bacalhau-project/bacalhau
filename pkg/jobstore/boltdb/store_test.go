@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -203,7 +204,7 @@ func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
 
 	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "1", jobstore.JobHistoryQuery{})
 	s.Require().Error(err)
-	s.Require().IsType(err, &models.BaseError{})
+	s.Require().True(bacerrors.IsError(err))
 	s.Require().Nil(jobHistoryQueryResponse)
 }
 
@@ -772,7 +773,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 		JobID: "100",
 	})
 	s.Require().Error(err)
-	s.Require().IsType(err, &models.BaseError{})
+	s.Require().True(bacerrors.IsError(err))
 	s.Require().Nil(state)
 
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
@@ -786,7 +787,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 		JobID: "1",
 	})
 	s.Require().Error(err)
-	s.Require().IsType(err, &models.BaseError{})
+	s.Require().True(bacerrors.IsError(err))
 	s.Require().Nil(state)
 
 	// Created At Ascending Order Sort
@@ -913,7 +914,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 	// No matches
 	_, err := s.store.GetJob(s.ctx, shortString)
 	s.Require().Error(err)
-	s.Require().IsType(err, &models.BaseError{})
+	s.Require().True(bacerrors.IsError(err))
 
 	// Create and fetch the single entry
 	err = s.store.CreateJob(s.ctx, *job)
@@ -930,7 +931,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 
 	_, err = s.store.GetJob(s.ctx, shortString)
 	s.Require().Error(err)
-	s.Require().IsType(err, &models.BaseError{})
+	s.Require().True(bacerrors.IsError(err))
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {

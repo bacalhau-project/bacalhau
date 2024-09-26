@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
 
 // APIError represents a standardized error response for the api.
@@ -90,4 +92,23 @@ func FromHttpResponse(resp *http.Response) (*APIError, error) {
 	}
 
 	return &apiErr, nil
+}
+
+// FromBacError converts a bacerror.Error to an APIError
+func FromBacError(err bacerrors.Error) *APIError {
+	return &APIError{
+		HTTPStatusCode: err.HTTPStatusCode(),
+		Message:        err.Error(),
+		Code:           string(err.Code()),
+		Component:      err.Component(),
+	}
+}
+
+// ToBacError converts an APIError to a bacerror.Error
+func (e *APIError) ToBacError() bacerrors.Error {
+	return bacerrors.New(e.Error()).
+		WithHTTPStatusCode(e.HTTPStatusCode).
+		WithCode(bacerrors.Code(e.Code)).
+		WithComponent(e.Component).
+		WithDetails(map[string]string{"request_id": e.RequestID})
 }

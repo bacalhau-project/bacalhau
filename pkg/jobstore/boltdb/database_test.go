@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 )
 
 type DatabaseTestSuite struct {
@@ -38,7 +40,7 @@ func (s *DatabaseTestSuite) TearDownTest() {
 }
 
 func (s *DatabaseTestSuite) TestGetDatabaseBad() {
-	_, err := GetDatabase("")
+	_, err := boltdblib.Open("")
 	s.Error(err)
 }
 
