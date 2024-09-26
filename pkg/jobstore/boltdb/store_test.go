@@ -787,7 +787,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 		JobID: "1",
 	})
 	s.Require().Error(err)
-	s.Require().IsType(bacerrors.Error(nil), err)
+	s.Require().True(bacerrors.IsError(err))
 	s.Require().Nil(state)
 
 	// Created At Ascending Order Sort
@@ -931,7 +931,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 
 	_, err = s.store.GetJob(s.ctx, shortString)
 	s.Require().Error(err)
-	s.Require().IsType(bacerrors.Error(nil), err)
+	s.Require().True(bacerrors.IsError(err))
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
