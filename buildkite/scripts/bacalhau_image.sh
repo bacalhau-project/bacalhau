@@ -6,6 +6,11 @@ set_environment_variables() {
     export GIT_TAG=$(git describe --tags --always)
 }
 
+docker_login() {
+    export GHCR_PAT=$(buildkite-agent secret get GHCR_PAT)
+    echo "$GHCR_PAT" | docker login ghcr.io -u bacalhau-infra-bot --password-stdin
+}
+
 docker_context_create() {
     docker context create buildx-build
     docker buildx create --use buildx-build
@@ -41,6 +46,8 @@ main() {
         docker_context_create
         download_artifacts
         make build-bacalhau-image
+        docker_login
+        make push-bacalhau-image
     else
         echo "Skipping artifact download: BUILDKITE_TAG is present"
     fi
