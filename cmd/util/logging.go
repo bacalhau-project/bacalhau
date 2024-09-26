@@ -8,12 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -44,8 +44,8 @@ func Logs(cmd *cobra.Command, api clientv2.API, options LogOptions) error {
 		Tail:        options.Tail,
 	})
 	if err != nil {
-		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
-			return errResp
+		if bacerrors.IsError(err) {
+			return err
 		}
 		return fmt.Errorf("unknown error trying to stream logs from job (ID: %s): %w", requestedJobID, err)
 	}

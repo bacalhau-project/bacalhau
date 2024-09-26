@@ -16,7 +16,7 @@ type ClientManager struct {
 func NewClientManager(ctx context.Context, servers string, options ...nats.Option) (*ClientManager, error) {
 	nc, err := nats.Connect(servers, options...)
 	if err != nil {
-		return nil, err
+		return nil, interceptConnectionError(err, servers)
 	}
 	return &ClientManager{
 		Client: nc,
