@@ -936,7 +936,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	job, err := b.getJob(tx, jobID)
 	if err != nil {
-		if models.IsBaseError(err) {
+		if bacerrors.IsError(err) {
 			return err
 		}
 		return NewBoltDbError(err)
@@ -1250,7 +1250,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 
 	// If there is no error getting an eval with this ID, then it already exists
 	if _, err = b.getEvaluation(tx, eval.ID); err == nil {
-		return bacerrors.NewAlreadyExists(eval.ID, "Evaluation")
+		return jobstore.NewErrEvaluationAlreadyExists(eval.ID)
 	}
 
 	tx.OnCommit(func() {
@@ -1302,7 +1302,7 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation,
 	} else {
 		data := bkt.Get([]byte(id))
 		if data == nil {
-			return eval, bacerrors.NewEvaluationNotFound(id)
+			return eval, jobstore.NewErrEvaluationNotFound(id)
 		}
 
 		err = b.marshaller.Unmarshal(data, &eval)

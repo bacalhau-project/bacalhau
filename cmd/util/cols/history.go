@@ -6,10 +6,10 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
@@ -60,7 +60,7 @@ var (
 				}
 
 				// print all other details in debug mode
-				if zerolog.GlobalLevel() <= zerolog.DebugLevel {
+				if system.IsDebugMode() {
 					for k, v := range h.Event.Details {
 						// don't print hint and error since they are already represented
 						if k == models.DetailsKeyHint || k == models.DetailsKeyIsError {

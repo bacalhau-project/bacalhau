@@ -12,7 +12,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -31,7 +31,7 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestBaseError() {
 	rec := httptest.NewRecorder()
 	c := suite.echo.NewContext(req, rec)
 
-	err := models.NewBaseError("test base error").
+	err := bacerrors.New("test base error").
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithCode("TEST_ERROR").
 		WithComponent("TEST_COMPONENT")
@@ -62,7 +62,7 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestEchoHTTPError() {
 	suite.Require().NoError(json.NewDecoder(rec.Body).Decode(&apiError))
 
 	suite.Equal("unauthorized access", apiError.Message)
-	suite.Equal(string(models.InternalError), apiError.Code)
+	suite.Equal(string(bacerrors.BadRequestError), apiError.Code)
 	suite.Equal("APIServer", apiError.Component)
 }
 
@@ -81,7 +81,7 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestDefaultError() {
 	suite.Require().NoError(json.NewDecoder(rec.Body).Decode(&apiError))
 
 	suite.Equal("Internal server error", apiError.Message)
-	suite.Equal(string(models.InternalError), apiError.Code)
+	suite.Equal(string(bacerrors.BadRequestError), apiError.Code)
 	suite.Equal("Unknown", apiError.Component)
 }
 

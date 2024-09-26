@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
@@ -303,7 +304,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	topic := EventTopicExecutionRunning
 	defer func() {
 		if err != nil {
-			if !models.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
+			if !bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
 				e.handleFailure(ctx, state, err, topic)
 			}
 		}
@@ -322,7 +323,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}()
 	if err := res.Err; err != nil {
-		if models.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
+		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
 			// we allow duplicate calls to `Run` to be idempotent and fall through to the below `Wait` call.
 			log.Ctx(ctx).Warn().Err(err).Str("execution", execution.ID).

@@ -6,10 +6,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 )
 
 var schemeRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+-.]*://`)
@@ -33,7 +34,7 @@ func RoutesFromStr(routesStr string, allowLocal bool) ([]*url.URL, error) {
 		}
 		u, err := url.Parse(r)
 		if err != nil {
-			return nil, err
+			return nil, NewConfigurationWrappedError(err, "invalid address: %s", routes)
 		}
 		routeUrls = append(routeUrls, u)
 	}
@@ -41,6 +42,7 @@ func RoutesFromStr(routesStr string, allowLocal bool) ([]*url.URL, error) {
 	if !allowLocal {
 		routeUrls, err = removeLocalAddresses(routeUrls)
 		if err != nil {
+
 			return nil, errors.Wrap(err, "failed to remove local addresses from NATS routes. please ensure settings do not contain a local address.") //nolint:lll
 		}
 	}
@@ -63,7 +65,7 @@ func RoutesFromSlice(routes []string, allowLocal bool) ([]*url.URL, error) {
 func removeLocalAddresses(routes []*url.URL) ([]*url.URL, error) {
 	addrs, err := network.AllAddresses()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get local addresses")
+		return nil, NewConfigurationWrappedError(err, "invalid address: %s", routes)
 	}
 
 	localAddresses := lo.Map(addrs, func(item net.IP, _ int) string {

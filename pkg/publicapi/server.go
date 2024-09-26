@@ -12,6 +12,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -90,10 +91,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
-	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
-		// enable debug mode to get clearer error messages
-		server.Router.Debug = true
-	}
+	// enable debug mode to get clearer error messages
+	server.Router.Debug = system.IsDebugMode()
 
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)

@@ -31,6 +31,7 @@ const (
 	italic = "\033[3m"
 	red    = "\033[31m"
 	green  = "\033[32m"
+	yellow = "\033[33m"
 	reset  = "\033[0m"
 )
 
@@ -174,6 +175,11 @@ func ItalicStr(s any) string {
 // RedStr returns the given string in red
 func RedStr(s any) string {
 	return red + fmt.Sprint(s) + reset
+}
+
+// YellowStr returns the given string in yellow
+func YellowStr(s any) string {
+	return yellow + fmt.Sprint(s) + reset
 }
 
 // GreenStr returns the given string in green
