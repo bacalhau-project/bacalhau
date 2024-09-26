@@ -8,7 +8,7 @@ set_environment_variables() {
 
 docker_login() {
     export GHCR_PAT=$(buildkite-agent secret get GHCR_PAT)
-    echo "$GHCR_PAT" | docker login ghcr.io -u expanso --password-stdin
+    echo "$GHCR_PAT" | docker login -u expanso --password-stdin
 }
 
 docker_context_create() {
@@ -46,6 +46,7 @@ main() {
         docker_context_create
         download_artifacts
         make build-bacalhau-image
+        sleep 5000
         docker_login
         make push-bacalhau-image
     else
