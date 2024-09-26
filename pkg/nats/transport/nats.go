@@ -288,12 +288,12 @@ func (t *NATSTransport) DebugInfoProviders() []models.DebugInfoProvider {
 
 // Close closes the transport layer.
 func (t *NATSTransport) Close(ctx context.Context) error {
+	if t.natsClient != nil {
+		t.natsClient.Stop()
+	}
 	if t.natsServer != nil {
 		log.Ctx(ctx).Debug().Msgf("Shutting down server %s", t.natsServer.Server.Name())
 		t.natsServer.Stop()
-	}
-	if t.natsClient != nil {
-		t.natsClient.Stop()
 	}
 	return nil
 }
