@@ -34,7 +34,7 @@ var (
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value: func(j *models.JobHistory) string {
 			if j.ExecutionID == "" {
-				return "/"
+				return ""
 			}
 			return idgen.ShortUUID(j.ExecutionID)
 		},
