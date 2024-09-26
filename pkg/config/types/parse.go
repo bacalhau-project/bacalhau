@@ -12,7 +12,8 @@ func CastConfigValueForKey(key string, value any) (any, error) {
 	key = strings.ToLower(key)
 	typ, ok := AllKeys()[key]
 	if !ok {
-		return nil, fmt.Errorf("%q is not a valid config key", key)
+		return nil, fmt.Errorf("%q is not a valid config key. "+
+			"Run 'bacalhau config list' for the compelte list of valid config keys", key)
 	}
 
 	switch v := value.(type) {
@@ -80,7 +81,10 @@ func parseStringSlice(key string, values []string, typ reflect.Type) (any, error
 func parseDuration(key, value string) (string, error) {
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		return "", fmt.Errorf("parsing value: '%s' for key: '%s' to duration: %w", value, key, err)
+		// NB: this error is returned directly to the user, so we format it
+		return "", fmt.Errorf("config key: %q expects a valid duration value, received: %q.\n"+
+			"\tAccepted formats include combinations of 'h' (hours), 'm' (minutes), 's' (seconds), 'ms' (milliseconds), etc.\n"+
+			"\tExample: '2h45m', '30s', '100ms'", key, value)
 	}
 	return duration.String(), nil
 }
@@ -90,11 +94,23 @@ func parseByKind(key, value string, typ reflect.Type) (any, error) {
 	case reflect.String:
 		return value, nil
 	case reflect.Bool:
-		return strconv.ParseBool(value)
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, fmt.Errorf("config key: %q expects a boolean value, received: %q", key, value)
+		}
+		return parsed, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return strconv.ParseInt(value, 10, 64)
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("config key: %q expects an integer value, received: %q", key, value)
+		}
+		return parsed, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return strconv.ParseUint(value, 10, 64)
+		parsed, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("config key: %q expects an integer value, received: %q", key, value)
+		}
+		return parsed, nil
 	case reflect.Map:
 		tokens := strings.Split(value, ",")
 		return StringSliceToMap(tokens)
@@ -105,14 +121,31 @@ func parseByKind(key, value string, typ reflect.Type) (any, error) {
 
 func StringSliceToMap(slice []string) (map[string]string, error) {
 	result := make(map[string]string)
+
 	for _, item := range slice {
 		tokens := strings.Split(item, "=")
-		if len(tokens) != 2 {
-			return nil, fmt.Errorf("expected 'key=value', received invalid format for key-value pair: '%s' in '%s'", item, slice)
+		if len(tokens) < 2 {
+			return nil, fmt.Errorf("invalid format %s: expected 'key=value', but found no '=' in '%s'. Ensure each item is formatted as 'key=value'", slice, item)
 		}
-		key, value := tokens[0], tokens[1]
+
+		if len(tokens) > 2 {
+			return nil, fmt.Errorf("invalid format %s: found multiple '=' in '%s'. Only one '=' is allowed per key-value pair", slice, item)
+		}
+
+		key := tokens[0]
+		value := tokens[1]
+
+		if key == "" {
+			return nil, fmt.Errorf("invalid format %s: missing key before '=' in '%s'. A valid key is required", slice, item)
+		}
+
+		if value == "" {
+			return nil, fmt.Errorf("invalid format %s: missing value after '=' for key '%s'. A valid value is required", slice, key)
+		}
+
 		result[key] = value
 	}
+
 	return result, nil
 }
 
