@@ -62,7 +62,7 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestEchoHTTPError() {
 	suite.Require().NoError(json.NewDecoder(rec.Body).Decode(&apiError))
 
 	suite.Equal("unauthorized access", apiError.Message)
-	suite.Equal(string(bacerrors.BadRequestError), apiError.Code)
+	suite.Equal(string(bacerrors.InternalError), apiError.Code)
 	suite.Equal("APIServer", apiError.Component)
 }
 
@@ -81,7 +81,7 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestDefaultError() {
 	suite.Require().NoError(json.NewDecoder(rec.Body).Decode(&apiError))
 
 	suite.Equal("Internal server error", apiError.Message)
-	suite.Equal(string(bacerrors.BadRequestError), apiError.Code)
+	suite.Equal(string(bacerrors.InternalError), apiError.Code)
 	suite.Equal("Unknown", apiError.Component)
 }
 

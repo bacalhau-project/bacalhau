@@ -34,7 +34,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// size accepted
 		code = e.Code
 		message, _ = e.Message.(string)
-		errorCode = string(bacerrors.BadRequestError)
+		errorCode = string(bacerrors.InternalError)
 		component = "APIServer"
 		if c.Echo().Debug && e.Internal != nil {
 			message += ". " + e.Internal.Error()
@@ -46,7 +46,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// and map it to APIError and send in appropriate message.= http.StatusInternalServerError
 		code = http.StatusInternalServerError
 		message = "Internal server error"
-		errorCode = string(bacerrors.BadRequestError)
+		errorCode = string(bacerrors.InternalError)
 		component = "Unknown"
 
 		if c.Echo().Debug {
