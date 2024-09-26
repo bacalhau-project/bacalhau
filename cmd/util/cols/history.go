@@ -2,7 +2,6 @@ package cols
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -35,7 +34,7 @@ var (
 		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
 		Value: func(j *models.JobHistory) string {
 			if j.ExecutionID == "" {
-				return strings.Repeat("-", 10)
+				return ""
 			}
 			return idgen.ShortUUID(j.ExecutionID)
 		},
