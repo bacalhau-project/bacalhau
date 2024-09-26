@@ -68,7 +68,7 @@ steps:
     key: "publish-bacalhau-image"
     agents:
       queue: "buildkite-hosted-linux-large"
-    if: build.pull_request.branch =~ /ud/
+    if: build.tag != null
 
   - label: ":rocket: Release CLI"
     command: "./buildkite/scripts/release_cli.sh"
