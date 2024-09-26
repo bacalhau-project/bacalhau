@@ -3,13 +3,13 @@ package transport
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -69,7 +69,10 @@ func (c *NATSTransportConfig) Validate() error {
 	} else {
 		mErr = errors.Join(mErr, validate.IsNotEmpty(c.Orchestrators, "missing orchestrators"))
 	}
-	return mErr
+	if mErr != nil {
+		return nats_helper.NewConfigurationError("invalid transport config:\n%s", mErr)
+	}
+	return nil
 }
 
 type NATSTransport struct {
@@ -89,7 +92,7 @@ func NewNATSTransport(ctx context.Context,
 	config *NATSTransportConfig) (*NATSTransport, error) {
 	log.Debug().Msgf("Creating NATS transport with config: %+v", config)
 	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("error validating nats transport config. %w", err)
+		return nil, bacerrors.Wrap(err, "invalid cluster config").WithCode(bacerrors.ValidationError)
 	}
 
 	var sm *nats_helper.ServerManager

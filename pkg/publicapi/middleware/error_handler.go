@@ -6,7 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
@@ -20,7 +20,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 
 	switch e := err.(type) {
 
-	case *models.BaseError:
+	case bacerrors.Error:
 		// If it is already our custom APIError, use its code and message
 		code = e.HTTPStatusCode()
 		message = e.Error()
@@ -34,7 +34,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// size accepted
 		code = e.Code
 		message, _ = e.Message.(string)
-		errorCode = string(models.InternalError)
+		errorCode = string(bacerrors.InternalError)
 		component = "APIServer"
 		if c.Echo().Debug && e.Internal != nil {
 			message += ". " + e.Internal.Error()
@@ -46,7 +46,7 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 		// and map it to APIError and send in appropriate message.= http.StatusInternalServerError
 		code = http.StatusInternalServerError
 		message = "Internal server error"
-		errorCode = string(models.InternalError)
+		errorCode = string(bacerrors.InternalError)
 		component = "Unknown"
 
 		if c.Echo().Debug {

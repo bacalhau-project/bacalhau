@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -227,7 +228,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	log.Info().Msg("Starting bacalhau...")
 	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
 	if err != nil {
-		return fmt.Errorf("error creating node: %w", err)
+		return bacerrors.Wrap(err, "failed to start node")
 	}
 
 	// Start node
