@@ -1241,40 +1241,17 @@
                 }
             }
         },
-        "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration": {
-            "type": "integer",
-            "enum": [
-                -9223372036854775808,
-                9223372036854775807,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "minDuration",
-                "maxDuration",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
-        },
         "github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.JobDefaults": {
             "type": "object",
             "properties": {
                 "executionTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "queueTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "totalTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 }
             }
         },
@@ -1282,7 +1259,7 @@
             "type": "object",
             "properties": {
                 "checkFrequency": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "skipChecks": {
                     "type": "boolean"
@@ -1768,6 +1745,9 @@
                             "$ref": "#/definitions/models.StateChange-models_JobStateType"
                         }
                     ]
+                },
+                "SeqNum": {
+                    "type": "integer"
                 },
                 "Time": {
                     "type": "string"
@@ -2419,11 +2399,7 @@
             "properties": {
                 "heartbeatFrequency": {
                     "description": "How often the compute node will send a heartbeat to the requester node to let it know\nthat the compute node is still alive. This should be less than the requester's configured\nheartbeat timeout to avoid flapping.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "heartbeatTopic": {
                     "description": "This is the pubsub topic that the compute node will use to send heartbeats to the requester node.",
@@ -2431,19 +2407,11 @@
                 },
                 "infoUpdateFrequency": {
                     "description": "The frequency with which the compute node will send node info (inc current labels)\nto the controlling requester node.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "resourceUpdateFrequency": {
                     "description": "How often the compute node will send current resource availability to the requester node.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 }
             }
         },
@@ -2451,10 +2419,10 @@
             "type": "object",
             "properties": {
                 "duration": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "frequency": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "size": {
                     "type": "integer"
@@ -2465,16 +2433,16 @@
             "type": "object",
             "properties": {
                 "evalBrokerInitialRetryDelay": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "evalBrokerMaxRetryCount": {
                     "type": "integer"
                 },
                 "evalBrokerSubsequentRetryDelay": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "evalBrokerVisibilityTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 }
             }
         },
@@ -2545,11 +2513,7 @@
             "properties": {
                 "defaultJobExecutionTimeout": {
                     "description": "DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with\nno timeout requirement defined.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "jobExecutionTimeoutClientIDBypassList": {
                     "description": "JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout\ncheck.",
@@ -2560,27 +2524,15 @@
                 },
                 "jobNegotiationTimeout": {
                     "description": "JobNegotiationTimeout default timeout value to hold a bid for a job",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "maxJobExecutionTimeout": {
                     "description": "MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with\nhigher timeout requirements will not be bid on.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "minJobExecutionTimeout": {
                     "description": "MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with\nlower timeout requirements will not be bid on.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 }
             }
         },
@@ -2612,11 +2564,7 @@
             "properties": {
                 "logRunningExecutionsInterval": {
                     "description": "logging running executions",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 }
             }
         },
@@ -2720,7 +2668,7 @@
                     "type": "integer"
                 },
                 "downloadURLRequestTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "executorPluginPath": {
                     "description": "Deprecated: replaced by cfg.PluginsDir()",
@@ -2765,7 +2713,7 @@
                     }
                 },
                 "volumeSizeRequestTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "webUI": {
                     "description": "Configuration for the web UI",
@@ -2797,7 +2745,7 @@
                     "$ref": "#/definitions/models.FailureInjectionRequesterConfig"
                 },
                 "housekeepingBackgroundTaskInterval": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "jobDefaults": {
                     "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.JobDefaults"
@@ -2818,7 +2766,7 @@
                     "type": "boolean"
                 },
                 "nodeInfoStoreTTL": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "nodeRankRandomnessRange": {
                     "type": "integer"
@@ -2848,11 +2796,7 @@
             "properties": {
                 "heartbeatCheckFrequency": {
                     "description": "This setting is the time period after which a compute node is considered to be unresponsive.\nIf the compute node misses two of these frequencies, it will be marked as unknown.  The compute\nnode should have a frequency setting less than this one to ensure that it does not keep\nswitching between unknown and active too frequently.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 },
                 "heartbeatTopic": {
                     "description": "This is the pubsub topic that the compute node will use to send heartbeats to the requester node.",
@@ -2860,11 +2804,7 @@
                 },
                 "nodeDisconnectedAfter": {
                     "description": "This is the time period after which a compute node is considered to be disconnected. If the compute\nnode does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
-                        }
-                    ]
+                    "type": "integer"
                 }
             }
         },
@@ -2875,7 +2815,7 @@
                     "type": "boolean"
                 },
                 "preSignedURLExpiration": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 }
             }
         },
@@ -2886,7 +2826,7 @@
                     "type": "number"
                 },
                 "queueBackoff": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 }
             }
         },
@@ -2964,13 +2904,13 @@
                     "type": "integer"
                 },
                 "workerEvalDequeueBaseBackoff": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "workerEvalDequeueMaxBackoff": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 },
                 "workerEvalDequeueTimeout": {
-                    "$ref": "#/definitions/github_com_bacalhau-project_bacalhau_pkg_config_legacy_types.Duration"
+                    "type": "integer"
                 }
             }
         }
