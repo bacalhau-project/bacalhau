@@ -41,7 +41,7 @@ download_artifacts() {
 }
 
 main() {
-    if [ -z "${BUILDKITE_TAG:-}" ]; then
+    if [ -n "${BUILDKITE_TAG:-}" ]; then
         set_environment_variables
         docker_context_create
         download_artifacts
@@ -49,7 +49,7 @@ main() {
         docker_login
         make push-bacalhau-image
     else
-        echo "Skipping artifact download: BUILDKITE_TAG is present"
+        echo "Skipping artifact download: BUILDKITE_TAG is not present"
     fi
 }
 
