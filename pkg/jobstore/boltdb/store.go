@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -82,7 +83,7 @@ func WithClock(clock clock.Clock) Option {
 //	ExecutionsIndex  = execution-id -> Job id
 //	EvaluationsIndex = evaluation-id -> Job id
 func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
-	db, err := GetDatabase(dbPath)
+	db, err := boltdblib.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
