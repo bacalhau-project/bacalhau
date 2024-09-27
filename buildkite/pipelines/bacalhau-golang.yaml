@@ -4,13 +4,12 @@
 # build.pull_request.labels includes "build/go" ||
 # build.pull_request.labels includes "build/golang" ||
 # build.tag != null
-
 steps:
   - label: ":golang: Lint"
     command: "./buildkite/scripts/lint.sh"
     key: "lint"
     agents:
-      queue: "buildkite-hosted-linux-medium"
+      queue: "buildkite-hosted-linux-large"
 
   - group: ":package: Build Tarball"
     key: "build-tarball"
@@ -64,9 +63,14 @@ steps:
 
   - wait: ~
 
-  # Release CLI is only triggered if the tag is present.
+  - label: ":docker: Build & Publish Bacalhau Image"
+    command: "./buildkite/scripts/bacalhau_image.sh"
+    key: "publish-bacalhau-image"
+    agents:
+      queue: "buildkite-hosted-linux-large"
+    if: build.tag != null
 
   - label: ":rocket: Release CLI"
     command: "./buildkite/scripts/release_cli.sh"
     key: "release-cli"
-    if: build.tag != ""
+    if: build.tag != null

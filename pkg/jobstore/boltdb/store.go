@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -82,7 +83,7 @@ func WithClock(clock clock.Clock) Option {
 //	ExecutionsIndex  = execution-id -> Job id
 //	EvaluationsIndex = evaluation-id -> Job id
 func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
-	db, err := GetDatabase(dbPath)
+	db, err := boltdblib.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -936,7 +937,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	job, err := b.getJob(tx, jobID)
 	if err != nil {
-		if models.IsBaseError(err) {
+		if bacerrors.IsError(err) {
 			return err
 		}
 		return NewBoltDbError(err)
@@ -1255,7 +1256,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 
 	// If there is no error getting an eval with this ID, then it already exists
 	if _, err = b.getEvaluation(tx, eval.ID); err == nil {
-		return bacerrors.NewAlreadyExists(eval.ID, "Evaluation")
+		return jobstore.NewErrEvaluationAlreadyExists(eval.ID)
 	}
 
 	tx.OnCommit(func() {
@@ -1307,7 +1308,7 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation,
 	} else {
 		data := bkt.Get([]byte(id))
 		if data == nil {
-			return eval, bacerrors.NewEvaluationNotFound(id)
+			return eval, jobstore.NewErrEvaluationNotFound(id)
 		}
 
 		err = b.marshaller.Unmarshal(data, &eval)
