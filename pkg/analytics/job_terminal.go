@@ -1,6 +1,8 @@
 package analytics
 
 import (
+	"time"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -8,19 +10,22 @@ import (
 const TerminalJobEventType = "bacalhau.job_v1.terminal"
 
 type JobTerminalEvent struct {
-	JobID         string `json:"job_id"`
+	JobID string `json:"job_id"`
+
 	NameSet       bool   `json:"name_set"`
 	NamespaceHash string `json:"namespace_hash"`
-	Type          string `json:"type"`
-	Count         int    `json:"count"`
-	LabelsCount   int    `json:"labels_count"`
-	MetaCount     int    `json:"meta_count"`
-	State         string `json:"state"`
-	StateMessage  string `json:"state_message"`
-	Version       uint64 `json:"version"`
-	Revision      uint64 `json:"revision"`
-	CreateTime    int64  `json:"create_time"`
-	ModifyTime    int64  `json:"modify_time"`
+
+	Type        string `json:"type"`
+	Count       int    `json:"count"`
+	LabelsCount int    `json:"labels_count"`
+	MetaCount   int    `json:"meta_count"`
+
+	State string `json:"state"`
+
+	Version    uint64    `json:"version"`
+	Revision   uint64    `json:"revision"`
+	CreateTime time.Time `json:"create_time"`
+	ModifyTime time.Time `json:"modify_time"`
 
 	TaskNameHash         string   `json:"task_name_hash"`
 	TaskEngineType       string   `json:"task_engine_type"`
@@ -29,15 +34,14 @@ type JobTerminalEvent struct {
 	TaskMetaCount        int      `json:"task_meta_count"`
 	TaskInputSourceTypes []string `json:"task_input_source_types"`
 	TaskResultPathCount  int      `json:"task_result_path_count"`
-	TaskCPUUnits         float64  `json:"task_cpu_units"`
-	TaskMemoryBytes      uint64   `json:"task_memory_bytes"`
-	TaskDiskBytes        uint64   `json:"task_disk_bytes"`
-	TaskGPUCount         uint64   `json:"task_gpu_count"`
-	TaskNetworkType      string   `json:"task_network_type"`
-	TaskDomainsCount     int      `json:"task_domains_count"`
-	TaskExecutionTimeout int64    `json:"task_execution_timeout"`
-	TaskQueueTimeout     int64    `json:"task_queue_timeout"`
-	TaskTotalTimeout     int64    `json:"task_total_timeout"`
+
+	Resources Resource `json:"resources,omitempty"`
+
+	TaskNetworkType      string `json:"task_network_type"`
+	TaskDomainsCount     int    `json:"task_domains_count"`
+	TaskExecutionTimeout int64  `json:"task_execution_timeout"`
+	TaskQueueTimeout     int64  `json:"task_queue_timeout"`
+	TaskTotalTimeout     int64  `json:"task_total_timeout"`
 }
 
 func NewJobTerminalEvent(j models.Job) *Event {
@@ -47,14 +51,30 @@ func NewJobTerminalEvent(j models.Job) *Event {
 		taskInputTypes[i] = s.Source.Type
 	}
 	// if we can't parse the resources use zero
+	var resource Resource
 	taskResources, err := t.ResourcesConfig.ToResources()
 	if err != nil {
-		taskResources = &models.Resources{
-			CPU:    0,
-			Memory: 0,
-			Disk:   0,
-			GPU:    0,
-			GPUs:   nil,
+		resource = Resource{
+			CPUUnits:    0,
+			MemoryBytes: 0,
+			DiskBytes:   0,
+			GPUCount:    0,
+			GPUTypes:    nil,
+		}
+	} else {
+		gpuTypes := make([]GPUInfo, len(taskResources.GPUs))
+		for i, gpu := range taskResources.GPUs {
+			gpuTypes[i] = GPUInfo{
+				Name:   gpu.Name,
+				Vendor: string(gpu.Vendor),
+			}
+		}
+		resource = Resource{
+			CPUUnits:    taskResources.CPU,
+			MemoryBytes: taskResources.Memory,
+			DiskBytes:   taskResources.Disk,
+			GPUCount:    taskResources.GPU,
+			GPUTypes:    gpuTypes,
 		}
 	}
 	terminalJobEvent := JobTerminalEvent{
@@ -66,11 +86,10 @@ func NewJobTerminalEvent(j models.Job) *Event {
 		LabelsCount:          len(j.Labels),
 		MetaCount:            len(j.Meta),
 		State:                j.State.StateType.String(),
-		StateMessage:         j.State.Message,
 		Version:              j.Version,
 		Revision:             j.Revision,
-		CreateTime:           j.CreateTime,
-		ModifyTime:           j.ModifyTime,
+		CreateTime:           time.Unix(0, j.CreateTime).UTC(),
+		ModifyTime:           time.Unix(0, j.ModifyTime).UTC(),
 		TaskNameHash:         hashString(t.Name),
 		TaskEngineType:       t.Engine.Type,
 		TaskPublisherType:    t.Publisher.Type,
@@ -78,10 +97,7 @@ func NewJobTerminalEvent(j models.Job) *Event {
 		TaskMetaCount:        len(t.Meta),
 		TaskInputSourceTypes: taskInputTypes,
 		TaskResultPathCount:  len(t.ResultPaths),
-		TaskCPUUnits:         taskResources.CPU,
-		TaskMemoryBytes:      taskResources.Memory,
-		TaskDiskBytes:        taskResources.Disk,
-		TaskGPUCount:         taskResources.GPU,
+		Resources:            resource,
 		TaskNetworkType:      t.Network.Type.String(),
 		TaskDomainsCount:     len(t.Network.Domains),
 		TaskExecutionTimeout: t.Timeouts.ExecutionTimeout,
