@@ -39,11 +39,11 @@ type ExecutionEvent struct {
 }
 
 func NewCreatedExecutionEvent(e models.Execution) *Event {
-	return NewEvent(CreatedExecutionEventType, e)
+	return NewEvent(CreatedExecutionEventType, newExecutionEvent(e))
 }
 
 func NewTerminalExecutionEvent(e models.Execution) *Event {
-	return NewEvent(TerminalExecutionEventType, e)
+	return NewEvent(TerminalExecutionEventType, newExecutionEvent(e))
 }
 
 func newExecutionEvent(e models.Execution) ExecutionEvent {

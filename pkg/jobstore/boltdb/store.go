@@ -1225,6 +1225,9 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	if newExecution.IsTerminalState() {
 		analytics.EmitEvent(context.TODO(), analytics.NewTerminalExecutionEvent(newExecution))
 	}
+	if newExecution.IsDiscarded() {
+		analytics.EmitEvent(context.TODO(), analytics.NewComputeMessageExecutionEvent(newExecution.JobID, newExecution.ID, newExecution.ComputeState.Message))
+	}
 
 	return nil
 }
