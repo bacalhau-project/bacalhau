@@ -6,7 +6,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-const ExecutionEventType = "bacalhau.execution_v1"
+const TerminalExecutionEventType = "bacalhau.execution_v1.terminal"
+const CreatedExecutionEventType = "bacalhau.execution_v1.create"
 
 type ExecutionEvent struct {
 	JobID       string `json:"job_id,omitempty"`
@@ -37,7 +38,15 @@ type ExecutionEvent struct {
 	ModifyTime time.Time `json:"modify_time,omitempty"`
 }
 
-func NewExecutionEvent(e models.Execution) *Event {
+func NewCreatedExecutionEvent(e models.Execution) *Event {
+	return NewEvent(CreatedExecutionEventType, e)
+}
+
+func NewTerminalExecutionEvent(e models.Execution) *Event {
+	return NewEvent(TerminalExecutionEventType, e)
+}
+
+func newExecutionEvent(e models.Execution) ExecutionEvent {
 	resources := make(map[string]Resource, len(e.AllocatedResources.Tasks))
 	for taskName, taskResources := range e.AllocatedResources.Tasks {
 		gpuTypes := make([]GPUInfo, len(taskResources.GPUs))
@@ -68,7 +77,7 @@ func NewExecutionEvent(e models.Execution) *Event {
 		exitCode = e.RunOutput.ExitCode
 	}
 
-	event := ExecutionEvent{
+	return ExecutionEvent{
 		// ID fields.
 		JobID:       e.JobID,
 		ExecutionID: e.ID,
@@ -105,6 +114,4 @@ func NewExecutionEvent(e models.Execution) *Event {
 		CreateTime: time.Unix(0, e.CreateTime).UTC(),
 		ModifyTime: time.Unix(0, e.ModifyTime).UTC(),
 	}
-
-	return NewEvent(ExecutionEventType, event)
 }

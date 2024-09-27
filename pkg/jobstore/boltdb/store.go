@@ -1159,7 +1159,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 		}
 	}
 
-	analytics.EmitEvent(context.TODO(), analytics.NewExecutionEvent(execution))
+	analytics.EmitEvent(context.TODO(), analytics.NewCreatedExecutionEvent(execution))
 	return nil
 }
 
@@ -1221,7 +1221,9 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
-	analytics.EmitEvent(context.TODO(), analytics.NewExecutionEvent(newExecution))
+	if newExecution.IsTerminalState() {
+		analytics.EmitEvent(context.TODO(), analytics.NewTerminalExecutionEvent(newExecution))
+	}
 
 	return nil
 }
