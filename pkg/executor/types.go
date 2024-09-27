@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -77,13 +78,13 @@ type RunCommandRequest struct {
 
 // Common Error Codes for Executor
 const (
-	ExecutionAlreadyStarted   models.ErrorCode = "ExecutionAlreadyStarted"
-	ExecutionAlreadyCancelled models.ErrorCode = "ExecutionAlreadyCancelled"
-	ExecutionAlreadyComplete  models.ErrorCode = "ExecutionAlreadyComplete"
-	ExecutionNotFound         models.ErrorCode = "ExecutionNotFound"
-	ExecutorSpecValidationErr models.ErrorCode = "ExecutorSpecValidationErr"
+	ExecutionAlreadyStarted   bacerrors.ErrorCode = "ExecutionAlreadyStarted"
+	ExecutionAlreadyCancelled bacerrors.ErrorCode = "ExecutionAlreadyCancelled"
+	ExecutionAlreadyComplete  bacerrors.ErrorCode = "ExecutionAlreadyComplete"
+	ExecutionNotFound         bacerrors.ErrorCode = "ExecutionNotFound"
+	ExecutorSpecValidationErr bacerrors.ErrorCode = "ExecutorSpecValidationErr"
 )
 
-func NewExecutorError(code models.ErrorCode, message string) *models.BaseError {
-	return models.NewBaseError(message).WithCode(code).WithComponent(EXECUTOR_COMPONENT)
+func NewExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
+	return bacerrors.New(message).WithCode(code).WithComponent(EXECUTOR_COMPONENT)
 }

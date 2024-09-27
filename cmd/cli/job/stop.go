@@ -157,8 +157,8 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string, api client.API) 
 	})
 	if err != nil {
 		spinner.Done(printer.StopFailed)
-		if errResp, ok := err.(*bacerrors.ErrorResponse); ok {
-			return errResp
+		if bacerrors.IsError(err) {
+			return err
 		}
 		return fmt.Errorf("unknown error trying to stop job (ID: %s): %w", requestedJobID, err)
 	}

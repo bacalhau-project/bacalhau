@@ -8,11 +8,11 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/labstack/echo/v4"
-	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
@@ -413,7 +413,7 @@ func createTransport(ctx context.Context, config NodeConfig) (*nats_transport.NA
 		IsRequesterNode:          config.IsRequesterNode,
 	})
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create NATS transport layer")
+		return nil, bacerrors.Wrap(err, "failed to create transport layer")
 	}
 	return transportLayer, nil
 }

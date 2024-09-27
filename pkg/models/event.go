@@ -5,6 +5,46 @@ import (
 	"time"
 )
 
+const (
+	DetailsKeyIsError        = "IsError"
+	DetailsKeyHint           = "Hint"
+	DetailsKeyRetryable      = "Retryable"
+	DetailsKeyFailsExecution = "FailsExecution"
+	DetailsKeyNewState       = "NewState"
+)
+
+type HasHint interface {
+	// Hint A human-readable string that advises the user on how they might solve the error.
+	Hint() string
+}
+
+type HasRetryable interface {
+	// Retryable Whether the error could be retried, assuming the same input and
+	// node configuration; i.e. the error is transient and due to network
+	// capacity or service outage.
+	//
+	// If a component raises an error with Retryable() as true, the system may
+	// retry the last action after some length of time. If it is false, it
+	// should not try the action again, and may choose an alternative action or
+	// fail the job.
+	Retryable() bool
+}
+
+type HasFailsExecution interface {
+	// FailsExecution Whether this error means that the associated execution cannot
+	// continue.
+	//
+	// If a component raises an error with FailsExecution() as true,
+	// the hosting executor should report the execution as failed and stop any
+	// further steps.
+	FailsExecution() bool
+}
+
+type HasDetails interface {
+	// Details An extra set of metadata provided by the error.
+	Details() map[string]string
+}
+
 // EventTopic is a high level categorisation that can be applied to an event. It
 // should be a human-readable string with no dynamic content. They are used to
 // disambiguate events from the same component occurring in different contexts.
