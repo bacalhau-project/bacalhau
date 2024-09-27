@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
@@ -80,7 +81,7 @@ This command supports two input formats for setting configuration values:
 				value = args[1:]
 			}
 
-			return setConfig(configPath, key, value...)
+			return setConfig(rawConfig, configPath, key, value...)
 		},
 		// Provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,
@@ -90,8 +91,7 @@ This command supports two input formats for setting configuration values:
 	return setCmd
 }
 
-func setConfig(cfgFilePath, key string, value ...string) error {
-	log.Info().Msgf("Writing config to %s", cfgFilePath)
+func setConfig(cfg *config.Config, cfgFilePath, key string, value ...string) error {
 	v := viper.New()
 	v.SetConfigFile(cfgFilePath)
 	if err := v.ReadInConfig(); err != nil {
@@ -103,7 +103,23 @@ func setConfig(cfgFilePath, key string, value ...string) error {
 	if err != nil {
 		return err
 	}
-	v.Set(key, parsed)
+	if key == types.DataDirKey {
+		currentRepoPath := cfg.Get(types.DataDirKey)
+		if currentRepoPath != "" {
+			if filepath.Join(currentRepoPath.(string), config.DefaultFileName) == cfgFilePath {
+				return bacerrors.New("modifying the config key %q within the bacalhau repo config %q is not permitted.",
+					types.DataDirKey, cfgFilePath).WithHint("You are free to do so manually, but advised against it.")
+			}
+		}
+		dataDirPath, err := config.ExpandPath(parsed.(string))
+		if err != nil {
+			return err
+		}
+		v.Set(key, dataDirPath)
+	} else {
+		v.Set(key, parsed)
+	}
+	log.Info().Msgf("Writing config to %s", cfgFilePath)
 	if err := v.WriteConfigAs(cfgFilePath); err != nil {
 		return err
 	}

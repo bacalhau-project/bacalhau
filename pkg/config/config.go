@@ -135,6 +135,9 @@ func New(opts ...Option) (*Config, error) {
 			}
 			return nil, fmt.Errorf("opening config file %q: %w", path, err)
 		}
+		if dataDirPath := c.base.GetString(types.DataDirKey); dataDirPath != "" && !filepath.IsAbs(dataDirPath) {
+			return nil, fmt.Errorf("config file %q with value %q invalid. %s must be an absolute path", c.base.ConfigFileUsed(), dataDirPath, types.DataDirKey)
+		}
 	}
 
 	for name, values := range c.environmentVariables {
@@ -227,21 +230,11 @@ func New(opts ...Option) (*Config, error) {
 	// and expand the path for them
 	dataDirPath := c.base.GetString(types.DataDirKey)
 	if dataDirPath != "" {
-		// if provided a tilda path, attempt to expand it
-		expanded, err := homedir.Expand(dataDirPath)
-		if err == nil {
-			dataDirPath = expanded
+		dataDirPath, err := ExpandPath(dataDirPath)
+		if err != nil {
+			return nil, fmt.Errorf("%s invalid: %w", types.DataDirKey, err)
 		}
-		// if provided a relative path, expand to absolute
-		absPath, err := filepath.Abs(dataDirPath)
-		if err == nil {
-			dataDirPath = absPath
-		}
-
 		c.base.Set(types.DataDirKey, dataDirPath)
-		if strings.Contains(dataDirPath, "$") {
-			log.Warn().Msgf("DataDir path (%q) contains a '$' character. Note that environment variables are not expanded in this configuration. The path will be used as-is.", dataDirPath)
-		}
 	}
 
 	log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", c.paths, c.base.Get(types.DataDirKey))
@@ -345,4 +338,27 @@ func GenerateNodeID(ctx context.Context, nodeNameProviderType string) (string, e
 	}
 
 	return nodeName, nil
+}
+
+func ExpandPath(path string) (string, error) {
+	// if provided a tilda path, attempt to expand it
+	expanded, err := homedir.Expand(path)
+	if err == nil {
+		path = expanded
+	}
+	// if provided a relative path, expand to absolute
+	absPath, err := filepath.Abs(path)
+	if err == nil {
+		path = absPath
+	}
+
+	if strings.Contains(path, "$") {
+		log.Warn().Msgf("path (%q) contains a '$' character. Note that environment variables are not expanded in this configuration. The path will be used as-is.", path)
+	}
+
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("failed to expand %q to absolute path", path)
+	}
+
+	return path, nil
 }
