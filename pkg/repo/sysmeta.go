@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -110,9 +111,20 @@ func (fsr *FsRepo) WriteLastUpdateCheck(lastUpdateCheck time.Time) error {
 	})
 }
 
-// readInstanceID reads the InstanceID in the metadata.
+// InstanceID reads the InstanceID in the metadata.
+// It returns empty string if it fails to read the metadata.
+func (fsr *FsRepo) InstanceID() string {
+	instanceID, err := fsr.MustInstanceID()
+	if err != nil {
+		log.Debug().Err(err).Msg("failed to read instanceID")
+		return ""
+	}
+	return instanceID
+}
+
+// MustInstanceID reads the InstanceID in the metadata.
 // It fails if the metadata file doesn't exist.
-func (fsr *FsRepo) readInstanceID() (string, error) {
+func (fsr *FsRepo) MustInstanceID() (string, error) {
 	sysmeta, err := fsr.readMetadata()
 	if err != nil {
 		return "", err
