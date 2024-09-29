@@ -365,7 +365,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config_legacy.GetDockerCredentials()
 		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
-			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, dockerCreds, pullErr)
+			return container.CreateResponse{}, docker.NewDockerImageError(err, dockerArgs.Image)
 		}
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

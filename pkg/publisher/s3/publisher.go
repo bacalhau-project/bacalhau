@@ -94,7 +94,7 @@ func (publisher *Publisher) PublishResult(
 	// Upload the GZIP archive to S3.
 	res, err := client.Uploader.Upload(ctx, putObjectInput)
 	if err != nil {
-		return models.SpecConfig{}, err
+		return models.SpecConfig{}, s3helper.NewS3PublisherServiceError(err)
 	}
 	log.Debug().Msgf("Uploaded s3://%s/%s", spec.Bucket, aws.ToString(res.Key))
 

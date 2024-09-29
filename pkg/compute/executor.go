@@ -435,9 +435,8 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 	}
 	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
 	if err != nil {
-		return nil, fmt.Errorf("failed to publish result: %w", err)
+		return nil, bacerrors.Wrap(err, "failed to publish result")
 	}
-
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
 		Msg("Execution published")

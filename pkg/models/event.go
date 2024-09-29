@@ -1,8 +1,12 @@
 package models
 
 import (
+	"errors"
+	"fmt"
 	"maps"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
 
 const (
@@ -11,6 +15,7 @@ const (
 	DetailsKeyRetryable      = "Retryable"
 	DetailsKeyFailsExecution = "FailsExecution"
 	DetailsKeyNewState       = "NewState"
+	DetailsKeyErrorCode      = "ErrorCode"
 )
 
 type HasHint interface {
@@ -125,6 +130,14 @@ func (e *Event) WithFailsExecution(failsExecution bool) *Event {
 	return e
 }
 
+// WithErrorCode returns a new Event with the given error code.
+func (e *Event) WithErrorCode(errorCode string) *Event {
+	if errorCode != "" {
+		return e.WithDetail(DetailsKeyErrorCode, errorCode)
+	}
+	return e
+}
+
 // WithDetails returns a new Event with the given details and topic.
 func (e *Event) WithDetails(details map[string]string) *Event {
 	maps.Copy(e.Details, details)
@@ -176,18 +189,28 @@ func (e *Event) GetJobStateIfPresent() (JobStateType, error) {
 func EventFromError(topic EventTopic, err error) Event {
 	event := NewEvent(topic).WithError(err)
 
-	if hasDetails, ok := err.(HasDetails); ok {
-		event = event.WithDetails(hasDetails.Details())
+	// if error is bacerrors
+	var bacErr bacerrors.Error
+	if errors.As(err, &bacErr) {
+		event = event.
+			WithDetails(bacErr.Details()).
+			WithHint(bacErr.Hint()).
+			WithRetryable(bacErr.Retryable()).
+			WithFailsExecution(bacErr.FailsExecution()).
+			WithErrorCode(fmt.Sprintf("%s:%s", bacErr.Component(), bacErr.Code()))
+	} else {
+		if hasDetails, ok := err.(HasDetails); ok {
+			event = event.WithDetails(hasDetails.Details())
+		}
+		if hasHint, ok := err.(HasHint); ok {
+			event = event.WithHint(hasHint.Hint())
+		}
+		if hasRetryable, ok := err.(HasRetryable); ok {
+			event = event.WithRetryable(hasRetryable.Retryable())
+		}
+		if hasFailsExecution, ok := err.(HasFailsExecution); ok {
+			event = event.WithFailsExecution(hasFailsExecution.FailsExecution())
+		}
 	}
-	if hasHint, ok := err.(HasHint); ok {
-		event = event.WithHint(hasHint.Hint())
-	}
-	if hasRetryable, ok := err.(HasRetryable); ok {
-		event = event.WithRetryable(hasRetryable.Retryable())
-	}
-	if hasFailsExecution, ok := err.(HasFailsExecution); ok {
-		event = event.WithFailsExecution(hasFailsExecution.FailsExecution())
-	}
-
 	return *event
 }

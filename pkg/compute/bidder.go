@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -314,8 +315,7 @@ func (b Bidder) runResourceBidding(
 	// calculate resource usage of the job, failure here represents a compute failure.
 	resourceUsage, err := b.usageCalculator.Calculate(ctx, *job, *resources)
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Error calculating resource requirements for job")
-		return nil, fmt.Errorf("calculating resource usage of job: %w", err)
+		return nil, bacerrors.Wrap(err, "calculating resource usage of job")
 	}
 
 	// ask the bidding strategy if we should bid on this job
