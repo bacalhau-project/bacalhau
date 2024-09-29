@@ -1,16 +1,12 @@
 
 
 steps:
-  - label: ":swagger: Generate Swagger"
-    command: "./scripts/generate_swagger.sh"
-
-  - wait: ~
 
   - label: ":python: Build Python API Client"
-    command: "make build-python-apiclient"
+    command: "./buildkite/scripts/build_python_client.sh"
 
   - label: ":python: Build Python SDK"
-    command: "make build-python-sdk"
+    command: "./buildkite/scripts/build_python_sdk.sh"
 
   - label: ":python: Build Bacalhau Airflow Integration"
     command: "make build-bacalhau-airflow"
