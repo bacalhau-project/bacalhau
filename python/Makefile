@@ -1,5 +1,5 @@
 export EARTHLY ?= $(shell command -v earthly 2> /dev/null)
-export POETRY ?= $(shell command -v poetry 2> /dev/null)
+export POETRY ?= $(shell command -v poetry 2> /dev/null
 
 # Should come from global make file
 VERSION ?= $(or ${PYPI_VERSION}, $(shell ../scripts/get_current_version_for_builds.py --pep440))
@@ -67,6 +67,6 @@ publish:
 	echo "PYPI_VERSION=$(VERSION)" > .arg
 
 	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
-	python ../scripts/get_pypi_token.py
+	python3 ../scripts/get_pypi_token.py
 
 	$(EARTHLY) --push +publish --RELEASE_PYTHON_PACKAGES=${RELEASE_PYTHON_PACKAGES} --PYPI_VERSION=${PYPI_VERSION}
