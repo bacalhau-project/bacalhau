@@ -1,8 +1,8 @@
-bacalhau_version            = "v1.5.0-dev2"
+bacalhau_version            = "v1.5.0-alpha8"
 bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
 bacalhau_environment        = "staging"
-ipfs_version                = "v0.12.2"
+ipfs_version                = "v0.18.1"
 gcp_project                 = "bacalhau-stage"
 grafana_cloud_prometheus_user      = "1008771"
 grafana_cloud_prometheus_endpoint  = "https://prometheus-us-central1.grafana.net/api/prom/push"
