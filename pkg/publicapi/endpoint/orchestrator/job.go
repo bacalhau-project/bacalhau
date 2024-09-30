@@ -418,13 +418,13 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 //	@Tags			Orchestrator
 //	@Accept			json
 //	@Produce		octet-stream
-//	@Param			id				path		string	true	"ID of the job to stream logs for"
-//	@Param			execution_id	query		string	false	"Fetch logs for a specific execution"
-//	@Param			tail			query		bool	false	"Fetch historical logs"
-//	@Param			follow			query		bool	false	"Follow the logs"
+//	@Param			id				path		string				true	"ID of the job to stream logs for"
+//	@Param			execution_id	query		string				false	"Fetch logs for a specific execution"
+//	@Param			tail			query		bool				false	"Fetch historical logs"
+//	@Param			follow			query		bool				false	"Follow the logs"
 //	@Success		101				{object}	models.ExecutionLog	"Switching Protocols to WebSocket"
-//	@Failure		400				{object}	string	"Bad Request"
-//	@Failure		500				{object}	string	"Internal Server Error"
+//	@Failure		400				{object}	string				"Bad Request"
+//	@Failure		500				{object}	string				"Internal Server Error"
 //	@Router			/api/v1/orchestrator/jobs/{id}/logs [get]
 func (e *Endpoint) logs(c echo.Context) error {
 	ws, err := publicapi.WebsocketUpgrader.Upgrade(c.Response(), c.Request(), nil)

@@ -10,10 +10,10 @@ swag init \
 --outputTypes "go,json" \
 --parseDependency \
 --parseInternal \
---parseDepth 1 \
--g "./pkg/publicapi/server.go" \
+--generalInfo "api.go" \
 --overridesFile .swaggo \
---output "${SWAGGER_DIR}"
+--output "${SWAGGER_DIR}" \
+--dir "pkg/publicapi,pkg/models,pkg/config/types,pkg/types"
 
 echo "swagger.json generated - moving from ${SWAGGER_DIR} to ${WEBUI_PATH}"
 
