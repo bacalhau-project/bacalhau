@@ -9,7 +9,7 @@ setup_environment_variables() {
 download_swagger() {
   cd docs
   rm -rf swagger.json
-  buildkite-agent artifact download "swagger.json" --build $BUILDKITE_BUILD_ID
+  buildkite-agent artifact download "swagger.json" . --build $BUILDKITE_BUILD_ID
 }
 
 build_python_apiclient() {
