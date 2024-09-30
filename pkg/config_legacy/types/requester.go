@@ -12,7 +12,7 @@ type RequesterConfig struct {
 	JobSelectionPolicy models.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
 	JobStore           JobStoreConfig            `yaml:"JobStore"`
 
-	HousekeepingBackgroundTaskInterval Duration                               `yaml:"HousekeepingBackgroundTaskInterval" swaggertype:"primitive,integer"`
+	HousekeepingBackgroundTaskInterval Duration                               `yaml:"HousekeepingBackgroundTaskInterval"`
 	NodeRankRandomnessRange            int                                    `yaml:"NodeRankRandomnessRange"`
 	OverAskForBidsFactor               uint                                   `yaml:"OverAskForBidsFactor"`
 	FailureInjectionConfig             models.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
@@ -28,7 +28,7 @@ type RequesterConfig struct {
 	DefaultPublisher string            `yaml:"DefaultPublisher"`
 
 	ControlPlaneSettings RequesterControlPlaneConfig `yaml:"ControlPlaneSettings"`
-	NodeInfoStoreTTL     Duration                    `yaml:"NodeInfoStoreTTL" swaggertype:"primitive,integer"`
+	NodeInfoStoreTTL     Duration                    `yaml:"NodeInfoStoreTTL"`
 
 	// ManualNodeApproval is a flag that determines if nodes should be manually approved or not.
 	// By default, nodes are auto-approved to simplify upgrades, by setting this property to
@@ -37,21 +37,21 @@ type RequesterConfig struct {
 }
 
 type EvaluationBrokerConfig struct {
-	EvalBrokerVisibilityTimeout    Duration `yaml:"EvalBrokerVisibilityTimeout" swaggertype:"primitive,integer"`
-	EvalBrokerInitialRetryDelay    Duration `yaml:"EvalBrokerInitialRetryDelay" swaggertype:"primitive,integer"`
-	EvalBrokerSubsequentRetryDelay Duration `yaml:"EvalBrokerSubsequentRetryDelay" swaggertype:"primitive,integer"`
+	EvalBrokerVisibilityTimeout    Duration `yaml:"EvalBrokerVisibilityTimeout"`
+	EvalBrokerInitialRetryDelay    Duration `yaml:"EvalBrokerInitialRetryDelay"`
+	EvalBrokerSubsequentRetryDelay Duration `yaml:"EvalBrokerSubsequentRetryDelay"`
 	EvalBrokerMaxRetryCount        int      `yaml:"EvalBrokerMaxRetryCount"`
 }
 
 type WorkerConfig struct {
 	WorkerCount                  int      `yaml:"WorkerCount"`
-	WorkerEvalDequeueTimeout     Duration `yaml:"WorkerEvalDequeueTimeout" swaggertype:"primitive,integer"`
-	WorkerEvalDequeueBaseBackoff Duration `yaml:"WorkerEvalDequeueBaseBackoff" swaggertype:"primitive,integer"`
-	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff" swaggertype:"primitive,integer"`
+	WorkerEvalDequeueTimeout     Duration `yaml:"WorkerEvalDequeueTimeout"`
+	WorkerEvalDequeueBaseBackoff Duration `yaml:"WorkerEvalDequeueBaseBackoff"`
+	WorkerEvalDequeueMaxBackoff  Duration `yaml:"WorkerEvalDequeueMaxBackoff"`
 }
 
 type SchedulerConfig struct {
-	QueueBackoff               Duration `yaml:"QueueBackoff" swaggertype:"primitive,integer"`
+	QueueBackoff               Duration `yaml:"QueueBackoff"`
 	NodeOverSubscriptionFactor float64  `yaml:"NodeOverSubscriptionFactor"`
 }
 
@@ -61,13 +61,13 @@ type StorageProviderConfig struct {
 
 type S3StorageProviderConfig struct {
 	PreSignedURLDisabled   bool     `yaml:"PreSignedURLDisabled"`
-	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration" swaggertype:"primitive,integer"`
+	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration"`
 }
 
 type JobDefaults struct {
-	TotalTimeout     Duration `yaml:"TotalTimeout" swaggertype:"primitive,integer"`
-	ExecutionTimeout Duration `yaml:"ExecutionTimeout" swaggertype:"primitive,integer"`
-	QueueTimeout     Duration `yaml:"QueueTimeout" swaggertype:"primitive,integer"`
+	TotalTimeout     Duration `yaml:"TotalTimeout"`
+	ExecutionTimeout Duration `yaml:"ExecutionTimeout"`
+	QueueTimeout     Duration `yaml:"QueueTimeout"`
 }
 
 type RequesterControlPlaneConfig struct {
@@ -75,12 +75,12 @@ type RequesterControlPlaneConfig struct {
 	// If the compute node misses two of these frequencies, it will be marked as unknown.  The compute
 	// node should have a frequency setting less than this one to ensure that it does not keep
 	// switching between unknown and active too frequently.
-	HeartbeatCheckFrequency Duration `yaml:"HeartbeatFrequency" swaggertype:"primitive,integer"`
+	HeartbeatCheckFrequency Duration `yaml:"HeartbeatFrequency"`
 
 	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
 	HeartbeatTopic string `yaml:"HeartbeatTopic"`
 
 	// This is the time period after which a compute node is considered to be disconnected. If the compute
 	// node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
-	NodeDisconnectedAfter Duration `yaml:"NodeDisconnectedAfter" swaggertype:"primitive,integer"`
+	NodeDisconnectedAfter Duration `yaml:"NodeDisconnectedAfter"`
 }
