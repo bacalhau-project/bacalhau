@@ -4,6 +4,7 @@ set -e
 
 setup_environment_variables() {
   export PYPI_TOKEN=$(buildkite-agent secret get PYPI_TOKEN)
+  export TEST_PYPI_TOKEN=$(buildkite-agent secret get TEST_PYPI_TOKEN)
 }
 
 download_swagger() {
