@@ -55,7 +55,9 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 	stack := &scenario.StackConfig{}
-	stack.JobDefaults.Batch.Task.Publisher.Config = *local.NewSpecConfig()
+	localSpecConfig := local.NewSpecConfig()
+	stack.JobDefaults.Batch.Task.Publisher.Type = localSpecConfig.Type
+	stack.JobDefaults.Batch.Task.Publisher.Params = localSpecConfig.Params
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),

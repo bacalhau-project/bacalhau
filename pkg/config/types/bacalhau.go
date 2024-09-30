@@ -23,7 +23,8 @@ type Bacalhau struct {
 	Logging             Logging             `yaml:"Logging,omitempty"`
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
-	DisableAnalytics    bool                `yaml:"DisableAnalytics,omitempty"`
+	// DisableAnalytics when set to true prevents bacalhau from sharing anonymous user data with Expanso.
+	DisableAnalytics bool `yaml:"DisableAnalytics,omitempty"`
 }
 
 type API struct {

@@ -47,7 +47,18 @@ type ResourcesConfig struct {
 }
 
 type DefaultPublisherConfig struct {
-	Config models.SpecConfig `yaml:"Config,omitempty"`
+	// Type specifies the publisher type. e.g. "s3", "local", "ipfs", etc.
+	Type string `json:"Type" yaml:"Type,omitempty"`
+
+	// Params specifies the publisher configuration data.
+	Params map[string]interface{} `json:"Params,omitempty" yaml:"Params,omitempty"`
+}
+
+func (d DefaultPublisherConfig) ToSpecConfig() models.SpecConfig {
+	return models.SpecConfig{
+		Type:   d.Type,
+		Params: d.Params,
+	}
 }
 
 type TaskTimeoutConfig struct {
