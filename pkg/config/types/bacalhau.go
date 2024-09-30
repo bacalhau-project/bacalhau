@@ -3,6 +3,7 @@ package types
 // NB: Developers, after making changes (comments included) to this struct or any of its children, run go generate.
 
 //go:generate go run gen/generate.go ./
+//go:generate go fmt ./generated_constants.go ./generated_descriptions.go
 type Bacalhau struct {
 	API API `yaml:"API,omitempty"`
 	// NameProvider specifies the method used to generate names for the node. One of: hostname, aws, gcp, uuid, puuid.
@@ -23,7 +24,7 @@ type Bacalhau struct {
 	Logging             Logging             `yaml:"Logging,omitempty"`
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
-	// DisableAnalytics when set to true prevents bacalhau from sharing anonymous user data with Expanso.
+	// DisableAnalytics when set to true disables bacalhau from sharing anonymous user data with Expanso.
 	DisableAnalytics bool `yaml:"DisableAnalytics,omitempty"`
 }
 
