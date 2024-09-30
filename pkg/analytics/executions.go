@@ -20,8 +20,11 @@ type ExecutionEvent struct {
 
 	Resources map[string]Resource `json:"resources,omitempty"`
 
-	DesiredState string `json:"desired_state,omitempty"`
-	ComputeState string `json:"compute_state,omitempty"`
+	DesiredState          string `json:"desired_state,omitempty"`
+	DesiredStateErrorCode string `json:"desired_state_error_code,omitempty"`
+
+	ComputeState          string `json:"compute_state,omitempty"`
+	ComputeStateErrorCode string `json:"compute_state_error_code,omitempty"`
 
 	PublishedResultType string `json:"publisher_type,omitempty"`
 
@@ -77,6 +80,18 @@ func newExecutionEvent(e models.Execution) ExecutionEvent {
 		exitCode = e.RunOutput.ExitCode
 	}
 
+	var (
+		desiredStateErrorCode string
+		computeStateErrorCode string
+	)
+
+	if e.DesiredState.Details != nil {
+		desiredStateErrorCode = e.DesiredState.Details[models.DetailsKeyErrorCode]
+	}
+	if e.ComputeState.Details != nil {
+		computeStateErrorCode = e.ComputeState.Details[models.DetailsKeyErrorCode]
+	}
+
 	return ExecutionEvent{
 		// ID fields.
 		JobID:       e.JobID,
@@ -93,8 +108,10 @@ func newExecutionEvent(e models.Execution) ExecutionEvent {
 		Resources: resources,
 
 		// states.
-		DesiredState: e.DesiredState.StateType.String(),
-		ComputeState: e.ComputeState.StateType.String(),
+		DesiredState:          e.DesiredState.StateType.String(),
+		DesiredStateErrorCode: desiredStateErrorCode,
+		ComputeState:          e.ComputeState.StateType.String(),
+		ComputeStateErrorCode: computeStateErrorCode,
 
 		// publisher if any.
 		PublishedResultType: e.PublishedResult.Type,

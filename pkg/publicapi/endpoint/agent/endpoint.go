@@ -119,7 +119,7 @@ func (e *Endpoint) debug(c echo.Context) error {
 //	@Summary	Returns the current configuration of the node.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	types.BacalhauConfig
+//	@Success	200	{object}	types.Bacalhau
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {

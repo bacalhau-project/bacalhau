@@ -431,7 +431,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "badimage", // Bad image
 			executable:        "ls",       // Good executable
 			isValid:           false,
-			errStringContains: "Could not inspect image",
+			errStringContains: "image not available",
 		},
 		"good-image-bad-executable": {
 			imageName:         "ubuntu",        // Good image // TODO we consider an untagged image poor practice, fix this
@@ -443,7 +443,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			imageName:         "badimage",      // Bad image
 			executable:        "BADEXECUTABLE", // Bad executable
 			isValid:           false,
-			errStringContains: "Could not inspect image",
+			errStringContains: "image not available",
 		},
 	}
 
@@ -491,8 +491,8 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	// test. Alternatively, we could reduce the complexity and assert the job
 	// simply failed which is the expected behaviour for an invalid image
 	s.Require().Len(info.Executions.Items, 2)
-	s.Contains(info.Executions.Items[0].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
-	s.Contains(info.Executions.Items[1].ComputeState.Message, `Could not inspect image "@" - could be due to repo/image not existing`)
+	s.Contains(info.Executions.Items[0].ComputeState.Message, `invalid image format: "@"`)
+	s.Contains(info.Executions.Items[1].ComputeState.Message, `invalid image format: "@"`)
 }
 
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
