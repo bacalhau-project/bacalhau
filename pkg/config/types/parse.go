@@ -2,17 +2,23 @@ package types
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
 
 func CastConfigValueForKey(key string, value any) (any, error) {
 	key = strings.ToLower(key)
 	typ, ok := AllKeys()[key]
 	if !ok {
-		return nil, fmt.Errorf("%q is not a valid config key", key)
+		return nil, bacerrors.New("%q is not a valid config key", key).
+			WithHint("Run '%s config list' for the complete list of valid config keys", os.Args[0]).
+			WithCode(bacerrors.ValidationError).
+			WithComponent("config")
 	}
 
 	switch v := value.(type) {
@@ -40,7 +46,9 @@ func parseString(key, value string, typ reflect.Type) (any, error) {
 func parseStringToSlice(value string) ([]string, error) {
 	// Check for invalid separators
 	if strings.Contains(value, ";") || strings.Contains(value, " ") {
-		return nil, fmt.Errorf("invalid separator in string slice '%s', only comma (,) is allowed", value)
+		return nil, bacerrors.New("invalid separator in string slice '%s', only comma (,) is allowed", value).
+			WithCode(bacerrors.ValidationError).
+			WithComponent("config")
 	}
 
 	// If there's no comma, return a slice with a single element
@@ -55,7 +63,9 @@ func parseStringToSlice(value string) ([]string, error) {
 	for i, token := range tokens {
 		trimmedToken := strings.TrimSpace(token)
 		if trimmedToken == "" {
-			return nil, fmt.Errorf("empty token found at position %d in string slice '%s'", i, value)
+			return nil, bacerrors.New("empty token found at position %d in string slice '%s'", i, value).
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
 		}
 		tokens[i] = trimmedToken // Store the trimmed token back
 	}
@@ -80,7 +90,11 @@ func parseStringSlice(key string, values []string, typ reflect.Type) (any, error
 func parseDuration(key, value string) (string, error) {
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		return "", fmt.Errorf("parsing value: '%s' for key: '%s' to duration: %w", value, key, err)
+		return "", bacerrors.New("config key: %q expects a valid duration value, received: %q", key, value).
+			WithHint("Accepted formats: 'h' (hours), 'm' (minutes), 's' (seconds), 'ms' (milliseconds), etc. " +
+				"Example: '2h45m', '30s', '100ms").
+			WithCode(bacerrors.ValidationError).
+			WithComponent("config")
 	}
 	return duration.String(), nil
 }
@@ -90,11 +104,32 @@ func parseByKind(key, value string, typ reflect.Type) (any, error) {
 	case reflect.String:
 		return value, nil
 	case reflect.Bool:
-		return strconv.ParseBool(value)
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return "", bacerrors.New("config key: %q expects a boolean value, received: %q", key, value).
+				WithHint("Accepted formats: 'true' or 'false'").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+		return parsed, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return strconv.ParseInt(value, 10, 64)
+		parsed, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return "", bacerrors.New("config key: %q expects an integer value, received: %q", key, value).
+				WithHint("Accepted formats: '1', '2', '10', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+		return parsed, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return strconv.ParseUint(value, 10, 64)
+		parsed, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return "", bacerrors.New("config key: %q expects a positive integer value, received: %q", key, value).
+				WithHint("Accepted formats: '1', '2', '10', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+		return parsed, nil
 	case reflect.Map:
 		tokens := strings.Split(value, ",")
 		return StringSliceToMap(tokens)
@@ -105,14 +140,43 @@ func parseByKind(key, value string, typ reflect.Type) (any, error) {
 
 func StringSliceToMap(slice []string) (map[string]string, error) {
 	result := make(map[string]string)
+
 	for _, item := range slice {
 		tokens := strings.Split(item, "=")
-		if len(tokens) != 2 {
-			return nil, fmt.Errorf("expected 'key=value', received invalid format for key-value pair: '%s' in '%s'", item, slice)
+		if len(tokens) < 2 {
+			return nil, bacerrors.New("invalid format %s: expected 'key=value', but found no '=' in '%s'", slice, item).
+				WithHint("Accepted formats: 'key=value', 'key1=value1,key2=value2', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
 		}
-		key, value := tokens[0], tokens[1]
+
+		if len(tokens) > 2 {
+			return nil, bacerrors.New("invalid format %s: found multiple '=' in '%s'. Only one '=' is allowed per key-value pair", slice, item).
+				WithHint("Accepted formats: 'key=value', 'key1=value1,key2=value2', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+
+		key := tokens[0]
+		value := tokens[1]
+
+		if key == "" {
+			return nil, bacerrors.New("invalid format %s: missing key before '=' in '%s'. A valid key is required", slice, item).
+				WithHint("Accepted formats: 'key=value', 'key1=value1,key2=value2', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+
+		if value == "" {
+			return nil, bacerrors.New("invalid format %s: missing value after '=' for key '%s'. A valid value is required", slice, key).
+				WithHint("Accepted formats: 'key=value', 'key1=value1,key2=value2', etc.").
+				WithCode(bacerrors.ValidationError).
+				WithComponent("config")
+		}
+
 		result[key] = value
 	}
+
 	return result, nil
 }
 

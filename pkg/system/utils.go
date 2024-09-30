@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/c2h5oh/datasize"
+	"github.com/rs/zerolog"
 )
 
 // Making these variable to allow for testing
@@ -86,4 +87,10 @@ func MustParseURL(uri string) *url.URL {
 		panic(fmt.Sprintf("url does not parse: %s", uri))
 	}
 	return url
+}
+
+// IsDebugMode returns true if the environment variable DEBUG is set to true
+func IsDebugMode() bool {
+	// TODO: #4535 we need to add a flag to the CLI to enable debug mode
+	return os.Getenv("DEBUG") == "true" || zerolog.GlobalLevel() <= zerolog.DebugLevel
 }

@@ -7,11 +7,16 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"golang.org/x/time/rate"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -90,10 +95,8 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
-	if zerolog.GlobalLevel() <= zerolog.DebugLevel {
-		// enable debug mode to get clearer error messages
-		server.Router.Debug = true
-	}
+	// enable debug mode to get clearer error messages
+	server.Router.Debug = system.IsDebugMode()
 
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
@@ -199,7 +202,7 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%d", apiServer.Address, apiServer.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return apiServer.interceptListenError(err)
 	}
 
 	if apiServer.Port == 0 {
@@ -237,4 +240,20 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 // Shutdown shuts down the http server
 func (apiServer *Server) Shutdown(ctx context.Context) error {
 	return apiServer.httpServer.Shutdown(ctx)
+}
+
+func (apiServer *Server) interceptListenError(err error) error {
+	if strings.Contains(err.Error(), "address already in use") {
+		return bacerrors.New("address %s is already in use", apiServer.GetURI()).
+			WithComponent("APIServer").
+			WithCode(bacerrors.ConfigurationError).
+			WithHint("To resolve this, either:\n"+
+				"1. Check if you are already running bacalhau\n"+
+				"2. Stop the other process using the port\n"+
+				"3. Configure a different port using one of these methods:\n"+
+				"   a. Use the `-c %s=<new_port>` flag with your serve command\n"+
+				"   b. Set the port in a configuration file with `%s config set %s=<new_port>`",
+				types.APIPortKey, os.Args[0], types.APIPortKey)
+	}
+	return err
 }

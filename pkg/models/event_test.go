@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package models
+package models_test
 
 import (
 	"fmt"
@@ -8,19 +8,22 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type EventTestSuite struct {
 	suite.Suite
-	topic EventTopic
+	topic models.EventTopic
 }
 
 func (suite *EventTestSuite) SetupTest() {
-	suite.topic = EventTopic("TestTopic")
+	suite.topic = models.EventTopic("TestTopic")
 }
 
 func (suite *EventTestSuite) TestNewEvent() {
-	event := NewEvent(suite.topic)
+	event := models.NewEvent(suite.topic)
 
 	suite.Equal(suite.topic, event.Topic)
 	suite.WithinDuration(time.Now(), event.Timestamp, time.Second)
@@ -29,41 +32,41 @@ func (suite *EventTestSuite) TestNewEvent() {
 
 func (suite *EventTestSuite) TestEventWithMessage() {
 	message := "TestMessage"
-	event := NewEvent(suite.topic).WithMessage(message)
+	event := models.NewEvent(suite.topic).WithMessage(message)
 
 	suite.Equal(message, event.Message)
 }
 
 func (suite *EventTestSuite) TestEventWithError() {
 	err := fmt.Errorf("TestError")
-	event := NewEvent(suite.topic).WithError(err)
+	event := models.NewEvent(suite.topic).WithError(err)
 
 	suite.Equal(err.Error(), event.Message)
-	suite.Equal("true", event.Details[DetailsKeyIsError])
+	suite.Equal("true", event.Details[models.DetailsKeyIsError])
 }
 
 func (suite *EventTestSuite) TestEventWithHint() {
 	hint := "TestHint"
-	event := NewEvent(suite.topic).WithHint(hint)
+	event := models.NewEvent(suite.topic).WithHint(hint)
 
-	suite.Equal(hint, event.Details[DetailsKeyHint])
+	suite.Equal(hint, event.Details[models.DetailsKeyHint])
 }
 
 func (suite *EventTestSuite) TestEventWithRetryable() {
-	event := NewEvent(suite.topic).WithRetryable(true)
+	event := models.NewEvent(suite.topic).WithRetryable(true)
 
-	suite.Equal("true", event.Details[DetailsKeyRetryable])
+	suite.Equal("true", event.Details[models.DetailsKeyRetryable])
 }
 
 func (suite *EventTestSuite) TestEventWithFailsExecution() {
-	event := NewEvent(suite.topic).WithFailsExecution(true)
+	event := models.NewEvent(suite.topic).WithFailsExecution(true)
 
-	suite.Equal("true", event.Details[DetailsKeyFailsExecution])
+	suite.Equal("true", event.Details[models.DetailsKeyFailsExecution])
 }
 
 func (suite *EventTestSuite) TestEventWithDetails() {
 	details := map[string]string{"key1": "value1", "key2": "value2"}
-	event := NewEvent(suite.topic).WithDetails(details)
+	event := models.NewEvent(suite.topic).WithDetails(details)
 
 	suite.Equal(details, event.Details)
 }
@@ -71,94 +74,93 @@ func (suite *EventTestSuite) TestEventWithDetails() {
 func (suite *EventTestSuite) TestEventWithDetail() {
 	key := "TestKey"
 	value := "TestValue"
-	event := NewEvent(suite.topic).WithDetail(key, value)
+	event := models.NewEvent(suite.topic).WithDetail(key, value)
 
 	suite.Equal(value, event.Details[key])
 }
 
 func (suite *EventTestSuite) TestEventFromError() {
 	errMessage := "TestError"
-	err := &BaseError{
-		message:        errMessage,
-		hint:           "TestHint",
-		retryable:      true,
-		failsExecution: true,
-		details:        map[string]string{"key1": "value1", "key2": "value2"},
-	}
-	event := EventFromError(suite.topic, err)
+	err := bacerrors.New(errMessage).
+		WithHint("TestHint").
+		WithRetryable().
+		WithFailsExecution().
+		WithDetails(map[string]string{"key1": "value1", "key2": "value2"})
+	event := models.EventFromError(suite.topic, err)
 
 	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
-	suite.Equal("true", event.Details[DetailsKeyIsError])
-	suite.Equal("true", event.Details[DetailsKeyRetryable])
-	suite.Equal("true", event.Details[DetailsKeyFailsExecution])
-	suite.Equal(err.hint, event.Details[DetailsKeyHint])
+	suite.Equal("true", event.Details[models.DetailsKeyIsError])
+	suite.Equal("true", event.Details[models.DetailsKeyRetryable])
+	suite.Equal("true", event.Details[models.DetailsKeyFailsExecution])
+	suite.Equal(err.Hint(), event.Details[models.DetailsKeyHint])
 	suite.Equal("value1", event.Details["key1"])
 	suite.Equal("value2", event.Details["key2"])
 }
 
 func (suite *EventTestSuite) TestEventFromErrorNoDetails() {
 	errMessage := "TestError"
-	err := NewBaseError(errMessage)
-	event := EventFromError(suite.topic, err)
+	err := bacerrors.New(errMessage)
+	event := models.EventFromError(suite.topic, err)
 
 	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
-	suite.Equal("true", event.Details[DetailsKeyIsError])
-	suite.Len(event.Details, 1)
+	suite.Equal("true", event.Details[models.DetailsKeyIsError])
+	suite.Contains(event.Details, models.DetailsKeyErrorCode)
+	suite.Len(event.Details, 2)
 }
 
 func (suite *EventTestSuite) TestEventFromSimpleError() {
 	errMessage := "TestError"
 	err := fmt.Errorf(errMessage)
-	event := EventFromError(suite.topic, err)
+	event := models.EventFromError(suite.topic, err)
 
 	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
-	suite.Equal("true", event.Details[DetailsKeyIsError])
+	suite.Equal("true", event.Details[models.DetailsKeyIsError])
 	suite.Len(event.Details, 1)
 }
 
 func (suite *EventTestSuite) TestHasError() {
 	// Test case for an event with an error
-	eventWithError := NewEvent(suite.topic).WithError(fmt.Errorf("Test error"))
+	eventWithError := models.NewEvent(suite.topic).WithError(fmt.Errorf("Test error"))
 	suite.True(eventWithError.HasError())
 
 	// Test case for an event without an error
-	eventWithoutError := NewEvent(suite.topic)
+	eventWithoutError := models.NewEvent(suite.topic)
 	suite.False(eventWithoutError.HasError())
 }
 
 func (suite *EventTestSuite) TestHasStateUpdate() {
 	// Test case for an event with a state update
-	eventWithStateUpdate := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, "Running")
+	eventWithStateUpdate := models.NewEvent(suite.topic).WithDetail(models.DetailsKeyNewState, "Running")
 	suite.True(eventWithStateUpdate.HasStateUpdate())
 
 	// Test case for an event without a state update
-	eventWithoutStateUpdate := NewEvent(suite.topic)
+	eventWithoutStateUpdate := models.NewEvent(suite.topic)
 	suite.False(eventWithoutStateUpdate.HasStateUpdate())
 }
 
 func (suite *EventTestSuite) TestGetJobStateIfPresent() {
 	// Test case for an event with a valid state update
-	validState := JobStateTypeRunning
-	eventWithValidState := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, validState.String())
+	validState := models.JobStateTypeRunning
+	eventWithValidState := models.NewEvent(suite.topic).WithDetail(models.DetailsKeyNewState, validState.String())
 	state, err := eventWithValidState.GetJobStateIfPresent()
 	suite.NoError(err)
 	suite.Equal(validState, state)
 
 	// Test case for an event without a state update
-	eventWithoutState := NewEvent(suite.topic)
+	eventWithoutState := models.NewEvent(suite.topic)
 	state, err = eventWithoutState.GetJobStateIfPresent()
 	suite.NoError(err)
-	suite.Equal(JobStateTypeUndefined, state)
+	suite.Equal(models.JobStateTypeUndefined, state)
 
 	// Test case for an event with an invalid state update
 	invalidState := "InvalidState"
-	eventWithInvalidState := NewEvent(suite.topic).WithDetail(DetailsKeyNewState, invalidState)
+	eventWithInvalidState := models.NewEvent(suite.topic).WithDetail(models.DetailsKeyNewState, invalidState)
 	state, err = eventWithInvalidState.GetJobStateIfPresent()
-	suite.NoError(err) // JobStateType.UnmarshallText() does not return an error for invalid states
-	suite.Equal(JobStateTypeUndefined, state)
+	suite.NoError(err) // models.JobStateType.UnmarshallText() does not return an error for invalid states
+	suite.Equal(models.JobStateTypeUndefined, state)
 }
 
 func TestEventTestSuite(t *testing.T) {

@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -43,7 +42,7 @@ type UpdateCheckResponse struct {
 func CheckForUpdate(
 	ctx context.Context,
 	currentClientVersion, currentServerVersion *models.BuildVersionInfo,
-	clientID string,
+	instanceID string,
 ) (*UpdateCheckResponse, error) {
 	u, err := url.Parse(getUpdateCheckerEndpoint())
 	if err != nil {
@@ -59,7 +58,9 @@ func CheckForUpdate(
 	if currentServerVersion != nil && currentServerVersion.GitVersion != "" {
 		q.Set("serverVersion", currentServerVersion.GitVersion)
 	}
-	q.Set("clientID", clientID)
+	if instanceID != "" {
+		q.Set("instanceID", instanceID)
+	}
 	if installationID := system.InstallationID(); installationID != "" {
 		q.Set("InstallationID", installationID)
 	}
@@ -107,6 +108,7 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 type UpdateStore interface {
 	ReadLastUpdateCheck() (time.Time, error)
 	WriteLastUpdateCheck(time.Time) error
+	InstanceID() string
 }
 
 // RunUpdateChecker starts a goroutine that will periodically make an update
@@ -128,16 +130,7 @@ func RunUpdateChecker(
 	}
 
 	clientVersion := Get()
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key path")
-		return
-	}
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key file")
-		return
-	}
+	instanceID := store.InstanceID()
 
 	runUpdateCheck := func() {
 		// The server may update itself between checks, so always ask the server
@@ -151,7 +144,7 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID())
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, instanceID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}

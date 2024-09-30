@@ -4,17 +4,25 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 	pkgerrors "github.com/pkg/errors"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
+
+const errorComponent = "HTTPClient"
 
 // Client is the object that makes transport-level requests to specified APIs.
 // Users should make use of the `API` object for a higher level interface.
@@ -236,11 +244,24 @@ func (c *httpClient) doRequest(
 		return 0, nil, zipErr
 	}
 
+	err = c.interceptError(ctx, err, resp, method, endpoint, r)
 	return diff, resp, err
 }
 
 // toHTTP converts the request to an HTTP request
-func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *apimodels.HTTPRequest) (*http.Request, error) {
+func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *apimodels.HTTPRequest) (_ *http.Request, err error) {
+	defer func() {
+		if err != nil {
+			err = bacerrors.Wrap(err, "failed to build HTTP request").
+				WithComponent(errorComponent).
+				WithCode(bacerrors.BadRequestError).
+				WithDetails(map[string]string{
+					"method":   method,
+					"endpoint": endpoint,
+				})
+		}
+	}()
+
 	u, err := c.url(endpoint)
 	if err != nil {
 		return nil, err
@@ -296,6 +317,126 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 	req.URL.Scheme = u.Scheme
 	req.Host = u.Host
 	return req, nil
+}
+
+func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.Response, method, endpoint string, r *apimodels.HTTPRequest) (bacErr bacerrors.Error) {
+	// Defer the addition of common attributes
+	defer func() {
+		if bacErr != nil {
+			bacErr = bacErr.
+				WithComponent(errorComponent).
+				WithDetails(map[string]string{
+					"method":   method,
+					"address":  c.address,
+					"endpoint": endpoint,
+				})
+
+			if bacErr.Hint() == "" {
+				hint := fmt.Sprintf(`to resolve this, either:
+1. Ensure that the server is running and reachable at %s
+2. Update the configuration to use a different host and port using:
+   a. The '--api-host=<new_address> --api-port=<new_port>' flags with your command
+   b. The '-c %s=<new_host> -c %s=<new_port>' flags with your command
+   c. Set the host in a configuration file with '%s config set %s=<new_address>' and port with '%s config set %s=<new_port>'`,
+					c.address, types.APIHostKey, types.APIPortKey, os.Args[0], types.APIHostKey, os.Args[0], types.APIPortKey)
+
+				defaultEndpoint := fmt.Sprintf("http://%s:%d", types.Default.API.Host, types.Default.API.Port)
+				if c.address == defaultEndpoint {
+					hint += `
+3. If you are trying to reach the demo network, use '--api-host=bootstrap.demo.bacalhau.org' to call the network`
+				}
+				bacErr = bacErr.WithHint(hint)
+			}
+		}
+	}()
+
+	if err == nil && resp != nil {
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		}
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			return bacerrors.New("unauthorized").
+				WithHTTPStatusCode(http.StatusUnauthorized).
+				WithCode(bacerrors.UnauthorizedError)
+		}
+
+		apiError, apiErr := apimodels.FromHttpResponse(resp)
+		if apiErr == nil {
+			return apiError.ToBacError()
+		}
+
+		return bacerrors.Wrap(apiErr, "server error").
+			WithCode(bacerrors.InternalError)
+	}
+
+	if err == nil {
+		return nil
+	}
+
+	// Check for context errors
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return bacerrors.New("request cancelled").
+			WithCode(bacerrors.RequestCancelled)
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return bacerrors.New("request timed out").
+			WithCode(bacerrors.TimeOutError).
+			WithRetryable()
+	}
+
+	// Check for URL errors
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		switch {
+		case urlErr.Timeout():
+			return bacerrors.New("request timed out").
+				WithCode(bacerrors.TimeOutError).
+				WithRetryable()
+		case strings.Contains(urlErr.Err.Error(), "no such host"):
+			return bacerrors.New("host not found").
+				WithCode(bacerrors.BadRequestError)
+		case strings.Contains(urlErr.Err.Error(), "connection refused"):
+			return bacerrors.New("server is not running or not reachable at %s", c.address).
+				WithCode(bacerrors.ServiceUnavailable)
+		}
+	}
+
+	// Check for network-related errors
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return bacerrors.New("request timed out").
+				WithCode(bacerrors.TimeOutError).
+				WithRetryable()
+		}
+		if netErr.Temporary() {
+			return bacerrors.New("temporary network error").
+				WithCode(bacerrors.NetworkFailure).
+				WithRetryable()
+		}
+
+		// Check specifically for "connection refused" error
+		if opErr, ok := netErr.(*net.OpError); ok && opErr.Op == "dial" {
+			if syscallErr, ok := opErr.Err.(*os.SyscallError); ok && syscallErr.Syscall == "connect" {
+				return bacerrors.New("server is not running or not accessible at %s", c.address).
+					WithCode(bacerrors.ServiceUnavailable).
+					WithRetryable().
+					WithDetails(map[string]string{
+						"error":   err.Error(),
+						"address": c.address,
+					})
+			}
+		}
+
+		// For other network errors
+		return bacerrors.New("network error: %s", netErr).
+			WithCode(bacerrors.NetworkFailure)
+	}
+
+	// If we couldn't categorize the error, return it as an internal error
+	return bacerrors.Wrap(err, "unknown error").
+		WithCode(bacerrors.InternalError)
 }
 
 // generate URL for a given endpoint
@@ -407,7 +548,7 @@ func doRequest[R apimodels.Request](ctx context.Context, t *AuthenticatingClient
 		var authErr error
 		auth := NewAPI(t.Client).Auth()
 		if t.Credential, err = t.Authenticate(ctx, auth); err != nil {
-			authErr = errors.Join(authErr, pkgerrors.Wrap(err, "failed to authorize user"))
+			authErr = err
 			t.Credential = nil // Don't assume Authenticate returned nil
 		}
 
