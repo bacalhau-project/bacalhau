@@ -23,7 +23,7 @@ publish_python_apiclient() {
 
 main () {
   setup_environment_variables
-  generate_swagger
+  download_swagger
   build_python_apiclient
 
   if [-z "$BUILDKITE_TAG" ]; then

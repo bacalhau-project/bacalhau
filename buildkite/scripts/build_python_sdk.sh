@@ -10,18 +10,18 @@ build_python_sdk() {
   make build-python-sdk
 }
 
-
 publish_python_sdk() {
   make release-python-sdk
 }
-
 
 main() {
   setup_environment_variables
   build_python_sdk
 
-  if [-z "$BUILDKITE_TAG" ]
+  if [ -n "$BUILDKITE_TAG" ]; then
     export RELEASE_PYTHON_PACKAGES=1
     publish_python_sdk
   fi
 }
+
+main
