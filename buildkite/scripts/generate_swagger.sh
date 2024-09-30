@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Call generate_swagger.sh
 generate_swagger() {
-    ../scripts/generate_swagger.sh
+    ./scripts/generate_swagger.sh
 }
 
 upload_swagger() {
