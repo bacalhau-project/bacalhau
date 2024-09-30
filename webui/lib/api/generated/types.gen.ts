@@ -565,6 +565,12 @@ export type models_SpecConfig = {
 
 export type models_State_models_ExecutionDesiredStateType = {
     /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
+    /**
      * Message is a human readable message describing the state.
      */
     Message?: string;
@@ -576,6 +582,12 @@ export type models_State_models_ExecutionDesiredStateType = {
 
 export type models_State_models_ExecutionStateType = {
     /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
+    /**
      * Message is a human readable message describing the state.
      */
     Message?: string;
@@ -586,6 +598,12 @@ export type models_State_models_ExecutionStateType = {
 };
 
 export type models_State_models_JobStateType = {
+    /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
     /**
      * Message is a human readable message describing the state.
      */
@@ -1405,7 +1423,7 @@ export type OrchestratorJobExecutionsResponse = (apimodels_ListJobExecutionsResp
 
 export type OrchestratorJobExecutionsError = (string);
 
-export type OrchestratorJobHistoryData = {
+export type OrchestratorListHistoryData = {
     path: {
         /**
          * ID to get the job history for
@@ -1422,7 +1440,7 @@ export type OrchestratorJobHistoryData = {
          */
         execution_id?: string;
         /**
-         * Token to get the next page of the jobs
+         * Token to get the next page of the history events
          */
         next_token?: string;
         /**
@@ -1432,9 +1450,9 @@ export type OrchestratorJobHistoryData = {
     };
 };
 
-export type OrchestratorJobHistoryResponse = (apimodels_ListJobHistoryResponse);
+export type OrchestratorListHistoryResponse = (apimodels_ListJobHistoryResponse);
 
-export type OrchestratorJobHistoryError = (string);
+export type OrchestratorListHistoryError = (string);
 
 export type OrchestratorLogsData = {
     path: {

@@ -21,7 +21,7 @@ const JobDetails = ({ jobId }: { jobId: string }) => {
       Orchestrator.getJob({
         path: { id: jobId },
         query: {
-          include: 'history,executions',
+          include: 'executions',
         },
         throwOnError: true,
       }).then((response) => response.data)
@@ -36,7 +36,7 @@ const JobDetails = ({ jobId }: { jobId: string }) => {
   if (error) return <ErrorDisplay error={error} />
   if (!jobData || !jobData.Job) return
 
-  const { Job, History, Executions } = jobData
+  const { Job, Executions } = jobData
 
   return (
     <div className="container mx-auto p-4">
@@ -45,7 +45,7 @@ const JobDetails = ({ jobId }: { jobId: string }) => {
         <JobActions job={Job} onJobUpdated={fetchJobData} />
       </div>
       <JobInformation job={Job} />
-      <JobTabs job={Job} history={History} executions={Executions} />
+      <JobTabs job={Job} executions={Executions} />
     </div>
   )
 }
