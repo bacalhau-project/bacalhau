@@ -162,7 +162,7 @@ release-python-apiclient: resolve-earthly
 ################################################################################
 .PHONY: release-python-sdk
 release-python-sdk: build-python-sdk
-	cd python && ${EARTHLY} --push +publish --PYPI_TOKEN=${PYPI_TOKEN}
+	cd python && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
 
 ################################################################################
