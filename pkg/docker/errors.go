@@ -17,6 +17,7 @@ const Component = "Docker"
 const (
 	ContainerNotFound = "ContainerNotFound"
 	ImageNotFound     = "ImageNotFound"
+	ImageInvalid      = "ImageInvalid"
 	NotFound          = "NotFound"
 	Conflict          = "Conflict"
 	Unauthorized      = "Unauthorized"
@@ -117,16 +118,21 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 		}
 	}()
 
-	if errdefs.IsNotFound(err) || errdefs.IsForbidden(err) {
+	switch {
+	case errdefs.IsNotFound(err) || errdefs.IsForbidden(err):
 		return bacerrors.New("image not available: %q", image).
 			WithHint(fmt.Sprintf(`To resolve this, either:
 1. Check if the image exists in the registry and the name is correct
 2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
 				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar)).
 			WithCode(ImageNotFound)
+	case errdefs.IsInvalidParameter(err):
+		return bacerrors.New("invalid image format: %q", image).
+			WithHint("Ensure the image name is valid and the image is available in the registry").
+			WithCode(ImageInvalid)
+	default:
+		return NewDockerError(err)
 	}
-
-	return NewDockerError(err)
 }
 
 func NewCustomDockerError(code bacerrors.ErrorCode, message string) bacerrors.Error {

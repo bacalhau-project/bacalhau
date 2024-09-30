@@ -106,7 +106,8 @@ func (suite *EventTestSuite) TestEventFromErrorNoDetails() {
 	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
 	suite.Equal("true", event.Details[models.DetailsKeyIsError])
-	suite.Len(event.Details, 1)
+	suite.Contains(event.Details, models.DetailsKeyErrorCode)
+	suite.Len(event.Details, 2)
 }
 
 func (suite *EventTestSuite) TestEventFromSimpleError() {
