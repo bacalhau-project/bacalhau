@@ -26,14 +26,7 @@ func newSetCmd() *cobra.Command {
 
 This command supports two input formats for setting configuration values:
 
-1. Key-Value Pair Format:
-   You can provide the key and value as separate arguments.
-   Example:
-     bacalhau config set api.host 127.0.0.1
-     bacalhau config set compute.orchestrators http://127.0.0.1:1234 http://1.1.1.1:1234
-     bacalhau config set compute.labels foo=bar,baz=buz
-
-2. Key=Value Format:
+ Key=Value Format:
    Alternatively, you can pass the key and value together in a single argument using the 'key=value' format.
    Example:
      bacalhau config set api.host=127.0.0.1

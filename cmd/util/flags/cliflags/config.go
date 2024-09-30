@@ -3,12 +3,14 @@ package cliflags
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -95,7 +97,20 @@ func (cf *ConfigFlag) parseReadMode() error {
 		return cf.addConfigFile()
 	} else {
 		// Handle dot separated path with boolean value
-		return setIfValid(viper.GetViper(), cf.Value, true)
+		key := strings.ToLower(cf.Value)
+		typ, ok := types.AllKeys()[key]
+		if !ok {
+			if _, err := os.Stat(key); err == nil {
+				return fmt.Errorf("config files must end in suffix '.yaml' or '.yml'")
+			}
+			return fmt.Errorf("no config key matching %q run 'bacalhau config list' for a list of valid keys", key)
+		}
+		if typ.Kind() == reflect.Bool {
+			return setIfValid(viper.GetViper(), cf.Value, true)
+		} else {
+			return bacerrors.New("config flag key %q requires a value", cf.Value).
+				WithHint("to correct this provide a value to the config, e.g. --config %s=<value>", cf.Value)
+		}
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -138,6 +139,21 @@ func New(opts ...Option) (*Config, error) {
 	for name, values := range c.environmentVariables {
 		if err := c.base.BindEnv(append([]string{name}, values...)...); err != nil {
 			return nil, fmt.Errorf("binding environment variable %q to config: %w", name, err)
+		}
+	}
+
+	// ensure the users hasn't provided conflicting flag and config values
+	// e.g. bacalhau serve --config=api.host=0.0.0.0 --api-host=0.0.0.0 should be rejected.
+	for name, flags := range c.flags {
+		for _, flag := range flags {
+			for key, value := range c.values {
+				if flag.Changed {
+					if name == key {
+						return nil, bacerrors.New("flag: --%s and config flag key %q cannot both be provided. Only one may be used", flag.Name, key).
+							WithHint("Remove --%s or --confg/-c %s=%s from the command", flag.Name, key, value)
+					}
+				}
+			}
 		}
 	}
 

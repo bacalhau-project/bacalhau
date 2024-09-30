@@ -313,20 +313,6 @@ boolValue: false
 		os.Unsetenv("BACALHAU_BOOL_VALUE")
 	}()
 
-	// Set up flags
-	flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
-	flagSet.String("stringValue", "", "test string value")
-	flagSet.Int("intValue", 0, "test int value")
-	flagSet.Bool("boolValue", false, "test bool value")
-
-	err = flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=300", "--boolValue=false"})
-	require.NoError(t, err)
-
-	flags := make(map[string][]*pflag.Flag)
-	flagSet.VisitAll(func(f *pflag.Flag) {
-		flags[f.Name] = []*pflag.Flag{f}
-	})
-
 	// Set up explicit values
 	values := map[string]interface{}{
 		"stringValue": "from_values",
@@ -347,7 +333,6 @@ boolValue: false
 			"intValue":    {"BACALHAU_INT_VALUE"},
 			"boolValue":   {"BACALHAU_BOOL_VALUE"},
 		}),
-		config.WithFlags(flags),
 		config.WithValues(values),
 	)
 	require.NoError(t, err)
@@ -362,6 +347,21 @@ boolValue: false
 	assert.True(t, testCfg.BoolValue, "BoolValue should be overridden by explicit values")
 
 	// Now, let's remove the explicit values and check the precedence of flags
+
+	// Set up flags
+	flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flagSet.String("stringValue", "", "test string value")
+	flagSet.Int("intValue", 0, "test int value")
+	flagSet.Bool("boolValue", false, "test bool value")
+
+	err = flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=300", "--boolValue=false"})
+	require.NoError(t, err)
+
+	flags := make(map[string][]*pflag.Flag)
+	flagSet.VisitAll(func(f *pflag.Flag) {
+		flags[f.Name] = []*pflag.Flag{f}
+	})
+
 	cfg, err = config.New(
 		config.WithDefault(TestConfig{
 			StringValue: "default",
