@@ -24,8 +24,7 @@ Examples:
 -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
 `
 
-	ResultPathUsageMsg = "name=path of the output data volumes. 'outputs:/outputs' is always added unless " +
-		"'/outputs' is mapped to a different name."
+	ResultPathUsageMsg = "name=path of the output data volumes"
 
 	PublisherUsageMsg = `Where to publish the result of the job`
 
