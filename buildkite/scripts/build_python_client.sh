@@ -29,8 +29,6 @@ main () {
   if [-z "$BUILDKITE_TAG" ]; then
     export RELEASE_PYTHON_PACKAGES=1
     publish_python_apiclient
-  else
-    echo "Buildkite Tag Not Found"
   fi
 }
 
