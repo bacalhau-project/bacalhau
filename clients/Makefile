@@ -19,7 +19,7 @@ release:
 	python3 ../scripts/get_pypi_token.py
 
 	$(CP) ${SWAGGER_JSON} ./swagger.json
-	${MAKE} clean && ${EARTHLY} +pypi-upload --PACKAGE_NAME=${PACKAGE_NAME} --SWAGGER_JSON=${SWAGGER_JSON} --VERSION=${VERSION} --RELEASE_PYTHON_PACKAGES=1
+	${MAKE} clean && ${EARTHLY} +pypi-upload --PACKAGE_NAME=${PACKAGE_NAME} --SWAGGER_JSON=${SWAGGER_JSON} --VERSION=${VERSION} --RELEASE_PYTHON_PACKAGES=${RELEASE_PYTHON_PACKAGES}
 	@echo "Python API client released."
 
 .PHONY: all

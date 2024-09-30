@@ -69,4 +69,4 @@ publish:
 	# Get PYPI_TOKEN from environment or .env file and push to .secret/ file
 	python ../scripts/get_pypi_token.py
 
-	$(EARTHLY) --push +publish --PYPI_VERSION=$(VERSION)
+	$(EARTHLY) --push +publish --RELEASE_PYTHON_PACKAGES=${RELEASE_PYTHON_PACKAGES} --PYPI_VERSION=${PYPI_VERSION}

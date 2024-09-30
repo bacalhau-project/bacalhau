@@ -5,6 +5,7 @@ set -e
 setup_environment_variables() {
   export PYPI_TOKEN=$(buildkite-agent secret get PYPI_TOKEN)
   export TEST_PYPI_TOKEN=$(buildkite-agent secret get TEST_PYPI_TOKEN)
+  export RELEASE_PYTHON_PACKAGES=1
 }
 
 download_swagger() {
@@ -27,7 +28,10 @@ main () {
   setup_environment_variables
   download_swagger
   build_python_apiclient
-  publish_python_apiclient
+
+  if [-z "$BUILDKITE_TAG" ]; then
+    publish_python_apiclient
+  fi
 }
 
 main
