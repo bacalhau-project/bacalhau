@@ -20,7 +20,7 @@ main() {
   setup_environment_variables
   build_python_sdk
 
-  if [ -z "$BUILDKITE_TAG" ]; then
+  if [ -n "$BUILDKITE_TAG" ]; then
     publish_python_sdk
   fi
 
