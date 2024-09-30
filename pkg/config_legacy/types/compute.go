@@ -30,21 +30,21 @@ type JobTimeoutConfig struct {
 	// check.
 	JobExecutionTimeoutClientIDBypassList []string `yaml:"JobExecutionTimeoutClientIDBypassList"`
 	// JobNegotiationTimeout default timeout value to hold a bid for a job
-	JobNegotiationTimeout Duration `yaml:"JobNegotiationTimeout" swaggertype:"primitive,integer"`
+	JobNegotiationTimeout Duration `yaml:"JobNegotiationTimeout"`
 	// MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
 	// lower timeout requirements will not be bid on.
-	MinJobExecutionTimeout Duration `yaml:"MinJobExecutionTimeout" swaggertype:"primitive,integer"`
+	MinJobExecutionTimeout Duration `yaml:"MinJobExecutionTimeout"`
 	// MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
 	// higher timeout requirements will not be bid on.
-	MaxJobExecutionTimeout Duration `yaml:"MaxJobExecutionTimeout" swaggertype:"primitive,integer"`
+	MaxJobExecutionTimeout Duration `yaml:"MaxJobExecutionTimeout"`
 	// DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
 	// no timeout requirement defined.
-	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout" swaggertype:"primitive,integer"`
+	DefaultJobExecutionTimeout Duration `yaml:"DefaultJobExecutionTimeout"`
 }
 
 type LoggingConfig struct {
 	// logging running executions
-	LogRunningExecutionsInterval Duration `yaml:"LogRunningExecutionsInterval" swaggertype:"primitive,integer"`
+	LogRunningExecutionsInterval Duration `yaml:"LogRunningExecutionsInterval"`
 }
 
 type LogStreamConfig struct {
@@ -61,15 +61,15 @@ type LocalPublisherConfig struct {
 type ComputeControlPlaneConfig struct {
 	// The frequency with which the compute node will send node info (inc current labels)
 	// to the controlling requester node.
-	InfoUpdateFrequency Duration `yaml:"InfoUpdateFrequency" swaggertype:"primitive,integer"`
+	InfoUpdateFrequency Duration `yaml:"InfoUpdateFrequency"`
 
 	// How often the compute node will send current resource availability to the requester node.
-	ResourceUpdateFrequency Duration `yaml:"ResourceUpdateFrequency" swaggertype:"primitive,integer"`
+	ResourceUpdateFrequency Duration `yaml:"ResourceUpdateFrequency"`
 
 	// How often the compute node will send a heartbeat to the requester node to let it know
 	// that the compute node is still alive. This should be less than the requester's configured
 	// heartbeat timeout to avoid flapping.
-	HeartbeatFrequency Duration `yaml:"HeartbeatFrequency" swaggertype:"primitive,integer"`
+	HeartbeatFrequency Duration `yaml:"HeartbeatFrequency"`
 
 	// This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
 	HeartbeatTopic string `yaml:"HeartbeatTopic"`
