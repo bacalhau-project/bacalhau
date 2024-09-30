@@ -29,7 +29,7 @@ main () {
   download_swagger
   build_python_apiclient
 
-  if [-z "$BUILDKITE_TAG" ]; then
+  if [ -z "$BUILDKITE_TAG" ]; then
     publish_python_apiclient
   fi
 }
