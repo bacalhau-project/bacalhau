@@ -59,6 +59,9 @@ type Error interface {
 	// WithDetails adds or updates the details associated with the error.
 	WithDetails(details map[string]string) Error
 
+	// WithDetail adds or updates a single detail associated with the error.
+	WithDetail(key, value string) Error
+
 	// WithCode sets the ErrorCode for this error.
 	WithCode(code ErrorCode) Error
 
@@ -143,7 +146,23 @@ func (e *errorImpl) WithFailsExecution() Error {
 // WithDetails sets the details field of Error and
 // returns the Error itself for chaining.
 func (e *errorImpl) WithDetails(details map[string]string) Error {
-	e.details = details
+	// merge the new details with the existing details
+	if e.details == nil {
+		e.details = make(map[string]string)
+	}
+	for k, v := range details {
+		e.details[k] = v
+	}
+	return e
+}
+
+// WithDetail adds a single detail to the details field of Error and
+// returns the Error itself for chaining.
+func (e *errorImpl) WithDetail(key, value string) Error {
+	if e.details == nil {
+		e.details = make(map[string]string)
+	}
+	e.details[key] = value
 	return e
 }
 

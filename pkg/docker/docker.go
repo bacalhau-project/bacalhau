@@ -36,50 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-type ImageUnavailableError struct {
-	Verb  string
-	Image string
-	Creds config_legacy.DockerCredentials
-	Err   error
-}
-
-func (die ImageUnavailableError) Error() string {
-	return pkgerrors.Wrapf(die.Err,
-		"Could not %s image %q - could be due to repo/image not existing, "+
-			"or registry needing authorization",
-		die.Verb,
-		die.Image,
-	).Error()
-}
-
-func (die ImageUnavailableError) Hint() string {
-	if !die.Creds.IsValid() {
-		return "If the image is private, supply the node with valid Docker login credentials " +
-			"using the " + config_legacy.DockerUsernameEnvVar + " and " + config_legacy.DockerPasswordEnvVar +
-			" environment variables"
-	}
-
-	return ""
-}
-
-func NewImageInspectError(image string, creds config_legacy.DockerCredentials, err error) error {
-	return ImageUnavailableError{
-		Verb:  "inspect",
-		Image: image,
-		Creds: creds,
-		Err:   err,
-	}
-}
-
-func NewImagePullError(image string, creds config_legacy.DockerCredentials, err error) error {
-	return ImageUnavailableError{
-		Verb:  "pull",
-		Image: image,
-		Creds: creds,
-		Err:   err,
-	}
-}
-
 type Client struct {
 	tracing.TracedClient
 }
@@ -105,7 +61,7 @@ func (c *Client) HostGatewayIP(ctx context.Context) (net.IP, error) {
 		return net.IP{}, NewDockerError(err)
 	}
 	if configs := response.IPAM.Config; len(configs) < 1 {
-		return net.IP{}, NewCustomDockerError(DockerBridgeNetworkUnattached, "bridge network unattached")
+		return net.IP{}, NewCustomDockerError(BridgeNetworkUnattached, "bridge network unattached")
 	} else {
 		return net.ParseIP(configs[0].Gateway), nil
 	}
@@ -166,7 +122,7 @@ func (c *Client) FindContainer(ctx context.Context, label string, value string) 
 		}
 	}
 
-	return "", NewCustomDockerError(DockerContainerNotFound, fmt.Sprintf("unable to find container for %s=%s", label, value))
+	return "", NewCustomDockerError(ContainerNotFound, fmt.Sprintf("unable to find container for %s=%s", label, value))
 }
 
 func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.Reader, err error) {
@@ -214,7 +170,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 	}
 
 	if !cont.State.Running {
-		return nil, NewCustomDockerError(DockerContainerNotRunning, "cannot get logs when container is not running")
+		return nil, NewCustomDockerError(ContainerNotRunning, "cannot get logs when container is not running")
 	}
 
 	logOptions := container.LogsOptions{
@@ -268,7 +224,7 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, NewImageInspectError(image, dockerCreds, err)
+		return nil, NewDockerImageError(err, image)
 	}
 
 	return distribution.Platforms, nil
@@ -363,7 +319,7 @@ func (c *Client) ImageDistribution(
 			digestParts := strings.Split(repos[0], "@")
 			digest, err := digest.Parse(digestParts[1])
 			if err != nil {
-				return nil, NewCustomDockerError(DockerImageDigestMismatch, "image digest mismatch")
+				return nil, NewCustomDockerError(ImageDigestMismatch, "image digest mismatch")
 			}
 
 			return &ImageManifest{
@@ -382,7 +338,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, NewImageInspectError(image, creds, err)
+		return nil, NewDockerImageError(err, image)
 	}
 
 	obj := dist.Descriptor.Digest

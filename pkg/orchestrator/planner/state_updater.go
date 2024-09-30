@@ -63,6 +63,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) error {
 				DesiredState: models.State[models.ExecutionDesiredStateType]{
 					StateType: u.DesiredState,
 					Message:   u.Event.Message,
+					Details:   u.Event.Details,
 				},
 			},
 			Condition: jobstore.UpdateExecutionCondition{
