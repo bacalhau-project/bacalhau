@@ -20,13 +20,10 @@ main() {
   setup_environment_variables
   build_python_sdk
 
-  if [-n "$BUILDKITE_TAG" ]
+  if [-z "$BUILDKITE_TAG" ]
     export RELEASE_PYTHON_PACKAGES=1
     publish_python_sdk
-  else 
+  else
     echo "Buildkite Tag not found"
   fi
 }
-
-
-
