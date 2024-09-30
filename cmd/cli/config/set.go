@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -80,7 +79,7 @@ This command supports two input formats for setting configuration values:
 				value = args[1:]
 			}
 
-			return setConfig(configPath, key, value...)
+			return setConfig(cmd, configPath, key, value...)
 		},
 		// Provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,
@@ -90,8 +89,8 @@ This command supports two input formats for setting configuration values:
 	return setCmd
 }
 
-func setConfig(cfgFilePath, key string, value ...string) error {
-	log.Info().Msgf("Writing config to %s", cfgFilePath)
+func setConfig(cmd *cobra.Command, cfgFilePath, key string, value ...string) error {
+	cmd.Printf("Writing config to %s", cfgFilePath)
 	v := viper.New()
 	v.SetConfigFile(cfgFilePath)
 	if err := v.ReadInConfig(); err != nil {
