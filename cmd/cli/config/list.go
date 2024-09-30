@@ -44,8 +44,9 @@ func newListCmd() *cobra.Command {
 }
 
 type configListEntry struct {
-	Key   string
-	Value interface{}
+	Key    string
+	Value  interface{}
+	EnvVar string
 }
 
 func list(cmd *cobra.Command, o output.OutputOptions) error {
@@ -58,8 +59,9 @@ func list(cmd *cobra.Command, o output.OutputOptions) error {
 	for _, k := range viperSchema.AllKeys() {
 		v := viper.Get(k)
 		cfgList = append(cfgList, configListEntry{
-			Key:   k,
-			Value: v,
+			Key:    k,
+			Value:  v,
+			EnvVar: config.KeyAsEnvVar(k),
 		})
 	}
 
@@ -81,6 +83,12 @@ var listColumns = []output.TableColumn[configListEntry]{
 		ColumnConfig: table.ColumnConfig{Name: "Value", WidthMax: 40, WidthMaxEnforcer: text.WrapHard},
 		Value: func(v configListEntry) string {
 			return fmt.Sprintf("%v", v.Value)
+		},
+	},
+	{
+		ColumnConfig: table.ColumnConfig{Name: "Environment Variable", WidthMax: 80, WidthMaxEnforcer: text.WrapHard},
+		Value: func(v configListEntry) string {
+			return fmt.Sprintf("%v", v.EnvVar)
 		},
 	},
 }
