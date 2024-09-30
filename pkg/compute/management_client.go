@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type ManagementClientParams struct {
@@ -61,9 +62,10 @@ func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 
 func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 	ni := m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
-		NodeID:   m.nodeID,
-		NodeType: models.NodeTypeCompute,
-		Labels:   m.labelsProvider.GetLabels(ctx),
+		NodeID:          m.nodeID,
+		NodeType:        models.NodeTypeCompute,
+		BacalhauVersion: *version.Get(),
+		Labels:          m.labelsProvider.GetLabels(ctx),
 	})
 	return ni
 }
