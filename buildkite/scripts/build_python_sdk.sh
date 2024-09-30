@@ -4,6 +4,7 @@ set -e
 
 setup_environment_variables() {
   export PYPI_TOKEN=$(buildkite-agent secret get PYPI_TOKEN)
+  export RELEASE_PYTHON_PACKAGES=1
 }
 
 build_python_sdk() {
@@ -17,11 +18,7 @@ publish_python_sdk() {
 main() {
   setup_environment_variables
   build_python_sdk
-
-  if [ -n "$BUILDKITE_TAG" ]; then
-    export RELEASE_PYTHON_PACKAGES=1
-    publish_python_sdk
-  fi
+  publish_python_sdk
 }
 
 main
