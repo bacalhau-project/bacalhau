@@ -5,7 +5,6 @@ type Compute struct {
 	Enabled bool `yaml:"Enabled,omitempty"`
 	// Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
 	Orchestrators []string  `yaml:"Orchestrators,omitempty"`
-	TLS           TLS       `yaml:"TLS,omitempty"`
 	Heartbeat     Heartbeat `yaml:"Heartbeat,omitempty"`
 	// Labels are key-value pairs used to describe and categorize the compute node.
 	Labels            map[string]string `yaml:"Labels,omitempty"`
