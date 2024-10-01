@@ -46,6 +46,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 
 	// Setup heartbeat server
 	s.heartbeatServer, err = NewServer(HeartbeatServerParams{
+		NodeID:                "server-node",
 		Clock:                 s.clock,
 		Client:                s.natsConn,
 		CheckFrequency:        1 * time.Second,
@@ -86,6 +87,56 @@ func (s *HeartbeatTestSuite) TearDownTest() {
 	}
 }
 
+func (s *HeartbeatTestSuite) TestUpdateNodeInfo() {
+	testCases := []struct {
+		name            string
+		nodeID          string
+		initialLiveness models.NodeConnectionState
+		expectedState   models.NodeConnectionState
+		hasInitialState bool
+	}{
+		{
+			name:            "Own node",
+			nodeID:          s.heartbeatServer.nodeID,
+			expectedState:   models.NodeStates.CONNECTED,
+			hasInitialState: false,
+		},
+		{
+			name:            "Known node connected",
+			nodeID:          "another-node",
+			initialLiveness: models.NodeStates.CONNECTED,
+			expectedState:   models.NodeStates.CONNECTED,
+			hasInitialState: true,
+		},
+		{
+			name:            "Known node unhealthy",
+			nodeID:          "another-node",
+			initialLiveness: models.NodeStates.DISCONNECTED,
+			expectedState:   models.NodeStates.DISCONNECTED,
+			hasInitialState: true,
+		},
+		{
+			name:            "Unknown node no state",
+			nodeID:          "another-node",
+			expectedState:   models.NodeStates.DISCONNECTED,
+			hasInitialState: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			if tc.hasInitialState {
+				s.heartbeatServer.markNodeAs(tc.nodeID, tc.initialLiveness)
+			}
+
+			nodeState := &models.NodeState{Info: models.NodeInfo{NodeID: tc.nodeID}}
+			s.heartbeatServer.UpdateNodeInfo(nodeState)
+
+			s.Equal(tc.expectedState, nodeState.Connection, "expected %s, got %s", tc.expectedState, nodeState.Connection)
+		})
+	}
+}
+
 func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 	ctx := context.Background()
 
@@ -95,6 +146,7 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 		heartbeats     []time.Duration
 		expectedState  models.NodeConnectionState
 		waitUntil      time.Duration
+		isOwnNode      bool
 	}
 
 	testcases := []testcase{
@@ -120,10 +172,21 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 			expectedState:  models.NodeStates.DISCONNECTED,
 			waitUntil:      time.Duration(10 * time.Second),
 		},
+		{
+			name:           "own node",
+			includeInitial: true,
+			heartbeats:     []time.Duration{time.Duration(30 * time.Second)},
+			expectedState:  models.NodeStates.HEALTHY,
+			waitUntil:      time.Duration(30 * time.Second),
+			isOwnNode:      true,
+		},
 	}
 
 	for i, tc := range testcases {
 		nodeID := "node-" + strconv.Itoa(i)
+		if tc.isOwnNode {
+			nodeID = s.heartbeatServer.nodeID
+		}
 		client, err := NewClient(s.natsConn, nodeID, s.publisher)
 		s.Require().NoError(err)
 

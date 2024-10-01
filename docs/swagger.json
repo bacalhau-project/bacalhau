@@ -586,7 +586,7 @@
                     "Orchestrator"
                 ],
                 "summary": "Returns the history of a job.",
-                "operationId": "orchestrator/jobHistory",
+                "operationId": "orchestrator/listHistory",
                 "parameters": [
                     {
                         "type": "string",
@@ -615,7 +615,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Token to get the next page of the jobs",
+                        "description": "Token to get the next page of the history events",
                         "name": "next_token",
                         "in": "query"
                     }
@@ -1944,6 +1944,13 @@
         "models.State-models_ExecutionDesiredStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"
@@ -1961,6 +1968,13 @@
         "models.State-models_ExecutionStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"
@@ -1978,6 +1992,13 @@
         "models.State-models_JobStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"

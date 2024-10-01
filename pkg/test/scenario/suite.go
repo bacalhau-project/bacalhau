@@ -89,8 +89,8 @@ func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *s
 		cfg, err := node.NewRequesterConfigWithDefaults()
 		s.Require().NoError(err)
 
-		if !config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config.IsEmpty() {
-			cfg.JobDefaults.Batch.Task.Publisher.Config = config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Config
+		if !config.RequesterConfig.JobDefaults.Batch.Task.Publisher.IsEmpty() {
+			cfg.JobDefaults.Batch.Task.Publisher = config.RequesterConfig.JobDefaults.Batch.Task.Publisher
 		}
 		config.RequesterConfig = cfg
 	}

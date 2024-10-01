@@ -61,10 +61,9 @@ publish:
     FROM +install-twine
     BUILD +install-twine
     ARG RELEASE_PYTHON_PACKAGES
-    LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
     IF [ "${RELEASE_PYTHON_PACKAGES}" = 1 ]
         RUN echo "Publishing to pypi.org"
-        RUN REPOSITORY_FLAG = "" # Publish to default repository
+        LET REPOSITORY_FLAG = "" # Publish to default repository
         RUN --secret PYPI_TOKEN test -n "${PYPI_TOKEN}" || (echo "PYPI_TOKEN not found" && exit 1)
         RUN --secret PYPI_TOKEN python3 -m twine upload \
             --non-interactive \
@@ -76,6 +75,7 @@ publish:
             ${REPOSITORY_FLAG}
     ELSE
         RUN echo "Publishing to test.pypi.org"
+        LET REPOSITORY_FLAG = "--repository-url https://test.pypi.org/legacy/"
         RUN --secret TEST_PYPI_TOKEN test -n "${TEST_PYPI_TOKEN}" || (echo "TEST_PYPI_TOKEN not found" && exit 1)
         RUN --secret TEST_PYPI_TOKEN python3 -m twine upload \
             --non-interactive \

@@ -19,9 +19,9 @@ type BatchJobDefaultsConfig struct {
 }
 
 type BatchTaskDefaultConfig struct {
-	Resources ResourcesConfig        `yaml:"Resources,omitempty"`
-	Publisher DefaultPublisherConfig `yaml:"Publisher,omitempty"`
-	Timeouts  TaskTimeoutConfig      `yaml:"Timeouts,omitempty"`
+	Resources ResourcesConfig   `yaml:"Resources,omitempty"`
+	Publisher models.SpecConfig `yaml:"Publisher,omitempty"`
+	Timeouts  TaskTimeoutConfig `yaml:"Timeouts,omitempty"`
 }
 
 type ResourcesConfig struct {
@@ -44,10 +44,6 @@ type ResourcesConfig struct {
 	// It uses Kubernetes resource string format (e.g., "1" for 1 GPU).
 	// This value is used when the task hasn't explicitly set its GPU requirement.
 	GPU string `yaml:"GPU,omitempty"`
-}
-
-type DefaultPublisherConfig struct {
-	Config models.SpecConfig `yaml:"Config,omitempty"`
 }
 
 type TaskTimeoutConfig struct {
