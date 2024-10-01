@@ -68,7 +68,7 @@ func NewRequesterNode(
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 	fsr *repo.FsRepo,
 ) (*Requester, error) {
-	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
+	nodeManager, heartbeatServer, err := createNodeManager(ctx, nodeID, transportLayer, requesterConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +374,7 @@ func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) 
 }
 
 func createNodeManager(ctx context.Context,
+	nodeId string,
 	transportLayer *nats_transport.NATSTransport,
 	requesterConfig RequesterConfig) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
 	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
@@ -383,6 +384,7 @@ func createNodeManager(ctx context.Context,
 
 	// heartbeat service
 	heartbeatParams := heartbeat.HeartbeatServerParams{
+		NodeID:                nodeId,
 		Client:                transportLayer.Client(),
 		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
 		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
