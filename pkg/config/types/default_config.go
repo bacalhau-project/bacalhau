@@ -130,17 +130,12 @@ const defaultBacalhauDir = ".bacalhau"
 
 // DefaultDataDir determines the appropriate default directory for storing repository data.
 // Priority order:
-// 1. If the environment variable BACALHAU_DIR is set and non-empty, use it.
-// 2. User's home directory with .bacalhau appended.
-// 3. If all above fail, use .bacalhau in the current directory.
+// 1. User's home directory with .bacalhau appended.
 func DefaultDataDir() string {
-	if repoDir, set := os.LookupEnv("BACALHAU_DIR"); set && repoDir != "" {
-		return repoDir
+	if userHome, err := os.UserHomeDir(); err == nil && userHome != "" {
+		if expandedUserHome, err := filepath.Abs(userHome); err == nil {
+			return filepath.Join(expandedUserHome, defaultBacalhauDir)
+		}
 	}
-
-	if userHome, err := os.UserHomeDir(); err == nil {
-		return filepath.Join(userHome, defaultBacalhauDir)
-	}
-
-	return defaultBacalhauDir
+	return ""
 }

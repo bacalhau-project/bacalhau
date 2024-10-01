@@ -3,6 +3,7 @@
 package config_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,14 +16,185 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
+func TestConfigDataDirPath(t *testing.T) {
+	workingDir, err := os.Getwd()
+	require.NoError(t, err)
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	testCases := []struct {
+		name          string
+		dataDir       string
+		setMethod     string // "cli", "config", "env", "file", "default"
+		isValid       bool
+		expected      string
+		errorContains string
+	}{
+		// CLI flag cases
+		{
+			name:      "CLI: Valid relative path",
+			dataDir:   "relative/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  filepath.Join(workingDir, "relative/path"),
+		},
+		{
+			name:      "CLI: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
+		},
+		{
+			name:      "CLI: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Config value cases
+		{
+			name:      "Config: Valid relative path",
+			dataDir:   "relative/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  filepath.Join(workingDir, "relative/path"),
+		},
+		{
+			name:      "Config: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
+		},
+		{
+			name:      "Config: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Environment variable cases
+		{
+			name:          "Env: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "env",
+			isValid:       false,
+			errorContains: "not an absolute path",
+		},
+		{
+			name:      "Env: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "env",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
+		},
+		{
+			name:      "Env: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "env",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Config file cases
+		{
+			name:          "File: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "file",
+			isValid:       false,
+			errorContains: "not an absolute path",
+		},
+		{
+			name:      "File: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "file",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
+		},
+		{
+			name:      "File: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "file",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Default value cases
+		{
+			name:          "Default: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "default",
+			isValid:       false,
+			errorContains: "not an absolute path",
+		},
+		{
+			name:      "Default: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "default",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
+		},
+		{
+			name:      "Default: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "default",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg *config.Config
+
+			switch tc.setMethod {
+			case "cli":
+				flags := make(map[string][]*pflag.Flag)
+				flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+				flagSet.String(types.DataDirKey, tc.dataDir, "data directory")
+				flag := flagSet.Lookup(types.DataDirKey)
+				flag.Changed = true
+				flags[types.DataDirKey] = []*pflag.Flag{flag}
+				cfg, err = config.New(config.WithFlags(flags))
+			case "config":
+				cfg, err = config.New(config.WithValues(map[string]interface{}{types.DataDirKey: tc.dataDir}))
+			case "env":
+				t.Setenv("BACALHAU_DATADIR", tc.dataDir)
+				cfg, err = config.New(config.WithEnvironmentVariables(map[string][]string{
+					types.DataDirKey: {"BACALHAU_DATADIR"},
+				}))
+			case "file":
+				tempFile, innerErr := os.CreateTemp("", "config*.yaml")
+				require.NoError(t, innerErr)
+				defer os.Remove(tempFile.Name())
+				_, innerErr = tempFile.WriteString(fmt.Sprintf("datadir: %s\n", tc.dataDir))
+				require.NoError(t, innerErr)
+				tempFile.Close()
+				cfg, err = config.New(config.WithPaths(tempFile.Name()))
+			case "default":
+				cfg, err = config.New(config.WithDefault(types.Bacalhau{DataDir: tc.dataDir}))
+			}
+
+			if tc.isValid {
+				require.NoError(t, err)
+				var actual types.Bacalhau
+				assert.NoError(t, cfg.Unmarshal(&actual))
+				assert.Equal(t, tc.expected, actual.DataDir)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorContains)
+			}
+		})
+	}
+}
+
 func TestConfigWithValueOverrides(t *testing.T) {
-	overrideRepo := "overrideRepo"
+	overrideRepo := "/overrideRepo"
 	overrideName := "puuid"
 	overrideClientAddress := "1.1.1.1"
 	overrideClientPort := 1234
 
 	defaultConfig := types.Bacalhau{
-		DataDir: "defaultRepo",
+		DataDir: "/defaultRepo",
 		API: types.API{
 			Host: "0.0.0.0",
 			Port: 1234,
@@ -59,10 +231,7 @@ type TestConfig struct {
 	StringValue string
 	IntValue    int
 	BoolValue   bool
-}
-
-func (c TestConfig) Validate() error {
-	return nil
+	DataDir     string
 }
 
 func TestNew(t *testing.T) {
@@ -71,6 +240,7 @@ func TestNew(t *testing.T) {
 			StringValue: "default",
 			IntValue:    42,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}))
 		require.NoError(t, err)
 
@@ -92,6 +262,7 @@ func TestNew(t *testing.T) {
 stringValue: "from_file"
 intValue: 100
 boolValue: false
+datadir:   "/data/dir"
 `)
 		require.NoError(t, err)
 		tempFile.Close()
@@ -134,6 +305,7 @@ boolValue: false
 				StringValue: "default",
 				IntValue:    42,
 				BoolValue:   true,
+				DataDir:     "/data/dir",
 			}),
 			config.WithFlags(flags),
 		)
@@ -149,14 +321,9 @@ boolValue: false
 	})
 
 	t.Run("With Environment Variables", func(t *testing.T) {
-		os.Setenv("BACALHAU_STRING_VALUE", "from_env")
-		os.Setenv("BACALHAU_INT_VALUE", "300")
-		os.Setenv("BACALHAU_BOOL_VALUE", "true")
-		defer func() {
-			os.Unsetenv("BACALHAU_STRING_VALUE")
-			os.Unsetenv("BACALHAU_INT_VALUE")
-			os.Unsetenv("BACALHAU_BOOL_VALUE")
-		}()
+		t.Setenv("BACALHAU_STRING_VALUE", "from_env")
+		t.Setenv("BACALHAU_INT_VALUE", "300")
+		t.Setenv("BACALHAU_BOOL_VALUE", "true")
 
 		envVars := map[string][]string{
 			"stringValue": {"BACALHAU_STRING_VALUE"},
@@ -169,6 +336,7 @@ boolValue: false
 				StringValue: "default",
 				IntValue:    42,
 				BoolValue:   false,
+				DataDir:     "/data/dir",
 			}),
 			config.WithEnvironmentVariables(envVars),
 		)
@@ -188,6 +356,7 @@ boolValue: false
 			"stringValue": "from_values",
 			"intValue":    400,
 			"boolValue":   false,
+			"datadir":     "/data/dir",
 		}
 
 		cfg, err := config.New(
@@ -228,6 +397,7 @@ boolValue: true
 			StringValue: "default",
 			IntValue:    42,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 	)
 	require.NoError(t, err)
@@ -252,6 +422,7 @@ func TestMerge(t *testing.T) {
 	_, err = tempFile1.WriteString(`
 stringValue: "first"
 intValue: 100
+datadir: "/dir1"
 `)
 	require.NoError(t, err)
 	tempFile1.Close()
@@ -263,6 +434,7 @@ intValue: 100
 	_, err = tempFile2.WriteString(`
 intValue: 200
 boolValue: true
+datadir: "/dir2"
 `)
 	require.NoError(t, err)
 	tempFile2.Close()
@@ -273,11 +445,8 @@ boolValue: true
 			IntValue:    42,
 			BoolValue:   false,
 		}),
-		config.WithPaths(tempFile1.Name()),
+		config.WithPaths(tempFile1.Name(), tempFile2.Name()),
 	)
-	require.NoError(t, err)
-
-	err = cfg.Merge(tempFile2.Name())
 	require.NoError(t, err)
 
 	var testCfg TestConfig
@@ -287,6 +456,7 @@ boolValue: true
 	assert.Equal(t, "first", testCfg.StringValue)
 	assert.Equal(t, 200, testCfg.IntValue)
 	assert.True(t, testCfg.BoolValue)
+	assert.Equal(t, "/dir2", testCfg.DataDir)
 }
 
 func TestConfigurationPrecedence(t *testing.T) {
@@ -304,14 +474,9 @@ boolValue: false
 	tempFile.Close()
 
 	// Set up environment variables
-	os.Setenv("BACALHAU_STRING_VALUE", "from_env")
-	os.Setenv("BACALHAU_INT_VALUE", "200")
-	os.Setenv("BACALHAU_BOOL_VALUE", "true")
-	defer func() {
-		os.Unsetenv("BACALHAU_STRING_VALUE")
-		os.Unsetenv("BACALHAU_INT_VALUE")
-		os.Unsetenv("BACALHAU_BOOL_VALUE")
-	}()
+	t.Setenv("BACALHAU_STRING_VALUE", "from_env")
+	t.Setenv("BACALHAU_INT_VALUE", "200")
+	t.Setenv("BACALHAU_BOOL_VALUE", "true")
 
 	// Set up explicit values
 	values := map[string]interface{}{
@@ -326,6 +491,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -367,6 +533,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -391,6 +558,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -418,6 +586,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 	)
@@ -436,6 +605,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}),
 	)
 	require.NoError(t, err)
@@ -461,6 +631,7 @@ func TestFlagConfigConflicts(t *testing.T) {
 
 		values := map[string]any{
 			"boolValue": true,
+			"datadir":   "/data/dir",
 		}
 
 		cfg, err := config.New(
