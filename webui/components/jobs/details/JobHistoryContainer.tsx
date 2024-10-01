@@ -1,9 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react'
-import { Orchestrator, apimodels_ListJobHistoryResponse } from '@/lib/api/generated'
+import {
+  Orchestrator,
+  apimodels_ListJobHistoryResponse,
+} from '@/lib/api/generated'
 import JobHistory from './JobHistory'
 
 const JobHistoryContainer = ({ jobId }: { jobId: string }) => {
-  const [history, setHistory] = useState<apimodels_ListJobHistoryResponse | undefined>()
+  const [history, setHistory] = useState<
+    apimodels_ListJobHistoryResponse | undefined
+  >()
   const [pageSize, setPageSize] = useState(100)
   const [pageIndex, setPageIndex] = useState(0)
   const [tokens, setTokens] = useState<(string | undefined)[]>([undefined])

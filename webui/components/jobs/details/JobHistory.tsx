@@ -12,7 +12,13 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Filter, X } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { apimodels_ListJobHistoryResponse } from '@/lib/api/generated'
 import { shortID } from '@/lib/api/utils'
 import { formatTime } from '@/lib/time'
@@ -67,7 +73,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({
   const [colorMap, setColorMap] = useState<Record<string, string>>({})
   const [searchTerm, setSearchTerm] = useState('')
   const [showJobOnly, setShowJobOnly] = useState(false)
-  const [filterExecutionID, setFilterExecutionID] = useState<string | null>(null)
+  const [filterExecutionID, setFilterExecutionID] = useState<string | null>(
+    null
+  )
 
   const filteredHistory = useMemo(() => {
     return history?.Items?.filter((item) => {

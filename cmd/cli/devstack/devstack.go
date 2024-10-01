@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/webui"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -242,6 +244,29 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 	stack, err := devstack.Setup(ctx, cfg, cm, fsr, options...)
 	if err != nil {
 		return err
+	}
+
+	// start WebUI for the first successful requester node
+	for _, n := range stack.Nodes {
+		if n.IsRequesterNode() {
+			webuiConfig := webui.Config{
+				APIEndpoint: n.APIServer.GetURI().String(),
+				Listen:      cfg.WebUI.Listen,
+			}
+			webuiServer, err := webui.NewServer(webuiConfig)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to start ui server for this node, trying next")
+				continue
+			}
+
+			go func() {
+				if err := webuiServer.ListenAndServe(ctx); err != nil {
+					log.Error().Err(err).Msg("ui server error")
+				}
+			}()
+
+			break
+		}
 	}
 
 	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsr, cm)
