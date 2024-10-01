@@ -250,8 +250,11 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 	for _, n := range stack.Nodes {
 		if n.IsRequesterNode() {
 			webuiConfig := webui.Config{
-				APIEndpoint: n.APIServer.GetURI().String(),
+				APIEndpoint: cfg.WebUI.Backend,
 				Listen:      cfg.WebUI.Listen,
+			}
+			if webuiConfig.APIEndpoint == "" {
+				webuiConfig.APIEndpoint = n.APIServer.GetURI().String()
 			}
 			webuiServer, err := webui.NewServer(webuiConfig)
 			if err != nil {
