@@ -36,7 +36,9 @@ export function NodesOverview() {
 
       const allNodes = response.data.Nodes ?? []
       setNodes(allNodes)
-      const connected = allNodes.filter(node => getNodeConnectionStatus(node) == "CONNECTED").length
+      const connected = allNodes.filter(
+        (node) => getNodeConnectionStatus(node) == 'CONNECTED'
+      ).length
       setConnectedNodes(connected)
       setNextToken(response.data.NextToken)
     } catch (error) {
@@ -44,7 +46,7 @@ export function NodesOverview() {
       setNodes([])
       setConnectedNodes(0)
     }
-  }, [isInitialized, pageSize, pageIndex, nextToken])
+  }, [isInitialized, pageIndex, nextToken])
 
   useEffect(() => {
     fetchNodes()
@@ -106,7 +108,10 @@ export function NodesOverview() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
-        <Badge variant="secondary" className="text-sm px-3 py-1 flex items-center gap-2">
+        <Badge
+          variant="secondary"
+          className="text-sm px-3 py-1 flex items-center gap-2"
+        >
           <Server className="h-4 w-4" />
           <span>{connectedNodes} Connected</span>
         </Badge>
