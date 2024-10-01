@@ -231,6 +231,7 @@ type TestConfig struct {
 	StringValue string
 	IntValue    int
 	BoolValue   bool
+	DataDir     string
 }
 
 func TestNew(t *testing.T) {
@@ -239,6 +240,7 @@ func TestNew(t *testing.T) {
 			StringValue: "default",
 			IntValue:    42,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}))
 		require.NoError(t, err)
 
@@ -260,6 +262,7 @@ func TestNew(t *testing.T) {
 stringValue: "from_file"
 intValue: 100
 boolValue: false
+datadir:   "/data/dir"
 `)
 		require.NoError(t, err)
 		tempFile.Close()
@@ -302,6 +305,7 @@ boolValue: false
 				StringValue: "default",
 				IntValue:    42,
 				BoolValue:   true,
+				DataDir:     "/data/dir",
 			}),
 			config.WithFlags(flags),
 		)
@@ -317,14 +321,9 @@ boolValue: false
 	})
 
 	t.Run("With Environment Variables", func(t *testing.T) {
-		os.Setenv("BACALHAU_STRING_VALUE", "from_env")
-		os.Setenv("BACALHAU_INT_VALUE", "300")
-		os.Setenv("BACALHAU_BOOL_VALUE", "true")
-		defer func() {
-			os.Unsetenv("BACALHAU_STRING_VALUE")
-			os.Unsetenv("BACALHAU_INT_VALUE")
-			os.Unsetenv("BACALHAU_BOOL_VALUE")
-		}()
+		t.Setenv("BACALHAU_STRING_VALUE", "from_env")
+		t.Setenv("BACALHAU_INT_VALUE", "300")
+		t.Setenv("BACALHAU_BOOL_VALUE", "true")
 
 		envVars := map[string][]string{
 			"stringValue": {"BACALHAU_STRING_VALUE"},
@@ -337,6 +336,7 @@ boolValue: false
 				StringValue: "default",
 				IntValue:    42,
 				BoolValue:   false,
+				DataDir:     "/data/dir",
 			}),
 			config.WithEnvironmentVariables(envVars),
 		)
@@ -356,6 +356,7 @@ boolValue: false
 			"stringValue": "from_values",
 			"intValue":    400,
 			"boolValue":   false,
+			"datadir":     "/data/dir",
 		}
 
 		cfg, err := config.New(
@@ -396,6 +397,7 @@ boolValue: true
 			StringValue: "default",
 			IntValue:    42,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 	)
 	require.NoError(t, err)
@@ -420,6 +422,7 @@ func TestMerge(t *testing.T) {
 	_, err = tempFile1.WriteString(`
 stringValue: "first"
 intValue: 100
+datadir: "/dir1"
 `)
 	require.NoError(t, err)
 	tempFile1.Close()
@@ -431,6 +434,7 @@ intValue: 100
 	_, err = tempFile2.WriteString(`
 intValue: 200
 boolValue: true
+datadir: "/dir2"
 `)
 	require.NoError(t, err)
 	tempFile2.Close()
@@ -441,11 +445,8 @@ boolValue: true
 			IntValue:    42,
 			BoolValue:   false,
 		}),
-		config.WithPaths(tempFile1.Name()),
+		config.WithPaths(tempFile1.Name(), tempFile2.Name()),
 	)
-	require.NoError(t, err)
-
-	err = cfg.Merge(tempFile2.Name())
 	require.NoError(t, err)
 
 	var testCfg TestConfig
@@ -455,6 +456,7 @@ boolValue: true
 	assert.Equal(t, "first", testCfg.StringValue)
 	assert.Equal(t, 200, testCfg.IntValue)
 	assert.True(t, testCfg.BoolValue)
+	assert.Equal(t, "/dir2", testCfg.DataDir)
 }
 
 func TestConfigurationPrecedence(t *testing.T) {
@@ -472,14 +474,9 @@ boolValue: false
 	tempFile.Close()
 
 	// Set up environment variables
-	os.Setenv("BACALHAU_STRING_VALUE", "from_env")
-	os.Setenv("BACALHAU_INT_VALUE", "200")
-	os.Setenv("BACALHAU_BOOL_VALUE", "true")
-	defer func() {
-		os.Unsetenv("BACALHAU_STRING_VALUE")
-		os.Unsetenv("BACALHAU_INT_VALUE")
-		os.Unsetenv("BACALHAU_BOOL_VALUE")
-	}()
+	t.Setenv("BACALHAU_STRING_VALUE", "from_env")
+	t.Setenv("BACALHAU_INT_VALUE", "200")
+	t.Setenv("BACALHAU_BOOL_VALUE", "true")
 
 	// Set up explicit values
 	values := map[string]interface{}{
@@ -494,6 +491,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -535,6 +533,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -559,6 +558,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   false,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 		config.WithEnvironmentVariables(map[string][]string{
@@ -586,6 +586,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}),
 		config.WithPaths(tempFile.Name()),
 	)
@@ -604,6 +605,7 @@ boolValue: false
 			StringValue: "default",
 			IntValue:    50,
 			BoolValue:   true,
+			DataDir:     "/data/dir",
 		}),
 	)
 	require.NoError(t, err)
@@ -629,6 +631,7 @@ func TestFlagConfigConflicts(t *testing.T) {
 
 		values := map[string]any{
 			"boolValue": true,
+			"datadir":   "/data/dir",
 		}
 
 		cfg, err := config.New(

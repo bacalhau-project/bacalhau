@@ -125,7 +125,7 @@ func New(opts ...Option) (*Config, error) {
 
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
-		if err := c.Merge(path); err != nil {
+		if err := c.merge(path); err != nil {
 			return nil, err
 		}
 	}
@@ -269,9 +269,9 @@ func (c *Config) Load(path string) error {
 	return nil
 }
 
-// Merge merges a new configuration file specified by `path` with the existing config.
-// Merge returns an error if the file cannot be read
-func (c *Config) Merge(path string) error {
+// merge merges a new configuration file specified by `path` with the existing config.
+// merge returns an error if the file cannot be read
+func (c *Config) merge(path string) error {
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
 		if os.IsNotExist(err) {
