@@ -481,20 +481,6 @@ boolValue: false
 		os.Unsetenv("BACALHAU_BOOL_VALUE")
 	}()
 
-	// Set up flags
-	flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
-	flagSet.String("stringValue", "", "test string value")
-	flagSet.Int("intValue", 0, "test int value")
-	flagSet.Bool("boolValue", false, "test bool value")
-
-	err = flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=300", "--boolValue=false"})
-	require.NoError(t, err)
-
-	flags := make(map[string][]*pflag.Flag)
-	flagSet.VisitAll(func(f *pflag.Flag) {
-		flags[f.Name] = []*pflag.Flag{f}
-	})
-
 	// Set up explicit values
 	values := map[string]interface{}{
 		"stringValue": "from_values",
@@ -515,7 +501,6 @@ boolValue: false
 			"intValue":    {"BACALHAU_INT_VALUE"},
 			"boolValue":   {"BACALHAU_BOOL_VALUE"},
 		}),
-		config.WithFlags(flags),
 		config.WithValues(values),
 	)
 	require.NoError(t, err)
@@ -530,6 +515,21 @@ boolValue: false
 	assert.True(t, testCfg.BoolValue, "BoolValue should be overridden by explicit values")
 
 	// Now, let's remove the explicit values and check the precedence of flags
+
+	// Set up flags
+	flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	flagSet.String("stringValue", "", "test string value")
+	flagSet.Int("intValue", 0, "test int value")
+	flagSet.Bool("boolValue", false, "test bool value")
+
+	err = flagSet.Parse([]string{"--stringValue=from_flag", "--intValue=300", "--boolValue=false"})
+	require.NoError(t, err)
+
+	flags := make(map[string][]*pflag.Flag)
+	flagSet.VisitAll(func(f *pflag.Flag) {
+		flags[f.Name] = []*pflag.Flag{f}
+	})
+
 	cfg, err = config.New(
 		config.WithDefault(TestConfig{
 			StringValue: "default",
@@ -614,6 +614,89 @@ boolValue: false
 	assert.Equal(t, "default", testCfg.StringValue, "StringValue should be set to default")
 	assert.Equal(t, 50, testCfg.IntValue, "IntValue should be set to default")
 	assert.True(t, testCfg.BoolValue, "BoolValue should be set to default")
+}
+
+func TestFlagConfigConflicts(t *testing.T) {
+	t.Run("No Conflicts", func(t *testing.T) {
+		flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		flagSet.String("string-value", "test", "string value")
+		flagSet.Int("int-value", 42, "int value")
+
+		flags := make(map[string][]*pflag.Flag)
+		flagSet.VisitAll(func(f *pflag.Flag) {
+			flags[f.Name] = append(flags[f.Name], f)
+		})
+
+		values := map[string]any{
+			"boolValue": true,
+		}
+
+		cfg, err := config.New(
+			config.WithDefault(TestConfig{}),
+			config.WithFlags(flags),
+			config.WithValues(values),
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, cfg)
+	})
+
+	t.Run("With Conflicts", func(t *testing.T) {
+		flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		flagSet.String("string-value", "test", "string value")
+		flagSet.Int("int-value", 42, "int value")
+
+		err := flagSet.Set("string-value", "flag-value")
+		require.NoError(t, err)
+
+		flags := make(map[string][]*pflag.Flag)
+		flagSet.VisitAll(func(f *pflag.Flag) {
+			flags[f.Name] = append(flags[f.Name], f)
+		})
+
+		values := map[string]any{
+			"string-value": "conflict",
+			"boolValue":    true,
+		}
+
+		cfg, err := config.New(
+			config.WithDefault(TestConfig{}),
+			config.WithFlags(flags),
+			config.WithValues(values),
+		)
+
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "flag: --string-value and config flag key \"string-value\" cannot both be provided")
+	})
+
+	t.Run("Multiple Flags for Same Key", func(t *testing.T) {
+		flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		flagSet.String("string-value", "test1", "string value 1")
+		flagSet.String("str-value", "test2", "string value 2")
+
+		err := flagSet.Set("str-value", "flag-value")
+		require.NoError(t, err)
+
+		flags := make(map[string][]*pflag.Flag)
+		flagSet.VisitAll(func(f *pflag.Flag) {
+			flags["stringValue"] = append(flags["stringValue"], f)
+		})
+
+		values := map[string]any{
+			"stringValue": "conflict",
+		}
+
+		cfg, err := config.New(
+			config.WithDefault(TestConfig{}),
+			config.WithFlags(flags),
+			config.WithValues(values),
+		)
+
+		assert.Error(t, err)
+		assert.Nil(t, cfg)
+		assert.Contains(t, err.Error(), "flag: --str-value and config flag key \"stringValue\" cannot both be provided")
+	})
 }
 
 type LargeConfig struct {

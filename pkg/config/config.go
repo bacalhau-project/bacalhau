@@ -136,6 +136,10 @@ func New(opts ...Option) (*Config, error) {
 		}
 	}
 
+	if err = checkFlagConfigConflicts(c.flags, c.values); err != nil {
+		return nil, err
+	}
+
 	for name, flags := range c.flags {
 		for _, flag := range flags {
 			// only if the flag has been set do we want to bind to it, this allows multiple flags
@@ -368,5 +372,21 @@ func ValidatePath(path string) error {
 			WithCode(bacerrors.ValidationError)
 	}
 
+	return nil
+}
+
+// checkFlagConfigConflicts checks for conflicts between cli flags and config values.
+// e.g. bacalhau serve --config=api.host=0.0.0.0 --api-host=0.0.0.0 should be rejected.
+func checkFlagConfigConflicts(flags map[string][]*pflag.Flag, cfgValues map[string]any) error {
+	for name, flagList := range flags {
+		if cfgValue, exists := cfgValues[name]; exists {
+			for _, flag := range flagList {
+				if flag.Changed {
+					return bacerrors.New("flag: --%s and config flag key %q cannot both be provided. Only one may be used", flag.Name, name).
+						WithHint("Remove --%s or --config/-c %s=%v from the command", flag.Name, name, cfgValue)
+				}
+			}
+		}
+	}
 	return nil
 }

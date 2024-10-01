@@ -19,6 +19,7 @@ const (
 	ConfigurationError ErrorCode = "ConfigurationError"
 	DatastoreFailure   ErrorCode = "DatastoreFailure"
 	RequestCancelled   ErrorCode = "RequestCancelled"
+	IOError            ErrorCode = "IOError"
 	UnknownError       ErrorCode = "UnknownError"
 )
 
