@@ -5,7 +5,7 @@ interface Config {
   APIEndpoint: string
 }
 
-const DEFAULT_API_URL = 'http://localhost:20000'
+const DEFAULT_API_URL = 'http://localhost:1234'
 
 async function fetchConfig(): Promise<Config | null> {
   try {
