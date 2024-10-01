@@ -1,12 +1,5 @@
 package types
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-)
-
 // NB: Developers, after making changes (comments included) to this struct or any of its children, run go generate.
 
 //go:generate go run gen/generate.go ./
@@ -31,15 +24,6 @@ type Bacalhau struct {
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
 	DisableAnalytics    bool                `yaml:"DisableAnalytics,omitempty"`
-}
-
-func (b Bacalhau) Validate() error {
-	var errs error
-	if err := validate.IsValidPath(b.DataDir); err != nil {
-		errs = errors.Join(err, fmt.Errorf("DataDir (%q) invalid", b.DataDir))
-	}
-
-	return errs
 }
 
 type API struct {

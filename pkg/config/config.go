@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -23,6 +24,8 @@ const (
 	environmentVariablePrefix = "BACALHAU"
 	inferConfigTypes          = true
 	DefaultFileName           = "config.yaml"
+
+	errComponent = "config"
 )
 
 var (
@@ -117,26 +120,13 @@ func New(opts ...Option) (*Config, error) {
 
 	// To absolute paths for better logging. This is best effort and will not return an error if it fails.
 	for i, path := range c.paths {
-		if !filepath.IsAbs(path) {
-			absPath, err := filepath.Abs(path)
-			if err != nil {
-				log.Debug().Msgf("failed to resolve absolute path for %s: %v", path, err)
-			} else {
-				c.paths[i] = absPath
-			}
-		}
+		c.paths[i] = AbsPathSilent(path)
 	}
 
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
 		if err := c.Merge(path); err != nil {
-			if os.IsNotExist(err) {
-				return nil, fmt.Errorf("the specified configuration file %q doesn't exist", path)
-			}
-			return nil, fmt.Errorf("opening config file %q: %w", path, err)
-		}
-		if dataDirPath := c.base.GetString(types.DataDirKey); dataDirPath != "" && !filepath.IsAbs(dataDirPath) {
-			return nil, fmt.Errorf("config file %q with value %q invalid. %s must be an absolute path", c.base.ConfigFileUsed(), dataDirPath, types.DataDirKey)
+			return nil, err
 		}
 	}
 
@@ -181,6 +171,10 @@ func New(opts ...Option) (*Config, error) {
 							c.values[types.ComputeEnabledKey] = true
 						}
 					}
+				case types.DataDirKey:
+					// Handle relative paths for data-dir flag
+					path := AbsPathSilent(flag.Value.String())
+					c.base.Set(types.DataDirKey, path)
 				case "default.publisher.deprecated":
 					// allow the deprecated --default-publisher flag to bind to related fields in the config.
 					for _, key := range []string{
@@ -202,8 +196,24 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	// merge the passed values last as they take highest precedence
+	// allow the user to set datadir as relative paths and resolve them to absolute paths
 	for name, value := range c.values {
+		if name == types.DataDirKey {
+			if val, ok := value.(string); ok {
+				value = AbsPathSilent(val)
+			}
+		}
 		c.base.Set(name, value)
+	}
+
+	// allow the users to set datadir to a path like ~/.bacalhau or ~/something/idk/whatever
+	// and expand the path for them
+	if expandedPath, err := homedir.Expand(c.base.GetString(types.DataDirKey)); err == nil {
+		c.base.Set(types.DataDirKey, expandedPath)
+	}
+
+	if err := ValidatePath(c.base.GetString(types.DataDirKey)); err != nil {
+		return nil, err
 	}
 
 	// if no config file was provided, we look for a config.yaml under the resolved data directory,
@@ -215,26 +225,6 @@ func New(opts ...Option) (*Config, error) {
 			opts = append(opts, WithPaths(configFile))
 			return New(opts...)
 		}
-	}
-
-	// log the resolved config paths
-	absoluteConfigPaths := make([]string, len(c.paths))
-	for i, path := range c.paths {
-		absoluteConfigPaths[i], err = filepath.Abs(path)
-		if err != nil {
-			absoluteConfigPaths[i] = path
-		}
-	}
-
-	// allow the users to set datadir to a path like ~/.bacalhau or ~/something/idk/whatever
-	// and expand the path for them
-	dataDirPath := c.base.GetString(types.DataDirKey)
-	if dataDirPath != "" {
-		dataDirPath, err := ExpandPath(dataDirPath)
-		if err != nil {
-			return nil, fmt.Errorf("%s invalid: %w", types.DataDirKey, err)
-		}
-		c.base.Set(types.DataDirKey, dataDirPath)
 	}
 
 	log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", c.paths, c.base.Get(types.DataDirKey))
@@ -280,7 +270,10 @@ func (c *Config) Load(path string) error {
 func (c *Config) Merge(path string) error {
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return fmt.Errorf("the specified configuration file %q doesn't exist", path)
+		}
+		return fmt.Errorf("opening config file %q: %w", path, err)
 	}
 	return nil
 }
@@ -340,25 +333,40 @@ func GenerateNodeID(ctx context.Context, nodeNameProviderType string) (string, e
 	return nodeName, nil
 }
 
-func ExpandPath(path string) (string, error) {
-	// if provided a tilda path, attempt to expand it
-	expanded, err := homedir.Expand(path)
-	if err == nil {
-		path = expanded
+func AbsPathSilent(path string) string {
+	expandedPath, err := homedir.Expand(path)
+	if err != nil {
+		log.Debug().Msgf("failed to expand path %s: %v", path, err)
+		return path
 	}
-	// if provided a relative path, expand to absolute
-	absPath, err := filepath.Abs(path)
-	if err == nil {
-		path = absPath
+	absPath, err := filepath.Abs(expandedPath)
+	if err != nil {
+		log.Debug().Msgf("failed to resolve absolute path for %s: %v", path, err)
+		return path
 	}
+	return absPath
+}
 
+func ValidatePath(path string) error {
+	if path == "" {
+		return bacerrors.New("data dir path is empty").
+			WithHint("Provide a valid path for the data directory").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
+	}
 	if strings.Contains(path, "$") {
-		log.Warn().Msgf("path (%q) contains a '$' character. Note that environment variables are not expanded in this configuration. The path will be used as-is.", path)
+		return bacerrors.New("data dir path %q contains a '$' character", path).
+			WithHint("Note that environment variables are not expanded will be used as-is").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
 	}
 
 	if !filepath.IsAbs(path) {
-		return "", fmt.Errorf("failed to expand %q to absolute path", path)
+		return bacerrors.New("data dir path %q is not an absolute path", path).
+			WithHint("Use an absolute path for the data directory").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
 	}
 
-	return path, nil
+	return nil
 }

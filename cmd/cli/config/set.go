@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
@@ -97,15 +96,8 @@ func setConfig(cmd *cobra.Command, cfg *config.Config, cfgFilePath, key string, 
 		return err
 	}
 	if key == types.DataDirKey {
-		currentRepoPath := cfg.Get(types.DataDirKey)
-		if currentRepoPath != "" {
-			if filepath.Join(currentRepoPath.(string), config.DefaultFileName) == cfgFilePath {
-				return bacerrors.New("modifying the config key %q within the bacalhau repo config %q is not permitted.",
-					types.DataDirKey, cfgFilePath).WithHint("You are free to do so manually, but advised against it.")
-			}
-		}
-		dataDirPath, err := config.ExpandPath(parsed.(string))
-		if err != nil {
+		dataDirPath := config.AbsPathSilent(parsed.(string))
+		if err = config.ValidatePath(dataDirPath); err != nil {
 			return err
 		}
 		v.Set(key, dataDirPath)

@@ -3,9 +3,9 @@
 package config_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -22,169 +22,166 @@ func TestConfigDataDirPath(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
 
-	// Override values with just DataDir
-	// Define test cases
 	testCases := []struct {
-		name     string
-		dataDir  string
-		isValid  bool
-		expected string
+		name          string
+		dataDir       string
+		setMethod     string // "cli", "config", "env", "file", "default"
+		isValid       bool
+		expected      string
+		errorContains string
 	}{
-		// valid cases
+		// CLI flag cases
 		{
-			name:     "Valid DataDir at root",
-			dataDir:  "/",
-			expected: "/",
-			isValid:  true,
+			name:      "CLI: Valid relative path",
+			dataDir:   "relative/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  filepath.Join(workingDir, "relative/path"),
 		},
 		{
-			name:     "Valid DataDir absolute path",
-			dataDir:  "/absolute/path",
-			expected: "/absolute/path",
-			isValid:  true,
+			name:      "CLI: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
 		},
 		{
-			name:     "Valid Tilda DataDir with path",
-			dataDir:  "~/absolute/path",
-			expected: filepath.Join(homeDir, "absolute/path"),
-			isValid:  true,
+			name:      "CLI: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "cli",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Config value cases
+		{
+			name:      "Config: Valid relative path",
+			dataDir:   "relative/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  filepath.Join(workingDir, "relative/path"),
 		},
 		{
-			name:     "Valid Tilda DataDir",
-			dataDir:  "~",
-			expected: homeDir,
-			isValid:  true,
+			name:      "Config: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
 		},
 		{
-			name:     "Valid Tilda DataDir no path",
-			dataDir:  "~/",
-			expected: homeDir,
-			isValid:  true,
+			name:      "Config: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "config",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Environment variable cases
+		{
+			name:          "Env: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "env",
+			isValid:       false,
+			errorContains: "not an absolute path",
 		},
 		{
-			name:     "Valid Tilda DataDir dot path",
-			dataDir:  "~/.",
-			expected: homeDir,
-			isValid:  true,
+			name:      "Env: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "env",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
 		},
 		{
-			name:     "Valid DataDir with space characters",
-			dataDir:  "/path/with space",
-			expected: "/path/with space",
-			isValid:  true,
+			name:      "Env: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "env",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Config file cases
+		{
+			name:          "File: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "file",
+			isValid:       false,
+			errorContains: "not an absolute path",
 		},
 		{
-			name:     "Valid DataDir with trailing slash",
-			dataDir:  "/absolute/path/",
-			expected: "/absolute/path",
-			isValid:  true,
+			name:      "File: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "file",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
 		},
 		{
-			name:     "Valid DataDir with multiple tildes",
-			dataDir:  "~/~/path",
-			expected: filepath.Join(homeDir, "~/path"),
-			isValid:  true,
+			name:      "File: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "file",
+			isValid:   true,
+			expected:  "/absolute/path",
+		},
+		// Default value cases
+		{
+			name:          "Default: Invalid relative path",
+			dataDir:       "relative/path",
+			setMethod:     "default",
+			isValid:       false,
+			errorContains: "not an absolute path",
 		},
 		{
-			name:     "Valid DataDir with space characters and tilda",
-			dataDir:  "~/path/with space",
-			expected: filepath.Join(homeDir, "/path/with space"),
-			isValid:  true,
+			name:      "Default: Valid tilde path",
+			dataDir:   "~/some/path",
+			setMethod: "default",
+			isValid:   true,
+			expected:  filepath.Join(homeDir, "some/path"),
 		},
 		{
-			name:     "Valid DataDir with very long path",
-			dataDir:  "/very/long/path/" + strings.Repeat("a", 255),
-			expected: "/very/long/path/" + strings.Repeat("a", 255),
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir with tilde in the middle of the path",
-			dataDir:  "/path/~to/file",
-			expected: "/path/~to/file",
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir with tilde in start and the middle of the path",
-			dataDir:  "~/path/~to/file",
-			expected: filepath.Join(homeDir, "/path/~to/file"),
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir with special characters",
-			dataDir:  "/path/with?invalid",
-			expected: "/path/with?invalid",
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir relative path - is expanded",
-			dataDir:  "not/absolute/path",
-			expected: filepath.Join(workingDir, "not/absolute/path"),
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir relative dot path - is expanded",
-			dataDir:  "./not/absolute/path",
-			expected: filepath.Join(workingDir, "not/absolute/path"),
-			isValid:  true,
-		},
-		// valid with weird inputs
-		{
-			name:     "Invalid Tilda DataDir",
-			dataDir:  "~not/absolute/path",
-			expected: filepath.Join(workingDir, "~not/absolute/path"),
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir with special characters",
-			dataDir:  "/path/with/special/char$",
-			expected: "/path/with/special/char$",
-			isValid:  true,
-		},
-		{
-			name:     "Valid DataDir with environment variable",
-			dataDir:  "$HOME/path",
-			expected: filepath.Join(workingDir, "$HOME/path"),
-			isValid:  true,
-		},
-		// invalid cases
-		{
-			name:    "Invalid DataDir empty",
-			dataDir: "",
-			isValid: false,
-		},
-		{
-			name:    "Invalid DataDir null byte",
-			dataDir: "\x00",
-			isValid: false,
-		},
-		{
-			name:    "Invalid DataDir, non UTF-8 path",
-			dataDir: string([]byte{0xC3, 0x28}), // 0xC3 followed by 0x28 is invalid,
-			isValid: false,
+			name:      "Default: Valid absolute path",
+			dataDir:   "/absolute/path",
+			setMethod: "default",
+			isValid:   true,
+			expected:  "/absolute/path",
 		},
 	}
 
-	// Run the test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			overrideValues := map[string]any{
-				"datadir": tc.dataDir,
+			var cfg *config.Config
+
+			switch tc.setMethod {
+			case "cli":
+				flags := make(map[string][]*pflag.Flag)
+				flagSet := pflag.NewFlagSet("test", pflag.ContinueOnError)
+				flagSet.String(types.DataDirKey, tc.dataDir, "data directory")
+				flag := flagSet.Lookup(types.DataDirKey)
+				flag.Changed = true
+				flags[types.DataDirKey] = []*pflag.Flag{flag}
+				cfg, err = config.New(config.WithFlags(flags))
+			case "config":
+				cfg, err = config.New(config.WithValues(map[string]interface{}{types.DataDirKey: tc.dataDir}))
+			case "env":
+				t.Setenv("BACALHAU_DATADIR", tc.dataDir)
+				cfg, err = config.New(config.WithEnvironmentVariables(map[string][]string{
+					types.DataDirKey: {"BACALHAU_DATADIR"},
+				}))
+			case "file":
+				tempFile, innerErr := os.CreateTemp("", "config*.yaml")
+				require.NoError(t, innerErr)
+				defer os.Remove(tempFile.Name())
+				_, innerErr = tempFile.WriteString(fmt.Sprintf("datadir: %s\n", tc.dataDir))
+				require.NoError(t, innerErr)
+				tempFile.Close()
+				cfg, err = config.New(config.WithPaths(tempFile.Name()))
+			case "default":
+				cfg, err = config.New(config.WithDefault(types.Bacalhau{DataDir: tc.dataDir}))
 			}
 
-			cfg, err := config.New(config.WithValues(overrideValues))
-			require.NoError(t, err)
-
-			// Check if we expect an error
-
-			// Unmarshal and assert the actual DataDir value
-			var actual types.Bacalhau
-			err = cfg.Unmarshal(&actual)
 			if tc.isValid {
 				require.NoError(t, err)
-				require.Equal(t, tc.expected, actual.DataDir)
+				var actual types.Bacalhau
+				assert.NoError(t, cfg.Unmarshal(&actual))
+				assert.Equal(t, tc.expected, actual.DataDir)
 			} else {
-				t.Logf("ERROR: %s", err)
 				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errorContains)
 			}
 		})
 	}

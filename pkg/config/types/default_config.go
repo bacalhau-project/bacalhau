@@ -5,9 +5,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -133,37 +130,12 @@ const defaultBacalhauDir = ".bacalhau"
 
 // DefaultDataDir determines the appropriate default directory for storing repository data.
 // Priority order:
-// 1. If the environment variable BACALHAU_DIR is set and non-empty, use it.
-// 2. User's home directory with .bacalhau appended.
-// 3. If all above fail, use .bacalhau in the current directory.
+// 1. User's home directory with .bacalhau appended.
 func DefaultDataDir() string {
-	// this method runs before root.go, so we set the level to info for these calls, then return it to previous value
-	currentLevel := zerolog.GlobalLevel()
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	defer zerolog.SetGlobalLevel(currentLevel)
-
-	// Check if the BACALHAU_DIR environment variable is set
-	if repoDir, set := os.LookupEnv("BACALHAU_DIR"); set && repoDir != "" {
-		return repoDir
-	} else if set {
-		log.Warn().Msg("BACALHAU_DIR environment variable is set but empty. Falling back to default directories.")
+	if userHome, err := os.UserHomeDir(); err == nil && userHome != "" {
+		if expandedUserHome, err := filepath.Abs(userHome); err == nil {
+			return filepath.Join(expandedUserHome, defaultBacalhauDir)
+		}
 	}
-
-	// Attempt to get the user's home directory
-	if userHome, err := os.UserHomeDir(); err == nil && filepath.IsAbs(userHome) {
-		log.Trace().Str("HomeDirectory", userHome).Msg("Successfully found $HOME. Using it for the data directory.")
-		return filepath.Join(userHome, defaultBacalhauDir)
-	} else {
-		log.Warn().Err(err).Msg("$HOME is unset or inaccessible. Falling back to current working directory.")
-	}
-
-	// Fallback: attempt to use the absolute path of the default directory
-	path, err := filepath.Abs(defaultBacalhauDir)
-	if err == nil {
-		return path
-	}
-
-	// If everything fails, return the default directory string
-	log.Warn().Err(err).Msg("Failed to determine absolute path for the default Bacalhau directory. Using the current directory.")
-	return defaultBacalhauDir
+	return ""
 }
