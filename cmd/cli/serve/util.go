@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -118,6 +119,9 @@ func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.Requester
 		WorkerCount:                 cfg.Orchestrator.Scheduler.WorkerCount,
 		TranslationEnabled:          cfg.FeatureFlags.ExecTranslation,
 		JobStore:                    jobStore,
+		ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+			NodeDisconnectedAfter: legacy_types.Duration(cfg.Orchestrator.NodeManager.DisconnectTimeout),
+		},
 	}
 
 	if cfg.Publishers.IsNotDisabled(models.StorageSourceS3) {
