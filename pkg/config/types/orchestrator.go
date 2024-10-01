@@ -11,7 +11,6 @@ type Orchestrator struct {
 	Advertise string `yaml:"Advertise,omitempty"`
 	// AuthSecret key specifies the key used by compute nodes to connect to an orchestrator.
 	AuthSecret       string           `yaml:"AuthSecret,omitempty"`
-	TLS              TLS              `yaml:"TLS,omitempty"`
 	Cluster          Cluster          `yaml:"Cluster,omitempty"`
 	NodeManager      NodeManager      `yaml:"NodeManager,omitempty"`
 	Scheduler        Scheduler        `yaml:"Scheduler,omitempty"`
