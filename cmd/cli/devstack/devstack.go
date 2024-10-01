@@ -246,7 +246,7 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 		return err
 	}
 
-	// start WebUI if the stack has orchestrator node
+	// start WebUI for the first successful requester node
 	for _, n := range stack.Nodes {
 		if n.IsRequesterNode() {
 			webuiConfig := webui.Config{
@@ -255,14 +255,17 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 			}
 			webuiServer, err := webui.NewServer(webuiConfig)
 			if err != nil {
-				// not failing the node if the webui server fails to start
-				log.Error().Err(err).Msg("Failed to start ui server")
+				log.Warn().Err(err).Msg("Failed to start ui server for this node, trying next")
+				continue
 			}
+
 			go func() {
 				if err := webuiServer.ListenAndServe(ctx); err != nil {
 					log.Error().Err(err).Msg("ui server error")
 				}
 			}()
+
+			break
 		}
 	}
 
