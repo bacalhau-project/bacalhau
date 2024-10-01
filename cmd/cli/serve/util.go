@@ -62,6 +62,11 @@ func GetComputeConfig(
 			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
 			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
 		},
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			InfoUpdateFrequency: legacy_types.Duration(cfg.Compute.Heartbeat.InfoUpdateInterval),
+			ResourceUpdateFrequency: legacy_types.Duration(cfg.Compute.Heartbeat.ResourceUpdateInterval),
+			HeartbeatFrequency: legacy_types.Duration(cfg.Compute.Heartbeat.Interval),
+		}
 	}
 
 	// if the local publisher is enabled and installed, populate params.
@@ -148,6 +153,7 @@ func getNetworkConfig(cfg types.Bacalhau) (node.NetworkConfig, error) {
 		return node.NetworkConfig{}, err
 	}
 	return node.NetworkConfig{
+		Host	: cfg.Orchestrator.Host,
 		Port:                     cfg.Orchestrator.Port,
 		AdvertisedAddress:        cfg.Orchestrator.Advertise,
 		Orchestrators:            cfg.Compute.Orchestrators,

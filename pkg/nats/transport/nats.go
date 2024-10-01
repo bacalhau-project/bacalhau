@@ -29,6 +29,7 @@ const reservedChars = ".*>"
 
 type NATSTransportConfig struct {
 	NodeID            string
+	Host              string
 	Port              int
 	AdvertisedAddress string
 	Orchestrators     []string
@@ -102,6 +103,7 @@ func NewNATSTransport(ctx context.Context,
 		// create nats server with servers acting as its cluster peers
 		serverOpts := &server.Options{
 			ServerName:             config.NodeID,
+			Host:                   config.Host,
 			Port:                   config.Port,
 			ClientAdvertise:        config.AdvertisedAddress,
 			Authorization:          config.AuthSecret,
