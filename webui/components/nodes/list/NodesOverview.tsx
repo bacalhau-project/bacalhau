@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Orchestrator, models_NodeState } from '@/lib/api/generated'
 import { useApi } from '@/app/providers/ApiProvider'
 import { useRefreshContent } from '@/hooks/useRefreshContent'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Server } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { getNodeConnectionStatus } from '@/lib/api/utils'
 
 export function NodesOverview() {
   const [nodes, setNodes] = useState<models_NodeState[]>([])
+  const [connectedNodes, setConnectedNodes] = useState<number>(0)
   const [search, setSearch] = useState('')
   const { isInitialized } = useApi()
   const [pageSize, setPageSize] = useState(20)
@@ -31,13 +34,19 @@ export function NodesOverview() {
         throwOnError: true,
       })
 
-      setNodes(response.data.Nodes ?? [])
+      const allNodes = response.data.Nodes ?? []
+      setNodes(allNodes)
+      const connected = allNodes.filter(
+        (node) => getNodeConnectionStatus(node) == 'CONNECTED'
+      ).length
+      setConnectedNodes(connected)
       setNextToken(response.data.NextToken)
     } catch (error) {
       console.error('Error fetching nodes:', error)
       setNodes([])
+      setConnectedNodes(0)
     }
-  }, [isInitialized, pageSize, pageIndex, nextToken])
+  }, [isInitialized, pageIndex, nextToken])
 
   useEffect(() => {
     fetchNodes()
@@ -99,6 +108,13 @@ export function NodesOverview() {
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
+        <Badge
+          variant="outline"
+          className="text-sm px-3 py-1 flex items-center gap-2"
+        >
+          <Server className="h-4 w-4" />
+          <span>{connectedNodes} Connected</span>
+        </Badge>
       </div>
       <NodesTable
         nodes={filteredNodes}

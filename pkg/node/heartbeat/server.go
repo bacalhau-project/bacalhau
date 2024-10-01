@@ -18,6 +18,7 @@ import (
 )
 
 type HeartbeatServerParams struct {
+	NodeID                string
 	Client                *nats.Conn
 	Clock                 clock.Clock
 	CheckFrequency        time.Duration
@@ -25,6 +26,7 @@ type HeartbeatServerParams struct {
 }
 
 type HeartbeatServer struct {
+	nodeID            string
 	clock             clock.Clock
 	legacySubscriber  *natsPubSub.PubSub[Heartbeat]
 	pqueue            *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
@@ -60,6 +62,7 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 	}
 
 	return &HeartbeatServer{
+		nodeID:            params.NodeID,
 		clock:             clk,
 		legacySubscriber:  legacySubscriber,
 		pqueue:            pqueue,
@@ -126,6 +129,11 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 			break
 		}
 
+		if item.Value.NodeID == h.nodeID {
+			// We don't want to mark ourselves as disconnected
+			continue
+		}
+
 		if item.Value.Timestamp < disconnectedUnder {
 			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 		}
@@ -140,7 +148,10 @@ func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeConnectionS
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
 func (h *HeartbeatServer) UpdateNodeInfo(state *models.NodeState) {
-	if liveness, ok := h.livenessMap.Get(state.Info.NodeID); ok {
+	if state.Info.NodeID == h.nodeID {
+		// We don't want to mark ourselves as disconnected
+		state.Connection = models.NodeStates.CONNECTED
+	} else if liveness, ok := h.livenessMap.Get(state.Info.NodeID); ok {
 		state.Connection = liveness
 	} else {
 		// We've never seen this, so we'll mark it as unknown

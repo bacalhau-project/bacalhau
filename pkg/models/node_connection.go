@@ -65,7 +65,7 @@ func stringToConnection(s string) connection {
 }
 
 func (t connection) IsValid() bool {
-	return t >= connection(1) && t <= connection(len(strConnectionArray))
+	return t >= connection(0) && t <= connection(len(strConnectionArray))
 }
 
 type livenessContainer struct {

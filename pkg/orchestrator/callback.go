@@ -52,7 +52,9 @@ func (e *Callback) OnBidComplete(ctx context.Context, response compute.BidResult
 			},
 		},
 		NewValues: models.Execution{
-			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).WithMessage(response.Event.Message),
+			ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted).
+				WithMessage(response.Event.Message).
+				WithDetails(response.Event.Details),
 		},
 	}
 
@@ -199,7 +201,9 @@ func (e *Callback) OnComputeFailure(ctx context.Context, result compute.ComputeE
 			},
 		},
 		NewValues: models.Execution{
-			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(result.Error()),
+			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).
+				WithMessage(result.Error()).
+				WithDetails(result.Event.Details),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped).WithMessage("execution failed"),
 		},
 	}); err != nil {

@@ -2,8 +2,8 @@ package disk
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
@@ -34,7 +34,7 @@ func (c *DiskUsageCalculator) Calculate(ctx context.Context, job models.Job, par
 		}
 		volumeSize, err := strg.GetVolumeSize(ctx, *input)
 		if err != nil {
-			return nil, fmt.Errorf("error getting job disk space requirements: %w", err)
+			return nil, bacerrors.Wrap(err, "error getting job disk space requirements")
 		}
 		totalDiskRequirements += volumeSize
 	}

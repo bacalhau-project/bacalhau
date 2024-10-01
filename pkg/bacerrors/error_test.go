@@ -81,6 +81,79 @@ func (suite *ErrorTestSuite) TestErrorWithDetails() {
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
 	suite.Equal(details, err.Details())
+
+	// Test appending details
+	additionalDetails := map[string]string{"key3": "value3", "key2": "newvalue2"}
+	err = err.WithDetails(additionalDetails)
+
+	expectedDetails := map[string]string{"key1": "value1", "key2": "newvalue2", "key3": "value3"}
+	suite.Equal(expectedDetails, err.Details())
+}
+
+func (suite *ErrorTestSuite) TestErrorWithDetail() {
+	message := "TestMessage"
+	err := New(message).WithDetail("key1", "value1")
+
+	suite.Equal(message, err.Error())
+	suite.Empty(err.Hint())
+	suite.False(err.Retryable())
+	suite.False(err.FailsExecution())
+	suite.Equal(map[string]string{"key1": "value1"}, err.Details())
+
+	// Test adding another detail
+	err = err.WithDetail("key2", "value2")
+	expectedDetails := map[string]string{"key1": "value1", "key2": "value2"}
+	suite.Equal(expectedDetails, err.Details())
+
+	// Test overwriting an existing detail
+	err = err.WithDetail("key1", "newvalue1")
+	expectedDetails = map[string]string{"key1": "newvalue1", "key2": "value2"}
+	suite.Equal(expectedDetails, err.Details())
+}
+
+func (suite *ErrorTestSuite) TestErrorWithCode() {
+	message := "TestMessage"
+	err := New(message).WithCode(BadRequestError)
+
+	suite.Equal(message, err.Error())
+	suite.Equal(BadRequestError, err.Code())
+	suite.Equal(400, err.HTTPStatusCode()) // BadRequestError should map to 400
+}
+
+func (suite *ErrorTestSuite) TestErrorWithHTTPStatusCode() {
+	message := "TestMessage"
+	err := New(message).WithHTTPStatusCode(418) // I'm a teapot
+
+	suite.Equal(message, err.Error())
+	suite.Equal(418, err.HTTPStatusCode())
+}
+
+func (suite *ErrorTestSuite) TestErrorWithComponent() {
+	message := "TestMessage"
+	err := New(message).WithComponent("TestComponent")
+
+	suite.Equal(message, err.Error())
+	suite.Equal("TestComponent", err.Component())
+}
+
+func (suite *ErrorTestSuite) TestErrorChaining() {
+	err := New("TestMessage").
+		WithHint("TestHint").
+		WithRetryable().
+		WithFailsExecution().
+		WithDetail("key1", "value1").
+		WithCode(NotFoundError).
+		WithHTTPStatusCode(404).
+		WithComponent("TestComponent")
+
+	suite.Equal("TestMessage", err.Error())
+	suite.Equal("TestHint", err.Hint())
+	suite.True(err.Retryable())
+	suite.True(err.FailsExecution())
+	suite.Equal(map[string]string{"key1": "value1"}, err.Details())
+	suite.Equal(NotFoundError, err.Code())
+	suite.Equal(404, err.HTTPStatusCode())
+	suite.Equal("TestComponent", err.Component())
 }
 
 func (suite *ErrorTestSuite) TestWrapNonBacerror() {

@@ -19,6 +19,7 @@ const (
 	ConfigurationError ErrorCode = "ConfigurationError"
 	DatastoreFailure   ErrorCode = "DatastoreFailure"
 	RequestCancelled   ErrorCode = "RequestCancelled"
+	UnknownError       ErrorCode = "UnknownError"
 )
 
 func Code(code string) ErrorCode {

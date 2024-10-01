@@ -6,11 +6,12 @@ import (
 
 var AllowListLocalPathsFlags = []Definition{
 	{
-		FlagName:          "allow-listed-local-paths",
-		ConfigPath:        types.ComputeAllowListedLocalPathsKey,
-		DefaultValue:      types.Default.Compute.AllowListedLocalPaths,
-		Description:       "Local paths that are allowed to be mounted into jobs",
-		Deprecated:        true,
-		DeprecatedMessage: makeDeprecationMessage(types.ComputeAllowListedLocalPathsKey),
+		FlagName:             "allow-listed-local-paths",
+		ConfigPath:           types.ComputeAllowListedLocalPathsKey,
+		DefaultValue:         types.Default.Compute.AllowListedLocalPaths,
+		Description:          "Local paths that are allowed to be mounted into jobs",
+		EnvironmentVariables: []string{"BACALHAU_NODE_ALLOWLISTEDLOCALPATHS"},
+		Deprecated:           true,
+		DeprecatedMessage:    makeDeprecationMessage(types.ComputeAllowListedLocalPathsKey),
 	},
 }

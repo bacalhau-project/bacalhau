@@ -68,7 +68,7 @@ func NewRequesterNode(
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 	fsr *repo.FsRepo,
 ) (*Requester, error) {
-	nodeManager, heartbeatServer, err := createNodeManager(ctx, transportLayer, requesterConfig)
+	nodeManager, heartbeatServer, err := createNodeManager(ctx, nodeID, transportLayer, requesterConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -212,18 +212,12 @@ func NewRequesterNode(
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
-	installationID := system.InstallationID()
-	var instanceID string
-	if sysmeta, err := fsr.SystemMetadata(); err == nil {
-		instanceID = sysmeta.InstanceID
-	}
-
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
 		transformer.RequesterInfo(nodeID),
-		transformer.OrchestratorInstallationID(installationID),
-		transformer.OrchestratorInstanceID(instanceID),
+		transformer.OrchestratorInstallationID(system.InstallationID()),
+		transformer.OrchestratorInstanceID(fsr.InstanceID()),
 		transformer.DefaultsApplier(requesterConfig.JobDefaults),
 	}
 
@@ -380,6 +374,7 @@ func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) 
 }
 
 func createNodeManager(ctx context.Context,
+	nodeId string,
 	transportLayer *nats_transport.NATSTransport,
 	requesterConfig RequesterConfig) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
 	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
@@ -389,6 +384,7 @@ func createNodeManager(ctx context.Context,
 
 	// heartbeat service
 	heartbeatParams := heartbeat.HeartbeatServerParams{
+		NodeID:                nodeId,
 		Client:                transportLayer.Client(),
 		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
 		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
