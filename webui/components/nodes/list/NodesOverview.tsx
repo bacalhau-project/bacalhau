@@ -109,7 +109,7 @@ export function NodesOverview() {
           </Button>
         </div>
         <Badge
-          variant="secondary"
+          variant="outline"
           className="text-sm px-3 py-1 flex items-center gap-2"
         >
           <Server className="h-4 w-4" />
