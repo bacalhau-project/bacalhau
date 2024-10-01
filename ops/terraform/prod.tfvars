@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.5.0-alpha10"
+bacalhau_version            = "v1.5.0-alpha11"
 bacalhau_port               = "1235"
 bacalhau_environment        = "production"
 ipfs_version                = "v0.18.1"

@@ -35,6 +35,7 @@ bacalhau serve \
   --max-job-execution-timeout '60m' \
   --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
+  --api-host "${BACALHAU_API_HOST}" \
   --api-port 1234 \
   --requester-job-translation-enabled \
   --config DisableAnalytics \
@@ -43,6 +44,6 @@ bacalhau serve \
   --config Orchestrator.Advertise="${BACALHAU_ORCHESTRATOR_ADVERTISE}" \
   --config WebUI.Enabled="${BACALHAU_NODE_WEBUI}" \
   --config WebUI.Listen=0.0.0.0:80 \
-  --config JobDefaults.Batch.Task.Publisher.Config.Type=local \
-  --config JobDefaults.Ops.Task.Publisher.Config.Type=local \
+  --config JobDefaults.Batch.Task.Publisher.Type=local \
+  --config JobDefaults.Ops.Task.Publisher.Type=local \
   --config Publishers.Types.Local.Address="${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
