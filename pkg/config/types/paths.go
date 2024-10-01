@@ -7,11 +7,11 @@ import (
 
 const UserKeyFileName = "user_id.pem"
 
-func (c Bacalhau) UserKeyPath() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) UserKeyPath() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, UserKeyFileName)
+	path := filepath.Join(b.DataDir, UserKeyFileName)
 	if exists, err := fileExists(path); err != nil {
 		return "", fmt.Errorf("checking if user key exists: %w", err)
 	} else if exists {
@@ -25,20 +25,20 @@ func (c Bacalhau) UserKeyPath() (string, error) {
 
 const AuthTokensFileName = "tokens.json"
 
-func (c Bacalhau) AuthTokensPath() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) AuthTokensPath() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	return filepath.Join(c.DataDir, AuthTokensFileName), nil
+	return filepath.Join(b.DataDir, AuthTokensFileName), nil
 }
 
 const OrchestratorDirName = "orchestrator"
 
-func (c Bacalhau) OrchestratorDir() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) OrchestratorDir() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, OrchestratorDirName)
+	path := filepath.Join(b.DataDir, OrchestratorDirName)
 	if err := ensureDir(path); err != nil {
 		return "", fmt.Errorf("getting orchestrator path: %w", err)
 	}
@@ -47,24 +47,24 @@ func (c Bacalhau) OrchestratorDir() (string, error) {
 
 const JobStoreFileName = "state_boltdb.db"
 
-func (c Bacalhau) JobStoreFilePath() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) JobStoreFilePath() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
 	// make sure the parent dir exists first
-	if _, err := c.OrchestratorDir(); err != nil {
+	if _, err := b.OrchestratorDir(); err != nil {
 		return "", fmt.Errorf("getting job store path: %w", err)
 	}
-	return filepath.Join(c.DataDir, OrchestratorDirName, JobStoreFileName), nil
+	return filepath.Join(b.DataDir, OrchestratorDirName, JobStoreFileName), nil
 }
 
 const NetworkTransportDirName = "nats-store"
 
-func (c Bacalhau) NetworkTransportDir() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) NetworkTransportDir() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, OrchestratorDirName, NetworkTransportDirName)
+	path := filepath.Join(b.DataDir, OrchestratorDirName, NetworkTransportDirName)
 	if err := ensureDir(path); err != nil {
 		return "", fmt.Errorf("getting network transport path: %w", err)
 	}
@@ -73,11 +73,11 @@ func (c Bacalhau) NetworkTransportDir() (string, error) {
 
 const ComputeDirName = "compute"
 
-func (c Bacalhau) ComputeDir() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) ComputeDir() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, ComputeDirName)
+	path := filepath.Join(b.DataDir, ComputeDirName)
 	if err := ensureDir(path); err != nil {
 		return "", fmt.Errorf("getting compute path: %w", err)
 	}
@@ -86,11 +86,11 @@ func (c Bacalhau) ComputeDir() (string, error) {
 
 const ExecutionDirName = "executions"
 
-func (c Bacalhau) ExecutionDir() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) ExecutionDir() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, ComputeDirName, ExecutionDirName)
+	path := filepath.Join(b.DataDir, ComputeDirName, ExecutionDirName)
 	if err := ensureDir(path); err != nil {
 		return "", fmt.Errorf("getting executions path: %w", err)
 	}
@@ -99,11 +99,11 @@ func (c Bacalhau) ExecutionDir() (string, error) {
 
 const PluginsDirName = "plugins"
 
-func (c Bacalhau) PluginsDir() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) PluginsDir() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	path := filepath.Join(c.DataDir, PluginsDirName)
+	path := filepath.Join(b.DataDir, PluginsDirName)
 	if err := ensureDir(path); err != nil {
 		return "", fmt.Errorf("getting plugins path: %w", err)
 	}
@@ -112,12 +112,12 @@ func (c Bacalhau) PluginsDir() (string, error) {
 
 const ExecutionStoreFileName = "state_boltdb.db"
 
-func (c Bacalhau) ExecutionStoreFilePath() (string, error) {
-	if c.DataDir == "" {
+func (b Bacalhau) ExecutionStoreFilePath() (string, error) {
+	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
-	if _, err := c.ComputeDir(); err != nil {
+	if _, err := b.ComputeDir(); err != nil {
 		return "", fmt.Errorf("getting execution store path: %w", err)
 	}
-	return filepath.Join(c.DataDir, ComputeDirName, ExecutionStoreFileName), nil
+	return filepath.Join(b.DataDir, ComputeDirName, ExecutionStoreFileName), nil
 }
