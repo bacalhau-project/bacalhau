@@ -70,8 +70,7 @@ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=${terraform.workspace}"
 export BACALHAU_ORCHESTRATORS="${var.internal_ip_addresses[0]}:4222"
 export BACALHAU_ORCHESTRATOR_ADVERTISE="${var.public_ip_addresses[count.index]}:4222"
 export BACALHAU_LOCAL_PUBLISHER_ADDRESS="${var.public_ip_addresses[count.index]}"
-export BACALHAU_API_HOST="${var.public_ip_addresses[count.index]}"
-
+export BACALHAU_WEBUI_BACKEND="http://${var.public_ip_addresses[0]}:1234"
 
 ### secrets are installed in the install-node.sh script
 export SECRETS_GRAFANA_CLOUD_PROMETHEUS_API_KEY="${var.grafana_cloud_prometheus_api_key}"
