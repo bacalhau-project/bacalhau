@@ -24,7 +24,7 @@ type Bacalhau struct {
 	Logging             Logging             `yaml:"Logging,omitempty"`
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty"`
-	// DisableAnalytics when set to true prevents bacalhau from sharing anonymous usage data with the developer team
+	// DisableAnalytics when set to true prevents bacalhau from sharing anonymous usage data with the developer team.
 	DisableAnalytics bool `yaml:"DisableAnalytics,omitempty"`
 }
 
