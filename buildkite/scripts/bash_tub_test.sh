@@ -7,14 +7,14 @@ build_bacalhau() {
 }
 
 
-run_bacalhau_test() {
+bash_test() {
   make bash-test
 }
 
 
 main () {
   build_bacalhau
-  bash-test
+  bash_test
 }
 
 main
