@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -60,6 +61,11 @@ func GetComputeConfig(
 			AcceptNetworkedJobs: cfg.JobAdmissionControl.AcceptNetworkedJobs,
 			ProbeHTTP:           cfg.JobAdmissionControl.ProbeHTTP,
 			ProbeExec:           cfg.JobAdmissionControl.ProbeExec,
+		},
+		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
+			InfoUpdateFrequency:     legacy_types.Duration(cfg.Compute.Heartbeat.InfoUpdateInterval),
+			ResourceUpdateFrequency: legacy_types.Duration(cfg.Compute.Heartbeat.ResourceUpdateInterval),
+			HeartbeatFrequency:      legacy_types.Duration(cfg.Compute.Heartbeat.Interval),
 		},
 	}
 
@@ -118,6 +124,9 @@ func GetRequesterConfig(cfg types.Bacalhau, createJobStore bool) (node.Requester
 		WorkerCount:                 cfg.Orchestrator.Scheduler.WorkerCount,
 		TranslationEnabled:          cfg.FeatureFlags.ExecTranslation,
 		JobStore:                    jobStore,
+		ControlPlaneSettings: legacy_types.RequesterControlPlaneConfig{
+			NodeDisconnectedAfter: legacy_types.Duration(cfg.Orchestrator.NodeManager.DisconnectTimeout),
+		},
 	}
 
 	if cfg.Publishers.IsNotDisabled(models.StorageSourceS3) {
@@ -144,6 +153,7 @@ func getNetworkConfig(cfg types.Bacalhau) (node.NetworkConfig, error) {
 		return node.NetworkConfig{}, err
 	}
 	return node.NetworkConfig{
+		Host:                     cfg.Orchestrator.Host,
 		Port:                     cfg.Orchestrator.Port,
 		AdvertisedAddress:        cfg.Orchestrator.Advertise,
 		Orchestrators:            cfg.Compute.Orchestrators,

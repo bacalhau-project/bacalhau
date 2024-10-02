@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -92,7 +95,11 @@ func (fsr *FsRepo) Init() error {
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
-		return err
+		return bacerrors.New("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
+			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
+				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
+				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+
+				"\tIf present, ensure the config file in %s contains a valid DataDir field path", filepath.Join(fsr.path, config.DefaultFileName))
 	}
 
 	// TODO this should be a part of the config.

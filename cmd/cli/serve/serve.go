@@ -239,19 +239,23 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
 		webuiConfig := webui.Config{
-			APIEndpoint: standardNode.APIServer.GetURI().String(),
+			APIEndpoint: cfg.WebUI.Backend,
 			Listen:      cfg.WebUI.Listen,
+		}
+		if webuiConfig.APIEndpoint == "" {
+			webuiConfig.APIEndpoint = standardNode.APIServer.GetURI().String()
 		}
 		webuiServer, err := webui.NewServer(webuiConfig)
 		if err != nil {
 			// not failing the node if the webui server fails to start
 			log.Error().Err(err).Msg("Failed to start ui server")
+		} else {
+			go func() {
+				if err := webuiServer.ListenAndServe(ctx); err != nil {
+					log.Error().Err(err).Msg("ui server error")
+				}
+			}()
 		}
-		go func() {
-			if err := webuiServer.ListenAndServe(ctx); err != nil {
-				log.Error().Err(err).Msg("ui server error")
-			}
-		}()
 	}
 
 	if !cfg.DisableAnalytics {

@@ -166,7 +166,7 @@ API:
 	})
 
 	// Test case 4: Dot notation without value (boolean true)
-	t.Run("DotNotationWithoutValue", func(t *testing.T) {
+	t.Run("DotNotationBoolWithoutValue", func(t *testing.T) {
 		viper.Reset()
 		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{"-c", "WebUI.Enabled"})
@@ -176,6 +176,28 @@ API:
 		config, err := loadConfig()
 		require.NoError(t, err)
 		assert.True(t, config.WebUI.Enabled)
+	})
+
+	// Test case 4.1: Dot notation with value (boolean true)
+	t.Run("DotNotationBoolWithValue", func(t *testing.T) {
+		viper.Reset()
+		cmd := setupTestCommand(false)
+		cmd.SetArgs([]string{"-c", "WebUI.Enabled=true"})
+		err := cmd.Execute()
+		require.NoError(t, err)
+
+		config, err := loadConfig()
+		require.NoError(t, err)
+		assert.True(t, config.WebUI.Enabled)
+	})
+
+	// Test case 4.2: Dot notation without value (non boolean)
+	t.Run("DotNotationBoolWithValue", func(t *testing.T) {
+		viper.Reset()
+		cmd := setupTestCommand(false)
+		cmd.SetArgs([]string{"-c", "api.host", "0.0.0.0"})
+		err := cmd.Execute()
+		require.Error(t, err)
 	})
 
 	// Test case 5: Multiple dot notation values
