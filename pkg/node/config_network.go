@@ -2,6 +2,7 @@ package node
 
 type NetworkConfig struct {
 	// NATS config for requesters to be reachable by compute nodes
+	Host              string
 	Port              int
 	AdvertisedAddress string
 	Orchestrators     []string

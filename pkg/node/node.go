@@ -401,6 +401,7 @@ func createAPIServer(config NodeConfig, userKey *baccrypto.UserKey) (*publicapi.
 func createTransport(ctx context.Context, config NodeConfig) (*nats_transport.NATSTransport, error) {
 	transportLayer, err := nats_transport.NewNATSTransport(ctx, &nats_transport.NATSTransportConfig{
 		NodeID:                   config.NodeID,
+		Host:                     config.NetworkConfig.Host,
 		Port:                     config.NetworkConfig.Port,
 		AdvertisedAddress:        config.NetworkConfig.AdvertisedAddress,
 		AuthSecret:               config.NetworkConfig.AuthSecret,
