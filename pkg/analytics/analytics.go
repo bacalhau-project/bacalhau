@@ -41,7 +41,7 @@ func WithEndpoint(endpoint string) Option {
 	}
 }
 
-func WithNodeNodeID(id string) Option {
+func WithNodeID(id string) Option {
 	return func(c *Config) {
 		c.attributes = append(c.attributes, attribute.String(NodeIDKey, id))
 	}
@@ -108,7 +108,7 @@ func SetupAnalyticsProvider(ctx context.Context, opts ...Option) error {
 
 	// Create a new resource with auto-detected host information
 	res, err := resource.New(ctx,
-		resource.WithOS(),
+		resource.WithOSType(),
 		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithAttributes(config.attributes...),
 	)
