@@ -69,8 +69,9 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
 	// if the user didn't provide a publisher, and a default transformer is set - use it.
-	if task.Publisher.IsEmpty() && !defaults.Publisher.IsEmpty() {
-		task.Publisher = &defaults.Publisher
+	specConfig := defaults.Publisher.ToSpecConfig()
+	if task.Publisher.IsEmpty() && !specConfig.IsEmpty() {
+		task.Publisher = &specConfig
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
 		task.Timeouts.ExecutionTimeout = int64(time.Duration(defaults.Timeouts.ExecutionTimeout).Seconds())
