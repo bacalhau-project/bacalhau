@@ -1,0 +1,62 @@
+x-common-env-variables: &common-env-variables
+  NETWORK_AUTH_TOKEN: "i_am_very_secret_token"
+  API_SERVER_PORT: "1234"
+
+networks:
+  bacalhau-network:
+    driver: bridge
+
+services:
+  bacalhau-requester-node:
+    image: bacalhau-in-docker
+    container_name: bacalhau-requester-node-container
+    networks:
+      - bacalhau-network
+    environment: *common-env-variables
+    privileged: true
+    command:
+      - /bin/bash
+      - -c
+      - |
+          bacalhau config set "node.network.authsecret" "$${NETWORK_AUTH_TOKEN}" && bacalhau serve --port=$${API_SERVER_PORT} --node-type requester
+    healthcheck:
+      test: ["CMD-SHELL", "nc -zv localhost 1234"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  bacalhau-compute-node:
+    image: bacalhau-compute-node-image
+    container_name: bacalhau-compute-node-container
+    privileged: true
+    networks:
+      - bacalhau-network
+    depends_on:
+      bacalhau-requester-node:
+        condition: service_healthy
+    environment:
+      <<: *common-env-variables
+      REQUESTER_NODE_LINK: 'bacalhau-requester-node'
+    healthcheck:
+      test: ["CMD-SHELL", "nc -zv localhost 1234"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  bacalhau-client-node:
+    image: bacalhau-in-docker
+    container_name: bacalhau-client-node-container
+    networks:
+      - bacalhau-network
+    depends_on:
+      bacalhau-requester-node:
+        condition: service_healthy
+      bacalhau-compute-node:
+        condition: service_healthy
+    environment:
+      <<: *common-env-variables
+      REQUESTER_NODE_HOST: 'bacalhau-requester-node'
+      COMPUTE_NODE_HOST: 'bacalhau-compute-node'
+    command: tail -f /dev/null

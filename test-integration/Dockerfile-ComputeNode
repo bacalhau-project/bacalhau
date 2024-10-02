@@ -1,0 +1,12 @@
+# Use the docker:dind image as the base image
+FROM docker:dind
+
+# Install curl and bash
+RUN apk update && apk add --no-cache curl bash
+
+# Download and execute the Bash script from the given URL
+RUN curl -sSL https://get.bacalhau.org/install.sh | bash
+
+COPY compute_node_runner.sh compute_node_runner.sh
+ENTRYPOINT ["/usr/bin/env"]
+CMD ./compute_node_runner.sh
