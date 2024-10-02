@@ -61,6 +61,12 @@ steps:
     agents:
       queue: "buildkite-hosted-linux-large"
 
+  - label: ":testengine: Bash Tub Test"
+    command: "./buildkite/scripts/bash_tub_test.sh"
+    key: "bash-tub-test"
+    agents: 
+      queue: "buildkite-hosted-linux-large"
+
   - wait: ~
 
   - label: ":docker: Build & Publish Bacalhau Image"
