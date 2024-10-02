@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -12,16 +11,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/authn"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
-	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
@@ -31,7 +27,6 @@ type DevStackOptions struct {
 	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
 	NumberOfComputeOnlyNodes   int    // Number of nodes to start in the cluster
 	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
-	NumberOfBadRequesterActors int    // Number of requester nodes to be bad actors
 	Peer                       string // Connect node 0 to another network node
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
@@ -48,7 +43,6 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
 		WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
 		WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
-		WithNumberOfBadRequesterActors(o.NumberOfBadRequesterActors),
 		WithCPUProfilingFile(o.CPUProfilingFile),
 		WithMemoryProfilingFile(o.MemoryProfilingFile),
 		WithDisabledFeatures(o.DisabledFeatures),
@@ -70,16 +64,11 @@ type DevStack struct {
 //nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
-	cfg types.Bacalhau,
 	cm *system.CleanupManager,
-	fsRepo *repo.FsRepo,
+	basePath string,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
-	executionDir, err := cfg.ExecutionDir()
-	if err != nil {
-		return nil, err
-	}
-	stackConfig, err := defaultDevStackConfig(executionDir)
+	stackConfig, err := defaultDevStackConfig()
 	if err != nil {
 		return nil, fmt.Errorf("creating devstack defaults: %w", err)
 	}
@@ -92,6 +81,8 @@ func Setup(
 	}
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
+
+	cfg := stackConfig.BacalhauConfig
 
 	var nodes []*node.Node
 	orchestratorAddrs := make([]string, 0)
@@ -106,11 +97,6 @@ func Setup(
 	}
 
 	for i := 0; i < totalNodeCount; i++ {
-		repoPath, err := fsRepo.Path()
-		if err != nil {
-			return nil, err
-		}
-
 		nodeID := fmt.Sprintf("node-%d", i)
 		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
 
@@ -130,12 +116,6 @@ func Setup(
 				return nil, errors.Wrap(err, "failed to get free port for swarm port")
 			}
 		}
-		clusterConfig := node.NetworkConfig{
-			Orchestrators: orchestratorAddrs,
-			Port:          natsPort,
-			ClusterPeers:  clusterPeersAddrs,
-			AuthSecret:    stackConfig.AuthSecret,
-		}
 
 		var clusterPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
@@ -147,20 +127,23 @@ func Setup(
 			}
 		}
 
+		if isComputeNode {
+			cfg.Compute.Orchestrators = orchestratorAddrs
+		}
+
 		if isRequesterNode {
-			clusterConfig.StoreDir = filepath.Join(repoPath, "nats-storage")
-			clusterConfig.ClusterName = "devstack"
-			clusterConfig.ClusterPort = clusterPort
+			cfg.Orchestrator.Port = natsPort
+			cfg.Orchestrator.Cluster.Peers = clusterPeersAddrs
+			cfg.Orchestrator.Cluster.Name = "devstack"
+			cfg.Orchestrator.Cluster.Port = clusterPort
 			orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", natsPort))
 		}
 
 		// ////////////////////////////////////
 		// port for API
 		// ////////////////////////////////////
-		apiPort := uint16(0)
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			const startPort = 20000
-			apiPort = uint16(startPort + i)
+			cfg.API.Port = 20000 + i
 		}
 
 		// ////////////////////////////////////
@@ -170,15 +153,6 @@ func Setup(
 		// here is where we can parse string based CLI stackConfig
 		// into more meaningful model.FailureInjectionConfig values
 		isBadComputeActor := (stackConfig.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-stackConfig.NumberOfBadComputeActors)
-		isBadRequesterActor := (stackConfig.NumberOfBadRequesterActors > 0) && (i >= requesterNodeCount-stackConfig.NumberOfBadRequesterActors)
-
-		if isBadComputeActor {
-			stackConfig.ComputeConfig.FailureInjectionConfig.IsBadActor = isBadComputeActor
-		}
-
-		if isBadRequesterActor {
-			stackConfig.RequesterConfig.FailureInjectionConfig.IsBadActor = isBadRequesterActor
-		}
 
 		if isComputeNode {
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
@@ -187,51 +161,36 @@ func Setup(
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-			cfg.Publishers.Types.Local = types.LocalPublisher{
-				Port:      fport,
-				Address:   "127.0.0.1",
-				Directory: path.Join(repoPath, fmt.Sprintf("local-publisher-%d", i)),
-			}
-
-			err = os.MkdirAll(cfg.Publishers.Types.Local.Directory, util.OS_USER_RWX)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create local publisher directory %s: %w",
-					cfg.Publishers.Types.Local.Directory, err)
-			}
+			cfg.Publishers.Types.Local.Port = fport
 		}
 
-		nodeConfig := node.NodeConfig{
-			NodeID:              nodeID,
-			CleanupManager:      cm,
-			HostAddress:         "127.0.0.1",
-			APIPort:             apiPort,
-			ComputeConfig:       stackConfig.ComputeConfig,
-			RequesterNodeConfig: stackConfig.RequesterConfig,
-			IsComputeNode:       isComputeNode,
-			IsRequesterNode:     isRequesterNode,
+		cfg.Orchestrator.Enabled = isRequesterNode
+		cfg.Compute.Enabled = isComputeNode
+		cfg, err = cfg.MergeNew(types.Bacalhau{
+			DataDir: filepath.Join(basePath, nodeID),
 			Labels: map[string]string{
 				"id":   nodeID,
 				"name": fmt.Sprintf("node-%d", i),
 				"env":  "devstack",
 			},
-			DependencyInjector:    stackConfig.NodeDependencyInjector,
-			DisabledFeatures:      stackConfig.DisabledFeatures,
-			AllowListedLocalPaths: stackConfig.AllowListedLocalPaths,
-			NetworkConfig:         clusterConfig,
-			AuthConfig: types.AuthConfig{
-				Methods: map[string]types.AuthenticatorConfig{
-					"ClientKey": {
-						Type: string(authn.MethodTypeChallenge),
-					},
-				},
-			},
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to merge new config")
 		}
 
-		if isRequesterNode && stackConfig.TLS.Certificate != "" && stackConfig.TLS.Key != "" {
-			// Does not make a lot of sense to use autotls with devstack, but we might want
-			// to use a self-signed certificate for testing purposes.
-			nodeConfig.RequesterTLSCertificateFile = stackConfig.TLS.Certificate
-			nodeConfig.RequesterTLSKeyFile = stackConfig.TLS.Key
+		// create node data dir path
+		if err = os.MkdirAll(cfg.DataDir, util.OS_USER_RWX); err != nil {
+			return nil, errors.Wrap(err, "failed to create node data directory")
+		}
+
+		nodeConfig := node.NodeConfig{
+			NodeID:             nodeID,
+			CleanupManager:     cm,
+			BacalhauConfig:     cfg,
+			DependencyInjector: stackConfig.NodeDependencyInjector,
+			FailureInjectionConfig: models.FailureInjectionConfig{
+				IsBadActor: isBadComputeActor,
+			},
 		}
 
 		// allow overriding configs of some nodes
@@ -244,18 +203,8 @@ func Setup(
 			}
 		}
 
-		// Set the default approval state from the config provided, either PENDING if the user has
-		// chosen manual approval, or the default otherwise.
-		nodeConfig.RequesterNodeConfig.DefaultApprovalState = stackConfig.RequesterConfig.DefaultApprovalState
-
-		// Create dedicated store paths for each node
-		err = setStorePaths(ctx, cfg, &nodeConfig)
-		if err != nil {
-			return nil, err
-		}
-
 		var n *node.Node
-		n, err = node.NewNode(ctx, cfg, nodeConfig, fsRepo)
+		n, err = node.NewNode(ctx, nodeConfig, NewMetadataStore())
 		if err != nil {
 			return nil, err
 		}
@@ -280,34 +229,8 @@ func Setup(
 	}, nil
 }
 
-func setStorePaths(ctx context.Context, cfg types.Bacalhau, nodeConfig *node.NodeConfig) error {
-	nodeID := nodeConfig.NodeID
-	orchestratorDir, err := cfg.OrchestratorDir()
-	if err != nil {
-		return err
-	}
-	jobStore, err := boltjobstore.NewBoltJobStore(filepath.Join(orchestratorDir, fmt.Sprintf("jobstore-%s.db", nodeID)))
-	if err != nil {
-		return fmt.Errorf("failed to create job store: %w", err)
-	}
-
-	computeDir, err := cfg.ComputeDir()
-	if err != nil {
-		return err
-	}
-	executionStore, err := boltdb.NewStore(ctx, filepath.Join(computeDir, fmt.Sprintf("executionstore-%s.db", nodeID)))
-	if err != nil {
-		return fmt.Errorf("failed to create execution store: %w", err)
-	}
-
-	nodeConfig.RequesterNodeConfig.JobStore = jobStore
-	nodeConfig.ComputeConfig.ExecutionStore = executionStore
-
-	return nil
-}
-
 //nolint:funlen
-func (stack *DevStack) PrintNodeInfo(ctx context.Context, fsRepo *repo.FsRepo, cm *system.CleanupManager) (string, error) {
+func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
 	if !config_legacy.DevstackGetShouldPrintInfo() {
 		return "", nil
 	}
@@ -346,17 +269,6 @@ export BACALHAU_API_PORT_%d=%d`,
 		devStackAPIPort,
 	))
 
-	// Just convenience below - print out the last of the nodes information as the global variable
-	summaryShellVariablesString := summaryBuilder.String()
-
-	ripath, err := fsRepo.WriteRunInfo(ctx, summaryShellVariablesString)
-	if err != nil {
-		return "", err
-	}
-	cm.RegisterCallback(func() error {
-		return os.Remove(ripath)
-	})
-
 	log.Ctx(ctx).Debug().Msg(logString)
 
 	returnString := fmt.Sprintf(`
@@ -368,12 +280,11 @@ To use the devstack, run the following commands in your shell:
 
 %s
 
-The above variables were also written to this file (will be deleted when devstack exits): %s`,
+`,
 		requesterOnlyNodes,
 		computeOnlyNodes,
 		hybridNodes,
-		summaryBuilder.String(),
-		ripath)
+		summaryBuilder.String())
 	return returnString, nil
 }
 

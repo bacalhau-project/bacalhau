@@ -5,16 +5,17 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
 type InputLocalityStrategyParams struct {
-	Locality JobSelectionDataLocality
+	Locality models.JobSelectionDataLocality
 	Storages storage.StorageProvider
 }
 
 type InputLocalityStrategy struct {
-	locality JobSelectionDataLocality
+	locality models.JobSelectionDataLocality
 	storages storage.StorageProvider
 }
 
@@ -38,7 +39,7 @@ func (s *InputLocalityStrategy) ShouldBid(
 	request bidstrategy.BidStrategyRequest,
 ) (bidstrategy.BidStrategyResponse, error) {
 	// if we have an "anywhere" policy for the data then we accept the job
-	if s.locality == Anywhere {
+	if s.locality == models.Anywhere {
 		return bidstrategy.NewBidResponse(true, anywhereReason), nil
 	}
 

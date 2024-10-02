@@ -17,11 +17,18 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
 )
 
+const (
+	// heartbeatCheckFrequencyFactor is the factor by which the disconnectedAfter time
+	// will be divided to determine the frequency of the heartbeat check.
+	heartbeatCheckFrequencyFactor = 3
+	minHeartbeatCheckFrequency    = 1 * time.Second
+	maxHeartbeatCheckFrequency    = 30 * time.Second
+)
+
 type HeartbeatServerParams struct {
 	NodeID                string
 	Client                *nats.Conn
 	Clock                 clock.Clock
-	CheckFrequency        time.Duration
 	NodeDisconnectedAfter time.Duration
 }
 
@@ -61,13 +68,21 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		clk = clock.New()
 	}
 
+	// We'll set the frequency of the heartbeat check to be 1/3 of the disconnected
+	heartbeatCheckFrequency := params.NodeDisconnectedAfter / heartbeatCheckFrequencyFactor
+	if heartbeatCheckFrequency < minHeartbeatCheckFrequency {
+		heartbeatCheckFrequency = minHeartbeatCheckFrequency
+	} else if heartbeatCheckFrequency > maxHeartbeatCheckFrequency {
+		heartbeatCheckFrequency = maxHeartbeatCheckFrequency
+	}
+
 	return &HeartbeatServer{
 		nodeID:            params.NodeID,
 		clock:             clk,
 		legacySubscriber:  legacySubscriber,
 		pqueue:            pqueue,
 		livenessMap:       concurrency.NewStripedMap[models.NodeConnectionState](0), // no particular stripe count for now
-		checkFrequency:    params.CheckFrequency,
+		checkFrequency:    heartbeatCheckFrequency,
 		disconnectedAfter: params.NodeDisconnectedAfter,
 	}, nil
 }

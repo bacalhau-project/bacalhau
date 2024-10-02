@@ -4,6 +4,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+const errComponent = "LocalPublisher"
+
 // PublisherSpec mainly exists as a form of documentation to indicate the local publisher spec does not contain params
 type PublisherSpec struct{}
 

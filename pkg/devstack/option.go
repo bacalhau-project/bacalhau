@@ -6,26 +6,21 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 type ConfigOption = func(cfg *DevStackConfig)
 
-func defaultDevStackConfig(executionDir string) (*DevStackConfig, error) {
-	computeConfig, err := node.NewComputeConfigWithDefaults(executionDir)
-	if err != nil {
-		return nil, err
-	}
-
-	requesterConfig, err := node.NewRequesterConfigWithDefaults()
+func defaultDevStackConfig() (*DevStackConfig, error) {
+	bacalhauConfig, err := config.NewTestConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	return &DevStackConfig{
-		ComputeConfig:          computeConfig,
-		RequesterConfig:        requesterConfig,
+		BacalhauConfig:         bacalhauConfig,
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
 
@@ -35,11 +30,7 @@ func defaultDevStackConfig(executionDir string) (*DevStackConfig, error) {
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 
-		NumberOfBadRequesterActors: 0,
-		NumberOfHybridNodes:        0,
-		DisabledFeatures:           node.FeatureConfig{},
-		AllowListedLocalPaths:      nil,
-		ExecutorPlugins:            false,
+		NumberOfHybridNodes: 0,
 	}, nil
 }
 
@@ -49,8 +40,7 @@ type DevstackTLSSettings struct {
 }
 
 type DevStackConfig struct {
-	ComputeConfig          node.ComputeConfig
-	RequesterConfig        node.RequesterConfig
+	BacalhauConfig         types.Bacalhau
 	NodeDependencyInjector node.NodeDependencyInjector
 	NodeOverrides          []node.NodeConfig
 
@@ -59,14 +49,8 @@ type DevStackConfig struct {
 	NumberOfRequesterOnlyNodes int // Number of nodes to start in the cluster
 	NumberOfComputeOnlyNodes   int // Number of nodes to start in the cluster
 	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
-	NumberOfBadRequesterActors int // Number of requester nodes to be bad actors
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
-	DisabledFeatures           node.FeatureConfig
-	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
-	ExecutorPlugins            bool     // when true pluggable executors will be used.
-	TLS                        DevstackTLSSettings
-	AuthSecret                 string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -74,12 +58,8 @@ func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
 		Int("RequesterOnlyNodes", o.NumberOfRequesterOnlyNodes).
 		Int("ComputeOnlyNodes", o.NumberOfComputeOnlyNodes).
 		Int("BadComputeActors", o.NumberOfBadComputeActors).
-		Int("BadRequesterActors", o.NumberOfBadRequesterActors).
 		Str("CPUProfilingFile", o.CPUProfilingFile).
-		Str("MemoryProfilingFile", o.MemoryProfilingFile).
-		Str("DisabledFeatures", fmt.Sprintf("%v", o.DisabledFeatures)).
-		Strs("AllowListedLocalPaths", o.AllowListedLocalPaths).
-		Bool("ExecutorPlugins", o.ExecutorPlugins)
+		Str("MemoryProfilingFile", o.MemoryProfilingFile)
 }
 
 func (o *DevStackConfig) Validate() error {
@@ -97,20 +77,7 @@ func (o *DevStackConfig) Validate() error {
 				o.NumberOfBadComputeActors, totalComputeNodes))
 	}
 
-	totalRequesterNodes := o.NumberOfRequesterOnlyNodes + o.NumberOfHybridNodes
-	if o.NumberOfBadRequesterActors > totalRequesterNodes {
-		errs = errors.Join(errs,
-			fmt.Errorf("you cannot have more bad requester actors (%d) than there are nodes (%d)",
-				o.NumberOfBadRequesterActors, totalRequesterNodes))
-	}
-
 	return errs
-}
-
-func WithAutoNodeApproval() ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.RequesterConfig.DefaultApprovalState = models.NodeMembership.APPROVED
-	}
 }
 
 func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {
@@ -122,18 +89,6 @@ func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {
 func WithDependencyInjector(injector node.NodeDependencyInjector) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NodeDependencyInjector = injector
-	}
-}
-
-func WithComputeConfig(computeCfg node.ComputeConfig) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.ComputeConfig = computeCfg
-	}
-}
-
-func WithRequesterConfig(requesterConfig node.RequesterConfig) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.RequesterConfig = requesterConfig
 	}
 }
 
@@ -161,12 +116,6 @@ func WithNumberOfBadComputeActors(count int) ConfigOption {
 	}
 }
 
-func WithNumberOfBadRequesterActors(count int) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.NumberOfBadRequesterActors = count
-	}
-}
-
 func WithCPUProfilingFile(path string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.CPUProfilingFile = path
@@ -181,32 +130,28 @@ func WithMemoryProfilingFile(path string) ConfigOption {
 
 func WithDisabledFeatures(disable node.FeatureConfig) ConfigOption {
 	return func(cfg *DevStackConfig) {
-		cfg.DisabledFeatures = disable
+		cfg.BacalhauConfig.Engines.Disabled = disable.Engines
+		cfg.BacalhauConfig.Publishers.Disabled = disable.Publishers
+		cfg.BacalhauConfig.InputSources.Disabled = disable.Storages
 	}
 }
 
 func WithAllowListedLocalPaths(paths []string) ConfigOption {
 	return func(cfg *DevStackConfig) {
-		cfg.AllowListedLocalPaths = paths
+		cfg.BacalhauConfig.Compute.AllowListedLocalPaths = paths
 	}
 }
 
-func WithExecutorPlugins(enabled bool) ConfigOption {
-	return func(cfg *DevStackConfig) {
-		cfg.ExecutorPlugins = enabled
-	}
-}
 func WithAuthSecret(secret string) ConfigOption {
 	return func(c *DevStackConfig) {
-		c.AuthSecret = secret
+		c.BacalhauConfig.Orchestrator.Auth.Token = secret
+		c.BacalhauConfig.Compute.Auth.Token = secret
 	}
 }
 
 func WithSelfSignedCertificate(cert string, key string) ConfigOption {
 	return func(cfg *DevStackConfig) {
-		cfg.TLS = DevstackTLSSettings{
-			Certificate: cert,
-			Key:         key,
-		}
+		cfg.BacalhauConfig.API.TLS.CertFile = cert
+		cfg.BacalhauConfig.API.TLS.KeyFile = key
 	}
 }

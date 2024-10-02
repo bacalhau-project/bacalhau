@@ -10,17 +10,12 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/webui"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -65,7 +60,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 //nolint:funlen,gocyclo
 func NewCmd() *cobra.Command {
 	ODs := newDevStackOptions()
-	IsNoop := false
+	var webUIListen string
 	devstackFlags := map[string][]configflags.Definition{
 		"job-selection":         configflags.JobSelectionFlags,
 		"disable-features":      configflags.DisabledFeatureFlags,
@@ -83,34 +78,12 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), devstackFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// ensure we either use a temp repo for the devstack, or the repo path provided
-			// by the specific devstack flag. Never use the default bacalhau repo.
-			repoPath := ODs.ConfigurationRepo
-			if repoPath == "" {
-				// We need to clean up the repo when the node shuts down, but we can ONLY
-				// do this because we know it is a temporary directory. Do not delete the
-				// configured repo if `--stack-repo` was specified
-				repoPath, _ = os.MkdirTemp("", "")
-
-				// If we don't set the repo value in config, readers will be given
-				// a different path to the one we've just created. Presumably a default.
-				defer os.RemoveAll(repoPath)
+			// TODO: a hack to force debug logging for devstack
+			//  until I figure out why flags and env vars are not working
+			if err := logger.ConfigureLogging(string(logger.LogModeDefault), "debug"); err != nil {
+				return fmt.Errorf("failed to configure logging: %w", err)
 			}
-
-			v := viper.GetViper()
-			configMap := v.GetStringMap(cliflags.RootCommandConfigValues)
-			configMap[types.DataDirKey] = repoPath
-			v.Set(cliflags.RootCommandConfigValues, configMap)
-			// override the repo path set in the root command with the derived path.
-			cfg, err := util.SetupConfig(cmd)
-			if err != nil {
-				return fmt.Errorf("setting up config: %w", err)
-			}
-			fsr, err := setup.SetupBacalhauRepo(cfg)
-			if err != nil {
-				return fmt.Errorf("failed to reconcile repo: %w", err)
-			}
-			return runDevstack(cmd, cfg, fsr, ODs, IsNoop)
+			return runDevstack(cmd, ODs, webUIListen)
 		},
 	}
 
@@ -134,13 +107,9 @@ func NewCmd() *cobra.Command {
 		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
 		`How many compute nodes should be bad actors`,
 	)
-	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadRequesterActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
-		`How many requester nodes should be bad actors`,
-	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&IsNoop, "Noop", false,
-		`Use the noop executor for all jobs`,
+	devstackCmd.PersistentFlags().StringVar(
+		&webUIListen, "webui-address", config.Default.WebUI.Listen,
+		`Listen address for the web UI server`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.Peer, "peer", ODs.Peer,
@@ -158,10 +127,6 @@ func NewCmd() *cobra.Command {
 		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
 		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
 	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
-		"Will use pluggable executors when set to true",
-	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
 		"Folder to act as the devstack configuration repo",
@@ -170,7 +135,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen string) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
@@ -192,69 +157,31 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig(ctx, cfg, true)
-	if err != nil {
-		return err
+	// ensure we either use a temp repo for the devstack, or the repo path provided
+	// by the specific devstack flag. Never use the default bacalhau repo.
+	baseRepoPath := ODs.ConfigurationRepo
+	if baseRepoPath == "" {
+		// We need to clean up the repo when the node shuts down, but we can ONLY
+		// do this because we know it is a temporary directory. Do not delete the
+		// configured repo if `--stack-repo` was specified
+		baseRepoPath, _ = os.MkdirTemp("", "")
+		defer os.RemoveAll(baseRepoPath)
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(cfg, true)
-	if err != nil {
-		return err
-	}
+	options := ODs.Options()
 
-	options := append(ODs.Options(),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
-	)
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		return err
-	}
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
-		return err
-	}
-	if IsNoop {
-		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
-	} else if ODs.ExecutorPlugins {
-		pluginPath, err := cfg.PluginsDir()
-		if err != nil {
-			return err
-		}
-		options = append(options, devstack.WithDependencyInjector(
-			node.NewExecutorPluginNodeDependencyInjector(
-				cfg,
-				userKey,
-				pluginPath,
-			)))
-	} else {
-		options = append(options, devstack.WithDependencyInjector(
-			node.NewStandardNodeDependencyInjector(
-				cfg,
-				userKey,
-			)))
-	}
-
-	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
-	options = append(options, devstack.WithSelfSignedCertificate(
-		cfg.API.TLS.CertFile,
-		cfg.API.TLS.KeyFile,
-	))
-
-	stack, err := devstack.Setup(ctx, cfg, cm, fsr, options...)
+	stack, err := devstack.Setup(ctx, cm, baseRepoPath, options...)
 	if err != nil {
 		return err
 	}
 
 	// start WebUI for the first successful requester node
 	for _, n := range stack.Nodes {
+		// TODO: move webui creation to node pkg
 		if n.IsRequesterNode() {
 			webuiConfig := webui.Config{
-				APIEndpoint: cfg.WebUI.Backend,
-				Listen:      cfg.WebUI.Listen,
-			}
-			if webuiConfig.APIEndpoint == "" {
-				webuiConfig.APIEndpoint = n.APIServer.GetURI().String()
+				APIEndpoint: n.APIServer.GetURI().String(),
+				Listen:      webUIListen,
 			}
 			webuiServer, err := webui.NewServer(webuiConfig)
 			if err != nil {
@@ -272,7 +199,7 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 		}
 	}
 
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsr, cm)
+	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
 	if err != nil {
 		return fmt.Errorf("failed to print node info: %w", err)
 	}

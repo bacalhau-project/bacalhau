@@ -1,13 +1,14 @@
 package configflags
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
 var ClientAPIFlags = []Definition{
 	{
 		FlagName:     "api-host",
-		DefaultValue: types.Default.API.Host,
+		DefaultValue: config.Default.API.Host,
 		ConfigPath:   types.APIHostKey,
 		Description: `The host for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_HOST environment variable is set.`,
@@ -15,7 +16,7 @@ Ignored if BACALHAU_API_HOST environment variable is set.`,
 	},
 	{
 		FlagName:     "api-port",
-		DefaultValue: types.Default.API.Port,
+		DefaultValue: config.Default.API.Port,
 		ConfigPath:   types.APIPortKey,
 		Description: `The port for the client and server to communicate on (via REST).
 Ignored if BACALHAU_API_PORT environment variable is set.`,
@@ -23,7 +24,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	},
 	{
 		FlagName:             "tls",
-		DefaultValue:         types.Default.API.TLS.UseTLS,
+		DefaultValue:         config.Default.API.TLS.UseTLS,
 		ConfigPath:           types.APITLSUseTLSKey,
 		Description:          `Instructs the client to use TLS`,
 		EnvironmentVariables: []string{"BACALHAU_API_TLS"},
@@ -32,7 +33,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	},
 	{
 		FlagName:     "cacert",
-		DefaultValue: types.Default.API.TLS.CAFile,
+		DefaultValue: config.Default.API.TLS.CAFile,
 		ConfigPath:   types.APITLSCAFileKey,
 		Description: `The location of a CA certificate file when self-signed certificates
 	are used by the server`,
@@ -42,7 +43,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 	},
 	{
 		FlagName:             "insecure",
-		DefaultValue:         types.Default.API.TLS.Insecure,
+		DefaultValue:         config.Default.API.TLS.Insecure,
 		ConfigPath:           types.APITLSInsecureKey,
 		Description:          `Enables TLS but does not verify certificates`,
 		EnvironmentVariables: []string{"BACALHAU_API_INSECURE"},
@@ -54,7 +55,7 @@ Ignored if BACALHAU_API_PORT environment variable is set.`,
 var ServerAPIFlags = []Definition{
 	{
 		FlagName:             "port",
-		DefaultValue:         types.Default.API.Port,
+		DefaultValue:         config.Default.API.Port,
 		ConfigPath:           types.APIPortKey,
 		Description:          `The port to server on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_PORT"},
@@ -63,7 +64,7 @@ var ServerAPIFlags = []Definition{
 	},
 	{
 		FlagName:             "host",
-		DefaultValue:         types.Default.API.Host,
+		DefaultValue:         config.Default.API.Host,
 		ConfigPath:           types.APIHostKey,
 		Description:          `The host to serve on.`,
 		EnvironmentVariables: []string{"BACALHAU_SERVER_HOST"},
@@ -75,7 +76,7 @@ var ServerAPIFlags = []Definition{
 var RequesterTLSFlags = []Definition{
 	{
 		FlagName:     "autocert",
-		DefaultValue: types.Default.API.TLS.AutoCert,
+		DefaultValue: config.Default.API.TLS.AutoCert,
 		ConfigPath:   types.APITLSAutoCertKey,
 		Description: `Specifies a host name for which ACME is used to obtain a TLS Certificate.
 Using this option results in the API serving over HTTPS`,
@@ -85,7 +86,7 @@ Using this option results in the API serving over HTTPS`,
 	},
 	{
 		FlagName:             "tlscert",
-		DefaultValue:         types.Default.API.TLS.CertFile,
+		DefaultValue:         config.Default.API.TLS.CertFile,
 		ConfigPath:           types.APITLSCertFileKey,
 		Description:          `Specifies a TLS certificate file to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_CERT"},
@@ -94,7 +95,7 @@ Using this option results in the API serving over HTTPS`,
 	},
 	{
 		FlagName:             "tlskey",
-		DefaultValue:         types.Default.API.TLS.KeyFile,
+		DefaultValue:         config.Default.API.TLS.KeyFile,
 		ConfigPath:           types.APITLSKeyFileKey,
 		Description:          `Specifies a TLS key file matching the certificate to be used by the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_KEY"},
@@ -103,7 +104,7 @@ Using this option results in the API serving over HTTPS`,
 	},
 	{
 		FlagName:             "self-signed",
-		DefaultValue:         types.Default.API.TLS.SelfSigned,
+		DefaultValue:         config.Default.API.TLS.SelfSigned,
 		ConfigPath:           types.APITLSSelfSignedKey,
 		Description:          `Specifies whether to auto-generate a self-signed certificate for the requester node`,
 		EnvironmentVariables: []string{"BACALHAU_TLS_SELFSIGNED"},

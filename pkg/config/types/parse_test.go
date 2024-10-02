@@ -100,19 +100,19 @@ func TestCastConfigValueForKey(t *testing.T) {
 		},
 		{
 			name:     "valid map with single value",
-			key:      types.ComputeLabelsKey,
+			key:      types.LabelsKey,
 			value:    "key1=value1",
 			expected: map[string]string{"key1": "value1"},
 		},
 		{
 			name:     "valid map with values",
-			key:      types.ComputeLabelsKey,
+			key:      types.LabelsKey,
 			value:    "key1=value1,key2=value2",
 			expected: map[string]string{"key1": "value1", "key2": "value2"},
 		},
 		{
 			name:        "invalid map value",
-			key:         types.ComputeLabelsKey,
+			key:         types.LabelsKey,
 			value:       "invalid map format",
 			expectedErr: true,
 		},

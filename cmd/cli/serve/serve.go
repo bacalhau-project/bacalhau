@@ -1,13 +1,11 @@
 package serve
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -19,14 +17,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/bacalhau-project/bacalhau/webui"
@@ -168,65 +164,23 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		isRequesterNode = true
 	}
 
-	networkConfig, err := getNetworkConfig(cfg)
-	if err != nil {
-		return err
-	}
-
-	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure compute node")
-	}
-
-	requesterConfig, err := GetRequesterConfig(cfg, isRequesterNode)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure requester node")
-	}
-
 	// Create node config from cmd arguments
+	// TODO: validate if this is necessary
 	hostAddress, err := parseServerAPIHost(cfg.API.Host)
 	if err != nil {
 		return err
 	}
+	cfg.API.Host = hostAddress
+
 	nodeConfig := node.NodeConfig{
 		NodeID:         sysmeta.NodeName,
 		CleanupManager: cm,
-		DisabledFeatures: node.FeatureConfig{
-			Engines:    cfg.Engines.Disabled,
-			Publishers: cfg.Publishers.Disabled,
-			Storages:   cfg.InputSources.Disabled,
-		},
-		HostAddress:           hostAddress,
-		APIPort:               uint16(cfg.API.Port),
-		ComputeConfig:         computeConfig,
-		RequesterNodeConfig:   requesterConfig,
-		AuthConfig:            cfg.API.Auth,
-		IsComputeNode:         isComputeNode,
-		IsRequesterNode:       isRequesterNode,
-		RequesterSelfSign:     cfg.API.TLS.SelfSigned,
-		Labels:                cfg.Compute.Labels,
-		AllowListedLocalPaths: cfg.Compute.AllowListedLocalPaths,
-		NetworkConfig:         networkConfig,
+		BacalhauConfig: cfg,
 	}
-	if isRequesterNode {
-		// We only want auto TLS for the requester node, but this info doesn't fit well
-		// with the other data in the requesterConfig.
-		nodeConfig.RequesterAutoCert = cfg.API.TLS.AutoCert
-		nodeConfig.RequesterAutoCertCache = cfg.API.TLS.AutoCertCachePath
-		// If there are configuration values for autocert we should return and let autocert
-		// do what it does later on in the setup.
-		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig)
-			if err != nil {
-				return err
-			}
-			nodeConfig.RequesterTLSCertificateFile = cert
-			nodeConfig.RequesterTLSKeyFile = key
-		}
-	}
+
 	// Create node
 	log.Info().Msg("Starting bacalhau...")
-	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
+	standardNode, err := node.NewNode(ctx, nodeConfig, fsRepo)
 	if err != nil {
 		return bacerrors.Wrap(err, "failed to start node")
 	}
@@ -317,52 +271,6 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	<-ctx.Done() // block until killed
 	log.Info().Msg("bacalhau node shutting down...")
 	return nil
-}
-
-func GetTLSCertificate(ctx context.Context, cfg types.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
-	cert := cfg.API.TLS.CertFile
-	key := cfg.API.TLS.KeyFile
-	if cert != "" && key != "" {
-		return cert, key, nil
-	}
-	if cert != "" && key == "" {
-		return "", "", fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
-	}
-	if cert == "" && key != "" {
-		return "", "", fmt.Errorf("invalid config: private key specified without corresponding TLS certificate")
-	}
-	if !nodeConfig.RequesterSelfSign {
-		return "", "", nil
-	}
-	log.Ctx(ctx).Info().Msg("Generating self-signed certificate")
-	var err error
-	// If the user has not specified a private key, use their client key
-	if key == "" {
-		key, err = cfg.UserKeyPath()
-		if err != nil {
-			return "", "", err
-		}
-	}
-	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to create temporary server certificate")
-	}
-	defer closer.CloseWithLogOnError(certFile.Name(), certFile)
-
-	var ips []net.IP = nil
-	if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
-		ips = append(ips, ip)
-	}
-
-	if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
-		return "", "", err
-	} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
-		return "", "", errors.Wrap(err, "failed to generate server certificate")
-	} else if err = caCert.MarshalCertficate(certFile); err != nil {
-		return "", "", errors.Wrap(err, "failed to write server certificate")
-	}
-	cert = certFile.Name()
-	return cert, key, nil
 }
 
 func parseServerAPIHost(host string) (string, error) {

@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -27,7 +27,6 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
@@ -41,6 +40,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
+)
+
+const (
+	nodeOverSubscriptionFactor = 1.5
+	nodeRankRandomnessRange    = 5
+)
+
+var (
+	minBacalhauVersion = models.BuildVersionInfo{
+		Major: "1", Minor: "0", GitVersion: "v1.0.4",
+	}
 )
 
 type Requester struct {
@@ -58,17 +68,15 @@ type Requester struct {
 //nolint:funlen,gocyclo
 func NewRequesterNode(
 	ctx context.Context,
-	nodeID string,
+	cfg NodeConfig,
 	apiServer *publicapi.Server,
-	nodeConfig NodeConfig,
-	metricsConfig legacy_types.MetricsConfig,
-	requesterConfig RequesterConfig,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
-	fsr *repo.FsRepo,
+	metadataStore MetadataStore,
 ) (*Requester, error) {
-	nodeManager, heartbeatServer, err := createNodeManager(ctx, nodeID, transportLayer, requesterConfig)
+	nodeID := cfg.NodeID
+	nodeManager, heartbeatServer, err := createNodeManager(ctx, cfg, transportLayer)
 	if err != nil {
 		return nil, err
 	}
@@ -81,14 +89,15 @@ func NewRequesterNode(
 		EventConsumer: localJobEventConsumer,
 	})
 
-	jobStore := requesterConfig.JobStore
+	jobStore, err := createJobStore(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
 
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
-		VisibilityTimeout:    requesterConfig.EvalBrokerVisibilityTimeout,
-		InitialRetryDelay:    requesterConfig.EvalBrokerInitialRetryDelay,
-		SubsequentRetryDelay: requesterConfig.EvalBrokerSubsequentRetryDelay,
-		MaxReceiveCount:      requesterConfig.EvalBrokerMaxRetryCount,
+		VisibilityTimeout: cfg.BacalhauConfig.Orchestrator.EvaluationBroker.VisibilityTimeout.AsTimeDuration(),
+		MaxReceiveCount:   cfg.BacalhauConfig.Orchestrator.EvaluationBroker.MaxRetryCount,
 	})
 	if err != nil {
 		return nil, err
@@ -126,18 +135,14 @@ func NewRequesterNode(
 		planner.NewLoggingPlanner(),
 	)
 
-	retryStrategy := requesterConfig.RetryStrategy
-	if retryStrategy == nil {
-		// retry strategy
-		retryStrategyChain := retry.NewChain()
-		retryStrategyChain.Add(
-			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
-		)
-		retryStrategy = retryStrategyChain
-	}
+	// retry strategy
+	retryStrategy := retry.NewChain()
+	retryStrategy.Add(
+		retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+	)
 
 	// node selector
-	nodeRanker, err := createNodeRanker(requesterConfig, jobStore)
+	nodeRanker, err := createNodeRanker(cfg, jobStore)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +163,7 @@ func NewRequesterNode(
 		Planner:       planners,
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
-		QueueBackoff:  requesterConfig.SchedulerQueueBackoff,
+		QueueBackoff:  cfg.BacalhauConfig.Orchestrator.Scheduler.QueueBackoff.AsTimeDuration(),
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -175,15 +180,14 @@ func NewRequesterNode(
 		}),
 	})
 
-	workers := make([]*orchestrator.Worker, 0, requesterConfig.WorkerCount)
-	for i := 1; i <= requesterConfig.WorkerCount; i++ {
+	workerCount := cfg.BacalhauConfig.Orchestrator.Scheduler.WorkerCount
+	workers := make([]*orchestrator.Worker, 0, workerCount)
+	for i := 1; i <= workerCount; i++ {
 		log.Debug().Msgf("Starting worker %d", i)
 		// worker config the polls from the broker
 		worker := orchestrator.NewWorker(orchestrator.WorkerParams{
-			SchedulerProvider:     schedulerProvider,
-			EvaluationBroker:      evalBroker,
-			DequeueTimeout:        requesterConfig.WorkerEvalDequeueTimeout,
-			DequeueFailureBackoff: backoff.NewExponential(requesterConfig.WorkerEvalDequeueBaseBackoff, requesterConfig.WorkerEvalDequeueMaxBackoff),
+			SchedulerProvider: schedulerProvider,
+			EvaluationBroker:  evalBroker,
 		})
 		workers = append(workers, worker)
 		worker.Start(ctx)
@@ -192,7 +196,7 @@ func NewRequesterNode(
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
-	if !requesterConfig.S3PreSignedURLDisabled {
+	if !cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLDisabled {
 		// S3 result signer
 		s3Config, err := s3helper.DefaultAWSConfig()
 		if err != nil {
@@ -202,13 +206,13 @@ func NewRequesterNode(
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
 			}),
-			Expiration: requesterConfig.S3PreSignedURLExpiration,
+			Expiration: cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLExpiration.AsTimeDuration(),
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
 	var translationProvider translation.TranslatorProvider
-	if requesterConfig.TranslationEnabled {
+	if cfg.BacalhauConfig.FeatureFlags.ExecTranslation {
 		translationProvider = translation.NewStandardTranslatorsProvider()
 	}
 
@@ -217,8 +221,8 @@ func NewRequesterNode(
 		transformer.NameOptional(),
 		transformer.RequesterInfo(nodeID),
 		transformer.OrchestratorInstallationID(system.InstallationID()),
-		transformer.OrchestratorInstanceID(fsr.InstanceID()),
-		transformer.DefaultsApplier(requesterConfig.JobDefaults),
+		transformer.OrchestratorInstanceID(metadataStore.InstanceID()),
+		transformer.DefaultsApplier(cfg.BacalhauConfig.JobDefaults),
 	}
 
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
@@ -233,8 +237,8 @@ func NewRequesterNode(
 
 	housekeeping, err := orchestrator.NewHousekeeping(orchestrator.HousekeepingParams{
 		JobStore:      jobStore,
-		Interval:      requesterConfig.HousekeepingBackgroundTaskInterval,
-		TimeoutBuffer: requesterConfig.HousekeepingTimeoutBuffer,
+		Interval:      cfg.BacalhauConfig.Orchestrator.Scheduler.HousekeepingInterval.AsTimeDuration(),
+		TimeoutBuffer: cfg.BacalhauConfig.Orchestrator.Scheduler.HousekeepingTimeout.AsTimeDuration(),
 	})
 	if err != nil {
 		return nil, err
@@ -256,7 +260,7 @@ func NewRequesterNode(
 		NodeManager:  nodeManager,
 	})
 
-	authenticators, err := nodeConfig.DependencyInjector.AuthenticatorsFactory.Get(ctx, nodeConfig)
+	authenticators, err := cfg.DependencyInjector.AuthenticatorsFactory.Get(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -265,19 +269,10 @@ func NewRequesterNode(
 	)
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
-	// Register event handlers
-	eventTracer, err := eventhandler.NewTracer(metricsConfig.EventTracerPath)
-	if err != nil {
-		return nil, err
-	}
-
 	// order of event handlers is important as triggering some handlers might depend on the state of others.
 	localJobEventConsumer.AddHandlers(
 		// ends the span for the job if received a terminal event
 		tracerContextProvider,
-		// record the event in a log
-		eventTracer,
-		// dispatches events to listening websockets
 	)
 
 	// ncl
@@ -312,11 +307,6 @@ func NewRequesterNode(
 		if cleanupErr != nil {
 			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
 		}
-		cleanupErr = eventTracer.Shutdown()
-		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown event tracer")
-		}
-
 		// Close the jobstore after the evaluation broker is disabled
 		cleanupErr = jobStore.Close(ctx)
 		if cleanupErr != nil {
@@ -347,8 +337,8 @@ func NewRequesterNode(
 	}, nil
 }
 
-func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {
-	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(requesterConfig.NodeOverSubscriptionFactor)
+func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(nodeOverSubscriptionFactor)
 	if err != nil {
 		return nil, err
 	}
@@ -362,21 +352,20 @@ func createNodeRanker(requesterConfig RequesterConfig, jobStore jobstore.Store) 
 		ranking.NewLabelsNodeRanker(),
 		ranking.NewMaxUsageNodeRanker(),
 		overSubscriptionNodeRanker,
-		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: requesterConfig.MinBacalhauVersion}),
+		ranking.NewMinVersionNodeRanker(ranking.MinVersionNodeRankerParams{MinVersion: minBacalhauVersion}),
 		ranking.NewPreviousExecutionsNodeRanker(ranking.PreviousExecutionsNodeRankerParams{JobStore: jobStore}),
 		ranking.NewAvailableCapacityNodeRanker(),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: requesterConfig.NodeRankRandomnessRange,
+			RandomnessRange: nodeRankRandomnessRange,
 		}),
 	)
 	return nodeRankerChain, nil
 }
 
 func createNodeManager(ctx context.Context,
-	nodeId string,
-	transportLayer *nats_transport.NATSTransport,
-	requesterConfig RequesterConfig) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
+	cfg NodeConfig,
+	transportLayer *nats_transport.NATSTransport) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
 	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
 	if err != nil {
 		return nil, nil, err
@@ -384,10 +373,9 @@ func createNodeManager(ctx context.Context,
 
 	// heartbeat service
 	heartbeatParams := heartbeat.HeartbeatServerParams{
-		NodeID:                nodeId,
+		NodeID:                cfg.NodeID,
 		Client:                transportLayer.Client(),
-		CheckFrequency:        requesterConfig.ControlPlaneSettings.HeartbeatCheckFrequency.AsTimeDuration(),
-		NodeDisconnectedAfter: requesterConfig.ControlPlaneSettings.NodeDisconnectedAfter.AsTimeDuration(),
+		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
 	}
 	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
 	if err != nil {
@@ -399,9 +387,9 @@ func createNodeManager(ctx context.Context,
 	// to the network. Provide it with a mechanism to lookup (and enhance)
 	// node info, and a reference to the heartbeat server
 	nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-		NodeInfo:             nodeInfoStore,
-		Heartbeats:           heartbeatSvr,
-		DefaultApprovalState: requesterConfig.DefaultApprovalState,
+		NodeInfo:       nodeInfoStore,
+		Heartbeats:     heartbeatSvr,
+		ManualApproval: cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
 	})
 
 	// Start the nodemanager, ensuring it doesn't block the main thread and
@@ -412,6 +400,18 @@ func createNodeManager(ctx context.Context,
 	}
 
 	return nodeManager, heartbeatSvr, transportLayer.RegisterManagementEndpoint(nodeManager)
+}
+
+func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) {
+	jobStoreDBPath, err := cfg.BacalhauConfig.JobStoreFilePath()
+	if err != nil {
+		return nil, err
+	}
+	jobStore, err := boltjobstore.NewBoltJobStore(jobStoreDBPath)
+	if err != nil {
+		return nil, bacerrors.Wrap(err, "failed to create job store")
+	}
+	return jobStore, nil
 }
 
 func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NATSTransport) (routing.NodeInfoStore, error) {

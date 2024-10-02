@@ -12,10 +12,10 @@ type RequesterConfig struct {
 	JobSelectionPolicy models.JobSelectionPolicy `yaml:"JobSelectionPolicy"`
 	JobStore           JobStoreConfig            `yaml:"JobStore"`
 
-	HousekeepingBackgroundTaskInterval Duration                               `yaml:"HousekeepingBackgroundTaskInterval"`
-	NodeRankRandomnessRange            int                                    `yaml:"NodeRankRandomnessRange"`
-	OverAskForBidsFactor               uint                                   `yaml:"OverAskForBidsFactor"`
-	FailureInjectionConfig             models.FailureInjectionRequesterConfig `yaml:"FailureInjectionConfig"`
+	HousekeepingBackgroundTaskInterval Duration                      `yaml:"HousekeepingBackgroundTaskInterval"`
+	NodeRankRandomnessRange            int                           `yaml:"NodeRankRandomnessRange"`
+	OverAskForBidsFactor               uint                          `yaml:"OverAskForBidsFactor"`
+	FailureInjectionConfig             models.FailureInjectionConfig `yaml:"FailureInjectionConfig"`
 
 	TranslationEnabled bool `yaml:"TranslationEnabled"`
 

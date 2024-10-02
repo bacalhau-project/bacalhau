@@ -1,8 +1,5 @@
 package models
 
-type FailureInjectionRequesterConfig struct {
+type FailureInjectionConfig struct {
 	IsBadActor bool `yaml:"IsBadActor"`
-}
-type FailureInjectionComputeConfig struct {
-	IsBadActor bool
 }

@@ -99,7 +99,7 @@ func New(opts ...Option) (*Config, error) {
 
 	c := &Config{
 		base:                 base,
-		defaultCfg:           types.Default,
+		defaultCfg:           Default,
 		paths:                make([]string, 0),
 		values:               make(map[string]any),
 		environmentVariables: make(map[string][]string),

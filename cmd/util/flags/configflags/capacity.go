@@ -1,6 +1,7 @@
 package configflags
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -9,7 +10,7 @@ var CapacityFlags = []Definition{
 	{
 		FlagName:             "limit-total-cpu",
 		ConfigPath:           types.ComputeAllocatedCapacityCPUKey,
-		DefaultValue:         types.Default.Compute.AllocatedCapacity.CPU,
+		DefaultValue:         config.Default.Compute.AllocatedCapacity.CPU,
 		Description:          `Total CPU core limit to run all jobs (e.g. 500m, 2, 8, 80%, 10%).`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_CAPACITY_TOTALRESOURCELIMITS_CPU"},
@@ -18,7 +19,7 @@ var CapacityFlags = []Definition{
 	{
 		FlagName:             "limit-total-memory",
 		ConfigPath:           types.ComputeAllocatedCapacityMemoryKey,
-		DefaultValue:         types.Default.Compute.AllocatedCapacity.Memory,
+		DefaultValue:         config.Default.Compute.AllocatedCapacity.Memory,
 		Description:          `Total Memory limit to run all jobs  (e.g. 500Mb, 2Gb, 8Gb, 80%, 10%).`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_CAPACITY_TOTALRESOURCELIMITS_MEMORY"},
@@ -27,7 +28,7 @@ var CapacityFlags = []Definition{
 	{
 		FlagName:             "limit-total-gpu",
 		ConfigPath:           types.ComputeAllocatedCapacityGPUKey,
-		DefaultValue:         types.Default.Compute.AllocatedCapacity.GPU,
+		DefaultValue:         config.Default.Compute.AllocatedCapacity.GPU,
 		Description:          `Total GPU limit to run all jobs (e.g. 1, 2, 80%, 10%).`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_CAPACITY_TOTALRESOURCELIMITS_GPU"},
