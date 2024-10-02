@@ -51,14 +51,21 @@ type DefaultPublisherConfig struct {
 	Type string `json:"Type" yaml:"Type,omitempty"`
 
 	// Params specifies the publisher configuration data.
-	Params map[string]interface{} `json:"Params,omitempty" yaml:"Params,omitempty"`
+	Params map[string]string `json:"Params,omitempty" yaml:"Params,omitempty"`
 }
 
 func (d DefaultPublisherConfig) ToSpecConfig() models.SpecConfig {
-	return models.SpecConfig{
+	sc := models.SpecConfig{
 		Type:   d.Type,
-		Params: d.Params,
+		Params: make(map[string]interface{}),
 	}
+
+	for k, v := range d.Params {
+		sc.Params[k] = v
+	}
+
+	sc.Normalize()
+	return sc
 }
 
 type TaskTimeoutConfig struct {
