@@ -8,7 +8,7 @@ build_bacalhau() {
 
 
 run_bacalhau_test() {
-  make bash-test 
+  make bash-test
 }
 
 
