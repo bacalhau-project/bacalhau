@@ -8,7 +8,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
@@ -175,7 +174,7 @@ func WithAllowListedLocalPaths(paths []string) ConfigOption {
 	}
 }
 
-func WithDefaultPublisher(publisher models.SpecConfig) ConfigOption {
+func WithDefaultPublisher(publisher types.DefaultPublisherConfig) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.BacalhauConfig.JobDefaults.Batch.Task.Publisher = publisher
 		cfg.BacalhauConfig.JobDefaults.Ops.Task.Publisher = publisher

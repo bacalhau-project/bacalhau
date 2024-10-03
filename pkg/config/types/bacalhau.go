@@ -11,6 +11,7 @@ import (
 // NB: Developers, after making changes (comments included) to this struct or any of its children, run go generate.
 
 //go:generate go run gen/generate.go ./
+//go:generate go fmt ./generated_constants.go ./generated_descriptions.go
 type Bacalhau struct {
 	API API `yaml:"API,omitempty" json:"API,omitempty"`
 	// NameProvider specifies the method used to generate names for the node. One of: hostname, aws, gcp, uuid, puuid.

@@ -7,11 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
@@ -75,7 +75,10 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 		},
 		Stack: &scenario.StackConfig{
 			DevStackOptions: []devstack.ConfigOption{
-				devstack.WithDefaultPublisher(*local.NewSpecConfig()),
+				devstack.WithDefaultPublisher(types.DefaultPublisherConfig{
+					Type:   models.PublisherLocal,
+					Params: make(map[string]string),
+				}),
 			},
 		},
 		ResultsChecker: expectResultsSome,

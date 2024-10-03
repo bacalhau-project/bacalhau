@@ -19,9 +19,9 @@ type BatchJobDefaultsConfig struct {
 }
 
 type BatchTaskDefaultConfig struct {
-	Resources ResourcesConfig   `yaml:"Resources,omitempty" json:"Resources,omitempty"`
-	Publisher models.SpecConfig `yaml:"Publisher,omitempty"`
-	Timeouts  TaskTimeoutConfig `yaml:"Timeouts,omitempty" json:"Timeouts,omitempty"`
+	Resources ResourcesConfig        `yaml:"Resources,omitempty" json:"Resources,omitempty"`
+	Publisher DefaultPublisherConfig `yaml:"Publisher,omitempty" json:"Publisher,omitempty"`
+	Timeouts  TaskTimeoutConfig      `yaml:"Timeouts,omitempty" json:"Timeouts,omitempty"`
 }
 
 type ResourcesConfig struct {
@@ -54,6 +54,28 @@ func FromModelsResourceConfig(r models.ResourcesConfig) ResourcesConfig {
 		Disk:   r.Disk,
 		GPU:    r.GPU,
 	}
+}
+
+type DefaultPublisherConfig struct {
+	// Type specifies the publisher type. e.g. "s3", "local", "ipfs", etc.
+	Type string `json:"Type,omitempty" yaml:"Type,omitempty"`
+
+	// Params specifies the publisher configuration data.
+	Params map[string]string `json:"Params,omitempty" yaml:"Params,omitempty"`
+}
+
+func (d DefaultPublisherConfig) ToSpecConfig() models.SpecConfig {
+	sc := models.SpecConfig{
+		Type:   d.Type,
+		Params: make(map[string]interface{}),
+	}
+
+	for k, v := range d.Params {
+		sc.Params[k] = v
+	}
+
+	sc.Normalize()
+	return sc
 }
 
 type TaskTimeoutConfig struct {
