@@ -4,7 +4,7 @@ source bin/bacalhau.sh
 
 testcase_node_can_connect_without_token() {
     subject bacalhau config set node.network.type nats
-    create_node requester
+    create_node orchestrator
 
     create_node compute
     # If this returns successfully, the node started and authenticated.
@@ -15,7 +15,7 @@ testcase_preconfigured_token_not_printed() {
     subject bacalhau config set node.network.authsecret kerfuffle
     assert_equal 0 $status
 
-    create_node requester
+    create_node orchestrator
     assert_equal 0 $status
 
     # check stdout
@@ -33,7 +33,7 @@ testcase_node_connects_with_preconfigured_token() {
     subject bacalhau config set node.network.type nats
     subject bacalhau config set node.network.authsecret kerfuffle
     assert_match 0 $status
-    create_node requester
+    create_node orchestrator
 
     subject bacalhau config set node.network.authsecret kerfuffle
     subject bacalhau config set node.network.type nats
@@ -45,7 +45,7 @@ testcase_node_connects_with_url_embedded_token() {
     subject bacalhau config set node.network.type nats
     subject bacalhau config set node.network.authsecret kerfuffle
     assert_match 0 $status
-    create_node requester
+    create_node orchestrator
 
 
     # remove the token from the config
@@ -63,7 +63,7 @@ testcase_node_cannot_connect_with_wrong_token() {
     subject bacalhau config set node.network.type nats
     subject bacalhau config set node.network.authsecret kerfuffle
     assert_match 0 $status
-    create_node requester
+    create_node orchestrator
 
     subject bacalhau config set node.network.type nats
     subject bacalhau config set node.network.authsecret kerfalafel

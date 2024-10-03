@@ -17,7 +17,17 @@ clean_repo() {
 create_node() {
     TYPE=$1
     shift 1
-    $BACALHAU serve --node-type=$TYPE $@ 1>$BACALHAU_DIR/out.log 2>$BACALHAU_DIR/err.log &
+
+    # Check if TYPE contains a comma
+    if [[ "$TYPE" == *","* ]]; then
+        # Split the types and run the command with both
+        IFS=',' read -ra TYPES <<< "$TYPE"
+        $BACALHAU serve --"${TYPES[0]}" --"${TYPES[1]}" "$@" 1>$BACALHAU_DIR/out.log 2>$BACALHAU_DIR/err.log &
+    else
+        # Run the command with the single type
+        $BACALHAU serve --"$TYPE" "$@" 1>$BACALHAU_DIR/out.log 2>$BACALHAU_DIR/err.log &
+    fi
+ 
     NODE_PID=$!
     RUNNING_NODES+=($NODE_PID)
     {

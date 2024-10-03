@@ -23,9 +23,9 @@ run_test() {
 }
 
 testcase_receive_labels_about_requester_node() {
-    run_test requester
+    run_test orchestrator
 }
 
 testcase_receive_labels_about_compute_node() {
-    run_test requester,compute
+    run_test orchestrator,compute
 }

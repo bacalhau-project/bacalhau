@@ -11,7 +11,7 @@ setup() {
     subject 'bacalhau config list | grep auth.methods'
     assert_match 'shared_secret' $stdout
 
-    create_node requester
+    create_node orchestrator
 
     subject ls $BACALHAU_DIR/tokens.json
     assert_not_equal 0 $status
