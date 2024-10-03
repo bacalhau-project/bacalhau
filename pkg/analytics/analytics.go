@@ -23,7 +23,7 @@ const DefaultOtelCollectorEndpoint = "t.bacalhau.org:4317"
 const (
 	NodeInstallationIDKey = "installation_id"
 	NodeInstanceIDKey     = "instance_id"
-	NodeIDKey             = "node_id"
+	NodeIDHashKey         = "node_id_hash"
 	NodeTypeKey           = "node_type"
 	NodeVersionKey        = "node_version"
 )
@@ -43,7 +43,7 @@ func WithEndpoint(endpoint string) Option {
 
 func WithNodeID(id string) Option {
 	return func(c *Config) {
-		c.attributes = append(c.attributes, attribute.String(NodeIDKey, id))
+		c.attributes = append(c.attributes, attribute.String(NodeIDHashKey, hashString(id)))
 	}
 }
 
