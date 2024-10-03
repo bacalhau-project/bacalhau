@@ -180,6 +180,6 @@ func TestAllKeys(t *testing.T) {
 	assert.Contains(t, keys, "compute.orchestrators")
 	assert.Equal(t, reflect.TypeOf([]string{}), keys["compute.orchestrators"])
 
-	assert.Contains(t, keys, "compute.labels")
-	assert.Equal(t, reflect.TypeOf(map[string]string{}), keys["compute.labels"])
+	assert.Contains(t, keys, "labels")
+	assert.Equal(t, reflect.TypeOf(map[string]string{}), keys["labels"])
 }

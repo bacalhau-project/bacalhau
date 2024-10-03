@@ -32,15 +32,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
-var (
-	// TODO: remove compute level resource defaults. This should be handled at the orchestrator,
-	//  but we still need to validate the behaviour is a job without resource limits land on a compute node
-	defaultJobResourceLimits = models.Resources{
-		CPU:    0.1,               // 100m
-		Memory: 100 * 1024 * 1024, // 100Mi
-	}
-)
-
 type Compute struct {
 	// Visible for testing
 	ID                 string
@@ -151,7 +142,7 @@ func NewComputeNode(
 	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
 			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
-				Defaults: defaultJobResourceLimits,
+				Defaults: cfg.SystemConfig.DefaultComputeJobResourceLimits,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
 				Storages: storages,
@@ -320,34 +311,44 @@ func NewBidder(
 	bufferRunner *compute.ExecutorBuffer,
 	calculator capacity.UsageCalculator,
 ) compute.Bidder {
-	semanticBidStrats := []bidstrategy.SemanticBidStrategy{
-		semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
-		semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
-			RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
-		}),
-		semantic.NewProviderInstalledStrategy(
-			publishers,
-			func(j *models.Job) string { return j.Task().Publisher.Type },
-		),
-		semantic.NewStorageInstalledBidStrategy(storages),
-		semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-			Locality: cfg.BacalhauConfig.JobAdmissionControl.Locality,
-			Storages: storages,
-		}),
-		semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-			Command: cfg.BacalhauConfig.JobAdmissionControl.ProbeExec,
-		}),
-		semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-			URL: cfg.BacalhauConfig.JobAdmissionControl.ProbeHTTP,
-		}),
-		executor_util.NewExecutorSpecificBidStrategy(executors),
+	var semanticBidStrats []bidstrategy.SemanticBidStrategy
+	if cfg.SystemConfig.BidSemanticStrategy == nil {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
+			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
+				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
+			}),
+			semantic.NewProviderInstalledStrategy(
+				publishers,
+				func(j *models.Job) string { return j.Task().Publisher.Type },
+			),
+			semantic.NewStorageInstalledBidStrategy(storages),
+			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
+				Locality: cfg.BacalhauConfig.JobAdmissionControl.Locality,
+				Storages: storages,
+			}),
+			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
+				Command: cfg.BacalhauConfig.JobAdmissionControl.ProbeExec,
+			}),
+			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
+				URL: cfg.BacalhauConfig.JobAdmissionControl.ProbeHTTP,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{cfg.SystemConfig.BidSemanticStrategy}
 	}
 
-	resourceBidStrats := []bidstrategy.ResourceBidStrategy{
-		resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
-			MaxJobRequirements: allocatedResources,
-		}),
-		executor_util.NewExecutorSpecificBidStrategy(executors),
+	var resourceBidStrats []bidstrategy.ResourceBidStrategy
+	if cfg.SystemConfig.BidResourceStrategy == nil {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
+			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
+				MaxJobRequirements: allocatedResources,
+			}),
+			executor_util.NewExecutorSpecificBidStrategy(executors),
+		}
+	} else {
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{cfg.SystemConfig.BidResourceStrategy}
 	}
 
 	return compute.NewBidder(compute.BidderParams{

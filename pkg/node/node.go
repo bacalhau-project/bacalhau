@@ -44,6 +44,7 @@ type NodeConfig struct {
 	NodeID                 string
 	CleanupManager         *system.CleanupManager
 	BacalhauConfig         types.Bacalhau
+	SystemConfig           SystemConfig
 	DependencyInjector     NodeDependencyInjector
 	FailureInjectionConfig models.FailureInjectionConfig
 }
@@ -117,7 +118,9 @@ func NewNode(
 		}
 	}()
 
-	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %s", cfg.NodeID, cfg.BacalhauConfig)
+	// apply default values to the system config
+	cfg.SystemConfig.applyDefaults()
+	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
 	if err != nil {

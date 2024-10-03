@@ -155,13 +155,9 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 
 	ctx = logger.ContextWithNodeIDLogger(ctx, sysmeta.NodeName)
 
-	// configure node type
-	isRequesterNode := cfg.Orchestrator.Enabled
-	isComputeNode := cfg.Compute.Enabled
-
-	if !(isComputeNode || isRequesterNode) {
+	if !(cfg.Compute.Enabled || cfg.Orchestrator.Enabled) {
 		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
-		isRequesterNode = true
+		cfg.Orchestrator.Enabled = true
 	}
 
 	// Create node config from cmd arguments
@@ -217,7 +213,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 			analytics.WithNodeNodeID(sysmeta.NodeName),
 			analytics.WithInstallationID(system.InstallationID()),
 			analytics.WithInstanceID(sysmeta.InstanceID),
-			analytics.WithNodeType(isRequesterNode, isComputeNode),
+			analytics.WithNodeType(cfg.Orchestrator.Enabled, cfg.Compute.Enabled),
 			analytics.WithVersion(version.Get()))
 
 		if err != nil {

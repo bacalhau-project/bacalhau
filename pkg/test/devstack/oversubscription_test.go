@@ -9,7 +9,8 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -19,7 +20,6 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
@@ -53,40 +53,37 @@ func (s *OverSubscriptionTestSuite) SetupSuite() {
 func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 	logger.ConfigureTestLogging(s.T())
 	ctx := context.Background()
-	fsr, c := setup.SetupBacalhauRepoForTesting(s.T())
 
-	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-		NodeOverSubscriptionFactor: overSubscriptionFactor,
-	})
+	testConfig, err := config.NewTestConfig()
 	s.Require().NoError(err)
 
-	// node will only fit one job at a time
-	nodeCapacity, err := s.jobResources.ToResources()
-	s.Require().NoError(err)
-
-	executionDir, err := c.ExecutionDir()
-	s.Require().NoError(err)
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-		IgnorePhysicalResourceLimits: true,
-		TotalResourceLimits:          *nodeCapacity,
-		DefaultJobResourceLimits:     *nodeCapacity,
-		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
-			ResourceUpdateFrequency: legacy_types.Duration(s.resourceUpdateFrequency),
-		},
-	})
-	s.Require().NoError(err)
-
-	stack := teststack.Setup(ctx, s.T(), fsr, c,
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
-		devstack.WithRequesterConfig(requesterConfig),
-		devstack.WithComputeConfig(computeConfig),
+		devstack.WithSystemConfig(node.SystemConfig{
+			OverSubscriptionFactor: overSubscriptionFactor,
+		}),
+		devstack.WithBacalhauConfigOverride(types.Bacalhau{
+			Compute: types.Compute{
+				AllocatedCapacity: types.ResourceScalerFromModelsResourceConfig(s.jobResources),
+				Heartbeat: types.Heartbeat{
+					ResourceUpdateInterval: types.Duration(s.resourceUpdateFrequency),
+				},
+			},
+			JobDefaults: types.JobDefaults{
+				Batch: types.BatchJobDefaultsConfig{
+					Task: types.BatchTaskDefaultConfig{
+						Resources: types.FromModelsResourceConfig(s.jobResources),
+					},
+				},
+			},
+		}),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: noop_executor.DelayedJobHandler(s.jobRunDuration),
 				},
-			}, c.Engines),
+			}, testConfig.Engines),
 	)
 
 	s.requester = stack.Nodes[0]

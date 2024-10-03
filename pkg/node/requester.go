@@ -42,11 +42,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 )
 
-const (
-	nodeOverSubscriptionFactor = 1.5
-	nodeRankRandomnessRange    = 5
-)
-
 var (
 	minBacalhauVersion = models.BuildVersionInfo{
 		Major: "1", Minor: "0", GitVersion: "v1.0.4",
@@ -135,11 +130,15 @@ func NewRequesterNode(
 		planner.NewLoggingPlanner(),
 	)
 
-	// retry strategy
-	retryStrategy := retry.NewChain()
-	retryStrategy.Add(
-		retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
-	)
+	retryStrategy := cfg.SystemConfig.RetryStrategy
+	if retryStrategy == nil {
+		// retry strategy
+		retryStrategyChain := retry.NewChain()
+		retryStrategyChain.Add(
+			retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: true}),
+		)
+		retryStrategy = retryStrategyChain
+	}
 
 	// node selector
 	nodeRanker, err := createNodeRanker(cfg, jobStore)
@@ -338,7 +337,7 @@ func NewRequesterNode(
 }
 
 func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {
-	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(nodeOverSubscriptionFactor)
+	overSubscriptionNodeRanker, err := ranking.NewOverSubscriptionNodeRanker(cfg.SystemConfig.OverSubscriptionFactor)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +356,7 @@ func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.Nod
 		ranking.NewAvailableCapacityNodeRanker(),
 		// arbitrary rankers
 		ranking.NewRandomNodeRanker(ranking.RandomNodeRankerParams{
-			RandomnessRange: nodeRankRandomnessRange,
+			RandomnessRange: cfg.SystemConfig.NodeRankRandomnessRange,
 		}),
 	)
 	return nodeRankerChain, nil

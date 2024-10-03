@@ -46,6 +46,16 @@ type ResourcesConfig struct {
 	GPU string `yaml:"GPU,omitempty" json:"GPU,omitempty"`
 }
 
+// FromModelsResourceConfig converts a models.ResourcesConfig to a ResourcesConfig.
+func FromModelsResourceConfig(r models.ResourcesConfig) ResourcesConfig {
+	return ResourcesConfig{
+		CPU:    r.CPU,
+		Memory: r.Memory,
+		Disk:   r.Disk,
+		GPU:    r.GPU,
+	}
+}
+
 type TaskTimeoutConfig struct {
 	// TotalTimeout is the maximum total time allowed for a task
 	TotalTimeout Duration `yaml:"TotalTimeout,omitempty" json:"TotalTimeout,omitempty"`

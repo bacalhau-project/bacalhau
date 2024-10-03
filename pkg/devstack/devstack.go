@@ -30,11 +30,7 @@ type DevStackOptions struct {
 	Peer                       string // Connect node 0 to another network node
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
-	DisabledFeatures           node.FeatureConfig
-	AllowListedLocalPaths      []string // Local paths that are allowed to be mounted into jobs
-	ExecutorPlugins            bool     // when true pluggable executors will be used.
-	ConfigurationRepo          string   // A custom config repo
-	AuthSecret                 string
+	BasePath                   string
 }
 
 func (o *DevStackOptions) Options() []ConfigOption {
@@ -45,10 +41,7 @@ func (o *DevStackOptions) Options() []ConfigOption {
 		WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
 		WithCPUProfilingFile(o.CPUProfilingFile),
 		WithMemoryProfilingFile(o.MemoryProfilingFile),
-		WithDisabledFeatures(o.DisabledFeatures),
-		WithAllowListedLocalPaths(o.AllowListedLocalPaths),
-		WithExecutorPlugins(o.ExecutorPlugins),
-		WithAuthSecret(o.AuthSecret),
+		WithBasePath(o.BasePath),
 	}
 	return opts
 }
@@ -65,7 +58,6 @@ type DevStack struct {
 func Setup(
 	ctx context.Context,
 	cm *system.CleanupManager,
-	basePath string,
 	opts ...ConfigOption,
 ) (*DevStack, error) {
 	stackConfig, err := defaultDevStackConfig()
@@ -76,7 +68,14 @@ func Setup(
 		opt(stackConfig)
 	}
 
-	if err := stackConfig.Validate(); err != nil {
+	if stackConfig.BasePath == "" {
+		stackConfig.BasePath, err = os.MkdirTemp("", "bacalhau-devstack")
+		if err != nil {
+			return nil, fmt.Errorf("creating temporary directory: %w", err)
+		}
+	}
+
+	if err = stackConfig.Validate(); err != nil {
 		return nil, fmt.Errorf("validating devstask config: %w", err)
 	}
 
@@ -107,23 +106,19 @@ func Setup(
 		// ////////////////////////////////////
 		// Transport layer
 		// ////////////////////////////////////
-		var natsPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			const startSwarmPort = 4222 // 4222 is the default NATS port
-			natsPort = startSwarmPort + i
+			cfg.Orchestrator.Port = 4222 + i
 		} else {
-			if natsPort, err = network.GetFreePort(); err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for swarm port")
+			if cfg.Orchestrator.Port, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for nats server")
 			}
 		}
 
-		var clusterPort int
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			const startClusterPort = 6222
-			clusterPort = startClusterPort + i
+			cfg.Orchestrator.Cluster.Port = 6222 + i
 		} else {
-			if clusterPort, err = network.GetFreePort(); err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for cluster port")
+			if cfg.Orchestrator.Cluster.Port, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for nats cluster")
 			}
 		}
 
@@ -132,18 +127,20 @@ func Setup(
 		}
 
 		if isRequesterNode {
-			cfg.Orchestrator.Port = natsPort
 			cfg.Orchestrator.Cluster.Peers = clusterPeersAddrs
 			cfg.Orchestrator.Cluster.Name = "devstack"
-			cfg.Orchestrator.Cluster.Port = clusterPort
-			orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", natsPort))
+			orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", cfg.Orchestrator.Port))
 		}
 
 		// ////////////////////////////////////
 		// port for API
 		// ////////////////////////////////////
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			cfg.API.Port = 20000 + i
+			cfg.API.Port = 1234 + i
+		} else {
+			if cfg.API.Port, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for API server")
+			}
 		}
 
 		// ////////////////////////////////////
@@ -167,7 +164,7 @@ func Setup(
 		cfg.Orchestrator.Enabled = isRequesterNode
 		cfg.Compute.Enabled = isComputeNode
 		cfg, err = cfg.MergeNew(types.Bacalhau{
-			DataDir: filepath.Join(basePath, nodeID),
+			DataDir: filepath.Join(stackConfig.BasePath, nodeID),
 			Labels: map[string]string{
 				"id":   nodeID,
 				"name": fmt.Sprintf("node-%d", i),
@@ -187,6 +184,7 @@ func Setup(
 			NodeID:             nodeID,
 			CleanupManager:     cm,
 			BacalhauConfig:     cfg,
+			SystemConfig:       stackConfig.SystemConfig,
 			DependencyInjector: stackConfig.NodeDependencyInjector,
 			FailureInjectionConfig: models.FailureInjectionConfig{
 				IsBadActor: isBadComputeActor,

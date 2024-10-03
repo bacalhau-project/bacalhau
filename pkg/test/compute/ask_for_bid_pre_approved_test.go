@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -35,7 +36,7 @@ func (s *AskForBidPreApprovedSuite) verify(executionID string, expected models.R
 
 func (s *AskForBidPreApprovedSuite) TestPopulateResourceUsage() {
 	response := s.runAskForBidTest(bidResponseTestCase{})
-	s.verify(response, s.config.DefaultJobResourceLimits)
+	s.verify(response, s.config.SystemConfig.DefaultComputeJobResourceLimits)
 }
 
 func (s *AskForBidPreApprovedSuite) TestUseSubmittedResourceUsage() {
@@ -47,24 +48,25 @@ func (s *AskForBidPreApprovedSuite) TestUseSubmittedResourceUsage() {
 }
 
 func (s *AskForBidPreApprovedSuite) TestAcceptUsageBelowLimits() {
+	jobResources := s.capacity
+	jobResources.CPU = s.capacity.CPU / 2
 	s.runAskForBidTest(bidResponseTestCase{
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU / 2}),
+		execution: addResourceUsage(mock.Execution(), jobResources),
 	})
 }
 
 func (s *AskForBidPreApprovedSuite) TestAcceptUsageMatachingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU}),
+		execution: addResourceUsage(mock.Execution(), s.capacity),
 	})
 }
 
 func (s *AskForBidPreApprovedSuite) TestRejectUsageExceedingLimits() {
+	jobResources := s.capacity
+	jobResources.CPU += 0.01
 	s.runAskForBidTest(bidResponseTestCase{
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU + 0.01}),
-		rejected: true,
+		execution: addResourceUsage(mock.Execution(), jobResources),
+		rejected:  true,
 	})
 }
 

@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"time"
 
@@ -96,7 +97,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 
 	go func(ctx context.Context) {
 		defer func() {
-			if err := h.legacySubscriber.Close(ctx); err != nil {
+			if err := h.legacySubscriber.Close(ctx); err != nil && !errors.Is(err, nats.ErrConnectionClosed) {
 				log.Ctx(ctx).Error().Err(err).Msg("Error during heartbeat server shutdown")
 			} else {
 				log.Ctx(ctx).Debug().Msg("Heartbeat server shutdown")

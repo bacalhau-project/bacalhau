@@ -27,9 +27,9 @@ func TestDevstackConcurrencySuite(t *testing.T) {
 func (suite *DevstackConcurrencySuite) TestConcurrencyLimit() {
 	testCase := scenario.WasmHelloWorld(suite.T())
 	testCase.Stack = &scenario.StackConfig{
-		DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes:      1,
-			NumberOfComputeOnlyNodes: 2,
+		DevStackOptions: []devstack.ConfigOption{
+			devstack.WithNumberOfHybridNodes(1),
+			devstack.WithNumberOfComputeOnlyNodes(2),
 		},
 	}
 	testCase.Job.Count = 2

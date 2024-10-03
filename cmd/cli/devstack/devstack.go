@@ -53,7 +53,7 @@ func newDevStackOptions() *devstack.DevStackOptions {
 		Peer:                       "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		ConfigurationRepo:          "",
+		BasePath:                   "",
 	}
 }
 
@@ -123,12 +123,8 @@ func NewCmd() *cobra.Command {
 		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
 		"File to save memory profiling to",
 	)
-	devstackCmd.PersistentFlags().StringSliceVar(
-		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
-	)
 	devstackCmd.PersistentFlags().StringVar(
-		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
+		&ODs.BasePath, "stack-repo", ODs.BasePath,
 		"Folder to act as the devstack configuration repo",
 	)
 	return devstackCmd
@@ -159,7 +155,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen 
 
 	// ensure we either use a temp repo for the devstack, or the repo path provided
 	// by the specific devstack flag. Never use the default bacalhau repo.
-	baseRepoPath := ODs.ConfigurationRepo
+	baseRepoPath := ODs.BasePath
 	if baseRepoPath == "" {
 		// We need to clean up the repo when the node shuts down, but we can ONLY
 		// do this because we know it is a temporary directory. Do not delete the
@@ -170,7 +166,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen 
 
 	options := ODs.Options()
 
-	stack, err := devstack.Setup(ctx, cm, baseRepoPath, options...)
+	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
 		return err
 	}

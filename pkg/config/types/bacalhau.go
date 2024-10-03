@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/imdario/mergo"
 
@@ -35,17 +34,6 @@ type Bacalhau struct {
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty" json:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty" json:"FeatureFlags,omitempty"`
 	DisableAnalytics    bool                `yaml:"DisableAnalytics,omitempty" json:"DisableAnalytics,omitempty"`
-}
-
-// String returns a pretty-printed JSON representation of the Bacalhau configuration.
-func (b Bacalhau) String() string {
-	// Marshal the struct to JSON with indentation
-	jsonBytes, err := json.MarshalIndent(b, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("Error marshaling Bacalhau config: %v", err)
-	}
-
-	return string(jsonBytes)
 }
 
 // Copy returns a deep copy of the Bacalhau configuration.

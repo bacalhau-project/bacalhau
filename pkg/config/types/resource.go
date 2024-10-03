@@ -30,6 +30,15 @@ type ResourceScaler struct {
 	GPU ResourceType `yaml:"GPU,omitempty" json:"GPU,omitempty"`
 }
 
+func ResourceScalerFromModelsResourceConfig(r models.ResourcesConfig) ResourceScaler {
+	return ResourceScaler{
+		CPU:    ResourceType(r.CPU),
+		Memory: ResourceType(r.Memory),
+		Disk:   ResourceType(r.Disk),
+		GPU:    ResourceType(r.GPU),
+	}
+}
+
 func (s ResourceScaler) IsZero() bool {
 	return s.CPU == "" && s.Memory == "" && s.Disk == "" && s.GPU == ""
 }
@@ -115,6 +124,16 @@ func (s ResourceScaler) ToResource(in models.Resources) (*models.Resources, erro
 			return nil, fmt.Errorf("invalid GPU value %q: %w", s.GPU, err)
 		}
 		out.GPU = gpu
+	}
+
+	// select the first N GPUs from the total available GPUs
+	out.GPUs = make([]models.GPU, out.GPU)
+	for i := range out.GPUs {
+		if i >= len(in.GPUs) {
+			out.GPUs[i] = models.GPU{}
+		} else {
+			out.GPUs[i] = in.GPUs[i]
+		}
 	}
 
 	return out, nil

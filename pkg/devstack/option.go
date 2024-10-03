@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
@@ -21,6 +22,7 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 
 	return &DevStackConfig{
 		BacalhauConfig:         bacalhauConfig,
+		SystemConfig:           node.SystemConfig{},
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
 
@@ -29,8 +31,7 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		NumberOfBadComputeActors:   0,
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-
-		NumberOfHybridNodes: 0,
+		NumberOfHybridNodes:        0,
 	}, nil
 }
 
@@ -41,6 +42,7 @@ type DevstackTLSSettings struct {
 
 type DevStackConfig struct {
 	BacalhauConfig         types.Bacalhau
+	SystemConfig           node.SystemConfig
 	NodeDependencyInjector node.NodeDependencyInjector
 	NodeOverrides          []node.NodeConfig
 
@@ -51,6 +53,7 @@ type DevStackConfig struct {
 	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
 	CPUProfilingFile           string
 	MemoryProfilingFile        string
+	BasePath                   string
 }
 
 func (o *DevStackConfig) MarshalZerologObject(e *zerolog.Event) {
@@ -78,6 +81,12 @@ func (o *DevStackConfig) Validate() error {
 	}
 
 	return errs
+}
+
+func WithBasePath(path string) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.BasePath = path
+	}
 }
 
 func WithNodeOverrides(overrides ...node.NodeConfig) ConfigOption {
@@ -110,6 +119,14 @@ func WithNumberOfComputeOnlyNodes(count int) ConfigOption {
 	}
 }
 
+func WithAtLeastOneNode() ConfigOption {
+	return func(cfg *DevStackConfig) {
+		if cfg.NumberOfHybridNodes == 0 && cfg.NumberOfRequesterOnlyNodes == 0 && cfg.NumberOfComputeOnlyNodes == 0 {
+			cfg.NumberOfHybridNodes = 1
+		}
+	}
+}
+
 func WithNumberOfBadComputeActors(count int) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.NumberOfBadComputeActors = count
@@ -128,6 +145,22 @@ func WithMemoryProfilingFile(path string) ConfigOption {
 	}
 }
 
+func WithSystemConfig(cfg node.SystemConfig) ConfigOption {
+	return func(c *DevStackConfig) {
+		c.SystemConfig = cfg
+	}
+}
+
+func WithBacalhauConfigOverride(cfg types.Bacalhau) ConfigOption {
+	return func(c *DevStackConfig) {
+		var err error
+		c.BacalhauConfig, err = c.BacalhauConfig.MergeNew(cfg)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
 func WithDisabledFeatures(disable node.FeatureConfig) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.BacalhauConfig.Engines.Disabled = disable.Engines
@@ -139,6 +172,13 @@ func WithDisabledFeatures(disable node.FeatureConfig) ConfigOption {
 func WithAllowListedLocalPaths(paths []string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.BacalhauConfig.Compute.AllowListedLocalPaths = paths
+	}
+}
+
+func WithDefaultPublisher(publisher models.SpecConfig) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.BacalhauConfig.JobDefaults.Batch.Task.Publisher = publisher
+		cfg.BacalhauConfig.JobDefaults.Ops.Task.Publisher = publisher
 	}
 }
 

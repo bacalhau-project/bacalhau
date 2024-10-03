@@ -146,8 +146,9 @@ var testOverrides = types.Bacalhau{
 			DisconnectTimeout: types.Duration(30 * time.Second),
 		},
 		Scheduler: types.Scheduler{
-			WorkerCount:         3,
-			HousekeepingTimeout: types.Duration(100 * time.Millisecond),
+			WorkerCount:          3,
+			HousekeepingTimeout:  types.Duration(5 * time.Second),
+			HousekeepingInterval: 1 * types.Second,
 		},
 		EvaluationBroker: types.EvaluationBroker{
 			VisibilityTimeout: types.Duration(5 * time.Second),

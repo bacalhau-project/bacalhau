@@ -11,13 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
@@ -51,17 +50,8 @@ func runURLTest(
 	defer svr.Close()
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
-
-	computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
-		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality: semantic.Anywhere,
-		},
-	})
-	suite.Require().NoError(err)
 	testScenario := scenario.Scenario{
-		Stack: &scenario.StackConfig{
-			ComputeConfig: computeConfig,
-		},
+		Stack: &scenario.StackConfig{},
 		Inputs: scenario.ManyStores(
 			scenario.URLDownload(svr, testCase.file1, testCase.mount1),
 			scenario.URLDownload(svr, testCase.file2, testCase.mount2),
@@ -224,20 +214,17 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 	}))
 	defer svr.Close()
 
-	computeConfig, err := node.NewComputeConfigWith(s.T().TempDir(), node.ComputeConfigParams{
-		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality: semantic.Anywhere,
-		},
-	})
-	s.Require().NoError(err)
 	rootSourceDir := s.T().TempDir()
-
 	testScenario := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithAllowListedLocalPaths([]string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix}),
+				devstack.WithBacalhauConfigOverride(types.Bacalhau{
+					JobAdmissionControl: types.JobAdmissionControl{
+						Locality: models.Anywhere,
+					},
+				}),
 			},
-			ComputeConfig: computeConfig,
 		},
 		Inputs: scenario.ManyStores(
 			scenario.StoredText(rootSourceDir, localContent, path.Join(localMount, localFile)),

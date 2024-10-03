@@ -17,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -27,28 +26,26 @@ func testDevStackConfig() *devstack.DevStackOptions {
 		NumberOfRequesterOnlyNodes: 0,
 		NumberOfComputeOnlyNodes:   0,
 		NumberOfBadComputeActors:   0,
-		NumberOfBadRequesterActors: 0,
 		Peer:                       "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		DisabledFeatures:           node.FeatureConfig{},
-		AllowListedLocalPaths:      nil,
-		ExecutorPlugins:            false,
 	}
 }
 
 func Setup(
 	ctx context.Context,
 	t testing.TB,
-	fsr *repo.FsRepo,
-	cfg types.Bacalhau,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.Setup(ctx, cfg, cm, fsr, append(testDevStackConfig().Options(), opts...)...)
+
+	options := testDevStackConfig().Options()
+	options = append(options, devstack.WithBasePath(t.TempDir()))
+	options = append(options, opts...)
+	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)
 	}
