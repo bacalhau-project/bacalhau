@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"os"
 	"regexp"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -30,6 +32,18 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 	require.NoError(t, err)
 	require.NotNil(t, j, "Failed to get job with ID: %s", out)
 	return j.Job
+}
+
+// MustHaveIPFSEndpoint will skip the test if the test is running in an environment that cannot support IPFS.
+// Otherwise it returns an IPFS connect string
+func MustHaveIPFSEndpoint(t testing.TB) string {
+	endpoint := os.Getenv(ipfs.IPFS_ENDPOINT_ENV)
+	e := os.Environ()
+	t.Logf("Environment: %v", e)
+	if endpoint == "" {
+		t.Skip("Cannot run this test because it IPFS Connect is not configured")
+	}
+	return endpoint
 }
 
 // MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.
