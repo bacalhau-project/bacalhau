@@ -215,9 +215,6 @@ func processStruct(prefix string, capPrefix string, structType *ast.StructType, 
 				tagOrName = name
 			}
 
-			// Lowercase version for the field path
-			tagOrNameLower := strings.ToLower(tagOrName)
-
 			// Original capitalization for the constant name
 			origName := fieldNamesOriginal[idx]
 			if tag != "" {
@@ -228,10 +225,10 @@ func processStruct(prefix string, capPrefix string, structType *ast.StructType, 
 			var fieldPath string
 			var capFieldPath string
 			if prefix != "" {
-				fieldPath = prefix + "." + tagOrNameLower
+				fieldPath = prefix + "." + tagOrName
 				capFieldPath = capPrefix + "." + origName
 			} else {
-				fieldPath = tagOrNameLower
+				fieldPath = tagOrName
 				capFieldPath = origName
 			}
 
