@@ -48,7 +48,7 @@ type ResourcesConfig struct {
 
 type DefaultPublisherConfig struct {
 	// Type specifies the publisher type. e.g. "s3", "local", "ipfs", etc.
-	Type string `json:"Type" yaml:"Type,omitempty"`
+	Type string `json:"Type,omitempty" yaml:"Type,omitempty"`
 
 	// Params specifies the publisher configuration data.
 	Params map[string]string `json:"Params,omitempty" yaml:"Params,omitempty"`
