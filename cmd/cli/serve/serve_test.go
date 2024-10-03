@@ -94,8 +94,8 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	args := []string{
 		"serve",
-		"--repo", s.repoPath,
-		"--port", fmt.Sprint(port),
+		"--data-dir", s.repoPath,
+		"--api-port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)
 	cmd.SetArgs(args)

@@ -17,6 +17,7 @@ import (
 	pkgerrors "github.com/pkg/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -340,7 +341,7 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
    c. Set the host in a configuration file with '%s config set %s=<new_address>' and port with '%s config set %s=<new_port>'`,
 					c.address, types.APIHostKey, types.APIPortKey, os.Args[0], types.APIHostKey, os.Args[0], types.APIPortKey)
 
-				defaultEndpoint := fmt.Sprintf("http://%s:%d", types.Default.API.Host, types.Default.API.Port)
+				defaultEndpoint := fmt.Sprintf("http://127.0.0.1:%d", config.Default.API.Port)
 				if c.address == defaultEndpoint {
 					hint += `
 3. If you are trying to reach the demo network, use '--api-host=bootstrap.demo.bacalhau.org' to call the network`

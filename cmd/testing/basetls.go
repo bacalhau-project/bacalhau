@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	"github.com/bacalhau-project/bacalhau/pkg/test/utils/certificates"
 )
@@ -27,12 +24,6 @@ func (s *BaseTLSSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 
 	ctx := context.Background()
-	requesterConfig, err := node.NewRequesterConfigWith(
-		node.RequesterConfigParams{
-			HousekeepingBackgroundTaskInterval: 1 * time.Second,
-		},
-	)
-	s.Require().NoError(err)
 
 	tempDir := s.T().TempDir()
 	caCertPath := filepath.Join(tempDir, "ca_certificate.pem")
@@ -48,22 +39,11 @@ func (s *BaseTLSSuite) SetupTest() {
 	_, err = caCert.CreateTestSignedCertificate(serverCertPath, serverKeyPath)
 	s.Require().NoError(err)
 
-	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-
-	executionDir, err := cfg.ExecutionDir()
-	s.Require().NoError(err)
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality: semantic.Anywhere,
-		},
-	})
+	cfg, err := config.NewTestConfig()
 	s.Require().NoError(err)
 
 	stack := teststack.Setup(ctx, s.T(),
-		fsr, cfg,
 		devstack.WithNumberOfHybridNodes(1),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithSelfSignedCertificate(serverCertPath, serverKeyPath),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
 	)

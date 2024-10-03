@@ -21,7 +21,7 @@ import (
 var setExample = templates.Examples(i18n.T(`
 bacalhau config set api.host=127.0.0.1
 bacalhau config set compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234
-bacalhau config set compute.labels=foo=bar,baz=buz
+bacalhau config set labels=foo=bar,baz=buz
 `))
 
 func newSetCmd() *cobra.Command {

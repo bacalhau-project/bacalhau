@@ -27,12 +27,11 @@ func newBufferTask(execution store.LocalExecutionState) *bufferTask {
 }
 
 type ExecutorBufferParams struct {
-	ID                         string
-	DelegateExecutor           Executor
-	Callback                   Callback
-	RunningCapacityTracker     capacity.Tracker
-	EnqueuedUsageTracker       capacity.UsageTracker
-	DefaultJobExecutionTimeout time.Duration
+	ID                     string
+	DelegateExecutor       Executor
+	Callback               Callback
+	RunningCapacityTracker capacity.Tracker
+	EnqueuedUsageTracker   capacity.UsageTracker
 }
 
 // ExecutorBuffer is a backend.Executor implementation that buffers executions locally until enough capacity is
@@ -42,15 +41,14 @@ type ExecutorBufferParams struct {
 // jobs with lower resource usage requirements that can be executed immediately. This is done to improve utilization
 // of compute nodes, though it might result in starvation and should be re-evaluated in the future.
 type ExecutorBuffer struct {
-	ID                         string
-	runningCapacity            capacity.Tracker
-	enqueuedCapacity           capacity.UsageTracker
-	delegateService            Executor
-	callback                   Callback
-	running                    map[string]*bufferTask
-	queuedTasks                *collections.HashedPriorityQueue[string, *bufferTask]
-	defaultJobExecutionTimeout time.Duration
-	mu                         sync.Mutex
+	ID               string
+	runningCapacity  capacity.Tracker
+	enqueuedCapacity capacity.UsageTracker
+	delegateService  Executor
+	callback         Callback
+	running          map[string]*bufferTask
+	queuedTasks      *collections.HashedPriorityQueue[string, *bufferTask]
+	mu               sync.Mutex
 }
 
 func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
@@ -59,14 +57,13 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 	}
 
 	r := &ExecutorBuffer{
-		ID:                         params.ID,
-		runningCapacity:            params.RunningCapacityTracker,
-		enqueuedCapacity:           params.EnqueuedUsageTracker,
-		delegateService:            params.DelegateExecutor,
-		callback:                   params.Callback,
-		running:                    make(map[string]*bufferTask),
-		defaultJobExecutionTimeout: params.DefaultJobExecutionTimeout,
-		queuedTasks:                collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
+		ID:               params.ID,
+		runningCapacity:  params.RunningCapacityTracker,
+		enqueuedCapacity: params.EnqueuedUsageTracker,
+		delegateService:  params.DelegateExecutor,
+		callback:         params.Callback,
+		running:          make(map[string]*bufferTask),
+		queuedTasks:      collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
 
 	return r
@@ -123,15 +120,13 @@ func (s *ExecutorBuffer) doRun(ctx context.Context, task *bufferTask) {
 	defer span.End()
 
 	innerCtx := ctx
-	var timeout time.Duration
 	if !job.IsLongRunning() {
-		timeout = job.Task().Timeouts.GetExecutionTimeout()
-		if timeout == 0 {
-			timeout = s.defaultJobExecutionTimeout
+		timeout := job.Task().Timeouts.GetExecutionTimeout()
+		if timeout > 0 {
+			var cancel context.CancelFunc
+			innerCtx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
 		}
-		var cancel context.CancelFunc
-		innerCtx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
 	}
 
 	ch := make(chan error)

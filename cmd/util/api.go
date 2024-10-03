@@ -22,6 +22,11 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 	apiHost := cfg.API.Host
 	apiPort := cfg.API.Port
 
+	// set the client api host to localhost if it is 0.0.0.0
+	if apiHost == "0.0.0.0" {
+		apiHost = "127.0.0.1"
+	}
+
 	if tlsCfg.CAFile != "" {
 		if _, err := os.Stat(tlsCfg.CAFile); os.IsNotExist(err) {
 			return nil, fmt.Errorf("CA certificate file %q does not exists", tlsCfg.CAFile)

@@ -15,6 +15,8 @@ import (
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/selection"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -22,7 +24,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -48,31 +49,31 @@ type RetriesSuite struct {
 
 func (s *RetriesSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-
-	executionDir, err := cfg.ExecutionDir()
-	s.Require().NoError(err)
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-		BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-		BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-	})
-	s.Require().NoError(err)
 	nodeOverrides := []node.NodeConfig{
 		{
-			Labels: map[string]string{
-				"name": "requester-node",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "requester-node",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{},
 		},
 		{
-			Labels: map[string]string{
-				"name": "bid-rejector",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "bid-rejector",
+				},
 			},
-			ComputeConfig: computeConfig,
+			SystemConfig: node.SystemConfig{
+				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "bad-executor",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "bad-executor",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
@@ -83,8 +84,10 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "bad-publisher",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "bad-publisher",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				PublishersFactory: devstack.NewNoopPublishersFactoryWithConfig(noop_publisher.PublisherConfig{
@@ -95,8 +98,10 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "slow-executor",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "slow-executor",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
@@ -107,8 +112,10 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "good-guy1",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "good-guy1",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
@@ -119,8 +126,10 @@ func (s *RetriesSuite) SetupSuite() {
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "good-guy2",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "good-guy2",
+				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
 				ExecutorsFactory: devstack.NewNoopExecutorsFactoryWithConfig(noop_executor.ExecutorConfig{
@@ -133,14 +142,12 @@ func (s *RetriesSuite) SetupSuite() {
 	}
 	ctx := context.Background()
 
-	requesterConfig, err := node.NewRequesterConfigWithDefaults()
+	cfg, err := config.NewTestConfig()
 	s.Require().NoError(err)
-	requesterConfig.OverAskForBidsFactor = 1
-	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(len(nodeOverrides)-1),
 		devstack.WithNodeOverrides(nodeOverrides...),
-		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
 	)
 

@@ -5,8 +5,9 @@ package compute
 import (
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 // TODO(forrest): [fixme] I don't think this test never actually calls its tests method
@@ -21,7 +22,7 @@ func TestDataLocalityBidSuite(t *testing.T) {
 }
 
 func (s *DataLocalityBidSuite) SetupTest() {
-	s.config.JobSelectionPolicy.RejectStatelessJobs = true
+	s.config.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs = true
 	s.AskForBidSuite.SetupTest()
 }
 

@@ -20,11 +20,11 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -48,6 +48,7 @@ func TestExecutorTestSuite(t *testing.T) {
 }
 
 func (s *ExecutorTestSuite) SetupTest() {
+	logger.ConfigureTestLogging(s.T())
 	docker.MustHaveDocker(s.T())
 
 	var err error
@@ -56,16 +57,10 @@ func (s *ExecutorTestSuite) SetupTest() {
 		s.cm.Cleanup(context.Background())
 	})
 
-	s.executor, err = NewExecutor(
-		"bacalhau-executor-unit-test",
-		types.Docker{
-			ManifestCache: types.DockerManifestCache{
-				Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-				TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-				Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
-			},
-		},
-	)
+	cfg, err := config.NewTestConfig()
+	require.NoError(s.T(), err)
+
+	s.executor, err = NewExecutor("bacalhau-executor-unit-test", cfg.Engines.Types.Docker)
 	require.NoError(s.T(), err)
 	s.T().Cleanup(func() {
 		if err := s.executor.Shutdown(context.Background()); err != nil {

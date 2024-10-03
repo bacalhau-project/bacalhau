@@ -3,7 +3,6 @@ package compute
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"reflect"
 	"strings"
 
@@ -27,7 +26,6 @@ type BidderParams struct {
 	Store            store.ExecutionStore
 	Executor         Executor
 	Callback         Callback
-	GetApproveURL    func() *url.URL
 }
 
 type Bidder struct {
@@ -36,7 +34,6 @@ type Bidder struct {
 	usageCalculator capacity.UsageCalculator
 	executor        Executor
 	callback        Callback
-	getApproveURL   func() *url.URL
 
 	semanticStrategy []bidstrategy.SemanticBidStrategy
 	resourceStrategy []bidstrategy.ResourceBidStrategy
@@ -47,7 +44,6 @@ func NewBidder(params BidderParams) Bidder {
 		nodeID:           params.NodeID,
 		store:            params.Store,
 		usageCalculator:  params.UsageCalculator,
-		getApproveURL:    params.GetApproveURL,
 		executor:         params.Executor,
 		callback:         params.Callback,
 		semanticStrategy: params.SemanticStrategy,
@@ -260,9 +256,8 @@ func (b Bidder) runSemanticBidding(
 ) (*bidStrategyResponse, error) {
 	// ask the bidding strategy if we should bid on this job
 	request := bidstrategy.BidStrategyRequest{
-		NodeID:   b.nodeID,
-		Job:      *job,
-		Callback: b.getApproveURL(),
+		NodeID: b.nodeID,
+		Job:    *job,
 	}
 
 	// assume we are bidding unless a request is rejected
@@ -320,9 +315,8 @@ func (b Bidder) runResourceBidding(
 
 	// ask the bidding strategy if we should bid on this job
 	request := bidstrategy.BidStrategyRequest{
-		NodeID:   b.nodeID,
-		Job:      *job,
-		Callback: b.getApproveURL(),
+		NodeID: b.nodeID,
+		Job:    *job,
 	}
 
 	// assume we are bidding unless a request is rejected

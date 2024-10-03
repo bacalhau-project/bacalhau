@@ -32,7 +32,7 @@ type BaseExecutorParams struct {
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
-	FailureInjectionConfig models.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -46,7 +46,7 @@ type BaseExecutor struct {
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
-	failureInjection models.FailureInjectionComputeConfig
+	failureInjection models.FailureInjectionConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
