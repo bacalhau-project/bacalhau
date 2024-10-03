@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -31,11 +32,11 @@ func TestStorageSuite(t *testing.T) {
 
 func (s *StorageSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-
-	endpoint := testutils.MustHaveIPFS(s.T())
+	_, cfg := setup.SetupBacalhauRepoForTesting(s.T())
+	testutils.MustHaveIPFS(s.T(), cfg)
 
 	var err error
-	s.ipfsClient, err = ipfs.NewClient(context.Background(), endpoint)
+	s.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
 	s.storage, err = NewStorage(*s.ipfsClient, 5*time.Second)
 	s.Require().NoError(err)
 }

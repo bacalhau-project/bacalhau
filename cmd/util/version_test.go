@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -32,6 +33,8 @@ func (s *UtilsSuite) SetupTest() {
 }
 
 func (s *UtilsSuite) TestVersionCheck() {
+	setup.SetupBacalhauRepoForTesting(s.T())
+
 	// OK: Normal operation
 	err := EnsureValidVersion(context.TODO(), &models.BuildVersionInfo{
 		GitVersion: "v1.2.3",

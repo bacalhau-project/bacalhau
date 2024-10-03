@@ -15,13 +15,16 @@ import (
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
+	cfgtypes "github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	apitest "github.com/bacalhau-project/bacalhau/pkg/publicapi/test"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -40,7 +43,9 @@ type ServeSuite struct {
 	out, err strings.Builder
 
 	ctx      context.Context
+	repoPath string
 	protocol string
+	config   cfgtypes.Bacalhau
 }
 
 func TestServeSuite(t *testing.T) {
@@ -49,7 +54,12 @@ func TestServeSuite(t *testing.T) {
 
 func (s *ServeSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	fsRepo, c := setup.SetupBacalhauRepoForTesting(s.T())
+	repoPath, err := fsRepo.Path()
+	s.Require().NoError(err)
+	s.repoPath = repoPath
 	s.protocol = "http"
+	s.config = c
 
 	var cancel context.CancelFunc
 	s.ctx, cancel = context.WithTimeout(context.Background(), maxTestTime)
@@ -84,7 +94,7 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 
 	args := []string{
 		"serve",
-		"--data-dir", s.T().TempDir(),
+		"--data-dir", s.repoPath,
 		"--api-port", fmt.Sprint(port),
 	}
 	args = append(args, extraArgs...)

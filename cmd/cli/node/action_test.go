@@ -10,6 +10,7 @@ import (
 
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
 
 type NodeActionSuite struct {
@@ -22,6 +23,7 @@ func TestNodeActionSuite(t *testing.T) {
 
 func (s *NodeActionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
+	setup.SetupBacalhauRepoForTesting(s.T())
 }
 
 func (s *NodeActionSuite) TestListNodes() {

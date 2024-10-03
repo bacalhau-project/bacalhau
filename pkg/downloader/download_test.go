@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -43,12 +44,13 @@ type DownloaderSuite struct {
 
 func (ds *DownloaderSuite) SetupSuite() {
 	logger.ConfigureTestLogging(ds.T())
+	_, cfg := setup.SetupBacalhauRepoForTesting(ds.T())
 
-	endpoint := testutils.MustHaveIPFS(ds.T())
-	var err error
-	ds.ipfsClient, err = ipfs.NewClient(context.Background(), endpoint)
-	require.NoError(ds.T(), err)
-
+	if testutils.IsIPFSEnabled(cfg.ResultDownloaders.Types.IPFS.Endpoint) {
+		var err error
+		ds.ipfsClient, err = ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
+		require.NoError(ds.T(), err)
+	}
 	ds.HelperSuite.SetupSuite()
 	ds.s3Signer = s3helper.NewResultSigner(s3helper.ResultSignerParams{
 		ClientProvider: ds.ClientProvider,

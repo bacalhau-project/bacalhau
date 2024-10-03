@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"context"
-	"os"
 	"regexp"
 	"testing"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -35,14 +34,22 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 
 // MustHaveIPFS will skip the test if the test is running in an environment that cannot support IPFS.
 // Otherwise it returns an IPFS connect string
-func MustHaveIPFS(t testing.TB) string {
-	endpoint := os.Getenv(ipfs.IPFS_ENDPOINT_ENV)
-	e := os.Environ()
-	t.Logf("Environment: %v", e)
-	if endpoint == "" {
+func MustHaveIPFS(t testing.TB, cfg types.Bacalhau) {
+	downloaderConfigured := cfg.ResultDownloaders.IsNotDisabled(models.StorageSourceIPFS) &&
+		cfg.ResultDownloaders.Types.IPFS.Endpoint != ""
+	inputSourceConfigured := cfg.InputSources.IsNotDisabled(models.StorageSourceIPFS) &&
+		cfg.InputSources.Types.IPFS.Endpoint != ""
+	publisherConfigured := cfg.Publishers.IsNotDisabled(models.PublisherIPFS) &&
+		cfg.Publishers.Types.IPFS.Endpoint != ""
+
+	if !(downloaderConfigured && inputSourceConfigured && publisherConfigured) {
 		t.Skip("Cannot run this test because it IPFS Connect is not configured")
 	}
-	return endpoint
+}
+
+// IsIPFSEnabled will return true if the test is running in an environment that can support IPFS.
+func IsIPFSEnabled(ipfsConnect string) bool {
+	return ipfsConnect != ""
 }
 
 // StartNats will start a NATS server on a random port and return a server and client instances

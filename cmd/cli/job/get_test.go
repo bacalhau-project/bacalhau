@@ -44,7 +44,7 @@ func (s *GetSuite) SetupTest() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
-	testutils.MustHaveIPFS(s.T())
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	args := s.getDockerRunArgs([]string{
 		"--wait",
 		"--publisher", "ipfs",
@@ -62,7 +62,7 @@ func (s *GetSuite) TestGetSingleFileFromOutputBadChoice() {
 }
 
 func (s *GetSuite) TestGetSingleFileFromOutput() {
-	testutils.MustHaveIPFS(s.T())
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 
@@ -86,7 +86,7 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
-	testutils.MustHaveIPFS(s.T())
+	testutils.MustHaveIPFS(s.T(), s.Config)
 	tempDir, cleanup := setupTempWorkingDir(s.T())
 	defer cleanup()
 

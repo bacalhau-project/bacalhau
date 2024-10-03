@@ -30,7 +30,15 @@ func Setup(
 		cm.Cleanup(ctx)
 	})
 
-	options := []devstack.ConfigOption{devstack.WithBasePath(t.TempDir())}
+	// default options
+	options := []devstack.ConfigOption{
+		devstack.WithNumberOfHybridNodes(0),
+		devstack.WithNumberOfRequesterOnlyNodes(0),
+		devstack.WithNumberOfComputeOnlyNodes(0),
+		devstack.WithBasePath(t.TempDir()),
+	}
+
+	// append custom options
 	options = append(options, opts...)
 	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
