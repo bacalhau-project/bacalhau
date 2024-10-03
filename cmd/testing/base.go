@@ -37,6 +37,10 @@ type BaseSuite struct {
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	// disable update checks in testing.
+	s.T().Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
+	// don't send analytics data during testing
+	s.T().Setenv(config.KeyAsEnvVar(types.DisableAnalyticsKey), "true")
 
 	var err error
 	s.Config, err = config.NewTestConfig()
