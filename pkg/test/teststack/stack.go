@@ -20,18 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-func testDevStackConfig() *devstack.DevStackOptions {
-	return &devstack.DevStackOptions{
-		NumberOfHybridNodes:        0,
-		NumberOfRequesterOnlyNodes: 0,
-		NumberOfComputeOnlyNodes:   0,
-		NumberOfBadComputeActors:   0,
-		Peer:                       "",
-		CPUProfilingFile:           "",
-		MemoryProfilingFile:        "",
-	}
-}
-
 func Setup(
 	ctx context.Context,
 	t testing.TB,
@@ -42,8 +30,7 @@ func Setup(
 		cm.Cleanup(ctx)
 	})
 
-	options := testDevStackConfig().Options()
-	options = append(options, devstack.WithBasePath(t.TempDir()))
+	options := []devstack.ConfigOption{devstack.WithBasePath(t.TempDir())}
 	options = append(options, opts...)
 	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {

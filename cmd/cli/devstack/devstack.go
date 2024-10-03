@@ -45,22 +45,45 @@ var (
 `))
 )
 
-func newDevStackOptions() *devstack.DevStackOptions {
-	return &devstack.DevStackOptions{
+type options struct {
+	NumberOfHybridNodes        int // Number of nodes to start in the cluster
+	NumberOfRequesterOnlyNodes int // Number of nodes to start in the cluster
+	NumberOfComputeOnlyNodes   int // Number of nodes to start in the cluster
+	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
+	CPUProfilingFile           string
+	MemoryProfilingFile        string
+	BasePath                   string
+	WebUIListen                string
+}
+
+func (o *options) devstackOptions() []devstack.ConfigOption {
+	opts := []devstack.ConfigOption{
+		devstack.WithNumberOfHybridNodes(o.NumberOfHybridNodes),
+		devstack.WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
+		devstack.WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
+		devstack.WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
+		devstack.WithCPUProfilingFile(o.CPUProfilingFile),
+		devstack.WithMemoryProfilingFile(o.MemoryProfilingFile),
+		devstack.WithBasePath(o.BasePath),
+	}
+	return opts
+}
+
+func newOptions() *options {
+	return &options{
 		NumberOfRequesterOnlyNodes: 1,
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
-		Peer:                       "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
 		BasePath:                   "",
+		WebUIListen:                config.Default.WebUI.Listen,
 	}
 }
 
 //nolint:funlen,gocyclo
 func NewCmd() *cobra.Command {
-	ODs := newDevStackOptions()
-	var webUIListen string
+	ODs := newOptions()
 	devstackFlags := map[string][]configflags.Definition{
 		"job-selection":         configflags.JobSelectionFlags,
 		"disable-features":      configflags.DisabledFeatureFlags,
@@ -83,7 +106,7 @@ func NewCmd() *cobra.Command {
 			if err := logger.ConfigureLogging(string(logger.LogModeDefault), "debug"); err != nil {
 				return fmt.Errorf("failed to configure logging: %w", err)
 			}
-			return runDevstack(cmd, ODs, webUIListen)
+			return runDevstack(cmd, ODs)
 		},
 	}
 
@@ -108,12 +131,8 @@ func NewCmd() *cobra.Command {
 		`How many compute nodes should be bad actors`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
-		&webUIListen, "webui-address", config.Default.WebUI.Listen,
+		&ODs.WebUIListen, "webui-address", ODs.WebUIListen,
 		`Listen address for the web UI server`,
-	)
-	devstackCmd.PersistentFlags().StringVar(
-		&ODs.Peer, "peer", ODs.Peer,
-		`Connect node 0 to another network node`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
@@ -131,7 +150,7 @@ func NewCmd() *cobra.Command {
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen string) error {
+func runDevstack(cmd *cobra.Command, ODs *options) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
@@ -164,9 +183,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen 
 		defer os.RemoveAll(baseRepoPath)
 	}
 
-	options := ODs.Options()
-
-	stack, err := devstack.Setup(ctx, cm, options...)
+	stack, err := devstack.Setup(ctx, cm, ODs.devstackOptions()...)
 	if err != nil {
 		return err
 	}
@@ -177,7 +194,7 @@ func runDevstack(cmd *cobra.Command, ODs *devstack.DevStackOptions, webUIListen 
 		if n.IsRequesterNode() {
 			webuiConfig := webui.Config{
 				APIEndpoint: n.APIServer.GetURI().String(),
-				Listen:      webUIListen,
+				Listen:      ODs.WebUIListen,
 			}
 			webuiServer, err := webui.NewServer(webuiConfig)
 			if err != nil {

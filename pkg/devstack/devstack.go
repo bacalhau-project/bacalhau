@@ -22,34 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-type DevStackOptions struct {
-	NumberOfHybridNodes        int    // Number of nodes to start in the cluster
-	NumberOfRequesterOnlyNodes int    // Number of nodes to start in the cluster
-	NumberOfComputeOnlyNodes   int    // Number of nodes to start in the cluster
-	NumberOfBadComputeActors   int    // Number of compute nodes to be bad actors
-	Peer                       string // Connect node 0 to another network node
-	CPUProfilingFile           string
-	MemoryProfilingFile        string
-	BasePath                   string
-}
-
-func (o *DevStackOptions) Options() []ConfigOption {
-	opts := []ConfigOption{
-		WithNumberOfHybridNodes(o.NumberOfHybridNodes),
-		WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
-		WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
-		WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
-		WithCPUProfilingFile(o.CPUProfilingFile),
-		WithMemoryProfilingFile(o.MemoryProfilingFile),
-		WithBasePath(o.BasePath),
-	}
-	return opts
-}
-
-func (o *DevStackOptions) NumberOfNodes() int {
-	return o.NumberOfHybridNodes + o.NumberOfRequesterOnlyNodes + o.NumberOfComputeOnlyNodes
-}
-
 type DevStack struct {
 	Nodes []*node.Node
 }
