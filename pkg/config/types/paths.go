@@ -97,6 +97,19 @@ func (b Bacalhau) ExecutionDir() (string, error) {
 	return path, nil
 }
 
+const ResultsStorageDir = "results"
+
+func (b Bacalhau) ResultsStorageDir() (string, error) {
+	if b.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	path := filepath.Join(b.DataDir, ComputeDirName, ResultsStorageDir)
+	if err := ensureDir(path); err != nil {
+		return "", fmt.Errorf("getting results storage path: %w", err)
+	}
+	return path, nil
+}
+
 const PluginsDirName = "plugins"
 
 func (b Bacalhau) PluginsDir() (string, error) {

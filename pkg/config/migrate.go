@@ -36,7 +36,6 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				return strings.ToLower(s) == "compute"
 			}),
 			Orchestrators: in.Node.Network.Orchestrators,
-			Labels:        in.Node.Labels,
 			Heartbeat: types.Heartbeat{
 				Interval:               types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
 				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
@@ -44,6 +43,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 			},
 			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
 		},
+		Labels: in.Node.Labels,
 		WebUI: types.WebUI{
 			Enabled: in.Node.WebUI.Enabled,
 			Listen: func(enabled bool, port int) string {
@@ -207,7 +207,6 @@ func migratePublishers(in v1types.NodeConfig) types.PublishersConfig {
 	// local
 	out.Types.Local.Port = in.Compute.LocalPublisher.Port
 	out.Types.Local.Address = in.Compute.LocalPublisher.Address
-	out.Types.Local.Directory = in.Compute.LocalPublisher.Directory
 
 	// s3
 	out.Types.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)

@@ -99,7 +99,7 @@ func New(opts ...Option) (*Config, error) {
 
 	c := &Config{
 		base:                 base,
-		defaultCfg:           types.Default,
+		defaultCfg:           Default,
 		paths:                make([]string, 0),
 		values:               make(map[string]any),
 		environmentVariables: make(map[string][]string),
@@ -144,6 +144,10 @@ func New(opts ...Option) (*Config, error) {
 		for _, flag := range flags {
 			// only if the flag has been set do we want to bind to it, this allows multiple flags
 			// to bind to the same config key.
+			log.Warn().Msgf("Binding flag %+v to config key %q", flag, name)
+			if flag == nil {
+				log.Error().Msgf("flag %q is nil", name)
+			}
 			if flag.Changed {
 				switch name {
 				case "ipfs.connect.deprecated":

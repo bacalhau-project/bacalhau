@@ -34,8 +34,8 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 
 	testcase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithAllowListedLocalPaths([]string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix}),
 			},
 		},
 		Inputs: scenario.StoredText(rootSourceDir, stdoutText, "data/hello.txt"),

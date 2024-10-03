@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -20,7 +22,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 	nodeutils "github.com/bacalhau-project/bacalhau/pkg/test/utils/node"
 )
@@ -38,39 +39,42 @@ type NodeSelectionSuite struct {
 
 func (s *NodeSelectionSuite) SetupSuite() {
 	logger.ConfigureTestLogging(s.T())
-	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-
 	ctx := context.Background()
+
+	cfg, err := config.NewTestConfig()
+	s.Require().NoError(err)
 
 	nodeOverrides := []node.NodeConfig{
 		{}, // pass overriding requester node
 		{
-			Labels: map[string]string{
-				"name": "compute-1",
-				"env":  "prod",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "compute-1",
+					"env":  "prod",
+				},
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "compute-2",
-				"env":  "prod",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "compute-2",
+					"env":  "prod",
+				},
 			},
 		},
 		{
-			Labels: map[string]string{
-				"name": "compute-3",
-				"env":  "test",
+			BacalhauConfig: types.Bacalhau{
+				Labels: map[string]string{
+					"name": "compute-3",
+					"env":  "test",
+				},
 			},
 		},
 	}
-	requesterConfig, err := node.NewRequesterConfigWithDefaults()
-	s.Require().NoError(err)
-	requesterConfig.OverAskForBidsFactor = 1
-	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfRequesterOnlyNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(3),
 		devstack.WithNodeOverrides(nodeOverrides...),
-		devstack.WithRequesterConfig(requesterConfig),
 		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
 	)
 
@@ -79,7 +83,6 @@ func (s *NodeSelectionSuite) SetupSuite() {
 	s.compute2 = stack.Nodes[2]
 	s.compute3 = stack.Nodes[3]
 	s.api = clientv2.New(fmt.Sprintf("http://%s:%d", s.requester.APIServer.Address, s.requester.APIServer.Port))
-	s.Require().NoError(err)
 	s.stateResolver = scenario.NewStateResolverFromAPI(s.api)
 	s.computeNodes = []*node.Node{s.compute1, s.compute2, s.compute3}
 

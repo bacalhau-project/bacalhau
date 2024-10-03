@@ -49,8 +49,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 		NodeID:                "server-node",
 		Clock:                 s.clock,
 		Client:                s.natsConn,
-		CheckFrequency:        1 * time.Second,
-		NodeDisconnectedAfter: 10 * time.Second,
+		NodeDisconnectedAfter: 5 * time.Second,
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.heartbeatServer.Start(context.Background()))

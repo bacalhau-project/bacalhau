@@ -52,14 +52,11 @@ func NewStandardStorageProvidersFactory(cfg types.Bacalhau) StorageProvidersFact
 		ctx context.Context,
 		nodeConfig NodeConfig,
 	) (storage.StorageProvider, error) {
-		if len(cfg.Compute.AllowListedLocalPaths) == 0 {
-			cfg.Compute.AllowListedLocalPaths = nodeConfig.AllowListedLocalPaths
-		}
 		pr, err := executor_util.NewStandardStorageProvider(cfg)
 		if err != nil {
 			return nil, err
 		}
-		return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Storages), err
+		return provider.NewConfiguredProvider(pr, nodeConfig.BacalhauConfig.InputSources.Disabled), err
 	})
 }
 
@@ -75,7 +72,7 @@ func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.BacalhauConfig.Engines.Disabled), err
 		})
 }
 
@@ -108,7 +105,7 @@ func NewPluginExecutorFactory(pluginPath string) ExecutorsFactory {
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Engines), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.BacalhauConfig.Engines.Disabled), err
 		})
 }
 
@@ -117,21 +114,14 @@ func NewStandardPublishersFactory(cfg types.Bacalhau) PublishersFactory {
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			executionDir, err := cfg.ExecutionDir()
-			if err != nil {
-				return nil, err
-			}
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
-				executionDir,
-				nodeConfig.CleanupManager,
-				cfg.Publishers,
-				nodeConfig.ComputeConfig.LocalPublisher,
+				cfg,
 			)
 			if err != nil {
 				return nil, err
 			}
-			return provider.NewConfiguredProvider(pr, nodeConfig.DisabledFeatures.Publishers), err
+			return provider.NewConfiguredProvider(pr, nodeConfig.BacalhauConfig.Publishers.Disabled), err
 		})
 }
 
@@ -140,8 +130,8 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
 
-			authns := make(map[string]authn.Authenticator, len(nodeConfig.AuthConfig.Methods))
-			for name, authnConfig := range nodeConfig.AuthConfig.Methods {
+			authns := make(map[string]authn.Authenticator, len(nodeConfig.BacalhauConfig.API.Auth.Methods))
+			for name, authnConfig := range nodeConfig.BacalhauConfig.API.Auth.Methods {
 				switch authnConfig.Type {
 				case string(authn.MethodTypeChallenge):
 					methodPolicy, err := policy.FromPathOrDefault(authnConfig.PolicyPath, challenge.AnonymousModePolicy)

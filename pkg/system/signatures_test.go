@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
@@ -18,7 +18,8 @@ func TestMessageSigning(t *testing.T) {
 			t.Errorf("unexpected panic: %v", r)
 		}
 	}()
-	_, c := setup.SetupBacalhauRepoForTesting(t)
+	c, err := config.NewTestConfig()
+	require.NoError(t, err)
 	userKeyPath, err := c.UserKeyPath()
 	require.NoError(t, err)
 	userKey, err := baccrypto.LoadUserKey(userKeyPath)

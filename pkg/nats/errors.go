@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -33,7 +34,7 @@ func NewConfigurationWrappedError(err error, message string, args ...interface{}
 func interceptConnectionError(err error, servers string) error {
 	switch {
 	case errors.Is(err, nats.ErrNoServers):
-		defaultServers := strings.Join(types.Default.Compute.Orchestrators, ",")
+		defaultServers := strings.Join(config.Default.Compute.Orchestrators, ",")
 		hint := fmt.Sprintf(`to resolve this, either:
 1. Ensure that the orchestrator is running and reachable at %s
 2. Update the configuration to use a different orchestrator address using:

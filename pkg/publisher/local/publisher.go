@@ -2,19 +2,21 @@ package local
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path"
 
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/gzip"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 type Publisher struct {
@@ -34,16 +36,24 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 		urlPrefix: fmt.Sprintf("http://%s:%d", host, port),
 	}
 
+	var err error
+	err = errors.Join(err, validate.NotBlank(p.baseDirectory, "directory cannot be blank"))
+	err = errors.Join(err, validate.NotBlank(p.host, "host cannot be blank"))
+	err = errors.Join(err, validate.IsGreaterThanZero(p.port, "port must be positive"))
+	if err != nil {
+		return nil, bacerrors.Wrap(err, "failed to create local publisher").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ConfigurationError)
+	}
+
 	if info, err := os.Stat(p.baseDirectory); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to create local pubisher with path %s: path could not be read: %w", directory, err)
-		}
-		log.Warn().Msgf("local publisher was configured with a directory that doesn't exits. attempting to create one at %s", directory)
-		if err := os.MkdirAll(p.baseDirectory, util.OS_USER_RWX); err != nil {
-			return nil, fmt.Errorf("failed to create directory for local publisher: %w", err)
-		}
+		return nil, bacerrors.Wrap(err, "failed to create local publisher with path %s: path could not be read", directory).
+			WithComponent(errComponent).
+			WithCode(bacerrors.ConfigurationError)
 	} else if !info.IsDir() {
-		return nil, fmt.Errorf("failed to create local publisher with path: %s: path is not a directoy", directory)
+		return nil, bacerrors.Wrap(err, "failed to create local publisher with path %s: path is not a directory", directory).
+			WithComponent(errComponent).
+			WithCode(bacerrors.ConfigurationError)
 	}
 	p.server = NewLocalPublisherServer(ctx, p.baseDirectory, p.port)
 	go p.server.Run(ctx)
@@ -79,18 +89,18 @@ func (p *Publisher) PublishResult(
 
 	file, err := os.Create(targetFile)
 	if err != nil {
-		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to create output file")
+		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to create output file")
 	}
 	defer file.Close()
 
 	err = gzip.Compress(resultPath, file)
 	if err != nil {
-		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to compress output file")
+		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to compress output file")
 	}
 
 	downloadURL, err := url.JoinPath(p.urlPrefix, filename)
 	if err != nil {
-		return models.SpecConfig{}, errors.Wrap(err, "local publisher failed to generate download URL")
+		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to generate download URL")
 	}
 
 	return models.SpecConfig{
