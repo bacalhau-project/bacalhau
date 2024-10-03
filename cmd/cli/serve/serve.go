@@ -260,7 +260,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 
 	if !cfg.DisableAnalytics {
 		err = analytics.SetupAnalyticsProvider(ctx,
-			analytics.WithNodeNodeID(sysmeta.NodeName),
+			analytics.WithNodeID(sysmeta.NodeName),
 			analytics.WithInstallationID(system.InstallationID()),
 			analytics.WithInstanceID(sysmeta.InstanceID),
 			analytics.WithNodeType(isRequesterNode, isComputeNode),
