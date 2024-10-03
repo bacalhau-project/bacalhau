@@ -174,7 +174,7 @@ func TestScaleGPU(t *testing.T) {
 
 		// ensure 50% of a GPU is still 1 gpu
 		assert.EqualValues(t, 3, out.GPU)
-		assert.EqualValues(t, []models.GPU{{}}, out.GPUs)
+		assert.EqualValues(t, []models.GPU{{}, {}, {}}, out.GPUs)
 	})
 
 	t.Run("scaling defined GPU types", func(t *testing.T) {

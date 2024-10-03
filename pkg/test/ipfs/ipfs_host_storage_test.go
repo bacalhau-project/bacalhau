@@ -12,11 +12,11 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -37,11 +37,12 @@ func TestIPFSHostStorageSuite(t *testing.T) {
 // Before each test
 func (suite *IPFSHostStorageSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	_, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
-	testutils.MustHaveIPFS(suite.T(), suite.Config)
-
 	var err error
-	suite.client, err = ipfs.NewClient(context.Background(), suite.Config.InputSources.Types.IPFS.Endpoint)
+	suite.Config, err = config.NewTestConfig()
+	suite.Require().NoError(err)
+
+	endpoint := testutils.MustHaveIPFS(suite.T())
+	suite.client, err = ipfs.NewClient(context.Background(), endpoint)
 	suite.Require().NoError(err)
 
 }

@@ -178,15 +178,26 @@ var testOverrides = types.Bacalhau{
 
 // NewTestConfig returns a new configuration with the default values for testing.
 func NewTestConfig() (types.Bacalhau, error) {
-	cfg, err := Default.MergeNew(testOverrides)
+	defaults, err := Default.MergeNew(testOverrides)
 	if err != nil {
 		return types.Bacalhau{}, err
 	}
 
 	// Set the data directory to a temporary directory
-	cfg.DataDir = os.TempDir()
+	defaults.DataDir = os.TempDir()
 
-	return cfg, nil
+	// now construct the config using the defaults
+	// so far no value in doing this expect trying to exercise the production code path
+	cfg, err := New(WithDefault(defaults))
+	if err != nil {
+		return types.Bacalhau{}, err
+	}
+
+	var bacalhauConfig types.Bacalhau
+	if err = cfg.Unmarshal(&bacalhauConfig); err != nil {
+		return types.Bacalhau{}, err
+	}
+	return bacalhauConfig, nil
 }
 
 func NewTestConfigWithOverrides(overrides types.Bacalhau) (types.Bacalhau, error) {
