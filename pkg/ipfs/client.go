@@ -26,8 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
-const IPFS_ENDPOINT_ENV = "BACALHAU_NODE_IPFS_CONNECT"
-
 // Client is a front-end for an ipfs node's API endpoints
 type Client struct {
 	API  icore.CoreAPI

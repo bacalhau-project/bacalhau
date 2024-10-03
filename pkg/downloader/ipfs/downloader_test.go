@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/ipfs"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	ipfssource "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
@@ -30,8 +31,10 @@ func TestIPFSDownload(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	endpoint := testutils.MustHaveIPFSEndpoint(t)
-	client, err := ipfs.NewClient(context.Background(), endpoint)
+	_, cfg := setup.SetupBacalhauRepoForTesting(t)
+	testutils.MustHaveIPFS(t, cfg)
+
+	client, err := ipfs.NewClient(context.Background(), cfg.ResultDownloaders.Types.IPFS.Endpoint)
 	require.NoError(t, err)
 
 	text := randomText(t)
