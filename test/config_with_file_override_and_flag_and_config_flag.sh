@@ -3,7 +3,7 @@
 source bin/bacalhau.sh
 
 testcase_config_with_override_config_file_with_api_config_flag_and_dedicated_flag() {
-  start_bacalhau_serve_with_config -c $ROOT/testdata/config/base.yaml -c $ROOT/testdata/config/override.yaml --web-ui=false --config webui.enabled=true
+  start_bacalhau_serve_with_config -c $ROOT/testdata/config/base.yaml -c $ROOT/testdata/config/override.yaml --config webui.enabled=true
 
   subject curl -s http://localhost:1234/api/v1/agent/config
   assert_equal 0 $status > /dev/null
