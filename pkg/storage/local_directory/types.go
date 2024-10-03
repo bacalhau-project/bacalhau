@@ -11,11 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-const (
-	SourcePathKey = "sourcepath"
-	ReadWriteKey  = "readwrite"
-)
-
 type Source struct {
 	SourcePath string
 	ReadWrite  bool
@@ -36,8 +31,8 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 	}
 
 	// convert readwrite to bool
-	if _, ok := inputParams[ReadWriteKey]; ok && reflect.TypeOf(inputParams[ReadWriteKey]).Kind() == reflect.String {
-		inputParams[ReadWriteKey] = inputParams[ReadWriteKey] == "true"
+	if _, ok := inputParams["ReadWrite"]; ok && reflect.TypeOf(inputParams["ReadWrite"]).Kind() == reflect.String {
+		inputParams["ReadWrite"] = inputParams["ReadWrite"] == "true"
 	}
 
 	var c Source

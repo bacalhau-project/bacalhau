@@ -59,17 +59,7 @@ func (s *SpecConfig) Normalize() {
 	// Ensure that an empty and nil map are treated the same
 	if len(s.Params) == 0 {
 		s.Params = make(map[string]interface{})
-	} else {
-		s.Params = lowercaseKeys(s.Params)
 	}
-}
-
-func lowercaseKeys(m map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{}, len(m))
-	for k, v := range m {
-		result[strings.ToLower(k)] = v
-	}
-	return result
 }
 
 // Copy returns a shallow copy of the spec config
