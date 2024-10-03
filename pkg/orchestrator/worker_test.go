@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 const (
@@ -48,8 +49,8 @@ func (s *WorkerTestSuite) SetupTest() {
 	s.worker = NewWorker(WorkerParams{
 		SchedulerProvider:     s.schedulerProvider,
 		EvaluationBroker:      s.broker,
-		DequeueTimeout:        testDequeueTimeout,
-		DequeueFailureBackoff: s.backoff,
+		dequeueTimeout:        testDequeueTimeout,
+		dequeueFailureBackoff: s.backoff,
 	})
 }
 

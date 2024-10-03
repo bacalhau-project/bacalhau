@@ -19,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
 )
 
 // A Scenario represents a repeatable test case of submitting a job against a
@@ -68,8 +67,6 @@ type Scenario struct {
 
 // All the information that is needed to uniquely define a devstack.
 type StackConfig struct {
-	*devstack.DevStackOptions
-	node.ComputeConfig
-	node.RequesterConfig
+	DevStackOptions []devstack.ConfigOption
 	noop.ExecutorConfig
 }

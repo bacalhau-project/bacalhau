@@ -16,13 +16,13 @@ type AuthConfig struct {
 	//
 	// By default, only a single authentication method that accepts
 	// authentication via client keys will be enabled.
-	Methods map[string]AuthenticatorConfig `yaml:"Methods,omitempty"`
+	Methods map[string]AuthenticatorConfig `yaml:"Methods,omitempty" json:"Methods,omitempty"`
 
 	// AccessPolicyPath is the path to a file or directory that will be loaded as
 	// the policy to apply to all inbound API requests. If unspecified, a policy
 	// that permits access to all API endpoints to both authenticated and
 	// unauthenticated users (the default as of v1.2.0) will be used.
-	AccessPolicyPath string `yaml:"AccessPolicyPath,omitempty"`
+	AccessPolicyPath string `yaml:"AccessPolicyPath,omitempty" json:"AccessPolicyPath,omitempty"`
 }
 
 // AuthenticatorConfig is config for a specific named authentication method,
@@ -31,6 +31,6 @@ type AuthConfig struct {
 // a certain interface beyond the default – see the documentation on that type
 // for more info.
 type AuthenticatorConfig struct {
-	Type       string `yaml:"Type,omitempty"`
-	PolicyPath string `yaml:"PolicyPath,omitempty"`
+	Type       string `yaml:"Type,omitempty" json:"Type,omitempty"`
+	PolicyPath string `yaml:"PolicyPath,omitempty" json:"PolicyPath,omitempty"`
 }

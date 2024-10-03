@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -15,14 +14,13 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
 
@@ -39,37 +37,22 @@ type BaseSuite struct {
 // before each test
 func (s *BaseSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
+	// disable update checks in testing.
+	s.T().Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
+	// don't send analytics data during testing
+	s.T().Setenv(config.KeyAsEnvVar(types.DisableAnalyticsKey), "true")
 
-	fsr, cfg := setup.SetupBacalhauRepoForTesting(s.T())
-	s.Config = cfg
+	var err error
+	s.Config, err = config.NewTestConfig()
+	s.Require().NoError(err)
 
 	s.AllowListedPath = s.T().TempDir()
 
-	executionDir, err := cfg.ExecutionDir()
-	s.Require().NoError(err)
-
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-		JobSelectionPolicy: node.JobSelectionPolicy{
-			Locality: semantic.Anywhere,
-		},
-		LocalPublisher: types.LocalPublisher{
-			Address: "127.0.0.1",
-		},
-	})
-	s.Require().NoError(err)
 	ctx := context.Background()
-	requesterConfig, err := node.NewRequesterConfigWith(
-		node.RequesterConfigParams{
-			HousekeepingBackgroundTaskInterval: 1 * time.Second,
-		},
-	)
-	s.Require().NoError(err)
-	stack := teststack.Setup(ctx, s.T(), fsr, cfg,
+	stack := teststack.Setup(ctx, s.T(),
 		devstack.WithNumberOfHybridNodes(1),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
 		devstack.WithAllowListedLocalPaths([]string{s.AllowListedPath}),
-		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, cfg.Engines),
+		teststack.WithNoopExecutor(noop_executor.ExecutorConfig{}, s.Config.Engines),
 	)
 	s.Node = stack.Nodes[0]
 	s.Host = s.Node.APIServer.Address

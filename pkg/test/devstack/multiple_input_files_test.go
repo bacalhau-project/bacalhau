@@ -38,8 +38,8 @@ func (s *MultipleInputFilesSuite) TestMultipleFiles() {
 
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{
-				AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithAllowListedLocalPaths([]string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix}),
 			},
 		},
 		Inputs: scenario.ManyStores(

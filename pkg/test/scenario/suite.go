@@ -7,21 +7,17 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-
-	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
-
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader/http"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -47,12 +43,13 @@ type ScenarioRunner struct {
 	suite.Suite
 	Ctx    context.Context
 	Config types.Bacalhau
-	Repo   *repo.FsRepo
 }
 
 func (s *ScenarioRunner) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
-	s.Repo, s.Config = setup.SetupBacalhauRepoForTesting(s.T())
+	var err error
+	s.Config, err = config.NewTestConfig()
+	s.Require().NoError(err)
 
 	s.Ctx = context.Background()
 
@@ -72,49 +69,23 @@ func (s *ScenarioRunner) prepareStorage(stack *devstack.DevStack, getStorage Set
 
 // Set up the test devstack according to the passed options. By default, the
 // devstack will have 1 node with local only data and no timeouts.
-func (s *ScenarioRunner) setupStack(config *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
-	if config == nil {
-		config = &StackConfig{}
+func (s *ScenarioRunner) setupStack(stackConfig *StackConfig) (*devstack.DevStack, *system.CleanupManager) {
+	if stackConfig == nil {
+		stackConfig = &StackConfig{}
 	}
-
-	if config.DevStackOptions == nil {
-		config.DevStackOptions = &devstack.DevStackOptions{}
+	// The order of applying options here matters
+	// Start with applying the options applied at the scenario running level
+	options := []devstack.ConfigOption{
+		devstack.WithBacalhauConfigOverride(s.Config),
+		testutils.WithNoopExecutor(stackConfig.ExecutorConfig, s.Config.Engines),
 	}
+	// Then apply the options passed in the scenario's stack config to allow tests to override the behaviour
+	options = append(options, stackConfig.DevStackOptions...)
 
-	if config.DevStackOptions.NumberOfNodes() == 0 {
-		config.DevStackOptions.NumberOfHybridNodes = 1
-	}
+	// Finally, add a fallback option to ensure that at least one node is created
+	options = append(options, devstack.WithAtLeastOneNode())
 
-	if config.RequesterConfig.JobDefaults.Batch.Task.Timeouts.TotalTimeout == 0 {
-		cfg, err := node.NewRequesterConfigWithDefaults()
-		s.Require().NoError(err)
-
-		specConfig := config.RequesterConfig.JobDefaults.Batch.Task.Publisher.ToSpecConfig()
-		if !specConfig.IsEmpty() {
-			cfg.JobDefaults.Batch.Task.Publisher.Type = config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Type
-			cfg.JobDefaults.Batch.Task.Publisher.Params = config.RequesterConfig.JobDefaults.Batch.Task.Publisher.Params
-		}
-		config.RequesterConfig = cfg
-	}
-
-	if config.ComputeConfig.TotalResourceLimits.IsZero() {
-		// TODO(forrest): [correctness] if the provided compute config has one `0` field we override the entire compute
-		// config settings.
-		executionDir, err := s.Config.ExecutionDir()
-		s.Require().NoError(err)
-		cfg, err := node.NewComputeConfigWithDefaults(executionDir)
-		s.Require().NoError(err)
-		config.ComputeConfig = cfg
-	}
-
-	stack := testutils.Setup(s.Ctx, s.T(), s.Repo, s.Config,
-		append(config.DevStackOptions.Options(),
-			devstack.WithComputeConfig(config.ComputeConfig),
-			devstack.WithRequesterConfig(config.RequesterConfig),
-			testutils.WithNoopExecutor(config.ExecutorConfig, s.Config.Engines),
-		)...,
-	)
-
+	stack := testutils.Setup(s.Ctx, s.T(), options...)
 	return stack, stack.Nodes[0].CleanupManager
 }
 

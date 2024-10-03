@@ -29,10 +29,8 @@ func TestTargetAllSuite(t *testing.T) {
 
 func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 	testCase := scenario.Scenario{
-		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes:        0,
-			NumberOfRequesterOnlyNodes: 1,
-			NumberOfComputeOnlyNodes:   0,
+		Stack: &scenario.StackConfig{DevStackOptions: []devstack.ConfigOption{
+			devstack.WithNumberOfRequesterOnlyNodes(1),
 		}},
 		Job: &models.Job{
 			Name: suite.T().Name(),
@@ -56,9 +54,11 @@ func (suite *TargetAllSuite) TestCanTargetZeroNodes() {
 
 func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 	testCase := scenario.Scenario{
-		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes: 1,
-		}},
+		Stack: &scenario.StackConfig{
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithNumberOfHybridNodes(1),
+			},
+		},
 		Job: &models.Job{
 			Name: suite.T().Name(),
 			Type: models.JobTypeOps,
@@ -86,9 +86,9 @@ func (suite *TargetAllSuite) TestCanTargetSingleNode() {
 
 func (suite *TargetAllSuite) TestCanTargetMultipleNodes() {
 	testCase := scenario.Scenario{
-		Stack: &scenario.StackConfig{DevStackOptions: &devstack.DevStackOptions{
-			NumberOfHybridNodes:      1,
-			NumberOfComputeOnlyNodes: 4,
+		Stack: &scenario.StackConfig{DevStackOptions: []devstack.ConfigOption{
+			devstack.WithNumberOfHybridNodes(1),
+			devstack.WithNumberOfComputeOnlyNodes(4),
 		}},
 		Job: &models.Job{
 			Name: suite.T().Name(),
@@ -120,9 +120,9 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 
 	testCase := scenario.Scenario{
 		Stack: &scenario.StackConfig{
-			DevStackOptions: &devstack.DevStackOptions{
-				NumberOfHybridNodes:      1,
-				NumberOfComputeOnlyNodes: 1,
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithNumberOfHybridNodes(1),
+				devstack.WithNumberOfComputeOnlyNodes(1),
 			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{

@@ -47,7 +47,7 @@ func (s *InputLocalityStrategySuite) SetupSuite() {
 func (s *InputLocalityStrategySuite) TestInputLocality() {
 	testCases := []struct {
 		name              string
-		policy            semantic.JobSelectionDataLocality
+		policy            models.JobSelectionDataLocality
 		hasStorageLocally bool
 		expectedShouldBid bool
 		request           bidstrategy.BidStrategyRequest
@@ -55,7 +55,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - we do have the file - we should accept
 		{
 			"local mode -> have file -> should accept",
-			semantic.Local,
+			models.Local,
 			true,
 			true,
 			s.statefulJob,
@@ -64,7 +64,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - we don't have the file - we should reject
 		{
 			"local mode -> don't have file -> should reject",
-			semantic.Local,
+			models.Local,
 			false,
 			false,
 			s.statefulJob,
@@ -73,7 +73,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are local - stateless job - we should accept
 		{
 			"local mode -> stateless job -> should accept",
-			semantic.Local,
+			models.Local,
 			false,
 			true,
 			s.statelessJob,
@@ -82,7 +82,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - we do have the file - we should accept
 		{
 			"anywhere mode -> have file -> should accept",
-			semantic.Anywhere,
+			models.Anywhere,
 			true,
 			true,
 			s.statefulJob,
@@ -91,7 +91,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - we don't have the file - we should accept
 		{
 			"anywhere mode -> don't have file -> should accept",
-			semantic.Anywhere,
+			models.Anywhere,
 			false,
 			true,
 			s.statefulJob,
@@ -100,7 +100,7 @@ func (s *InputLocalityStrategySuite) TestInputLocality() {
 		// we are anywhere - stateless job - we should accept
 		{
 			"anywhere mode ->s tateless job -> should accept",
-			semantic.Anywhere,
+			models.Anywhere,
 			false,
 			true,
 			s.statelessJob,

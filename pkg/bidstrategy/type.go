@@ -4,15 +4,13 @@ package bidstrategy
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type BidStrategyRequest struct {
-	NodeID   string
-	Job      models.Job
-	Callback *url.URL
+	NodeID string
+	Job    models.Job
 }
 
 type BidStrategyResponse struct {
@@ -57,9 +55,8 @@ type ResourceBidStrategy interface {
 // the JSON data we send to http or exec probes
 // TODO: can we just use the BidStrategyRequest struct?
 type JobSelectionPolicyProbeData struct {
-	NodeID   string     `json:"NodeID"`
-	Job      models.Job `json:"Job"`
-	Callback *url.URL   `json:"Callback"`
+	NodeID string     `json:"NodeID"`
+	Job    models.Job `json:"Job"`
 }
 
 // Return JobSelectionPolicyProbeData for the given request

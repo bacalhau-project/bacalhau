@@ -21,12 +21,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 
-	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
-	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
+
+	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
+	"github.com/bacalhau-project/bacalhau/pkg/docker"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
@@ -505,7 +504,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 
 	j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 
-	s.Require().EqualValues(node.TestRequesterConfig.JobDefaults.Batch.Task.Timeouts.TotalTimeout, j.Task().Timeouts.GetTotalTimeout(),
+	s.Require().EqualValues(s.Config.JobDefaults.Batch.Task.Timeouts.TotalTimeout, j.Task().Timeouts.GetTotalTimeout(),
 		"Did not fall back to default timeout value")
 }
 

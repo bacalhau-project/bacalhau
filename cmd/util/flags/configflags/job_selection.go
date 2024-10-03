@@ -1,6 +1,7 @@
 package configflags
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
@@ -15,7 +16,7 @@ var JobSelectionFlags = []Definition{
 	{
 		FlagName:             "job-selection-reject-stateless",
 		ConfigPath:           types.JobAdmissionControlRejectStatelessJobsKey,
-		DefaultValue:         types.Default.JobAdmissionControl.RejectStatelessJobs,
+		DefaultValue:         config.Default.JobAdmissionControl.RejectStatelessJobs,
 		Description:          `Reject jobs that don't specify any data.`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_JOBSELECTION_REJECTSTATELESSJOBS"},
@@ -24,7 +25,7 @@ var JobSelectionFlags = []Definition{
 	{
 		FlagName:             "job-selection-accept-networked",
 		ConfigPath:           types.JobAdmissionControlAcceptNetworkedJobsKey,
-		DefaultValue:         types.Default.JobAdmissionControl.AcceptNetworkedJobs,
+		DefaultValue:         config.Default.JobAdmissionControl.AcceptNetworkedJobs,
 		Description:          `Accept jobs that require network access.`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_JOBSELECTION_ACCEPTNETWORKEDJOBS"},
@@ -33,7 +34,7 @@ var JobSelectionFlags = []Definition{
 	{
 		FlagName:             "job-selection-probe-http",
 		ConfigPath:           types.JobAdmissionControlProbeHTTPKey,
-		DefaultValue:         types.Default.JobAdmissionControl.ProbeHTTP,
+		DefaultValue:         config.Default.JobAdmissionControl.ProbeHTTP,
 		Description:          `Use the result of a HTTP POST to decide if we should take on the job.`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_JOBSELECTION_PROBEHTTP"},
@@ -42,7 +43,7 @@ var JobSelectionFlags = []Definition{
 	{
 		FlagName:             "job-selection-probe-exec",
 		ConfigPath:           types.JobAdmissionControlProbeExecKey,
-		DefaultValue:         types.Default.JobAdmissionControl.ProbeExec,
+		DefaultValue:         config.Default.JobAdmissionControl.ProbeExec,
 		Description:          `Use the result of a exec an external program to decide if we should take on the job.`,
 		Deprecated:           true,
 		EnvironmentVariables: []string{"BACALHAU_NODE_COMPUTE_JOBSELECTION_PROBEEXEC"},

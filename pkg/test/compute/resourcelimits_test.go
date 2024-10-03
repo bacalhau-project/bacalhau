@@ -15,7 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -24,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
@@ -81,8 +81,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		testCase TotalResourceTestCase,
 	) {
 		ctx := context.Background()
-		fsr, c := setup.SetupBacalhauRepoForTesting(suite.T())
-
 		epochSeconds := time.Now().Unix()
 
 		var seenJobs []SeenJobRecord
@@ -123,26 +121,22 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			return size.Bytes(), err
 		}
 
-		resourcesConfig := testCase.totalLimits
-		parsedResources, err := resourcesConfig.ToResources()
+		cfg, err := config.NewTestConfigWithOverrides(types.Bacalhau{
+			Compute: types.Compute{
+				AllocatedCapacity: types.ResourceScalerFromModelsResourceConfig(*testCase.totalLimits),
+			},
+		})
 		require.NoError(suite.T(), err)
 
-		executionDir, err := c.ExecutionDir()
-		suite.Require().NoError(err)
-		computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-			TotalResourceLimits:          *parsedResources,
-			IgnorePhysicalResourceLimits: true, // in case circleci is running on a small machine
-		})
-		suite.Require().NoError(err)
-		stack := teststack.Setup(ctx, suite.T(), fsr, c,
+		stack := teststack.Setup(ctx, suite.T(),
 			devstack.WithNumberOfHybridNodes(1),
-			devstack.WithComputeConfig(computeConfig),
+			devstack.WithBacalhauConfigOverride(cfg),
 			teststack.WithNoopExecutor(noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler:    jobHandler,
 					GetVolumeSize: getVolumeSizeHandler,
 				},
-			}, c.Engines),
+			}, cfg.Engines),
 		)
 
 		for _, jobResources := range testCase.jobs {
@@ -302,41 +296,34 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 		return &models.RunCommandResult{}, nil
 	}
 
-	fsr, c := setup.SetupBacalhauRepoForTesting(suite.T())
-
-	executionDir, err := c.ExecutionDir()
-	suite.Require().NoError(err)
-	computeConfig, err := node.NewComputeConfigWith(executionDir, node.ComputeConfigParams{
-		TotalResourceLimits: models.Resources{
-			CPU:    1,
-			Memory: 1 * 1024 * 1024 * 1024,
-			Disk:   1 * 1024 * 1024 * 1024,
-			GPU:    1,
-			GPUs:   make([]models.GPU, 1),
-		},
-		IgnorePhysicalResourceLimits: true, // we need to pretend that we have GPUs on each node
-		ControlPlaneSettings: legacy_types.ComputeControlPlaneConfig{
-			ResourceUpdateFrequency: legacy_types.Duration(50 * time.Millisecond),
+	cfg, err := config.NewTestConfigWithOverrides(types.Bacalhau{
+		Compute: types.Compute{
+			AllocatedCapacity: types.ResourceScalerFromModelsResourceConfig(models.ResourcesConfig{
+				CPU:    "1",
+				Memory: "1Gb",
+				Disk:   "1Gb",
+				GPU:    "1",
+			}),
+			Heartbeat: types.Heartbeat{
+				ResourceUpdateInterval: types.Duration(50 * time.Millisecond),
+			},
 		},
 	})
 	suite.Require().NoError(err)
 
-	requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-		NodeOverSubscriptionFactor: 2,
-	})
-	suite.Require().NoError(err)
-
-	stack := teststack.Setup(ctx, suite.T(), fsr, c,
+	stack := teststack.Setup(ctx, suite.T(),
 		devstack.WithNumberOfHybridNodes(1),
 		devstack.WithNumberOfComputeOnlyNodes(1),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
+		devstack.WithBacalhauConfigOverride(cfg),
+		devstack.WithSystemConfig(node.SystemConfig{
+			OverSubscriptionFactor: 2,
+		}),
 		teststack.WithNoopExecutor(
 			noop_executor.ExecutorConfig{
 				ExternalHooks: noop_executor.ExecutorConfigExternalHooks{
 					JobHandler: jobHandler,
 				},
-			}, c.Engines),
+			}, cfg.Engines),
 	)
 
 	// for the requester node to pick up the nodeInfo messages
