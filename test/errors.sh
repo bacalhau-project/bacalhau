@@ -6,5 +6,5 @@ testcase_ranking_failures_are_printed() {
     create_node compute,requester
 
     subject bacalhau job run $ROOT/testdata/jobs/custom-task-type.yaml
-    assert_match 'does not support flibble' $(echo $stderr)
+    assert_match 'does not support flibble' $(echo $stdout)
 }
