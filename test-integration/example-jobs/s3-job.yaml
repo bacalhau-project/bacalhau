@@ -1,0 +1,23 @@
+Name: S3 Job Data Access Test
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ubuntu:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - "-c"
+          - "cat /put-my-s3-data-here/example.txt"
+    InputSources:
+      - Target: "/put-my-s3-data-here"
+        Source:
+          Type: s3
+          Params:
+            Bucket: "my-data-bucket"
+            Key: "section1/"
+            Endpoint: "http://bacalhau-minio-node:9000"
+            Region: "us-east-1" # If no region added, it fails, even for minio

@@ -1,0 +1,14 @@
+Name: Job to test using local registry images
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: bacalhau-container-img-registry-node:5000/firstbacalhauimage
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - "-c"
+          - "echo test-local-registry"
