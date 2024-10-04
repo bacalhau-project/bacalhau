@@ -30,6 +30,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				VisibilityTimeout: types.Duration(in.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
 				MaxRetryCount:     in.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
 			},
+			Auth: types.OrchestratorAuth{Token: in.Node.Network.AuthSecret},
 		},
 		Compute: types.Compute{
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
@@ -42,6 +43,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
 			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
+			Auth:                  types.ComputeAuth{Token: in.Node.Network.AuthSecret},
 		},
 		Labels: in.Node.Labels,
 		WebUI: types.WebUI{
