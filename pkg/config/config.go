@@ -144,9 +144,9 @@ func New(opts ...Option) (*Config, error) {
 		for _, flag := range flags {
 			// only if the flag has been set do we want to bind to it, this allows multiple flags
 			// to bind to the same config key.
-			log.Warn().Msgf("Binding flag %+v to config key %q", flag, name)
 			if flag == nil {
 				log.Error().Msgf("flag %q is nil", name)
+				continue
 			}
 			if flag.Changed {
 				switch name {
