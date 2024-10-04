@@ -77,6 +77,10 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		heartbeatCheckFrequency = maxHeartbeatCheckFrequency
 	}
 
+	log.Info().
+		Str("check_frequency", heartbeatCheckFrequency.String()).
+		Str("disconnect_after", params.NodeDisconnectedAfter.String()).
+		Msg("Initialized heartbeat server")
 	return &HeartbeatServer{
 		nodeID:            params.NodeID,
 		clock:             clk,
@@ -151,6 +155,15 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 		}
 
 		if item.Value.Timestamp < disconnectedUnder {
+			log.Ctx(ctx).Info().
+				Str("nodeID", item.Value.NodeID).
+				Str("timestamp", time.Unix(item.Value.Timestamp, 0).String()).
+				Uint64("sequence", item.Value.Sequence).
+				Str("heartbeat_nodeID", item.Value.Heartbeat.NodeID).
+				Uint64("heartbeat_sequence", item.Value.Heartbeat.Sequence).
+				Str("disconnect_under", time.Unix(disconnectedUnder, 0).String()).
+				Str("now", time.Unix(nowStamp, 0).String()).
+				Msg("mark node as disconnected")
 			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 		}
 	}
@@ -173,6 +186,11 @@ func (h *HeartbeatServer) UpdateNodeInfo(state *models.NodeState) {
 		// We've never seen this, so we'll mark it as unknown
 		state.Connection = models.NodeStates.DISCONNECTED
 	}
+	log.Info().
+		Str("node_id", state.Info.NodeID).
+		Str("connection", state.Connection.String()).
+		Str("membership", state.Membership.String()).
+		Msg("update node info")
 }
 
 // FilterNodeInfos will return only those NodeInfos that have the requested liveness

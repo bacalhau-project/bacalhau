@@ -3,8 +3,10 @@ package heartbeat
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
@@ -32,6 +34,10 @@ func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) er
 	heartbeat := Heartbeat{NodeID: h.nodeID, Sequence: sequence}
 
 	// Send the heartbeat to current and legacy topics
+	log.Ctx(ctx).Info().
+		Uint64("sequence", sequence).
+		Str("time", time.Now().String()).
+		Msg("sending heartbeat")
 	var err error
 	message := ncl.NewMessage(heartbeat)
 	err = errors.Join(err, h.publisher.Publish(ctx, message))

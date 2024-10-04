@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	pkgerrors "github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -62,6 +63,11 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 
 // Add adds a node state to the repo.
 func (n *NodeStore) Add(ctx context.Context, state models.NodeState) error {
+	log.Ctx(ctx).Debug().
+		Str("nodeID", state.Info.NodeID).
+		Str("membership", state.Membership.String()).
+		Str("connection", state.Connection.String()).
+		Msg("Add node state")
 	data, err := json.Marshal(state)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal node state adding to node store")
