@@ -14,16 +14,17 @@ import (
 var Fatal = fatalError
 
 func fatalError(cmd *cobra.Command, err error, code int) {
-	cmd.PrintErrln()
+	cmd.SetOut(os.Stdout)
+	cmd.Println()
 
 	var bErr bacerrors.Error
 	if errors.As(err, &bErr) {
 		// Print error message
-		cmd.PrintErrln(output.RedStr("Error: ") + bErr.Error())
+		cmd.Println(output.RedStr("Error: ") + bErr.Error())
 
 		// Print hint if available
 		if bErr.Hint() != "" {
-			cmd.PrintErrln(output.GreenStr("Hint:  ") + bErr.Hint())
+			cmd.Println(output.GreenStr("Hint:  ") + bErr.Hint())
 		}
 
 		// If debug mode, then print details and stack trace
@@ -37,14 +38,14 @@ func fatalError(cmd *cobra.Command, err error, code int) {
 			}
 			stackTrace := bErr.StackTrace()
 			if stackTrace != "" {
-				cmd.PrintErrln()
-				cmd.PrintErrln(output.YellowStr("Stack Trace:"))
-				cmd.PrintErrln(stackTrace)
+				cmd.Println()
+				cmd.Println(output.YellowStr("Stack Trace:"))
+				cmd.Println(stackTrace)
 			}
 		}
 
 	} else {
-		cmd.PrintErrln(output.RedStr("Error: ") + err.Error())
+		cmd.Println(output.RedStr("Error: ") + err.Error())
 	}
 	os.Exit(code)
 }

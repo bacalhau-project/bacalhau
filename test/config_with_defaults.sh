@@ -18,4 +18,3 @@ testcase_config_with__defaults() {
 
   kill $SERVER_PID
 }
-

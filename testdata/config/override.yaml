@@ -1,4 +1,3 @@
 NameProvider: "hostname"
-Compute:
-  Labels:
-    "buz": boo
+labels:
+  buz: boo

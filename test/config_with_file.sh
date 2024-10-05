@@ -16,8 +16,7 @@ testcase_config_with_file() {
 
   # These are values set in the config file
   assert_match "uuid" $(echo $stdout | jq .NameProvider)
-  assert_match "bar" $(echo $stdout | jq .Compute.Labels.foo)
+  assert_match "bar" $(echo $stdout | jq .Labels.foo)
 
   kill $SERVER_PID
 }
-

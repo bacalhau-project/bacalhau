@@ -16,14 +16,14 @@ testcase_config_with_override_file() {
   assert_match "false" $(echo $stdout | jq .Compute.Enabled)
 
   # These are values set in the base config file that were not overridden
-  assert_match "bar" $(echo $stdout | jq .Compute.Labels.foo)
+  assert_match "bar" $(echo $stdout | jq .Labels.foo)
 
 
   # This value overrides the base config
   assert_match "hostname" $(echo $stdout | jq .NameProvider)
 
   # This value is merged between the configs
-  assert_match "boo" $(echo $stdout | jq .Compute.Labels.buz)
+  assert_match "boo" $(echo $stdout | jq .Labels.buz)
 
   kill $SERVER_PID
 }
