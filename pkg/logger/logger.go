@@ -46,7 +46,7 @@ func ParseLogMode(s string) (LogMode, error) {
 			return logMode, nil
 		}
 	}
-	return "", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
+	return "Error", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
 }
 
 func ParseLogLevel(s string) (zerolog.Level, error) {
