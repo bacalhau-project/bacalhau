@@ -12,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
@@ -76,12 +75,6 @@ func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// We always apply the configured logging level. Logging mode on the other hand is only applied with serve cmd
-	if err = logger.ParseAndConfigureLoggingLevel(cfg.Get(types.LoggingLevelKey).(string)); err != nil {
-		return nil, fmt.Errorf("failed to configure logging: %w", err)
-	}
-
 	return cfg, nil
 }
 
