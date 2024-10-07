@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.5.0-alpha14"
+bacalhau_version            = "v1.5.0"
 bacalhau_branch             = "" # deploy from a branch instead of the version above
 bacalhau_port               = "1235"
 bacalhau_environment        = "staging"

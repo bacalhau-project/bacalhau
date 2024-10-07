@@ -38,7 +38,7 @@ bacalhau serve \
   --api-port 1234 \
   --requester-job-translation-enabled \
   --config DisableAnalytics \
-  --config compute.labels="owner=bacalhau,name=node-${TERRAFORM_NODE_INDEX}"\
+  --config labels="owner=bacalhau,name=node-${TERRAFORM_NODE_INDEX}"\
   --config Compute.Orchestrators="${BACALHAU_ORCHESTRATORS}" \
   --config Orchestrator.Advertise="${BACALHAU_ORCHESTRATOR_ADVERTISE}" \
   --config WebUI.Enabled="${BACALHAU_NODE_WEBUI}" \
