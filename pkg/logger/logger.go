@@ -172,6 +172,7 @@ func defaultLogging() io.Writer {
 
 func defaultLogFormat(w *zerolog.ConsoleWriter) {
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
+	w.Out = os.Stdout
 	w.NoColor = !isTerminal
 	w.TimeFormat = "15:04:05.999 |"
 	w.PartsOrder = []string{
