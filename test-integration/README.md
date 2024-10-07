@@ -180,3 +180,19 @@ Tasks:
           - "-c"
           - "echo test-local-registry"
 ```
+
+---
+### Notes:
+
+If for some reason after running `docker-compose up`, you faced issues with the Image registry node starting, try to remove the image registry docker volume by running:
+
+```shell
+# Destroy the deployment
+docker-compose down
+
+# Remove registry volume
+docker volume rm test-integration_registry-volume
+
+# Create deployment again
+docker-compose up
+```
