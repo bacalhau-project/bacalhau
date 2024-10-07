@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/pkgerrors"
@@ -34,6 +35,10 @@ const (
 	LogModeCmd     LogMode = "cmd"
 )
 
+var (
+	logMu sync.Mutex
+)
+
 func ParseLogMode(s string) (LogMode, error) {
 	lm := []LogMode{LogModeDefault, LogModeJSON, LogModeCmd}
 	for _, logMode := range lm {
@@ -41,7 +46,7 @@ func ParseLogMode(s string) (LogMode, error) {
 			return logMode, nil
 		}
 	}
-	return "Error", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
+	return "", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
 }
 
 func ParseLogLevel(s string) (zerolog.Level, error) {
@@ -62,12 +67,14 @@ func init() { //nolint:gochecknoinits
 		strings.HasSuffix(os.Args[0], ".test") ||
 		flag.Lookup("test.v") != nil ||
 		flag.Lookup("test.run") != nil {
-		configureLogging(zerolog.DebugLevel, defaultLogging())
+		ConfigureLoggingLevel(zerolog.DebugLevel)
+		configureLogging(defaultLogging())
 		return
 	}
 
 	// the default log level when not running a test is ERROR
-	configureLogging(zerolog.ErrorLevel, bufferLogs())
+	ConfigureLoggingLevel(zerolog.ErrorLevel)
+	configureLogging(bufferLogs())
 }
 
 func ErrOrDebug(err error) zerolog.Level {
@@ -87,7 +94,8 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	configureLogging(zerolog.DebugLevel, zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
+	ConfigureLoggingLevel(zerolog.DebugLevel)
+	configureLogging(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
@@ -120,7 +128,9 @@ func ConfigureLogging(mode LogMode, level zerolog.Level) {
 	default:
 		logWriter = defaultLogging()
 	}
-	configureLogging(level, logWriter)
+
+	ConfigureLoggingLevel(level)
+	configureLogging(logWriter)
 	LogBufferedLogs(logWriter)
 }
 
@@ -134,12 +144,16 @@ func ParseAndConfigureLoggingLevel(level string) error {
 }
 
 func ConfigureLoggingLevel(level zerolog.Level) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	zerolog.SetGlobalLevel(level)
 }
 
-func configureLogging(level zerolog.Level, logWriter io.Writer) {
+func configureLogging(logWriter io.Writer) {
+	logMu.Lock()
+	defer logMu.Unlock()
+
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	ConfigureLoggingLevel(level)
 
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {
