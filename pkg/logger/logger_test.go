@@ -23,11 +23,15 @@ func TestConfigureLogging(t *testing.T) {
 	})
 
 	var logging strings.Builder
-	configureLogging(zerolog.InfoLevel, zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+	writer := zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
 		defaultLogFormat(w)
 		w.Out = &logging
 		w.NoColor = true
-	}))
+	})
+
+	// Configure logging with the test writer
+	ConfigureLogging(LogModeDefault, zerolog.InfoLevel)
+	configureLogging(writer)
 
 	subsubpackage.TestLog("testing error logging", "testing message")
 
@@ -39,4 +43,67 @@ func TestConfigureLogging(t *testing.T) {
 	assert.Contains(t, actual, `error="testing error logging"`, "Log statement doesn't contain the logged error")
 	assert.Contains(t, actual, "pkg/logger/testpackage/subpackage/subsubpackage/testutil.go", "Log statement doesn't contain the full package path")
 	assert.Contains(t, actual, `stack:[{"func":"TestLog","line":`, "Log statement didn't automatically include the error's stacktrace")
+}
+
+func TestParseAndConfigureLogging(t *testing.T) {
+	err := ParseAndConfigureLogging("default", "debug")
+	assert.NoError(t, err)
+	assert.Equal(t, zerolog.DebugLevel, zerolog.GlobalLevel())
+
+	err = ParseAndConfigureLogging("json", "info")
+	assert.NoError(t, err)
+	assert.Equal(t, zerolog.InfoLevel, zerolog.GlobalLevel())
+
+	err = ParseAndConfigureLogging("invalid", "error")
+	assert.Error(t, err)
+
+	err = ParseAndConfigureLogging("default", "invalid")
+	assert.Error(t, err)
+}
+
+func TestParseLogMode(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected LogMode
+		hasError bool
+	}{
+		{"default", LogModeDefault, false},
+		{"json", LogModeJSON, false},
+		{"cmd", LogModeCmd, false},
+		{"invalid", "", true},
+	}
+
+	for _, test := range tests {
+		result, err := ParseLogMode(test.input)
+		if test.hasError {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, result)
+		}
+	}
+}
+
+func TestParseLogLevel(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected zerolog.Level
+		hasError bool
+	}{
+		{"debug", zerolog.DebugLevel, false},
+		{"info", zerolog.InfoLevel, false},
+		{"warn", zerolog.WarnLevel, false},
+		{"error", zerolog.ErrorLevel, false},
+		{"invalid", zerolog.NoLevel, true},
+	}
+
+	for _, test := range tests {
+		result, err := ParseLogLevel(test.input)
+		if test.hasError {
+			assert.Error(t, err)
+		} else {
+			assert.NoError(t, err)
+			assert.Equal(t, test.expected, result)
+		}
+	}
 }
