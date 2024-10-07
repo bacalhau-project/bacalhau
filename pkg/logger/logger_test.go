@@ -23,15 +23,12 @@ func TestConfigureLogging(t *testing.T) {
 	})
 
 	var logging strings.Builder
-	writer := zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
+	ConfigureLoggingLevel(zerolog.InfoLevel)
+	configureLogging(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
 		defaultLogFormat(w)
 		w.Out = &logging
 		w.NoColor = true
-	})
-
-	// Configure logging with the test writer
-	ConfigureLogging(LogModeDefault, zerolog.InfoLevel)
-	configureLogging(writer)
+	}))
 
 	subsubpackage.TestLog("testing error logging", "testing message")
 

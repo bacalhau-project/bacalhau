@@ -67,7 +67,8 @@ func init() { //nolint:gochecknoinits
 		strings.HasSuffix(os.Args[0], ".test") ||
 		flag.Lookup("test.v") != nil ||
 		flag.Lookup("test.run") != nil {
-		ConfigureLogging(LogModeDefault, zerolog.DebugLevel)
+		ConfigureLoggingLevel(zerolog.DebugLevel)
+		configureLogging(defaultLogging())
 		return
 	}
 
