@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
@@ -24,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -72,22 +72,8 @@ func NewRootCmd() *cobra.Command {
 			return err
 		}
 
-		// Configure logging
-		// While we allow users to configure logging via the config file, they are applied
-		// and will override this configuration at a later stage when the config is loaded.
-		// This is needed to ensure any logs before the config is loaded are captured.
-		logMode := viper.GetString(types.LoggingModeKey)
-		if logMode == "" {
-			logMode = string(logger.LogModeDefault)
-		}
-		logLevel := viper.GetString(types.LoggingLevelKey)
-		if logLevel == "" {
-			logLevel = "Info"
-		}
-		if err := logger.ConfigureLogging(logMode, logLevel); err != nil {
-			return fmt.Errorf("failed to configure logging: %w", err)
-		}
-
+		// set cmd log mode by default.
+		logger.ConfigureLogging(logger.LogModeCmd, zerolog.InfoLevel)
 		return nil
 	}
 

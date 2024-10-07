@@ -95,6 +95,10 @@ func NewCmd() *cobra.Command {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
 
+			if err = logger.ParseAndConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
+				return fmt.Errorf("failed to configure logging: %w", err)
+			}
+
 			log.Info().Msgf("Config loaded from: %s, and with data-dir %s",
 				rawCfg.Paths(), rawCfg.Get(types.DataDirKey))
 
@@ -103,7 +107,6 @@ func NewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-
 			return serve(cmd, cfg, fsr)
 		},
 	}
