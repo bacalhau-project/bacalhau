@@ -49,6 +49,14 @@ func ParseLogMode(s string) (LogMode, error) {
 	return "", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
 }
 
+func ParseLogLevel(s string) (zerolog.Level, error) {
+	l, err := zerolog.ParseLevel(s)
+	if err != nil {
+		return l, fmt.Errorf("%q is an invalid log-level", s)
+	}
+	return l, nil
+}
+
 var nodeIDFieldName = "NodeID"
 
 func init() { //nolint:gochecknoinits
@@ -64,7 +72,8 @@ func init() { //nolint:gochecknoinits
 	}
 
 	// the default log level when not running a test is ERROR
-	configureLogging(zerolog.ErrorLevel, bufferLogs())
+	ConfigureLoggingLevel(zerolog.ErrorLevel)
+	configureLogging(bufferLogs())
 }
 
 func ErrOrDebug(err error) zerolog.Level {
@@ -84,7 +93,8 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	configureLogging(zerolog.DebugLevel, zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
+	ConfigureLoggingLevel(zerolog.DebugLevel)
+	configureLogging(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
@@ -118,16 +128,31 @@ func ConfigureLogging(mode LogMode, level zerolog.Level) {
 		logWriter = defaultLogging()
 	}
 
-	configureLogging(level, logWriter)
+	ConfigureLoggingLevel(level)
+	configureLogging(logWriter)
 	LogBufferedLogs(logWriter)
 }
 
-func configureLogging(level zerolog.Level, logWriter io.Writer) {
+func ParseAndConfigureLoggingLevel(level string) error {
+	l, err := ParseLogLevel(level)
+	if err != nil {
+		return err
+	}
+	ConfigureLoggingLevel(l)
+	return nil
+}
+
+func ConfigureLoggingLevel(level zerolog.Level) {
+	logMu.Lock()
+	defer logMu.Unlock()
+	zerolog.SetGlobalLevel(level)
+}
+
+func configureLogging(logWriter io.Writer) {
 	logMu.Lock()
 	defer logMu.Unlock()
 
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	zerolog.SetGlobalLevel(level)
 
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {
