@@ -52,7 +52,6 @@ Each key shown can be used with:
 type configListEntry struct {
 	Key         string
 	Value       any
-	EnvVar      string
 	Description string
 }
 
@@ -81,7 +80,6 @@ func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error 
 		cfgList = append(cfgList, configListEntry{
 			Key:         key,
 			Value:       cfg.Get(key),
-			EnvVar:      config.KeyAsEnvVar(key),
 			Description: description,
 		})
 	}
@@ -104,12 +102,6 @@ var listColumns = []output.TableColumn[configListEntry]{
 		ColumnConfig: table.ColumnConfig{Name: "Value"},
 		Value: func(s configListEntry) string {
 			return fmt.Sprintf("%v", s.Value)
-		},
-	},
-	{
-		ColumnConfig: table.ColumnConfig{Name: "Environment Variable", WidthMax: 80, WidthMaxEnforcer: text.WrapHard},
-		Value: func(v configListEntry) string {
-			return fmt.Sprintf("%v", v.EnvVar)
 		},
 	},
 	{
