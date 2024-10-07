@@ -76,15 +76,11 @@ func NewRootCmd() *cobra.Command {
 		// While we allow users to configure logging via the config file, they are applied
 		// and will override this configuration at a later stage when the config is loaded.
 		// This is needed to ensure any logs before the config is loaded are captured.
-		logMode := viper.GetString(types.LoggingModeKey)
-		if logMode == "" {
-			logMode = string(logger.LogModeDefault)
-		}
 		logLevel := viper.GetString(types.LoggingLevelKey)
 		if logLevel == "" {
 			logLevel = "Info"
 		}
-		if err := logger.ConfigureLogging(logMode, logLevel); err != nil {
+		if err := logger.ParseAndConfigureLogging(string(logger.LogModeCmd), logLevel); err != nil {
 			return fmt.Errorf("failed to configure logging: %w", err)
 		}
 
