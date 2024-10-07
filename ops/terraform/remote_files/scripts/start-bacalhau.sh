@@ -36,12 +36,14 @@ bacalhau serve \
   --job-execution-timeout-bypass-client-id="${TRUSTED_CLIENT_IDS}" \
   --ipfs-connect /ip4/127.0.0.1/tcp/5001 \
   --api-port 1234 \
-  --web-ui="${BACALHAU_NODE_WEBUI}" \
-  --web-ui-port 80 \
-  --labels owner=bacalhau \
   --requester-job-translation-enabled \
-  --config Job.Defaults.Batch.Task.Publisher.Type=local \
-  --config Job.Defaults.Ops.Task.Publisher.Type=local \
-  --config Job.Defaults.Service.Task.Publisher.Type=local \
-  --config Job.Defaults.Daemon.Task.Publisher.Type=local \
-  --local-publisher-address "${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
+  --config DisableAnalytics \
+  --config labels="owner=bacalhau,name=node-${TERRAFORM_NODE_INDEX}"\
+  --config Compute.Orchestrators="${BACALHAU_ORCHESTRATORS}" \
+  --config Orchestrator.Advertise="${BACALHAU_ORCHESTRATOR_ADVERTISE}" \
+  --config WebUI.Enabled="${BACALHAU_NODE_WEBUI}" \
+  --config WebUI.Listen=0.0.0.0:80 \
+  --config WebUI.Backend="${BACALHAU_WEBUI_BACKEND}" \
+  --config JobDefaults.Batch.Task.Publisher.Type=local \
+  --config JobDefaults.Ops.Task.Publisher.Type=local \
+  --config Publishers.Types.Local.Address="${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
