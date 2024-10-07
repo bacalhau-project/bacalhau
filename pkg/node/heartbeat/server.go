@@ -113,7 +113,7 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				h.CheckQueue(ctx)
+				h.checkQueue(ctx)
 			}
 		}
 	}(ctx)
@@ -125,24 +125,36 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 	return nil
 }
 
-// CheckQueue will check the queue for old heartbeats that might make a node's
+// checkQueue will check the queue for old heartbeats that might make a node's
 // liveness either unhealthy or unknown, and will update the node's status accordingly.
-func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
-	// These are the timestamps, below which we'll consider the item in one of those two
-	// states
-	nowStamp := h.clock.Now().UTC().Unix()
-	disconnectedUnder := nowStamp - int64(h.disconnectedAfter.Seconds())
+// This method is not thread-safe and should be called from a single goroutine.
+func (h *HeartbeatServer) checkQueue(ctx context.Context) {
+	// Calculate the timestamp threshold for considering a node as disconnected
+	disconnectedUnder := h.clock.Now().Add(-h.disconnectedAfter).UTC().Unix()
 
 	for {
-		// Dequeue anything older than the unknown timestamp
-		item := h.pqueue.DequeueWhere(func(item TimestampedHeartbeat) bool {
-			return item.Timestamp < disconnectedUnder
-		})
+		// Peek at the next (oldest) item in the queue
+		peek := h.pqueue.Peek()
 
-		// We haven't found anything old enough yet. We can stop the loop and wait
-		// for the next cycle.
-		if item == nil {
+		// If the queue is empty, we're done
+		if peek == nil {
 			break
+		}
+
+		// If the oldest item is recent enough, we're done
+		log.Ctx(ctx).Trace().
+			Dur("LastHeartbeatAge", h.clock.Now().Sub(time.Unix(peek.Value.Timestamp, 0))).
+			Msgf("Peeked at %+v", peek)
+		if peek.Value.Timestamp >= disconnectedUnder {
+			break
+		}
+
+		// Dequeue the item and mark the node as disconnected
+		item := h.pqueue.Dequeue()
+		if item == nil || item.Value.Timestamp >= disconnectedUnder {
+			// This should never happen, but we'll check just in case
+			log.Warn().Msgf("Unexpected item dequeued: %+v didn't match previously peeked item: %+v", item, peek)
+			continue
 		}
 
 		if item.Value.NodeID == h.nodeID {
@@ -150,9 +162,12 @@ func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
 			continue
 		}
 
-		if item.Value.Timestamp < disconnectedUnder {
-			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
-		}
+		log.Ctx(ctx).Debug().
+			Str("NodeID", item.Value.NodeID).
+			Int64("LastHeartbeat", item.Value.Timestamp).
+			Dur("LastHeartbeatAge", h.clock.Now().Sub(time.Unix(item.Value.Timestamp, 0))).
+			Msg("Marking node as disconnected")
+		h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 	}
 }
 
@@ -200,36 +215,14 @@ func (h *HeartbeatServer) ShouldProcess(ctx context.Context, message *ncl.Messag
 
 // Handle will handle a message received through the legacy heartbeat topic
 func (h *HeartbeatServer) Handle(ctx context.Context, heartbeat Heartbeat) error {
-	log.Ctx(ctx).Trace().Msgf("heartbeat received from %s", heartbeat.NodeID)
-
 	timestamp := h.clock.Now().UTC().Unix()
+	th := TimestampedHeartbeat{Heartbeat: heartbeat, Timestamp: timestamp}
+	log.Ctx(ctx).Trace().Msgf("Enqueueing heartbeat from %s with seq %d. %+v", th.NodeID, th.Sequence, th)
 
-	if h.pqueue.Contains(heartbeat.NodeID) {
-		// If we think we already have a heartbeat from this node, we'll update the
-		// timestamp of the entry so it is re-prioritized in the queue by dequeuing
-		// and re-enqueuing it (this will ensure it is heapified correctly).
-		result := h.pqueue.DequeueWhere(func(item TimestampedHeartbeat) bool {
-			return item.NodeID == heartbeat.NodeID
-		})
-
-		if result == nil {
-			log.Ctx(ctx).Warn().Msgf("consistency error in heartbeat heap, node %s not found", heartbeat.NodeID)
-			return nil
-		}
-
-		log.Ctx(ctx).Trace().Msgf("Re-enqueueing heartbeat from %s", heartbeat.NodeID)
-		result.Value.Timestamp = timestamp
-		h.pqueue.Enqueue(result.Value, timestamp)
-	} else {
-		log.Ctx(ctx).Trace().Msgf("Enqueueing heartbeat from %s", heartbeat.NodeID)
-
-		// We'll enqueue the heartbeat message with the current timestamp. The older
-		// the entry, the lower the timestamp (trending to 0) and the higher the priority.
-		h.pqueue.Enqueue(TimestampedHeartbeat{Heartbeat: heartbeat, Timestamp: timestamp}, timestamp)
-	}
-
+	// We'll enqueue the heartbeat message with the current timestamp in reverse priority so that
+	// older heartbeats are dequeued first.
+	h.pqueue.Enqueue(th, -timestamp)
 	h.markNodeAs(heartbeat.NodeID, models.NodeStates.HEALTHY)
-
 	return nil
 }
 

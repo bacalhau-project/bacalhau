@@ -35,6 +35,10 @@ type PriorityQueueInterface[T any] interface {
 	// extra PriorityQueue) for the dequeued items.
 	DequeueWhere(matcher MatchingFunction[T]) *QueueItem[T]
 
+	// Peek returns the next highest priority item without removing it from the queue.
+	// It returns nil if the queue is empty.
+	Peek() *QueueItem[T]
+
 	// Len returns the number of items currently in the queue
 	Len() int
 
@@ -112,6 +116,22 @@ func (pq *PriorityQueue[T]) dequeue() *QueueItem[T] {
 
 	internalItem := heap.Pop(&pq.internalQueue)
 	heapItem := internalItem.(*heapItem)
+	item, _ := heapItem.value.(T)
+
+	return &QueueItem[T]{Value: item, Priority: heapItem.priority}
+}
+
+// Peek returns the next highest priority item without removing it from the queue.
+// It returns nil if the queue is empty.
+func (pq *PriorityQueue[T]) Peek() *QueueItem[T] {
+	pq.mu.Lock()
+	defer pq.mu.Unlock()
+
+	if pq.IsEmpty() {
+		return nil
+	}
+
+	heapItem := pq.internalQueue[0]
 	item, _ := heapItem.value.(T)
 
 	return &QueueItem[T]{Value: item, Priority: heapItem.priority}
