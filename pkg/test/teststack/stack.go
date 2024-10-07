@@ -17,38 +17,30 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
-
-func testDevStackConfig() *devstack.DevStackOptions {
-	return &devstack.DevStackOptions{
-		NumberOfHybridNodes:        0,
-		NumberOfRequesterOnlyNodes: 0,
-		NumberOfComputeOnlyNodes:   0,
-		NumberOfBadComputeActors:   0,
-		NumberOfBadRequesterActors: 0,
-		Peer:                       "",
-		CPUProfilingFile:           "",
-		MemoryProfilingFile:        "",
-		DisabledFeatures:           node.FeatureConfig{},
-		AllowListedLocalPaths:      nil,
-		ExecutorPlugins:            false,
-	}
-}
 
 func Setup(
 	ctx context.Context,
 	t testing.TB,
-	fsr *repo.FsRepo,
-	cfg types.Bacalhau,
 	opts ...devstack.ConfigOption,
 ) *devstack.DevStack {
 	cm := system.NewCleanupManager()
 	t.Cleanup(func() {
 		cm.Cleanup(ctx)
 	})
-	stack, err := devstack.Setup(ctx, cfg, cm, fsr, append(testDevStackConfig().Options(), opts...)...)
+
+	// default options
+	options := []devstack.ConfigOption{
+		devstack.WithNumberOfHybridNodes(0),
+		devstack.WithNumberOfRequesterOnlyNodes(0),
+		devstack.WithNumberOfComputeOnlyNodes(0),
+		devstack.WithBasePath(t.TempDir()),
+	}
+
+	// append custom options
+	options = append(options, opts...)
+	stack, err := devstack.Setup(ctx, cm, options...)
 	if err != nil {
 		t.Fatalf("creating teststack: %s", err)
 	}

@@ -21,7 +21,7 @@ import (
 var setExample = templates.Examples(i18n.T(`
 bacalhau config set api.host=127.0.0.1
 bacalhau config set compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234
-bacalhau config set compute.labels=foo=bar,baz=buz
+bacalhau config set labels=foo=bar,baz=buz
 `))
 
 func newSetCmd() *cobra.Command {
@@ -72,7 +72,7 @@ func newSetCmd() *cobra.Command {
 				value = args[1:]
 			}
 
-			return setConfig(cmd, configPath, key, value...)
+			return setConfig(cmd, rawConfig, configPath, key, value...)
 		},
 		// Provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,
@@ -82,7 +82,7 @@ func newSetCmd() *cobra.Command {
 	return setCmd
 }
 
-func setConfig(cmd *cobra.Command, cfgFilePath, key string, value ...string) error {
+func setConfig(cmd *cobra.Command, cfg *config.Config, cfgFilePath, key string, value ...string) error {
 	cmd.Printf("Writing config to %s", cfgFilePath)
 	v := viper.New()
 	v.SetConfigFile(cfgFilePath)
@@ -95,7 +95,15 @@ func setConfig(cmd *cobra.Command, cfgFilePath, key string, value ...string) err
 	if err != nil {
 		return err
 	}
-	v.Set(key, parsed)
+	if key == types.DataDirKey {
+		dataDirPath := config.AbsPathSilent(parsed.(string))
+		if err = config.ValidatePath(dataDirPath); err != nil {
+			return err
+		}
+		v.Set(key, dataDirPath)
+	} else {
+		v.Set(key, parsed)
+	}
 	if err := v.WriteConfigAs(cfgFilePath); err != nil {
 		return err
 	}

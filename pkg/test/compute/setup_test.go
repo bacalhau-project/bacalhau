@@ -4,7 +4,6 @@ package compute
 
 import (
 	"context"
-	"path/filepath"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -12,11 +11,9 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockerexecutor "github.com/bacalhau-project/bacalhau/pkg/executor/docker"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
@@ -36,7 +33,8 @@ import (
 type ComputeSuite struct {
 	suite.Suite
 	node             *node.Compute
-	config           node.ComputeConfig
+	config           node.NodeConfig
+	capacity         models.Resources
 	cm               *system.CleanupManager
 	executor         *noop_executor.NoopExecutor
 	publisher        *noop_publisher.NoopPublisher
@@ -53,17 +51,50 @@ func (s *ComputeSuite) SetupTest() {
 
 // setupConfig creates a new config for testing
 func (s *ComputeSuite) setupConfig() {
-	executionStore, err := boltdb.NewStore(context.Background(), filepath.Join(s.T().TempDir(), "executions.db"))
+	capacityConfig := models.ResourcesConfig{
+		CPU: "2",
+	}
+	capacity, err := capacityConfig.ToResources()
 	s.Require().NoError(err)
 
-	cfg, err := node.NewComputeConfigWith(s.T().TempDir(), node.ComputeConfigParams{
-		TotalResourceLimits: models.Resources{
-			CPU: 2,
+	s.capacity = *capacity
+	bacalhauConfig, err := config.NewTestConfigWithOverrides(types.Bacalhau{
+		Compute: types.Compute{
+			AllocatedCapacity: types.ResourceScalerFromModelsResourceConfig(capacityConfig),
 		},
-		ExecutionStore: executionStore,
 	})
 	s.Require().NoError(err)
-	s.config = cfg
+
+	nodeID := "test"
+	s.executor = noop_executor.NewNoopExecutor()
+	s.publisher = noop_publisher.NewNoopPublisher()
+	s.completedChannel = make(chan compute.RunResult)
+	s.failureChannel = make(chan compute.ComputeError)
+
+	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, bacalhauConfig.Engines.Types.Docker)
+
+	s.config = node.NodeConfig{
+		NodeID:         nodeID,
+		BacalhauConfig: bacalhauConfig,
+		SystemConfig:   node.DefaultSystemConfig(),
+		DependencyInjector: node.NodeDependencyInjector{
+			StorageProvidersFactory: node.StorageProvidersFactoryFunc(
+				func(ctx context.Context, nodeConfig node.NodeConfig) (storage.StorageProvider, error) {
+					return provider.NewNoopProvider[storage.Storage](noop_storage.NewNoopStorage()), nil
+				}),
+			ExecutorsFactory: node.ExecutorsFactoryFunc(
+				func(ctx context.Context, nodeConfig node.NodeConfig) (executor_common.ExecutorProvider, error) {
+					return provider.NewMappedProvider(map[string]executor_common.Executor{
+						models.EngineNoop:   s.executor,
+						models.EngineDocker: dockerExecutor,
+					}), nil
+				}),
+			PublishersFactory: node.PublishersFactoryFunc(
+				func(ctx context.Context, nodeConfig node.NodeConfig) (publisher.PublisherProvider, error) {
+					return provider.NewNoopProvider[publisher.Publisher](s.publisher), nil
+				}),
+		},
+	}
 }
 
 func (s *ComputeSuite) setupNode() {
@@ -71,23 +102,9 @@ func (s *ComputeSuite) setupNode() {
 	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
-	nodeID := "test"
-	s.executor = noop_executor.NewNoopExecutor()
-	s.publisher = noop_publisher.NewNoopPublisher()
 	s.bidChannel = make(chan compute.BidResult, 1)
 	s.completedChannel = make(chan compute.RunResult)
 	s.failureChannel = make(chan compute.ComputeError)
-
-	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID,
-		types.Docker{
-			ManifestCache: types.DockerManifestCache{
-				Size:    legacy_types.Testing.Node.Compute.ManifestCache.Size,
-				TTL:     types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Duration),
-				Refresh: types.Duration(legacy_types.Testing.Node.Compute.ManifestCache.Frequency),
-			},
-		},
-	)
-	s.Require().NoError(err)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -98,7 +115,6 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	noopstorage := noop_storage.NewNoopStorage()
 	callback := compute.CallbackMock{
 		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
 			s.bidChannel <- result
@@ -137,20 +153,11 @@ func (s *ComputeSuite) setupNode() {
 	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
-		nodeID,
-		apiServer,
-		cfg,
 		s.config,
-		provider.NewNoopProvider[storage.Storage](noopstorage),
-		provider.NewMappedProvider(map[string]executor_common.Executor{
-			models.EngineNoop:   s.executor,
-			models.EngineDocker: dockerExecutor,
-		}),
-		provider.NewNoopProvider[publisher.Publisher](s.publisher),
+		apiServer,
 		nc,
 		callback,
 		ManagementEndpointMock{},
-		map[string]string{}, // empty configured labels
 		messageSerDeRegistry,
 	)
 	s.NoError(err)

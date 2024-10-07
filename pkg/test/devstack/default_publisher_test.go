@@ -7,10 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
@@ -54,8 +55,6 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 }
 
 func (s *DefaultPublisherSuite) TestDefaultPublisher() {
-	stack := &scenario.StackConfig{}
-	stack.JobDefaults.Batch.Task.Publisher = *local.NewSpecConfig()
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -74,7 +73,14 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 				},
 			},
 		},
-		Stack:          stack,
+		Stack: &scenario.StackConfig{
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithDefaultPublisher(types.DefaultPublisherConfig{
+					Type:   models.PublisherLocal,
+					Params: make(map[string]string),
+				}),
+			},
+		},
 		ResultsChecker: expectResultsSome,
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),

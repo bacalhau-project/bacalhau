@@ -78,19 +78,19 @@ func TestSetMultipleMapValues(t *testing.T) {
 	defer os.Unsetenv("BACALHAU_DIR")
 
 	cmd := cmd2.NewRootCmd()
-	cmd.SetArgs([]string{"config", "set", "compute.labels", "foo=bar,baz=buz"})
+	cmd.SetArgs([]string{"config", "set", "labels", "foo=bar,baz=buz"})
 
 	err := cmd.Execute()
 	require.NoError(t, err)
 
 	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
 	actual := unmarshalConfigFile(t, defaultConfigPath)
-	expected := types.Bacalhau{Compute: types.Compute{
+	expected := types.Bacalhau{
 		Labels: map[string]string{
 			"foo": "bar",
 			"baz": "buz",
 		},
-	}}
+	}
 	require.Equal(t, expected, actual)
 }
 
@@ -179,19 +179,19 @@ func TestSetMultipleMapValuesKeyValueFormat(t *testing.T) {
 	defer os.Unsetenv("BACALHAU_DIR")
 
 	cmd := cmd2.NewRootCmd()
-	cmd.SetArgs([]string{"config", "set", "compute.labels=foo=bar,baz=buz"})
+	cmd.SetArgs([]string{"config", "set", "labels=foo=bar,baz=buz"})
 
 	err := cmd.Execute()
 	require.NoError(t, err)
 
 	defaultConfigPath := filepath.Join(tempDir, "config.yaml")
 	actual := unmarshalConfigFile(t, defaultConfigPath)
-	expected := types.Bacalhau{Compute: types.Compute{
+	expected := types.Bacalhau{
 		Labels: map[string]string{
 			"foo": "bar",
 			"baz": "buz",
 		},
-	}}
+	}
 	require.Equal(t, expected, actual)
 }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -97,7 +96,7 @@ func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 			case map[string]string:
 				fset.StringToString(def.FlagName, v, def.Description)
 			case models.JobSelectionDataLocality:
-				fset.Var(flags.DataLocalityFlag((*semantic.JobSelectionDataLocality)(&v)), def.FlagName, def.Description)
+				fset.Var(flags.DataLocalityFlag(&v), def.FlagName, def.Description)
 			case logger.LogMode:
 				fset.Var(flags.LoggingFlag(&v), def.FlagName, def.Description)
 			case time.Duration:

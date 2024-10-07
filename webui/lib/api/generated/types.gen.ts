@@ -403,6 +403,11 @@ export enum models_JobHistoryType {
     JobHistoryTypeExecutionLevel = 2
 }
 
+export enum models_JobSelectionDataLocality {
+    Local = 0,
+    Anywhere = 1
+}
+
 export enum models_JobStateType {
     JobStateTypeUndefined = 0,
     JobStateTypePending = 1,
@@ -700,16 +705,16 @@ export type shared_VersionResponse = {
 };
 
 export type types_API = {
-    auth?: types_AuthConfig;
+    Auth?: types_AuthConfig;
     /**
      * Host specifies the hostname or IP address on which the API server listens or the client connects.
      */
-    host?: string;
+    Host?: string;
     /**
      * Port specifies the port number on which the API server listens or the client connects.
      */
-    port?: number;
-    tls?: types_TLS;
+    Port?: number;
+    TLS?: types_TLS;
 };
 
 export type types_AuthConfig = {
@@ -719,7 +724,7 @@ export type types_AuthConfig = {
      * that permits access to all API endpoints to both authenticated and
      * unauthenticated users (the default as of v1.2.0) will be used.
      */
-    accessPolicyPath?: string;
+    AccessPolicyPath?: string;
     /**
      * Methods maps "method names" to authenticator implementations. A method
      * name is a human-readable string chosen by the person configuring the
@@ -736,43 +741,49 @@ export type types_AuthConfig = {
      * By default, only a single authentication method that accepts
      * authentication via client keys will be enabled.
      */
-    methods?: {
+    Methods?: {
         [key: string]: types_AuthenticatorConfig;
     };
 };
 
 export type types_AuthenticatorConfig = {
-    policyPath?: string;
-    type?: string;
+    PolicyPath?: string;
+    Type?: string;
 };
 
 export type types_Bacalhau = {
-    api?: types_API;
-    compute?: types_Compute;
+    API?: types_API;
+    Compute?: types_Compute;
     /**
      * DataDir specifies a location on disk where the bacalhau node will maintain state.
      */
-    dataDir?: string;
-    disableAnalytics?: boolean;
-    engines?: types_EngineConfig;
-    featureFlags?: types_FeatureFlags;
-    inputSources?: types_InputSourcesConfig;
-    jobAdmissionControl?: types_JobAdmissionControl;
-    jobDefaults?: types_JobDefaults;
-    logging?: types_Logging;
+    DataDir?: string;
+    DisableAnalytics?: boolean;
+    Engines?: types_EngineConfig;
+    FeatureFlags?: types_FeatureFlags;
+    InputSources?: types_InputSourcesConfig;
+    JobAdmissionControl?: types_JobAdmissionControl;
+    JobDefaults?: types_JobDefaults;
+    /**
+     * Labels are key-value pairs used to describe and categorize the nodes.
+     */
+    Labels?: {
+        [key: string]: (string);
+    };
+    Logging?: types_Logging;
     /**
      * NameProvider specifies the method used to generate names for the node. One of: hostname, aws, gcp, uuid, puuid.
      */
-    nameProvider?: string;
-    orchestrator?: types_Orchestrator;
-    publishers?: types_PublishersConfig;
-    resultDownloaders?: types_ResultDownloaders;
+    NameProvider?: string;
+    Orchestrator?: types_Orchestrator;
+    Publishers?: types_PublishersConfig;
+    ResultDownloaders?: types_ResultDownloaders;
     /**
      * StrictVersionMatch indicates whether to enforce strict version matching.
      */
-    strictVersionMatch?: boolean;
-    updateConfig?: types_UpdateConfig;
-    webUI?: types_WebUI;
+    StrictVersionMatch?: boolean;
+    UpdateConfig?: types_UpdateConfig;
+    WebUI?: types_WebUI;
 };
 
 export type types_BatchJobDefaultsConfig = {
@@ -780,118 +791,118 @@ export type types_BatchJobDefaultsConfig = {
      * Priority specifies the default priority allocated to a batch or ops job.
      * This value is used when the job hasn't explicitly set its priority requirement.
      */
-    priority?: number;
-    task?: types_BatchTaskDefaultConfig;
+    Priority?: number;
+    Task?: types_BatchTaskDefaultConfig;
 };
 
 export type types_BatchTaskDefaultConfig = {
-    publisher?: types_DefaultPublisherConfig;
-    resources?: types_ResourcesConfig;
-    timeouts?: types_TaskTimeoutConfig;
+    Resources?: types_ResourcesConfig;
+    Timeouts?: types_TaskTimeoutConfig;
+    publisher?: models_SpecConfig;
 };
 
 export type types_Cluster = {
     /**
      * Advertise specifies the address to advertise to other cluster members.
      */
-    advertise?: string;
+    Advertise?: string;
     /**
      * Host specifies the hostname or IP address for cluster communication.
      */
-    host?: string;
+    Host?: string;
     /**
      * Name specifies the unique identifier for this orchestrator cluster.
      */
-    name?: string;
+    Name?: string;
     /**
      * Peers is a list of other cluster members to connect to on startup.
      */
-    peers?: Array<(string)>;
+    Peers?: Array<(string)>;
     /**
      * Port specifies the port number for cluster communication.
      */
-    port?: number;
+    Port?: number;
 };
 
 export type types_Compute = {
-    allocatedCapacity?: types_ResourceScaler;
+    AllocatedCapacity?: types_ResourceScaler;
     /**
      * AllowListedLocalPaths specifies a list of local file system paths that the compute node is allowed to access.
      */
-    allowListedLocalPaths?: Array<(string)>;
+    AllowListedLocalPaths?: Array<(string)>;
+    /**
+     * Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
+     */
+    Auth?: (types_ComputeAuth);
     /**
      * Enabled indicates whether the compute node is active and available for job execution.
      */
-    enabled?: boolean;
-    heartbeat?: types_Heartbeat;
-    /**
-     * Labels are key-value pairs used to describe and categorize the compute node.
-     */
-    labels?: {
-        [key: string]: (string);
-    };
+    Enabled?: boolean;
+    Heartbeat?: types_Heartbeat;
     /**
      * Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
      */
-    orchestrators?: Array<(string)>;
-    tls?: types_TLS;
+    Orchestrators?: Array<(string)>;
 };
 
-export type types_DefaultPublisherConfig = {
-    config?: models_SpecConfig;
+export type types_ComputeAuth = {
+    /**
+     * Token specifies the key for compute nodes to be able to access the orchestrator.
+     */
+    Token?: string;
 };
 
 export type types_Docker = {
     /**
      * ManifestCache specifies the settings for the Docker manifest cache.
      */
-    manifestCache?: (types_DockerManifestCache);
+    ManifestCache?: (types_DockerManifestCache);
 };
 
 export type types_DockerManifestCache = {
     /**
      * Refresh specifies the refresh interval for cache entries.
      */
-    refresh?: number;
+    Refresh?: number;
     /**
      * Size specifies the size of the Docker manifest cache.
      */
-    size?: number;
+    Size?: number;
     /**
      * TTL specifies the time-to-live duration for cache entries.
      */
-    ttl?: number;
+    TTL?: number;
 };
 
 export type types_EngineConfig = {
     /**
      * Disabled specifies a list of engines that are disabled.
      */
-    disabled?: Array<(string)>;
-    types?: types_EngineConfigTypes;
+    Disabled?: Array<(string)>;
+    Types?: types_EngineConfigTypes;
 };
 
 export type types_EngineConfigTypes = {
-    docker?: types_Docker;
-    wasm?: types_WASM;
+    Docker?: types_Docker;
+    WASM?: types_WASM;
 };
 
 export type types_EvaluationBroker = {
     /**
      * MaxRetryCount specifies the maximum number of times an evaluation can be retried before being marked as failed.
      */
-    maxRetryCount?: number;
+    MaxRetryCount?: number;
     /**
      * VisibilityTimeout specifies how long an evaluation can be claimed before it's returned to the queue.
      */
-    visibilityTimeout?: number;
+    VisibilityTimeout?: number;
 };
 
 export type types_FeatureFlags = {
     /**
      * ExecTranslation enables the execution translation feature.
      */
-    execTranslation?: boolean;
+    ExecTranslation?: boolean;
 };
 
 export type types_FreeSpace = {
@@ -907,113 +918,112 @@ export type types_Heartbeat = {
     /**
      * InfoUpdateInterval specifies the time between updates of non-resource information to the orchestrator.
      */
-    infoUpdateInterval?: number;
+    InfoUpdateInterval?: number;
     /**
      * Interval specifies the time between heartbeat signals sent to the orchestrator.
      */
-    interval?: number;
+    Interval?: number;
     /**
      * ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.
      */
-    resourceUpdateInterval?: number;
+    ResourceUpdateInterval?: number;
 };
 
 export type types_IPFSPublisher = {
     /**
      * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
      */
-    endpoint?: string;
+    Endpoint?: string;
 };
 
 export type types_IPFSStorage = {
     /**
      * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
      */
-    endpoint?: string;
+    Endpoint?: string;
 };
 
 export type types_InputSourcesConfig = {
     /**
      * Disabled specifies a list of storages that are disabled.
      */
-    disabled?: Array<(string)>;
+    Disabled?: Array<(string)>;
     /**
      * ReadTimeout specifies the maximum number of attempts for reading from a storage.
      */
-    maxRetryCount?: number;
+    MaxRetryCount?: number;
     /**
      * ReadTimeout specifies the maximum time allowed for reading from a storage.
      */
-    readTimeout?: number;
-    types?: types_InputSourcesTypes;
+    ReadTimeout?: number;
+    Types?: types_InputSourcesTypes;
 };
 
 export type types_InputSourcesTypes = {
-    ipfs?: types_IPFSStorage;
-    s3?: types_S3Storage;
+    IPFS?: types_IPFSStorage;
 };
 
 export type types_IpfsDownloader = {
     /**
      * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
      */
-    endpoint?: string;
+    Endpoint?: string;
 };
 
 export type types_JobAdmissionControl = {
     /**
      * AcceptNetworkedJobs indicates whether to accept jobs that require network access.
      */
-    acceptNetworkedJobs?: boolean;
+    AcceptNetworkedJobs?: boolean;
+    /**
+     * Locality specifies the locality of the job input data.
+     */
+    Locality?: (models_JobSelectionDataLocality);
     /**
      * ProbeExec specifies the command to execute for probing job submission.
      */
-    probeExec?: string;
+    ProbeExec?: string;
     /**
      * ProbeHTTP specifies the HTTP endpoint for probing job submission.
      */
-    probeHTTP?: string;
+    ProbeHTTP?: string;
     /**
      * RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.
      */
-    rejectStatelessJobs?: boolean;
+    RejectStatelessJobs?: boolean;
 };
 
 export type types_JobDefaults = {
-    batch?: types_BatchJobDefaultsConfig;
-    daemon?: types_LongRunningJobDefaultsConfig;
-    ops?: types_BatchJobDefaultsConfig;
-    service?: types_LongRunningJobDefaultsConfig;
+    Batch?: types_BatchJobDefaultsConfig;
+    Daemon?: types_LongRunningJobDefaultsConfig;
+    Ops?: types_BatchJobDefaultsConfig;
+    Service?: types_LongRunningJobDefaultsConfig;
 };
 
 export type types_LocalPublisher = {
     /**
      * Address specifies the endpoint the publisher serves on.
      */
-    address?: string;
-    /**
-     * Directory specifies a path to location on disk where content is served from.
-     */
-    directory?: string;
+    Address?: string;
     /**
      * Port specifies the port the publisher serves on.
      */
-    port?: number;
+    Port?: number;
 };
 
 export type types_Logging = {
     /**
      * Level sets the logging level. One of: trace, debug, info, warn, error, fatal, panic.
      */
-    level?: string;
+    Level?: string;
     /**
      * LogDebugInfoInterval specifies the interval for logging debug information.
      */
-    logDebugInfoInterval?: number;
+    LogDebugInfoInterval?: number;
     /**
      * Mode specifies the logging mode. One of: default, json.
      */
-    mode?: string;
+    Mode?: string;
 };
 
 export type types_LongRunningJobDefaultsConfig = {
@@ -1021,12 +1031,12 @@ export type types_LongRunningJobDefaultsConfig = {
      * Priority specifies the default priority allocated to a service or daemon job.
      * This value is used when the job hasn't explicitly set its priority requirement.
      */
-    priority?: number;
-    task?: types_LongRunningTaskDefaultConfig;
+    Priority?: number;
+    Task?: types_LongRunningTaskDefaultConfig;
 };
 
 export type types_LongRunningTaskDefaultConfig = {
-    resources?: types_ResourcesConfig;
+    Resources?: types_ResourcesConfig;
 };
 
 export type types_MountStatus = {
@@ -1039,53 +1049,59 @@ export type types_NodeManager = {
     /**
      * DisconnectTimeout specifies how long to wait before considering a node disconnected.
      */
-    disconnectTimeout?: number;
+    DisconnectTimeout?: number;
     /**
      * ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.
      */
-    manualApproval?: boolean;
+    ManualApproval?: boolean;
 };
 
 export type types_Orchestrator = {
     /**
      * Advertise specifies URL to advertise to other servers.
      */
-    advertise?: string;
+    Advertise?: string;
     /**
-     * AuthSecret key specifies the key used by compute nodes to connect to an orchestrator.
+     * Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
      */
-    authSecret?: string;
-    cluster?: types_Cluster;
+    Auth?: (types_OrchestratorAuth);
+    Cluster?: types_Cluster;
     /**
      * Enabled indicates whether the orchestrator node is active and available for job submission.
      */
-    enabled?: boolean;
-    evaluationBroker?: types_EvaluationBroker;
+    Enabled?: boolean;
+    EvaluationBroker?: types_EvaluationBroker;
     /**
      * Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.
      */
-    host?: string;
-    nodeManager?: types_NodeManager;
+    Host?: string;
+    NodeManager?: types_NodeManager;
     /**
      * Host specifies the port number on which the Orchestrator server listens for compute node connections.
      */
-    port?: number;
-    scheduler?: types_Scheduler;
-    tls?: types_TLS;
+    Port?: number;
+    Scheduler?: types_Scheduler;
+};
+
+export type types_OrchestratorAuth = {
+    /**
+     * Token specifies the key for compute nodes to be able to access the orchestrator
+     */
+    Token?: string;
 };
 
 export type types_PublisherTypes = {
-    ipfs?: types_IPFSPublisher;
-    local?: types_LocalPublisher;
-    s3?: types_S3Publisher;
+    IPFS?: types_IPFSPublisher;
+    Local?: types_LocalPublisher;
+    S3?: types_S3Publisher;
 };
 
 export type types_PublishersConfig = {
     /**
      * Disabled specifies a list of publishers that are disabled.
      */
-    disabled?: Array<(string)>;
-    types?: types_PublisherTypes;
+    Disabled?: Array<(string)>;
+    Types?: types_PublisherTypes;
 };
 
 export type types_ResourceScaler = {
@@ -1093,23 +1109,23 @@ export type types_ResourceScaler = {
      * CPU specifies the amount of CPU a compute node allocates for running jobs.
      * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "100m").
      */
-    cpu?: string;
+    CPU?: string;
     /**
      * Disk specifies the amount of Disk space a compute node allocates for running jobs.
      * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "10Gi").
      */
-    disk?: string;
+    Disk?: string;
     /**
      * GPU specifies the amount of GPU a compute node allocates for running jobs.
      * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1").
      * Note: When using percentages, the result is always rounded up to the nearest whole GPU.
      */
-    gpu?: string;
+    GPU?: string;
     /**
      * Memory specifies the amount of Memory a compute node allocates for running jobs.
      * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1Gi").
      */
-    memory?: string;
+    Memory?: string;
 };
 
 export type types_ResourcesConfig = {
@@ -1118,148 +1134,142 @@ export type types_ResourcesConfig = {
      * It uses Kubernetes resource string format (e.g., "100m" for 0.1 CPU cores).
      * This value is used when the task hasn't explicitly set its CPU requirement.
      */
-    cpu?: string;
+    CPU?: string;
     /**
      * Disk specifies the default amount of disk space allocated to a task.
      * It uses Kubernetes resource string format (e.g., "1Gi" for 1 gibibyte).
      * This value is used when the task hasn't explicitly set its disk space requirement.
      */
-    disk?: string;
+    Disk?: string;
     /**
      * GPU specifies the default number of GPUs allocated to a task.
      * It uses Kubernetes resource string format (e.g., "1" for 1 GPU).
      * This value is used when the task hasn't explicitly set its GPU requirement.
      */
-    gpu?: string;
+    GPU?: string;
     /**
      * Memory specifies the default amount of memory allocated to a task.
      * It uses Kubernetes resource string format (e.g., "256Mi" for 256 mebibytes).
      * This value is used when the task hasn't explicitly set its memory requirement.
      */
-    memory?: string;
+    Memory?: string;
 };
 
 export type types_ResultDownloaders = {
     /**
      * Disabled is a list of downloaders that are disabled.
      */
-    disabled?: Array<(string)>;
+    Disabled?: Array<(string)>;
     /**
      * Timeout specifies the maximum time allowed for a download operation.
      */
-    timeout?: number;
-    types?: types_ResultDownloadersTypes;
+    Timeout?: number;
+    Types?: types_ResultDownloadersTypes;
 };
 
 export type types_ResultDownloadersTypes = {
-    ipfs?: types_IpfsDownloader;
+    IPFS?: types_IpfsDownloader;
 };
 
 export type types_S3Publisher = {
     /**
      * PreSignedURLDisabled specifies whether pre-signed URLs are enabled for the S3 provider.
      */
-    preSignedURLDisabled?: boolean;
+    PreSignedURLDisabled?: boolean;
     /**
      * PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
      */
-    preSignedURLExpiration?: number;
-};
-
-export type types_S3Storage = {
-    /**
-     * AccessKey specifies the access key for the S3 input source.
-     */
-    accessKey?: string;
-    /**
-     * Endpoint specifies the endpoint URL for the S3 input source.
-     */
-    endpoint?: string;
-    /**
-     * SecretKey specifies the secret key for the S3 input source.
-     */
-    secretKey?: string;
+    PreSignedURLExpiration?: number;
 };
 
 export type types_Scheduler = {
     /**
      * HousekeepingInterval specifies how often to run housekeeping tasks.
      */
-    housekeepingInterval?: number;
+    HousekeepingInterval?: number;
     /**
      * HousekeepingTimeout specifies the maximum time allowed for a single housekeeping run.
      */
-    housekeepingTimeout?: number;
+    HousekeepingTimeout?: number;
+    /**
+     * QueueBackoff specifies the time to wait before retrying a failed job.
+     */
+    QueueBackoff?: number;
     /**
      * WorkerCount specifies the number of concurrent workers for job scheduling.
      */
-    workerCount?: number;
+    WorkerCount?: number;
 };
 
 export type types_TLS = {
     /**
      * AutoCert specifies the domain for automatic certificate generation.
      */
-    autoCert?: string;
+    AutoCert?: string;
     /**
      * AutoCertCachePath specifies the directory to cache auto-generated certificates.
      */
-    autoCertCachePath?: string;
+    AutoCertCachePath?: string;
     /**
      * CAFile specifies the path to the Certificate Authority file.
      */
-    cafile?: string;
+    CAFile?: string;
     /**
      * CertFile specifies the path to the TLS certificate file.
      */
-    certFile?: string;
+    CertFile?: string;
     /**
      * Insecure allows insecure TLS connections (e.g., self-signed certificates).
      */
-    insecure?: boolean;
+    Insecure?: boolean;
     /**
      * KeyFile specifies the path to the TLS private key file.
      */
-    keyFile?: string;
+    KeyFile?: string;
     /**
      * SelfSigned indicates whether to use a self-signed certificate.
      */
-    selfSigned?: boolean;
+    SelfSigned?: boolean;
     /**
      * UseTLS indicates whether to use TLS for client connections.
      */
-    useTLS?: boolean;
+    UseTLS?: boolean;
 };
 
 export type types_TaskTimeoutConfig = {
     /**
      * ExecutionTimeout is the maximum time allowed for task execution
      */
-    executionTimeout?: number;
+    ExecutionTimeout?: number;
     /**
      * TotalTimeout is the maximum total time allowed for a task
      */
-    totalTimeout?: number;
+    TotalTimeout?: number;
 };
 
 export type types_UpdateConfig = {
     /**
      * Interval specifies the time between update checks, when set to 0 update checks are not performed.
      */
-    interval?: number;
+    Interval?: number;
 };
 
 export type types_WASM = unknown;
 
 export type types_WebUI = {
     /**
+     * Backend specifies the address and port of the backend API server.
+     * If empty, the Web UI will use the same address and port as the API server.
+     */
+    Backend?: string;
+    /**
      * Enabled indicates whether the Web UI is enabled.
      */
-    enabled?: boolean;
+    Enabled?: boolean;
     /**
      * Listen specifies the address and port on which the Web UI listens.
      */
-    listen?: string;
+    Listen?: string;
 };
 
 export type HomeResponse = (string);

@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
 
@@ -261,11 +260,11 @@ func TargetingFlag(value *TargetingMode) *ValueFlag[TargetingMode] {
 	}
 }
 
-func DataLocalityFlag(value *semantic.JobSelectionDataLocality) *ValueFlag[semantic.JobSelectionDataLocality] {
-	return &ValueFlag[semantic.JobSelectionDataLocality]{
+func DataLocalityFlag(value *models.JobSelectionDataLocality) *ValueFlag[models.JobSelectionDataLocality] {
+	return &ValueFlag[models.JobSelectionDataLocality]{
 		value:    value,
-		parser:   semantic.ParseJobSelectionDataLocality,
-		stringer: func(l *semantic.JobSelectionDataLocality) string { return l.String() },
+		parser:   models.ParseJobSelectionDataLocality,
+		stringer: func(l *models.JobSelectionDataLocality) string { return l.String() },
 		typeStr:  "local|anywhere",
 	}
 }

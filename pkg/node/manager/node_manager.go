@@ -36,21 +36,25 @@ type NodeManager struct {
 }
 
 type NodeManagerParams struct {
-	NodeInfo             routing.NodeInfoStore
-	Heartbeats           *heartbeat.HeartbeatServer
-	DefaultApprovalState models.NodeMembershipState
+	NodeInfo       routing.NodeInfoStore
+	Heartbeats     *heartbeat.HeartbeatServer
+	ManualApproval bool
 }
 
 // NewNodeManager constructs a new node manager and returns a pointer
 // to the structure.
 func NewNodeManager(params NodeManagerParams) *NodeManager {
+	defaultApprovalState := models.NodeMembership.APPROVED
+	if params.ManualApproval {
+		defaultApprovalState = models.NodeMembership.PENDING
+	}
 	log.Debug().Msgf("Nodes joining the cluster will be assigned approval state: %s",
-		params.DefaultApprovalState.String())
+		defaultApprovalState.String())
 	return &NodeManager{
 		resourceMap:          concurrency.NewStripedMap[trackedResources](resourceMapLockCount),
 		store:                params.NodeInfo,
 		heartbeats:           params.Heartbeats,
-		defaultApprovalState: params.DefaultApprovalState,
+		defaultApprovalState: defaultApprovalState,
 	}
 }
 

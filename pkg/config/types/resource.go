@@ -14,20 +14,29 @@ import (
 type ResourceScaler struct {
 	// CPU specifies the amount of CPU a compute node allocates for running jobs.
 	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "100m").
-	CPU ResourceType `yaml:"CPU,omitempty"`
+	CPU ResourceType `yaml:"CPU,omitempty" json:"CPU,omitempty"`
 
 	// Memory specifies the amount of Memory a compute node allocates for running jobs.
 	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1Gi").
-	Memory ResourceType `yaml:"Memory,omitempty"`
+	Memory ResourceType `yaml:"Memory,omitempty" json:"Memory,omitempty"`
 
 	// Disk specifies the amount of Disk space a compute node allocates for running jobs.
 	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "10Gi").
-	Disk ResourceType `yaml:"Disk,omitempty"`
+	Disk ResourceType `yaml:"Disk,omitempty" json:"Disk,omitempty"`
 
 	// GPU specifies the amount of GPU a compute node allocates for running jobs.
 	// It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1").
 	// Note: When using percentages, the result is always rounded up to the nearest whole GPU.
-	GPU ResourceType `yaml:"GPU,omitempty"`
+	GPU ResourceType `yaml:"GPU,omitempty" json:"GPU,omitempty"`
+}
+
+func ResourceScalerFromModelsResourceConfig(r models.ResourcesConfig) ResourceScaler {
+	return ResourceScaler{
+		CPU:    ResourceType(r.CPU),
+		Memory: ResourceType(r.Memory),
+		Disk:   ResourceType(r.Disk),
+		GPU:    ResourceType(r.GPU),
+	}
 }
 
 func (s ResourceScaler) IsZero() bool {
@@ -115,6 +124,16 @@ func (s ResourceScaler) ToResource(in models.Resources) (*models.Resources, erro
 			return nil, fmt.Errorf("invalid GPU value %q: %w", s.GPU, err)
 		}
 		out.GPU = gpu
+	}
+
+	// select the first N GPUs from the total available GPUs
+	out.GPUs = make([]models.GPU, out.GPU)
+	for i := range out.GPUs {
+		if i >= len(in.GPUs) {
+			out.GPUs[i] = models.GPU{}
+		} else {
+			out.GPUs[i] = in.GPUs[i]
+		}
 	}
 
 	return out, nil
