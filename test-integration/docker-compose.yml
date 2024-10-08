@@ -68,7 +68,7 @@ services:
       - /bin/bash
       - -c
       - |
-        bacalhau config set "node.network.authsecret" "$${NETWORK_AUTH_TOKEN}" && bacalhau serve --port=$${BACALHAU_API_PORT} --node-type requester
+        bacalhau config set "orchestrator.auth.token" "$${NETWORK_AUTH_TOKEN}" && bacalhau serve --orchestrator -c api.port=$${BACALHAU_API_PORT}
     healthcheck:
       test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
       interval: 1s
