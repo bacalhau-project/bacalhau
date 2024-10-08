@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ResultSignerParams struct {
@@ -56,7 +57,7 @@ func (signer *ResultSigner) Transform(ctx context.Context, spec *models.SpecConf
 
 	resp, err := client.PresignClient().PresignGetObject(ctx, request, s3.WithPresignExpires(signer.expiration))
 	if err != nil {
-		return err
+		return NewS3ResultSignerServiceError(err)
 	}
 	spec.Type = models.StorageSourceS3PreSigned
 	spec.Params = PreSignedResultSpec{

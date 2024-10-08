@@ -1,2 +1,2 @@
-// Replace all PublicKey with string
-replace PublicKey string
+// Replace all types.Duration with primitive int
+replace Duration int64

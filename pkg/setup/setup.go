@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -25,9 +24,6 @@ func SetupMigrationManager() (*repo.MigrationManager, error) {
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
 func SetupBacalhauRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
-	if err := logger.ConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
-		return nil, fmt.Errorf("failed to configure logging: %w", err)
-	}
 	migrationManger, err := SetupMigrationManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create migration manager: %w", err)
@@ -46,7 +42,7 @@ func SetupBacalhauRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 
 		return nil, fmt.Errorf("failed to check if repo exists: %w", err)
 	} else if !exists {
-		if err := fsRepo.Init(cfg); err != nil {
+		if err := fsRepo.Init(); err != nil {
 			return nil, fmt.Errorf("failed to initialize repo: %w", err)
 		}
 	} else {
@@ -68,6 +64,8 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 
 	// disable update checks in testing.
 	t.Setenv(config.KeyAsEnvVar(types.UpdateConfigIntervalKey), "0")
+	// don't send analytics data during testing
+	t.Setenv(config.KeyAsEnvVar(types.DisableAnalyticsKey), "true")
 	cfgValues := map[string]any{
 		types.DataDirKey: path,
 		// callers of this method currently assume it creates an orchestrator node.

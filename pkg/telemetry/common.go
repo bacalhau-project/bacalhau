@@ -1,13 +1,18 @@
 package telemetry
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
-	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
+	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 func SetupFromEnvs() {
@@ -15,7 +20,16 @@ func SetupFromEnvs() {
 	newMeterProvider()
 
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		log.Err(err).Msg("Error occurred while handling spans")
+		switch e := err.(type) {
+		// this is the error returned by the analytics provider if the collector cannot be reached.
+		// We ignore it for this case as the error is benign.
+		case *url.Error:
+			if strings.Contains(e.URL, analytics.DefaultOtelCollectorEndpoint) {
+				return
+			}
+		default:
+			log.Err(err).Msg("Error occurred while handling spans")
+		}
 	}))
 }
 

@@ -2,8 +2,6 @@ package util
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,7 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 )
@@ -45,36 +43,20 @@ func SetupRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 	return r, nil
 }
 
-func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
+func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	var opts []config.Option
 	v := viper.GetViper()
 	// check if the user specified config files via the --config flag
 	configFiles := getConfigFiles(v)
 
-	// if none were provided look in $XDG_CONFIG_HOME/bacalhau/config.yaml
-	if len(configFiles) == 0 {
-		xdgPath, err := os.UserConfigDir()
-		if err == nil {
-			path := filepath.Join(xdgPath, "bacalhau", config_legacy.FileName)
-			if _, err := os.Stat(path); err != nil {
-				// if the file exists and could not be read, return an error
-				if !os.IsNotExist(err) {
-					return types.Bacalhau{}, fmt.Errorf("loading config file at %q: %w", path, err)
-				}
-			} else {
-				// the file exists, use it.
-				configFiles = append(configFiles, path)
-			}
-		}
-	}
-	// if a config file is present, apply it to the config
+	// apply user specified config files via the --config flag, if any
 	if len(configFiles) > 0 {
-		opts = append(opts, config.WithPaths(configFiles...))
+		opts = append(opts, config.WithPaths(getConfigFiles(v)...))
 	}
 
 	configFlags, err := getConfigFlags(v, cmd)
 	if err != nil {
-		return types.Bacalhau{}, err
+		return nil, err
 	}
 	if len(configFlags) > 0 {
 		opts = append(opts, config.WithFlags(configFlags))
@@ -92,9 +74,38 @@ func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
 
 	cfg, err := config.New(opts...)
 	if err != nil {
-		return types.Bacalhau{}, err
+		return nil, err
 	}
 
+	// We always apply the configured logging level. Logging mode on the other hand is only applied with serve cmd
+	if err = logger.ParseAndConfigureLoggingLevel(cfg.Get(types.LoggingLevelKey).(string)); err != nil {
+		return nil, fmt.Errorf("failed to configure logging: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
+	cfg, err := SetupConfigType(cmd)
+	if err != nil {
+		return types.Bacalhau{}, err
+	}
+	return UnmarshalBacalhauConfig(cfg)
+}
+
+func SetupConfigs(cmd *cobra.Command) (types.Bacalhau, *config.Config, error) {
+	cfg, err := SetupConfigType(cmd)
+	if err != nil {
+		return types.Bacalhau{}, nil, err
+	}
+	bacalhauCfg, err := UnmarshalBacalhauConfig(cfg)
+	if err != nil {
+		return types.Bacalhau{}, nil, err
+	}
+	return bacalhauCfg, cfg, nil
+}
+
+func UnmarshalBacalhauConfig(cfg *config.Config) (types.Bacalhau, error) {
 	var out types.Bacalhau
 	if err := cfg.Unmarshal(&out); err != nil {
 		return types.Bacalhau{}, err

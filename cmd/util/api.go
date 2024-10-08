@@ -12,6 +12,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
@@ -19,6 +21,11 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 	tlsCfg := cfg.API.TLS
 	apiHost := cfg.API.Host
 	apiPort := cfg.API.Port
+
+	// set the client api host to localhost if it is 0.0.0.0
+	if apiHost == "0.0.0.0" {
+		apiHost = "127.0.0.1"
+	}
 
 	if tlsCfg.CAFile != "" {
 		if _, err := os.Stat(tlsCfg.CAFile); os.IsNotExist(err) {
@@ -41,6 +48,19 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		apimodels.HTTPHeaderBacalhauBuildDate:  {bv.BuildDate.UTC().String()},
 		apimodels.HTTPHeaderBacalhauBuildOS:    {bv.GOOS},
 		apimodels.HTTPHeaderBacalhauArch:       {bv.GOARCH},
+	}
+
+	sysmeta, err := repo.LoadSystemMetadata(cfg.DataDir)
+	if err == nil {
+		if sysmeta.InstanceID != "" {
+			headers[apimodels.HTTPHeaderBacalhauInstanceID] = []string{sysmeta.InstanceID}
+		}
+	} else {
+		log.Debug().Err(err).Msg("failed to load system metadata from repo path")
+	}
+
+	if installationID := system.InstallationID(); installationID != "" {
+		headers[apimodels.HTTPHeaderBacalhauInstallationID] = []string{installationID}
 	}
 
 	opts := []clientv2.OptionFn{

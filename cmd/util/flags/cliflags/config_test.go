@@ -30,13 +30,17 @@ func createTempConfig(content string) (string, error) {
 	return tmpfile.Name(), nil
 }
 
-// setupTestCommand sets up a cobra command for testing
-func setupTestCommand() *cobra.Command {
+// setupTestCommand to accept a boolean for write mode
+func setupTestCommand(writeMode bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "test",
 		Run: func(cmd *cobra.Command, args []string) {},
 	}
-	cmd.PersistentFlags().VarP(NewConfigFlag(), "config", "c", "config file(s) or dot separated path(s) to config values")
+	if writeMode {
+		cmd.PersistentFlags().VarP(NewWriteConfigFlag(), "config", "c", "config file for writing")
+	} else {
+		cmd.PersistentFlags().VarP(NewConfigFlag(), "config", "c", "config file(s) or dot separated path(s) to config values")
+	}
 	return cmd
 }
 
@@ -79,7 +83,7 @@ API:
 		require.NoError(t, err)
 		defer os.Remove(configFile)
 
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{"-c", configFile})
 		err = cmd.Execute()
 		require.NoError(t, err)
@@ -117,7 +121,7 @@ API:
 		require.NoError(t, err)
 		defer os.Remove(overrideConfig)
 
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{"-c", baseConfig, "-c", overrideConfig})
 		err = cmd.Execute()
 		require.NoError(t, err)
@@ -146,7 +150,7 @@ API:
 		require.NoError(t, err)
 		defer os.Remove(configFile)
 
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{"-c", configFile, "-c", "DataDir=override", "-c", "API.Host=2.2.2.2"})
 		err = cmd.Execute()
 		require.NoError(t, err)
@@ -162,9 +166,9 @@ API:
 	})
 
 	// Test case 4: Dot notation without value (boolean true)
-	t.Run("DotNotationWithoutValue", func(t *testing.T) {
+	t.Run("DotNotationBoolWithoutValue", func(t *testing.T) {
 		viper.Reset()
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{"-c", "WebUI.Enabled"})
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -174,10 +178,32 @@ API:
 		assert.True(t, config.WebUI.Enabled)
 	})
 
+	// Test case 4.1: Dot notation with value (boolean true)
+	t.Run("DotNotationBoolWithValue", func(t *testing.T) {
+		viper.Reset()
+		cmd := setupTestCommand(false)
+		cmd.SetArgs([]string{"-c", "WebUI.Enabled=true"})
+		err := cmd.Execute()
+		require.NoError(t, err)
+
+		config, err := loadConfig()
+		require.NoError(t, err)
+		assert.True(t, config.WebUI.Enabled)
+	})
+
+	// Test case 4.2: Dot notation without value (non boolean)
+	t.Run("DotNotationBoolWithValue", func(t *testing.T) {
+		viper.Reset()
+		cmd := setupTestCommand(false)
+		cmd.SetArgs([]string{"-c", "api.host", "0.0.0.0"})
+		err := cmd.Execute()
+		require.Error(t, err)
+	})
+
 	// Test case 5: Multiple dot notation values
 	t.Run("MultipleDotNotationValues", func(t *testing.T) {
 		viper.Reset()
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{
 			"-c", "WebUI.Enabled=true",
 			"-c", "WebUI.Listen=0.0.0.0:9090",
@@ -214,7 +240,7 @@ API:
 		require.NoError(t, err)
 		defer os.Remove(configFile)
 
-		cmd := setupTestCommand()
+		cmd := setupTestCommand(false)
 		cmd.SetArgs([]string{
 			"-c", configFile,
 			"-c", "WebUI.Enabled=true",
@@ -237,4 +263,68 @@ API:
 		assert.Equal(t, "192.168.1.5", config.API.Host)
 	})
 
+	// New test case: Write mode with single config file
+	t.Run("WriteModeWithSingleConfigFile", func(t *testing.T) {
+		viper.Reset()
+		configFile, err := createTempConfig("")
+		require.NoError(t, err)
+		defer os.Remove(configFile)
+
+		cmd := setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", configFile})
+		err = cmd.Execute()
+		require.NoError(t, err)
+
+		assert.Equal(t, configFile, viper.GetString(RootCommandConfigFiles))
+	})
+
+	// New test case: Write mode with multiple config files (should fail)
+	t.Run("WriteModeWithMultipleConfigFiles", func(t *testing.T) {
+		viper.Reset()
+		configFile1, err := createTempConfig("")
+		require.NoError(t, err)
+		defer os.Remove(configFile1)
+
+		configFile2, err := createTempConfig("")
+		require.NoError(t, err)
+		defer os.Remove(configFile2)
+
+		cmd := setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", configFile1, "-c", configFile2})
+		err = cmd.Execute()
+		assert.Error(t, err) // Expect an error when trying to use multiple config files in write mode
+	})
+
+	// New test case: Write mode with key/value pairs or non-files (should fail)
+	t.Run("WriteModeWithKeyValueOrNonFiles", func(t *testing.T) {
+		viper.Reset()
+
+		// Test with key/value pair
+		cmd := setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", "DataDir=testdir"})
+		err := cmd.Execute()
+		assert.Error(t, err, "Write mode should fail with key/value pair")
+
+		// Test with non-file argument
+		cmd = setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", "not_a_file"})
+		err = cmd.Execute()
+		assert.Error(t, err, "Write mode should fail with non-file argument")
+
+		// Test with multiple key/value pairs
+		cmd = setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", "DataDir=testdir", "-c", "API.Host=localhost"})
+		err = cmd.Execute()
+		assert.Error(t, err, "Write mode should fail with multiple key/value pairs")
+
+		// Test with mix of file and key/value pair
+		configFile, err := createTempConfig("")
+		require.NoError(t, err)
+		defer os.Remove(configFile)
+
+		cmd = setupTestCommand(true)
+		cmd.SetArgs([]string{"-c", configFile, "-c", "DataDir=testdir"})
+		err = cmd.Execute()
+		assert.Error(t, err, "Write mode should fail with mix of file and key/value pair")
+	})
 }

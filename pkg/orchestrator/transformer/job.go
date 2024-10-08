@@ -69,8 +69,9 @@ func applyBatchTaskDefaults(defaults types.BatchTaskDefaultConfig, task *models.
 		task.ResourcesConfig.GPU = defaults.Resources.GPU
 	}
 	// if the user didn't provide a publisher, and a default transformer is set - use it.
-	if task.Publisher.IsEmpty() && !defaults.Publisher.Config.IsEmpty() {
-		task.Publisher = &defaults.Publisher.Config
+	specConfig := defaults.Publisher.ToSpecConfig()
+	if task.Publisher.IsEmpty() && !specConfig.IsEmpty() {
+		task.Publisher = &specConfig
 	}
 	if task.Timeouts.ExecutionTimeout <= 0 {
 		task.Timeouts.ExecutionTimeout = int64(time.Duration(defaults.Timeouts.ExecutionTimeout).Seconds())
@@ -110,6 +111,26 @@ func applyLongRunningTaskDefaults(defaults types.LongRunningTaskDefaultConfig, t
 func RequesterInfo(requesterNodeID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
 		job.Meta[models.MetaRequesterID] = requesterNodeID
+		return nil
+	}
+	return JobFn(f)
+}
+
+func OrchestratorInstanceID(instanceID string) JobTransformer {
+	f := func(ctx context.Context, job *models.Job) error {
+		if instanceID != "" {
+			job.Meta[models.MetaServerInstanceID] = instanceID
+		}
+		return nil
+	}
+	return JobFn(f)
+}
+
+func OrchestratorInstallationID(installationID string) JobTransformer {
+	f := func(ctx context.Context, job *models.Job) error {
+		if installationID != "" {
+			job.Meta[models.MetaServerInstallationID] = installationID
+		}
 		return nil
 	}
 	return JobFn(f)

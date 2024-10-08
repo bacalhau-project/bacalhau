@@ -145,7 +145,7 @@ var ProductionRequesterConfig = types.RequesterConfig{
 	HousekeepingBackgroundTaskInterval: types.Duration(30 * time.Second),
 	NodeRankRandomnessRange:            5,
 	OverAskForBidsFactor:               3,
-	FailureInjectionConfig: models.FailureInjectionRequesterConfig{
+	FailureInjectionConfig: models.FailureInjectionConfig{
 		IsBadActor: false,
 	},
 	EvaluationBroker: types.EvaluationBrokerConfig{

@@ -3,7 +3,6 @@ package wasm
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	observe "github.com/dylibso/observe-sdk/go"
@@ -59,7 +58,7 @@ func (t tracedRuntime) Instantiate(ctx context.Context, source []byte) (api.Modu
 			return nil, err
 		}
 	}
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.Instantiate")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.tracedRuntime.Instantiate")
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.Instantiate(ctx, source))
 	if module != nil {
@@ -78,7 +77,7 @@ func (t tracedRuntime) InstantiateWithConfig(ctx context.Context, source []byte,
 			return nil, err
 		}
 	}
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateWithConfig")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateWithConfig")
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateWithConfig(ctx, source, config))
 	if module != nil {
@@ -97,7 +96,7 @@ func (t tracedRuntime) CompileModule(ctx context.Context, binary []byte) (wazero
 			return nil, err
 		}
 	}
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.CompileModule")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.tracedRuntime.CompileModule")
 	defer span.End()
 	module, err := telemetry.RecordErrorOnSpanTwo[wazero.CompiledModule](span)(t.Runtime.CompileModule(ctx, binary))
 	if module != nil {
@@ -114,7 +113,7 @@ func (t tracedRuntime) InstantiateModule(
 	compiled wazero.CompiledModule,
 	config wazero.ModuleConfig,
 ) (api.Module, error) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateModule")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.tracedRuntime.InstantiateModule")
 	defer span.End()
 	m := compiled.(tracedCompiledModule)
 	module, err := telemetry.RecordErrorOnSpanTwo[api.Module](span)(t.Runtime.InstantiateModule(ctx, m.CompiledModule, config))
@@ -135,9 +134,9 @@ func (t tracedFunction) Call(ctx context.Context, params ...uint64) ([]uint64, e
 	if t.traceCtx != nil {
 		defer t.traceCtx.Finish()
 	}
-	ctx, span := system.NewSpan(
+	ctx, span := telemetry.NewSpan(
 		ctx,
-		system.GetTracer(),
+		telemetry.GetTracer(),
 		"pkg/executor/wasm.tracedFunction.Call",
 		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)
@@ -155,9 +154,9 @@ func (t tracedFunction) CallWithStack(ctx context.Context, stack []uint64) error
 	if t.traceCtx != nil {
 		defer t.traceCtx.Finish()
 	}
-	ctx, span := system.NewSpan(
+	ctx, span := telemetry.NewSpan(
 		ctx,
-		system.GetTracer(),
+		telemetry.GetTracer(),
 		"pkg/executor/wasm.tracedFunction.CallWithStack",
 		trace.WithAttributes(semconv.CodeFunction(t.Function.Definition().Name())),
 	)

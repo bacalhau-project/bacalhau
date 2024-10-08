@@ -232,22 +232,27 @@ func (cl Client) Stat(ctx context.Context, cid string) (*StatResult, error) {
 	}, nil
 }
 
-func (cl Client) GetCidSize(ctx context.Context, cid string) (uint64, error) {
-	path, err := pathFromCIDString(cid)
+func (cl Client) GetCidSize(ctx context.Context, cidStr string) (uint64, error) {
+	c, err := cid.Decode(cidStr)
 	if err != nil {
-		return 0, errors.Wrap(err, fmt.Sprintf("unable to create path from CID in call to GetCidSize(): %s", cid))
+		return 0, errors.Wrap(err, fmt.Sprintf("unable to decode CID in call to GetCidSize(): %s", cidStr))
 	}
 
-	stat, err := cl.API.Object().Stat(ctx, path)
+	content, err := cl.API.Dag().Get(ctx, c)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("unable to retrieve cid %s in call to GetCidSize(): %w", c, err)
 	}
 
-	return uint64(stat.CumulativeSize), nil
+	size, err := content.Size()
+	if err != nil {
+		return 0, fmt.Errorf("unable to determine cid %s size GetCidSize(): %w", c, err)
+	}
+
+	return size, nil
 }
 
 // HasCID returns true if the node has the given CID locally, whether pinned or not.
-func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
+func (cl Client) HasCID(ctx context.Context, cidStr string) (bool, error) {
 	// create an offline API that will not search the network for content.
 	offlineAPI, err := cl.API.WithOptions(
 		icoreoptions.Api.FetchBlocks(false),
@@ -256,13 +261,13 @@ func (cl Client) HasCID(ctx context.Context, cid string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	path, err := pathFromCIDString(cid)
+	c, err := cid.Decode(cidStr)
 	if err != nil {
-		return false, errors.Wrap(err, fmt.Sprintf("unable to create path from CID: %s", cid))
+		return false, errors.Wrap(err, fmt.Sprintf("unable to decode CID: %s", cidStr))
 	}
 	// attempt to stat the block in the local IPFS, if it's not found w/ the offlineAPI then the content
 	// is not local to the IPFS node.
-	_, err = offlineAPI.Block().Stat(ctx, path)
+	_, err = offlineAPI.Dag().Get(ctx, c)
 	if err != nil {
 		if ipld.IsNotFound(err) {
 			return false, nil

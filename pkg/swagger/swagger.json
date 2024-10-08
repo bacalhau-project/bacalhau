@@ -16,7 +16,7 @@
             "url": "https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE"
         }
     },
-    "host": "bootstrap.production.bacalhau.org:1234",
+    "host": "localhost:1234",
     "basePath": "/",
     "paths": {
         "/": {
@@ -51,6 +51,32 @@
                     "200": {
                         "description": "OK",
                         "schema": {
+                            "$ref": "#/definitions/apimodels.IsAliveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/config": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the current configuration of the node.",
+                "operationId": "agent/config",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Bacalhau"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
                             "type": "string"
                         }
                     }
@@ -71,7 +97,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.DebugInfo"
+                            "$ref": "#/definitions/models.DebugInfo"
                         }
                     },
                     "500": {
@@ -125,44 +151,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.GetVersionResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/compute/approve": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Compute Node"
-                ],
-                "summary": "Approves a job to be run on this compute node.",
-                "operationId": "apiServer/approver",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "string"
                         }
                     },
                     "500": {
@@ -433,7 +421,7 @@
                     },
                     {
                         "type": "integer",
-                        "description": "Number of history or exeuctions to fetch. Should be used in conjugation with include",
+                        "description": "Number of history or executions to fetch. Should be used in conjugation with include",
                         "name": "limit",
                         "in": "query"
                     }
@@ -598,7 +586,7 @@
                     "Orchestrator"
                 ],
                 "summary": "Returns the history of a job.",
-                "operationId": "orchestrator/jobHistory",
+                "operationId": "orchestrator/listHistory",
                 "parameters": [
                     {
                         "type": "string",
@@ -627,8 +615,8 @@
                     },
                     {
                         "type": "string",
-                        "description": "Only return history of this node ID",
-                        "name": "node_id",
+                        "description": "Token to get the next page of the history events",
+                        "name": "next_token",
                         "in": "query"
                     }
                 ],
@@ -656,22 +644,22 @@
         },
         "/api/v1/orchestrator/jobs/{id}/logs": {
             "get": {
-                "description": "Shows the output from the job specified by `id`\nThe output will be continuous until either, the client disconnects or the execution completes.",
+                "description": "Establishes a WebSocket connection to stream output from the job specified by `id`\nThe stream will continue until either the client disconnects or the execution completes",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
-                    "application/json"
+                    "application/octet-stream"
                 ],
                 "tags": [
                     "Orchestrator"
                 ],
-                "summary": "Displays the logs for a current job/execution",
+                "summary": "Streams the logs for a current job/execution via WebSocket",
                 "operationId": "orchestrator/logs",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID to get the job logs for",
+                        "description": "ID of the job to stream logs for",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -696,10 +684,10 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "101": {
+                        "description": "Switching Protocols to WebSocket",
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/models.ExecutionLog"
                         }
                     },
                     "400": {
@@ -999,7 +987,7 @@
         "apimodels.GetNodeResponse": {
             "type": "object",
             "properties": {
-                "node": {
+                "Node": {
                     "$ref": "#/definitions/models.NodeState"
                 }
             }
@@ -1053,6 +1041,14 @@
                 },
                 "value": {
                     "description": "For authorization schemes that only provide a single value, such as\nBasic, the single string value providing the credential",
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.IsAliveResponse": {
+            "type": "object",
+            "properties": {
+                "Status": {
                     "type": "string"
                 }
             }
@@ -1119,7 +1115,7 @@
                 "NextToken": {
                     "type": "string"
                 },
-                "nodes": {
+                "Nodes": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.NodeState"
@@ -1164,7 +1160,13 @@
         "apimodels.PutNodeRequest": {
             "type": "object",
             "properties": {
-                "action": {
+                "Action": {
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "NodeID": {
                     "type": "string"
                 },
                 "credential": {
@@ -1173,13 +1175,7 @@
                 "idempotencyToken": {
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
-                },
                 "namespace": {
-                    "type": "string"
-                },
-                "nodeID": {
                     "type": "string"
                 }
             }
@@ -1187,10 +1183,10 @@
         "apimodels.PutNodeResponse": {
             "type": "object",
             "properties": {
-                "error": {
+                "Error": {
                     "type": "string"
                 },
-                "success": {
+                "Success": {
                     "type": "boolean"
                 }
             }
@@ -1201,15 +1197,6 @@
                 "EvaluationID": {
                     "type": "string"
                 }
-            }
-        },
-        "model.DebugInfo": {
-            "type": "object",
-            "properties": {
-                "component": {
-                    "type": "string"
-                },
-                "info": {}
             }
         },
         "models.AllocatedResources": {
@@ -1295,6 +1282,15 @@
                         "type": "string"
                     }
                 }
+            }
+        },
+        "models.DebugInfo": {
+            "type": "object",
+            "properties": {
+                "component": {
+                    "type": "string"
+                },
+                "info": {}
             }
         },
         "models.Event": {
@@ -1433,6 +1429,30 @@
                 "ExecutionDesiredStatePending",
                 "ExecutionDesiredStateRunning",
                 "ExecutionDesiredStateStopped"
+            ]
+        },
+        "models.ExecutionLog": {
+            "type": "object",
+            "properties": {
+                "line": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.ExecutionLogType"
+                }
+            }
+        },
+        "models.ExecutionLogType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "executionLogTypeUnknown",
+                "ExecutionLogTypeSTDOUT",
+                "ExecutionLogTypeSTDERR"
             ]
         },
         "models.ExecutionStateType": {
@@ -1609,9 +1629,6 @@
         "models.JobHistory": {
             "type": "object",
             "properties": {
-                "Comment": {
-                    "type": "string"
-                },
                 "Event": {
                     "$ref": "#/definitions/models.Event"
                 },
@@ -1619,19 +1636,26 @@
                     "type": "string"
                 },
                 "ExecutionState": {
-                    "$ref": "#/definitions/models.StateChange-models_ExecutionStateType"
+                    "description": "Deprecated: Left for backward compatibility with v1.4.x clients",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.StateChange-models_ExecutionStateType"
+                        }
+                    ]
                 },
                 "JobID": {
                     "type": "string"
                 },
                 "JobState": {
-                    "$ref": "#/definitions/models.StateChange-models_JobStateType"
+                    "description": "TODO: remove with v1.5\nDeprecated: Left for backward compatibility with v1.4.x clients",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.StateChange-models_JobStateType"
+                        }
+                    ]
                 },
-                "NewRevision": {
+                "SeqNum": {
                     "type": "integer"
-                },
-                "NodeID": {
-                    "type": "string"
                 },
                 "Time": {
                     "type": "string"
@@ -1652,6 +1676,21 @@
                 "JobHistoryTypeUndefined",
                 "JobHistoryTypeJobLevel",
                 "JobHistoryTypeExecutionLevel"
+            ]
+        },
+        "models.JobSelectionDataLocality": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-comments": {
+                "Anywhere": "anywhere",
+                "Local": "local"
+            },
+            "x-enum-varnames": [
+                "Local",
+                "Anywhere"
             ]
         },
         "models.JobStateType": {
@@ -1683,7 +1722,7 @@
                     "type": "string"
                 },
                 "Operator": {
-                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and DoesNotExist.",
+                    "description": "operator represents a key's relationship to a set of values.\nValid operators are In, NotIn, Exists and KeyNotInImap.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/selection.Operator"
@@ -1691,7 +1730,7 @@
                     ]
                 },
                 "Values": {
-                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or DoesNotExist,\nthe values array must be empty. This array is replaced during a strategic",
+                    "description": "values is an array of string values. If the operator is In or NotIn,\nthe values array must be non-empty. If the operator is Exists or KeyNotInImap,\nthe values array must be empty. This array is replaced during a strategic",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -1920,6 +1959,13 @@
         "models.State-models_ExecutionDesiredStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"
@@ -1937,6 +1983,13 @@
         "models.State-models_ExecutionStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"
@@ -1954,6 +2007,13 @@
         "models.State-models_JobStateType": {
             "type": "object",
             "properties": {
+                "Details": {
+                    "description": "Details is a map of additional details about the state.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "Message": {
                     "description": "Message is a human readable message describing the state.",
                     "type": "string"
@@ -2106,6 +2166,296 @@
                 }
             }
         },
+        "types.API": {
+            "type": "object",
+            "properties": {
+                "Auth": {
+                    "$ref": "#/definitions/types.AuthConfig"
+                },
+                "Host": {
+                    "description": "Host specifies the hostname or IP address on which the API server listens or the client connects.",
+                    "type": "string"
+                },
+                "Port": {
+                    "description": "Port specifies the port number on which the API server listens or the client connects.",
+                    "type": "integer"
+                },
+                "TLS": {
+                    "$ref": "#/definitions/types.TLS"
+                }
+            }
+        },
+        "types.AuthConfig": {
+            "type": "object",
+            "properties": {
+                "AccessPolicyPath": {
+                    "description": "AccessPolicyPath is the path to a file or directory that will be loaded as\nthe policy to apply to all inbound API requests. If unspecified, a policy\nthat permits access to all API endpoints to both authenticated and\nunauthenticated users (the default as of v1.2.0) will be used.",
+                    "type": "string"
+                },
+                "Methods": {
+                    "description": "Methods maps \"method names\" to authenticator implementations. A method\nname is a human-readable string chosen by the person configuring the\nsystem that is shown to users to help them pick the authentication method\nthey want to use. There can be multiple usages of the same Authenticator\n*type* but with different configs and parameters, each identified with a\nunique method name.\n\nFor example, if an implementation wants to allow users to log in with\nGithub or Bitbucket, they might both use an authenticator implementation\nof type \"oidc\", and each would appear once on this provider with key /\nmethod name \"github\" and \"bitbucket\".\n\nBy default, only a single authentication method that accepts\nauthentication via client keys will be enabled.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/types.AuthenticatorConfig"
+                    }
+                }
+            }
+        },
+        "types.AuthenticatorConfig": {
+            "type": "object",
+            "properties": {
+                "PolicyPath": {
+                    "type": "string"
+                },
+                "Type": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.Bacalhau": {
+            "type": "object",
+            "properties": {
+                "API": {
+                    "$ref": "#/definitions/types.API"
+                },
+                "Compute": {
+                    "$ref": "#/definitions/types.Compute"
+                },
+                "DataDir": {
+                    "description": "DataDir specifies a location on disk where the bacalhau node will maintain state.",
+                    "type": "string"
+                },
+                "DisableAnalytics": {
+                    "type": "boolean"
+                },
+                "Engines": {
+                    "$ref": "#/definitions/types.EngineConfig"
+                },
+                "FeatureFlags": {
+                    "$ref": "#/definitions/types.FeatureFlags"
+                },
+                "InputSources": {
+                    "$ref": "#/definitions/types.InputSourcesConfig"
+                },
+                "JobAdmissionControl": {
+                    "$ref": "#/definitions/types.JobAdmissionControl"
+                },
+                "JobDefaults": {
+                    "$ref": "#/definitions/types.JobDefaults"
+                },
+                "Labels": {
+                    "description": "Labels are key-value pairs used to describe and categorize the nodes.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Logging": {
+                    "$ref": "#/definitions/types.Logging"
+                },
+                "NameProvider": {
+                    "description": "NameProvider specifies the method used to generate names for the node. One of: hostname, aws, gcp, uuid, puuid.",
+                    "type": "string"
+                },
+                "Orchestrator": {
+                    "$ref": "#/definitions/types.Orchestrator"
+                },
+                "Publishers": {
+                    "$ref": "#/definitions/types.PublishersConfig"
+                },
+                "ResultDownloaders": {
+                    "$ref": "#/definitions/types.ResultDownloaders"
+                },
+                "StrictVersionMatch": {
+                    "description": "StrictVersionMatch indicates whether to enforce strict version matching.",
+                    "type": "boolean"
+                },
+                "UpdateConfig": {
+                    "$ref": "#/definitions/types.UpdateConfig"
+                },
+                "WebUI": {
+                    "$ref": "#/definitions/types.WebUI"
+                }
+            }
+        },
+        "types.BatchJobDefaultsConfig": {
+            "type": "object",
+            "properties": {
+                "Priority": {
+                    "description": "Priority specifies the default priority allocated to a batch or ops job.\nThis value is used when the job hasn't explicitly set its priority requirement.",
+                    "type": "integer"
+                },
+                "Task": {
+                    "$ref": "#/definitions/types.BatchTaskDefaultConfig"
+                }
+            }
+        },
+        "types.BatchTaskDefaultConfig": {
+            "type": "object",
+            "properties": {
+                "Resources": {
+                    "$ref": "#/definitions/types.ResourcesConfig"
+                },
+                "Timeouts": {
+                    "$ref": "#/definitions/types.TaskTimeoutConfig"
+                },
+                "publisher": {
+                    "$ref": "#/definitions/models.SpecConfig"
+                }
+            }
+        },
+        "types.Cluster": {
+            "type": "object",
+            "properties": {
+                "Advertise": {
+                    "description": "Advertise specifies the address to advertise to other cluster members.",
+                    "type": "string"
+                },
+                "Host": {
+                    "description": "Host specifies the hostname or IP address for cluster communication.",
+                    "type": "string"
+                },
+                "Name": {
+                    "description": "Name specifies the unique identifier for this orchestrator cluster.",
+                    "type": "string"
+                },
+                "Peers": {
+                    "description": "Peers is a list of other cluster members to connect to on startup.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Port": {
+                    "description": "Port specifies the port number for cluster communication.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.Compute": {
+            "type": "object",
+            "properties": {
+                "AllocatedCapacity": {
+                    "$ref": "#/definitions/types.ResourceScaler"
+                },
+                "AllowListedLocalPaths": {
+                    "description": "AllowListedLocalPaths specifies a list of local file system paths that the compute node is allowed to access.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Auth": {
+                    "description": "Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.ComputeAuth"
+                        }
+                    ]
+                },
+                "Enabled": {
+                    "description": "Enabled indicates whether the compute node is active and available for job execution.",
+                    "type": "boolean"
+                },
+                "Heartbeat": {
+                    "$ref": "#/definitions/types.Heartbeat"
+                },
+                "Orchestrators": {
+                    "description": "Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "types.ComputeAuth": {
+            "type": "object",
+            "properties": {
+                "Token": {
+                    "description": "Token specifies the key for compute nodes to be able to access the orchestrator.",
+                    "type": "string"
+                }
+            }
+        },
+        "types.Docker": {
+            "type": "object",
+            "properties": {
+                "ManifestCache": {
+                    "description": "ManifestCache specifies the settings for the Docker manifest cache.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.DockerManifestCache"
+                        }
+                    ]
+                }
+            }
+        },
+        "types.DockerManifestCache": {
+            "type": "object",
+            "properties": {
+                "Refresh": {
+                    "description": "Refresh specifies the refresh interval for cache entries.",
+                    "type": "integer"
+                },
+                "Size": {
+                    "description": "Size specifies the size of the Docker manifest cache.",
+                    "type": "integer"
+                },
+                "TTL": {
+                    "description": "TTL specifies the time-to-live duration for cache entries.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.EngineConfig": {
+            "type": "object",
+            "properties": {
+                "Disabled": {
+                    "description": "Disabled specifies a list of engines that are disabled.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Types": {
+                    "$ref": "#/definitions/types.EngineConfigTypes"
+                }
+            }
+        },
+        "types.EngineConfigTypes": {
+            "type": "object",
+            "properties": {
+                "Docker": {
+                    "$ref": "#/definitions/types.Docker"
+                },
+                "WASM": {
+                    "$ref": "#/definitions/types.WASM"
+                }
+            }
+        },
+        "types.EvaluationBroker": {
+            "type": "object",
+            "properties": {
+                "MaxRetryCount": {
+                    "description": "MaxRetryCount specifies the maximum number of times an evaluation can be retried before being marked as failed.",
+                    "type": "integer"
+                },
+                "VisibilityTimeout": {
+                    "description": "VisibilityTimeout specifies how long an evaluation can be claimed before it's returned to the queue.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.FeatureFlags": {
+            "type": "object",
+            "properties": {
+                "ExecTranslation": {
+                    "description": "ExecTranslation enables the execution translation feature.",
+                    "type": "boolean"
+                }
+            }
+        },
         "types.FreeSpace": {
             "type": "object",
             "properties": {
@@ -2125,6 +2475,177 @@
                 }
             }
         },
+        "types.Heartbeat": {
+            "type": "object",
+            "properties": {
+                "InfoUpdateInterval": {
+                    "description": "InfoUpdateInterval specifies the time between updates of non-resource information to the orchestrator.",
+                    "type": "integer"
+                },
+                "Interval": {
+                    "description": "Interval specifies the time between heartbeat signals sent to the orchestrator.",
+                    "type": "integer"
+                },
+                "ResourceUpdateInterval": {
+                    "description": "ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.IPFSPublisher": {
+            "type": "object",
+            "properties": {
+                "Endpoint": {
+                    "description": "Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001",
+                    "type": "string"
+                }
+            }
+        },
+        "types.IPFSStorage": {
+            "type": "object",
+            "properties": {
+                "Endpoint": {
+                    "description": "Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001",
+                    "type": "string"
+                }
+            }
+        },
+        "types.InputSourcesConfig": {
+            "type": "object",
+            "properties": {
+                "Disabled": {
+                    "description": "Disabled specifies a list of storages that are disabled.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "MaxRetryCount": {
+                    "description": "ReadTimeout specifies the maximum number of attempts for reading from a storage.",
+                    "type": "integer"
+                },
+                "ReadTimeout": {
+                    "description": "ReadTimeout specifies the maximum time allowed for reading from a storage.",
+                    "type": "integer"
+                },
+                "Types": {
+                    "$ref": "#/definitions/types.InputSourcesTypes"
+                }
+            }
+        },
+        "types.InputSourcesTypes": {
+            "type": "object",
+            "properties": {
+                "IPFS": {
+                    "$ref": "#/definitions/types.IPFSStorage"
+                }
+            }
+        },
+        "types.IpfsDownloader": {
+            "type": "object",
+            "properties": {
+                "Endpoint": {
+                    "description": "Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001",
+                    "type": "string"
+                }
+            }
+        },
+        "types.JobAdmissionControl": {
+            "type": "object",
+            "properties": {
+                "AcceptNetworkedJobs": {
+                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.",
+                    "type": "boolean"
+                },
+                "Locality": {
+                    "description": "Locality specifies the locality of the job input data.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.JobSelectionDataLocality"
+                        }
+                    ]
+                },
+                "ProbeExec": {
+                    "description": "ProbeExec specifies the command to execute for probing job submission.",
+                    "type": "string"
+                },
+                "ProbeHTTP": {
+                    "description": "ProbeHTTP specifies the HTTP endpoint for probing job submission.",
+                    "type": "string"
+                },
+                "RejectStatelessJobs": {
+                    "description": "RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "types.JobDefaults": {
+            "type": "object",
+            "properties": {
+                "Batch": {
+                    "$ref": "#/definitions/types.BatchJobDefaultsConfig"
+                },
+                "Daemon": {
+                    "$ref": "#/definitions/types.LongRunningJobDefaultsConfig"
+                },
+                "Ops": {
+                    "$ref": "#/definitions/types.BatchJobDefaultsConfig"
+                },
+                "Service": {
+                    "$ref": "#/definitions/types.LongRunningJobDefaultsConfig"
+                }
+            }
+        },
+        "types.LocalPublisher": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "description": "Address specifies the endpoint the publisher serves on.",
+                    "type": "string"
+                },
+                "Port": {
+                    "description": "Port specifies the port the publisher serves on.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.Logging": {
+            "type": "object",
+            "properties": {
+                "Level": {
+                    "description": "Level sets the logging level. One of: trace, debug, info, warn, error, fatal, panic.",
+                    "type": "string"
+                },
+                "LogDebugInfoInterval": {
+                    "description": "LogDebugInfoInterval specifies the interval for logging debug information.",
+                    "type": "integer"
+                },
+                "Mode": {
+                    "description": "Mode specifies the logging mode. One of: default, json.",
+                    "type": "string"
+                }
+            }
+        },
+        "types.LongRunningJobDefaultsConfig": {
+            "type": "object",
+            "properties": {
+                "Priority": {
+                    "description": "Priority specifies the default priority allocated to a service or daemon job.\nThis value is used when the job hasn't explicitly set its priority requirement.",
+                    "type": "integer"
+                },
+                "Task": {
+                    "$ref": "#/definitions/types.LongRunningTaskDefaultConfig"
+                }
+            }
+        },
+        "types.LongRunningTaskDefaultConfig": {
+            "type": "object",
+            "properties": {
+                "Resources": {
+                    "$ref": "#/definitions/types.ResourcesConfig"
+                }
+            }
+        },
         "types.MountStatus": {
             "type": "object",
             "properties": {
@@ -2136,6 +2657,280 @@
                 },
                 "Used": {
                     "type": "integer"
+                }
+            }
+        },
+        "types.NodeManager": {
+            "type": "object",
+            "properties": {
+                "DisconnectTimeout": {
+                    "description": "DisconnectTimeout specifies how long to wait before considering a node disconnected.",
+                    "type": "integer"
+                },
+                "ManualApproval": {
+                    "description": "ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "types.Orchestrator": {
+            "type": "object",
+            "properties": {
+                "Advertise": {
+                    "description": "Advertise specifies URL to advertise to other servers.",
+                    "type": "string"
+                },
+                "Auth": {
+                    "description": "Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.OrchestratorAuth"
+                        }
+                    ]
+                },
+                "Cluster": {
+                    "$ref": "#/definitions/types.Cluster"
+                },
+                "Enabled": {
+                    "description": "Enabled indicates whether the orchestrator node is active and available for job submission.",
+                    "type": "boolean"
+                },
+                "EvaluationBroker": {
+                    "$ref": "#/definitions/types.EvaluationBroker"
+                },
+                "Host": {
+                    "description": "Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.",
+                    "type": "string"
+                },
+                "NodeManager": {
+                    "$ref": "#/definitions/types.NodeManager"
+                },
+                "Port": {
+                    "description": "Host specifies the port number on which the Orchestrator server listens for compute node connections.",
+                    "type": "integer"
+                },
+                "Scheduler": {
+                    "$ref": "#/definitions/types.Scheduler"
+                }
+            }
+        },
+        "types.OrchestratorAuth": {
+            "type": "object",
+            "properties": {
+                "Token": {
+                    "description": "Token specifies the key for compute nodes to be able to access the orchestrator",
+                    "type": "string"
+                }
+            }
+        },
+        "types.PublisherTypes": {
+            "type": "object",
+            "properties": {
+                "IPFS": {
+                    "$ref": "#/definitions/types.IPFSPublisher"
+                },
+                "Local": {
+                    "$ref": "#/definitions/types.LocalPublisher"
+                },
+                "S3": {
+                    "$ref": "#/definitions/types.S3Publisher"
+                }
+            }
+        },
+        "types.PublishersConfig": {
+            "type": "object",
+            "properties": {
+                "Disabled": {
+                    "description": "Disabled specifies a list of publishers that are disabled.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Types": {
+                    "$ref": "#/definitions/types.PublisherTypes"
+                }
+            }
+        },
+        "types.ResourceScaler": {
+            "type": "object",
+            "properties": {
+                "CPU": {
+                    "description": "CPU specifies the amount of CPU a compute node allocates for running jobs.\nIt can be expressed as a percentage (e.g., \"85%\") or a Kubernetes resource string (e.g., \"100m\").",
+                    "type": "string"
+                },
+                "Disk": {
+                    "description": "Disk specifies the amount of Disk space a compute node allocates for running jobs.\nIt can be expressed as a percentage (e.g., \"85%\") or a Kubernetes resource string (e.g., \"10Gi\").",
+                    "type": "string"
+                },
+                "GPU": {
+                    "description": "GPU specifies the amount of GPU a compute node allocates for running jobs.\nIt can be expressed as a percentage (e.g., \"85%\") or a Kubernetes resource string (e.g., \"1\").\nNote: When using percentages, the result is always rounded up to the nearest whole GPU.",
+                    "type": "string"
+                },
+                "Memory": {
+                    "description": "Memory specifies the amount of Memory a compute node allocates for running jobs.\nIt can be expressed as a percentage (e.g., \"85%\") or a Kubernetes resource string (e.g., \"1Gi\").",
+                    "type": "string"
+                }
+            }
+        },
+        "types.ResourcesConfig": {
+            "type": "object",
+            "properties": {
+                "CPU": {
+                    "description": "CPU specifies the default amount of CPU allocated to a task.\nIt uses Kubernetes resource string format (e.g., \"100m\" for 0.1 CPU cores).\nThis value is used when the task hasn't explicitly set its CPU requirement.",
+                    "type": "string"
+                },
+                "Disk": {
+                    "description": "Disk specifies the default amount of disk space allocated to a task.\nIt uses Kubernetes resource string format (e.g., \"1Gi\" for 1 gibibyte).\nThis value is used when the task hasn't explicitly set its disk space requirement.",
+                    "type": "string"
+                },
+                "GPU": {
+                    "description": "GPU specifies the default number of GPUs allocated to a task.\nIt uses Kubernetes resource string format (e.g., \"1\" for 1 GPU).\nThis value is used when the task hasn't explicitly set its GPU requirement.",
+                    "type": "string"
+                },
+                "Memory": {
+                    "description": "Memory specifies the default amount of memory allocated to a task.\nIt uses Kubernetes resource string format (e.g., \"256Mi\" for 256 mebibytes).\nThis value is used when the task hasn't explicitly set its memory requirement.",
+                    "type": "string"
+                }
+            }
+        },
+        "types.ResultDownloaders": {
+            "type": "object",
+            "properties": {
+                "Disabled": {
+                    "description": "Disabled is a list of downloaders that are disabled.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "Timeout": {
+                    "description": "Timeout specifies the maximum time allowed for a download operation.",
+                    "type": "integer"
+                },
+                "Types": {
+                    "$ref": "#/definitions/types.ResultDownloadersTypes"
+                }
+            }
+        },
+        "types.ResultDownloadersTypes": {
+            "type": "object",
+            "properties": {
+                "IPFS": {
+                    "$ref": "#/definitions/types.IpfsDownloader"
+                }
+            }
+        },
+        "types.S3Publisher": {
+            "type": "object",
+            "properties": {
+                "PreSignedURLDisabled": {
+                    "description": "PreSignedURLDisabled specifies whether pre-signed URLs are enabled for the S3 provider.",
+                    "type": "boolean"
+                },
+                "PreSignedURLExpiration": {
+                    "description": "PreSignedURLExpiration specifies the duration before a pre-signed URL expires.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.Scheduler": {
+            "type": "object",
+            "properties": {
+                "HousekeepingInterval": {
+                    "description": "HousekeepingInterval specifies how often to run housekeeping tasks.",
+                    "type": "integer"
+                },
+                "HousekeepingTimeout": {
+                    "description": "HousekeepingTimeout specifies the maximum time allowed for a single housekeeping run.",
+                    "type": "integer"
+                },
+                "QueueBackoff": {
+                    "description": "QueueBackoff specifies the time to wait before retrying a failed job.",
+                    "type": "integer"
+                },
+                "WorkerCount": {
+                    "description": "WorkerCount specifies the number of concurrent workers for job scheduling.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.TLS": {
+            "type": "object",
+            "properties": {
+                "AutoCert": {
+                    "description": "AutoCert specifies the domain for automatic certificate generation.",
+                    "type": "string"
+                },
+                "AutoCertCachePath": {
+                    "description": "AutoCertCachePath specifies the directory to cache auto-generated certificates.",
+                    "type": "string"
+                },
+                "CAFile": {
+                    "description": "CAFile specifies the path to the Certificate Authority file.",
+                    "type": "string"
+                },
+                "CertFile": {
+                    "description": "CertFile specifies the path to the TLS certificate file.",
+                    "type": "string"
+                },
+                "Insecure": {
+                    "description": "Insecure allows insecure TLS connections (e.g., self-signed certificates).",
+                    "type": "boolean"
+                },
+                "KeyFile": {
+                    "description": "KeyFile specifies the path to the TLS private key file.",
+                    "type": "string"
+                },
+                "SelfSigned": {
+                    "description": "SelfSigned indicates whether to use a self-signed certificate.",
+                    "type": "boolean"
+                },
+                "UseTLS": {
+                    "description": "UseTLS indicates whether to use TLS for client connections.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "types.TaskTimeoutConfig": {
+            "type": "object",
+            "properties": {
+                "ExecutionTimeout": {
+                    "description": "ExecutionTimeout is the maximum time allowed for task execution",
+                    "type": "integer"
+                },
+                "TotalTimeout": {
+                    "description": "TotalTimeout is the maximum total time allowed for a task",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.UpdateConfig": {
+            "type": "object",
+            "properties": {
+                "Interval": {
+                    "description": "Interval specifies the time between update checks, when set to 0 update checks are not performed.",
+                    "type": "integer"
+                }
+            }
+        },
+        "types.WASM": {
+            "type": "object"
+        },
+        "types.WebUI": {
+            "type": "object",
+            "properties": {
+                "Backend": {
+                    "description": "Backend specifies the address and port of the backend API server.\nIf empty, the Web UI will use the same address and port as the API server.",
+                    "type": "string"
+                },
+                "Enabled": {
+                    "description": "Enabled indicates whether the Web UI is enabled.",
+                    "type": "boolean"
+                },
+                "Listen": {
+                    "description": "Listen specifies the address and port on which the Web UI listens.",
+                    "type": "string"
                 }
             }
         }

@@ -5,11 +5,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/rs/zerolog/log"
-	"go.uber.org/atomic"
+)
+
+const (
+	defaultDequeueTimeout     = 5 * time.Second
+	defaultDequeueBaseBackoff = 1 * time.Second
+	defaultDequeueMaxBackoff  = 30 * time.Second
 )
 
 const (
@@ -26,10 +33,10 @@ type WorkerParams struct {
 	SchedulerProvider SchedulerProvider
 	// EvaluationBroker is the broker used for handling evaluations.
 	EvaluationBroker EvaluationBroker
-	// DequeueTimeout is the maximum duration for dequeueing an evaluation.
-	DequeueTimeout time.Duration
-	// DequeueFailureBackoff defines the backoff strategy when dequeueing an evaluation fails.
-	DequeueFailureBackoff backoff.Backoff
+	// dequeueTimeout is the maximum duration for dequeueing an evaluation.
+	dequeueTimeout time.Duration
+	// dequeueFailureBackoff defines the backoff strategy when dequeueing an evaluation fails.
+	dequeueFailureBackoff backoff.Backoff
 }
 
 // Worker is a long-running process that dequeues evaluations, invokes the scheduler
@@ -49,11 +56,18 @@ type Worker struct {
 
 // NewWorker returns a new Worker instance.
 func NewWorker(params WorkerParams) *Worker {
+	if params.dequeueTimeout == 0 {
+		params.dequeueTimeout = defaultDequeueTimeout
+	}
+	if params.dequeueFailureBackoff == nil {
+		params.dequeueFailureBackoff = backoff.NewExponential(defaultDequeueBaseBackoff, defaultDequeueMaxBackoff)
+	}
+
 	return &Worker{
 		schedulerProvider:     params.SchedulerProvider,
 		evaluationBroker:      params.EvaluationBroker,
-		dequeueTimeout:        params.DequeueTimeout,
-		dequeueFailureBackoff: params.DequeueFailureBackoff,
+		dequeueTimeout:        params.dequeueTimeout,
+		dequeueFailureBackoff: params.dequeueFailureBackoff,
 		status:                *atomic.NewString(WorkerStatusInit),
 	}
 }

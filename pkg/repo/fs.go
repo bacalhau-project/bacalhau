@@ -2,20 +2,19 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
@@ -85,7 +84,7 @@ func (fsr *FsRepo) Version() (int, error) {
 }
 
 // Init initializes a new repo, returning an error if the repo already exists.
-func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
+func (fsr *FsRepo) Init() error {
 	if exists, err := fsr.Exists(); err != nil {
 		return err
 	} else if exists {
@@ -94,29 +93,29 @@ func (fsr *FsRepo) Init(cfg types.Bacalhau) error {
 
 	log.Info().Msgf("Initializing repo at %s", fsr.path)
 
-	// if it takes longer than 5 seconds to get the node name from a provider, fail
-	nameCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	nodeName, err := getNodeID(nameCtx, cfg.NameProvider)
-	if err != nil {
-		return err
-	}
-
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
-		return err
+		return bacerrors.New("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
+			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
+				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
+				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+
+				"\tIf present, ensure the config file in %s contains a valid DataDir field path", filepath.Join(fsr.path, config.DefaultFileName))
 	}
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
-	if err := fsr.WriteVersion(Version4); err != nil {
-		return fmt.Errorf("failed to persist repo version: %w", err)
+	// initialize repo's system metadata
+	if err := fsr.writeMetadata(&SystemMetadata{
+		RepoVersion: Version4,
+		InstanceID:  GenerateInstanceID(),
+	}); err != nil {
+		return fmt.Errorf("failed to persist system metadata: %w", err)
+	}
+	if err := fsr.WriteLegacyVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist legacy repo version: %w", err)
 	}
 
-	if err := fsr.WriteNodeName(nodeName); err != nil {
-		return fmt.Errorf("failed to persist node name: %w", err)
-	}
 	return nil
 }
 
@@ -132,6 +131,15 @@ func (fsr *FsRepo) Open() error {
 	if fsr.Migrations != nil {
 		if err := fsr.Migrations.Migrate(*fsr); err != nil {
 			return fmt.Errorf("failed to migrate repo: %w", err)
+		}
+	}
+
+	// check if an instanceID exists persisting one if not found.
+	// never fail here as this isn't critical to node start up.
+	if instanceID := fsr.InstanceID(); instanceID == "" {
+		// this case will happen when a user migrated from a repo prior to instanceID existing.
+		if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
+			log.Debug().Err(err).Msgf("failed to write instanceID")
 		}
 	}
 
@@ -215,26 +223,4 @@ func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
 // join joins path elements with fsr.path
 func (fsr *FsRepo) join(paths ...string) string {
 	return filepath.Join(append([]string{fsr.path}, paths...)...)
-}
-
-func getNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
-	nodeNameProviders := map[string]idgen.NodeNameProvider{
-		"hostname": idgen.HostnameProvider{},
-		"aws":      idgen.NewAWSNodeNameProvider(),
-		"gcp":      idgen.NewGCPNodeNameProvider(),
-		"uuid":     idgen.UUIDNodeNameProvider{},
-		"puuid":    idgen.PUUIDNodeNameProvider{},
-	}
-	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
-	if !ok {
-		return "", fmt.Errorf(
-			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
-	}
-
-	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return nodeName, nil
 }

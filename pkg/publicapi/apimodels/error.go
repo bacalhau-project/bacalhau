@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
 
-// apierror represents a standardized error response for the api.
+// APIError represents a standardized error response for the api.
 //
 // it encapsulates:
 //   - an http status code
@@ -30,20 +32,20 @@ import (
 type APIError struct {
 	// httpstatuscode is the http status code associated with this error.
 	// it should correspond to standard http status codes (e.g., 400, 404, 500).
-	HTTPStatusCode int `json:"-"`
+	HTTPStatusCode int `json:"Status"`
 
 	// message is a short, human-readable description of the error.
 	// it should be concise and provide a clear indication of what went wrong.
-	Message string `json:"message"`
+	Message string `json:"Message"`
 
 	// RequestID is the request ID of the request that caused the error.
-	RequestID string `json:"-"`
+	RequestID string `json:"RequestID"`
 
 	// Code is the error code of the error.
-	Code string `json:"code"`
+	Code string `json:"Code"`
 
 	// Component is the component that caused the error.
-	Component string `json:"component"`
+	Component string `json:"Component"`
 }
 
 // NewAPIError creates a new APIError with the given HTTP status code and message.
@@ -54,56 +56,9 @@ func NewAPIError(statusCode int, message string) *APIError {
 	}
 }
 
-// NewBadRequestError creates an APIError for Bad Request (400) errors.
-func NewBadRequestError(message string) *APIError {
-	return NewAPIError(http.StatusBadRequest, message)
-}
-
 // NewUnauthorizedError creates an APIError for Unauthorized (401) errors.
 func NewUnauthorizedError(message string) *APIError {
 	return NewAPIError(http.StatusUnauthorized, message)
-}
-
-// NewForbiddenError creates an APIError for Forbidden (403) errors.
-func NewForbiddenError(message string) *APIError {
-	return NewAPIError(http.StatusForbidden, message)
-}
-
-// NewNotFoundError creates an APIError for Not Found (404) errors.
-func NewNotFoundError(message string) *APIError {
-	return NewAPIError(http.StatusNotFound, message)
-}
-
-// NewConflictError creates an APIError for Conflict (409) errors.
-func NewConflictError(message string) *APIError {
-	return NewAPIError(http.StatusConflict, message)
-}
-
-// NewInternalServerError creates an APIError for Internal Server Error (500) errors.
-func NewInternalServerError(message string) *APIError {
-	return NewAPIError(http.StatusInternalServerError, message)
-}
-
-func NewJobNotFound(jobID string) *APIError {
-	return NewAPIError(http.StatusNotFound, fmt.Sprintf("job id %s not found", jobID))
-}
-
-// IsNotFound checks if the error is an APIError with a Not Found status.
-func IsNotFound(err error) bool {
-	apiErr, ok := err.(*APIError)
-	return ok && apiErr.HTTPStatusCode == http.StatusNotFound
-}
-
-// IsBadRequest checks if the error is an APIError with a Bad Request status.
-func IsBadRequest(err error) bool {
-	apiErr, ok := err.(*APIError)
-	return ok && apiErr.HTTPStatusCode == http.StatusBadRequest
-}
-
-// IsInternalServerError checks if the error is an APIError with an Internal Server Error status.
-func IsInternalServerError(err error) bool {
-	apiErr, ok := err.(*APIError)
-	return ok && apiErr.HTTPStatusCode == http.StatusInternalServerError
 }
 
 // Error implements the error interface, allowing APIError to be used as a standard Go error.
@@ -137,4 +92,23 @@ func FromHttpResponse(resp *http.Response) (*APIError, error) {
 	}
 
 	return &apiErr, nil
+}
+
+// FromBacError converts a bacerror.Error to an APIError
+func FromBacError(err bacerrors.Error) *APIError {
+	return &APIError{
+		HTTPStatusCode: err.HTTPStatusCode(),
+		Message:        err.Error(),
+		Code:           string(err.Code()),
+		Component:      err.Component(),
+	}
+}
+
+// ToBacError converts an APIError to a bacerror.Error
+func (e *APIError) ToBacError() bacerrors.Error {
+	return bacerrors.New(e.Error()).
+		WithHTTPStatusCode(e.HTTPStatusCode).
+		WithCode(bacerrors.Code(e.Code)).
+		WithComponent(e.Component).
+		WithDetails(map[string]string{"request_id": e.RequestID})
 }

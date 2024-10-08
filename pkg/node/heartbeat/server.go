@@ -2,26 +2,41 @@ package heartbeat
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"time"
 
 	"github.com/benbjohnson/clock"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+)
+
+const (
+	// heartbeatCheckFrequencyFactor is the factor by which the disconnectedAfter time
+	// will be divided to determine the frequency of the heartbeat check.
+	heartbeatCheckFrequencyFactor = 3
+	minHeartbeatCheckFrequency    = 1 * time.Second
+	maxHeartbeatCheckFrequency    = 30 * time.Second
 )
 
 type HeartbeatServerParams struct {
+	NodeID                string
+	Client                *nats.Conn
 	Clock                 clock.Clock
-	CheckFrequency        time.Duration
 	NodeDisconnectedAfter time.Duration
 }
 
 type HeartbeatServer struct {
+	nodeID            string
 	clock             clock.Clock
+	legacySubscriber  *natsPubSub.PubSub[Heartbeat]
 	pqueue            *collections.HashedPriorityQueue[string, TimestampedHeartbeat]
 	livenessMap       *concurrency.StripedMap[models.NodeConnectionState]
 	checkFrequency    time.Duration
@@ -34,6 +49,14 @@ type TimestampedHeartbeat struct {
 }
 
 func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
+	legacySubscriber, err := natsPubSub.NewPubSub[Heartbeat](natsPubSub.PubSubParams{
+		Subject: legacyHeartbeatTopic,
+		Conn:    params.Client,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	pqueue := collections.NewHashedPriorityQueue[string, TimestampedHeartbeat](
 		func(h TimestampedHeartbeat) string {
 			return h.NodeID
@@ -46,21 +69,41 @@ func NewServer(params HeartbeatServerParams) (*HeartbeatServer, error) {
 		clk = clock.New()
 	}
 
+	// We'll set the frequency of the heartbeat check to be 1/3 of the disconnected
+	heartbeatCheckFrequency := params.NodeDisconnectedAfter / heartbeatCheckFrequencyFactor
+	if heartbeatCheckFrequency < minHeartbeatCheckFrequency {
+		heartbeatCheckFrequency = minHeartbeatCheckFrequency
+	} else if heartbeatCheckFrequency > maxHeartbeatCheckFrequency {
+		heartbeatCheckFrequency = maxHeartbeatCheckFrequency
+	}
+
 	return &HeartbeatServer{
+		nodeID:            params.NodeID,
 		clock:             clk,
+		legacySubscriber:  legacySubscriber,
 		pqueue:            pqueue,
 		livenessMap:       concurrency.NewStripedMap[models.NodeConnectionState](0), // no particular stripe count for now
-		checkFrequency:    params.CheckFrequency,
+		checkFrequency:    heartbeatCheckFrequency,
 		disconnectedAfter: params.NodeDisconnectedAfter,
 	}, nil
 }
 
 func (h *HeartbeatServer) Start(ctx context.Context) error {
-	log.Ctx(ctx).Info().Msg("Heartbeat server started")
+	if err := h.legacySubscriber.Subscribe(ctx, h); err != nil {
+		return err
+	}
 
 	tickerStartCh := make(chan struct{})
 
 	go func(ctx context.Context) {
+		defer func() {
+			if err := h.legacySubscriber.Close(ctx); err != nil && !errors.Is(err, nats.ErrConnectionClosed) {
+				log.Ctx(ctx).Error().Err(err).Msg("Error during heartbeat server shutdown")
+			} else {
+				log.Ctx(ctx).Debug().Msg("Heartbeat server shutdown")
+			}
+		}()
+
 		ticker := h.clock.Ticker(h.checkFrequency)
 		tickerStartCh <- struct{}{}
 		defer ticker.Stop()
@@ -70,40 +113,61 @@ func (h *HeartbeatServer) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				h.CheckQueue(ctx)
+				h.checkQueue(ctx)
 			}
 		}
 	}(ctx)
 
 	// Wait for the ticker to be created before returning
 	<-tickerStartCh
+	log.Ctx(ctx).Debug().Msg("Heartbeat server started")
 
 	return nil
 }
 
-// CheckQueue will check the queue for old heartbeats that might make a node's
+// checkQueue will check the queue for old heartbeats that might make a node's
 // liveness either unhealthy or unknown, and will update the node's status accordingly.
-func (h *HeartbeatServer) CheckQueue(ctx context.Context) {
-	// These are the timestamps, below which we'll consider the item in one of those two
-	// states
-	nowStamp := h.clock.Now().UTC().Unix()
-	disconnectedUnder := nowStamp - int64(h.disconnectedAfter.Seconds())
+// This method is not thread-safe and should be called from a single goroutine.
+func (h *HeartbeatServer) checkQueue(ctx context.Context) {
+	// Calculate the timestamp threshold for considering a node as disconnected
+	disconnectedUnder := h.clock.Now().Add(-h.disconnectedAfter).UTC().Unix()
 
 	for {
-		// Dequeue anything older than the unknown timestamp
-		item := h.pqueue.DequeueWhere(func(item TimestampedHeartbeat) bool {
-			return item.Timestamp < disconnectedUnder
-		})
+		// Peek at the next (oldest) item in the queue
+		peek := h.pqueue.Peek()
 
-		// We haven't found anything old enough yet. We can stop the loop and wait
-		// for the next cycle.
-		if item == nil {
+		// If the queue is empty, we're done
+		if peek == nil {
 			break
 		}
 
-		if item.Value.Timestamp < disconnectedUnder {
-			h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
+		// If the oldest item is recent enough, we're done
+		log.Ctx(ctx).Trace().
+			Dur("LastHeartbeatAge", h.clock.Now().Sub(time.Unix(peek.Value.Timestamp, 0))).
+			Msgf("Peeked at %+v", peek)
+		if peek.Value.Timestamp >= disconnectedUnder {
+			break
 		}
+
+		// Dequeue the item and mark the node as disconnected
+		item := h.pqueue.Dequeue()
+		if item == nil || item.Value.Timestamp >= disconnectedUnder {
+			// This should never happen, but we'll check just in case
+			log.Warn().Msgf("Unexpected item dequeued: %+v didn't match previously peeked item: %+v", item, peek)
+			continue
+		}
+
+		if item.Value.NodeID == h.nodeID {
+			// We don't want to mark ourselves as disconnected
+			continue
+		}
+
+		log.Ctx(ctx).Debug().
+			Str("NodeID", item.Value.NodeID).
+			Int64("LastHeartbeat", item.Value.Timestamp).
+			Dur("LastHeartbeatAge", h.clock.Now().Sub(time.Unix(item.Value.Timestamp, 0))).
+			Msg("Marking node as disconnected")
+		h.markNodeAs(item.Value.NodeID, models.NodeStates.DISCONNECTED)
 	}
 }
 
@@ -115,7 +179,10 @@ func (h *HeartbeatServer) markNodeAs(nodeID string, state models.NodeConnectionS
 
 // UpdateNode will add the liveness for specific nodes to their NodeInfo
 func (h *HeartbeatServer) UpdateNodeInfo(state *models.NodeState) {
-	if liveness, ok := h.livenessMap.Get(state.Info.NodeID); ok {
+	if state.Info.NodeID == h.nodeID {
+		// We don't want to mark ourselves as disconnected
+		state.Connection = models.NodeStates.CONNECTED
+	} else if liveness, ok := h.livenessMap.Get(state.Info.NodeID); ok {
 		state.Connection = liveness
 	} else {
 		// We've never seen this, so we'll mark it as unknown
@@ -146,43 +213,28 @@ func (h *HeartbeatServer) ShouldProcess(ctx context.Context, message *ncl.Messag
 	return message.Metadata.Get(ncl.KeyMessageType) == HeartbeatMessageType
 }
 
+// Handle will handle a message received through the legacy heartbeat topic
+func (h *HeartbeatServer) Handle(ctx context.Context, heartbeat Heartbeat) error {
+	timestamp := h.clock.Now().UTC().Unix()
+	th := TimestampedHeartbeat{Heartbeat: heartbeat, Timestamp: timestamp}
+	log.Ctx(ctx).Trace().Msgf("Enqueueing heartbeat from %s with seq %d. %+v", th.NodeID, th.Sequence, th)
+
+	// We'll enqueue the heartbeat message with the current timestamp in reverse priority so that
+	// older heartbeats are dequeued first.
+	h.pqueue.Enqueue(th, -timestamp)
+	h.markNodeAs(heartbeat.NodeID, models.NodeStates.HEALTHY)
+	return nil
+}
+
+// HandleMessage will handle a message received through ncl and will call the Handle method
 func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Message) error {
 	heartbeat, ok := message.Payload.(*Heartbeat)
 	if !ok {
 		return ncl.NewErrUnexpectedPayloadType(
 			reflect.TypeOf(Heartbeat{}).String(), reflect.TypeOf(message.Payload).String())
 	}
-	log.Ctx(ctx).Trace().Msgf("heartbeat received from %s", heartbeat.NodeID)
-
-	timestamp := h.clock.Now().UTC().Unix()
-
-	if h.pqueue.Contains(heartbeat.NodeID) {
-		// If we think we already have a heartbeat from this node, we'll update the
-		// timestamp of the entry so it is re-prioritized in the queue by dequeuing
-		// and re-enqueuing it (this will ensure it is heapified correctly).
-		result := h.pqueue.DequeueWhere(func(item TimestampedHeartbeat) bool {
-			return item.NodeID == heartbeat.NodeID
-		})
-
-		if result == nil {
-			log.Ctx(ctx).Warn().Msgf("consistency error in heartbeat heap, node %s not found", heartbeat.NodeID)
-			return nil
-		}
-
-		log.Ctx(ctx).Trace().Msgf("Re-enqueueing heartbeat from %s", heartbeat.NodeID)
-		result.Value.Timestamp = timestamp
-		h.pqueue.Enqueue(result.Value, timestamp)
-	} else {
-		log.Ctx(ctx).Trace().Msgf("Enqueueing heartbeat from %s", heartbeat.NodeID)
-
-		// We'll enqueue the heartbeat message with the current timestamp. The older
-		// the entry, the lower the timestamp (trending to 0) and the higher the priority.
-		h.pqueue.Enqueue(TimestampedHeartbeat{Heartbeat: *heartbeat, Timestamp: timestamp}, timestamp)
-	}
-
-	h.markNodeAs(heartbeat.NodeID, models.NodeStates.HEALTHY)
-
-	return nil
+	return h.Handle(ctx, *heartbeat)
 }
 
 var _ ncl.MessageHandler = (*HeartbeatServer)(nil)
+var _ pubsub.Subscriber[Heartbeat] = (*HeartbeatServer)(nil)

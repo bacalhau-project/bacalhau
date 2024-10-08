@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -30,14 +29,13 @@ func RunTestCase(
 	ctx := context.Background()
 	job := testCase.Job
 
-	devstackOptions := &devstack.DevStackOptions{}
+	var devstackOptions []devstack.ConfigOption
 	if testCase.Stack != nil && testCase.Stack.DevStackOptions != nil {
 		devstackOptions = testCase.Stack.DevStackOptions
 	}
-	devstackOptions.NumberOfHybridNodes = testNodeCount
+	devstackOptions = append(devstackOptions, devstack.WithNumberOfHybridNodes(testNodeCount))
 
-	fsr, c := setup.SetupBacalhauRepoForTesting(t)
-	stack := testutils.Setup(ctx, t, fsr, c, devstackOptions.Options()...)
+	stack := testutils.Setup(ctx, t, devstackOptions...)
 	executor, err := stack.Nodes[0].ComputeNode.Executors.Get(ctx, job.Task().Engine.Type)
 	require.NoError(t, err)
 

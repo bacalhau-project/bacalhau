@@ -12,6 +12,7 @@ import (
 	bolt "go.etcd.io/bbolt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
@@ -81,11 +82,8 @@ type Store struct {
 func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	log.Ctx(ctx).Debug().Msgf("creating new bbolt database at %s", dbPath)
 
-	database, err := bolt.Open(dbPath, defaultDatabasePermissions, &bolt.Options{Timeout: 2 * time.Second})
+	database, err := boltdblib.Open(dbPath)
 	if err != nil {
-		if errors.Is(err, bolt.ErrTimeout) {
-			return nil, fmt.Errorf("timed out while opening database, file %q might be in use", dbPath)
-		}
 		return nil, err
 	}
 
@@ -114,6 +112,10 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 		boltdb_watcher.WithCheckpointBucket(checkpointsBucket),
 		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
 	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event store: %w", err)
+	}
 
 	return &Store{
 		database:   database,

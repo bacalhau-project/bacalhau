@@ -1,11 +1,12 @@
 package orchestrator
 
 import (
+	"github.com/labstack/echo/v4"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
-	"github.com/labstack/echo/v4"
 )
 
 type EndpointParams struct {
@@ -38,7 +39,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/jobs", e.listJobs)
 	g.GET("/jobs/:id", e.getJob)
 	g.DELETE("/jobs/:id", e.stopJob)
-	g.GET("/jobs/:id/history", e.jobHistory)
+	g.GET("/jobs/:id/history", e.listHistory)
 	g.GET("/jobs/:id/executions", e.jobExecutions)
 	g.GET("/jobs/:id/results", e.jobResults)
 	g.GET("/jobs/:id/logs", e.logs)

@@ -6,12 +6,14 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/benbjohnson/clock"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -41,17 +43,18 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	var err error
 	s.clock = clock.NewMock()
 
+	// Setup NATS server and client
+	s.natsServer, s.natsConn = testutils.StartNats(s.T())
+
 	// Setup heartbeat server
 	s.heartbeatServer, err = NewServer(HeartbeatServerParams{
+		NodeID:                "server-node",
 		Clock:                 s.clock,
-		CheckFrequency:        1 * time.Second,
-		NodeDisconnectedAfter: 10 * time.Second,
+		Client:                s.natsConn,
+		NodeDisconnectedAfter: 5 * time.Second,
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.heartbeatServer.Start(context.Background()))
-
-	// setup nats server and client
-	s.natsServer, s.natsConn = testutils.StartNats(s.T())
 
 	// Setup NATS publisher and subscriber
 	s.messageSerDeRegistry = ncl.NewMessageSerDeRegistry()
@@ -70,7 +73,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 	s.Require().NoError(s.subscriber.Subscribe(TestTopic))
-
+	s.Require().NoError(s.subscriber.Subscribe(legacyHeartbeatTopic))
 }
 
 func (s *HeartbeatTestSuite) TearDownTest() {
@@ -85,6 +88,56 @@ func (s *HeartbeatTestSuite) TearDownTest() {
 	}
 }
 
+func (s *HeartbeatTestSuite) TestUpdateNodeInfo() {
+	testCases := []struct {
+		name            string
+		nodeID          string
+		initialLiveness models.NodeConnectionState
+		expectedState   models.NodeConnectionState
+		hasInitialState bool
+	}{
+		{
+			name:            "Own node",
+			nodeID:          s.heartbeatServer.nodeID,
+			expectedState:   models.NodeStates.CONNECTED,
+			hasInitialState: false,
+		},
+		{
+			name:            "Known node connected",
+			nodeID:          "another-node",
+			initialLiveness: models.NodeStates.CONNECTED,
+			expectedState:   models.NodeStates.CONNECTED,
+			hasInitialState: true,
+		},
+		{
+			name:            "Known node unhealthy",
+			nodeID:          "another-node",
+			initialLiveness: models.NodeStates.DISCONNECTED,
+			expectedState:   models.NodeStates.DISCONNECTED,
+			hasInitialState: true,
+		},
+		{
+			name:            "Unknown node no state",
+			nodeID:          "another-node",
+			expectedState:   models.NodeStates.DISCONNECTED,
+			hasInitialState: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.T().Run(tc.name, func(t *testing.T) {
+			if tc.hasInitialState {
+				s.heartbeatServer.markNodeAs(tc.nodeID, tc.initialLiveness)
+			}
+
+			nodeState := &models.NodeState{Info: models.NodeInfo{NodeID: tc.nodeID}}
+			s.heartbeatServer.UpdateNodeInfo(nodeState)
+
+			s.Equal(tc.expectedState, nodeState.Connection, "expected %s, got %s", tc.expectedState, nodeState.Connection)
+		})
+	}
+}
+
 func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 	ctx := context.Background()
 
@@ -94,6 +147,7 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 		heartbeats     []time.Duration
 		expectedState  models.NodeConnectionState
 		waitUntil      time.Duration
+		isOwnNode      bool
 	}
 
 	testcases := []testcase{
@@ -119,11 +173,23 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 			expectedState:  models.NodeStates.DISCONNECTED,
 			waitUntil:      time.Duration(10 * time.Second),
 		},
+		{
+			name:           "own node",
+			includeInitial: true,
+			heartbeats:     []time.Duration{time.Duration(30 * time.Second)},
+			expectedState:  models.NodeStates.HEALTHY,
+			waitUntil:      time.Duration(30 * time.Second),
+			isOwnNode:      true,
+		},
 	}
 
 	for i, tc := range testcases {
 		nodeID := "node-" + strconv.Itoa(i)
-		client := NewClient(nodeID, s.publisher)
+		if tc.isOwnNode {
+			nodeID = s.heartbeatServer.nodeID
+		}
+		client, err := NewClient(s.natsConn, nodeID, s.publisher)
+		s.Require().NoError(err)
 
 		s.T().Run(tc.name, func(t *testing.T) {
 			var seq uint64 = 1
@@ -153,11 +219,131 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 func (s *HeartbeatTestSuite) TestSendHeartbeatError() {
 	ctx := context.Background()
-	client := NewClient("test-node", s.publisher)
+	client, err := NewClient(s.natsConn, "test-node", s.publisher)
+	s.Require().NoError(err)
 
 	// Close the NATS connection to force an error
 	s.natsConn.Close()
 
-	err := client.SendHeartbeat(ctx, 1)
+	err = client.SendHeartbeat(ctx, 1)
 	s.Error(err)
+}
+
+func (s *HeartbeatTestSuite) TestConcurrentHeartbeats() {
+	ctx := context.Background()
+	numNodes := 10
+	numHeartbeatsPerNode := 100
+
+	var wg sync.WaitGroup
+	wg.Add(numNodes)
+
+	for i := 0; i < numNodes; i++ {
+		go func(nodeID string) {
+			defer wg.Done()
+			client, err := NewClient(s.natsConn, nodeID, s.publisher)
+			require.NoError(s.T(), err)
+
+			for j := 0; j < numHeartbeatsPerNode; j++ {
+				s.Require().NoError(client.SendHeartbeat(ctx, uint64(j)))
+				time.Sleep(time.Millisecond) // Small delay to simulate real-world scenario
+			}
+		}(fmt.Sprintf("node-%d", i))
+	}
+
+	wg.Wait()
+
+	// Allow time for all heartbeats to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify that all nodes are marked as HEALTHY
+	for i := 0; i < numNodes; i++ {
+		nodeID := fmt.Sprintf("node-%d", i)
+		nodeState := &models.NodeState{Info: models.NodeInfo{NodeID: nodeID}}
+		s.heartbeatServer.UpdateNodeInfo(nodeState)
+		s.Require().Equal(models.NodeStates.HEALTHY, nodeState.Connection)
+	}
+}
+
+func (s *HeartbeatTestSuite) TestConcurrentHeartbeatsWithDisconnection() {
+	ctx := context.Background()
+	numNodes := 5
+	numHeartbeatsPerNode := 50
+
+	var wg sync.WaitGroup
+	wg.Add(numNodes)
+
+	for i := 0; i < numNodes; i++ {
+		go func(nodeID string) {
+			defer wg.Done()
+			client, err := NewClient(s.natsConn, nodeID, s.publisher)
+			require.NoError(s.T(), err)
+
+			for j := 0; j < numHeartbeatsPerNode; j++ {
+				s.Require().NoError(client.SendHeartbeat(ctx, uint64(j)))
+				time.Sleep(time.Millisecond)
+
+				if j == numHeartbeatsPerNode/2 {
+					// Simulate a disconnection by advancing the clock
+					s.clock.Add(10 * time.Second)
+				}
+			}
+		}(fmt.Sprintf("node-%d", i))
+	}
+
+	wg.Wait()
+
+	// Allow time for all heartbeats to be processed
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify node states
+	for i := 0; i < numNodes; i++ {
+		nodeID := fmt.Sprintf("node-%d", i)
+		nodeState := &models.NodeState{Info: models.NodeInfo{NodeID: nodeID}}
+		s.heartbeatServer.UpdateNodeInfo(nodeState)
+
+		// The exact state might vary depending on timing, but it should be either HEALTHY or DISCONNECTED
+		s.Require().Contains([]models.NodeConnectionState{models.NodeStates.HEALTHY, models.NodeStates.DISCONNECTED}, nodeState.Connection)
+	}
+}
+
+func (s *HeartbeatTestSuite) TestConcurrentHeartbeatsAndChecks() {
+	ctx := context.Background()
+	numNodes := 5
+	numHeartbeatsPerNode := 30
+	checkInterval := 50 * time.Millisecond
+
+	var wg sync.WaitGroup
+	wg.Add(numNodes + 1) // +1 for the checker goroutine
+
+	// Start the checker goroutine
+	go func() {
+		defer wg.Done()
+		for i := 0; i < numHeartbeatsPerNode; i++ {
+			s.heartbeatServer.checkQueue(ctx)
+			time.Sleep(checkInterval)
+		}
+	}()
+
+	for i := 0; i < numNodes; i++ {
+		go func(nodeID string) {
+			defer wg.Done()
+			client, err := NewClient(s.natsConn, nodeID, s.publisher)
+			require.NoError(s.T(), err)
+
+			for j := 0; j < numHeartbeatsPerNode; j++ {
+				s.Require().NoError(client.SendHeartbeat(ctx, uint64(j)))
+				time.Sleep(checkInterval / 2) // Send heartbeats faster than checks
+			}
+		}(fmt.Sprintf("node-%d", i))
+	}
+
+	wg.Wait()
+
+	// Verify final node states
+	for i := 0; i < numNodes; i++ {
+		nodeID := fmt.Sprintf("node-%d", i)
+		nodeState := &models.NodeState{Info: models.NodeInfo{NodeID: nodeID}}
+		s.heartbeatServer.UpdateNodeInfo(nodeState)
+		s.Require().Equal(models.NodeStates.HEALTHY, nodeState.Connection)
+	}
 }

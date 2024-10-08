@@ -88,7 +88,7 @@ func (e *Executor) Shutdown(ctx context.Context) error {
 	logLevel := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
 	log.Ctx(ctx).WithLevel(logLevel).Err(err).Msg("Cleaned up all Docker resources")
 
-	return nil
+	return err
 }
 
 // IsInstalled checks if docker itself is installed.
@@ -129,9 +129,9 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		// failing that will create a new container.
 		if handler, found := e.handlers.Get(request.ExecutionID); found {
 			if handler.active() {
-				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyStarted)
+				return executor.NewExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			} else {
-				return fmt.Errorf("starting execution (%s): %w", request.ExecutionID, executor.ErrAlreadyComplete)
+				return executor.NewExecutorError(executor.ExecutionAlreadyComplete, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			}
 		}
 
@@ -146,7 +146,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 			ResultsDir:    request.ResultsDir,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create docker job container: %w", err)
+			return err
 		}
 
 		containerID = jobContainer.ID
@@ -193,7 +193,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 	errCh := make(chan error, 1)
 
 	if !found {
-		errCh <- fmt.Errorf("waiting on execution (%s): %w", executionID, executor.ErrNotFound)
+		errCh <- executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("waiting on execution (%s)", executionID))
 		return resultCh, errCh
 	}
 
@@ -233,9 +233,9 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	handler, found := e.handlers.Get(executionID)
 	if !found {
-		return fmt.Errorf("canceling execution (%s): %w", executionID, executor.ErrNotFound)
+		return executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("canceling execution (%s)", executionID))
 	}
-	handler.cancelFunc(executor.ErrAlreadyCancelled)
+	handler.cancelFunc(executor.NewExecutorError(executor.ExecutionAlreadyCancelled, "execution already cancelled"))
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamR
 		chExit <- struct{}{}
 	}
 
-	return nil, fmt.Errorf("getting outputs for execution (%s): %w", request.ExecutionID, executor.ErrNotFound)
+	return nil, executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
 }
 
 // Run initiates and waits for the completion of an execution in one call.
@@ -365,7 +365,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
 		dockerCreds := config_legacy.GetDockerCredentials()
 		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
-			return container.CreateResponse{}, docker.NewImagePullError(dockerArgs.Image, dockerCreds, pullErr)
+			return container.CreateResponse{}, docker.NewDockerImageError(pullErr, dockerArgs.Image)
 		}
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)

@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	EventTopicExecutionBidding     models.EventTopic = "Requesting Node"
+	EventTopicExecutionScanning    models.EventTopic = "Exec Scanning"
 	EventTopicExecutionDownloading models.EventTopic = "Downloading Inputs"
 	EventTopicExecutionPreparing   models.EventTopic = "Preparing Environment"
 	EventTopicExecutionRunning     models.EventTopic = "Running Execution"
@@ -18,7 +18,7 @@ const (
 func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
 	return models.Event{
 		Message:   response.Reason,
-		Topic:     EventTopicExecutionBidding,
+		Topic:     EventTopicExecutionScanning,
 		Timestamp: time.Now(),
 		Details:   map[string]string{},
 	}

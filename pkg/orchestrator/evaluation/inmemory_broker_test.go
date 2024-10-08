@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/pkg/test/wait"
-	"github.com/stretchr/testify/suite"
 )
 
 var (
@@ -21,8 +22,8 @@ var (
 	}
 	defaultBrokerParams = InMemoryBrokerParams{
 		VisibilityTimeout:    5 * time.Second,
-		InitialRetryDelay:    5 * time.Millisecond,
-		SubsequentRetryDelay: 50 * time.Millisecond,
+		initialRetryDelay:    5 * time.Millisecond,
+		subsequentRetryDelay: 50 * time.Millisecond,
 		MaxReceiveCount:      3,
 	}
 )

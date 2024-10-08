@@ -55,7 +55,7 @@ func newWatcher(ctx context.Context, id string, handler EventHandler, store Even
 	checkpoint, err := store.GetCheckpoint(ctx, id)
 	if err != nil {
 		if errors.Is(err, ErrCheckpointNotFound) {
-			log.Ctx(ctx).Info().Str("watcher_id", id).
+			log.Ctx(ctx).Debug().Str("watcher_id", id).
 				Msgf("No checkpoint found, starting from %s", options.initialEventIterator)
 		} else {
 			return nil, NewWatcherError(id, err)
@@ -64,7 +64,7 @@ func newWatcher(ctx context.Context, id string, handler EventHandler, store Even
 		w.nextEventIterator = AfterSequenceNumberIterator(checkpoint)
 	}
 
-	log.Ctx(ctx).Info().Str("watcher_id", id).Str("starting_at", w.nextEventIterator.String()).
+	log.Ctx(ctx).Debug().Str("watcher_id", id).Str("starting_at", w.nextEventIterator.String()).
 		Msg("starting watcher")
 
 	return w, nil

@@ -36,50 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
-type ImageUnavailableError struct {
-	Verb  string
-	Image string
-	Creds config_legacy.DockerCredentials
-	Err   error
-}
-
-func (die ImageUnavailableError) Error() string {
-	return pkgerrors.Wrapf(die.Err,
-		"Could not %s image %q - could be due to repo/image not existing, "+
-			"or registry needing authorization",
-		die.Verb,
-		die.Image,
-	).Error()
-}
-
-func (die ImageUnavailableError) Hint() string {
-	if !die.Creds.IsValid() {
-		return "If the image is private, supply the node with valid Docker login credentials " +
-			"using the " + config_legacy.DockerUsernameEnvVar + " and " + config_legacy.DockerPasswordEnvVar +
-			" environment variables"
-	}
-
-	return ""
-}
-
-func NewImageInspectError(image string, creds config_legacy.DockerCredentials, err error) error {
-	return ImageUnavailableError{
-		Verb:  "inspect",
-		Image: image,
-		Creds: creds,
-		Err:   err,
-	}
-}
-
-func NewImagePullError(image string, creds config_legacy.DockerCredentials, err error) error {
-	return ImageUnavailableError{
-		Verb:  "pull",
-		Image: image,
-		Creds: creds,
-		Err:   err,
-	}
-}
-
 type Client struct {
 	tracing.TracedClient
 }
@@ -87,7 +43,7 @@ type Client struct {
 func NewDockerClient() (*Client, error) {
 	client, err := tracing.NewTracedClient()
 	if err != nil {
-		return nil, err
+		return nil, NewDockerError(err)
 	}
 	return &Client{
 		client,
@@ -102,10 +58,10 @@ func (c *Client) IsInstalled(ctx context.Context) bool {
 func (c *Client) HostGatewayIP(ctx context.Context) (net.IP, error) {
 	response, err := c.NetworkInspect(ctx, "bridge", network.InspectOptions{})
 	if err != nil {
-		return net.IP{}, err
+		return net.IP{}, NewDockerError(err)
 	}
 	if configs := response.IPAM.Config; len(configs) < 1 {
-		return net.IP{}, fmt.Errorf("bridge network unattached")
+		return net.IP{}, NewCustomDockerError(BridgeNetworkUnattached, "bridge network unattached")
 	} else {
 		return net.ParseIP(configs[0].Gateway), nil
 	}
@@ -114,7 +70,7 @@ func (c *Client) HostGatewayIP(ctx context.Context) (net.IP, error) {
 func (c *Client) removeContainers(ctx context.Context, filterz filters.Args) error {
 	containers, err := c.ContainerList(ctx, container.ListOptions{All: true, Filters: filterz})
 	if err != nil {
-		return err
+		return NewDockerError(err)
 	}
 
 	wg := multierrgroup.Group{}
@@ -130,7 +86,7 @@ func (c *Client) removeContainers(ctx context.Context, filterz filters.Args) err
 func (c *Client) removeNetworks(ctx context.Context, filterz filters.Args) error {
 	networks, err := c.NetworkList(ctx, network.ListOptions{Filters: filterz})
 	if err != nil {
-		return err
+		return NewDockerError(err)
 	}
 
 	wg := multierrgroup.Group{}
@@ -157,7 +113,7 @@ func (c *Client) RemoveObjectsWithLabel(ctx context.Context, labelName, labelVal
 func (c *Client) FindContainer(ctx context.Context, label string, value string) (string, error) {
 	containers, err := c.ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
-		return "", err
+		return "", NewDockerError(err)
 	}
 
 	for _, ctr := range containers {
@@ -166,13 +122,13 @@ func (c *Client) FindContainer(ctx context.Context, label string, value string) 
 		}
 	}
 
-	return "", fmt.Errorf("unable to find container for %s=%s", label, value)
+	return "", NewCustomDockerError(ContainerNotFound, fmt.Sprintf("unable to find container for %s=%s", label, value))
 }
 
 func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.Reader, err error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to get container")
+		return nil, nil, NewDockerError(err)
 	}
 
 	logOptions := container.LogsOptions{
@@ -184,7 +140,7 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to get container logs")
+		return nil, nil, NewDockerError(err)
 	}
 
 	stdoutReader, stdoutWriter := io.Pipe()
@@ -210,11 +166,11 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 func (c *Client) GetOutputStream(ctx context.Context, id string, since string, follow bool) (io.ReadCloser, error) {
 	cont, err := c.ContainerInspect(ctx, id)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to get container")
+		return nil, NewDockerError(err)
 	}
 
 	if !cont.State.Running {
-		return nil, pkgerrors.Wrap(err, "cannot get logs when container is not running")
+		return nil, NewCustomDockerError(ContainerNotRunning, "cannot get logs when container is not running")
 	}
 
 	logOptions := container.LogsOptions{
@@ -229,7 +185,7 @@ func (c *Client) GetOutputStream(ctx context.Context, id string, since string, f
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)
 	logsReader, err := c.ContainerLogs(ctx, cont.ID, logOptions)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to get container logs")
+		return nil, NewDockerError(err)
 	}
 
 	return logsReader, nil
@@ -261,14 +217,14 @@ func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds c
 	} else if !dockerclient.IsErrNotFound(err) {
 		// The only error we wanted to see was a not found error which means we don't have
 		// the image being requested.
-		return nil, err
+		return nil, NewDockerError(err)
 	}
 
 	authToken := getAuthToken(ctx, image, dockerCreds)
 
 	distribution, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, NewImageInspectError(image, dockerCreds, err)
+		return nil, NewDockerImageError(err, image)
 	}
 
 	return distribution.Platforms, nil
@@ -363,7 +319,7 @@ func (c *Client) ImageDistribution(
 			digestParts := strings.Split(repos[0], "@")
 			digest, err := digest.Parse(digestParts[1])
 			if err != nil {
-				return nil, err
+				return nil, NewCustomDockerError(ImageDigestMismatch, "image digest mismatch")
 			}
 
 			return &ImageManifest{
@@ -382,7 +338,7 @@ func (c *Client) ImageDistribution(
 	authToken := getAuthToken(ctx, image, creds)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
-		return nil, NewImageInspectError(image, creds, err)
+		return nil, NewDockerImageError(err, image)
 	}
 
 	obj := dist.Descriptor.Digest
@@ -405,7 +361,7 @@ func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_l
 	if !dockerclient.IsErrNotFound(err) {
 		// The only error we wanted to see was a not found error which means we don't have
 		// the image being requested.
-		return err
+		return NewDockerError(err)
 	}
 
 	log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")
@@ -416,7 +372,7 @@ func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_l
 
 	output, err := c.ImagePull(ctx, img, pullOptions)
 	if err != nil {
-		return err
+		return NewDockerError(err)
 	}
 
 	defer closer.CloseWithLogOnError("image-pull", output)

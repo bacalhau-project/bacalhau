@@ -2,8 +2,8 @@ package util
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
@@ -16,59 +16,43 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 func NewPublisherProvider(
 	ctx context.Context,
-	storagePath string,
-	cm *system.CleanupManager,
-	cfg types.PublishersConfig,
-	defaultLocalPublisher types.LocalPublisher,
+	cfg types.Bacalhau,
 ) (publisher.PublisherProvider, error) {
+	storagePath, err := cfg.ResultsStorageDir()
+	if err != nil {
+		return nil, err
+	}
 	providers := make(map[string]publisher.Publisher)
 
-	if cfg.IsNotDisabled(models.PublisherNoop) {
+	if cfg.Publishers.IsNotDisabled(models.PublisherNoop) {
 		providers[models.PublisherNoop] = noop.NewNoopPublisher()
 	}
 
-	if cfg.IsNotDisabled(models.PublisherS3) {
-		s3Publisher, err := configureS3Publisher(storagePath, cm)
+	if cfg.Publishers.IsNotDisabled(models.PublisherS3) {
+		s3Publisher, err := configureS3Publisher(storagePath)
 		if err != nil {
 			return nil, err
 		}
 		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
 	}
 
-	if cfg.IsNotDisabled(models.PublisherLocal) {
-		// use the defaults, and override any values provided by the user.
-		address := defaultLocalPublisher.Address
-		port := defaultLocalPublisher.Port
-		directory := defaultLocalPublisher.Directory
-		if cfg.Types.Local.Address != "" {
-			address = cfg.Types.Local.Address
-		}
-		if cfg.Types.Local.Port != 0 {
-			port = cfg.Types.Local.Port
-		}
-		if cfg.Types.Local.Directory != "" {
-			directory = cfg.Types.Local.Directory
-		}
-		localPublisher, err := local.NewLocalPublisher(
-			ctx,
-			directory,
-			address,
-			port,
-		)
+	if cfg.Publishers.IsNotDisabled(models.PublisherLocal) {
+		localPublisher, err := configureLocalPublisher(ctx, cfg, storagePath)
 		if err != nil {
 			return nil, err
 		}
 		providers[models.PublisherLocal] = tracing.Wrap(localPublisher)
 	}
 
-	if cfg.IsNotDisabled(models.PublisherIPFS) {
-		if cfg.Types.IPFS.Endpoint != "" {
-			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Types.IPFS.Endpoint)
+	if cfg.Publishers.IsNotDisabled(models.PublisherIPFS) {
+		if cfg.Publishers.Types.IPFS.Endpoint != "" {
+			ipfsClient, err := ipfs_client.NewClient(ctx, cfg.Publishers.Types.IPFS.Endpoint)
 			if err != nil {
 				return nil, err
 			}
@@ -83,18 +67,24 @@ func NewPublisherProvider(
 	return provider.NewMappedProvider(providers), nil
 }
 
-func configureS3Publisher(storagePath string, cm *system.CleanupManager) (*s3.Publisher, error) {
-	dir, err := os.MkdirTemp(storagePath, "bacalhau-s3-publisher")
-	if err != nil {
+func configureLocalPublisher(ctx context.Context, cfg types.Bacalhau, storagePath string) (*local.Publisher, error) {
+	path := filepath.Join(storagePath, "local-publisher")
+	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
 		return nil, err
 	}
+	return local.NewLocalPublisher(
+		ctx,
+		path,
+		cfg.Publishers.Types.Local.Address,
+		cfg.Publishers.Types.Local.Port,
+	)
+}
 
-	cm.RegisterCallback(func() error {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("unable to clean up S3 publisher directory: %w", err)
-		}
-		return nil
-	})
+func configureS3Publisher(storagePath string) (*s3.Publisher, error) {
+	path := filepath.Join(storagePath, "s3-publisher")
+	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
+		return nil, err
+	}
 
 	cfg, err := s3helper.DefaultAWSConfig()
 	if err != nil {
@@ -104,7 +94,7 @@ func configureS3Publisher(storagePath string, cm *system.CleanupManager) (*s3.Pu
 		AWSConfig: cfg,
 	})
 	return s3.NewPublisher(s3.PublisherParams{
-		LocalDir:       dir,
+		LocalDir:       path,
 		ClientProvider: clientProvider,
 	}), nil
 }

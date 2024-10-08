@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
@@ -41,30 +40,11 @@ func GetAllVersions(ctx context.Context, cfg types.Bacalhau, api clientv2.API, r
 		GOARCH:     resp.GOARCH,
 	}
 
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		return versions, err
-	}
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
-		return versions, fmt.Errorf("loading user key: %w", err)
-	}
-
-	installationID, err := r.ReadInstallationID()
-	if err != nil {
-		return versions, fmt.Errorf("reading installationID: %w", err)
-	}
-
-	if installationID == "" {
-		return versions, errors.Wrap(err, "Installation ID not set")
-	}
-
 	updateCheck, err := version.CheckForUpdate(
 		ctx,
 		versions.ClientVersion,
 		versions.ServerVersion,
-		userKey.ClientID(),
-		installationID,
+		r.InstanceID(),
 	)
 	if err != nil {
 		return versions, errors.Wrap(err, "failed to get latest version")

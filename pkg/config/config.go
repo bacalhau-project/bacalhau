@@ -1,22 +1,31 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
 const (
 	environmentVariablePrefix = "BACALHAU"
 	inferConfigTypes          = true
 	DefaultFileName           = "config.yaml"
+
+	errComponent = "config"
 )
 
 var (
@@ -90,7 +99,7 @@ func New(opts ...Option) (*Config, error) {
 
 	c := &Config{
 		base:                 base,
-		defaultCfg:           types.Default,
+		defaultCfg:           Default,
 		paths:                make([]string, 0),
 		values:               make(map[string]any),
 		environmentVariables: make(map[string][]string),
@@ -109,13 +118,15 @@ func New(opts ...Option) (*Config, error) {
 		return nil, err
 	}
 
+	// To absolute paths for better logging. This is best effort and will not return an error if it fails.
+	for i, path := range c.paths {
+		c.paths[i] = AbsPathSilent(path)
+	}
+
 	// merge the config files in the order they were passed.
 	for _, path := range c.paths {
-		if err := c.Merge(path); err != nil {
-			if os.IsNotExist(err) {
-				return nil, fmt.Errorf("the specified configuration file %q doesn't exist", path)
-			}
-			return nil, fmt.Errorf("opening config file %q: %w", path, err)
+		if err := c.merge(path); err != nil {
+			return nil, err
 		}
 	}
 
@@ -125,10 +136,18 @@ func New(opts ...Option) (*Config, error) {
 		}
 	}
 
+	if err = checkFlagConfigConflicts(c.flags, c.values); err != nil {
+		return nil, err
+	}
+
 	for name, flags := range c.flags {
 		for _, flag := range flags {
 			// only if the flag has been set do we want to bind to it, this allows multiple flags
 			// to bind to the same config key.
+			if flag == nil {
+				log.Error().Msgf("flag %q is nil", name)
+				continue
+			}
 			if flag.Changed {
 				switch name {
 				case "ipfs.connect.deprecated":
@@ -160,12 +179,16 @@ func New(opts ...Option) (*Config, error) {
 							c.values[types.ComputeEnabledKey] = true
 						}
 					}
+				case types.DataDirKey:
+					// Handle relative paths for data-dir flag
+					path := AbsPathSilent(flag.Value.String())
+					c.base.Set(types.DataDirKey, path)
 				case "default.publisher.deprecated":
 					// allow the deprecated --default-publisher flag to bind to related fields in the config.
 					for _, key := range []string{
 						// config keys we wish to bind --default-publisher flag to.
-						types.JobDefaultsBatchTaskPublisherConfigTypeKey,
-						types.JobDefaultsOpsTaskPublisherConfigTypeKey,
+						types.JobDefaultsBatchTaskPublisherTypeKey,
+						types.JobDefaultsOpsTaskPublisherTypeKey,
 					} {
 						if err := c.base.BindPFlag(key, flag); err != nil {
 							return nil, fmt.Errorf("binding flag %q to config: %w", name, err)
@@ -181,10 +204,38 @@ func New(opts ...Option) (*Config, error) {
 	}
 
 	// merge the passed values last as they take highest precedence
+	// allow the user to set datadir as relative paths and resolve them to absolute paths
 	for name, value := range c.values {
+		if name == types.DataDirKey {
+			if val, ok := value.(string); ok {
+				value = AbsPathSilent(val)
+			}
+		}
 		c.base.Set(name, value)
 	}
 
+	// allow the users to set datadir to a path like ~/.bacalhau or ~/something/idk/whatever
+	// and expand the path for them
+	if expandedPath, err := homedir.Expand(c.base.GetString(types.DataDirKey)); err == nil {
+		c.base.Set(types.DataDirKey, expandedPath)
+	}
+
+	if err := ValidatePath(c.base.GetString(types.DataDirKey)); err != nil {
+		return nil, err
+	}
+
+	// if no config file was provided, we look for a config.yaml under the resolved data directory,
+	// and if it exists, we create and return a new config with the resolved path.
+	// we attempt this last to ensure the data-dir is resolved correctly from all config sources.
+	if len(c.paths) == 0 {
+		configFile := filepath.Join(c.base.GetString(types.DataDirKey), DefaultFileName)
+		if _, err := os.Stat(configFile); err == nil {
+			opts = append(opts, WithPaths(configFile))
+			return New(opts...)
+		}
+	}
+
+	log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", c.paths, c.base.Get(types.DataDirKey))
 	return c, nil
 }
 
@@ -202,7 +253,7 @@ func getNodeType(input string) (requester, compute bool, err error) {
 	for _, nodeType := range tokens {
 		if nodeType == "compute" {
 			compute = true
-		} else if nodeType == "requester" {
+		} else if nodeType == "requester" || nodeType == "orchestrator" {
 			requester = true
 		} else {
 			err = fmt.Errorf("invalid node type %s. Only compute and requester values are supported", nodeType)
@@ -215,7 +266,6 @@ func getNodeType(input string) (requester, compute bool, err error) {
 // from the read config file.
 // Load returns an error if the file cannot be read.
 func (c *Config) Load(path string) error {
-	log.Debug().Msgf("loading config file: %q", path)
 	c.base.SetConfigFile(path)
 	if err := c.base.ReadInConfig(); err != nil {
 		return err
@@ -223,15 +273,31 @@ func (c *Config) Load(path string) error {
 	return nil
 }
 
-// Merge merges a new configuration file specified by `path` with the existing config.
-// Merge returns an error if the file cannot be read
-func (c *Config) Merge(path string) error {
-	log.Debug().Msgf("merging config file: %q", path)
+// merge merges a new configuration file specified by `path` with the existing config.
+// merge returns an error if the file cannot be read
+func (c *Config) merge(path string) error {
 	c.base.SetConfigFile(path)
 	if err := c.base.MergeInConfig(); err != nil {
-		return err
+		if os.IsNotExist(err) {
+			return fmt.Errorf("the specified configuration file %q doesn't exist", path)
+		}
+		return fmt.Errorf("opening config file %q: %w", path, err)
 	}
 	return nil
+}
+
+func (c *Config) Get(key string) any {
+	return c.base.Get(key)
+}
+
+func (c *Config) ConfigFileUsed() string {
+	return c.base.ConfigFileUsed()
+}
+
+// Paths returns the paths to the configuration files merged
+// from lower index to higher index
+func (c *Config) Paths() []string {
+	return c.paths
 }
 
 // Unmarshal returns the current configuration.
@@ -239,6 +305,9 @@ func (c *Config) Merge(path string) error {
 func (c *Config) Unmarshal(out interface{}) error {
 	if err := c.base.Unmarshal(&out, DecoderHook); err != nil {
 		return err
+	}
+	if v, ok := out.(models.Validatable); ok {
+		return v.Validate()
 	}
 	return nil
 }
@@ -248,4 +317,80 @@ func KeyAsEnvVar(key string) string {
 	return strings.ToUpper(
 		fmt.Sprintf("%s_%s", environmentVariablePrefix, environmentVariableReplace.Replace(key)),
 	)
+}
+
+func GenerateNodeID(ctx context.Context, nodeNameProviderType string) (string, error) {
+	nodeNameProviders := map[string]idgen.NodeNameProvider{
+		"hostname": idgen.HostnameProvider{},
+		"aws":      idgen.NewAWSNodeNameProvider(),
+		"gcp":      idgen.NewGCPNodeNameProvider(),
+		"uuid":     idgen.UUIDNodeNameProvider{},
+		"puuid":    idgen.PUUIDNodeNameProvider{},
+	}
+	nodeNameProvider, ok := nodeNameProviders[nodeNameProviderType]
+	if !ok {
+		return "", fmt.Errorf(
+			"unknown node name provider: %s. Supported providers are: %s", nodeNameProviderType, lo.Keys(nodeNameProviders))
+	}
+
+	nodeName, err := nodeNameProvider.GenerateNodeName(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return nodeName, nil
+}
+
+func AbsPathSilent(path string) string {
+	expandedPath, err := homedir.Expand(path)
+	if err != nil {
+		log.Debug().Msgf("failed to expand path %s: %v", path, err)
+		return path
+	}
+	absPath, err := filepath.Abs(expandedPath)
+	if err != nil {
+		log.Debug().Msgf("failed to resolve absolute path for %s: %v", path, err)
+		return path
+	}
+	return absPath
+}
+
+func ValidatePath(path string) error {
+	if path == "" {
+		return bacerrors.New("data dir path is empty").
+			WithHint("Provide a valid path for the data directory").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
+	}
+	if strings.Contains(path, "$") {
+		return bacerrors.New("data dir path %q contains a '$' character", path).
+			WithHint("Note that environment variables are not expanded will be used as-is").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
+	}
+
+	if !filepath.IsAbs(path) {
+		return bacerrors.New("data dir path %q is not an absolute path", path).
+			WithHint("Use an absolute path for the data directory").
+			WithComponent(errComponent).
+			WithCode(bacerrors.ValidationError)
+	}
+
+	return nil
+}
+
+// checkFlagConfigConflicts checks for conflicts between cli flags and config values.
+// e.g. bacalhau serve --config=api.host=0.0.0.0 --api-host=0.0.0.0 should be rejected.
+func checkFlagConfigConflicts(flags map[string][]*pflag.Flag, cfgValues map[string]any) error {
+	for name, flagList := range flags {
+		if cfgValue, exists := cfgValues[name]; exists {
+			for _, flag := range flagList {
+				if flag.Changed {
+					return bacerrors.New("flag: --%s and config flag key %q cannot both be provided. Only one may be used", flag.Name, name).
+						WithHint("Remove --%s or --config/-c %s=%v from the command", flag.Name, name, cfgValue)
+				}
+			}
+		}
+	}
+	return nil
 }

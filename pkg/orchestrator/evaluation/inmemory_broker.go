@@ -18,12 +18,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
 
 const (
@@ -34,6 +35,15 @@ const (
 
 	// initialCapacity is the initial capacity of the broker heap per scheduler
 	initialCapacity = 16
+
+	// defaultInitialRetryDelay is the default delay applied before re-enqueuing a
+	// Nacked evaluation for the first time.
+	defaultInitialRetryDelay = 5 * time.Second
+
+	// defaultSubsequentRetryDelay is the default delay applied before reenqueuing
+	// an evaluation that has been Nacked more than once. This delay is
+	// compounding after the first Nack.
+	defaultSubsequentRetryDelay = 30 * time.Second
 )
 
 var (
@@ -52,9 +62,9 @@ var _ orchestrator.EvaluationBroker = &InMemoryBroker{}
 
 type InMemoryBrokerParams struct {
 	VisibilityTimeout    time.Duration
-	InitialRetryDelay    time.Duration
-	SubsequentRetryDelay time.Duration
 	MaxReceiveCount      int
+	initialRetryDelay    time.Duration
+	subsequentRetryDelay time.Duration
 }
 
 // InMemoryBroker The broker is designed to be entirely in-memory.
@@ -133,6 +143,12 @@ func NewInMemoryBroker(params InMemoryBrokerParams) (*InMemoryBroker, error) {
 	if params.VisibilityTimeout < 0 {
 		return nil, fmt.Errorf("timeout cannot be negative")
 	}
+	if params.initialRetryDelay == 0 {
+		params.initialRetryDelay = defaultInitialRetryDelay
+	}
+	if params.subsequentRetryDelay == 0 {
+		params.subsequentRetryDelay = defaultSubsequentRetryDelay
+	}
 	b := &InMemoryBroker{
 		visibilityTimeout:    params.VisibilityTimeout,
 		maxReceiveCount:      params.MaxReceiveCount,
@@ -146,8 +162,8 @@ func NewInMemoryBroker(params InMemoryBrokerParams) (*InMemoryBroker, error) {
 		inflight:             make(map[string]*inflightEval),
 		waiting:              make(map[string]chan struct{}),
 		requeue:              make(map[string]*models.Evaluation),
-		initialNackDelay:     params.InitialRetryDelay,
-		subsequentNackDelay:  params.SubsequentRetryDelay,
+		initialNackDelay:     params.initialRetryDelay,
+		subsequentNackDelay:  params.subsequentRetryDelay,
 		delayHeap:            collections.NewScheduledTaskHeap[*models.Evaluation](),
 		delayedEvalsUpdateCh: make(chan struct{}, 1),
 	}

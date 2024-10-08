@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"testing"
 
@@ -61,9 +60,6 @@ func (s *BidderSuite) SetupTest() {
 		Callback:         s.mockCallback,
 		Executor:         s.mockExecutor,
 		UsageCalculator:  capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}}),
-		GetApproveURL: func() *url.URL {
-			return &url.URL{}
-		},
 	})
 }
 

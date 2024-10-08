@@ -6,12 +6,11 @@ import (
 	"slices"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/cols"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -211,19 +210,14 @@ func (o *DescribeOptions) printHistory(cmd *cobra.Command, label string, history
 		return nil
 	}
 
-	timeCol := output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: historyTimeCol.ColumnConfig.Name, WidthMax: 20, WidthMaxEnforcer: text.WrapText},
-		Value:        func(h *models.JobHistory) string { return h.Occurred().Format(time.DateTime) },
-	}
-
 	tableOptions := output.OutputOptions{
 		Format:  output.TableFormat,
 		NoStyle: true,
 	}
 	jobHistoryCols := []output.TableColumn[*models.JobHistory]{
-		timeCol,
-		historyTopicCol,
-		historyEventCol,
+		cols.HistoryDateTime,
+		cols.HistoryTopic,
+		cols.HistoryEvent,
 	}
 	output.Bold(cmd, fmt.Sprintf("\n%s History\n", label))
 	return output.Output(cmd, jobHistoryCols, tableOptions, history)

@@ -6,18 +6,17 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
-	"github.com/bacalhau-project/bacalhau/pkg/node"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/webui"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -47,22 +46,45 @@ var (
 `))
 )
 
-func newDevStackOptions() *devstack.DevStackOptions {
-	return &devstack.DevStackOptions{
+type options struct {
+	NumberOfHybridNodes        int // Number of nodes to start in the cluster
+	NumberOfRequesterOnlyNodes int // Number of nodes to start in the cluster
+	NumberOfComputeOnlyNodes   int // Number of nodes to start in the cluster
+	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
+	CPUProfilingFile           string
+	MemoryProfilingFile        string
+	BasePath                   string
+	WebUIListen                string
+}
+
+func (o *options) devstackOptions() []devstack.ConfigOption {
+	opts := []devstack.ConfigOption{
+		devstack.WithNumberOfHybridNodes(o.NumberOfHybridNodes),
+		devstack.WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
+		devstack.WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
+		devstack.WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
+		devstack.WithCPUProfilingFile(o.CPUProfilingFile),
+		devstack.WithMemoryProfilingFile(o.MemoryProfilingFile),
+		devstack.WithBasePath(o.BasePath),
+	}
+	return opts
+}
+
+func newOptions() *options {
+	return &options{
 		NumberOfRequesterOnlyNodes: 1,
 		NumberOfComputeOnlyNodes:   3,
 		NumberOfBadComputeActors:   0,
-		Peer:                       "",
 		CPUProfilingFile:           "",
 		MemoryProfilingFile:        "",
-		ConfigurationRepo:          "",
+		BasePath:                   "",
+		WebUIListen:                config.Default.WebUI.Listen,
 	}
 }
 
 //nolint:funlen,gocyclo
 func NewCmd() *cobra.Command {
-	ODs := newDevStackOptions()
-	IsNoop := false
+	ODs := newOptions()
 	devstackFlags := map[string][]configflags.Definition{
 		"job-selection":         configflags.JobSelectionFlags,
 		"disable-features":      configflags.DisabledFeatureFlags,
@@ -80,31 +102,10 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), devstackFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// ensure we either use a temp repo for the devstack, or the repo path provided
-			// by the specific devstack flag. Never use the default bacalhau repo.
-			v := viper.GetViper()
-			repoPath := ODs.ConfigurationRepo
-			if repoPath == "" {
-				// We need to clean up the repo when the node shuts down, but we can ONLY
-				// do this because we know it is a temporary directory. Do not delete the
-				// configured repo if `--stack-repo` was specified
-				repoPath, _ = os.MkdirTemp("", "")
-
-				// If we don't set the repo value in config, readers will be given
-				// a different path to the one we've just created. Presumably a default.
-				defer os.RemoveAll(repoPath)
-			}
-			// override the repo path set in the root command with the derived path.
-			v.Set("repo", repoPath)
-			cfg, err := util.SetupConfig(cmd)
-			if err != nil {
-				return fmt.Errorf("setting up config: %w", err)
-			}
-			fsr, err := setup.SetupBacalhauRepo(cfg)
-			if err != nil {
-				return fmt.Errorf("failed to reconcile repo: %w", err)
-			}
-			return runDevstack(cmd, cfg, fsr, ODs, IsNoop)
+			// TODO: a hack to force debug logging for devstack
+			//  until I figure out why flags and env vars are not working
+			logger.ConfigureLogging(logger.LogModeDefault, zerolog.DebugLevel)
+			return runDevstack(cmd, ODs)
 		},
 	}
 
@@ -128,17 +129,9 @@ func NewCmd() *cobra.Command {
 		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
 		`How many compute nodes should be bad actors`,
 	)
-	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadRequesterActors, "bad-requester-actors", ODs.NumberOfBadRequesterActors,
-		`How many requester nodes should be bad actors`,
-	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&IsNoop, "Noop", false,
-		`Use the noop executor for all jobs`,
-	)
 	devstackCmd.PersistentFlags().StringVar(
-		&ODs.Peer, "peer", ODs.Peer,
-		`Connect node 0 to another network node`,
+		&ODs.WebUIListen, "webui-address", ODs.WebUIListen,
+		`Listen address for the web UI server`,
 	)
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
@@ -148,23 +141,15 @@ func NewCmd() *cobra.Command {
 		&ODs.MemoryProfilingFile, "memory-profiling-file", ODs.MemoryProfilingFile,
 		"File to save memory profiling to",
 	)
-	devstackCmd.PersistentFlags().StringSliceVar(
-		&ODs.AllowListedLocalPaths, "allow-listed-local-paths", ODs.AllowListedLocalPaths,
-		"Local paths that are allowed to be mounted into jobs. Multiple paths can be specified by using this flag multiple times.",
-	)
-	devstackCmd.PersistentFlags().BoolVar(
-		&ODs.ExecutorPlugins, "pluggable-executors", ODs.ExecutorPlugins,
-		"Will use pluggable executors when set to true",
-	)
 	devstackCmd.PersistentFlags().StringVar(
-		&ODs.ConfigurationRepo, "stack-repo", ODs.ConfigurationRepo,
+		&ODs.BasePath, "stack-repo", ODs.BasePath,
 		"Folder to act as the devstack configuration repo",
 	)
 	return devstackCmd
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *devstack.DevStackOptions, IsNoop bool) error {
+func runDevstack(cmd *cobra.Command, ODs *options) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
@@ -186,61 +171,47 @@ func runDevstack(cmd *cobra.Command, cfg types.Bacalhau, fsr *repo.FsRepo, ODs *
 		}
 	}
 
-	computeConfig, err := serve.GetComputeConfig(ctx, cfg, true)
+	// ensure we either use a temp repo for the devstack, or the repo path provided
+	// by the specific devstack flag. Never use the default bacalhau repo.
+	baseRepoPath := ODs.BasePath
+	if baseRepoPath == "" {
+		// We need to clean up the repo when the node shuts down, but we can ONLY
+		// do this because we know it is a temporary directory. Do not delete the
+		// configured repo if `--stack-repo` was specified
+		baseRepoPath, _ = os.MkdirTemp("", "")
+		defer os.RemoveAll(baseRepoPath)
+	}
+
+	stack, err := devstack.Setup(ctx, cm, ODs.devstackOptions()...)
 	if err != nil {
 		return err
 	}
 
-	requesterConfig, err := serve.GetRequesterConfig(cfg, true)
-	if err != nil {
-		return err
-	}
+	// start WebUI for the first successful requester node
+	for _, n := range stack.Nodes {
+		// TODO: move webui creation to node pkg
+		if n.IsRequesterNode() {
+			webuiConfig := webui.Config{
+				APIEndpoint: n.APIServer.GetURI().String(),
+				Listen:      ODs.WebUIListen,
+			}
+			webuiServer, err := webui.NewServer(webuiConfig)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to start ui server for this node, trying next")
+				continue
+			}
 
-	options := append(ODs.Options(),
-		devstack.WithComputeConfig(computeConfig),
-		devstack.WithRequesterConfig(requesterConfig),
-	)
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		return err
-	}
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
-		return err
-	}
-	if IsNoop {
-		options = append(options, devstack.WithDependencyInjector(devstack.NewNoopNodeDependencyInjector()))
-	} else if ODs.ExecutorPlugins {
-		pluginPath, err := cfg.PluginsDir()
-		if err != nil {
-			return err
+			go func() {
+				if err := webuiServer.ListenAndServe(ctx); err != nil {
+					log.Error().Err(err).Msg("ui server error")
+				}
+			}()
+
+			break
 		}
-		options = append(options, devstack.WithDependencyInjector(
-			node.NewExecutorPluginNodeDependencyInjector(
-				cfg,
-				userKey,
-				pluginPath,
-			)))
-	} else {
-		options = append(options, devstack.WithDependencyInjector(
-			node.NewStandardNodeDependencyInjector(
-				cfg,
-				userKey,
-			)))
 	}
 
-	// Get any certificate settings for devstack and use them if we have a certificate (possibly self-signed).
-	options = append(options, devstack.WithSelfSignedCertificate(
-		cfg.API.TLS.CertFile,
-		cfg.API.TLS.KeyFile,
-	))
-
-	stack, err := devstack.Setup(ctx, cfg, cm, fsr, options...)
-	if err != nil {
-		return err
-	}
-
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, fsr, cm)
+	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
 	if err != nil {
 		return fmt.Errorf("failed to print node info: %w", err)
 	}

@@ -6,60 +6,84 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	util2 "github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
+
+var setExample = templates.Examples(i18n.T(`
+bacalhau config set api.host=127.0.0.1
+bacalhau config set compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234
+bacalhau config set labels=foo=bar,baz=buz
+`))
 
 func newSetCmd() *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:          "set",
-		Args:         cobra.MinimumNArgs(2),
+		Args:         cobra.MinimumNArgs(1),
 		Short:        "Set a value in the config.",
+		Long:         "The 'set' command allows you to modify configuration values in your Bacalhau configuration file.",
+		Example:      setExample,
 		PreRunE:      hook.ClientPreRunHooks,
 		PostRunE:     hook.ClientPostRunHooks,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// initialize a new or open an existing repo. We need to ensure a repo
-			// exists before we can create or modify a config file in it.
-			_, err := util.SetupRepoConfig(cmd)
+			// load configs to get the config file path
+			bacalhauConfig, rawConfig, err := util.SetupConfigs(cmd)
 			if err != nil {
-				return fmt.Errorf("failed to setup repo: %w", err)
+				return fmt.Errorf("failed to setup config: %w", err)
 			}
-			return setConfig(cmd.PersistentFlags().Lookup("config").Value.String(), args[0], args[1:]...)
+
+			configPath := rawConfig.ConfigFileUsed()
+			if configPath == "" {
+				// we fall back to the default config file path $BACALHAU_DIR/config.yaml
+				// this requires initializing a new or opening an existing data-dir
+				_, err = util.SetupRepo(bacalhauConfig)
+				if err != nil {
+					return fmt.Errorf("failed to setup data dir: %w", err)
+				}
+				configPath = filepath.Join(bacalhauConfig.DataDir, config.DefaultFileName)
+			}
+
+			var (
+				key   string
+				value []string
+			)
+
+			// Check if the first argument is in key=value format
+			if strings.Contains(args[0], "=") {
+				parts := strings.SplitN(args[0], "=", 2)
+				key = parts[0]
+				value = []string{parts[1]}
+			} else {
+				// Fallback to the original behavior: key and value are separate arguments
+				if len(args) < 2 {
+					return fmt.Errorf("must provide both key and value, or key=value")
+				}
+				cmd.Println("DEPRECATED: use key=value instead of space-separated key value")
+				key = args[0]
+				value = args[1:]
+			}
+
+			return setConfig(cmd, rawConfig, configPath, key, value...)
 		},
-		// provide auto completion for arguments to the `set` command
+		// Provide auto completion for arguments to the `set` command
 		ValidArgsFunction: setAutoComplete,
 	}
 
-	bacalhauCfgDir := "bacalhau"
-	bacalhauCfgFile := config.DefaultFileName
-
-	usrCfgDir, err := os.UserConfigDir()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to find user-specific configuration directory. Using current directory to write config.")
-	} else {
-		bacalhauCfgDir = filepath.Join(usrCfgDir, bacalhauCfgDir)
-		if err := os.MkdirAll(bacalhauCfgDir, util2.OS_USER_RWX); err != nil {
-			// This means we failed to create a directory either in the current directory, or the user config dir
-			// indicating a some-what serious misconfiguration of the system. We panic here to provide as much
-			// detail as possible.
-			log.Panic().Err(err).Msgf("Failed to create bacalhau configuration directory: %s", bacalhauCfgDir)
-		}
-		bacalhauCfgFile = filepath.Join(bacalhauCfgDir, bacalhauCfgFile)
-	}
-
-	setCmd.PersistentFlags().String("config", bacalhauCfgFile, "Path to the config file")
+	setCmd.PersistentFlags().VarP(cliflags.NewWriteConfigFlag(), "config", "c", "Path to the config file (default is $BACALHAU_DIR/config.yaml)")
 	return setCmd
 }
 
-func setConfig(cfgFilePath, key string, value ...string) error {
+func setConfig(cmd *cobra.Command, cfg *config.Config, cfgFilePath, key string, value ...string) error {
+	cmd.Printf("Writing config to %s", cfgFilePath)
 	v := viper.New()
 	v.SetConfigFile(cfgFilePath)
 	if err := v.ReadInConfig(); err != nil {
@@ -71,7 +95,15 @@ func setConfig(cfgFilePath, key string, value ...string) error {
 	if err != nil {
 		return err
 	}
-	v.Set(key, parsed)
+	if key == types.DataDirKey {
+		dataDirPath := config.AbsPathSilent(parsed.(string))
+		if err = config.ValidatePath(dataDirPath); err != nil {
+			return err
+		}
+		v.Set(key, dataDirPath)
+	} else {
+		v.Set(key, parsed)
+	}
 	if err := v.WriteConfigAs(cfgFilePath); err != nil {
 		return err
 	}

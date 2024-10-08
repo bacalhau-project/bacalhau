@@ -14,6 +14,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const libp2pPrivateKey = "libp2p_private_key"
@@ -139,5 +141,20 @@ func copyFile(srcPath, dstPath string) error {
 		return err
 	}
 
+	return nil
+}
+
+// writeInstallationID writes the installation ID to system wide config path
+func writeInstallationID(cfg system.GlobalConfig, installationID string) error {
+	// Create config dir if it doesn't exist
+	if err := os.MkdirAll(cfg.ConfigDir(), util.OS_USER_RW); err != nil {
+		return fmt.Errorf("creating config dir: %w", err)
+	}
+
+	// Write installation ID to file
+	installationIDFile := filepath.Join(cfg.ConfigDir(), system.InstallationIDFile)
+	if err := os.WriteFile(installationIDFile, []byte(installationID), util.OS_USER_RW); err != nil {
+		return fmt.Errorf("writing installation ID file: %w", err)
+	}
 	return nil
 }

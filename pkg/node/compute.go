@@ -3,12 +3,12 @@ package node
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"path/filepath"
 
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/resource"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -18,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -52,31 +52,53 @@ type Compute struct {
 //nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
-	nodeID string,
+	cfg NodeConfig,
 	apiServer *publicapi.Server,
-	cfg types.Bacalhau,
-	config ComputeConfig,
-	storages storage.StorageProvider,
-	executors executor.ExecutorProvider,
-	publishers publisher.PublisherProvider,
 	natsConn *nats.Conn,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
-	configuredLabels map[string]string,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 ) (*Compute, error) {
-	executionStore := config.ExecutionStore
-	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+	// Setup dependencies
+	publishers, err := cfg.DependencyInjector.PublishersFactory.Get(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
+	executors, err := cfg.DependencyInjector.ExecutorsFactory.Get(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	storages, err := cfg.DependencyInjector.StorageProvidersFactory.Get(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	executionStore, err := createExecutionStore(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+	_, err = watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
+	executionDir, err := cfg.BacalhauConfig.ExecutionDir()
+	if err != nil {
+		return nil, err
+	}
+
+	allocatedResources, err := getAllocatedResources(ctx, cfg.BacalhauConfig, executionDir)
 	if err != nil {
 		return nil, err
 	}
 
 	// executor/backend
 	runningCapacityTracker := capacity.NewLocalTracker(capacity.LocalTrackerParams{
-		MaxCapacity: config.TotalResourceLimits,
+		MaxCapacity: allocatedResources,
 	})
 	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
@@ -84,38 +106,34 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	executionDir, err := cfg.ExecutionDir()
-	if err != nil {
-		return nil, err
-	}
+
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
-		ID:                     nodeID,
+		ID:                     cfg.NodeID,
 		Callback:               computeCallback,
 		Store:                  executionStore,
 		StorageDirectory:       executionDir,
 		Storages:               storages,
 		Executors:              executors,
 		Publishers:             publishers,
-		FailureInjectionConfig: config.FailureInjectionConfig,
+		FailureInjectionConfig: cfg.FailureInjectionConfig,
 		ResultsPath:            *resultsPath,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
-		ID:                         nodeID,
-		DelegateExecutor:           baseExecutor,
-		Callback:                   computeCallback,
-		RunningCapacityTracker:     runningCapacityTracker,
-		EnqueuedUsageTracker:       enqueuedUsageTracker,
-		DefaultJobExecutionTimeout: config.DefaultJobExecutionTimeout,
+		ID:                     cfg.NodeID,
+		DelegateExecutor:       baseExecutor,
+		Callback:               computeCallback,
+		RunningCapacityTracker: runningCapacityTracker,
+		EnqueuedUsageTracker:   enqueuedUsageTracker,
 	})
 	runningInfoProvider := sensors.NewRunningExecutionsInfoProvider(sensors.RunningExecutionsInfoProviderParams{
 		Name:          "ActiveJobs",
 		BackendBuffer: bufferRunner,
 	})
-	if config.LogRunningExecutionsInterval > 0 {
+	if cfg.BacalhauConfig.Logging.LogDebugInfoInterval > 0 {
 		loggingSensor := sensors.NewLoggingSensor(sensors.LoggingSensorParams{
 			InfoProvider: runningInfoProvider,
-			Interval:     config.LogRunningExecutionsInterval,
+			Interval:     cfg.BacalhauConfig.Logging.LogDebugInfoInterval.AsTimeDuration(),
 		})
 		go loggingSensor.Start(ctx)
 	}
@@ -124,7 +142,7 @@ func NewComputeNode(
 	capacityCalculator := capacity.NewChainedUsageCalculator(capacity.ChainedUsageCalculatorParams{
 		Calculators: []capacity.UsageCalculator{
 			capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{
-				Defaults: config.DefaultJobResourceLimits,
+				Defaults: cfg.SystemConfig.DefaultComputeJobResourceLimits,
 			}),
 			disk.NewDiskUsageCalculator(disk.DiskUsageCalculatorParams{
 				Storages: storages,
@@ -136,7 +154,6 @@ func NewComputeNode(
 	logserver := logstream.NewServer(logstream.ServerParams{
 		ExecutionStore: executionStore,
 		Executors:      executors,
-		Buffer:         config.LogStreamBufferSize,
 	})
 
 	// node info
@@ -147,23 +164,21 @@ func NewComputeNode(
 		RunningCapacityTracker: runningCapacityTracker,
 		QueueCapacityTracker:   enqueuedUsageTracker,
 		ExecutorBuffer:         bufferRunner,
-		MaxJobRequirements:     config.JobResourceLimits,
+		MaxJobRequirements:     allocatedResources,
 	})
 
-	bidder := NewBidder(config,
+	bidder := NewBidder(cfg,
+		allocatedResources,
 		publishers,
 		storages,
 		executors,
-		runningCapacityTracker,
-		nodeID,
 		executionStore,
 		computeCallback,
 		bufferRunner,
-		apiServer,
 		capacityCalculator,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
-		ID:              nodeID,
+		ID:              cfg.NodeID,
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
 		Bidder:          bidder,
@@ -191,36 +206,39 @@ func NewComputeNode(
 
 	// Node labels
 	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: configuredLabels},
+		&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels},
 		&RuntimeLabelsProvider{},
-		capacity.NewGPULabelsProvider(config.TotalResourceLimits),
+		capacity.NewGPULabelsProvider(allocatedResources),
 	)
 
 	// TODO: Make the registration lock folder a config option so that we have it
 	// available and don't have to depend on getting the repo folder.
-	computeDir, err := cfg.ComputeDir()
+	computeDir, err := cfg.BacalhauConfig.ComputeDir()
 	if err != nil {
 		return nil, err
 	}
-	regFilename := fmt.Sprintf("%s.registration.lock", nodeID)
+	regFilename := fmt.Sprintf("%s.registration.lock", cfg.NodeID)
 	regFilename = filepath.Join(computeDir, regFilename)
 
 	// heartbeat client
 	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
-		ncl.WithPublisherName(nodeID),
-		ncl.WithPublisherDestination(config.ControlPlaneSettings.HeartbeatTopic),
+		ncl.WithPublisherName(cfg.NodeID),
+		ncl.WithPublisherDestination(computeHeartbeatTopic(cfg.NodeID)),
 		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
 	)
 	if err != nil {
 		return nil, err
 	}
-	heartbeatClient := heartbeat.NewClient(nodeID, heartbeatPublisher)
+	heartbeatClient, err := heartbeat.NewClient(natsConn, cfg.NodeID, heartbeatPublisher)
+	if err != nil {
+		return nil, err
+	}
 
 	// Set up the management client which will attempt to register this node
 	// with the requester node, and then if successful will send regular node
 	// info updates.
 	managementClient := compute.NewManagementClient(&compute.ManagementClientParams{
-		NodeID:                   nodeID,
+		NodeID:                   cfg.NodeID,
 		LabelsProvider:           labelsProvider,
 		ManagementProxy:          managementProxy,
 		NodeInfoDecorator:        nodeInfoDecorator,
@@ -228,7 +246,7 @@ func NewComputeNode(
 		AvailableCapacityTracker: runningCapacityTracker,
 		QueueUsageTracker:        enqueuedUsageTracker,
 		HeartbeatClient:          heartbeatClient,
-		ControlPlaneSettings:     config.ControlPlaneSettings,
+		HeartbeatConfig:          cfg.BacalhauConfig.Compute.Heartbeat,
 	})
 	if err := managementClient.RegisterNode(ctx); err != nil {
 		return nil, fmt.Errorf("failed to register node with requester: %s", err)
@@ -250,7 +268,7 @@ func NewComputeNode(
 	}
 
 	return &Compute{
-		ID:                 nodeID,
+		ID:                 cfg.NodeID,
 		LocalEndpoint:      baseEndpoint,
 		Capacity:           runningCapacityTracker,
 		ExecutionStore:     executionStore,
@@ -266,33 +284,39 @@ func NewComputeNode(
 	}, nil
 }
 
+func createExecutionStore(ctx context.Context, cfg NodeConfig) (store.ExecutionStore, error) {
+	executionStoreDBPath, err := cfg.BacalhauConfig.ExecutionStoreFilePath()
+	if err != nil {
+		return nil, err
+	}
+	executionStore, err := boltdb.NewStore(ctx, executionStoreDBPath)
+	if err != nil {
+		return nil, bacerrors.Wrap(err, "failed to create execution store")
+	}
+	return executionStore, nil
+}
+
 func (c *Compute) Cleanup(ctx context.Context) {
 	c.cleanupFunc(ctx)
 }
 
 func NewBidder(
-	config ComputeConfig,
+	cfg NodeConfig,
+	allocatedResources models.Resources,
 	publishers publisher.PublisherProvider,
 	storages storage.StorageProvider,
 	executors executor.ExecutorProvider,
-	runningCapacityTracker capacity.Tracker,
-	nodeID string,
 	executionStore store.ExecutionStore,
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
-	apiServer *publicapi.Server,
 	calculator capacity.UsageCalculator,
 ) compute.Bidder {
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
-	if config.BidSemanticStrategy == nil {
+	if cfg.SystemConfig.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
-			semantic.NewNetworkingStrategy(config.JobSelectionPolicy.AcceptNetworkedJobs),
-			semantic.NewTimeoutStrategy(semantic.TimeoutStrategyParams{
-				MaxJobExecutionTimeout: config.MaxJobExecutionTimeout,
-				MinJobExecutionTimeout: config.MinJobExecutionTimeout,
-			}),
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
-				RejectStatelessJobs: config.JobSelectionPolicy.RejectStatelessJobs,
+				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
 			}),
 			semantic.NewProviderInstalledStrategy(
 				publishers,
@@ -300,43 +324,40 @@ func NewBidder(
 			),
 			semantic.NewStorageInstalledBidStrategy(storages),
 			semantic.NewInputLocalityStrategy(semantic.InputLocalityStrategyParams{
-				Locality: config.JobSelectionPolicy.Locality,
+				Locality: cfg.BacalhauConfig.JobAdmissionControl.Locality,
 				Storages: storages,
 			}),
 			semantic.NewExternalCommandStrategy(semantic.ExternalCommandStrategyParams{
-				Command: config.JobSelectionPolicy.ProbeExec,
+				Command: cfg.BacalhauConfig.JobAdmissionControl.ProbeExec,
 			}),
 			semantic.NewExternalHTTPStrategy(semantic.ExternalHTTPStrategyParams{
-				URL: config.JobSelectionPolicy.ProbeHTTP,
+				URL: cfg.BacalhauConfig.JobAdmissionControl.ProbeHTTP,
 			}),
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 		}
 	} else {
-		semanticBidStrats = []bidstrategy.SemanticBidStrategy{config.BidSemanticStrategy}
+		semanticBidStrats = []bidstrategy.SemanticBidStrategy{cfg.SystemConfig.BidSemanticStrategy}
 	}
 
 	var resourceBidStrats []bidstrategy.ResourceBidStrategy
-	if config.BidResourceStrategy == nil {
+	if cfg.SystemConfig.BidResourceStrategy == nil {
 		resourceBidStrats = []bidstrategy.ResourceBidStrategy{
 			resource.NewMaxCapacityStrategy(resource.MaxCapacityStrategyParams{
-				MaxJobRequirements: config.JobResourceLimits,
+				MaxJobRequirements: allocatedResources,
 			}),
 			executor_util.NewExecutorSpecificBidStrategy(executors),
 		}
 	} else {
-		resourceBidStrats = []bidstrategy.ResourceBidStrategy{config.BidResourceStrategy}
+		resourceBidStrats = []bidstrategy.ResourceBidStrategy{cfg.SystemConfig.BidResourceStrategy}
 	}
 
 	return compute.NewBidder(compute.BidderParams{
-		NodeID:           nodeID,
+		NodeID:           cfg.NodeID,
 		SemanticStrategy: semanticBidStrats,
 		ResourceStrategy: resourceBidStrats,
 		Store:            executionStore,
 		Callback:         computeCallback,
 		Executor:         bufferRunner,
-		GetApproveURL: func() *url.URL {
-			return apiServer.GetURI().JoinPath("/api/v1/compute/approve")
-		},
-		UsageCalculator: calculator,
+		UsageCalculator:  calculator,
 	})
 }

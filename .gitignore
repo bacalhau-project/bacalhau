@@ -6,6 +6,7 @@ node_modules
 yarn-error.log
 lib
 !pkg/lib
+!webui/lib
 .DS_Store
 dist/*.sha256
 dist/*.tar.gz

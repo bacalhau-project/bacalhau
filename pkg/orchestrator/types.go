@@ -1,12 +1,15 @@
 package orchestrator
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type SubmitJobRequest struct {
-	Job *models.Job
+	Job                  *models.Job
+	ClientInstanceID     string
+	ClientInstallationID string
 }
 
 type SubmitJobResponse struct {

@@ -2,14 +2,16 @@ package executor
 
 import (
 	"context"
-	"fmt"
 	"io"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
+
+const EXECUTOR_COMPONENT = "Executor"
 
 // ExecutorProvider returns a executor for the given engine type
 type ExecutorProvider = provider.Provider[Executor]
@@ -74,16 +76,15 @@ type RunCommandRequest struct {
 	OutputLimits OutputLimits              // Output size limits for the execution.
 }
 
-// Error variables for execution states.
-var (
-	// ErrAlreadyStarted is returned when trying to start an already started execution.
-	ErrAlreadyStarted = fmt.Errorf("execution already started")
-
-	ErrAlreadyCancelled = fmt.Errorf("execution already cancelled")
-
-	// ErrAlreadyComplete is returned when action is attempted on an execution that is already complete.
-	ErrAlreadyComplete = fmt.Errorf("execution already complete")
-
-	// ErrNotFound is returned when the execution ID provided does not match any existing execution.
-	ErrNotFound = fmt.Errorf("execution not found")
+// Common Error Codes for Executor
+const (
+	ExecutionAlreadyStarted   bacerrors.ErrorCode = "ExecutionAlreadyStarted"
+	ExecutionAlreadyCancelled bacerrors.ErrorCode = "ExecutionAlreadyCancelled"
+	ExecutionAlreadyComplete  bacerrors.ErrorCode = "ExecutionAlreadyComplete"
+	ExecutionNotFound         bacerrors.ErrorCode = "ExecutionNotFound"
+	ExecutorSpecValidationErr bacerrors.ErrorCode = "ExecutorSpecValidationErr"
 )
+
+func NewExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
+	return bacerrors.New(message).WithCode(code).WithComponent(EXECUTOR_COMPONENT)
+}

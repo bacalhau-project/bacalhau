@@ -6,11 +6,12 @@ import (
 	"reflect"
 	realsync "sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 type PubSubParams struct {
@@ -47,7 +48,7 @@ func NewPubSub[T any](params PubSubParams) (*PubSub[T], error) {
 }
 
 func (p *PubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub/nats.publish")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub/nats.publish")
 	defer span.End()
 
 	payload, err := marshaller.JSONMarshalWithMax(message)
@@ -109,7 +110,7 @@ func (p *PubSub[T]) Close(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Ctx(ctx).Info().Msgf("done closing nats pubsub for subject %s", p.subscriptionSubject)
+	log.Ctx(ctx).Debug().Msgf("done closing nats pubsub for subject %s", p.subscriptionSubject)
 	return nil
 }
 
