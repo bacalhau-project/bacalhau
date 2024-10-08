@@ -88,11 +88,6 @@ const (
 	MetaRequesterID    = "bacalhau.org/requester.id"
 	MetaClientID       = "bacalhau.org/client.id"
 
-	// Job provenance metadata used to track the origin of a job where
-	// it may have been translated from another job.
-	MetaDerivedFrom  = "bacalhau.org/derivedFrom"
-	MetaTranslatedBy = "bacalhau.org/translatedBy"
-
 	MetaServerInstallationID = "bacalhau.org/server.installation.id"
 	MetaServerInstanceID     = "bacalhau.org/server.instance.id"
 	MetaClientInstallationID = "bacalhau.org/client.installation.id"
