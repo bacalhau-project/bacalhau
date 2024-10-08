@@ -15,17 +15,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/filefs"
+	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/mountfs"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/touchfs"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
-	"github.com/bacalhau-project/bacalhau/pkg/util/filefs"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/util/mountfs"
-	"github.com/bacalhau-project/bacalhau/pkg/util/touchfs"
 )
 
 type Executor struct {

@@ -7,8 +7,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/generic"
 )
 
 const (

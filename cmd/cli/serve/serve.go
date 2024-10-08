@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"k8s.io/kubectl/pkg/util/templates"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
@@ -23,7 +25,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/bacalhau-project/bacalhau/webui"
 )

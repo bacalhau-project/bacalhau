@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type RingBufferTestSuite struct {
