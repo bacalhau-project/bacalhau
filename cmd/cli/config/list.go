@@ -5,6 +5,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -40,6 +41,7 @@ Each key shown can be used with:
 			if err != nil {
 				return err
 			}
+			log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", cfg.Paths(), cfg.Get(types.DataDirKey))
 			return list(cmd, cfg, o)
 		},
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
@@ -31,7 +32,7 @@ type BaseExecutorParams struct {
 	Executors              executor.ExecutorProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
-	FailureInjectionConfig models.FailureInjectionComputeConfig
+	FailureInjectionConfig models.FailureInjectionConfig
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -45,7 +46,7 @@ type BaseExecutor struct {
 	executors        executor.ExecutorProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
-	failureInjection models.FailureInjectionComputeConfig
+	failureInjection models.FailureInjectionConfig
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -303,7 +304,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	topic := EventTopicExecutionRunning
 	defer func() {
 		if err != nil {
-			if !models.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
+			if !bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
 				e.handleFailure(ctx, state, err, topic)
 			}
 		}
@@ -322,7 +323,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}()
 	if err := res.Err; err != nil {
-		if models.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
+		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
 			// we allow duplicate calls to `Run` to be idempotent and fall through to the below `Wait` call.
 			log.Ctx(ctx).Warn().Err(err).Str("execution", execution.ID).
@@ -434,9 +435,8 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 	}
 	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
 	if err != nil {
-		return nil, fmt.Errorf("failed to publish result: %w", err)
+		return nil, bacerrors.Wrap(err, "failed to publish result")
 	}
-
 	log.Ctx(ctx).Debug().
 		Str("execution", execution.ID).
 		Msg("Execution published")

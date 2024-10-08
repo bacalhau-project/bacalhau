@@ -179,7 +179,10 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 		VersionId: object.versionID,
 		IfMatch:   object.eTag,
 	})
-	return err
+	if err != nil {
+		return s3helper.NewS3InputSourceServiceError(err)
+	}
+	return nil
 }
 
 func (s *StorageProvider) CleanupStorage(_ context.Context, _ models.InputSource, volume storage.StorageVolume) error {
@@ -216,7 +219,7 @@ func (s *StorageProvider) explodeKey(
 
 		headResp, err := client.S3.HeadObject(ctx, request)
 		if err != nil {
-			return nil, err
+			return nil, s3helper.NewS3InputSourceServiceError(err)
 		}
 
 		if storageSpec.ChecksumSHA256 != "" && storageSpec.ChecksumSHA256 != aws.ToString(headResp.ChecksumSHA256) {
@@ -253,7 +256,7 @@ func (s *StorageProvider) explodeKey(
 			ContinuationToken: continuationToken,
 		})
 		if err != nil {
-			return nil, err
+			return nil, s3helper.NewS3InputSourceServiceError(err)
 		}
 		for _, object := range resp.Contents {
 			if storageSpec.Filter != "" {

@@ -1,14 +1,11 @@
 package serve
 
 import (
-	"context"
 	"fmt"
 	"net"
-	"net/url"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,15 +14,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 	"github.com/bacalhau-project/bacalhau/webui"
@@ -93,16 +90,23 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), serveFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cfg, err := util.SetupConfig(cmd)
+			cfg, rawCfg, err := util.SetupConfigs(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup config: %w", err)
 			}
+
+			if err = logger.ParseAndConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
+				return fmt.Errorf("failed to configure logging: %w", err)
+			}
+
+			log.Info().Msgf("Config loaded from: %s, and with data-dir %s",
+				rawCfg.Paths(), rawCfg.Get(types.DataDirKey))
+
 			// create or open the bacalhau repo and load the config
 			fsr, err := setup.SetupBacalhauRepo(cfg)
 			if err != nil {
 				return fmt.Errorf("failed to reconcile repo: %w", err)
 			}
-
 			return serve(cmd, cfg, fsr)
 		},
 	}
@@ -120,107 +124,64 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
 
-	// Attempt to read the node name from the repo
-	nodeName, err := fsRepo.ReadNodeName()
+	sysmeta, err := fsRepo.SystemMetadata()
 	if err != nil {
-		return fmt.Errorf("failed to get node name: %w", err)
+		return fmt.Errorf("failed to get system metadata from repo: %w", err)
 	}
-
-	if nodeName == "" {
+	if sysmeta.NodeName == "" {
 		// Check if a flag was provided
-		nodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
-		if nodeName == "" {
+		sysmeta.NodeName = cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if sysmeta.NodeName == "" {
 			// No flag provided, generate and persist node name
-			nodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
+			sysmeta.NodeName, err = config.GenerateNodeID(ctx, cfg.NameProvider)
 			if err != nil {
 				return fmt.Errorf("failed to generate node name for provider %s: %w", cfg.NameProvider, err)
 			}
 		}
 		// Persist the node name
-		if err := fsRepo.WriteNodeName(nodeName); err != nil {
-			return fmt.Errorf("failed to write node name %s: %w", nodeName, err)
+		if err := fsRepo.WriteNodeName(sysmeta.NodeName); err != nil {
+			return fmt.Errorf("failed to write node name %s: %w", sysmeta.NodeName, err)
 		}
-		log.Info().Msgf("persisted node name %s", nodeName)
+		log.Info().Msgf("persisted node name %s", sysmeta.NodeName)
+		// now reload the system metadata since it has changed.
+		sysmeta, err = fsRepo.SystemMetadata()
+		if err != nil {
+			return fmt.Errorf("reloading system metadata after persisting name: %w", err)
+		}
 
 	} else {
 		// Warn if the flag was provided but node name already exists
-		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != nodeName {
-			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, nodeName)
+		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != sysmeta.NodeName {
+			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, sysmeta.NodeName)
 		}
 	}
 
-	ctx = logger.ContextWithNodeIDLogger(ctx, nodeName)
+	ctx = logger.ContextWithNodeIDLogger(ctx, sysmeta.NodeName)
 
-	// configure node type
-	isRequesterNode := cfg.Orchestrator.Enabled
-	isComputeNode := cfg.Compute.Enabled
-
-	if !(isComputeNode || isRequesterNode) {
+	if !(cfg.Compute.Enabled || cfg.Orchestrator.Enabled) {
 		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
-		isRequesterNode = true
-	}
-
-	networkConfig, err := getNetworkConfig(cfg)
-	if err != nil {
-		return err
-	}
-
-	computeConfig, err := GetComputeConfig(ctx, cfg, isComputeNode)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure compute node")
-	}
-
-	requesterConfig, err := GetRequesterConfig(cfg, isRequesterNode)
-	if err != nil {
-		return errors.Wrapf(err, "failed to configure requester node")
+		cfg.Orchestrator.Enabled = true
 	}
 
 	// Create node config from cmd arguments
+	// TODO: validate if this is necessary
 	hostAddress, err := parseServerAPIHost(cfg.API.Host)
 	if err != nil {
 		return err
 	}
+	cfg.API.Host = hostAddress
+
 	nodeConfig := node.NodeConfig{
-		NodeID:         nodeName,
+		NodeID:         sysmeta.NodeName,
 		CleanupManager: cm,
-		DisabledFeatures: node.FeatureConfig{
-			Engines:    cfg.Engines.Disabled,
-			Publishers: cfg.Publishers.Disabled,
-			Storages:   cfg.InputSources.Disabled,
-		},
-		HostAddress:           hostAddress,
-		APIPort:               uint16(cfg.API.Port),
-		ComputeConfig:         computeConfig,
-		RequesterNodeConfig:   requesterConfig,
-		AuthConfig:            cfg.API.Auth,
-		IsComputeNode:         isComputeNode,
-		IsRequesterNode:       isRequesterNode,
-		RequesterSelfSign:     cfg.API.TLS.SelfSigned,
-		Labels:                cfg.Compute.Labels,
-		AllowListedLocalPaths: cfg.Compute.AllowListedLocalPaths,
-		NetworkConfig:         networkConfig,
+		BacalhauConfig: cfg,
 	}
-	if isRequesterNode {
-		// We only want auto TLS for the requester node, but this info doesn't fit well
-		// with the other data in the requesterConfig.
-		nodeConfig.RequesterAutoCert = cfg.API.TLS.AutoCert
-		nodeConfig.RequesterAutoCertCache = cfg.API.TLS.AutoCertCachePath
-		// If there are configuration values for autocert we should return and let autocert
-		// do what it does later on in the setup.
-		if nodeConfig.RequesterAutoCert == "" {
-			cert, key, err := GetTLSCertificate(ctx, cfg, &nodeConfig)
-			if err != nil {
-				return err
-			}
-			nodeConfig.RequesterTLSCertificateFile = cert
-			nodeConfig.RequesterTLSKeyFile = key
-		}
-	}
+
 	// Create node
-	log.Info().Msg("starting bacalhau...")
-	standardNode, err := node.NewNode(ctx, cfg, nodeConfig, fsRepo)
+	log.Info().Msg("Starting bacalhau...")
+	standardNode, err := node.NewNode(ctx, nodeConfig, fsRepo)
 	if err != nil {
-		return fmt.Errorf("error creating node: %w", err)
+		return bacerrors.Wrap(err, "failed to start node")
 	}
 
 	// Start node
@@ -231,32 +192,34 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	// Start up Dashboard - default: 8483
 	if cfg.WebUI.Enabled {
 		webuiConfig := webui.Config{
-			APIEndpoint: standardNode.APIServer.GetURI().String(),
+			APIEndpoint: cfg.WebUI.Backend,
 			Listen:      cfg.WebUI.Listen,
+		}
+		if webuiConfig.APIEndpoint == "" {
+			webuiConfig.APIEndpoint = standardNode.APIServer.GetURI().String()
 		}
 		webuiServer, err := webui.NewServer(webuiConfig)
 		if err != nil {
 			// not failing the node if the webui server fails to start
 			log.Error().Err(err).Msg("Failed to start ui server")
+		} else {
+			go func() {
+				if err := webuiServer.ListenAndServe(ctx); err != nil {
+					log.Error().Err(err).Msg("ui server error")
+				}
+			}()
 		}
-		go func() {
-			if err := webuiServer.ListenAndServe(ctx); err != nil {
-				log.Error().Err(err).Msg("ui server error")
-			}
-		}()
 	}
 
 	if !cfg.DisableAnalytics {
-		installationID, err := fsRepo.ReadInstallationID()
+		err = analytics.SetupAnalyticsProvider(ctx,
+			analytics.WithNodeID(sysmeta.NodeName),
+			analytics.WithInstallationID(system.InstallationID()),
+			analytics.WithInstanceID(sysmeta.InstanceID),
+			analytics.WithNodeType(cfg.Orchestrator.Enabled, cfg.Compute.Enabled),
+			analytics.WithVersion(version.Get()))
+
 		if err != nil {
-			log.Trace().Err(err).Msg("failed to read installationID")
-		}
-		if err := analytics.SetupAnalyticsProvider(ctx,
-			analytics.WithNodeNodeID(nodeName),
-			analytics.WithNodeType(isRequesterNode, isComputeNode),
-			analytics.WithInstallationID(installationID),
-			analytics.WithVersion(version.Get()),
-		); err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
 		}
 		defer func() {
@@ -267,7 +230,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	startupLog := log.Info().
-		Str("name", nodeName).
+		Str("name", sysmeta.NodeName).
 		Str("address", fmt.Sprintf("%s:%d", hostAddress, cfg.API.Port)).
 		Bool("compute_enabled", cfg.Compute.Enabled).
 		Bool("orchestrator_enabled", cfg.Orchestrator.Enabled).
@@ -301,60 +264,12 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return err
 	}
-	cmd.Println()
-	cmd.Println()
 	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
 	defer os.Remove(riPath)
 
 	<-ctx.Done() // block until killed
 	log.Info().Msg("bacalhau node shutting down...")
 	return nil
-}
-
-func GetTLSCertificate(ctx context.Context, cfg types.Bacalhau, nodeConfig *node.NodeConfig) (string, string, error) {
-	cert := cfg.API.TLS.CertFile
-	key := cfg.API.TLS.KeyFile
-	if cert != "" && key != "" {
-		return cert, key, nil
-	}
-	if cert != "" && key == "" {
-		return "", "", fmt.Errorf("invalid config: TLS cert specified without corresponding private key")
-	}
-	if cert == "" && key != "" {
-		return "", "", fmt.Errorf("invalid config: private key specified without corresponding TLS certificate")
-	}
-	if !nodeConfig.RequesterSelfSign {
-		return "", "", nil
-	}
-	log.Ctx(ctx).Info().Msg("Generating self-signed certificate")
-	var err error
-	// If the user has not specified a private key, use their client key
-	if key == "" {
-		key, err = cfg.UserKeyPath()
-		if err != nil {
-			return "", "", err
-		}
-	}
-	certFile, err := os.CreateTemp(os.TempDir(), "bacalhau_cert_*.crt")
-	if err != nil {
-		return "", "", errors.Wrap(err, "unable to create temporary server certificate")
-	}
-	defer closer.CloseWithLogOnError(certFile.Name(), certFile)
-
-	var ips []net.IP = nil
-	if ip := net.ParseIP(nodeConfig.HostAddress); ip != nil {
-		ips = append(ips, ip)
-	}
-
-	if privKey, err := crypto.LoadPKCS1KeyFile(key); err != nil {
-		return "", "", err
-	} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
-		return "", "", errors.Wrap(err, "failed to generate server certificate")
-	} else if err = caCert.MarshalCertficate(certFile); err != nil {
-		return "", "", errors.Wrap(err, "failed to write server certificate")
-	}
-	cert = certFile.Name()
-	return cert, key, nil
 }
 
 func parseServerAPIHost(host string) (string, error) {
@@ -390,10 +305,6 @@ func buildEnvVariables(
 	var envvars strings.Builder
 	envvars.WriteString(fmt.Sprintf("export %s=%s\n", config.KeyAsEnvVar(types.APIHostKey), getAPIURL(cfg.API)))
 	envvars.WriteString(fmt.Sprintf("export %s=%d\n", config.KeyAsEnvVar(types.APIPortKey), cfg.API.Port))
-	if cfg.Orchestrator.Enabled {
-		envvars.WriteString(fmt.Sprintf("export %s=%s\n",
-			config.KeyAsEnvVar(types.ComputeOrchestratorsKey), getPublicNATSOrchestratorURL(cfg.Orchestrator)))
-	}
 	return envvars.String()
 }
 
@@ -403,17 +314,4 @@ func getAPIURL(cfg types.API) string {
 	} else {
 		return cfg.Host
 	}
-}
-
-func getPublicNATSOrchestratorURL(cfg types.Orchestrator) *url.URL {
-	orchestrator := &url.URL{
-		Scheme: "nats",
-		Host:   cfg.Advertise,
-	}
-
-	if cfg.Advertise == "" {
-		orchestrator.Host = fmt.Sprintf("127.0.0.1:%d", cfg.Port)
-	}
-
-	return orchestrator
 }

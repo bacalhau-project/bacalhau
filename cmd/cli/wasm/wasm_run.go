@@ -176,8 +176,9 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 		helpers.PrintWarnings(cmd, resp.Warnings)
 	}
 
+	job.ID = resp.JobID
 	jobProgressPrinter := printer.NewJobProgressPrinter(api, opts.RunTimeSettings)
-	if err := jobProgressPrinter.PrintJobProgress(ctx, resp.JobID, cmd); err != nil {
+	if err := jobProgressPrinter.PrintJobProgress(ctx, job, cmd); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

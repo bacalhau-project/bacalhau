@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
@@ -92,19 +95,25 @@ func (fsr *FsRepo) Init() error {
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
-		return err
+		return bacerrors.New("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
+			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
+				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
+				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+
+				"\tIf present, ensure the config file in %s contains a valid DataDir field path", filepath.Join(fsr.path, config.DefaultFileName))
 	}
 
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
-	// never fail here as this isn't critical to node start up.
-	if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
-		log.Trace().Err(err).Msgf("failed to write instanceID")
+	// initialize repo's system metadata
+	if err := fsr.writeMetadata(&SystemMetadata{
+		RepoVersion: Version4,
+		InstanceID:  GenerateInstanceID(),
+	}); err != nil {
+		return fmt.Errorf("failed to persist system metadata: %w", err)
 	}
-
-	if err := fsr.WriteVersion(Version4); err != nil {
-		return fmt.Errorf("failed to persist repo version: %w", err)
+	if err := fsr.WriteLegacyVersion(Version4); err != nil {
+		return fmt.Errorf("failed to persist legacy repo version: %w", err)
 	}
 
 	return nil
@@ -127,11 +136,10 @@ func (fsr *FsRepo) Open() error {
 
 	// check if an instanceID exists persisting one if not found.
 	// never fail here as this isn't critical to node start up.
-	if instanceID, err := fsr.ReadInstanceID(); err != nil {
-		log.Trace().Err(err).Msgf("failed to read instanceID")
-	} else if instanceID == "" {
-		if err := fsr.WriteInstanceID(GenerateInstanceID()); err != nil {
-			log.Trace().Err(err).Msgf("failed to write instanceID")
+	if instanceID := fsr.InstanceID(); instanceID == "" {
+		// this case will happen when a user migrated from a repo prior to instanceID existing.
+		if err := fsr.writeInstanceID(GenerateInstanceID()); err != nil {
+			log.Debug().Err(err).Msgf("failed to write instanceID")
 		}
 	}
 

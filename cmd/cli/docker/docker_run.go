@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	engine_docker "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
@@ -151,15 +152,16 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOpt
 
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
-		return fmt.Errorf("failed to submit job: %w", err)
+		return bacerrors.Wrap(err, "failed to submit job")
 	}
 
 	if len(resp.Warnings) > 0 {
 		helpers.PrintWarnings(cmd, resp.Warnings)
 	}
 
+	job.ID = resp.JobID
 	jobProgressPrinter := printer.NewJobProgressPrinter(api, opts.RunTimeSettings)
-	if err := jobProgressPrinter.PrintJobProgress(ctx, resp.JobID, cmd); err != nil {
+	if err := jobProgressPrinter.PrintJobProgress(ctx, job, cmd); err != nil {
 		return fmt.Errorf("failed to print job execution: %w", err)
 	}
 

@@ -8,7 +8,6 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -37,7 +36,7 @@ func (t *TracerContextProvider) GetContext(ctx context.Context, jobID string) co
 	t.contextMutex.Lock()
 	defer t.contextMutex.Unlock()
 
-	jobCtx, _ := system.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
+	jobCtx, _ := telemetry.Span(ctx, "pkg/eventhandler/JobEventHandler.HandleJobEvent",
 		oteltrace.WithSpanKind(oteltrace.SpanKindInternal),
 		oteltrace.WithAttributes(
 			attribute.String(telemetry.TracerAttributeNameNodeID, t.nodeID),

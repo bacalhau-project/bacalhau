@@ -1,113 +1,154 @@
 package docker
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/docker/docker/errdefs"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 )
 
-const DockerComponent = "Docker"
+const Component = "Docker"
 
 // Docker-specific error codes
 const (
-	DockerContainerNotFound = "DockerContainerNotFound"
-	DockerImageNotFound     = "DockerImageNotFound"
-	DockerNetworkNotFound   = "DockerNetworkNotFound"
-	DockerVolumeNotFound    = "DockerVolumeNotFound"
-	DockerConflict          = "DockerConflict"
-	DockerUnauthorized      = "DockerUnauthorized"
-	DockerForbidden         = "DockerForbidden"
-	DockerDataLoss          = "DockerDataLoss"
-	DockerDeadline          = "DockerDeadline"
-	DockerCancelled         = "DockerCancelled"
-	DockerUnavailable       = "DockerUnavailable"
-	DockerSystemError       = "DockerSystemError"
-	DockerNotImplemented    = "DockerNotImplemented"
-	DockerUnknownError      = "DockerUnknownError"
+	ContainerNotFound = "ContainerNotFound"
+	ImageNotFound     = "ImageNotFound"
+	ImageInvalid      = "ImageInvalid"
+	NotFound          = "NotFound"
+	Conflict          = "Conflict"
+	Unauthorized      = "Unauthorized"
+	Forbidden         = "Forbidden"
+	DataLoss          = "DataLoss"
+	Deadline          = "Deadline"
+	Cancelled         = "Cancelled"
+	Unavailable       = "Unavailable"
+	SystemError       = "SystemError"
+	NotImplemented    = "NotImplemented"
+	UnknownError      = "UnknownError"
 )
 
 // Custom Docker error codes
 const (
-	DockerBridgeNetworkUnattached = "DockerBridgeNetworkUnattached"
-	DockerContainerNotRunning     = "DockerContainerNotRunning"
-	DockerImageDigestMismatch     = "DockerImageDigestMismatch"
+	BridgeNetworkUnattached = "BridgeNetworkUnattached"
+	ContainerNotRunning     = "ContainerNotRunning"
+	ImageDigestMismatch     = "ImageDigestMismatch"
 )
 
-func NewDockerError(err error) *models.BaseError {
+func NewDockerError(err error) (bacErr bacerrors.Error) {
+	defer func() {
+		if bacErr != nil {
+			bacErr = bacErr.WithComponent(Component)
+		}
+	}()
 	switch {
 	case errdefs.IsNotFound(err):
 		return handleNotFoundError(err)
 	case errdefs.IsConflict(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerConflict).
-			WithHTTPStatusCode(http.StatusConflict).
-			WithComponent(DockerComponent)
+		return bacerrors.New(err.Error()).
+			WithCode(Conflict).
+			WithHTTPStatusCode(http.StatusConflict)
 	case errdefs.IsUnauthorized(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerUnauthorized).
+		return bacerrors.New(err.Error()).
+			WithCode(Unauthorized).
 			WithHTTPStatusCode(http.StatusUnauthorized).
-			WithComponent(DockerComponent)
+			WithHint("Ensure you have the necessary permissions and that your credentials are correct. " +
+				"You may need to log in to Docker again.")
 	case errdefs.IsForbidden(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerForbidden).
+		return bacerrors.New(err.Error()).
+			WithCode(Forbidden).
 			WithHTTPStatusCode(http.StatusForbidden).
-			WithComponent(DockerComponent)
+			WithHint(fmt.Sprintf("You don't have permission to perform this action. "+
+				"Supply the node with valid Docker login credentials using the %s and %s environment variables",
+				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar))
 	case errdefs.IsDataLoss(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerDataLoss).
+		return bacerrors.New(err.Error()).
+			WithCode(DataLoss).
 			WithHTTPStatusCode(http.StatusInternalServerError).
-			WithComponent(DockerComponent)
+			WithFailsExecution()
 	case errdefs.IsDeadline(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerDeadline).
+		return bacerrors.New(err.Error()).
+			WithCode(Deadline).
 			WithHTTPStatusCode(http.StatusGatewayTimeout).
-			WithComponent(DockerComponent)
+			WithHint("The operation timed out. This could be due to network issues or high system load. " +
+				"Try again later or check your network connection.").
+			WithRetryable()
 	case errdefs.IsCancelled(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerCancelled).
+		return bacerrors.New(err.Error()).
+			WithCode(Cancelled).
 			WithHTTPStatusCode(http.StatusRequestTimeout).
-			WithComponent(DockerComponent)
+			WithHint("The operation was cancelled. " +
+				"This is often due to user intervention or a competing operation.")
 	case errdefs.IsUnavailable(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerUnavailable).
+		return bacerrors.New(err.Error()).
+			WithCode(Unavailable).
 			WithHTTPStatusCode(http.StatusServiceUnavailable).
-			WithComponent(DockerComponent)
+			WithHint("The Docker daemon or a required service is unavailable. " +
+				"Check if the Docker daemon is running and healthy.").
+			WithRetryable()
 	case errdefs.IsSystem(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerSystemError).
+		return bacerrors.New(err.Error()).
+			WithCode(SystemError).
 			WithHTTPStatusCode(http.StatusInternalServerError).
-			WithComponent(DockerComponent)
+			WithHint("An internal system error occurred. This could be due to resource constraints. " +
+				"Check system resources and Docker logs for more information.").
+			WithFailsExecution()
 	case errdefs.IsNotImplemented(err):
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerNotImplemented).
+		return bacerrors.New(err.Error()).
+			WithCode(NotImplemented).
 			WithHTTPStatusCode(http.StatusNotImplemented).
-			WithComponent(DockerComponent)
+			WithHint("This feature is not implemented in your version of Docker. " +
+				"Check Docker documentation for feature availability and consider upgrading if necessary.")
 	default:
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerUnknownError).
-			WithHTTPStatusCode(http.StatusInternalServerError).
-			WithComponent(DockerComponent)
+		return bacerrors.New(err.Error()).
+			WithCode(UnknownError).
+			WithHTTPStatusCode(http.StatusInternalServerError)
 	}
 }
 
-func NewCustomDockerError(code models.ErrorCode, message string) *models.BaseError {
-	return models.NewBaseError(message).
-		WithCode(code).
-		WithComponent(DockerComponent)
+func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
+	defer func() {
+		if bacErr != nil {
+			bacErr = bacErr.
+				WithComponent(Component).
+				WithDetail("Image", image)
+		}
+	}()
+
+	switch {
+	case errdefs.IsNotFound(err) || errdefs.IsForbidden(err):
+		return bacerrors.New("image not available: %q", image).
+			WithHint(fmt.Sprintf(`To resolve this, either:
+1. Check if the image exists in the registry and the name is correct
+2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
+				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar)).
+			WithCode(ImageNotFound)
+	case errdefs.IsInvalidParameter(err):
+		return bacerrors.New("invalid image format: %q", image).
+			WithHint("Ensure the image name is valid and the image is available in the registry").
+			WithCode(ImageInvalid)
+	default:
+		return NewDockerError(err)
+	}
 }
 
-func handleNotFoundError(err error) *models.BaseError {
+func NewCustomDockerError(code bacerrors.ErrorCode, message string) bacerrors.Error {
+	return bacerrors.New(message).
+		WithCode(code).
+		WithComponent(Component)
+}
+
+func handleNotFoundError(err error) bacerrors.Error {
 	errorLower := strings.ToLower(err.Error())
 	if strings.Contains(errorLower, "no such container") {
-		return models.NewBaseError(err.Error()).
-			WithCode(DockerContainerNotFound).
-			WithHTTPStatusCode(http.StatusNotFound).
-			WithComponent(DockerComponent)
+		return bacerrors.New(err.Error()).
+			WithCode(ContainerNotFound).
+			WithHTTPStatusCode(http.StatusNotFound)
 	}
-	return models.NewBaseError(err.Error()).
-		WithCode(DockerUnknownError).
-		WithHTTPStatusCode(http.StatusNotFound).
-		WithComponent(DockerComponent)
+	return bacerrors.New(err.Error()).
+		WithCode(NotFound).
+		WithHTTPStatusCode(http.StatusNotFound)
 }

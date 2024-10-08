@@ -49,12 +49,12 @@ func (s *LocalPublisherServer) Run(ctx context.Context) {
 		}
 	}(server, errChan)
 
-	log.Ctx(ctx).Info().Msgf("Running local publishing server on %s", server.Addr)
+	log.Ctx(ctx).Debug().Msgf("Running local publishing server on %s", server.Addr)
 
 	// Wait for cancellation or an error during ListenAndServe
 	select {
 	case <-ctx.Done(): // context cancelled
-		log.Ctx(ctx).Info().Msg("Shutting down local publishing server")
+		log.Ctx(ctx).Debug().Msg("Shutting down local publishing server")
 	case err := <-errChan:
 		log.Ctx(ctx).Error().Err(err).Msg("error running local publishing server")
 	}

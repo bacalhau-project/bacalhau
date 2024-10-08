@@ -17,7 +17,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -203,9 +202,9 @@ func (c TracedClient) Close() error {
 }
 
 func (c TracedClient) span(ctx context.Context, name string) (context.Context, trace.Span) {
-	return system.NewSpan(
+	return telemetry.NewSpan(
 		ctx,
-		system.GetTracer(),
+		telemetry.GetTracer(),
 		fmt.Sprintf("docker.%s", name),
 		trace.WithAttributes(semconv.HostName(c.hostname), semconv.PeerService("docker")),
 		trace.WithSpanKind(trace.SpanKindClient),

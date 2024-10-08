@@ -14,9 +14,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 const (
@@ -42,8 +42,7 @@ type UpdateCheckResponse struct {
 func CheckForUpdate(
 	ctx context.Context,
 	currentClientVersion, currentServerVersion *models.BuildVersionInfo,
-	clientID string,
-	InstallationID string,
+	instanceID string,
 ) (*UpdateCheckResponse, error) {
 	u, err := url.Parse(getUpdateCheckerEndpoint())
 	if err != nil {
@@ -59,8 +58,12 @@ func CheckForUpdate(
 	if currentServerVersion != nil && currentServerVersion.GitVersion != "" {
 		q.Set("serverVersion", currentServerVersion.GitVersion)
 	}
-	q.Set("clientID", clientID)
-	q.Set("InstallationID", InstallationID)
+	if instanceID != "" {
+		q.Set("instanceID", instanceID)
+	}
+	if installationID := system.InstallationID(); installationID != "" {
+		q.Set("InstallationID", installationID)
+	}
 
 	// The BACALHAU_UPDATE_CHECKER_TEST is an env variable a user can set so that we can track
 	// when the binary is being run by a non-user, to enable easier filtering of queries
@@ -105,7 +108,7 @@ func LogUpdateResponse(ctx context.Context, ucr *UpdateCheckResponse) {
 type UpdateStore interface {
 	ReadLastUpdateCheck() (time.Time, error)
 	WriteLastUpdateCheck(time.Time) error
-	ReadInstallationID() (string, error)
+	InstanceID() string
 }
 
 // RunUpdateChecker starts a goroutine that will periodically make an update
@@ -127,16 +130,7 @@ func RunUpdateChecker(
 	}
 
 	clientVersion := Get()
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key path")
-		return
-	}
-	userKey, err := baccrypto.LoadUserKey(userKeyPath)
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("Failed to load user key file")
-		return
-	}
+	instanceID := store.InstanceID()
 
 	runUpdateCheck := func() {
 		// The server may update itself between checks, so always ask the server
@@ -150,14 +144,7 @@ func RunUpdateChecker(
 			serverVersion = nil
 		}
 
-		installationID, err := store.ReadInstallationID()
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to read user installationID")
-			// we can continue here and still use an empty string
-			// a failure here indicates the system metadata file is un-readable
-		}
-
-		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, userKey.ClientID(), installationID)
+		updateResponse, err := CheckForUpdate(ctx, clientVersion, serverVersion, instanceID)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("Failed to perform update check")
 		}

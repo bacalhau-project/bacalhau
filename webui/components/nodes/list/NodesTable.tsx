@@ -85,7 +85,8 @@ export function NodesTable({
           ))}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-between space-x-2 py-4">
+      {/* TODO: remove hidden once pagination is implemented*/}
+      <div className="flex items-center justify-between space-x-2 py-4 hidden">
         <div className="flex items-center space-x-2">
           <p className="text-sm font-medium">Nodes per page</p>
           <Select

@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
@@ -62,11 +63,18 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		analytics.EmitEvent(ctx, analytics.NewEvent(analytics.SubmitJobEventType, submitEvent))
 	}()
 
+	if request.ClientInstallationID != "" {
+		job.Meta[models.MetaClientInstallationID] = request.ClientInstallationID
+	}
+	if request.ClientInstanceID != "" {
+		job.Meta[models.MetaClientInstanceID] = request.ClientInstanceID
+	}
+
 	if err := e.jobTransformer.Transform(ctx, job); err != nil {
 		submitEvent.Error = err.Error()
 		return nil, err
 	}
-	submitEvent.ID = job.ID
+	submitEvent.JobID = job.ID
 
 	var translationEvent models.Event
 
@@ -155,7 +163,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		// no need to stop a job that is already stopped
 		return StopJobResponse{}, nil
 	case models.JobStateTypeCompleted:
-		return StopJobResponse{}, models.NewBaseError("cannot stop job in state %s", job.State.StateType)
+		return StopJobResponse{}, bacerrors.New("cannot stop job in state %s", job.State.StateType)
 	default:
 		// continue
 	}

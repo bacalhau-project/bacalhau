@@ -3,8 +3,6 @@ package models
 import (
 	"fmt"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Job selection policy configuration
@@ -12,21 +10,12 @@ import (
 //go:generate stringer -type=JobSelectionDataLocality -linecomment
 type JobSelectionDataLocality int64
 
+func (i JobSelectionDataLocality) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+
 func (i *JobSelectionDataLocality) UnmarshalText(text []byte) error {
 	out, err := ParseJobSelectionDataLocality(string(text))
-	if err != nil {
-		return err
-	}
-	*i = out
-	return nil
-}
-
-func (i JobSelectionDataLocality) MarshalYAML() (interface{}, error) {
-	return i.String(), nil
-}
-
-func (i *JobSelectionDataLocality) UnmarshalYAML(value *yaml.Node) error {
-	out, err := ParseJobSelectionDataLocality(value.Value)
 	if err != nil {
 		return err
 	}

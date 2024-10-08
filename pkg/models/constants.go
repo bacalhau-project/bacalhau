@@ -92,4 +92,9 @@ const (
 	// it may have been translated from another job.
 	MetaDerivedFrom  = "bacalhau.org/derivedFrom"
 	MetaTranslatedBy = "bacalhau.org/translatedBy"
+
+	MetaServerInstallationID = "bacalhau.org/server.installation.id"
+	MetaServerInstanceID     = "bacalhau.org/server.instance.id"
+	MetaClientInstallationID = "bacalhau.org/client.installation.id"
+	MetaClientInstanceID     = "bacalhau.org/client.instance.id"
 )

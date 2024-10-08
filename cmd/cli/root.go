@@ -24,7 +24,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 func NewRootCmd() *cobra.Command {
@@ -69,6 +72,18 @@ func NewRootCmd() *cobra.Command {
 			return err
 		}
 
+		// Configure logging
+		// While we allow users to configure logging via the config file, they are applied
+		// and will override this configuration at a later stage when the config is loaded.
+		// This is needed to ensure any logs before the config is loaded are captured.
+		logLevel := viper.GetString(types.LoggingLevelKey)
+		if logLevel == "" {
+			logLevel = "Info"
+		}
+		if err := logger.ParseAndConfigureLogging(string(logger.LogModeCmd), logLevel); err != nil {
+			return fmt.Errorf("failed to configure logging: %w", err)
+		}
+
 		return nil
 	}
 
@@ -110,6 +125,13 @@ func NewRootCmd() *cobra.Command {
 func Execute(ctx context.Context) {
 	rootCmd := NewRootCmd()
 	rootCmd.SetContext(ctx)
+	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
+
+	// this is needed as cobra defaults to Stderr if no output is set.
+	rootCmd.SetOut(os.Stdout)
+	rootCmd.SetErr(os.Stderr)
+
 	if err := rootCmd.Execute(); err != nil {
 		util.Fatal(rootCmd, err, 1)
 	}
@@ -128,6 +150,6 @@ func injectRootSpan(cmd *cobra.Command, ctx context.Context) context.Context {
 		names = append([]string{root.Name()}, names...)
 	}
 	name := fmt.Sprintf("bacalhau.%s", strings.Join(names, "."))
-	ctx, span := system.NewRootSpan(ctx, system.GetTracer(), name)
+	ctx, span := telemetry.NewRootSpan(ctx, telemetry.GetTracer(), name)
 	return context.WithValue(ctx, spanKey, span)
 }

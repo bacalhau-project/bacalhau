@@ -17,7 +17,7 @@ type JobQuery struct {
 	IncludeTags []string
 	ExcludeTags []string
 	Limit       uint32
-	Offset      uint32
+	Offset      uint64
 	ReturnAll   bool
 	SortBy      string
 	SortReverse bool
@@ -26,9 +26,9 @@ type JobQuery struct {
 
 type JobQueryResponse struct {
 	Jobs       []models.Job
-	Offset     uint32 // Offset into the filtered results of the first returned record
+	Offset     uint64 // Offset into the filtered results of the first returned record
 	Limit      uint32 // The number of records to return, 0 means all
-	NextOffset uint32 // Offset + Limit of the next page of results, 0 means no more results
+	NextOffset uint64 // Offset + Limit of the next page of results, 0 means no more results
 }
 
 type JobHistoryQuery struct {

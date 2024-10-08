@@ -41,6 +41,7 @@ type StateChange[StateType any] struct {
 // {Job,Event}State fields will only be present if the Type field is of
 // the matching type.
 type JobHistory struct {
+	SeqNum      uint64         `json:"SeqNum"`
 	Type        JobHistoryType `json:"Type"`
 	JobID       string         `json:"JobID"`
 	ExecutionID string         `json:"ExecutionID,omitempty"`
@@ -66,4 +67,14 @@ func (jh JobHistory) Occurred() time.Time {
 		return jh.Event.Timestamp
 	}
 	return jh.Time
+}
+
+// IsJobLevel returns true if the JobHistory is at the job level.
+func (jh JobHistory) IsJobLevel() bool {
+	return jh.Type == JobHistoryTypeJobLevel
+}
+
+// IsExecutionLevel returns true if the JobHistory is at the execution level.
+func (jh JobHistory) IsExecutionLevel() bool {
+	return jh.Type == JobHistoryTypeExecutionLevel
 }

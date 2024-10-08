@@ -7,16 +7,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -24,8 +21,6 @@ import (
 
 type DevstackSubmitSuite struct {
 	suite.Suite
-	Repo   *repo.FsRepo
-	Config types.Bacalhau
 }
 
 // In order for 'go test' to run this suite, we need to create
@@ -37,13 +32,12 @@ func TestDevstackSubmitSuite(t *testing.T) {
 // Before each test
 func (suite *DevstackSubmitSuite) SetupTest() {
 	logger.ConfigureTestLogging(suite.T())
-	suite.Repo, suite.Config = setup.SetupBacalhauRepoForTesting(suite.T())
 }
 
 func (suite *DevstackSubmitSuite) TestEmptySpec() {
 	ctx := context.Background()
 
-	stack := testutils.Setup(ctx, suite.T(), suite.Repo, suite.Config,
+	stack := testutils.Setup(ctx, suite.T(),
 		devstack.WithNumberOfHybridNodes(1),
 	)
 

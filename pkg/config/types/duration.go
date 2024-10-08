@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+const (
+	Second = Duration(time.Second)
+	Minute = Duration(time.Minute)
+	Day    = Duration(time.Hour * 24)
+)
+
 // Duration is a wrapper type for time.Duration
 // for decoding and encoding from/to YAML, etc.
 type Duration time.Duration

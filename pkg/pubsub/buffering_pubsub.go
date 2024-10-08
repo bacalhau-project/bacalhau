@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/rs/zerolog/log"
 )
 
@@ -58,7 +58,7 @@ func NewBufferingPubSub[T any](params BufferingPubSubParams) *BufferingPubSub[T]
 }
 
 func (p *BufferingPubSub[T]) Publish(ctx context.Context, message T) error {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub.BufferingPubSub.publish")
 	defer span.End()
 
 	payload, err := marshaller.JSONMarshalWithMax(message)
@@ -155,7 +155,7 @@ func (p *BufferingPubSub[T]) Close(ctx context.Context) (err error) {
 
 // flush the buffer to the delegate pubsub
 func (p *BufferingPubSub[T]) flushBuffer(ctx context.Context, envelope BufferingEnvelope, oldestMessageTime time.Time) {
-	ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
+	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub.BufferingPubSub.flushBuffer")
 	defer span.End()
 
 	log.Ctx(ctx).Trace().Msgf("flushing pubsub buffer after %s with %d messages, %d bytes",
@@ -175,7 +175,7 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
 				func() {
-					ctx, span := system.NewSpan(ctx, system.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
+					ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask") //nolint:govet
 					defer span.End()
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()

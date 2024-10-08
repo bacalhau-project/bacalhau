@@ -41,8 +41,12 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
+	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
+	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
-		Job: args.Job,
+		Job:                  args.Job,
+		ClientInstallationID: installationID,
+		ClientInstanceID:     instanceID,
 	})
 	if err != nil {
 		return err
@@ -93,10 +97,10 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 				continue
 			}
 			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryQuery{})
-			history := jobHistoryQueryResponse.JobHistory
 			if err != nil {
 				return err
 			}
+			history := jobHistoryQueryResponse.JobHistory
 			response.History = &apimodels.ListJobHistoryResponse{
 				Items: make([]*models.JobHistory, len(history)),
 			}
@@ -154,7 +158,7 @@ func (e *Endpoint) listJobs(c echo.Context) error {
 		return err
 	}
 
-	var offset uint32
+	var offset uint64
 	var err error
 
 	// If the request contains a paging token then it is decoded and used to replace
@@ -261,9 +265,9 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 	})
 }
 
-// godoc for Orchestrator JobHistory
+// godoc for Orchestrator ListHistory
 //
-//	@ID				orchestrator/jobHistory
+//	@ID				orchestrator/listHistory
 //	@Summary		Returns the history of a job.
 //	@Description	Returns the history of a job.
 //	@Tags			Orchestrator
@@ -273,12 +277,12 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 //	@Param			since			query		string	false	"Only return history since this time"
 //	@Param			event_type		query		string	false	"Only return history of this event type"
 //	@Param			execution_id	query		string	false	"Only return history of this execution ID"
-//	@Param			next_token		query		string	false	"Token to get the next page of the jobs"
+//	@Param			next_token		query		string	false	"Token to get the next page of the history events"
 //	@Success		200				{object}	apimodels.ListJobHistoryResponse
 //	@Failure		400				{object}	string
 //	@Failure		500				{object}	string
 //	@Router			/api/v1/orchestrator/jobs/{id}/history [get]
-func (e *Endpoint) jobHistory(c echo.Context) error {
+func (e *Endpoint) listHistory(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobID := c.Param("id")
 	var args apimodels.ListJobHistoryRequest
@@ -414,13 +418,13 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 //	@Tags			Orchestrator
 //	@Accept			json
 //	@Produce		octet-stream
-//	@Param			id				path		string	true	"ID of the job to stream logs for"
-//	@Param			execution_id	query		string	false	"Fetch logs for a specific execution"
-//	@Param			tail			query		bool	false	"Fetch historical logs"
-//	@Param			follow			query		bool	false	"Follow the logs"
+//	@Param			id				path		string				true	"ID of the job to stream logs for"
+//	@Param			execution_id	query		string				false	"Fetch logs for a specific execution"
+//	@Param			tail			query		bool				false	"Fetch historical logs"
+//	@Param			follow			query		bool				false	"Follow the logs"
 //	@Success		101				{object}	models.ExecutionLog	"Switching Protocols to WebSocket"
-//	@Failure		400				{object}	string	"Bad Request"
-//	@Failure		500				{object}	string	"Internal Server Error"
+//	@Failure		400				{object}	string				"Bad Request"
+//	@Failure		500				{object}	string				"Internal Server Error"
 //	@Router			/api/v1/orchestrator/jobs/{id}/logs [get]
 func (e *Endpoint) logs(c echo.Context) error {
 	ws, err := publicapi.WebsocketUpgrader.Upgrade(c.Response(), c.Request(), nil)

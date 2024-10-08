@@ -1,8 +1,8 @@
 import React from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { InnerSidebar, NavLink } from './Sidebar'
+import { InnerSidebar } from './Sidebar'
 
 export function MobileNav() {
   return (
@@ -19,7 +19,7 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="flex flex-col bg-sidebar-bg border-r border-sidebar-border"
+        className="w-[280px] p-0 bg-sidebar-bg border-r border-sidebar-border"
       >
         <InnerSidebar />
       </SheetContent>

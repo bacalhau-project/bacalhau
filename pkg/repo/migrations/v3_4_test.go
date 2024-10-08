@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
@@ -16,17 +15,39 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
+
+type mockGlobalConfig struct {
+	configDir string
+}
+
+func (m *mockGlobalConfig) InstallationID() string {
+	idFile := filepath.Join(m.ConfigDir(), system.InstallationIDFile)
+	idBytes, err := os.ReadFile(idFile)
+	if err != nil {
+		return ""
+	}
+	return string(idBytes)
+}
+
+func (m *mockGlobalConfig) ConfigDir() string {
+	return m.configDir
+}
 
 type V3MigrationsTestSuite struct {
 	BaseMigrationTestSuite // Embed the base suite
+	mockConfig             *mockGlobalConfig
 	repo                   *repo.FsRepo
 }
 
 func (suite *V3MigrationsTestSuite) SetupTest() {
 	suite.BaseMigrationTestSuite.SetupTest()
+	suite.mockConfig = &mockGlobalConfig{
+		configDir: suite.TempDir,
+	}
 	migrations, err := repo.NewMigrationManager(
-		V3Migration,
+		V3MigrationWithConfig(suite.mockConfig),
 	)
 	suite.Require().NoError(err)
 
@@ -42,16 +63,6 @@ func TestV3MigrationsTestSuite(t *testing.T) {
 
 // repo resulting from `bacalhau serve --node-type=compute,requester`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithFullRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_full_repo")
 	suite.copyRepo(testDataPath)
@@ -116,11 +127,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
@@ -131,11 +140,15 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
-	// verify old file were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
+
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
-	// verify the new files exists
+	// verify the new files exist
 	suite.FileExists(filepath.Join(suite.TempDir, "system_metadata.yaml"))
 
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
@@ -148,34 +161,21 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	// verify we can read the expected installationID
+	suite.Require().Equal(expectedInstallationID, suite.mockConfig.InstallationID())
+
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau version`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_minimal_repo")
 	suite.copyRepo(testDataPath)
@@ -190,8 +190,6 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
 	suite.FileExists(filepath.Join(suite.TempDir, "update.json"))
 	suite.FileExists(filepath.Join(suite.TempDir, "user_id.pem"))
-
-	expectedInstallationID := ""
 
 	// verify the repo's current version is 3
 	repoVersion3, err := suite.repo.Version()
@@ -208,12 +206,16 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.Equal(repo.Version4, repoVersion4)
 
 	// verify the config file hasn't been created
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.NoFileExists(newConfigPath)
+	configPath := filepath.Join(suite.TempDir, config_legacy.FileName)
+	suite.NoFileExists(configPath)
 
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator_store"))
@@ -225,32 +227,17 @@ func (suite *V3MigrationsTestSuite) TestV3MigrationWithMinimalRepo() {
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// check that the migration doesn't create a node name if a config file wasn't present.
-	actualNodeName, err := suite.repo.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Empty(actualNodeName)
+	suite.Require().Empty(sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau serve --node-type=requester`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithOrchestratorRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_orchestrator_repo")
 	suite.copyRepo(testDataPath)
@@ -314,11 +301,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory and contains the migrated values
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
@@ -329,8 +314,12 @@ Auth:
 	suite.FileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	//suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
-	// verify old file were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
+
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
 	// verify the new files exists
@@ -346,34 +335,21 @@ Auth:
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
+	// verify we can read the expected installationID
+	suite.Require().Equal(expectedInstallationID, suite.mockConfig.InstallationID())
+
+	sysmeta, err := suite.repo.SystemMetadata()
 	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
 
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
 }
 
 // repo resulting from `bacalhau serve --node-type=compute --orchestrators=bootstrap.production.bacalhau.org`
 func (suite *V3MigrationsTestSuite) TestV3MigrationWithComputeRepo() {
-	switch runtime.GOOS {
-	case "windows":
-		suite.T().Setenv("AppData", suite.TempDir)
-	case "darwin", "ios":
-		suite.T().Setenv("HOME", suite.TempDir)
-	case "plan9":
-		suite.T().Setenv("home", suite.TempDir)
-	default: // Unix
-		suite.T().Setenv("XDG_CONFIG_HOME", suite.TempDir)
-	}
 	// Copy test data to the suite's temporary directory
 	testDataPath := filepath.Join("testdata", "v3_compute_repo")
 	suite.copyRepo(testDataPath)
@@ -438,11 +414,9 @@ Auth:
 	suite.Require().NoError(err)
 	suite.Equal(repo.Version4, repoVersion4)
 
-	// verify the config file has been moved to XDG_CONFIG_HOME/bacalhau/config.yaml
-	// and that it contains the values from the the original config that have been migrated
-	newConfigPath := filepath.Join(suite.TempDir, "bacalhau", config_legacy.FileName)
-	suite.FileExists(newConfigPath)
-	c, err := config.New(config.WithPaths(newConfigPath))
+	// verify the config file remains in the repo directory and contains the migrated values
+	suite.FileExists(configPath)
+	c, err := config.New(config.WithPaths(configPath))
 	suite.Require().NoError(err)
 	var bacCfg types.Bacalhau
 	suite.Require().NoError(c.Unmarshal(&bacCfg))
@@ -453,8 +427,12 @@ Auth:
 	suite.NoFileExists(filepath.Join(suite.TempDir, types.OrchestratorDirName, types.JobStoreFileName))
 	suite.FileExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionStoreFileName))
 
+	// verify legacy repo version was updated.
+	suite.FileExists(filepath.Join(suite.TempDir, "repo.version"))
+	v, err := suite.repo.ReadLegacyVersion()
+	suite.Require().NoError(err)
+	suite.Require().Equal(repo.Version4, v)
 	// verify old file were removed
-	suite.NoFileExists(filepath.Join(suite.TempDir, "repo.version"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "update.json"))
 
 	// verify the new files exists
@@ -465,25 +443,99 @@ Auth:
 	suite.NoDirExists(filepath.Join(suite.TempDir, "orchestrator", "nats-store"))
 	suite.NoFileExists(filepath.Join(suite.TempDir, "orchestrator", "state_boltdb.db"))
 
+	// verify we can read the expected installationID
+	suite.Require().Equal(expectedInstallationID, suite.mockConfig.InstallationID())
+
+	sysmeta, err := suite.repo.SystemMetadata()
+	suite.Require().NoError(err)
 	// old compute directories were replaced with new ones
 	suite.NoDirExists(filepath.Join(suite.TempDir, "executor_storages"))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName))
 	suite.DirExists(filepath.Join(suite.TempDir, types.ComputeDirName, types.ExecutionDirName))
 
-	// verify we can read the expected installationID from it.
-	actualInstallationID, err := suite.repo.ReadInstallationID()
-	suite.Require().NoError(err)
-	suite.Require().Equal(expectedInstallationID, actualInstallationID)
-
 	// verify we can read the expected last update time from it.
-	actualLastUpdateCheck, err := suite.repo.ReadLastUpdateCheck()
-	suite.Require().NoError(err)
-	suite.Require().Equal(time.UnixMilli(0).UTC(), actualLastUpdateCheck.UTC())
+	suite.Require().Equal(time.UnixMilli(0).UTC(), sysmeta.LastUpdateCheck.UTC())
 
 	// the node name was migrated from the old config to system_metadata.yaml
-	actualNodeName, err := suite.repo.ReadNodeName()
-	suite.Require().NoError(err)
-	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", actualNodeName)
+	suite.Require().Equal("n-321fd9bf-3a7c-45f5-9b6b-fb9725ac646d", sysmeta.NodeName)
+}
+
+func (suite *V3MigrationsTestSuite) TestV3MigrationInstallationID() {
+	testCases := []struct {
+		name                   string
+		initialInstallationID  string
+		configInstallationID   string
+		expectedInstallationID string
+		noConfigFile           bool
+	}{
+		{
+			name:                   "No existing global installation ID",
+			initialInstallationID:  "",
+			configInstallationID:   "config-id",
+			expectedInstallationID: "config-id",
+		},
+		{
+			name:                   "Existing global installation ID",
+			initialInstallationID:  "existing-id",
+			configInstallationID:   "config-id",
+			expectedInstallationID: "existing-id",
+		},
+		{
+			name:                   "No config installation ID",
+			initialInstallationID:  "",
+			configInstallationID:   "",
+			expectedInstallationID: "",
+		},
+		{
+			name:                   "No config file",
+			noConfigFile:           true,
+			expectedInstallationID: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// call setup to reset the suite's temporary directory
+			suite.SetupTest()
+
+			// set mock config installation ID if it's not empty
+			if tc.initialInstallationID != "" {
+				suite.Require().NoError(writeInstallationID(suite.mockConfig, tc.initialInstallationID))
+			}
+
+			// Copy test data to the suite's temporary directory
+			testDataPath := filepath.Join("testdata", "v3_minimal_repo")
+			suite.copyRepo(testDataPath)
+
+			if !tc.noConfigFile {
+				// Create a minimal config file
+				configPath := filepath.Join(suite.TempDir, config.DefaultFileName)
+				_, err := createConfig(configPath, fmt.Sprintf(`
+User:
+    InstallationID: %s
+`, tc.configInstallationID))
+				suite.Require().NoError(err)
+				suite.FileExists(configPath)
+			}
+
+			// verify the repo's current version is 3
+			repoVersion3, err := suite.repo.Version()
+			suite.Require().NoError(err)
+			suite.Equal(repo.Version3, repoVersion3)
+
+			// open the repo to trigger the migration to version 4
+			suite.Require().NoError(err)
+			suite.Require().NoError(suite.repo.Open())
+
+			// verify the repo's new current version is 4
+			repoVersion4, err := suite.repo.Version()
+			suite.Require().NoError(err)
+			suite.Equal(repo.Version4, repoVersion4)
+
+			// verify installation ID is as expected
+			suite.Equal(tc.expectedInstallationID, suite.mockConfig.InstallationID())
+		})
+	}
 }
 
 // createConfig creates a config file with the given content

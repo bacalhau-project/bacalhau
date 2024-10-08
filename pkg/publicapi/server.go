@@ -7,11 +7,16 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 
 	"github.com/Masterminds/semver"
 	"golang.org/x/time/rate"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -90,13 +95,11 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	server.Router.Binder = NewNormalizeBinder()
 	server.Router.Validator = NewCustomValidator()
 
+	// enable debug mode to get clearer error messages
+	server.Router.Debug = system.IsDebugMode()
+
 	// set middleware
 	logLevel, err := zerolog.ParseLevel(params.Config.LogLevel)
-	if logLevel == zerolog.DebugLevel {
-		// enable debug mode to get clearer error messages
-		server.Router.Debug = true
-	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -192,17 +195,6 @@ func (apiServer *Server) GetURI() *url.URL {
 	return url
 }
 
-//	@title			Bacalhau API
-//	@description	This page is the reference of the Bacalhau REST API. Project docs are available at https://docs.bacalhau.org/. Find more information about Bacalhau at https://github.com/bacalhau-project/bacalhau.
-//	@contact.name	Bacalhau Team
-//	@contact.url	https://github.com/bacalhau-project/bacalhau
-//	@contact.email	team@bacalhau.org
-//	@license.name	Apache 2.0
-//	@license.url	https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE
-//	@host			localhost:1234
-//	@BasePath		/
-//	@schemes		http
-//
 // ListenAndServe listens for and serves HTTP requests against the API server.
 //
 //nolint:lll
@@ -210,7 +202,7 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%d", apiServer.Address, apiServer.Port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return apiServer.interceptListenError(err)
 	}
 
 	if apiServer.Port == 0 {
@@ -248,4 +240,20 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 // Shutdown shuts down the http server
 func (apiServer *Server) Shutdown(ctx context.Context) error {
 	return apiServer.httpServer.Shutdown(ctx)
+}
+
+func (apiServer *Server) interceptListenError(err error) error {
+	if strings.Contains(err.Error(), "address already in use") {
+		return bacerrors.New("address %s is already in use", apiServer.GetURI()).
+			WithComponent("APIServer").
+			WithCode(bacerrors.ConfigurationError).
+			WithHint("To resolve this, either:\n"+
+				"1. Check if you are already running bacalhau\n"+
+				"2. Stop the other process using the port\n"+
+				"3. Configure a different port using one of these methods:\n"+
+				"   a. Use the `-c %s=<new_port>` flag with your serve command\n"+
+				"   b. Set the port in a configuration file with `%s config set %s=<new_port>`",
+				types.APIPortKey, os.Args[0], types.APIPortKey)
+	}
+	return err
 }

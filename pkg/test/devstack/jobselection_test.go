@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
@@ -36,7 +36,7 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	suite.T().Skip("Test makes assertions on data locality, a feature no longer supported.")
 	type TestCase struct {
 		name      string
-		policy    node.JobSelectionPolicy
+		policy    types.JobAdmissionControl
 		addFiles  bool
 		completed int
 		rejected  int
@@ -44,16 +44,6 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	}
 
 	runTest := func(testCase TestCase) {
-		computeConfig, err := node.NewComputeConfigWith(suite.T().TempDir(), node.ComputeConfigParams{
-			JobSelectionPolicy: testCase.policy,
-		})
-		suite.Require().NoError(err)
-
-		requesterConfig, err := node.NewRequesterConfigWith(node.RequesterConfigParams{
-			RetryStrategy: retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
-		})
-		suite.Require().NoError(err)
-
 		rootSourceDir := suite.T().TempDir()
 
 		var inputs scenario.SetupStorage
@@ -80,11 +70,15 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		testScenario := scenario.Scenario{
 			Stack: &scenario.StackConfig{
-				DevStackOptions: &devstack.DevStackOptions{
-					AllowListedLocalPaths: []string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix},
+				DevStackOptions: []devstack.ConfigOption{
+					devstack.WithAllowListedLocalPaths([]string{rootSourceDir + scenario.AllowedListedLocalPathsSuffix}),
+					devstack.WithBacalhauConfigOverride(types.Bacalhau{
+						JobAdmissionControl: testCase.policy,
+					}),
+					devstack.WithSystemConfig(node.SystemConfig{
+						RetryStrategy: retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false}),
+					}),
 				},
-				ComputeConfig:   computeConfig,
-				RequesterConfig: requesterConfig,
 			},
 			Inputs: inputs,
 			Job: &models.Job{
@@ -116,8 +110,8 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 	for _, testCase := range []TestCase{
 		{
 			name: "Local: Add files, Accept job",
-			policy: node.JobSelectionPolicy{
-				Locality: semantic.Local,
+			policy: types.JobAdmissionControl{
+				Locality: models.Local,
 			},
 			addFiles:  true,
 			completed: 1,
@@ -125,16 +119,16 @@ func (suite *DevstackJobSelectionSuite) TestSelectAllJobs() {
 
 		{
 			name: "Local: Don't add files, Reject job",
-			policy: node.JobSelectionPolicy{
-				Locality: semantic.Local,
+			policy: types.JobAdmissionControl{
+				Locality: models.Local,
 			},
 			addFiles: false,
 			rejected: 1,
 		},
 		{
 			name: "Anywhere: Don't add files, Fail job",
-			policy: node.JobSelectionPolicy{
-				Locality: semantic.Anywhere,
+			policy: types.JobAdmissionControl{
+				Locality: models.Anywhere,
 			},
 			addFiles: false,
 			failed:   1,

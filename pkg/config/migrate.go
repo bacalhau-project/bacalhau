@@ -30,20 +30,22 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 				VisibilityTimeout: types.Duration(in.Node.Requester.EvaluationBroker.EvalBrokerVisibilityTimeout),
 				MaxRetryCount:     in.Node.Requester.EvaluationBroker.EvalBrokerMaxRetryCount,
 			},
+			Auth: types.OrchestratorAuth{Token: in.Node.Network.AuthSecret},
 		},
 		Compute: types.Compute{
 			Enabled: slices.ContainsFunc(in.Node.Type, func(s string) bool {
 				return strings.ToLower(s) == "compute"
 			}),
 			Orchestrators: in.Node.Network.Orchestrators,
-			Labels:        in.Node.Labels,
 			Heartbeat: types.Heartbeat{
 				Interval:               types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
 				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
 				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
 			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
+			Auth:                  types.ComputeAuth{Token: in.Node.Network.AuthSecret},
 		},
+		Labels: in.Node.Labels,
 		WebUI: types.WebUI{
 			Enabled: in.Node.WebUI.Enabled,
 			Listen: func(enabled bool, port int) string {
@@ -207,7 +209,6 @@ func migratePublishers(in v1types.NodeConfig) types.PublishersConfig {
 	// local
 	out.Types.Local.Port = in.Compute.LocalPublisher.Port
 	out.Types.Local.Address = in.Compute.LocalPublisher.Address
-	out.Types.Local.Directory = in.Compute.LocalPublisher.Directory
 
 	// s3
 	out.Types.S3.PreSignedURLExpiration = types.Duration(in.Requester.StorageProvider.S3.PreSignedURLExpiration)

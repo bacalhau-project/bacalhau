@@ -18,14 +18,14 @@ type PagingTokenParams struct {
 	SortBy      string
 	SortReverse bool
 	Limit       uint32
-	Offset      uint32
+	Offset      uint64
 }
 
 type PagingToken struct {
 	SortBy      string
 	SortReverse bool
 	Limit       uint32
-	Offset      uint32
+	Offset      uint64
 }
 
 func NewPagingToken(params *PagingTokenParams) *PagingToken {
@@ -64,7 +64,7 @@ func NewPagingTokenFromString(s string) (*PagingToken, error) {
 	if offset, err := strconv.ParseUint(parts[3], 10, 32); err != nil {
 		return nil, NewErrInvalidPagingToken(s, "malformed token")
 	} else {
-		token.Offset = uint32(offset)
+		token.Offset = offset
 	}
 
 	return token, nil
@@ -80,7 +80,7 @@ func (pagingToken *PagingToken) RawString() string {
 		pagingToken.SortBy,
 		reverse,
 		strconv.FormatUint(uint64(pagingToken.Limit), 10),
-		strconv.FormatUint(uint64(pagingToken.Offset), 10),
+		strconv.FormatUint(pagingToken.Offset, 10),
 	}, delimiter)
 }
 

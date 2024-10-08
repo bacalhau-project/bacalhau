@@ -104,9 +104,9 @@ export const NodeResources: React.FC<NodeResourcesProps> = ({
         unit="GB"
         variant={variant}
       />
-      {availableCapacity.GPU !== undefined && maxCapacity.GPU !== undefined && (
+      {maxCapacity.GPU !== undefined && (
         <ResourceBar
-          available={availableCapacity.GPU}
+          available={availableCapacity.GPU || 0}
           total={maxCapacity.GPU}
           icon={<Cpu size={variant === 'large' ? 20 : 14} />}
           label="GPU"

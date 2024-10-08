@@ -317,7 +317,7 @@ func (r *Resources) IsZero() bool {
 func (r *Resources) String() string {
 	mem := humanize.Bytes(r.Memory)
 	disk := humanize.Bytes(r.Disk)
-	return fmt.Sprintf("{CPU: %g, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem, disk, r.GPU)
+	return fmt.Sprintf("{CPU: %.2f, Memory: %s, Disk: %s, GPU: %d}", r.CPU, mem, disk, r.GPU)
 }
 
 // AllocatedResources is the set of resources to be used by an execution, which

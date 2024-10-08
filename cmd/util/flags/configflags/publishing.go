@@ -14,8 +14,8 @@ var PublishingFlags = []Definition{
 		DefaultValue: "",
 		Deprecated:   true,
 		DeprecatedMessage: fmt.Sprintf("Use one or more of the following options, all are accepted %s, %s",
-			makeConfigFlagDeprecationCommand(types.JobDefaultsBatchTaskPublisherConfigTypeKey),
-			makeConfigFlagDeprecationCommand(types.JobDefaultsOpsTaskPublisherConfigParamsKey),
+			makeConfigFlagDeprecationCommand(types.JobDefaultsBatchTaskPublisherTypeKey),
+			makeConfigFlagDeprecationCommand(types.JobDefaultsOpsTaskPublisherTypeKey),
 		),
 	},
 }

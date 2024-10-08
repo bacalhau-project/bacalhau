@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -40,7 +41,7 @@ func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Reso
 
 func (s *AskForBidSuite) TestPopulateResourceUsage() {
 	response := s.runAskForBidTest(bidResponseTestCase{name: "populate resrouce usage"})
-	s.verify(response, s.config.DefaultJobResourceLimits)
+	s.verify(response, s.config.SystemConfig.DefaultComputeJobResourceLimits)
 }
 
 func (s *AskForBidSuite) TestUseSubmittedResourceUsage() {
@@ -53,27 +54,28 @@ func (s *AskForBidSuite) TestUseSubmittedResourceUsage() {
 }
 
 func (s *AskForBidSuite) TestAcceptUsageBelowLimits() {
+	jobResources := s.capacity
+	jobResources.CPU = s.capacity.CPU / 2
 	s.runAskForBidTest(bidResponseTestCase{
-		name: "accept usage below limits",
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU / 2}),
+		name:      "accept usage below limits",
+		execution: addResourceUsage(mock.Execution(), jobResources),
 	})
 }
 
 func (s *AskForBidSuite) TestAcceptUsageMatachingLimits() {
 	s.runAskForBidTest(bidResponseTestCase{
-		name: "accept usage matching limits",
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU}),
+		name:      "accept usage matching limits",
+		execution: addResourceUsage(mock.Execution(), s.capacity),
 	})
 }
 
 func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
+	jobResources := s.capacity
+	jobResources.CPU += 0.01
 	s.runAskForBidTest(bidResponseTestCase{
-		name: "reject usage exceeding limits",
-		execution: addResourceUsage(mock.Execution(),
-			models.Resources{CPU: s.config.JobResourceLimits.CPU + 0.01}),
-		rejected: true,
+		name:      "reject usage exceeding limits",
+		execution: addResourceUsage(mock.Execution(), jobResources),
+		rejected:  true,
 	})
 }
 

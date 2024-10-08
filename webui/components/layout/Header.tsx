@@ -15,7 +15,6 @@ export function Header() {
     <header className="flex h-14 items-center gap-4 border-b bg-sidebar-bg md:bg-background px-4 lg:h-[60px] lg:px-6">
       <MobileNav />
       <div className="w-full flex-1"></div>
-      <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

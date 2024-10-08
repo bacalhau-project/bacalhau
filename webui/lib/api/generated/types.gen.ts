@@ -100,83 +100,6 @@ export type apimodels_StopJobResponse = {
     EvaluationID?: string;
 };
 
-export enum authn_MethodType {
-    MethodTypeChallenge = 'challenge',
-    MethodTypeAsk = 'ask'
-}
-
-export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthConfig = {
-    /**
-     * AccessPolicyPath is the path to a file or directory that will be loaded as
-     * the policy to apply to all inbound API requests. If unspecified, a policy
-     * that permits access to all API endpoints to both authenticated and
-     * unauthenticated users (the default as of v1.2.0) will be used.
-     */
-    accessPolicyPath?: string;
-    /**
-     * Methods maps "method names" to authenticator implementations. A method
-     * name is a human-readable string chosen by the person configuring the
-     * system that is shown to users to help them pick the authentication method
-     * they want to use. There can be multiple usages of the same Authenticator
-     * *type* but with different configs and parameters, each identified with a
-     * unique method name.
-     *
-     * For example, if an implementation wants to allow users to log in with
-     * Github or Bitbucket, they might both use an authenticator implementation
-     * of type "oidc", and each would appear once on this provider with key /
-     * method name "github" and "bitbucket".
-     *
-     * By default, only a single authentication method that accepts
-     * authentication via client keys will be enabled.
-     */
-    methods?: {
-        [key: string]: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig;
-    };
-    /**
-     * TokensPath is the location where a state file of tokens will be stored.
-     * By default it will be local to the Bacalhau repo, but can be any location
-     * in the host filesystem. Tokens are sensitive and should be stored in a
-     * location that is only readable to the current user.
-     * Deprecated: replaced by cfg.AuthTokensPath()
-     */
-    tokensPath?: string;
-};
-
-export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthenticatorConfig = {
-    policyPath?: string;
-    type?: authn_MethodType;
-};
-
-export enum github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration {
-    minDuration = -9223372036854776000,
-    maxDuration = 9223372036854776000,
-    Nanosecond = 1,
-    Microsecond = 1000,
-    Millisecond = 1000000,
-    Second = 1000000000,
-    Minute = 60000000000,
-    Hour = 3600000000000
-}
-
-export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults = {
-    executionTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    queueTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    totalTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-};
-
-export type github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_UpdateConfig = {
-    checkFrequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    skipChecks?: boolean;
-};
-
-export enum logger_LogMode {
-    LogModeDefault = 'default',
-    LogModeStation = 'station',
-    LogModeJSON = 'json',
-    LogModeCombined = 'combined',
-    LogModeEvent = 'event'
-}
-
 export type models_AllocatedResources = {
     Tasks?: {
         [key: string]: models_Resources;
@@ -344,10 +267,6 @@ export enum models_ExecutionStateType {
     ExecutionStateCancelled = 9
 }
 
-export type models_FailureInjectionRequesterConfig = {
-    isBadActor?: boolean;
-};
-
 export type models_GPU = {
     /**
      * Self-reported index of the device in the system
@@ -473,6 +392,7 @@ export type models_JobHistory = {
      * Deprecated: Left for backward compatibility with v1.4.x clients
      */
     JobState?: (models_StateChange_models_JobStateType);
+    SeqNum?: number;
     Time?: string;
     Type?: models_JobHistoryType;
 };
@@ -487,31 +407,6 @@ export enum models_JobSelectionDataLocality {
     Local = 0,
     Anywhere = 1
 }
-
-export type models_JobSelectionPolicy = {
-    /**
-     * should we accept jobs that specify networking
-     * the default is "reject"
-     */
-    accept_networked_jobs?: boolean;
-    /**
-     * this describes if we should run a job based on
-     * where the data is located - i.e. if the data is "local"
-     * or if the data is "anywhere"
-     */
-    locality?: (models_JobSelectionDataLocality);
-    probe_exec?: string;
-    /**
-     * external hooks that decide if we should take on the job or not
-     * if either of these are given they will override the data locality settings
-     */
-    probe_http?: string;
-    /**
-     * should we reject jobs that don't specify any data
-     * the default is "accept"
-     */
-    reject_stateless_jobs?: boolean;
-};
 
 export enum models_JobStateType {
     JobStateTypeUndefined = 0,
@@ -675,6 +570,12 @@ export type models_SpecConfig = {
 
 export type models_State_models_ExecutionDesiredStateType = {
     /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
+    /**
      * Message is a human readable message describing the state.
      */
     Message?: string;
@@ -686,6 +587,12 @@ export type models_State_models_ExecutionDesiredStateType = {
 
 export type models_State_models_ExecutionStateType = {
     /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
+    /**
      * Message is a human readable message describing the state.
      */
     Message?: string;
@@ -696,6 +603,12 @@ export type models_State_models_ExecutionStateType = {
 };
 
 export type models_State_models_JobStateType = {
+    /**
+     * Details is a map of additional details about the state.
+     */
+    Details?: {
+        [key: string]: (string);
+    };
     /**
      * Message is a human readable message describing the state.
      */
@@ -791,121 +704,205 @@ export type shared_VersionResponse = {
     build_version_info?: models_BuildVersionInfo;
 };
 
-export type types_APIConfig = {
+export type types_API = {
+    Auth?: types_AuthConfig;
     /**
-     * ClientTLS specifies tls options for the client connecting to the
-     * API.
+     * Host specifies the hostname or IP address on which the API server listens or the client connects.
      */
-    clientTLS?: (types_ClientTLSConfig);
+    Host?: string;
     /**
-     * Host is the hostname of an environment's public API servers.
+     * Port specifies the port number on which the API server listens or the client connects.
      */
-    host?: string;
-    /**
-     * Port is the port that an environment serves the public API on.
-     */
-    port?: number;
-    /**
-     * TLS returns information about how TLS is configured for the public server.
-     * This is only used in APIConfig for NodeConfig.ServerAPI
-     */
-    tls?: (types_TLSConfiguration);
+    Port?: number;
+    TLS?: types_TLS;
 };
 
-export type types_BacalhauConfig = {
-    auth?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_AuthConfig;
+export type types_AuthConfig = {
     /**
-     * NB(forrest): this field shouldn't be persisted yet.
+     * AccessPolicyPath is the path to a file or directory that will be loaded as
+     * the policy to apply to all inbound API requests. If unspecified, a policy
+     * that permits access to all API endpoints to both authenticated and
+     * unauthenticated users (the default as of v1.2.0) will be used.
      */
-    dataDir?: string;
-    metrics?: types_MetricsConfig;
-    node?: types_NodeConfig;
-    update?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_UpdateConfig;
-    user?: types_UserConfig;
+    AccessPolicyPath?: string;
+    /**
+     * Methods maps "method names" to authenticator implementations. A method
+     * name is a human-readable string chosen by the person configuring the
+     * system that is shown to users to help them pick the authentication method
+     * they want to use. There can be multiple usages of the same Authenticator
+     * *type* but with different configs and parameters, each identified with a
+     * unique method name.
+     *
+     * For example, if an implementation wants to allow users to log in with
+     * Github or Bitbucket, they might both use an authenticator implementation
+     * of type "oidc", and each would appear once on this provider with key /
+     * method name "github" and "bitbucket".
+     *
+     * By default, only a single authentication method that accepts
+     * authentication via client keys will be enabled.
+     */
+    Methods?: {
+        [key: string]: types_AuthenticatorConfig;
+    };
 };
 
-export type types_CapacityConfig = {
-    defaultJobResourceLimits?: models_ResourcesConfig;
-    ignorePhysicalResourceLimits?: boolean;
-    /**
-     * Per job amount of resource the system can be using at one time.
-     */
-    jobResourceLimits?: (models_ResourcesConfig);
-    /**
-     * Total amount of resource the system can be using at one time in aggregate for all jobs.
-     */
-    totalResourceLimits?: (models_ResourcesConfig);
+export type types_AuthenticatorConfig = {
+    PolicyPath?: string;
+    Type?: string;
 };
 
-export type types_ClientTLSConfig = {
+export type types_Bacalhau = {
+    API?: types_API;
+    Compute?: types_Compute;
     /**
-     * Used for NodeConfig.ClientAPI, specifies the location of a ca certificate
-     * file (primarily for self-signed server certs). Will use HTTPS for requests.
+     * DataDir specifies a location on disk where the bacalhau node will maintain state.
      */
-    cacert?: string;
+    DataDir?: string;
+    DisableAnalytics?: boolean;
+    Engines?: types_EngineConfig;
+    FeatureFlags?: types_FeatureFlags;
+    InputSources?: types_InputSourcesConfig;
+    JobAdmissionControl?: types_JobAdmissionControl;
+    JobDefaults?: types_JobDefaults;
     /**
-     * Used for NodeConfig.ClientAPI, and when true instructs the client to use
-     * HTTPS, but not to attempt to verify the certificate.
+     * Labels are key-value pairs used to describe and categorize the nodes.
      */
-    insecure?: boolean;
+    Labels?: {
+        [key: string]: (string);
+    };
+    Logging?: types_Logging;
     /**
-     * Used for NodeConfig.ClientAPI, instructs the client to connect over
-     * TLS.  Auto enabled if Insecure or CACert are specified.
+     * NameProvider specifies the method used to generate names for the node. One of: hostname, aws, gcp, uuid, puuid.
      */
-    useTLS?: boolean;
+    NameProvider?: string;
+    Orchestrator?: types_Orchestrator;
+    Publishers?: types_PublishersConfig;
+    ResultDownloaders?: types_ResultDownloaders;
+    /**
+     * StrictVersionMatch indicates whether to enforce strict version matching.
+     */
+    StrictVersionMatch?: boolean;
+    UpdateConfig?: types_UpdateConfig;
+    WebUI?: types_WebUI;
 };
 
-export type types_ComputeConfig = {
-    capacity?: types_CapacityConfig;
-    controlPlaneSettings?: types_ComputeControlPlaneConfig;
-    executionStore?: types_JobStoreConfig;
-    jobSelection?: models_JobSelectionPolicy;
-    jobTimeouts?: types_JobTimeoutConfig;
-    localPublisher?: types_LocalPublisherConfig;
-    logStreamConfig?: types_LogStreamConfig;
-    logging?: types_LoggingConfig;
-    manifestCache?: types_DockerCacheConfig;
+export type types_BatchJobDefaultsConfig = {
+    /**
+     * Priority specifies the default priority allocated to a batch or ops job.
+     * This value is used when the job hasn't explicitly set its priority requirement.
+     */
+    Priority?: number;
+    Task?: types_BatchTaskDefaultConfig;
 };
 
-export type types_ComputeControlPlaneConfig = {
-    /**
-     * How often the compute node will send a heartbeat to the requester node to let it know
-     * that the compute node is still alive. This should be less than the requester's configured
-     * heartbeat timeout to avoid flapping.
-     */
-    heartbeatFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
-     */
-    heartbeatTopic?: string;
-    /**
-     * The frequency with which the compute node will send node info (inc current labels)
-     * to the controlling requester node.
-     */
-    infoUpdateFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * How often the compute node will send current resource availability to the requester node.
-     */
-    resourceUpdateFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
+export type types_BatchTaskDefaultConfig = {
+    Resources?: types_ResourcesConfig;
+    Timeouts?: types_TaskTimeoutConfig;
+    publisher?: models_SpecConfig;
 };
 
-export type types_DockerCacheConfig = {
-    duration?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    frequency?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    size?: number;
+export type types_Cluster = {
+    /**
+     * Advertise specifies the address to advertise to other cluster members.
+     */
+    Advertise?: string;
+    /**
+     * Host specifies the hostname or IP address for cluster communication.
+     */
+    Host?: string;
+    /**
+     * Name specifies the unique identifier for this orchestrator cluster.
+     */
+    Name?: string;
+    /**
+     * Peers is a list of other cluster members to connect to on startup.
+     */
+    Peers?: Array<(string)>;
+    /**
+     * Port specifies the port number for cluster communication.
+     */
+    Port?: number;
 };
 
-export type types_EvaluationBrokerConfig = {
-    evalBrokerInitialRetryDelay?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    evalBrokerMaxRetryCount?: number;
-    evalBrokerSubsequentRetryDelay?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    evalBrokerVisibilityTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+export type types_Compute = {
+    AllocatedCapacity?: types_ResourceScaler;
+    /**
+     * AllowListedLocalPaths specifies a list of local file system paths that the compute node is allowed to access.
+     */
+    AllowListedLocalPaths?: Array<(string)>;
+    /**
+     * Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
+     */
+    Auth?: (types_ComputeAuth);
+    /**
+     * Enabled indicates whether the compute node is active and available for job execution.
+     */
+    Enabled?: boolean;
+    Heartbeat?: types_Heartbeat;
+    /**
+     * Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
+     */
+    Orchestrators?: Array<(string)>;
 };
 
-export type types_FeatureConfig = {
-    engines?: Array<(string)>;
-    publishers?: Array<(string)>;
-    storages?: Array<(string)>;
+export type types_ComputeAuth = {
+    /**
+     * Token specifies the key for compute nodes to be able to access the orchestrator.
+     */
+    Token?: string;
+};
+
+export type types_Docker = {
+    /**
+     * ManifestCache specifies the settings for the Docker manifest cache.
+     */
+    ManifestCache?: (types_DockerManifestCache);
+};
+
+export type types_DockerManifestCache = {
+    /**
+     * Refresh specifies the refresh interval for cache entries.
+     */
+    Refresh?: number;
+    /**
+     * Size specifies the size of the Docker manifest cache.
+     */
+    Size?: number;
+    /**
+     * TTL specifies the time-to-live duration for cache entries.
+     */
+    TTL?: number;
+};
+
+export type types_EngineConfig = {
+    /**
+     * Disabled specifies a list of engines that are disabled.
+     */
+    Disabled?: Array<(string)>;
+    Types?: types_EngineConfigTypes;
+};
+
+export type types_EngineConfigTypes = {
+    Docker?: types_Docker;
+    WASM?: types_WASM;
+};
+
+export type types_EvaluationBroker = {
+    /**
+     * MaxRetryCount specifies the maximum number of times an evaluation can be retried before being marked as failed.
+     */
+    MaxRetryCount?: number;
+    /**
+     * VisibilityTimeout specifies how long an evaluation can be claimed before it's returned to the queue.
+     */
+    VisibilityTimeout?: number;
+};
+
+export type types_FeatureFlags = {
+    /**
+     * ExecTranslation enables the execution translation feature.
+     */
+    ExecTranslation?: boolean;
 };
 
 export type types_FreeSpace = {
@@ -917,67 +914,129 @@ export type types_HealthInfo = {
     FreeSpace?: types_FreeSpace;
 };
 
-export type types_IpfsConfig = {
+export type types_Heartbeat = {
     /**
-     * Connect is the multiaddress to connect to for IPFS.
+     * InfoUpdateInterval specifies the time between updates of non-resource information to the orchestrator.
      */
-    connect?: string;
+    InfoUpdateInterval?: number;
+    /**
+     * Interval specifies the time between heartbeat signals sent to the orchestrator.
+     */
+    Interval?: number;
+    /**
+     * ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.
+     */
+    ResourceUpdateInterval?: number;
 };
 
-export type types_JobStoreConfig = {
-    path?: string;
-    type?: types_StorageType;
+export type types_IPFSPublisher = {
+    /**
+     * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
+     */
+    Endpoint?: string;
 };
 
-export type types_JobTimeoutConfig = {
+export type types_IPFSStorage = {
     /**
-     * DefaultJobExecutionTimeout default value for the execution timeout this compute node will assign to jobs with
-     * no timeout requirement defined.
+     * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
      */
-    defaultJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * JobExecutionTimeoutClientIDBypassList is the list of clients that are allowed to bypass the job execution timeout
-     * check.
-     */
-    jobExecutionTimeoutClientIDBypassList?: Array<(string)>;
-    /**
-     * JobNegotiationTimeout default timeout value to hold a bid for a job
-     */
-    jobNegotiationTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * MaxJobExecutionTimeout default value for the maximum execution timeout this compute node supports. Jobs with
-     * higher timeout requirements will not be bid on.
-     */
-    maxJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * MinJobExecutionTimeout default value for the minimum execution timeout this compute node supports. Jobs with
-     * lower timeout requirements will not be bid on.
-     */
-    minJobExecutionTimeout?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
+    Endpoint?: string;
 };
 
-export type types_LocalPublisherConfig = {
-    address?: string;
-    directory?: string;
-    port?: number;
-};
-
-export type types_LogStreamConfig = {
+export type types_InputSourcesConfig = {
     /**
-     * How many messages to buffer in the log stream channel, per stream
+     * Disabled specifies a list of storages that are disabled.
      */
-    channelBufferSize?: number;
-};
-
-export type types_LoggingConfig = {
+    Disabled?: Array<(string)>;
     /**
-     * logging running executions
+     * ReadTimeout specifies the maximum number of attempts for reading from a storage.
      */
-    logRunningExecutionsInterval?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
+    MaxRetryCount?: number;
+    /**
+     * ReadTimeout specifies the maximum time allowed for reading from a storage.
+     */
+    ReadTimeout?: number;
+    Types?: types_InputSourcesTypes;
 };
 
-export type types_MetricsConfig = {
-    eventTracerPath?: string;
+export type types_InputSourcesTypes = {
+    IPFS?: types_IPFSStorage;
+};
+
+export type types_IpfsDownloader = {
+    /**
+     * Endpoint specifies the multi-address to connect to for IPFS. e.g /ip4/127.0.0.1/tcp/5001
+     */
+    Endpoint?: string;
+};
+
+export type types_JobAdmissionControl = {
+    /**
+     * AcceptNetworkedJobs indicates whether to accept jobs that require network access.
+     */
+    AcceptNetworkedJobs?: boolean;
+    /**
+     * Locality specifies the locality of the job input data.
+     */
+    Locality?: (models_JobSelectionDataLocality);
+    /**
+     * ProbeExec specifies the command to execute for probing job submission.
+     */
+    ProbeExec?: string;
+    /**
+     * ProbeHTTP specifies the HTTP endpoint for probing job submission.
+     */
+    ProbeHTTP?: string;
+    /**
+     * RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.
+     */
+    RejectStatelessJobs?: boolean;
+};
+
+export type types_JobDefaults = {
+    Batch?: types_BatchJobDefaultsConfig;
+    Daemon?: types_LongRunningJobDefaultsConfig;
+    Ops?: types_BatchJobDefaultsConfig;
+    Service?: types_LongRunningJobDefaultsConfig;
+};
+
+export type types_LocalPublisher = {
+    /**
+     * Address specifies the endpoint the publisher serves on.
+     */
+    Address?: string;
+    /**
+     * Port specifies the port the publisher serves on.
+     */
+    Port?: number;
+};
+
+export type types_Logging = {
+    /**
+     * Level sets the logging level. One of: trace, debug, info, warn, error, fatal, panic.
+     */
+    Level?: string;
+    /**
+     * LogDebugInfoInterval specifies the interval for logging debug information.
+     */
+    LogDebugInfoInterval?: number;
+    /**
+     * Mode specifies the logging mode. One of: default, json.
+     */
+    Mode?: string;
+};
+
+export type types_LongRunningJobDefaultsConfig = {
+    /**
+     * Priority specifies the default priority allocated to a service or daemon job.
+     * This value is used when the job hasn't explicitly set its priority requirement.
+     */
+    Priority?: number;
+    Task?: types_LongRunningTaskDefaultConfig;
+};
+
+export type types_LongRunningTaskDefaultConfig = {
+    Resources?: types_ResourcesConfig;
 };
 
 export type types_MountStatus = {
@@ -986,187 +1045,231 @@ export type types_MountStatus = {
     Used?: number;
 };
 
-export type types_NetworkClusterConfig = {
-    advertisedAddress?: string;
-    name?: string;
-    peers?: Array<(string)>;
-    port?: number;
+export type types_NodeManager = {
+    /**
+     * DisconnectTimeout specifies how long to wait before considering a node disconnected.
+     */
+    DisconnectTimeout?: number;
+    /**
+     * ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.
+     */
+    ManualApproval?: boolean;
 };
 
-export type types_NetworkConfig = {
-    advertisedAddress?: string;
-    authSecret?: string;
-    cluster?: types_NetworkClusterConfig;
-    orchestrators?: Array<(string)>;
-    port?: number;
-    storeDir?: string;
+export type types_Orchestrator = {
+    /**
+     * Advertise specifies URL to advertise to other servers.
+     */
+    Advertise?: string;
+    /**
+     * Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
+     */
+    Auth?: (types_OrchestratorAuth);
+    Cluster?: types_Cluster;
+    /**
+     * Enabled indicates whether the orchestrator node is active and available for job submission.
+     */
+    Enabled?: boolean;
+    EvaluationBroker?: types_EvaluationBroker;
+    /**
+     * Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.
+     */
+    Host?: string;
+    NodeManager?: types_NodeManager;
+    /**
+     * Host specifies the port number on which the Orchestrator server listens for compute node connections.
+     */
+    Port?: number;
+    Scheduler?: types_Scheduler;
 };
 
-export type types_NodeConfig = {
+export type types_OrchestratorAuth = {
     /**
-     * AllowListedLocalPaths contains local paths that are allowed to be mounted into jobs
+     * Token specifies the key for compute nodes to be able to access the orchestrator
      */
-    allowListedLocalPaths?: Array<(string)>;
-    clientAPI?: types_APIConfig;
-    compute?: types_ComputeConfig;
-    /**
-     * TODO(forrest) [refactor]: rename this to ExecutorStoragePath
-     * Deprecated: replaced by cfg.ComputeDir()
-     */
-    computeStoragePath?: string;
-    /**
-     * What features should not be enabled even if installed
-     */
-    disabledFeatures?: (types_FeatureConfig);
-    downloadURLRequestRetries?: number;
-    downloadURLRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    /**
-     * Deprecated: replaced by cfg.PluginsDir()
-     */
-    executorPluginPath?: string;
-    ipfs?: types_IpfsConfig;
-    /**
-     * Labels to apply to the node that can be used for node selection and filtering
-     */
-    labels?: {
-        [key: string]: (string);
-    };
-    loggingMode?: logger_LogMode;
-    name?: string;
-    nameProvider?: string;
-    network?: types_NetworkConfig;
-    requester?: types_RequesterConfig;
-    serverAPI?: types_APIConfig;
-    strictVersionMatch?: boolean;
-    /**
-     * Type is "compute", "requester" or both
-     */
-    type?: Array<(string)>;
-    volumeSizeRequestTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    /**
-     * Configuration for the web UI
-     */
-    webUI?: (types_WebUIConfig);
+    Token?: string;
 };
 
-export type types_RequesterConfig = {
-    controlPlaneSettings?: types_RequesterControlPlaneConfig;
-    defaultPublisher?: string;
-    evaluationBroker?: types_EvaluationBrokerConfig;
-    /**
-     * URL where to send external verification requests to.
-     */
-    externalVerifierHook?: string;
-    failureInjectionConfig?: models_FailureInjectionRequesterConfig;
-    housekeepingBackgroundTaskInterval?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    jobDefaults?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_JobDefaults;
-    /**
-     * How the node decides what jobs to run.
-     */
-    jobSelectionPolicy?: (models_JobSelectionPolicy);
-    jobStore?: types_JobStoreConfig;
-    /**
-     * ManualNodeApproval is a flag that determines if nodes should be manually approved or not.
-     * By default, nodes are auto-approved to simplify upgrades, by setting this property to
-     * true, nodes will need to be manually approved before they are included in node selection.
-     */
-    manualNodeApproval?: boolean;
-    nodeInfoStoreTTL?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    nodeRankRandomnessRange?: number;
-    overAskForBidsFactor?: number;
-    scheduler?: types_SchedulerConfig;
-    storageProvider?: types_StorageProviderConfig;
-    tagCache?: types_DockerCacheConfig;
-    translationEnabled?: boolean;
-    worker?: types_WorkerConfig;
+export type types_PublisherTypes = {
+    IPFS?: types_IPFSPublisher;
+    Local?: types_LocalPublisher;
+    S3?: types_S3Publisher;
 };
 
-export type types_RequesterControlPlaneConfig = {
+export type types_PublishersConfig = {
     /**
-     * This setting is the time period after which a compute node is considered to be unresponsive.
-     * If the compute node misses two of these frequencies, it will be marked as unknown.  The compute
-     * node should have a frequency setting less than this one to ensure that it does not keep
-     * switching between unknown and active too frequently.
+     * Disabled specifies a list of publishers that are disabled.
      */
-    heartbeatCheckFrequency?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
-    /**
-     * This is the pubsub topic that the compute node will use to send heartbeats to the requester node.
-     */
-    heartbeatTopic?: string;
-    /**
-     * This is the time period after which a compute node is considered to be disconnected. If the compute
-     * node does not deliver a heartbeat every `NodeDisconnectedAfter` then it is considered disconnected.
-     */
-    nodeDisconnectedAfter?: (github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration);
+    Disabled?: Array<(string)>;
+    Types?: types_PublisherTypes;
 };
 
-export type types_S3StorageProviderConfig = {
-    preSignedURLDisabled?: boolean;
-    preSignedURLExpiration?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+export type types_ResourceScaler = {
+    /**
+     * CPU specifies the amount of CPU a compute node allocates for running jobs.
+     * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "100m").
+     */
+    CPU?: string;
+    /**
+     * Disk specifies the amount of Disk space a compute node allocates for running jobs.
+     * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "10Gi").
+     */
+    Disk?: string;
+    /**
+     * GPU specifies the amount of GPU a compute node allocates for running jobs.
+     * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1").
+     * Note: When using percentages, the result is always rounded up to the nearest whole GPU.
+     */
+    GPU?: string;
+    /**
+     * Memory specifies the amount of Memory a compute node allocates for running jobs.
+     * It can be expressed as a percentage (e.g., "85%") or a Kubernetes resource string (e.g., "1Gi").
+     */
+    Memory?: string;
 };
 
-export type types_SchedulerConfig = {
-    nodeOverSubscriptionFactor?: number;
-    queueBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+export type types_ResourcesConfig = {
+    /**
+     * CPU specifies the default amount of CPU allocated to a task.
+     * It uses Kubernetes resource string format (e.g., "100m" for 0.1 CPU cores).
+     * This value is used when the task hasn't explicitly set its CPU requirement.
+     */
+    CPU?: string;
+    /**
+     * Disk specifies the default amount of disk space allocated to a task.
+     * It uses Kubernetes resource string format (e.g., "1Gi" for 1 gibibyte).
+     * This value is used when the task hasn't explicitly set its disk space requirement.
+     */
+    Disk?: string;
+    /**
+     * GPU specifies the default number of GPUs allocated to a task.
+     * It uses Kubernetes resource string format (e.g., "1" for 1 GPU).
+     * This value is used when the task hasn't explicitly set its GPU requirement.
+     */
+    GPU?: string;
+    /**
+     * Memory specifies the default amount of memory allocated to a task.
+     * It uses Kubernetes resource string format (e.g., "256Mi" for 256 mebibytes).
+     * This value is used when the task hasn't explicitly set its memory requirement.
+     */
+    Memory?: string;
 };
 
-export type types_StorageProviderConfig = {
-    s3?: types_S3StorageProviderConfig;
+export type types_ResultDownloaders = {
+    /**
+     * Disabled is a list of downloaders that are disabled.
+     */
+    Disabled?: Array<(string)>;
+    /**
+     * Timeout specifies the maximum time allowed for a download operation.
+     */
+    Timeout?: number;
+    Types?: types_ResultDownloadersTypes;
 };
 
-export enum types_StorageType {
-    UnknownStorage = 0,
-    BoltDB = 1
-}
-
-export type types_TLSConfiguration = {
-    /**
-     * AutoCert specifies a hostname for a certificate to be obtained via ACME.
-     * This is only used by the server, and only by the requester node when it
-     * has a publicly resolvable domain name.
-     */
-    autoCert?: string;
-    /**
-     * AutoCertCachePath specifies the directory where the autocert process
-     * will cache certificates to avoid rate limits.
-     */
-    autoCertCachePath?: string;
-    /**
-     * SelfSignedCert will auto-generate a self-signed certificate for the
-     * requester node if TLS certificates have not been provided.
-     */
-    selfSigned?: boolean;
-    /**
-     * ServerCertificate specifies the location of a TLS certificate to be used
-     * by the requester to serve TLS requests
-     */
-    serverCertificate?: string;
-    /**
-     * ServerKey is the TLS server key to match the certificate to allow the
-     * requester to server TLS.
-     */
-    serverKey?: string;
+export type types_ResultDownloadersTypes = {
+    IPFS?: types_IpfsDownloader;
 };
 
-export type types_UserConfig = {
-    installationID?: string;
+export type types_S3Publisher = {
     /**
-     * KeyPath is deprecated
-     * Deprecated: replaced by cfg.UserKeyPath()
+     * PreSignedURLDisabled specifies whether pre-signed URLs are enabled for the S3 provider.
      */
-    keyPath?: string;
+    PreSignedURLDisabled?: boolean;
+    /**
+     * PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
+     */
+    PreSignedURLExpiration?: number;
 };
 
-export type types_WebUIConfig = {
-    enabled?: boolean;
-    port?: number;
+export type types_Scheduler = {
+    /**
+     * HousekeepingInterval specifies how often to run housekeeping tasks.
+     */
+    HousekeepingInterval?: number;
+    /**
+     * HousekeepingTimeout specifies the maximum time allowed for a single housekeeping run.
+     */
+    HousekeepingTimeout?: number;
+    /**
+     * QueueBackoff specifies the time to wait before retrying a failed job.
+     */
+    QueueBackoff?: number;
+    /**
+     * WorkerCount specifies the number of concurrent workers for job scheduling.
+     */
+    WorkerCount?: number;
 };
 
-export type types_WorkerConfig = {
-    workerCount?: number;
-    workerEvalDequeueBaseBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    workerEvalDequeueMaxBackoff?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
-    workerEvalDequeueTimeout?: github_com_bacalhau_project_bacalhau_pkg_config_legacy_types_Duration;
+export type types_TLS = {
+    /**
+     * AutoCert specifies the domain for automatic certificate generation.
+     */
+    AutoCert?: string;
+    /**
+     * AutoCertCachePath specifies the directory to cache auto-generated certificates.
+     */
+    AutoCertCachePath?: string;
+    /**
+     * CAFile specifies the path to the Certificate Authority file.
+     */
+    CAFile?: string;
+    /**
+     * CertFile specifies the path to the TLS certificate file.
+     */
+    CertFile?: string;
+    /**
+     * Insecure allows insecure TLS connections (e.g., self-signed certificates).
+     */
+    Insecure?: boolean;
+    /**
+     * KeyFile specifies the path to the TLS private key file.
+     */
+    KeyFile?: string;
+    /**
+     * SelfSigned indicates whether to use a self-signed certificate.
+     */
+    SelfSigned?: boolean;
+    /**
+     * UseTLS indicates whether to use TLS for client connections.
+     */
+    UseTLS?: boolean;
+};
+
+export type types_TaskTimeoutConfig = {
+    /**
+     * ExecutionTimeout is the maximum time allowed for task execution
+     */
+    ExecutionTimeout?: number;
+    /**
+     * TotalTimeout is the maximum total time allowed for a task
+     */
+    TotalTimeout?: number;
+};
+
+export type types_UpdateConfig = {
+    /**
+     * Interval specifies the time between update checks, when set to 0 update checks are not performed.
+     */
+    Interval?: number;
+};
+
+export type types_WASM = unknown;
+
+export type types_WebUI = {
+    /**
+     * Backend specifies the address and port of the backend API server.
+     * If empty, the Web UI will use the same address and port as the API server.
+     */
+    Backend?: string;
+    /**
+     * Enabled indicates whether the Web UI is enabled.
+     */
+    Enabled?: boolean;
+    /**
+     * Listen specifies the address and port on which the Web UI listens.
+     */
+    Listen?: string;
 };
 
 export type HomeResponse = (string);
@@ -1193,7 +1296,7 @@ export type AgentAliveResponse = (apimodels_IsAliveResponse);
 
 export type AgentAliveError = unknown;
 
-export type AgentConfigResponse = (types_BacalhauConfig);
+export type AgentConfigResponse = (types_Bacalhau);
 
 export type AgentConfigError = (string);
 
@@ -1330,7 +1433,7 @@ export type OrchestratorJobExecutionsResponse = (apimodels_ListJobExecutionsResp
 
 export type OrchestratorJobExecutionsError = (string);
 
-export type OrchestratorJobHistoryData = {
+export type OrchestratorListHistoryData = {
     path: {
         /**
          * ID to get the job history for
@@ -1347,7 +1450,7 @@ export type OrchestratorJobHistoryData = {
          */
         execution_id?: string;
         /**
-         * Token to get the next page of the jobs
+         * Token to get the next page of the history events
          */
         next_token?: string;
         /**
@@ -1357,9 +1460,9 @@ export type OrchestratorJobHistoryData = {
     };
 };
 
-export type OrchestratorJobHistoryResponse = (apimodels_ListJobHistoryResponse);
+export type OrchestratorListHistoryResponse = (apimodels_ListJobHistoryResponse);
 
-export type OrchestratorJobHistoryError = (string);
+export type OrchestratorListHistoryError = (string);
 
 export type OrchestratorLogsData = {
     path: {

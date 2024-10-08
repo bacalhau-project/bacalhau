@@ -22,9 +22,8 @@ type AsyncBidSuite struct {
 
 	strategy *bidstrategy.CallbackBidStrategy
 
-	ctx           context.Context
-	store         store.ExecutionStore
-	callbackStore *CallbackStore
+	ctx   context.Context
+	store store.ExecutionStore
 }
 
 func TestAsyncBidSuite(t *testing.T) {
@@ -35,22 +34,8 @@ func (s *AsyncBidSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.setupConfig()
 	s.strategy = bidstrategy.NewFixedBidStrategy(true, true)
-	s.config.BidSemanticStrategy = s.strategy
-	s.config.BidResourceStrategy = s.strategy
-
-	s.store = s.config.ExecutionStore
-	s.callbackStore = &CallbackStore{}
-	s.callbackStore.GetExecutionFn = s.store.GetExecution
-	s.callbackStore.GetExecutionsFn = s.store.GetExecutions
-	s.callbackStore.GetLiveExecutionsFn = s.store.GetLiveExecutions
-	s.callbackStore.GetExecutionHistoryFn = s.store.GetExecutionHistory
-	s.callbackStore.CreateExecutionFn = s.store.CreateExecution
-	s.callbackStore.UpdateExecutionStateFn = s.store.UpdateExecutionState
-	s.callbackStore.DeleteExecutionFn = s.store.DeleteExecution
-	s.callbackStore.GetExecutionCountFn = s.store.GetExecutionCount
-	s.callbackStore.GetEventStoreFn = s.store.GetEventStore
-	s.callbackStore.CloseFn = s.store.Close
-	s.config.ExecutionStore = s.callbackStore
+	s.config.SystemConfig.BidSemanticStrategy = s.strategy
+	s.config.SystemConfig.BidResourceStrategy = s.strategy
 	s.setupNode()
 }
 
@@ -65,13 +50,6 @@ func (s *AsyncBidSuite) TestAsyncReject() {
 func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 	exec := mock.Execution()
 
-	// override execution store create method so that we may wait for async execution creation after `AskForBid`
-	executionCreatedWg := sync.WaitGroup{}
-	executionCreatedWg.Add(1)
-	s.callbackStore.CreateExecutionFn = func(ctx context.Context, execution store.LocalExecutionState) error {
-		defer executionCreatedWg.Done()
-		return s.store.CreateExecution(ctx, execution)
-	}
 	s.strategy.OnShouldBid = func(ctx context.Context, bsr bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 		return bidstrategy.BidStrategyResponse{ShouldBid: shouldBid, ShouldWait: true}, nil
 	}
@@ -112,10 +90,11 @@ func (s *AsyncBidSuite) runAsyncBidTest(shouldBid bool) {
 	})
 	s.NoError(err)
 
-	executionCreatedWg.Wait()
-
-	execution, err := s.node.ExecutionStore.GetExecution(ctx, resp.ExecutionID)
-	s.NoError(err)
+	var execution store.LocalExecutionState
+	s.Eventually(func() bool {
+		execution, err = s.node.ExecutionStore.GetExecution(ctx, resp.ExecutionID)
+		return err == nil
+	}, 2*time.Second, 100*time.Millisecond)
 
 	expectingResponse = true
 	s.node.Bidder.ReturnBidResult(ctx, execution, &bidstrategy.BidStrategyResponse{

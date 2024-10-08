@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/pkgerrors"
@@ -29,22 +30,31 @@ type LogMode string
 
 // Available logging modes
 const (
-	LogModeDefault  LogMode = "default"
-	LogModeStation  LogMode = "station"
-	LogModeJSON     LogMode = "json"
-	LogModeCombined LogMode = "combined"
-	LogModeEvent    LogMode = "event"
+	LogModeDefault LogMode = "default"
+	LogModeJSON    LogMode = "json"
+	LogModeCmd     LogMode = "cmd"
+)
+
+var (
+	logMu sync.Mutex
 )
 
 func ParseLogMode(s string) (LogMode, error) {
-	lm := []LogMode{LogModeDefault, LogModeStation, LogModeJSON, LogModeCombined, LogModeEvent}
+	lm := []LogMode{LogModeDefault, LogModeJSON, LogModeCmd}
 	for _, logMode := range lm {
 		if strings.ToLower(s) == strings.ToLower(string(logMode)) {
 			return logMode, nil
 		}
 	}
-	return "Error", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)",
-		s, lm)
+	return "", fmt.Errorf("%q is an invalid log-mode (valid modes: %q)", s, lm)
+}
+
+func ParseLogLevel(s string) (zerolog.Level, error) {
+	l, err := zerolog.ParseLevel(s)
+	if err != nil {
+		return l, fmt.Errorf("%q is an invalid log-level", s)
+	}
+	return l, nil
 }
 
 var nodeIDFieldName = "NodeID"
@@ -57,12 +67,14 @@ func init() { //nolint:gochecknoinits
 		strings.HasSuffix(os.Args[0], ".test") ||
 		flag.Lookup("test.v") != nil ||
 		flag.Lookup("test.run") != nil {
-		configureLogging(zerolog.DebugLevel, defaultLogging())
+		ConfigureLoggingLevel(zerolog.DebugLevel)
+		configureLogging(defaultLogging())
 		return
 	}
 
 	// the default log level when not running a test is ERROR
-	configureLogging(zerolog.ErrorLevel, bufferLogs())
+	ConfigureLoggingLevel(zerolog.ErrorLevel)
+	configureLogging(bufferLogs())
 }
 
 func ErrOrDebug(err error) zerolog.Level {
@@ -82,46 +94,66 @@ type tTesting interface {
 func ConfigureTestLogging(t tTesting) {
 	oldLogger := log.Logger
 	oldContextLogger := zerolog.DefaultContextLogger
-	configureLogging(zerolog.DebugLevel, zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
+	ConfigureLoggingLevel(zerolog.DebugLevel)
+	configureLogging(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(t), defaultLogFormat))
 	t.Cleanup(func() {
 		log.Logger = oldLogger
 		zerolog.DefaultContextLogger = oldContextLogger
 	})
 }
 
-func ConfigureLogging(modeStr, levelStr string) error {
-	logModeConfig := defaultLogging()
-
+func ParseAndConfigureLogging(modeStr, levelStr string) error {
 	mode, err := ParseLogMode(modeStr)
 	if err != nil {
-		return fmt.Errorf("invalid log mode: %w", err)
+		return err
 	}
-	level, err := zerolog.ParseLevel(levelStr)
+	level, err := ParseLogLevel(levelStr)
 	if err != nil {
-		return fmt.Errorf("invalid log level: %w", err)
+		return err
 	}
 
-	switch mode {
-	case LogModeDefault:
-		logModeConfig = defaultLogging()
-	case LogModeStation:
-		logModeConfig = defaultStationLogging()
-	case LogModeJSON:
-		logModeConfig = jsonLogging()
-	case LogModeEvent:
-		logModeConfig = eventLogging()
-	case LogModeCombined:
-		logModeConfig = combinedLogging()
-	}
-	configureLogging(level, logModeConfig)
-
-	LogBufferedLogs(logModeConfig)
+	ConfigureLogging(mode, level)
 	return nil
 }
 
-func configureLogging(level zerolog.Level, logWriter io.Writer) {
-	zerolog.TimeFieldFormat = time.RFC3339Nano
+func ConfigureLogging(mode LogMode, level zerolog.Level) {
+	var logWriter io.Writer
+	switch mode {
+	case LogModeDefault:
+		logWriter = defaultLogging()
+	case LogModeJSON:
+		logWriter = jsonLogging()
+	case LogModeCmd:
+		logWriter = clientLogging()
+	default:
+		logWriter = defaultLogging()
+	}
+
+	ConfigureLoggingLevel(level)
+	configureLogging(logWriter)
+	LogBufferedLogs(logWriter)
+}
+
+func ParseAndConfigureLoggingLevel(level string) error {
+	l, err := ParseLogLevel(level)
+	if err != nil {
+		return err
+	}
+	ConfigureLoggingLevel(l)
+	return nil
+}
+
+func ConfigureLoggingLevel(level zerolog.Level) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	zerolog.SetGlobalLevel(level)
+}
+
+func configureLogging(logWriter io.Writer) {
+	logMu.Lock()
+	defer logMu.Unlock()
+
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 
 	info, ok := debug.ReadBuildInfo()
 	if ok && info.Main.Path != "" {
@@ -148,21 +180,13 @@ func jsonLogging() io.Writer {
 	return os.Stdout
 }
 
-func eventLogging() io.Writer {
-	return io.Discard
-}
-
-func combinedLogging() io.Writer {
-	return zerolog.MultiLevelWriter(defaultLogging(), os.Stdout)
-}
-
 func defaultLogging() io.Writer {
 	return zerolog.NewConsoleWriter(defaultLogFormat)
 }
 
 func defaultLogFormat(w *zerolog.ConsoleWriter) {
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
-	w.Out = os.Stderr
+	w.Out = os.Stdout
 	w.NoColor = !isTerminal
 	w.TimeFormat = "15:04:05.999 |"
 	w.PartsOrder = []string{
@@ -187,25 +211,10 @@ func defaultLogFormat(w *zerolog.ConsoleWriter) {
 	}
 }
 
-func defaultStationLogging() io.Writer {
+func clientLogging() io.Writer {
 	return zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
-		isTerminal := isatty.IsTerminal(os.Stdout.Fd())
-		w.Out = os.Stdout
-		w.NoColor = !isTerminal
-		w.PartsOrder = []string{
-			zerolog.LevelFieldName,
-			zerolog.MessageFieldName,
-		}
-
-		w.FormatLevel = func(i interface{}) string {
-			return strings.ToUpper(i.(string)) + ":"
-		}
-		w.FormatErrFieldName = func(i interface{}) string {
-			return "- "
-		}
-		w.FormatErrFieldValue = func(i interface{}) string {
-			return strings.Trim(i.(string), "\"")
-		}
+		defaultLogFormat(w)
+		w.PartsOrder = []string{zerolog.MessageFieldName}
 	})
 }
 
