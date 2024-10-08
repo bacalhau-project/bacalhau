@@ -72,24 +72,7 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	}
 
 	// migrate old endpoints to new versioned ones
-	migrations := map[string]string{
-		"/peers":                      "/api/v1/peers",
-		"/node_info":                  "/api/v1/node_info",
-		"^/version":                   "/api/v1/version",
-		"/healthz":                    "/api/v1/healthz",
-		"/id":                         "/api/v1/id",
-		"/livez":                      "/api/v1/livez",
-		"/requester/list":             "/api/v1/requester/list",
-		"/requester/nodes":            "/api/v1/requester/nodes",
-		"/requester/states":           "/api/v1/requester/states",
-		"/requester/results":          "/api/v1/requester/results",
-		"/requester/events":           "/api/v1/requester/events",
-		"/requester/submit":           "/api/v1/requester/submit",
-		"/requester/cancel":           "/api/v1/requester/cancel",
-		"/requester/debug":            "/api/v1/requester/debug",
-		"/requester/logs":             "/api/v1/requester/logs",
-		"/requester/websocket/events": "/api/v1/requester/websocket/events",
-	}
+	migrations := map[string]string{}
 
 	// set custom binders and validators
 	server.Router.Binder = NewNormalizeBinder()

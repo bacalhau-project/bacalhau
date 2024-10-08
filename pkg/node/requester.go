@@ -26,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
-	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
@@ -248,9 +247,6 @@ func NewRequesterNode(
 	debugInfoProviders := []models.DebugInfoProvider{
 		discovery.NewDebugInfoProvider(nodeManager),
 	}
-
-	// TODO: delete this when we are ready to stop serving a deprecation notice.
-	requester_endpoint.NewEndpoint(apiServer.Router)
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:       apiServer.Router,

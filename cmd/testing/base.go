@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
-	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -23,6 +22,8 @@ import (
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/test/teststack"
 )
+
+var TestError error
 
 type BaseSuite struct {
 	suite.Suite
@@ -140,10 +141,10 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 
 	s.T().Logf("Command to execute: %v", arguments)
 
-	util.TestError = nil
+	TestError = nil
 	c, err = root.ExecuteC()
 	if err == nil {
-		err = util.TestError
+		err = TestError
 	}
 	return c, buf.String(), err
 }
