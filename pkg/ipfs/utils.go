@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
-	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -45,19 +47,26 @@ func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...Client) 
 	return AddFileToNodes(ctx, testFilePath, clients...)
 }
 
-func ParsePeersString(peers []string) ([]peer.AddrInfo, error) {
-	// Parse the bootstrap node multiaddrs and fetch their IPFS peer info:
-	var res []peer.AddrInfo
-	for _, p := range peers {
-		if p == "" {
-			continue
+func SortLocalhostFirst(multiAddresses []multiaddr.Multiaddr) []multiaddr.Multiaddr {
+	multiAddresses = slices.Clone(multiAddresses)
+	preferLocalhost := func(m multiaddr.Multiaddr) int {
+		count := 0
+		if _, err := m.ValueForProtocol(multiaddr.P_TCP); err == nil {
+			count++
 		}
-		pi, err := peer.AddrInfoFromString(p)
-		if err != nil {
-			return nil, err
+		if ip, err := m.ValueForProtocol(multiaddr.P_IP4); err == nil {
+			count++
+			if ip == "127.0.0.1" {
+				count++
+			}
+		} else if ip, err := m.ValueForProtocol(multiaddr.P_IP6); err == nil && ip != "::1" {
+			count++
 		}
-		res = append(res, *pi)
+		return count
 	}
+	sort.Slice(multiAddresses, func(i, j int) bool {
+		return preferLocalhost(multiAddresses[i]) > preferLocalhost(multiAddresses[j])
+	})
 
-	return res, nil
+	return multiAddresses
 }

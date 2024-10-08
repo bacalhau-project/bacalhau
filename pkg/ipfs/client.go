@@ -20,10 +20,9 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
-	"github.com/bacalhau-project/bacalhau/pkg/util/multiaddresses"
 )
 
 // Client is a front-end for an ipfs node's API endpoints
@@ -95,7 +94,7 @@ func (cl Client) SwarmMultiAddresses(ctx context.Context) ([]ma.Multiaddr, error
 		return nil, fmt.Errorf("error fetching node's swarm addresses: %w", err)
 	}
 
-	addrs = generic.Map(addrs, func(f ma.Multiaddr) ma.Multiaddr {
+	addrs = lo.Map(addrs, func(f ma.Multiaddr, _ int) ma.Multiaddr {
 		return f.Encapsulate(p2pID)
 	})
 
@@ -117,9 +116,9 @@ func (cl Client) SwarmAddresses(ctx context.Context) ([]string, error) {
 	// This sorts the addresses so IPv4 localhost is first, with the aim of using the localhost connection during tests
 	// and so avoid any unneeded network hops. Other callers to this either sort the list themselves or just output the
 	// full list.
-	multiAddresses = multiaddresses.SortLocalhostFirst(multiAddresses)
+	multiAddresses = SortLocalhostFirst(multiAddresses)
 
-	addresses := generic.Map(multiAddresses, func(f ma.Multiaddr) string {
+	addresses := lo.Map(multiAddresses, func(f ma.Multiaddr, _ int) string {
 		return f.String()
 	})
 

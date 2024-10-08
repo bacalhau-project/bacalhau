@@ -23,13 +23,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 
 	cmd2 "github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/types"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -169,16 +167,6 @@ func (s *ServeSuite) curlEndpoint(URL string) ([]byte, int, error) {
 
 	}
 	return responseText, resp.StatusCode, nil
-}
-func (s *ServeSuite) TestHealthcheck() {
-	port, _ := s.serve()
-	healthzText, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/api/v1/healthz", port))
-	s.Require().NoError(err)
-
-	var healthzJSON types.HealthInfo
-	s.Require().NoError(marshaller.JSONUnmarshalWithMax(healthzText, &healthzJSON), "Error unmarshalling healthz JSON.")
-	s.Require().Greater(int(healthzJSON.DiskFreeSpace.ROOT.All), 0, "Did not report DiskFreeSpace > 0.")
-	s.Require().Equal(http.StatusOK, statusCode, "Did not return 200 OK.")
 }
 
 func (s *ServeSuite) TestCanSubmitJob() {

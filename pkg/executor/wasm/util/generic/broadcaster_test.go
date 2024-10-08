@@ -5,10 +5,11 @@ package generic_test
 import (
 	"testing"
 
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/generic"
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
 type BroadcasterTestSuite struct {

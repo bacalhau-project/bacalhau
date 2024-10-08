@@ -10,12 +10,13 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"k8s.io/kubectl/pkg/util/templates"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
 var setExample = templates.Examples(i18n.T(`

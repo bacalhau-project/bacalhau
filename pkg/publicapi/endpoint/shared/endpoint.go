@@ -34,7 +34,6 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.Use(middleware.SetContentType(echo.MIMEApplicationJSON))
 	g.GET("/node_info", e.nodeInfo)
 	g.POST("/version", e.version)
-	g.GET("/healthz", e.healthz)
 
 	// Plaintext group
 	pt := e.router.Group("/api/v1")
@@ -109,20 +108,6 @@ func (e *Endpoint) version(c echo.Context) error {
 	return c.JSON(http.StatusOK, VersionResponse{
 		VersionInfo: version.Get(),
 	})
-}
-
-// healthz godoc
-//
-//	@ID			healthz
-//	@Tags		Utils
-//	@Produce	json
-//	@Success	200	{object}	types.HealthInfo
-//	@Router		/api/v1/healthz [get]
-func (e *Endpoint) healthz(c echo.Context) error {
-	// TODO: A list of health information. Should require authing (of some kind)
-	// Ideas:
-	// CPU usage
-	return c.JSON(http.StatusOK, GenerateHealthData())
 }
 
 // livez godoc

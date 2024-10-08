@@ -12,6 +12,8 @@ import (
 	"gopkg.in/alessio/shellescape.v1"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"k8s.io/kubectl/pkg/util/templates"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -22,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
 var (

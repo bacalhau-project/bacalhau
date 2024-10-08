@@ -4,10 +4,11 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/kubectl/pkg/util/i18n"
 
+	"k8s.io/kubectl/pkg/util/templates"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 )
 
 var (

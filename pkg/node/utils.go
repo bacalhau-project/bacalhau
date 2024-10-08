@@ -95,3 +95,14 @@ func scaleCapacityByAllocation(systemCapacity models.Resources, scaler types.Res
 
 	return *allocatedCapacity, nil
 }
+
+func logDebugIfContextCancelled(ctx context.Context, cleanupErr error, msg string) {
+	if cleanupErr == nil {
+		return
+	}
+	if !errors.Is(cleanupErr, context.Canceled) {
+		log.Ctx(ctx).Error().Err(cleanupErr).Msg("failed to close " + msg)
+	} else {
+		log.Ctx(ctx).Debug().Err(cleanupErr).Msgf("Context canceled: %s", msg)
+	}
+}

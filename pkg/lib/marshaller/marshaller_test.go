@@ -26,7 +26,6 @@ type MockNonNormalizable struct {
 func TestMarshaller(t *testing.T) {
 	marshallers := []Marshaller{
 		NewJSONMarshaller(),
-		NewBinaryMarshaller(),
 	}
 
 	for _, m := range marshallers {

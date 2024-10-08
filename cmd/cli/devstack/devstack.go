@@ -17,10 +17,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/webui"
 
+	"k8s.io/kubectl/pkg/util/templates"
+
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
-	"github.com/bacalhau-project/bacalhau/pkg/util/templates"
 
 	"github.com/spf13/cobra"
 )

@@ -1,6 +1,8 @@
 package wasmlogs
 
-import "github.com/bacalhau-project/bacalhau/pkg/util/generic"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/generic"
+)
 
 type LogWriterTransform func([]byte) *LogMessage
 
