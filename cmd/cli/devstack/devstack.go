@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	"k8s.io/kubectl/pkg/util/i18n"
@@ -103,9 +104,7 @@ func NewCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// TODO: a hack to force debug logging for devstack
 			//  until I figure out why flags and env vars are not working
-			if err := logger.ConfigureLogging(string(logger.LogModeDefault), "debug"); err != nil {
-				return fmt.Errorf("failed to configure logging: %w", err)
-			}
+			logger.ConfigureLogging(logger.LogModeDefault, zerolog.DebugLevel)
 			return runDevstack(cmd, ODs)
 		},
 	}

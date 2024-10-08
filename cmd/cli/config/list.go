@@ -41,7 +41,7 @@ Each key shown can be used with:
 			if err != nil {
 				return err
 			}
-			log.Info().Msgf("Config loaded from: %s, and with data-dir %s", cfg.Paths(), cfg.Get(types.DataDirKey))
+			log.Debug().Msgf("Config loaded from: %s, and with data-dir %s", cfg.Paths(), cfg.Get(types.DataDirKey))
 			return list(cmd, cfg, o)
 		},
 	}
