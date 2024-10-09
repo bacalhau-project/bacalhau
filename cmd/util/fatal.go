@@ -14,8 +14,7 @@ import (
 var Fatal = fatalError
 
 func fatalError(cmd *cobra.Command, err error, code int) {
-	cmd.SetOut(os.Stdout)
-	cmd.Println()
+	cmd.PrintErrln()
 
 	var bErr bacerrors.Error
 	if errors.As(err, &bErr) {
