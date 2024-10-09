@@ -1,0 +1,25 @@
+# Use the docker:dind image as the base image
+FROM docker:dind
+
+# Set the working directory
+WORKDIR /app
+
+# Install curl and bash
+RUN apk update && apk add --no-cache curl bash
+
+# Install the ca-certificates package
+RUN apk add --no-cache ca-certificates
+
+# Copy a root ca into the image
+COPY certificates/generated_assets/bacalhau_test_root_ca.crt /usr/local/share/ca-certificates/bacalhau_test_root_ca.crt
+
+# Update CA certificates
+RUN update-ca-certificates
+
+# Download and execute the Bash script from the given URL
+COPY ./bacalhau_bin /usr/local/bin/bacalhau
+RUN chmod +x /usr/local/bin/bacalhau
+
+COPY compute_node_image_setup.sh compute_node_image_setup.sh
+ENTRYPOINT ["/usr/bin/env"]
+CMD ./compute_node_image_setup.sh

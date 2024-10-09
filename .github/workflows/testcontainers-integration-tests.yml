@@ -1,0 +1,29 @@
+name: Test Containers Integration Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [ok-to-test]
+
+jobs:
+  test-build-and-run-testcontainers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Run Go tests in integration test directory
+        run: |
+          # TODO: make WebUI happy when compiling
+          mkdir -p webui/build
+          echo "hello test" > webui/build/index.html
+          cd test_integration
+          go test -v -count=1 ./...

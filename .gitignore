@@ -65,3 +65,6 @@ dist/
 .arg
 .ruff_cache
 .aider*
+
+# Integration Tests
+test_integration/assets/dockerfiles/bacalhau_bin
