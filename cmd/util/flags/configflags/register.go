@@ -46,7 +46,7 @@ func BindFlags(v *viper.Viper, register map[string][]Definition) error {
 		for _, def := range defs {
 			// sanity check to ensure we are not binding a config key on more than one flag.
 			if dup, ok := seen[def.ConfigPath]; ok && !def.Deprecated {
-				return fmt.Errorf("DEVELOPER ERROR: duplicate regsistration of config key %s for flag %s"+
+				return fmt.Errorf("DEVELOPER ERROR: duplicate registration of config key %s for flag %s"+
 					" previously registered on on flag %s", def.ConfigPath, def.FlagName, dup.FlagName)
 			}
 			if !def.Deprecated {
@@ -79,43 +79,43 @@ func PreRun(v *viper.Viper, flags map[string][]Definition) func(*cobra.Command, 
 // This method should be called before the command runs to register flags accordingly.
 func RegisterFlags(cmd *cobra.Command, register map[string][]Definition) error {
 	for name, defs := range register {
-		fset := pflag.NewFlagSet(name, pflag.ContinueOnError)
+		flagSet := pflag.NewFlagSet(name, pflag.ContinueOnError)
 		// Determine the type of the default value
 		for _, def := range defs {
 			switch v := def.DefaultValue.(type) {
 			case int:
-				fset.Int(def.FlagName, v, def.Description)
+				flagSet.Int(def.FlagName, v, def.Description)
 			case uint64:
-				fset.Uint64(def.FlagName, v, def.Description)
+				flagSet.Uint64(def.FlagName, v, def.Description)
 			case bool:
-				fset.Bool(def.FlagName, v, def.Description)
+				flagSet.Bool(def.FlagName, v, def.Description)
 			case string:
-				fset.String(def.FlagName, v, def.Description)
+				flagSet.String(def.FlagName, v, def.Description)
 			case []string:
-				fset.StringSlice(def.FlagName, v, def.Description)
+				flagSet.StringSlice(def.FlagName, v, def.Description)
 			case map[string]string:
-				fset.StringToString(def.FlagName, v, def.Description)
+				flagSet.StringToString(def.FlagName, v, def.Description)
 			case models.JobSelectionDataLocality:
-				fset.Var(flags.DataLocalityFlag(&v), def.FlagName, def.Description)
+				flagSet.Var(flags.DataLocalityFlag(&v), def.FlagName, def.Description)
 			case logger.LogMode:
-				fset.Var(flags.LoggingFlag(&v), def.FlagName, def.Description)
+				flagSet.Var(flags.LoggingFlag(&v), def.FlagName, def.Description)
 			case time.Duration:
-				fset.DurationVar(&v, def.FlagName, v, def.Description)
+				flagSet.DurationVar(&v, def.FlagName, v, def.Description)
 			case types.Duration:
-				fset.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
+				flagSet.DurationVar((*time.Duration)(&v), def.FlagName, time.Duration(v), def.Description)
 			case types.ResourceType:
-				fset.String(def.FlagName, string(v), def.Description)
+				flagSet.String(def.FlagName, string(v), def.Description)
 			default:
 				return fmt.Errorf("unhandled type: %T for flag %s", v, def.FlagName)
 			}
 
 			if def.Deprecated {
-				flag := fset.Lookup(def.FlagName)
+				flag := flagSet.Lookup(def.FlagName)
 				flag.Deprecated = def.DeprecatedMessage
 				flag.Hidden = true
 			}
 		}
-		cmd.PersistentFlags().AddFlagSet(fset)
+		cmd.PersistentFlags().AddFlagSet(flagSet)
 	}
 	return nil
 }

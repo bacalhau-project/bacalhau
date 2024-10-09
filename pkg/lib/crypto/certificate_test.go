@@ -28,7 +28,7 @@ func TestProducesValidCertificate(t *testing.T) {
 	cert := getTestSelfSignedCert(t)
 
 	var buf bytes.Buffer
-	err := cert.MarshalCertficate(&buf)
+	err := cert.MarshalCertificate(&buf)
 	require.NoError(t, err)
 
 	block, rest := pem.Decode(buf.Bytes())
@@ -49,7 +49,7 @@ func TestProducesSignedCertificate(t *testing.T) {
 	require.NotNil(t, cert)
 
 	var buf bytes.Buffer
-	err = cert.MarshalCertficate(&buf)
+	err = cert.MarshalCertificate(&buf)
 	require.NoError(t, err)
 
 	block, rest := pem.Decode(buf.Bytes())
@@ -61,7 +61,7 @@ func TestProducesSignedCertificate(t *testing.T) {
 	require.NotNil(t, parsed)
 
 	buf.Reset()
-	err = parent.MarshalCertficate(&buf)
+	err = parent.MarshalCertificate(&buf)
 	require.NoError(t, err)
 
 	pool := x509.NewCertPool()

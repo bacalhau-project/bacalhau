@@ -1,0 +1,62 @@
+version: '0.2'
+language: en
+allowCompoundWords: true
+
+# Dictionary configurations
+dictionaryDefinitions:
+    - name: custom-dictionary
+      path: ./.cspell/custom-dictionary.txt
+      addWords: true
+
+dictionaries:
+    # General dictionaries
+    - en
+    - en-gb
+    # Programming language-specific dictionaries
+    - python
+    - golang
+    - typescript
+    - node
+    - html
+    - css
+    - cpp
+    # Technology-specific dictionaries
+    - k8s
+    - terraform
+    # Custom dictionaries
+    - custom-words
+    - custom-dictionary
+
+# Paths to ignore
+ignorePaths:
+    - python/mkdocs.yml
+    - webui/build
+    - webui/node_modules
+    - webui/lib/api/generated/**
+
+# Patterns to ignore
+ignoreRegExpList:
+    # Internet and email
+    - Urls
+    - Email
+    # Cryptography and security
+    - RsaCert
+    - SshRsa
+    - SHA
+    # Encoding
+    - Base64
+    - Base64MultiLine
+    - Base64SingleLine
+    - HexDigits
+    # Programming-related
+    - CommitHash
+    - CommitHashLink
+    - CStyleHexValue
+    - CSSHexValue
+    - EscapedUnicodeCharacters
+    - EscapeCharacters
+    - HashStrings
+    - UnicodeRef
+    - UUID
+    # Custom patterns
+    - /github.com.*/

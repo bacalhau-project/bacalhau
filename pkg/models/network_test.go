@@ -108,8 +108,8 @@ func TestDomainMatching(t *testing.T) {
 		{require.Less, "zzz.com", "foo.com"},
 		{require.Greater, "aaa.com", "foo.com"},
 		{require.Equal, "FOO.com", "foo.COM"},
-		{require.Less, "bfoo.com", "afoo.com"},
-		{require.Greater, "afoo.com", "bfoo.com"},
+		{require.Less, "bFoo.com", "aFoo.com"},
+		{require.Greater, "aFoo.com", "bFoo.com"},
 		{require.Less, "x-foo.com", ".foo.com"},
 	}
 

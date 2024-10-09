@@ -35,7 +35,7 @@ from pprint import pprint
 api_instance = bacalhau_apiclient.OrchestratorApi()
 id = 'id_example' # str | ID to get the job for
 include = 'include_example' # str | Takes history and executions as options. If empty will not include anything else. (optional)
-limit = 56 # int | Number of history or exeuctions to fetch. Should be used in conjugation with include (optional)
+limit = 56 # int | Number of history or executions to fetch. Should be used in conjugation with include (optional)
 
 try:
     # Returns a job.
@@ -47,11 +47,11 @@ except ApiException as e:
 
 ### Parameters
 
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **id** | **str**| ID to get the job for | 
- **include** | **str**| Takes history and executions as options. If empty will not include anything else. | [optional] 
- **limit** | **int**| Number of history or exeuctions to fetch. Should be used in conjugation with include | [optional] 
+Name | Type | Description                                                                          | Notes
+------------- | ------------- |--------------------------------------------------------------------------------------| -------------
+ **id** | **str**| ID to get the job for                                                                | 
+ **include** | **str**| Takes history and executions as options. If empty will not include anything else.    | [optional] 
+ **limit** | **int**| Number of history or executions to fetch. Should be used in conjugation with include | [optional] 
 
 ### Return type
 

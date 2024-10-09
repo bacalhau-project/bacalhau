@@ -851,7 +851,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.Equal(2, len(state))
 	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
 
-	// When OrderBy is set to Modified At With Reverese
+	// When OrderBy is set to Modified At With Reverse
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
 		JobID:   "160",
 		OrderBy: "modified_at",

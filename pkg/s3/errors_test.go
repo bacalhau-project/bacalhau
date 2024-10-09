@@ -1,5 +1,7 @@
 //go:build unit || !integration
 
+/* spell-checker: disable */
+
 package s3
 
 import (

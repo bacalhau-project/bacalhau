@@ -65,7 +65,7 @@ func (e *APIError) Error() string {
 	return e.Message
 }
 
-// Parse HTTP Resposne to APIError
+// Parse HTTP Response to APIError
 func GenerateAPIErrorFromHTTPResponse(resp *http.Response) *APIError {
 	if resp == nil {
 		return NewAPIError(0, "API call error, invalid response")

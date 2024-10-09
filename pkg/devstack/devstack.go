@@ -126,11 +126,11 @@ func Setup(
 		if isComputeNode {
 			// We have multiple process on the same machine, all wanting to listen on a HTTP port
 			// and so we will give each compute node a random open port to listen on.
-			fport, err := network.GetFreePort()
+			freePort, err := network.GetFreePort()
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for local publisher")
 			}
-			cfg.Publishers.Types.Local.Port = fport
+			cfg.Publishers.Types.Local.Port = freePort
 		}
 
 		cfg.Orchestrator.Enabled = isRequesterNode

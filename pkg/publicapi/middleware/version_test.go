@@ -103,9 +103,9 @@ func (suite *VersionNotifyTestSuite) TestLogVersionNotify() {
 			if suite.buf.Len() == 0 {
 				suite.Equalf("", tc.expectedMessage, "unexpected notification")
 			} else {
-				notif := suite.parseMessage(suite.buf.String())
-				suite.Contains(notif.Message, tc.expectedMessage)
-				suite.Equal(tc.expectedClientVersion, notif.ClientVersion)
+				notification := suite.parseMessage(suite.buf.String())
+				suite.Contains(notification.Message, tc.expectedMessage)
+				suite.Equal(tc.expectedClientVersion, notification.ClientVersion)
 			}
 		})
 	}

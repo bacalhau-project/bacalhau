@@ -30,7 +30,7 @@ allow if {
     namespace_readable(job_namespace_perms)
 }
 
-# Allow reading all other endpoints, inclduing by users who don't have a token
+# Allow reading all other endpoints, including by users who don't have a token
 allow if {
     input.http.path != job_endpoint
     not is_legacy_api
@@ -51,7 +51,7 @@ allow if {
     not input.http.path[3] in ["submit", "cancel"]
 }
 
-# Allow posting to auth endpoints, neccessary to get a token in the first place
+# Allow posting to auth endpoints, necessary to get a token in the first place
 allow if {
     input.http.path[2] == "auth"
 }

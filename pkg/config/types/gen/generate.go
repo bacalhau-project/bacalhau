@@ -113,8 +113,8 @@ func WriteConstants(fieldInfos map[string]FieldInfo, w io.Writer) error {
 
 func ConfigFieldMap(dir string) map[string]FieldInfo {
 	// Parse the package directory
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, parser.ParseComments)
+	fileSet := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fileSet, dir, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatal(err)
 	}

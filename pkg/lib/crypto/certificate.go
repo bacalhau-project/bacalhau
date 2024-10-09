@@ -75,7 +75,7 @@ func NewSignedCertificate(parent Certificate, ipAddress []net.IP) (Certificate, 
 	return Certificate{cert: cert, parent: &parent, key: certPrivKey}, nil
 }
 
-func (cert *Certificate) MarshalCertficate(out io.Writer) error {
+func (cert *Certificate) MarshalCertificate(out io.Writer) error {
 	var parent *x509.Certificate
 	var signingKey *rsa.PrivateKey
 
