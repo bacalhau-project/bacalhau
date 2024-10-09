@@ -34,8 +34,8 @@ create_node() {
     {
         while ! ls $BACALHAU_DIR/bacalhau.run 2>/dev/null; do
             if ! ps $NODE_PID; then
-                echo "$BACALHAU serve --node-type=$TYPE $@ failed to start?" 1>&2;
-                echo `$BACALHAU serve --node-type=$TYPE $@` 1>&2
+                echo "$BACALHAU serve --"$TYPE" $@ failed to start?" 1>&2;
+                echo `$BACALHAU serve --"$TYPE" $@` 1>&2
                 exit 1
             fi
             sleep 0.01
@@ -44,7 +44,7 @@ create_node() {
 
     # Ensure subsequent nodes automatically connect to this requester, and pick
     # a random port for the HTTP API to avoid collisions
-    if [[ "$TYPE" =~ "requester" ]]; then
+    if [[ "$TYPE" =~ "orchestrator" ]]; then
         source $BACALHAU_DIR/bacalhau.run
         export BACALHAU_NODE_SERVERAPI_PORT=0
     fi
