@@ -5,10 +5,11 @@ package generic_test
 import (
 	"testing"
 
-	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
+	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 type BroadcasterTestSuite struct {
@@ -50,7 +51,7 @@ func (s *BroadcasterTestSuite) TestBroadcasterAutoclose() {
 	require.Error(s.T(), err)
 }
 
-func (s *BroadcasterTestSuite) TestBroadcasterSubUnsub() {
+func (s *BroadcasterTestSuite) TestBroadcasterSubUnsubscribe() {
 	ch1, err1 := s.broadcaster.Subscribe()
 	ch2, err2 := s.broadcaster.Subscribe()
 	require.NoError(s.T(), err1)

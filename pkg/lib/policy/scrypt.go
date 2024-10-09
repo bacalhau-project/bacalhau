@@ -30,7 +30,7 @@ var scryptFn = rego.Function2(
 		Memoize:          true,
 		Nondeterministic: false,
 	},
-	func(bctx rego.BuiltinContext, passwordTerm, saltTerm *ast.Term) (*ast.Term, error) {
+	func(bCtx rego.BuiltinContext, passwordTerm, saltTerm *ast.Term) (*ast.Term, error) {
 		var password, salt string
 		if err := ast.As(passwordTerm.Value, &password); err != nil {
 			return nil, err

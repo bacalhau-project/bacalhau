@@ -14,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 )
 
-// godoc for Orchstrator GetNode
+// godoc for Orchestrator GetNode
 //
 //	@ID				orchestrator/getNode
 //	@Summary		Get an orchestrator node

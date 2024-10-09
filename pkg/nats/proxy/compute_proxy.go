@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/stream"
-	"github.com/nats-io/nats.go"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -35,7 +36,7 @@ func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
 	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
 		Conn: params.Conn,
 		Config: stream.StreamConsumerClientConfig{
-			StreamCancellationBufferDuration: 5 * time.Second, //nolinter:gomnd
+			StreamCancellationBufferDuration: 5 * time.Second, //nolint:gomnd
 		},
 	})
 	if err != nil {

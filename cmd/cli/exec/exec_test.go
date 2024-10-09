@@ -37,7 +37,7 @@ var testcases []testCase = []testCase{
 	{
 		// bacalhau exec ruby -e "puts 'hello'"
 		name:                "no ruby here",
-		cmdLine:             []string{"ruby", "-e", "\"puts 'helllo'\""},
+		cmdLine:             []string{"ruby", "-e", "\"puts 'hello'\""},
 		expectedUnknownArgs: []string{},
 		expectedErrMsg:      "the job type 'ruby' is not supported",
 	},

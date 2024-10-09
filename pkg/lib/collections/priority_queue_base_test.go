@@ -36,10 +36,10 @@ func (s *PriorityQueueTestSuite) TestSimple() {
 	}
 
 	for _, tc := range expected {
-		qitem := pq.Dequeue()
-		s.Require().NotNil(qitem)
-		s.Require().Equal(tc.v, qitem.Value)
-		s.Require().Equal(tc.p, qitem.Priority)
+		qItem := pq.Dequeue()
+		s.Require().NotNil(qItem)
+		s.Require().Equal(tc.v, qItem.Value)
+		s.Require().Equal(tc.p, qItem.Priority)
 	}
 
 	s.Require().True(pq.IsEmpty())
@@ -63,10 +63,10 @@ func (s *PriorityQueueTestSuite) TestSimpleMin() {
 	}
 
 	for _, tc := range expected {
-		qitem := pq.Dequeue()
-		s.Require().NotNil(qitem)
-		s.Require().Equal(tc.v, qitem.Value)
-		s.Require().Equal(tc.p, qitem.Priority)
+		qItem := pq.Dequeue()
+		s.Require().NotNil(qItem)
+		s.Require().Equal(tc.v, qItem.Value)
+		s.Require().Equal(tc.p, qItem.Priority)
 	}
 
 	s.Require().True(pq.IsEmpty())
@@ -74,8 +74,8 @@ func (s *PriorityQueueTestSuite) TestSimpleMin() {
 
 func (s *PriorityQueueTestSuite) TestEmpty() {
 	pq := s.NewQueue()
-	qitem := pq.Dequeue()
-	s.Require().Nil(qitem)
+	qItem := pq.Dequeue()
+	s.Require().Nil(qItem)
 	s.Require().True(pq.IsEmpty())
 }
 
@@ -91,13 +91,13 @@ func (s *PriorityQueueTestSuite) TestDequeueWhere() {
 
 	count := pq.Len()
 
-	qitem := pq.DequeueWhere(func(possibleMatch TestData) bool {
+	qItem := pq.DequeueWhere(func(possibleMatch TestData) bool {
 		return possibleMatch.id == "B"
 	})
 
-	s.Require().NotNil(qitem)
-	s.Require().Equal(TestData{"B", 2}, qitem.Value)
-	s.Require().Equal(int64(3), qitem.Priority)
+	s.Require().NotNil(qItem)
+	s.Require().Equal(TestData{"B", 2}, qItem.Value)
+	s.Require().Equal(int64(3), qItem.Priority)
 	s.Require().Equal(count-1, pq.Len())
 }
 
@@ -105,11 +105,11 @@ func (s *PriorityQueueTestSuite) TestDequeueWhereFail() {
 	pq := s.NewQueue()
 	pq.Enqueue(TestData{"A", 1}, 4)
 
-	qitem := pq.DequeueWhere(func(possibleMatch TestData) bool {
+	qItem := pq.DequeueWhere(func(possibleMatch TestData) bool {
 		return possibleMatch.id == "Z"
 	})
 
-	s.Require().Nil(qitem)
+	s.Require().Nil(qItem)
 }
 
 func (s *PriorityQueueTestSuite) TestPeek() {

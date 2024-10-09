@@ -273,18 +273,18 @@ func (e *Executor) makeFsFromStorage(
 			return nil, fmt.Errorf("output volume has no path: %+v", output)
 		}
 
-		srcd := filepath.Join(jobResultsDir, output.Name)
+		srcDir := filepath.Join(jobResultsDir, output.Name)
 		log.Ctx(ctx).Debug().
 			Str("output", output.Name).
-			Str("dir", srcd).
+			Str("dir", srcDir).
 			Msg("Collecting output")
 
-		err = os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
+		err = os.Mkdir(srcDir, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
 			return nil, err
 		}
 
-		err = rootFs.Mount(output.Name, touchfs.New(srcd))
+		err = rootFs.Mount(output.Name, touchfs.New(srcDir))
 		if err != nil {
 			return nil, err
 		}

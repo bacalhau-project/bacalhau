@@ -228,7 +228,7 @@ func PrepareJob(cmd *cobra.Command, cmdArgs []string, unknownArgs []string, opti
 	job.Task().Env = options.TaskSettings.EnvironmentVariables
 	job.Task().InputSources = options.TaskSettings.InputSources.Values()
 	if err != nil {
-		return nil, fmt.Errorf("parsing job labes: %w", err)
+		return nil, fmt.Errorf("parsing job labels: %w", err)
 	}
 	job.Constraints, err = options.JobSettings.Constraints()
 	if err != nil {

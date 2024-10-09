@@ -9,11 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 )
 
 // RequestChanLen Default request channel length for buffering asynchronous results.
@@ -26,7 +27,7 @@ const (
 	heartBeatPrefix = "_HEARTBEAT"
 	inboxPrefixLen  = len(inboxPrefix)
 	replySuffixLen  = 8 // Gives us 62^8
-	rdigits         = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	rDigits         = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	base            = 62
 	nuidSize        = 22
 )
@@ -219,7 +220,7 @@ func (nc *ConsumerClient) newRespInbox() string {
 
 	rn := nc.respRand.Int63()
 	for i := 0; i < replySuffixLen; i++ {
-		sb.WriteByte(rdigits[rn%base])
+		sb.WriteByte(rDigits[rn%base])
 		rn /= base
 	}
 

@@ -165,12 +165,12 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		{inputURL: InputURL{url: "https://raw.githubusercontent.com/bacalhau-project/bacalhau/main/main.go", pathInContainer: "/inputs", filename: "main.go", flag: "-i"}},
 	}
 
-	for _, turls := range testURLs {
+	for _, urls := range testURLs {
 		ctx := context.Background()
 		flagsArray := []string{"docker", "run"}
 
-		flagsArray = append(flagsArray, turls.inputURL.flag, turls.inputURL.url)
-		flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", turls.inputURL.pathInContainer, turls.inputURL.filename))
+		flagsArray = append(flagsArray, urls.inputURL.flag, urls.inputURL.url)
+		flagsArray = append(flagsArray, "ubuntu", "cat", fmt.Sprintf("%s/%s", urls.inputURL.pathInContainer, urls.inputURL.filename))
 
 		_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 		s.Require().NoError(err, "Error submitting job")
@@ -180,8 +180,8 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		s.Require().Equal(1, len(j.Task().InputSources), "Number of job urls != # of test urls.")
 		urlSpec, err := storage_url.DecodeSpec(j.Task().InputSources[0].Source)
 		s.Require().NoError(err)
-		s.Require().Equal(turls.inputURL.url, urlSpec.URL, "Test URL not equal to URL from job.")
-		s.Require().Equal(turls.inputURL.pathInContainer, j.Task().InputSources[0].Target, "Test Path not equal to Path from job.")
+		s.Require().Equal(urls.inputURL.url, urlSpec.URL, "Test URL not equal to URL from job.")
+		s.Require().Equal(urls.inputURL.pathInContainer, j.Task().InputSources[0].Target, "Test Path not equal to Path from job.")
 
 	}
 }
@@ -252,8 +252,8 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 	}{
 		{workdir: "", errorCode: 0},
 		{workdir: "/", errorCode: 0},
-		{workdir: "./mydir", errorCode: 1},
-		{workdir: "../mydir", errorCode: 1},
+		{workdir: "./myDir", errorCode: 1},
+		{workdir: "../myDir", errorCode: 1},
 		{workdir: "http://foo.com", errorCode: 1},
 		{workdir: "/foo//", errorCode: 0}, // double forward slash is allowed in unix
 		{workdir: "/foo//bar", errorCode: 0},
