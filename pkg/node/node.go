@@ -65,19 +65,6 @@ type NodeDependencyInjector struct {
 	AuthenticatorsFactory   AuthenticatorsFactory
 }
 
-func NewExecutorPluginNodeDependencyInjector(
-	cfg types.Bacalhau,
-	userKey *baccrypto.UserKey,
-	pluginPath string,
-) NodeDependencyInjector {
-	return NodeDependencyInjector{
-		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
-		ExecutorsFactory:        NewPluginExecutorFactory(pluginPath),
-		PublishersFactory:       NewStandardPublishersFactory(cfg),
-		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
-	}
-}
-
 func NewStandardNodeDependencyInjector(cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),

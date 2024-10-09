@@ -110,19 +110,6 @@ func (b Bacalhau) ResultsStorageDir() (string, error) {
 	return path, nil
 }
 
-const PluginsDirName = "plugins"
-
-func (b Bacalhau) PluginsDir() (string, error) {
-	if b.DataDir == "" {
-		return "", fmt.Errorf("data dir not set")
-	}
-	path := filepath.Join(b.DataDir, PluginsDirName)
-	if err := ensureDir(path); err != nil {
-		return "", fmt.Errorf("getting plugins path: %w", err)
-	}
-	return path, nil
-}
-
 const ExecutionStoreFileName = "state_boltdb.db"
 
 func (b Bacalhau) ExecutionStoreFilePath() (string, error) {
