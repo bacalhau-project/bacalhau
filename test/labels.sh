@@ -4,14 +4,14 @@ source bin/bacalhau.sh
 
 run_test() {
     WORD=$RANDOM
-    subject bacalhau config set node.labels key=value "random=$WORD"
+    subject ${BACALHAU} config set labels "key=value,random=$WORD"
     create_node $1
 
     # Wait for node to have published information.
-    subject bacalhau node list --output=json
+    subject ${BACALHAU} node list --output=json
     while ! jq -e 'length > 0' <<< $stdout 1>/dev/null; do
         sleep 0.05;
-        subject bacalhau node list --output=json
+        subject ${BACALHAU} node list --output=json
     done
 
     assert_equal 1 $(jq -rcM length <<< $stdout)
@@ -22,10 +22,6 @@ run_test() {
     assert_equal $WORD $(jq -rcM '.[0].Info.Labels["random"]' <<< $stdout)
 }
 
-testcase_receive_labels_about_requester_node() {
-    run_test requester
-}
-
-testcase_receive_labels_about_compute_node() {
-    run_test requester,compute
+testcase_receive_labels_about_node() {
+    run_test compute,orchestrator
 }

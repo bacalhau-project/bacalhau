@@ -18,12 +18,12 @@ testcase_config_with_override_config_file_and_flag() {
   assert_match "hostname" $(echo $stdout | jq .NameProvider)
 
   # overritten by the flag
-  assert_match "null" $(echo $stdout | jq .Compute.Labels.foo)
-  assert_match "null" $(echo $stdout | jq .Compute.Labels.buz)
+  assert_match "null" $(echo $stdout | jq .Labels.foo)
+  assert_match "null" $(echo $stdout | jq .Labels.buz)
 
 
   # This value is merged between the configs
-  assert_match "banana" $(echo $stdout | jq .Compute.Labels.apple)
+  assert_match "banana" $(echo $stdout | jq .Labels.apple)
 
   kill $SERVER_PID
 }
