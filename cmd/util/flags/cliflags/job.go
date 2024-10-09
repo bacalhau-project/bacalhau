@@ -71,7 +71,7 @@ func (j *JobSettings) Constraints() ([]*models.LabelSelectorRequirement, error) 
 }
 
 // TODO(forrest): based on a conversation with walid we should be returning an error here if at anypoint if a label
-// if provided that is invalid. We cannont remove them as we did previously.
+// if provided that is invalid. We cannot remove them as we did previously.
 func (j *JobSettings) Labels() (map[string]string, error) {
 	parsedLabels := make(map[string]string)
 	rawLabels := j.labels

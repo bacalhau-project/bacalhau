@@ -190,7 +190,7 @@ func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Jo
 	if err != nil {
 		return nil, err
 	}
-	envar, err := parse.StringSliceToMap(opts.EnvironmentVariables)
+	envVar, err := parse.StringSliceToMap(opts.EnvironmentVariables)
 	if err != nil {
 		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
 	}
@@ -198,7 +198,7 @@ func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Jo
 		WithParameters(args[1:]...).
 		WithEntrypoint(opts.Entrypoint).
 		WithImportModules(opts.ImportModules).
-		WithEnvironmentVariables(envar).
+		WithEnvironmentVariables(envVar).
 		Build()
 	if err != nil {
 		return nil, err

@@ -87,9 +87,9 @@ func RunTestCase(
 	execution.AllocateResources(job.Task().Name, models.Resources{})
 
 	resultsDirectory := t.TempDir()
-	strgProvider := stack.Nodes[0].ComputeNode.Storages
+	storageProvider := stack.Nodes[0].ComputeNode.Storages
 
-	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, strgProvider, t.TempDir(), execution, resultsDirectory)
+	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, storageProvider, t.TempDir(), execution, resultsDirectory)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := cleanup(ctx); err != nil {

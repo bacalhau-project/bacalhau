@@ -91,7 +91,7 @@ docker exec -it bacalhau-client-node-container /bin/bash
 Setup an alias for the Minio CLI
 ```shell
 # The environment variables are already injected in
-# the container, no need to replce them yourself.
+# the container, no need to replace them yourself.
 mc alias set bacalhau-minio "http://${BACALHAU_MINIO_NODE_HOST}:9000" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 mc admin info bacalhau-minio
 ```

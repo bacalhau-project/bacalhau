@@ -57,7 +57,7 @@ func V3MigrationWithConfig(globalCfg system.GlobalConfig) repo.Migration {
 				}
 				// update the legacy version file so older versions fail gracefully.
 				if err := r.WriteLegacyVersion(repo.Version4); err != nil {
-					return fmt.Errorf("updating repo.verion: %w", err)
+					return fmt.Errorf("updating repo.version: %w", err)
 				}
 				if err := r.WriteLastUpdateCheck(time.UnixMilli(0)); err != nil {
 					return err

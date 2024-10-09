@@ -25,7 +25,7 @@ import (
 // the WebAssembly program, allowing the user to deploy self-contained
 // WebAssembly blobs. See the introductory talk at https://youtu.be/6zJkMLzXbQc.
 //
-// This works by using the "module name" field of a WebAssmelby import header,
+// This works by using the "module name" field of a WebAssembly import header,
 // (which for user-supplied modules is arbitrary) as a hint to the loader as to
 // where the dependency lives and how to retrieve it. The module still needs to
 // be specified as input data for the job (a previous implementation of the
@@ -102,7 +102,7 @@ func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedSt
 // InstantiateRemoteModule loads and instantiates the remote module and all of
 // its dependencies. It only looks in the job's input storage specs for modules.
 //
-// This function calls itself reucrsively for any discovered dependencies on the
+// This function calls itself recursively for any discovered dependencies on the
 // loaded modules, so that the returned module has all of its dependencies fully
 // instantiated and is ready to use.
 func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m storage.PreparedStorage) (api.Module, error) {

@@ -1,5 +1,7 @@
 //go:build integration || !unit
 
+/* spell-checker: disable */
+
 package s3_test
 
 import (

@@ -46,7 +46,7 @@ func writeTokens(path string, t tokens) error {
 	return json.NewEncoder(file).Encode(t)
 }
 
-// Read the authorization crdential associated with the passed API base URL. If
+// Read the authorization credentials associated with the passed API base URL. If
 // there is no credential currently stored, ReadToken will return nil with no
 // error.
 func ReadToken(path string, apiURL string) (*apimodels.HTTPCredential, error) {

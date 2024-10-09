@@ -21,14 +21,14 @@ func TestDockerEngineBuilder_RoundTrip(t *testing.T) {
 		{
 			name: "valid spec all fields",
 			builder: func() *DockerEngineBuilder {
-				return NewDockerEngineBuilder("myimage").
+				return NewDockerEngineBuilder("myImage").
 					WithEntrypoint("bash", "-c").
 					WithEnvironmentVariables("KEY1=VALUE1", "KEY2=VALUE2").
 					WithWorkingDirectory("/app").
 					WithParameters("arg1", "arg2")
 			},
 			expectedSpec: EngineSpec{
-				Image:                "myimage",
+				Image:                "myImage",
 				Entrypoint:           []string{"bash", "-c"},
 				EnvironmentVariables: []string{"KEY1=VALUE1", "KEY2=VALUE2"},
 				WorkingDirectory:     "/app",
@@ -38,13 +38,13 @@ func TestDockerEngineBuilder_RoundTrip(t *testing.T) {
 		{
 			name: "valid spec no entry point",
 			builder: func() *DockerEngineBuilder {
-				return NewDockerEngineBuilder("myimage").
+				return NewDockerEngineBuilder("myImage").
 					WithEnvironmentVariables("KEY1=VALUE1", "KEY2=VALUE2").
 					WithWorkingDirectory("/app").
 					WithParameters("arg1", "arg2")
 			},
 			expectedSpec: EngineSpec{
-				Image:                "myimage",
+				Image:                "myImage",
 				EnvironmentVariables: []string{"KEY1=VALUE1", "KEY2=VALUE2"},
 				WorkingDirectory:     "/app",
 				Parameters:           []string{"arg1", "arg2"},
@@ -53,13 +53,13 @@ func TestDockerEngineBuilder_RoundTrip(t *testing.T) {
 		{
 			name: "valid spec no env var",
 			builder: func() *DockerEngineBuilder {
-				return NewDockerEngineBuilder("myimage").
+				return NewDockerEngineBuilder("myImage").
 					WithEntrypoint("bash", "-c").
 					WithWorkingDirectory("/app").
 					WithParameters("arg1", "arg2")
 			},
 			expectedSpec: EngineSpec{
-				Image:            "myimage",
+				Image:            "myImage",
 				Entrypoint:       []string{"bash", "-c"},
 				WorkingDirectory: "/app",
 				Parameters:       []string{"arg1", "arg2"},
@@ -68,13 +68,13 @@ func TestDockerEngineBuilder_RoundTrip(t *testing.T) {
 		{
 			name: "valid spec no params",
 			builder: func() *DockerEngineBuilder {
-				return NewDockerEngineBuilder("myimage").
+				return NewDockerEngineBuilder("myImage").
 					WithEntrypoint("bash", "-c").
 					WithEnvironmentVariables("KEY1=VALUE1", "KEY2=VALUE2").
 					WithWorkingDirectory("/app")
 			},
 			expectedSpec: EngineSpec{
-				Image:                "myimage",
+				Image:                "myImage",
 				Entrypoint:           []string{"bash", "-c"},
 				EnvironmentVariables: []string{"KEY1=VALUE1", "KEY2=VALUE2"},
 				WorkingDirectory:     "/app",
@@ -83,13 +83,13 @@ func TestDockerEngineBuilder_RoundTrip(t *testing.T) {
 		{
 			name: "valid spec no working dir",
 			builder: func() *DockerEngineBuilder {
-				return NewDockerEngineBuilder("myimage").
+				return NewDockerEngineBuilder("myImage").
 					WithEntrypoint("bash", "-c").
 					WithEnvironmentVariables("KEY1=VALUE1", "KEY2=VALUE2").
 					WithParameters("arg1", "arg2")
 			},
 			expectedSpec: EngineSpec{
-				Image:                "myimage",
+				Image:                "myImage",
 				Entrypoint:           []string{"bash", "-c"},
 				EnvironmentVariables: []string{"KEY1=VALUE1", "KEY2=VALUE2"},
 				Parameters:           []string{"arg1", "arg2"},

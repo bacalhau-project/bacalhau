@@ -34,32 +34,32 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 		// instructs logger to extract given list of headers from request.
 		LogHeaders: []string{apimodels.HTTPHeaderBacalhauGitVersion},
 		LogValuesFunc: func(c echo.Context, v echomiddelware.RequestLoggerValues) error {
-			notif := Notification{
+			notification := Notification{
 				RequestID:     v.RequestID,
 				ClientID:      c.Response().Header().Get(apimodels.HTTPHeaderClientID),
 				ServerVersion: serverVersion.String(),
 			}
 
 			defer func() {
-				if notif.Message != "" {
+				if notification.Message != "" {
 					logger.WithLevel(zerolog.DebugLevel).
-						Str("ClientID", notif.ClientID).
-						Str("RequestID", notif.RequestID).
-						Str("ClientVersion", notif.ClientVersion).
-						Str("ServerVersion", notif.ServerVersion).
-						Msg(notif.Message)
+						Str("ClientID", notification.ClientID).
+						Str("RequestID", notification.RequestID).
+						Str("ClientVersion", notification.ClientVersion).
+						Str("ServerVersion", notification.ServerVersion).
+						Msg(notification.Message)
 				}
 			}()
 
 			cVersion := v.Headers[apimodels.HTTPHeaderBacalhauGitVersion]
 			if len(cVersion) == 0 {
 				// version header is empty, cannot parse it
-				notif.Message = "received request from client without version"
+				notification.Message = "received request from client without version"
 				return nil
 			}
 			if len(cVersion) > 1 {
 				// version header contained multiple fields
-				notif.Message = fmt.Sprintf("received request from client with multiple versions: %s", cVersion)
+				notification.Message = fmt.Sprintf("received request from client with multiple versions: %s", cVersion)
 				return nil
 			}
 
@@ -67,20 +67,20 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 			clientVersion, err := semver.NewVersion(cVersion[0])
 			if err != nil {
 				// cannot parse client version, should notify
-				notif.Message = fmt.Sprintf("received request with invalid client version: %s", cVersion[0])
+				notification.Message = fmt.Sprintf("received request with invalid client version: %s", cVersion[0])
 				return nil
 			}
 			// extract parsed client version for comparison
-			notif.ClientVersion = clientVersion.String()
+			notification.ClientVersion = clientVersion.String()
 
 			diff := serverVersion.Compare(clientVersion)
 			switch diff {
 			case 1:
 				// client version is less than server version
-				notif.Message = "received request from outdated client"
+				notification.Message = "received request from outdated client"
 			case -1:
 				// server version is less than client version
-				notif.Message = "received request from newer client"
+				notification.Message = "received request from newer client"
 			case 0:
 				// versions are the same, don't notify
 			}

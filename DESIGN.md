@@ -103,15 +103,10 @@ Ideally, we will also allow much more fine-grained control, specifying location,
   - She has a file `process.py` which includes the python code necessary to execute in a function called 'downscale()' which takes a file handle to local, processes it, and returns a bytestream.
   - She executes the following command:
 ```
-ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR
+ipfs job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrzDtRLMiMPL8wBuTGsMnR
 ```
   - This runs the command in a local executor, first installing all the python packages necessary, and then executing them, on the subset of data available on that node.
   - Once complete, the system returns the CID of the updated dataset that she can download.
-
-- **SCENARIO 3** Want to burst to cloud but cannot move entire dataset in short time
-  - DHASH CAN YOU HELP FLESH OUT
-  - **PUSH COMPUTE INTO GENE SEQUENCER**
-  - **PIPE TO S3**
 
 ## Components to Build
 
@@ -125,13 +120,3 @@ ifps job submit -f process.py -r requirements.txt -c QmbWqxBEKC3P8tqsKc98xmWNzrz
 Bacalhau means cod (the fish) in Portuguese (where several folks were brainstorming this topic).
 
 Compute-Over-Data == Cod == Bacalhau
-
-## Prior Art / Parallel Projects
-* IPFS-FAN - distributed serverless - https://research.protocol.ai/publications/ipfs-fan-a-function-addressable-computation-network/delarocha2021a.pdf
-* IPLS : A Framework for Decentralized Federated Learning- https://arxiv.org/pdf/2101.01901v1.pdf
-* Interplanetary Distributed Computing (2018) - https://github.com/yenkuanlee/IPDC
-* IPTF - IPFS + TensorFlow (2018) - https://github.com/tesserai/iptf
-* Lurk -> Run queries over Filecoin Sealed Data (no public paper yet)
-* Radix - Nomad based scheduler for  IPFS cluster (only) - high level spec doc https://docs.google.com/document/d/18hdYBmDlvusEOQ-iSNIO_IAEOvJVFL1MyAU_B8hON9Q/edit?usp=sharing
-* Bringing Arbitrary Compute to Authoritative Data https://queue.acm.org/detail.cfm?id=2645649
-* Manta: a scalable, distributed object store https://github.com/joyent/manta

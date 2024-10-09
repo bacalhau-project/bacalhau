@@ -158,19 +158,19 @@ func (pq *PriorityQueue[T]) DequeueWhere(matcher MatchingFunction[T]) *QueueItem
 	// If any iteration does not generate a match, the item is requeued in a temporary
 	// queue reading for requeueing on this queue later on.
 	for pq.internalQueue.Len() > 0 {
-		qitem := pq.dequeue()
+		qItem := pq.dequeue()
 
-		if qitem == nil {
+		if qItem == nil {
 			return nil
 		}
 
-		if matcher(qitem.Value) {
-			result = qitem
+		if matcher(qItem.Value) {
+			result = qItem
 			break
 		}
 
 		// Add to the queue
-		unmatched = append(unmatched, qitem)
+		unmatched = append(unmatched, qItem)
 	}
 
 	// Re-add the items that were not matched back onto the Q

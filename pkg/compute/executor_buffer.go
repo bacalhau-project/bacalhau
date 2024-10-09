@@ -154,7 +154,7 @@ func (s *ExecutorBuffer) deque() {
 	// There are at most max matches, so try at most that many times
 	max := s.queuedTasks.Len()
 	for i := 0; i < max; i++ {
-		qitem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
+		qItem := s.queuedTasks.DequeueWhere(func(task *bufferTask) bool {
 			// If we don't have enough resources to run this task, then we will skip it
 			queuedResources := task.localExecutionState.Execution.TotalAllocatedResources()
 			allocatedResources := s.runningCapacity.AddIfHasCapacity(ctx, *queuedResources)
@@ -174,13 +174,13 @@ func (s *ExecutorBuffer) deque() {
 			return true
 		})
 
-		if qitem == nil {
+		if qItem == nil {
 			// We didn't find anything in the queue that matches our resource availability so we will
 			// break out of this look as there is nothing else to find
 			break
 		}
 
-		task := qitem.Value
+		task := qItem.Value
 
 		// Move the execution to the running list and remove from the list of enqueued IDs
 		// before we actually run the task

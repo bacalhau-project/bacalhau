@@ -118,7 +118,7 @@ func (n *NetworkConfig) Validate() (err error) {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
-	// TODO(forrest): should return an error if the network type is not HTTP and domanins are set.
+	// TODO(forrest): should return an error if the network type is not HTTP and domains are set.
 	for _, domain := range n.Domains {
 		if domainRegex.MatchString(domain) {
 			continue
@@ -210,28 +210,28 @@ func matchDomain(left, right string) (diff int) {
 		return diff
 	}
 
-	lcur, rcur := len(lefts)-1, len(rights)-1
-	for lcur >= 0 && rcur >= 0 {
+	lCur, rCur := len(lefts)-1, len(rights)-1
+	for lCur >= 0 && rCur >= 0 {
 		// If neither is a blank, these components need to match.
-		if lefts[lcur] != wildcard && rights[rcur] != wildcard {
-			if diff = strings.Compare(lefts[lcur], rights[rcur]); diff != 0 {
+		if lefts[lCur] != wildcard && rights[rCur] != wildcard {
+			if diff = strings.Compare(lefts[lCur], rights[rCur]); diff != 0 {
 				return diff
 			}
 		}
 
 		// If both are blanks, they match.
-		if lefts[lcur] == wildcard || rights[rcur] == wildcard {
+		if lefts[lCur] == wildcard || rights[rCur] == wildcard {
 			break
 		}
 
 		// Blank means we are matching any subdomains, so only the rest of
 		// the domain needs to match for this to work.
-		if lefts[lcur] != wildcard {
-			lcur -= 1
+		if lefts[lCur] != wildcard {
+			lCur -= 1
 		}
 
-		if rights[rcur] != wildcard {
-			rcur -= 1
+		if rights[rCur] != wildcard {
+			rCur -= 1
 		}
 	}
 

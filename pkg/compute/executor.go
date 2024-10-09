@@ -65,31 +65,31 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 
 func prepareInputVolumes(
 	ctx context.Context,
-	strgprovider storage.StorageProvider,
+	storageProvider storage.StorageProvider,
 	storageDirectory string, inputSources ...*models.InputSource) (
 	[]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, inputSources...)
+	inputVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, inputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputVolumes, func(ctx context.Context) error {
-		return storage.ParallelCleanStorage(ctx, strgprovider, inputVolumes)
+		return storage.ParallelCleanStorage(ctx, storageProvider, inputVolumes)
 	}, nil
 }
 
 func prepareWasmVolumes(
 	ctx context.Context,
-	strgprovider storage.StorageProvider,
+	storageProvider storage.StorageProvider,
 	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.ImportModules...)
+	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, strgprovider, storageDirectory, wasmEngine.EntryModule)
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,8 +100,8 @@ func prepareWasmVolumes(
 	}
 
 	cleanup := func(ctx context.Context) error {
-		err1 := storage.ParallelCleanStorage(ctx, strgprovider, importModuleVolumes)
-		err2 := storage.ParallelCleanStorage(ctx, strgprovider, entryModuleVolumes)
+		err1 := storage.ParallelCleanStorage(ctx, storageProvider, importModuleVolumes)
+		err2 := storage.ParallelCleanStorage(ctx, storageProvider, entryModuleVolumes)
 		if err1 != nil || err2 != nil {
 			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
 		}
@@ -119,21 +119,21 @@ func prepareWasmVolumes(
 //
 // For example, an InputCleanupFn might be responsible for deallocating storage used
 // for input volumes, or deleting temporary input files that were created as part of the
-// job's execution. The nature of it operation depends on the storage provided by `strgprovider` and
+// job's execution. The nature of it operation depends on the storage provided by `storageProvider` and
 // input sources of the jobs associated tasks. For the case of a wasm job its input and entry module storage volumes
 // should be removed via the method after the jobs execution reaches a terminal state.
 type InputCleanupFn = func(context.Context) error
 
 func PrepareRunArguments(
 	ctx context.Context,
-	strgprovider storage.StorageProvider,
+	storageProvider storage.StorageProvider,
 	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, strgprovider, storageDirectory, execution.Job.Task().InputSources...)
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -162,7 +162,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, strgprovider, storageDirectory, wasmEngine)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -259,7 +259,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 	log.Ctx(ctx).Debug().Msg("starting execution")
 
 	if e.failureInjection.IsBadActor {
-		result.Err = fmt.Errorf("i am a baaad node. i failed execution %s", execution.ID)
+		result.Err = fmt.Errorf("i am a bad node. i failed execution %s", execution.ID)
 		return result
 	}
 

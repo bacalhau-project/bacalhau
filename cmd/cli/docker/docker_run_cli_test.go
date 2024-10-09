@@ -1,5 +1,7 @@
 //go:build unit || !integration
 
+/* spell-checker: disable */
+
 package docker
 
 import (
@@ -431,7 +433,7 @@ func TestJobFlagParsing(t *testing.T) {
 			},
 			expectedError: false,
 		},
-		// TODO(forrest): if/when validtion on the network config is adjusted expect this test to fail.
+		// TODO(forrest): if/when validation on the network config is adjusted expect this test to fail.
 		{
 			name:  "with none network and domains",
 			flags: []string{"--network=none", "--domain=example.com", "--domain=example.io", "image:tag"},
@@ -487,30 +489,30 @@ func TestJobFlagParsing(t *testing.T) {
 		},
 		{
 			name:  "with s3 publisher",
-			flags: []string{"--publisher=s3://mybucket/mykey", "image:tag"},
+			flags: []string{"--publisher=s3://myBucket/myKey", "image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
 				s3publisher, err := publisher_s3.DecodePublisherSpec(task.Publisher)
 				require.NoError(t, err)
 				assert.Equal(t, publisher_s3.PublisherSpec{
-					Bucket: "mybucket",
-					Key:    "mykey",
+					Bucket: "myBucket",
+					Key:    "myKey",
 				}, s3publisher)
 			},
 			expectedError: false,
 		},
 		{
 			name:  "with s3 publisher with opts",
-			flags: []string{"-p=s3://mybucket/mykey,opt=region=us-west-2,opt=endpoint=https://s3.custom.com", "image:tag"},
+			flags: []string{"-p=s3://myBucket/myKey,opt=region=us-west-2,opt=endpoint=https://s3.custom.com", "image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
 				s3publisher, err := publisher_s3.DecodePublisherSpec(task.Publisher)
 				require.NoError(t, err)
 				assert.Equal(t, publisher_s3.PublisherSpec{
-					Bucket:   "mybucket",
-					Key:      "mykey",
+					Bucket:   "myBucket",
+					Key:      "myKey",
 					Region:   "us-west-2",
 					Endpoint: "https://s3.custom.com",
 				}, s3publisher)
@@ -519,15 +521,15 @@ func TestJobFlagParsing(t *testing.T) {
 		},
 		{
 			name:  "with s3 publisher with options",
-			flags: []string{"-p=s3://mybucket/mykey,option=region=us-west-2,option=endpoint=https://s3.custom.com", "image:tag"},
+			flags: []string{"-p=s3://myBucket/myKey,option=region=us-west-2,option=endpoint=https://s3.custom.com", "image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
 				s3publisher, err := publisher_s3.DecodePublisherSpec(task.Publisher)
 				require.NoError(t, err)
 				assert.Equal(t, publisher_s3.PublisherSpec{
-					Bucket:   "mybucket",
-					Key:      "mykey",
+					Bucket:   "myBucket",
+					Key:      "myKey",
 					Region:   "us-west-2",
 					Endpoint: "https://s3.custom.com",
 				}, s3publisher)

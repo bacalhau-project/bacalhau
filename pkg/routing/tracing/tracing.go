@@ -62,7 +62,7 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 		log.Ctx(ctx).Trace().
 			Dur("duration", dur).
 			Str("prefix", prefix).
-			Msg("node retrieved by previus")
+			Msg("node retrieved by previous")
 	}()
 
 	return r.delegate.GetByPrefix(ctx, prefix)
