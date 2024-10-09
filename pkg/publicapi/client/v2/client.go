@@ -74,16 +74,10 @@ func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetR
 		return apimodels.NewUnauthorizedError("invalid token")
 	}
 
-	var apiError *apimodels.APIError
 	if resp.StatusCode != http.StatusOK {
-		apiError, err = apimodels.FromHttpResponse(resp)
-		if err != nil {
-			return err
+		if apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp); apiError != nil {
+			return apiError
 		}
-	}
-
-	if apiError != nil {
-		return apiError
 	}
 
 	defer resp.Body.Close()
@@ -116,16 +110,10 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 		return apimodels.ErrInvalidToken
 	}
 
-	var apiError *apimodels.APIError
 	if resp.StatusCode != http.StatusOK {
-		apiError, err = apimodels.FromHttpResponse(resp)
-		if err != nil {
-			return err
+		if apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp); apiError != nil {
+			return apiError
 		}
-	}
-
-	if apiError != nil {
-		return apiError
 	}
 
 	if out != nil {
@@ -362,12 +350,13 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
 				WithCode(bacerrors.UnauthorizedError)
 		}
 
-		apiError, apiErr := apimodels.FromHttpResponse(resp)
-		if apiErr == nil {
+		apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp)
+		if apiError != nil {
 			return apiError.ToBacError()
 		}
 
-		return bacerrors.Wrap(apiErr, "server error").
+		return bacerrors.New("server error").
+			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithCode(bacerrors.InternalError)
 	}
 
