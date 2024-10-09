@@ -112,7 +112,7 @@ func (s *BaseSuite) ExecuteTestCobraCommandWithStdin(stdin io.Reader, args ...st
 	buf := new(bytes.Buffer)
 	root := cli.NewRootCmd()
 	root.SetOut(buf)
-	// TODO(forrest): we should separate the ouputs from a command into different buffers for stderr and sdtout, otherwise
+	// TODO(forrest): we should separate the outputs from a command into different buffers for stderr and stdout, otherwise
 	// log lines and other outputs (like the update checker) will be included in the returned buffer, and commands
 	// that make assertions on the output containing specific values, or being marshaller-able to yaml will fail.
 	root.SetErr(buf)

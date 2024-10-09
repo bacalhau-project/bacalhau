@@ -2,7 +2,6 @@ package apimodels
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,24 +65,30 @@ func (e *APIError) Error() string {
 	return e.Message
 }
 
-// Parse HTTP Resposne to APIError
-func FromHttpResponse(resp *http.Response) (*APIError, error) {
-
+// Parse HTTP Response to APIError
+func GenerateAPIErrorFromHTTPResponse(resp *http.Response) *APIError {
 	if resp == nil {
-		return nil, errors.New("response is nil, cannot be unmarsheld to APIError")
+		return NewAPIError(0, "API call error, invalid response")
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
+		return NewAPIError(
+			resp.StatusCode,
+			fmt.Sprintf("Unable to read API call response body. Error: %q", err.Error()))
 	}
 
 	var apiErr APIError
 	err = json.Unmarshal(body, &apiErr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing response body: %w", err)
+		return NewAPIError(
+			resp.StatusCode,
+			fmt.Sprintf("Unable to parse API call response body. Error: %q. Body received: %q",
+				err.Error(),
+				string(body),
+			))
 	}
 
 	// If the JSON didn't include a status code, use the HTTP Status
@@ -91,7 +96,7 @@ func FromHttpResponse(resp *http.Response) (*APIError, error) {
 		apiErr.HTTPStatusCode = resp.StatusCode
 	}
 
-	return &apiErr, nil
+	return &apiErr
 }
 
 // FromBacError converts a bacerror.Error to an APIError

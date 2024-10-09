@@ -36,7 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/eventhandler"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
@@ -76,14 +75,6 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	// prepare event handlers
-	tracerContextProvider := eventhandler.NewTracerContextProvider(nodeID)
-	localJobEventConsumer := eventhandler.NewChainedJobEventHandler(tracerContextProvider)
-
-	eventEmitter := orchestrator.NewEventEmitter(orchestrator.EventEmitterParams{
-		EventConsumer: localJobEventConsumer,
-	})
-
 	jobStore, err := createJobStore(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -118,12 +109,6 @@ func NewRequesterNode(
 			ID:             nodeID,
 			ComputeService: computeProxy,
 			JobStore:       jobStore,
-		}),
-
-		// planner that publishes events on job completion or failure
-		planner.NewEventEmitter(planner.EventEmitterParams{
-			ID:           nodeID,
-			EventEmitter: eventEmitter,
 		}),
 
 		// logs job completion or failure
@@ -227,7 +212,6 @@ func NewRequesterNode(
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
 		Store:             jobStore,
-		EventEmitter:      eventEmitter,
 		ComputeProxy:      computeProxy,
 		JobTransformer:    jobTransformers,
 		TaskTranslator:    translationProvider,
@@ -268,12 +252,6 @@ func NewRequesterNode(
 	)
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
-	// order of event handlers is important as triggering some handlers might depend on the state of others.
-	localJobEventConsumer.AddHandlers(
-		// ends the span for the job if received a terminal event
-		tracerContextProvider,
-	)
-
 	// ncl
 	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
 		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
@@ -302,10 +280,6 @@ func NewRequesterNode(
 		}
 		evalBroker.SetEnabled(false)
 
-		cleanupErr = tracerContextProvider.Shutdown()
-		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to shutdown tracer context provider")
-		}
 		// Close the jobstore after the evaluation broker is disabled
 		cleanupErr = jobStore.Close(ctx)
 		if cleanupErr != nil {
@@ -317,9 +291,8 @@ func NewRequesterNode(
 	// It provides the compute call back endpoints for interacting with compute nodes.
 	// e.g. bidding, job completions, cancellations, and failures
 	callback := orchestrator.NewCallback(&orchestrator.CallbackParams{
-		ID:           nodeID,
-		EventEmitter: eventEmitter,
-		Store:        jobStore,
+		ID:    nodeID,
+		Store: jobStore,
 	})
 	if err = transportLayer.RegisterComputeCallback(callback); err != nil {
 		return nil, err

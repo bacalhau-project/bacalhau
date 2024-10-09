@@ -222,7 +222,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 			out <- handle.result
 		} else {
 			// NB(forrest): this shouldn't happen with the wasm and docker executors, but handling it as it
-			// represents a significant error in executor logic, which may occur in future pluggable executor impls.
+			// represents a significant error in executor logic, which may occur in future pluggable executor impl.
 			errCh <- fmt.Errorf("execution (%s) result is nil", handle.executionID)
 		}
 	}
@@ -473,8 +473,8 @@ func makeContainerMounts(
 			return nil, fmt.Errorf("output volume has no Location: %+v", output)
 		}
 
-		srcd := filepath.Join(resultsDir, output.Name)
-		if err := os.Mkdir(srcd, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
+		srcDir := filepath.Join(resultsDir, output.Name)
+		if err := os.Mkdir(srcDir, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
 		}
 
@@ -486,7 +486,7 @@ func makeContainerMounts(
 			// this is an output volume so can be written to
 			ReadOnly: false,
 			// we create a named folder in the job results folder for this output
-			Source: srcd,
+			Source: srcDir,
 			// the path of the output volume is from the perspective of inside the container
 			Target: output.Path,
 		})

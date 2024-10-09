@@ -162,7 +162,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 			})
 			require.NoError(suite.T(), err)
 
-			// sleep a bit here to simulate jobs being sumbmitted over time
+			// sleep a bit here to simulate jobs being submitted over time
 			time.Sleep((10 + time.Duration(rand.Intn(10))) * time.Millisecond)
 		}
 
@@ -363,7 +363,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 			require.NoError(suite.T(), err)
 			jobIds = append(jobIds, submittedJob.JobID)
 
-			// sleep a bit here to simulate jobs being sumbmitted over time
+			// sleep a bit here to simulate jobs being submitted over time
 			// and to give time for compute nodes to accept and run the jobs
 			// this needs to be less than the time the job lasts
 			// so we are running jobs in parallel

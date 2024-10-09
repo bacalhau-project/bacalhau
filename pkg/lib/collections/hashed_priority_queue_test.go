@@ -136,10 +136,10 @@ func (s *HashedPriorityQueueSuite) TestDuplicateKeys() {
 	}
 
 	for _, exp := range expected {
-		qitem := pq.Dequeue()
-		s.Require().NotNil(qitem)
-		s.Require().Equal(exp.v, qitem.Value)
-		s.Require().Equal(exp.p, qitem.Priority)
+		qItem := pq.Dequeue()
+		s.Require().NotNil(qItem)
+		s.Require().Equal(exp.v, qItem.Value)
+		s.Require().Equal(exp.p, qItem.Priority)
 	}
 
 	s.Require().True(pq.IsEmpty())

@@ -24,8 +24,8 @@ type TemplateMap struct {
 	m map[string]string
 }
 
-func NewTemplateMap(fsys fs.ReadDirFS, tplPath string) (*TemplateMap, error) {
-	entries, err := fsys.ReadDir(tplPath)
+func NewTemplateMap(fSys fs.ReadDirFS, tplPath string) (*TemplateMap, error) {
+	entries, err := fSys.ReadDir(tplPath)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func NewTemplateMap(fsys fs.ReadDirFS, tplPath string) (*TemplateMap, error) {
 
 		name := nameFromFile(entry.Name())
 
-		fd, err := fsys.Open(path.Join(tplPath, entry.Name()))
+		fd, err := fSys.Open(path.Join(tplPath, entry.Name()))
 		if err != nil {
 			return nil, err
 		}

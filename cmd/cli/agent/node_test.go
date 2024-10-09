@@ -28,7 +28,7 @@ func (s *NodeSuite) TestNodeJSONOutput() {
 
 	nodeInfo := &models.NodeState{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &nodeInfo)
-	s.Require().NoError(err, "Could not unmarshall the output into json - %+v", out)
+	s.Require().NoError(err, "Could not unmarshal the output into json - %+v", out)
 	s.Require().Equal(s.Node.ID, nodeInfo.Info.ID(), "Node ID does not match in json.")
 }
 
@@ -38,6 +38,6 @@ func (s *NodeSuite) TestNodeYAMLOutput() {
 
 	nodeInfo := &models.NodeState{}
 	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &nodeInfo)
-	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", out)
+	s.Require().NoError(err, "Could not unmarshal the output into yaml - %+v", out)
 	s.Require().Equal(s.Node.ID, nodeInfo.Info.ID(), "Node ID does not match in yaml.")
 }

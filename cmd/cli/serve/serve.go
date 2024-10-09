@@ -277,12 +277,12 @@ func parseServerAPIHost(host string) (string, error) {
 		// We should check that the value gives us an address type
 		// we can use to get our IP address. If it doesn't, we should
 		// panic.
-		atype, ok := network.AddressTypeFromString(host)
+		addrType, ok := network.AddressTypeFromString(host)
 		if !ok {
 			return "", fmt.Errorf("invalid address type in Server API Host config: %s", host)
 		}
 
-		addr, err := network.GetNetworkAddress(atype, network.AllAddresses)
+		addr, err := network.GetNetworkAddress(addrType, network.AllAddresses)
 		if err != nil {
 			return "", fmt.Errorf("failed to get network address for Server API Host: %s: %w", host, err)
 		}

@@ -73,7 +73,7 @@ func (o *StorageSpecConfigOpt) Set(value string) error {
 				options[k] = v
 			}
 		default:
-			return fmt.Errorf("unpexted key %s in field %s", key, field)
+			return fmt.Errorf("unexpected key %s in field %s", key, field)
 		}
 	}
 	alias := sourceURI

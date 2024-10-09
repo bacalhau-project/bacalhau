@@ -469,5 +469,5 @@ release: build-bacalhau
 	cp bin/bacalhau .
 
 .PHONY: spellcheck-code
-spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
-	cspell -c .cspell-code.json lint ./pkg/authn/**
+spellcheck-code:
+	cspell lint  -c cspell.yaml --quiet "**/*.{go,js,ts,jsx,tsx,md,yml,yaml,json}"

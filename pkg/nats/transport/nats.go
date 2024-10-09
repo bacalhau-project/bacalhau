@@ -264,7 +264,7 @@ func (t *NATSTransport) CallbackProxy() compute.Callback {
 	return t.callbackProxy
 }
 
-// RegistrationProxy returns the previoously created registration proxy.
+// ManagementProxy returns the previously created registration proxy.
 func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
 	return t.managementProxy
 }

@@ -96,7 +96,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
 
-			authns := make(map[string]authn.Authenticator, len(nodeConfig.BacalhauConfig.API.Auth.Methods))
+			auths := make(map[string]authn.Authenticator, len(nodeConfig.BacalhauConfig.API.Auth.Methods))
 			for name, authnConfig := range nodeConfig.BacalhauConfig.API.Auth.Methods {
 				switch authnConfig.Type {
 				case string(authn.MethodTypeChallenge):
@@ -106,7 +106,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 						continue
 					}
 
-					authns[name] = challenge.NewAuthenticator(
+					auths[name] = challenge.NewAuthenticator(
 						methodPolicy,
 						challenge.NewStringMarshaller(nodeConfig.NodeID),
 						userKey.PrivateKey(),
@@ -119,7 +119,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 						continue
 					}
 
-					authns[name] = ask.NewAuthenticator(
+					auths[name] = ask.NewAuthenticator(
 						methodPolicy,
 						userKey.PrivateKey(),
 						nodeConfig.NodeID,
@@ -129,7 +129,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 				}
 			}
 
-			return provider.NewMappedProvider(authns), allErr
+			return provider.NewMappedProvider(auths), allErr
 		},
 	)
 }
