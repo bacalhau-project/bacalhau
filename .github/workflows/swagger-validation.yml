@@ -21,17 +21,28 @@ jobs:
           go install github.com/swaggo/swag/cmd/swag@latest
         shell: bash
 
-      # Step 3: Generate the swagger.json
+      # Step 3: Verify swag installation
+      - name: Verify Swag Installation
+        run: |
+          if ! command -v swag &> /dev/null; then
+            echo "Swag is not installed. Please ensure Go is properly configured and Swag is installed."
+            exit 1
+          fi
+        shell: bash
+
+      # Step 4: Generate the swagger.json
       - name: Generate Swagger file
         run: |
           make generate-swagger
+        shell: bash
 
-      # Step 4: Compare the newly generated swagger.json with the committed swagger.json
+      # Step 5: Compare the newly generated swagger.json with the committed swagger.json
       - name: Check for Swagger differences
         run: |
           git diff --exit-code pkg/swagger/swagger.json
+        shell: bash
 
-      # Step 5: Fail the build if Swagger doesn't match
+      # Step 6: Fail the build if Swagger doesn't match
       - name: Fail if Swagger has differences
         if: failure()
         run: |
