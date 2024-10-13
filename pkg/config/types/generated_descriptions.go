@@ -33,7 +33,6 @@ var ConfigDescriptions = map[string]string{
 	EnginesTypesDockerManifestCacheRefreshKey:        "Refresh specifies the refresh interval for cache entries.",
 	EnginesTypesDockerManifestCacheSizeKey:           "Size specifies the size of the Docker manifest cache.",
 	EnginesTypesDockerManifestCacheTTLKey:            "TTL specifies the time-to-live duration for cache entries.",
-	FeatureFlagsExecTranslationKey:                   "ExecTranslation enables the execution translation feature.",
 	InputSourcesDisabledKey:                          "Disabled specifies a list of storages that are disabled.",
 	InputSourcesMaxRetryCountKey:                     "ReadTimeout specifies the maximum number of attempts for reading from a storage.",
 	InputSourcesReadTimeoutKey:                       "ReadTimeout specifies the maximum time allowed for reading from a storage.",
