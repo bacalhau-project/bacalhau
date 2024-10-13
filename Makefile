@@ -471,3 +471,7 @@ release: build-bacalhau
 .PHONY: spellcheck-code
 spellcheck-code:
 	cspell lint  -c cspell.yaml --quiet "**/*.{go,js,ts,jsx,tsx,md,yml,yaml,json}"
+
+.PHONY: generate-swagger
+generate-swagger:
+	./scripts/generate_swagger.sh
