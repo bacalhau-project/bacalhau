@@ -15,21 +15,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Generate the swagger.json (customize this as per your repo setup)
+      # Step 2: Install swag (Swagger generator)
+      - name: Install Swag
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+        shell: bash
+
+      # Step 3: Generate the swagger.json
       - name: Generate Swagger file
         run: |
           make generate-swagger
-          echo "Swagger generated!"
 
-      # Step 3: Compare the newly generated swagger.json with the committed swagger.json
+      # Step 4: Compare the newly generated swagger.json with the committed swagger.json
       - name: Check for Swagger differences
         run: |
           git diff --exit-code pkg/swagger/swagger.json
-        continue-on-error: true
 
-      # Step 4: Fail the build if Swagger doesn't match
+      # Step 5: Fail the build if Swagger doesn't match
       - name: Fail if Swagger has differences
-        if: failure()  # This will cause the workflow to fail if there was a diff in the previous step
+        if: failure()
         run: |
           echo "Swagger is outdated. Please regenerate it with 'make generate-swagger' and commit the changes."
           exit 1
