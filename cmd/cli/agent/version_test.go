@@ -45,7 +45,7 @@ func (s *VersionSuite) TestVersionJSONOutput() {
 	expectedVersion := version.Get()
 	printedVersion := &models.BuildVersionInfo{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &printedVersion)
-	s.Require().NoError(err, "Could not unmarshall the output into json - %+v", out)
+	s.Require().NoError(err, "Could not unmarshal the output into json - %+v", out)
 	s.Require().Equal(expectedVersion, printedVersion, "Versions do not match in json.")
 }
 
@@ -58,6 +58,6 @@ func (s *VersionSuite) TestVersionYAMLOutput() {
 	expectedVersion := version.Get()
 	printedVersion := &models.BuildVersionInfo{}
 	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &printedVersion)
-	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", out)
+	s.Require().NoError(err, "Could not unmarshal the output into yaml - %+v", out)
 	s.Require().Equal(expectedVersion, printedVersion, "Versions do not match in yaml.")
 }

@@ -159,7 +159,7 @@ func (suite *EventTestSuite) TestGetJobStateIfPresent() {
 	invalidState := "InvalidState"
 	eventWithInvalidState := models.NewEvent(suite.topic).WithDetail(models.DetailsKeyNewState, invalidState)
 	state, err = eventWithInvalidState.GetJobStateIfPresent()
-	suite.NoError(err) // models.JobStateType.UnmarshallText() does not return an error for invalid states
+	suite.NoError(err) // models.JobStateType.UnmarshalText() does not return an error for invalid states
 	suite.Equal(models.JobStateTypeUndefined, state)
 }
 

@@ -436,7 +436,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 
 	// This is important to do. In our docker executor, we set active to true, before calling the docker client with ContainerStart
 	// Hence there is a bit of time before the container actually gets started. The correct way of identifying that whether
-	// a contianer has started or not is via activeCh. We want to make sure that contianer is started before canceling the execution.
+	// a container has started or not is via activeCh. We want to make sure that container is started before canceling the execution.
 	handler, _ := s.executor.handlers.Get(executionID)
 	<-handler.activeCh
 

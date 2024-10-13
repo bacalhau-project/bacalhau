@@ -128,10 +128,10 @@ func (oV *VersionOptions) Run(
 	} else {
 		// NB(forrest): since `GetAllVersions` is an API call - in the event the server is un-reachable
 		// we timeout after 3 seconds to avoid waiting on an unavailable server to return its version information.
-		vctx, cancel := context.WithTimeout(ctx, time.Second*3)
+		vCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 		defer cancel()
 		var err error
-		versions, err = util.GetAllVersions(vctx, cfg, api, r)
+		versions, err = util.GetAllVersions(vCtx, cfg, api, r)
 		if err != nil {
 			// No error on fail of version check. Just print as much as we can.
 			log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")

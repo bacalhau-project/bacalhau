@@ -62,7 +62,7 @@ func BuildJobFromFlags(
 
 	labels, err := jobSettings.Labels()
 	if err != nil {
-		return nil, fmt.Errorf("receieved invalid job labels: %w", err)
+		return nil, fmt.Errorf("received invalid job labels: %w", err)
 	}
 	job := &models.Job{
 		Name:        jobSettings.Name(),

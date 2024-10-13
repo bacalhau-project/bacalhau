@@ -20,7 +20,6 @@ import (
 type BaseEndpointParams struct {
 	ID                string
 	Store             jobstore.Store
-	EventEmitter      EventEmitter
 	ComputeProxy      compute.Endpoint
 	JobTransformer    transformer.JobTransformer
 	ResultTransformer transformer.ResultTransformer
@@ -29,7 +28,6 @@ type BaseEndpointParams struct {
 type BaseEndpoint struct {
 	id                string
 	store             jobstore.Store
-	eventEmitter      EventEmitter
 	computeProxy      compute.Endpoint
 	jobTransformer    transformer.JobTransformer
 	resultTransformer transformer.ResultTransformer
@@ -39,7 +37,6 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
 		id:                params.ID,
 		store:             params.Store,
-		eventEmitter:      params.EventEmitter,
 		computeProxy:      params.ComputeProxy,
 		jobTransformer:    params.JobTransformer,
 		resultTransformer: params.ResultTransformer,
@@ -105,7 +102,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, err
 	}
 
-	e.eventEmitter.EmitJobCreated(ctx, *job)
 	return &SubmitJobResponse{
 		JobID:        job.ID,
 		EvaluationID: eval.ID,
@@ -183,12 +179,6 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		return StopJobResponse{}, err
 	}
 
-	e.eventEmitter.EmitEventSilently(ctx, models.JobEvent{
-		JobID:     request.JobID,
-		EventName: models.JobEventCanceled,
-		Status:    request.Reason,
-		EventTime: time.Now(),
-	})
 	return StopJobResponse{
 		EvaluationID: evalID,
 	}, nil

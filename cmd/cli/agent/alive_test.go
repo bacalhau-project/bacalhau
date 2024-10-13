@@ -30,7 +30,7 @@ func (s *AliveSuite) TestAliveJSONOutput() {
 
 	aliveInfo := &apimodels.IsAliveResponse{}
 	err = marshaller.JSONUnmarshalWithMax([]byte(out), &aliveInfo)
-	s.Require().NoError(err, "Could not unmarshall the output into json - %+v", err)
+	s.Require().NoError(err, "Could not unmarshal the output into json - %+v", err)
 	s.Require().True(aliveInfo.IsReady())
 }
 
@@ -40,6 +40,6 @@ func (s *AliveSuite) TestAliveYAMLOutput() {
 
 	aliveInfo := &apimodels.IsAliveResponse{}
 	err = marshaller.YAMLUnmarshalWithMax([]byte(out), &aliveInfo)
-	s.Require().NoError(err, "Could not unmarshall the output into yaml - %+v", out)
+	s.Require().NoError(err, "Could not unmarshal the output into yaml - %+v", out)
 	s.Require().True(aliveInfo.IsReady())
 }

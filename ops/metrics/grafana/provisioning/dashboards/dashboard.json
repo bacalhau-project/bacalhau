@@ -182,7 +182,7 @@
           "useBackend": false
         }
       ],
-      "title": "Jobs Receieved",
+      "title": "Jobs Received",
       "type": "stat"
     },
     {
@@ -656,7 +656,7 @@
           "refId": "A"
         }
       ],
-      "title": "Averagef HTTP Requests Duration over 5min",
+      "title": "Average HTTP Requests Duration over 5min",
       "type": "timeseries"
     },
     {
@@ -930,7 +930,7 @@
           "useBackend": false
         }
       ],
-      "title": "Evaluatio Broker Cancelable",
+      "title": "Evaluation Broker Cancelable",
       "type": "stat"
     },
     {
@@ -1004,7 +1004,7 @@
           "useBackend": false
         }
       ],
-      "title": "Evaluatio Broker Inflight",
+      "title": "Evaluation Broker Inflight",
       "type": "stat"
     },
     {
@@ -1078,7 +1078,7 @@
           "useBackend": false
         }
       ],
-      "title": "Evaluatio Broker Pending",
+      "title": "Evaluation Broker Pending",
       "type": "stat"
     },
     {
@@ -1152,7 +1152,7 @@
           "useBackend": false
         }
       ],
-      "title": "Evaluatio Broker Waiting",
+      "title": "Evaluation Broker Waiting",
       "type": "stat"
     },
     {

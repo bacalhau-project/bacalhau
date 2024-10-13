@@ -185,10 +185,10 @@ release-bacalhau-flyte: resolve-earthly
 # Target: build
 ################################################################################
 .PHONY: build
-build: resolve-earthly build-bacalhau build-plugins
+build: resolve-earthly build-bacalhau
 
 .PHONY: build-ci
-build-ci: build-bacalhau install-plugins
+build-ci: build-bacalhau
 
 .PHONY: build-dev
 build-dev: build-ci
@@ -208,7 +208,7 @@ build-webui: resolve-earthly
 ################################################################################
 # Target: build-bacalhau
 ################################################################################
-${BINARY_PATH}: build-bacalhau build-plugins
+${BINARY_PATH}: build-bacalhau
 
 .PHONY: build-bacalhau
 build-bacalhau: binary-web binary
@@ -306,7 +306,7 @@ images: docker/.pulled
 # Target: clean
 ################################################################################
 .PHONY: clean
-clean: clean-plugins
+clean:
 	${GO} clean
 	${RM} -r bin/*
 	${RM} -r webui/build/*
@@ -384,14 +384,6 @@ devstack-250:
 .PHONY: devstack-20
 devstack-20:
 	go run . devstack --compute-nodes 20
-
-.PHONY: devstack-noop
-devstack-noop:
-	go run . devstack --noop
-
-.PHONY: devstack-noop-100
-devstack-noop-100:
-	go run . devstack --noop --compute-nodes 100
 
 .PHONY: devstack-race
 devstack-race:
@@ -476,46 +468,6 @@ security:
 release: build-bacalhau
 	cp bin/bacalhau .
 
-ifeq ($(OS),Windows_NT)
-    detected_OS := Windows
-else
-    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
-endif
-
-# TODO make the plugin path configurable instead of using the bacalhau config path.
-BACALHAU_CONFIG_PATH := $(shell echo $$BACALHAU_PATH)
-INSTALL_PLUGINS_DEST := $(if $(BACALHAU_CONFIG_PATH),$(BACALHAU_CONFIG_PATH)plugins/,~/.bacalhau/plugins/)
-
-EXECUTOR_PLUGINS := $(wildcard ./pkg/executor/plugins/executors/*/.)
-
-# TODO fix install on windows
-ifeq ($(detected_OS),Windows)
-    build-plugins clean-plugins install-plugins:
-	@echo "Skipping executor plugins on Windows"
-else
-    build-plugins: plugins-build
-    clean-plugins: plugins-clean
-    install-plugins: plugins-install
-
-    .PHONY: plugins-build $(EXECUTOR_PLUGINS)
-
-    plugins-build: $(EXECUTOR_PLUGINS)
-	@echo "Building executor plugins..."
-	@$(foreach plugin,$(EXECUTOR_PLUGINS),$(MAKE) --no-print-directory -C $(plugin) &&) true
-
-    .PHONY: plugins-clean $(addsuffix .clean,$(EXECUTOR_PLUGINS))
-
-    plugins-clean: $(addsuffix .clean,$(EXECUTOR_PLUGINS))
-	@echo "Cleaning executor plugins..."
-	@$(foreach plugin,$(addsuffix .clean,$(EXECUTOR_PLUGINS)),$(MAKE) --no-print-directory -C $(basename $(plugin)) clean &&) true
-
-    .PHONY: plugins-install $(addsuffix .install,$(EXECUTOR_PLUGINS))
-
-    plugins-install: plugins-build $(addsuffix .install,$(EXECUTOR_PLUGINS))
-	@echo "Installing executor plugins..."
-	@$(foreach plugin,$(addsuffix .install,$(EXECUTOR_PLUGINS)),mkdir -p $(INSTALL_PLUGINS_DEST) && cp $(basename $(plugin))/bin/* $(INSTALL_PLUGINS_DEST) &&) true
-endif
-
 .PHONY: spellcheck-code
-spellcheck-code:  ## Runs a spellchecker over all code - MVP just does one file
-	cspell -c .cspell-code.json lint ./pkg/authn/**
+spellcheck-code:
+	cspell lint  -c cspell.yaml --quiet "**/*.{go,js,ts,jsx,tsx,md,yml,yaml,json}"

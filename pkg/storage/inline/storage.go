@@ -33,11 +33,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/c2h5oh/datasize"
+	"github.com/vincent-petithory/dataurl"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/util/targzip"
-	"github.com/c2h5oh/datasize"
-	"github.com/vincent-petithory/dataurl"
 )
 
 // The maximum size that will be stored inline without gzip compression.
@@ -74,8 +75,8 @@ func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.InputSource
 	}
 
 	if data.ContentType() == gzipMimeType {
-		size, derr := targzip.UncompressedSize(bytes.NewReader(data.Data))
-		return size.Bytes(), derr
+		size, dErr := targzip.UncompressedSize(bytes.NewReader(data.Data))
+		return size.Bytes(), dErr
 	} else {
 		return uint64(len(data.Data)), nil
 	}
@@ -128,13 +129,13 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 			return storage.StorageVolume{}, err
 		}
 
-		_, werr := tempfile.Write(data.Data)
-		cerr := tempfile.Close()
+		_, wErr := tempfile.Write(data.Data)
+		cErr := tempfile.Close()
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
 			Target: spec.Target,
-		}, errors.Join(werr, cerr)
+		}, errors.Join(wErr, cErr)
 	}
 }
 

@@ -120,9 +120,9 @@ func TestBacalhauMergeNew(t *testing.T) {
 			NameProvider: "test",
 		}
 		other := Bacalhau{}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
-		assert.Equal(t, base, MergeNewd)
+		assert.Equal(t, base, mergedNew)
 	})
 
 	t.Run("MergeNew overwrites existing fields", func(t *testing.T) {
@@ -139,12 +139,12 @@ func TestBacalhauMergeNew(t *testing.T) {
 			},
 			StrictVersionMatch: true,
 		}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
-		assert.Equal(t, "otherhost", MergeNewd.API.Host)
-		assert.Equal(t, 8080, MergeNewd.API.Port)
-		assert.Equal(t, "test", MergeNewd.NameProvider)
-		assert.True(t, MergeNewd.StrictVersionMatch)
+		assert.Equal(t, "otherhost", mergedNew.API.Host)
+		assert.Equal(t, 8080, mergedNew.API.Port)
+		assert.Equal(t, "test", mergedNew.NameProvider)
+		assert.True(t, mergedNew.StrictVersionMatch)
 	})
 
 	t.Run("MergeNew with nested structs", func(t *testing.T) {
@@ -165,11 +165,11 @@ func TestBacalhauMergeNew(t *testing.T) {
 				},
 			},
 		}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
-		assert.True(t, MergeNewd.Orchestrator.Enabled)
-		assert.Equal(t, "base.local", MergeNewd.Orchestrator.Host)
-		assert.Equal(t, Duration(10), MergeNewd.Orchestrator.NodeManager.DisconnectTimeout)
+		assert.True(t, mergedNew.Orchestrator.Enabled)
+		assert.Equal(t, "base.local", mergedNew.Orchestrator.Host)
+		assert.Equal(t, Duration(10), mergedNew.Orchestrator.NodeManager.DisconnectTimeout)
 	})
 
 	t.Run("MergeNew with slices", func(t *testing.T) {
@@ -183,9 +183,9 @@ func TestBacalhauMergeNew(t *testing.T) {
 				Orchestrators: []string{"nats://127.0.0.1:4223", "nats://127.0.0.1:4224"},
 			},
 		}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
-		assert.Equal(t, []string{"nats://127.0.0.1:4223", "nats://127.0.0.1:4224"}, MergeNewd.Compute.Orchestrators)
+		assert.Equal(t, []string{"nats://127.0.0.1:4223", "nats://127.0.0.1:4224"}, mergedNew.Compute.Orchestrators)
 	})
 
 	t.Run("MergeNew doesn't affect original configs", func(t *testing.T) {
@@ -200,11 +200,11 @@ func TestBacalhauMergeNew(t *testing.T) {
 				Host: "otherhost",
 			},
 		}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
 
-		assert.NotEqual(t, base, MergeNewd)
-		assert.NotEqual(t, other, MergeNewd)
+		assert.NotEqual(t, base, mergedNew)
+		assert.NotEqual(t, other, mergedNew)
 		assert.Equal(t, "localhost", base.API.Host)
 		assert.Equal(t, "otherhost", other.API.Host)
 	})
@@ -235,11 +235,11 @@ func TestBacalhauMergeNew(t *testing.T) {
 				},
 			},
 		}
-		MergeNewd, err := base.MergeNew(other)
+		mergedNew, err := base.MergeNew(other)
 		require.NoError(t, err)
-		assert.Equal(t, 1, MergeNewd.JobDefaults.Batch.Priority)
-		assert.Equal(t, "1000m", MergeNewd.JobDefaults.Batch.Task.Resources.CPU)
-		assert.Equal(t, "1Gb", MergeNewd.JobDefaults.Batch.Task.Resources.Memory)
+		assert.Equal(t, 1, mergedNew.JobDefaults.Batch.Priority)
+		assert.Equal(t, "1000m", mergedNew.JobDefaults.Batch.Task.Resources.CPU)
+		assert.Equal(t, "1Gb", mergedNew.JobDefaults.Batch.Task.Resources.Memory)
 	})
 }
 

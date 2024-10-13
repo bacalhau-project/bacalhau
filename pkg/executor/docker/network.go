@@ -135,10 +135,10 @@ func (e *Executor) createHTTPGateway(
 	}
 
 	// Create the gateway container initially attached to the *host* network
-	domainList, derr := json.Marshal(networkConfig.DomainSet())
-	clientList, cerr := json.Marshal([]string{subnet})
-	if derr != nil || cerr != nil {
-		return nil, nil, pkgerrors.Wrap(errors.Join(derr, cerr), "error preparing gateway config")
+	domainList, dErr := json.Marshal(networkConfig.DomainSet())
+	clientList, cErr := json.Marshal([]string{subnet})
+	if dErr != nil || cErr != nil {
+		return nil, nil, pkgerrors.Wrap(errors.Join(dErr, cErr), "error preparing gateway config")
 	}
 
 	gatewayContainer, err := e.client.ContainerCreate(ctx, &container.Config{

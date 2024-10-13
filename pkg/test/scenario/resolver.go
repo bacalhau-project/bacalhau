@@ -183,7 +183,7 @@ func GetFilteredExecutionStates(jobState *JobState, filterState models.Execution
 func WaitForTerminalStates() StateChecks {
 	return func(state *JobState) (bool, error) {
 		for _, executionState := range state.Executions {
-			if !executionState.ComputeState.StateType.IsTermainl() {
+			if !executionState.ComputeState.StateType.IsTerminal() {
 				return false, nil
 			}
 		}
