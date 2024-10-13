@@ -40,7 +40,7 @@ jobs:
       # Step 4: Generate the swagger.json
       - name: Generate Swagger file
         run: |
-          ./scripts/generate-swagger.sh
+          make generate-swagger
 
       # Step 5: Compare the newly generated swagger.json with the committed swagger.json
       - name: Check for Swagger differences
@@ -51,5 +51,5 @@ jobs:
       - name: Fail if Swagger has differences
         if: failure()
         run: |
-          echo "Swagger is outdated. Please regenerate it with 'bash ./scripts/generate-swagger.sh' and commit the changes."
+          echo "Swagger is outdated. Please regenerate it with 'make generate-swagger' and commit the changes."
           exit 1
