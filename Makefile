@@ -99,12 +99,15 @@ endif
 # it is missing.
 ################################################################################
 .PHONY: precommit
-precommit:
+precommit: check-precommit
 	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
 	@rm webui/build/stub
 	cd python && ${MAKE} pre-commit
 
+# Check if pre-commit is installed only for precommit target
+.PHONY: check-precommit
+check-precommit:
 PRECOMMIT_HOOKS_INSTALLED ?= $(shell grep -R "pre-commit.com" .git/hooks)
 ifeq ($(PRECOMMIT_HOOKS_INSTALLED),)
 $(warning "Pre-commit is not installed in .git/hooks/pre-commit. Please run 'make install-pre-commit' to install it.")
@@ -471,3 +474,7 @@ release: build-bacalhau
 .PHONY: spellcheck-code
 spellcheck-code:
 	cspell lint  -c cspell.yaml --quiet "**/*.{go,js,ts,jsx,tsx,md,yml,yaml,json}"
+
+.PHONY: generate-swagger
+generate-swagger:
+	./scripts/generate_swagger.sh

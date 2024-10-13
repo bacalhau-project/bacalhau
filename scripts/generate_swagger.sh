@@ -2,7 +2,6 @@
 PATH_TO_PROJECT_ROOT=$(git rev-parse --show-toplevel)
 SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/swagger"
 WEBUI_PATH="${PATH_TO_PROJECT_ROOT}/webui/lib/api/schema"
-DOCS_PATH="${PATH_TO_PROJECT_ROOT}/docs"
 cd "${PATH_TO_PROJECT_ROOT}" || exit
 
 echo "Currently executing in ${PWD}"
@@ -22,7 +21,5 @@ if [[ ! -d "${WEBUI_PATH}" ]]; then
     mkdir -p "${WEBUI_PATH}"
 fi
 cp "${SWAGGER_DIR}/swagger.json" "${WEBUI_PATH}"
-cp "${WEBUI_PATH}/swagger.json" "${DOCS_PATH}"
 
 echo "swagger.json copied to ${WEBUI_PATH}/swagger.json"
-echo "swagger.json copied to ${DOCS_PATH}/swagger.json"
