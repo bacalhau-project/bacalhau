@@ -51,7 +51,7 @@ func (s *BroadcasterTestSuite) TestBroadcasterAutoclose() {
 	require.Error(s.T(), err)
 }
 
-func (s *BroadcasterTestSuite) TestBroadcasterSubUnsub() {
+func (s *BroadcasterTestSuite) TestBroadcasterSubUnsubscribe() {
 	ch1, err1 := s.broadcaster.Subscribe()
 	ch2, err2 := s.broadcaster.Subscribe()
 	require.NoError(s.T(), err1)

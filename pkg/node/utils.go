@@ -56,7 +56,7 @@ func getTLSCertificate(cfg types.Bacalhau) (string, string, error) {
 		return "", "", err
 	} else if caCert, err := crypto.NewSelfSignedCertificate(privKey, false, ips); err != nil {
 		return "", "", errors.Wrap(err, "failed to generate server certificate")
-	} else if err = caCert.MarshalCertficate(certFile); err != nil {
+	} else if err = caCert.MarshalCertificate(certFile); err != nil {
 		return "", "", errors.Wrap(err, "failed to write server certificate")
 	}
 	cert = certFile.Name()

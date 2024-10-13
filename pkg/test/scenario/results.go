@@ -64,7 +64,7 @@ func FileEquals(
 	}
 }
 
-// ManyCheckes returns a CheckResults that runs the passed checkers and returns
+// ManyChecks returns a CheckResults that runs the passed checkers and returns
 // an error if any of them fail.
 func ManyChecks(checks ...CheckResults) CheckResults {
 	return func(resultsDir string) error {

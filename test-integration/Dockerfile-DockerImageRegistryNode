@@ -1,0 +1,24 @@
+FROM registry:2
+
+# Install curl and bash
+RUN apk update && apk add --no-cache curl bash
+
+# Install the ca-certificates package
+RUN apk add --no-cache ca-certificates
+
+# Copy a root ca into the image
+COPY certificates/generated_assets/bacalhau_test_root_ca.crt /usr/local/share/ca-certificates/bacalhau_test_root_ca.crt
+
+# Create a directory to store certificates to be used by the registry
+RUN mkdir /certs
+
+# Copy the certificate and key from the local directory to /certs
+COPY certificates/generated_assets/bacalhau-container-img-registry-node.crt /certs/
+COPY certificates/generated_assets/bacalhau-container-img-registry-node.key /certs/
+
+# Ensure proper permissions for certs
+RUN chmod 600 /certs/bacalhau-container-img-registry-node.key
+RUN chmod 644 /certs/bacalhau-container-img-registry-node.crt
+
+# Expose the registry's default port
+EXPOSE 5000 443

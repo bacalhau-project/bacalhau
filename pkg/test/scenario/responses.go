@@ -21,7 +21,7 @@ func SubmitJobSuccess() CheckSubmitResponse {
 			return fmt.Errorf("expected job response, got nil")
 		}
 		if len(response.Warnings) > 0 {
-			return fmt.Errorf("unexpted warnings returned when submitting job: %v", response.Warnings)
+			return fmt.Errorf("unexpected warnings returned when submitting job: %v", response.Warnings)
 		}
 		return nil
 	}

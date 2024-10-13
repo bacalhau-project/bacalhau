@@ -13,23 +13,20 @@ import (
 )
 
 type CallbackParams struct {
-	ID           string
-	Store        jobstore.Store
-	EventEmitter EventEmitter
+	ID    string
+	Store jobstore.Store
 }
 
 // Callback base implementation of requester Endpoint
 type Callback struct {
-	id           string
-	store        jobstore.Store
-	eventEmitter EventEmitter
+	id    string
+	store jobstore.Store
 }
 
 func NewCallback(params *CallbackParams) *Callback {
 	return &Callback{
-		id:           params.ID,
-		store:        params.Store,
-		eventEmitter: params.EventEmitter,
+		id:    params.ID,
+		store: params.Store,
 	}
 }
 
@@ -96,16 +93,11 @@ func (e *Callback) OnBidComplete(ctx context.Context, response compute.BidResult
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to commit transaction")
 		return
 	}
-
-	if response.Accepted {
-		e.eventEmitter.EmitBidReceived(ctx, response)
-	}
 }
 
 func (e *Callback) OnRunComplete(ctx context.Context, result compute.RunResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s received RunComplete for execution: %s from %s",
 		e.id, result.ExecutionID, result.SourcePeerID)
-	e.eventEmitter.EmitRunComplete(ctx, result)
 
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
@@ -223,8 +215,6 @@ func (e *Callback) OnComputeFailure(ctx context.Context, result compute.ComputeE
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to commit transaction")
 		return
 	}
-
-	e.eventEmitter.EmitComputeFailure(ctx, result.ExecutionID, result)
 }
 
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node

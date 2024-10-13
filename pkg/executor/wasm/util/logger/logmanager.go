@@ -162,11 +162,11 @@ func (lm *LogManager) Drain() {
 }
 
 func (lm *LogManager) GetWriters() (io.WriteCloser, io.WriteCloser) {
-	writerFunc := func(strm LogStreamType) func([]byte) *LogMessage {
+	writerFunc := func(stream LogStreamType) func([]byte) *LogMessage {
 		return func(b []byte) *LogMessage {
 			m := LogMessage{
 				Timestamp: time.Now().Unix(),
-				Stream:    strm,
+				Stream:    stream,
 			}
 			m.Data = append([]byte(nil), b...)
 			return &m

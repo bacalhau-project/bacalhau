@@ -18,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
-type StoreCreator func(ctx context.Context, dbpath string) (store.ExecutionStore, error)
+type StoreCreator func(ctx context.Context, dbPath string) (store.ExecutionStore, error)
 
 type StoreSuite struct {
 	suite.Suite

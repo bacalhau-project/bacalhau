@@ -42,7 +42,7 @@ func (s ExecutionStateType) IsUndefined() bool {
 	return s == ExecutionStateUndefined
 }
 
-func (s ExecutionStateType) IsTermainl() bool {
+func (s ExecutionStateType) IsTerminal() bool {
 	return s == ExecutionStateBidRejected ||
 		s == ExecutionStateCompleted ||
 		s == ExecutionStateFailed ||

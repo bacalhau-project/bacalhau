@@ -208,7 +208,6 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
 	c.SetIfAbsent(legacy_types.AuthTokensPath, fsr.join(config_legacy.TokensPath))
 	c.SetIfAbsent(legacy_types.UserKeyPath, fsr.join(config_legacy.UserPrivateKeyFileName))
-	c.SetIfAbsent(legacy_types.NodeExecutorPluginPath, fsr.join(config_legacy.PluginsPath))
 
 	// NB(forrest): pay attention to the subtle name difference here
 	c.SetIfAbsent(legacy_types.NodeComputeStoragePath, fsr.join(config_legacy.ComputeStoragesPath))
