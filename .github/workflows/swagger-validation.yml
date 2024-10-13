@@ -1,4 +1,4 @@
-name: Validate Swagger Generation
+name: Swagger Validation
 
 on:
   pull_request:
@@ -6,7 +6,8 @@ on:
       - main
 
 jobs:
-  check-swagger:
+  ensure-up-to-date:
+    name: Ensure Up-to-date
     runs-on: ubuntu-latest
 
     steps:
