@@ -2,13 +2,10 @@ package orchestrator
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -18,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-	"github.com/bacalhau-project/bacalhau/pkg/translation"
 )
 
 type BaseEndpointParams struct {
@@ -26,7 +22,6 @@ type BaseEndpointParams struct {
 	Store             jobstore.Store
 	ComputeProxy      compute.Endpoint
 	JobTransformer    transformer.JobTransformer
-	TaskTranslator    translation.TranslatorProvider
 	ResultTransformer transformer.ResultTransformer
 }
 
@@ -35,7 +30,6 @@ type BaseEndpoint struct {
 	store             jobstore.Store
 	computeProxy      compute.Endpoint
 	jobTransformer    transformer.JobTransformer
-	taskTranslator    translation.TranslatorProvider
 	resultTransformer transformer.ResultTransformer
 }
 
@@ -45,7 +39,6 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 		store:             params.Store,
 		computeProxy:      params.ComputeProxy,
 		jobTransformer:    params.JobTransformer,
-		taskTranslator:    params.TaskTranslator,
 		resultTransformer: params.ResultTransformer,
 	}
 }
@@ -73,34 +66,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	}
 	submitEvent.JobID = job.ID
 
-	var translationEvent models.Event
-
-	// We will only perform task translation in the orchestrator if we were provided with a provider
-	// that can give translators to perform the translation.
-	if e.taskTranslator != nil {
-		// Before we create an evaluation for the job, we want to check that none of the job's tasks
-		// need translating from a custom job type to a known job type (docker, wasm). If they do,
-		// then we will perform the translation and create the evaluation for the new job instead.
-		translatedJob, err := translation.Translate(ctx, e.taskTranslator, job)
-		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("failed to translate job type: %s", job.Task().Engine.Type))
-		}
-
-		// If we have translated the job (i.e. at least one task was translated) then we will record the original
-		// job that was used to create the translated job. This will allow us to track the provenance of the job
-		// when using `describe` and will ensure only the original job is returned when using `list`.
-		if translatedJob != nil {
-			if b, err := yaml.Marshal(translatedJob); err != nil {
-				return nil, errors.Wrap(err, "failure converting job to JSON")
-			} else {
-				translatedJob.Meta[models.MetaDerivedFrom] = base64.StdEncoding.EncodeToString(b)
-				translationEvent = JobTranslatedEvent(job, translatedJob)
-			}
-
-			job = translatedJob
-		}
-	}
-
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
@@ -117,11 +82,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	}
 	if err = e.store.AddJobHistory(txContext, job.ID, JobSubmittedEvent()); err != nil {
 		return nil, err
-	}
-	if translationEvent.Message != "" {
-		if err = e.store.AddJobHistory(txContext, job.ID, translationEvent); err != nil {
-			return nil, err
-		}
 	}
 
 	eval := &models.Evaluation{

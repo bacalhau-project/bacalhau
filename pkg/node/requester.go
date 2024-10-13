@@ -9,6 +9,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -21,6 +23,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -32,13 +36,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/translation"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
-
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/discovery"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 )
 
 var (
@@ -195,11 +192,6 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
-	var translationProvider translation.TranslatorProvider
-	if cfg.BacalhauConfig.FeatureFlags.ExecTranslation {
-		translationProvider = translation.NewStandardTranslatorsProvider()
-	}
-
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
@@ -214,7 +206,6 @@ func NewRequesterNode(
 		Store:             jobStore,
 		ComputeProxy:      computeProxy,
 		JobTransformer:    jobTransformers,
-		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
 
@@ -270,7 +261,7 @@ func NewRequesterNode(
 		// close the ncl subscriber
 		cleanupErr := subscriber.Close(ctx)
 		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
 		}
 
 		// stop the housekeeping background task
@@ -283,7 +274,7 @@ func NewRequesterNode(
 		// Close the jobstore after the evaluation broker is disabled
 		cleanupErr = jobStore.Close(ctx)
 		if cleanupErr != nil {
-			util.LogDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown jobstore")
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown jobstore")
 		}
 	}
 

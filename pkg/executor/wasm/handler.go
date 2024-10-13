@@ -18,7 +18,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/logger/wasm"
+	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
