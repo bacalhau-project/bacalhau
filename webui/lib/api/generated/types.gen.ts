@@ -796,9 +796,9 @@ export type types_BatchJobDefaultsConfig = {
 };
 
 export type types_BatchTaskDefaultConfig = {
+    Publisher?: types_DefaultPublisherConfig;
     Resources?: types_ResourcesConfig;
     Timeouts?: types_TaskTimeoutConfig;
-    publisher?: models_SpecConfig;
 };
 
 export type types_Cluster = {
@@ -850,6 +850,19 @@ export type types_ComputeAuth = {
      * Token specifies the key for compute nodes to be able to access the orchestrator.
      */
     Token?: string;
+};
+
+export type types_DefaultPublisherConfig = {
+    /**
+     * Params specifies the publisher configuration data.
+     */
+    Params?: {
+        [key: string]: (string);
+    };
+    /**
+     * Type specifies the publisher type. e.g. "s3", "local", "ipfs", etc.
+     */
+    Type?: string;
 };
 
 export type types_Docker = {

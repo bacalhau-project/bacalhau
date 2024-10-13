@@ -2297,14 +2297,14 @@ const docTemplate = `{
         "types.BatchTaskDefaultConfig": {
             "type": "object",
             "properties": {
+                "Publisher": {
+                    "$ref": "#/definitions/types.DefaultPublisherConfig"
+                },
                 "Resources": {
                     "$ref": "#/definitions/types.ResourcesConfig"
                 },
                 "Timeouts": {
                     "$ref": "#/definitions/types.TaskTimeoutConfig"
-                },
-                "publisher": {
-                    "$ref": "#/definitions/models.SpecConfig"
                 }
             }
         },
@@ -2378,6 +2378,22 @@ const docTemplate = `{
             "properties": {
                 "Token": {
                     "description": "Token specifies the key for compute nodes to be able to access the orchestrator.",
+                    "type": "string"
+                }
+            }
+        },
+        "types.DefaultPublisherConfig": {
+            "type": "object",
+            "properties": {
+                "Params": {
+                    "description": "Params specifies the publisher configuration data.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "Type": {
+                    "description": "Type specifies the publisher type. e.g. \"s3\", \"local\", \"ipfs\", etc.",
                     "type": "string"
                 }
             }
