@@ -32,7 +32,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/translation"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -195,11 +194,6 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
-	var translationProvider translation.TranslatorProvider
-	if cfg.BacalhauConfig.FeatureFlags.ExecTranslation {
-		translationProvider = translation.NewStandardTranslatorsProvider()
-	}
-
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
@@ -214,7 +208,6 @@ func NewRequesterNode(
 		Store:             jobStore,
 		ComputeProxy:      computeProxy,
 		JobTransformer:    jobTransformers,
-		TaskTranslator:    translationProvider,
 		ResultTransformer: resultTransformers,
 	})
 

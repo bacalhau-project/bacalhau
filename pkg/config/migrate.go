@@ -90,9 +90,7 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 		UpdateConfig: types.UpdateConfig{
 			Interval: types.Duration(in.Update.CheckFrequency),
 		},
-		FeatureFlags: types.FeatureFlags{
-			ExecTranslation: in.Node.Requester.TranslationEnabled,
-		},
+		FeatureFlags: types.FeatureFlags{},
 	}
 	return out, nil
 }
