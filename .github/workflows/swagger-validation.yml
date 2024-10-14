@@ -1,0 +1,55 @@
+name: Swagger Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ensure-up-to-date:
+    name: Ensure Up-to-date
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Detect Go version from go.mod
+      - name: Detect Go version from go.mod
+        id: detect-go-version
+        run: |
+          go_version=$(grep '^go ' go.mod | awk '{print $2}')
+          echo "Go version detected: $go_version"
+          echo "golang-version=$go_version" >> $GITHUB_ENV
+
+      # Setup Go using the detected version
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.golang-version }}
+          cache: true
+
+      # Install swag (Swagger generator)
+      - name: Install Swag
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+
+      # Verify swag installation
+      - name: Verify Swag Installation
+        run: |
+          if ! command -v swag &> /dev/null; then
+            echo "Swag is not installed. Please ensure Go is properly configured and Swag is installed."
+            exit 1
+          fi
+
+      # Generate the swagger.json
+      - name: Generate Swagger file
+        run: make generate-swagger
+
+      # Compare the newly generated swagger.json with the committed swagger.json
+      - name: Check for Swagger differences
+        run: |
+          git diff --exit-code pkg/swagger/swagger.json || (echo "Swagger is outdated. Please regenerate it with 'make generate-swagger' and commit the changes." && exit 1)

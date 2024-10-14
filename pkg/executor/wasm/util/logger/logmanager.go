@@ -12,9 +12,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/generic"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
 const (

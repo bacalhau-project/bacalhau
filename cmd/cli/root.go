@@ -15,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/exec"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
@@ -101,7 +100,6 @@ func NewRootCmd() *cobra.Command {
 		configcli.NewCmd(),
 		devstack.NewCmd(),
 		docker.NewCmd(),
-		exec.NewCmd(),
 		job.NewCmd(),
 		node.NewCmd(),
 		serve.NewCmd(),
@@ -109,6 +107,7 @@ func NewRootCmd() *cobra.Command {
 		wasm.NewCmd(),
 
 		// deprecated command
+		deprecated.NewExecCommand(),
 		deprecated.NewCancelCmd(),
 		deprecated.NewCreateCmd(),
 		deprecated.NewDescribeCmd(),
