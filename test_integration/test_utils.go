@@ -159,6 +159,7 @@ func compileBacalhau(ctx context.Context, programPath string) error {
 	}
 
 	// Create a container request
+	// TODO: Improve how we build our binary
 	req := testcontainers.ContainerRequest{
 		Image: "golang:1.23",
 		Cmd: []string{

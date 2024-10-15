@@ -8,7 +8,7 @@ repos:
   - id: detect-aws-credentials
     args: [--allow-missing-credentials]
   - id: detect-private-key
-    exclude: 'testdata/.*|test_integration/certificates/.*'
+    exclude: 'testdata/.*|test_integration/assets/dockerfiles/certificates/.*|docker-compose-deployment/certificates/.*'
   - id: check-yaml
   - id: check-json
 - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -36,4 +36,5 @@ repos:
   - id: "go-test-build-header"
     name: "Go test '//go:build' header present"
     entry: ".gitprecommit/go_test_build_header.sh"
+    exclude: 'test_integration/.*|'
     language: "script"
