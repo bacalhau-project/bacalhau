@@ -297,18 +297,15 @@ func setTestGlobalEnvVariables(additionalSetupEnvVars map[string]string) error {
 }
 
 func extractJobIDFromOutput(jobRunOutput string, s *suite.Suite) string {
-	lines := strings.Split(jobRunOutput, "\n")
-	s.Require().GreaterOrEqual(len(lines), 1, "The Job run result must contain at least one line")
-
-	firstLine := lines[0]
-	s.Require().Regexp(
-		`Job successfully submitted\. Job ID: j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`,
-		firstLine,
-		"The first line of the Job does not contain the Job ID",
+	s.Require().Regexpf(
+		`Job successfully submitted\. Job ID: j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
+		jobRunOutput,
+		"JOb output did not signal a successful job submission: %q",
+		jobRunOutput,
 	)
 
 	re := regexp.MustCompile(`j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-	jobID := re.FindString(firstLine)
+	jobID := re.FindString(jobRunOutput)
 
 	s.Require().NotEmpty(jobID, "Job ID cannot be empty", jobID)
 	s.Require().Regexp(`^j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`,

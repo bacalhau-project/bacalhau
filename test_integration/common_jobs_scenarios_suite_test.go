@@ -9,30 +9,30 @@ import (
 	"time"
 )
 
-type HappyPathTestSuite struct {
+type CommonJobsScenariosSuite struct {
 	BaseDockerComposeTestSuite
 }
 
-func NewHappyPathTestSuite() *HappyPathTestSuite {
-	s := &HappyPathTestSuite{}
+func NewCommonJobsScenariosTestSuite() *CommonJobsScenariosSuite {
+	s := &CommonJobsScenariosSuite{}
 	s.globalRunIdentifier = globalTestExecutionId
 	s.suiteRunIdentifier = strings.ToLower(strings.Split(uuid.New().String(), "-")[0])
 	return s
 }
 
-func (s *HappyPathTestSuite) SetupSuite() {
+func (s *CommonJobsScenariosSuite) SetupSuite() {
 	// Suite specific Images can be created here if needed
 	rawDockerComposeFilePath := "./assets/docker_compose_files/docker-compose-with-minio-and-registry.yml"
 	s.Context, s.Cancel = context.WithCancel(context.Background())
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, map[string]string{})
 }
 
-func (s *HappyPathTestSuite) TearDownSuite() {
-	s.T().Log("Tearing down [Test Suite] in HappyPathTestSuite...")
+func (s *CommonJobsScenariosSuite) TearDownSuite() {
+	s.T().Log("Tearing down [Test Suite] in CommonJobsScenariosSuite...")
 	s.BaseDockerComposeTestSuite.TearDownSuite()
 }
 
-func (s *HappyPathTestSuite) TestDockerRunHelloWorld() {
+func (s *CommonJobsScenariosSuite) TestDockerRunHelloWorld() {
 	result, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "docker", "run", "hello-world"})
 
 	s.Require().NoError(err, "Error running hello world")
@@ -48,7 +48,7 @@ func (s *HappyPathTestSuite) TestDockerRunHelloWorld() {
 	s.Require().Contains(resultDescription, "Hello from Docker", resultDescription)
 }
 
-func (s *HappyPathTestSuite) TestHelloWorldJob() {
+func (s *CommonJobsScenariosSuite) TestHelloWorldJob() {
 	result, err := s.executeCommandInDefaultJumpbox(
 		[]string{
 			"bacalhau",
@@ -72,6 +72,6 @@ func (s *HappyPathTestSuite) TestHelloWorldJob() {
 	s.Require().Contains(resultDescription, "hello bacalhau world", resultDescription)
 }
 
-func TestHappyPathTestSuite(t *testing.T) {
-	suite.Run(t, NewHappyPathTestSuite())
+func TestCommonJobsScenariosSuite(t *testing.T) {
+	suite.Run(t, NewCommonJobsScenariosTestSuite())
 }
