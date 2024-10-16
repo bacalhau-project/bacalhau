@@ -300,7 +300,7 @@ func extractJobIDFromOutput(jobRunOutput string, s *suite.Suite) string {
 	s.Require().Regexpf(
 		`Job successfully submitted\. Job ID: j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
 		jobRunOutput,
-		"JOb output did not signal a successful job submission: %q",
+		"Job output did not signal a successful job submission: %q",
 		jobRunOutput,
 	)
 

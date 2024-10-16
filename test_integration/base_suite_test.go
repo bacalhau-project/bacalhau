@@ -233,7 +233,7 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 			return time.Since(startTime), nil
 		}
 
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(time.Second)
 	}
 
 	return timeout, fmt.Errorf("job did not finish within allowed time limit %s", timeout.String())
@@ -242,29 +242,29 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 func (s *BaseDockerComposeTestSuite) renderDockerComposeFile(inputFilePath string, tmpDir string, imageReplacements map[string]string) (string, error) {
 	data, err := os.ReadFile(inputFilePath)
 	if err != nil {
-		return "", fmt.Errorf("error reading file: %v", err)
+		return "", fmt.Errorf("error reading file: %w", err)
 	}
 
 	var node yaml.Node
 	err = yaml.Unmarshal(data, &node)
 	if err != nil {
-		return "", fmt.Errorf("error parsing YAML: %v", err)
+		return "", fmt.Errorf("error parsing YAML: %w", err)
 	}
 
 	err = modifyImageNamesInDockerComposeFile(&node, imageReplacements)
 	if err != nil {
-		return "", fmt.Errorf("error modifying image names: %v", err)
+		return "", fmt.Errorf("error modifying image names: %w", err)
 	}
 
 	modifiedYAML, err := yaml.Marshal(&node)
 	if err != nil {
-		return "", fmt.Errorf("error marshaling YAML: %v", err)
+		return "", fmt.Errorf("error marshaling YAML: %w", err)
 	}
 
 	tmpFile := filepath.Join(tmpDir, "rendered-docker-compose.yml")
 	err = os.WriteFile(tmpFile, modifiedYAML, 0644)
 	if err != nil {
-		return "", fmt.Errorf("error writing file: %v", err)
+		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
 	return tmpFile, nil
