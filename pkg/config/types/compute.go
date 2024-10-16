@@ -2,7 +2,7 @@ package types
 
 type Compute struct {
 	// Enabled indicates whether the compute node is active and available for job execution.
-	Enabled bool `yaml:"Enabled,omitempty" json:"Enabled,omitempty"`
+	Enabled bool `yaml:"Enabled" json:"Enabled"`
 	// Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
 	Orchestrators []string `yaml:"Orchestrators,omitempty" json:"Orchestrators,omitempty"`
 	// Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
