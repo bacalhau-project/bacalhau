@@ -1,6 +1,6 @@
-# Test Suite for [Project Name]
+# Integration Test Suite for Bacalhau
 
-This test suite is designed to perform integration testing for [Project Name] using real docker containers, simulating a production-like environment.
+This test suite is designed to perform integration testing for Bacalhau using real docker containers, simulating a production-like environment.
 
 ## Key Features
 
