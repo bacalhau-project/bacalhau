@@ -432,3 +432,5 @@ swaggo
 isbadactor
 installationid
 firstbacalhauimage
+RYUK
+buildvcs

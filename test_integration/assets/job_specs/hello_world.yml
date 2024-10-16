@@ -1,0 +1,14 @@
+Name: Basic Hello World
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: ubuntu:latest
+        Entrypoint:
+          - /bin/bash
+        Parameters:
+          - "-c"
+          - "echo hello bacalhau world"
