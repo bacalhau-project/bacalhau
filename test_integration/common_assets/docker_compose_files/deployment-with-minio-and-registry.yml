@@ -5,6 +5,7 @@ x-common-env-variables: &common-env-variables
   MINIO_ROOT_PASSWORD: "minioadminpass"
   AWS_ACCESS_KEY_ID: "minioadmin"
   AWS_SECRET_ACCESS_KEY: "minioadminpass"
+  BACALHAU_UPDATE_SKIPCHECKS: true
 
 networks:
   bacalhau-network:
@@ -26,7 +27,7 @@ services:
       start_period: 2s
 
   bacalhau-container-img-registry-node:
-    image: "placeholder-registry-image"
+    image: {{ .RegistryImageName }}
     restart: always
     networks:
       - bacalhau-network
@@ -42,8 +43,8 @@ services:
       retries: 30
       start_period: 2s
 
-  bacalhau-requester-node:
-    image: "placeholder-requester-image"
+  bacalhau-orchestrator-node:
+    image: {{ .OrchestratorImageName }}
     networks:
       - bacalhau-network
     environment: *common-env-variables
@@ -55,7 +56,7 @@ services:
       - /bin/bash
       - -c
       - |
-        bacalhau config set "orchestrator.auth.token" "$${NETWORK_AUTH_TOKEN}" && bacalhau serve --orchestrator -c api.port=$${BACALHAU_API_PORT}
+        {{ .OrchestratorStartCommand }}
     healthcheck:
       test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
       interval: 1s
@@ -64,18 +65,18 @@ services:
       start_period: 2s
 
   bacalhau-compute-node:
-    image: "placeholder-compute-image"
+    image: {{ .ComputeImageName }}
     privileged: true
     networks:
       - bacalhau-network
     depends_on:
-      bacalhau-requester-node:
+      bacalhau-orchestrator-node:
         condition: service_healthy
       bacalhau-container-img-registry-node:
         condition: service_healthy
     environment:
       <<: *common-env-variables
-      REQUESTER_NODE_LINK: 'bacalhau-requester-node'
+      ORCHESTRATOR_NODE_LINK: 'bacalhau-orchestrator-node'
     healthcheck:
       test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
       interval: 1s
@@ -84,12 +85,12 @@ services:
       start_period: 2s
 
   bacalhau-jumpbox-node:
-    image: "placeholder-jumpbox-image"
+    image: {{ .JumpboxImageName }}
     privileged: true
     networks:
       - bacalhau-network
     depends_on:
-      bacalhau-requester-node:
+      bacalhau-orchestrator-node:
         condition: service_healthy
       bacalhau-compute-node:
         condition: service_healthy
@@ -97,6 +98,6 @@ services:
         condition: service_healthy
     environment:
       <<: *common-env-variables
-      BACALHAU_API_HOST: 'bacalhau-requester-node'
+      BACALHAU_API_HOST: 'bacalhau-orchestrator-node'
       BACALHAU_COMPUTE_NODE_HOST: 'bacalhau-compute-node'
       BACALHAU_MINIO_NODE_HOST: 'bacalhau-minio-node'

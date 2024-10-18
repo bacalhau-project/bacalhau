@@ -5,5 +5,5 @@ CN and SAN for these leaf certs. The generated certs will be added to the `gener
 
 Usage: `./generate_leaf_certs.sh <CN_and_SAN>`
 ```shell
-./generate_leaf_certs.sh my-bacalhau-requester-node
+./generate_leaf_certs.sh my-bacalhau-orchestrator-node
 ```
