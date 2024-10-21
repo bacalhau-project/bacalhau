@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/docker/compose/v2/pkg/api"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
@@ -27,8 +28,10 @@ type BaseDockerComposeTestSuite struct {
 
 func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, renderingData map[string]interface{}) {
 	s.T().Log("Setting up [Test Suite] in base suite......")
+	s.Context, s.Cancel = context.WithCancel(context.Background())
+	s.SuiteRunIdentifier = strings.ToLower(strings.Split(uuid.New().String(), "-")[0])
 
-	// Merge Docker images name
+	// Default Rendered Data
 	defaultRenderingData := map[string]interface{}{
 		"RegistryImageName":     fmt.Sprintf("bacalhau-test-registry-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 		"OrchestratorImageName": fmt.Sprintf("bacalhau-test-orchestrator-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
@@ -36,6 +39,7 @@ func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, re
 		"JumpboxImageName":      fmt.Sprintf("bacalhau-test-jumpbox-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 	}
 
+	// Merge Rendering Data
 	if renderingData != nil {
 		for key, value := range renderingData {
 			defaultRenderingData[key] = value
@@ -53,6 +57,8 @@ func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, re
 	}()
 
 	renderedDockerComposeFile := s.renderDockerComposeFile(dockerComposeFilePath, tmpDir, defaultRenderingData)
+
+	// Standup docker compose stack
 	s.standUpDockerComposeStack(renderedDockerComposeFile)
 
 	// Run a basic command to init the ~/.bacalhau directory, or else the output will unfortunately
@@ -172,7 +178,7 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 	return timeout, fmt.Errorf("job did not finish within allowed time limit %s", timeout.String())
 }
 
-func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string) (interface{}, string, error) {
+func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string, expectedType JSONResponseType) (interface{}, error) {
 	// Cleanup the Json output. Unfortunate that the CLI prints extra
 	// characters at the beginning and at the end
 	cleanedJsonString := strings.TrimLeftFunc(jsonString, func(r rune) bool {
@@ -185,17 +191,27 @@ func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string) (int
 	var data interface{}
 	err := json.Unmarshal([]byte(cleanedJsonString), &data)
 	if err != nil {
-		return nil, "", err
+		s.Require().NoErrorf(err, "Error unmarshalling json string: %q. JSON input received: %q", err, jsonString)
+		return nil, err
 	}
 
+	var actualType JSONResponseType
 	switch data.(type) {
 	case map[string]interface{}:
-		return data, "object", nil
+		actualType = JSONObject
 	case []interface{}:
-		return data, "array", nil
+		actualType = JSONArray
 	default:
-		return data, "other", nil
+		s.Require().NoErrorf(err, "unexpected JSON type in Response: neither object nor list. Got: %q", jsonString)
+		return nil, fmt.Errorf("unexpected JSON type in Response. Got: %q", jsonString)
 	}
+
+	if actualType != expectedType {
+		s.Require().NoErrorf(err, "JSON type mismatch in: expected %s, got %s. Input String: %q", expectedType, actualType, jsonString)
+		return nil, fmt.Errorf("JSON type mismatch in: expected %s, got %s", expectedType, actualType)
+	}
+
+	return data, nil
 }
 
 func (s *BaseDockerComposeTestSuite) renderDockerComposeFile(inputFilePath string, tmpDir string, imageReplacements map[string]interface{}) string {
@@ -228,3 +244,11 @@ func readContainerExecOutput(err error, reader io.Reader) (string, error) {
 	output := buf.String()
 	return output, nil
 }
+
+// JSONResponseType Used for API response validation
+type JSONResponseType string
+
+const (
+	JSONObject JSONResponseType = "JSONObject"
+	JSONArray  JSONResponseType = "JSONArray"
+)

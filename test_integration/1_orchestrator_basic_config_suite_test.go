@@ -30,14 +30,6 @@ func (s *OrchestratorBasicConfigSuite) SetupSuite() {
 		"OrchestratorStartCommand": orchestratorStartCommand,
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
-
-	_, err := s.executeCommandInDefaultJumpbox(
-		[]string{
-			"mkdir",
-			"-p",
-			fmt.Sprintf("/app/%s", s.SuiteRunIdentifier),
-		})
-	s.Require().NoErrorf(err, "Error creating a suite tmp folder in the jumpbox node: %q", err)
 }
 
 func (s *OrchestratorBasicConfigSuite) TearDownSuite() {
@@ -49,9 +41,8 @@ func (s *OrchestratorBasicConfigSuite) TestNodesCanBeListed() {
 	nodeListOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list", "--output=json"})
 	s.Require().NoErrorf(err, "Error listing nodes: %q", err)
 
-	marshalledOutput, jsonType, err := s.unmarshalJSONString(nodeListOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q. JSON output received: %q", err, nodeListOutput)
-	s.Require().Equalf("array", jsonType, "incorrect json output type")
+	marshalledOutput, err := s.unmarshalJSONString(nodeListOutput, JSONArray)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
 	marshalledOutputArray := marshalledOutput.([]interface{})
 	s.Require().Equalf(1, len(marshalledOutputArray), "Node count should be 1")
@@ -66,20 +57,19 @@ func (s *OrchestratorBasicConfigSuite) TestNodesCanBeListed() {
 	s.Require().Equal("label2Value", nodeLabels["label2"].(string))
 }
 
-func (s *OrchestratorBasicConfigSuite) TestStartingOrchestratorNodeWithConfigFile() {
+func (s *OrchestratorBasicConfigSuite) TestOrchestratorNodeUpAndEnabled() {
 	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"curl", "http://bacalhau-orchestrator-node:1234/api/v1/agent/config"})
 	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
 
-	marshalledOutput, jsonType, err := s.unmarshalJSONString(agentConfigOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q", err)
-	s.Require().Equalf("object", jsonType, "incorrect json output type")
+	marshalledOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
 	orchestratorEnabled := marshalledOutput.(map[string]interface{})["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(orchestratorEnabled, "Expected orchestrator to be enabled, got: %t", orchestratorEnabled)
 }
 
 func (s *OrchestratorBasicConfigSuite) TestLocalConfigBasicPersistence() {
-	configFilePath := fmt.Sprintf("/app/%s/test-persistent.yaml", s.SuiteRunIdentifier)
+	configFilePath := "/app/test-persistent.yaml"
 
 	_, err := s.executeCommandInDefaultJumpbox([]string{"touch", configFilePath})
 	s.Require().NoErrorf(err, "Error creating config file: %q", err)
@@ -112,9 +102,8 @@ func (s *OrchestratorBasicConfigSuite) TestDefaultUpdateCheckInterval() {
 		})
 	s.Require().NoErrorf(err, "Error listing config: %q", err)
 
-	unmarshalledOutput, jsonType, err := s.unmarshalJSONString(commandOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q. JSON output received: %q", err, unmarshalledOutput)
-	s.Require().Equalf("array", jsonType, "incorrect json output type")
+	unmarshalledOutput, err := s.unmarshalJSONString(commandOutput, JSONArray)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
 	configListArray := unmarshalledOutput.([]interface{})
 

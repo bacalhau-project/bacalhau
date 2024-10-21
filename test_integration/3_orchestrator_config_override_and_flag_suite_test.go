@@ -35,14 +35,6 @@ func (s *OrchestratorConfigOverrideAndFlagSuite) SetupSuite() {
 		"OrchestratorStartCommand": orchestratorStartCommand,
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
-
-	_, err := s.executeCommandInDefaultJumpbox(
-		[]string{
-			"mkdir",
-			"-p",
-			fmt.Sprintf("/app/%s", s.SuiteRunIdentifier),
-		})
-	s.Require().NoErrorf(err, "Error creating a suite tmp folder in the jumpbox node: %q", err)
 }
 
 func (s *OrchestratorConfigOverrideAndFlagSuite) TearDownSuite() {
@@ -54,20 +46,19 @@ func (s *OrchestratorConfigOverrideAndFlagSuite) TestConfigOverrideFileAndFlag()
 	nodeListOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list", "--output=json"})
 	s.Require().NoErrorf(err, "Error listing nodes: %q", err)
 
-	marshalledOutput, jsonType, err := s.unmarshalJSONString(nodeListOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q. JSON output received: %q", err, nodeListOutput)
-	s.Require().Equalf("array", jsonType, "incorrect json output type")
+	unmarshalledOutput, err := s.unmarshalJSONString(nodeListOutput, JSONArray)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	marshalledOutputArray := marshalledOutput.([]interface{})
-	s.Require().Equalf(1, len(marshalledOutputArray), "There should be only one node, but actual count is: %d", len(marshalledOutputArray))
+	unmarshalledOutputArray := unmarshalledOutput.([]interface{})
+	s.Require().Equalf(1, len(unmarshalledOutputArray), "There should be only one node, but actual count is: %d", len(unmarshalledOutputArray))
 
-	nodeMembership := marshalledOutputArray[0].(map[string]interface{})["Membership"]
+	nodeMembership := unmarshalledOutputArray[0].(map[string]interface{})["Membership"]
 	s.Require().Equalf("APPROVED", nodeMembership.(string), "Expected node to be approved, but actual is: %s", nodeMembership)
 
-	nodeConnection := marshalledOutputArray[0].(map[string]interface{})["Connection"]
+	nodeConnection := unmarshalledOutputArray[0].(map[string]interface{})["Connection"]
 	s.Require().Equalf("CONNECTED", nodeConnection.(string), "Expected node to be connectted, but actual is: %s", nodeConnection)
 
-	nodeInfo := marshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
+	nodeInfo := unmarshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
 	nodeType := nodeInfo["NodeType"].(string)
 	s.Require().Equalf("Requester", nodeType, "Expected node to be an orchestrator, but actual is: %s", nodeType)
 

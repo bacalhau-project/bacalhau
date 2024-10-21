@@ -35,14 +35,6 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) SetupSuite() {
 		"OrchestratorStartCommand": orchestratorStartCommand,
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
-
-	_, err := s.executeCommandInDefaultJumpbox(
-		[]string{
-			"mkdir",
-			"-p",
-			fmt.Sprintf("/app/%s", s.SuiteRunIdentifier),
-		})
-	s.Require().NoErrorf(err, "Error creating a suite tmp folder in the jumpbox node: %q", err)
 }
 
 func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TearDownSuite() {
@@ -54,14 +46,13 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TestConfigOverride
 	nodeListOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list", "--output=json"})
 	s.Require().NoErrorf(err, "Error listing nodes: %q", err)
 
-	marshalledOutput, jsonType, err := s.unmarshalJSONString(nodeListOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q. JSON output received: %q", err, nodeListOutput)
-	s.Require().Equalf("array", jsonType, "incorrect json output type")
+	unmarshalledOutput, err := s.unmarshalJSONString(nodeListOutput, JSONArray)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	marshalledOutputArray := marshalledOutput.([]interface{})
-	s.Require().Equalf(1, len(marshalledOutputArray), "There should be only one node, but actual count is: %d", len(marshalledOutputArray))
+	unmarshalledOutputArray := unmarshalledOutput.([]interface{})
+	s.Require().Equalf(1, len(unmarshalledOutputArray), "There should be only one node, but actual count is: %d", len(unmarshalledOutputArray))
 
-	nodeInfo := marshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
+	nodeInfo := unmarshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
 	nodeType := nodeInfo["NodeType"].(string)
 	s.Require().Equalf("Requester", nodeType, "Expected node to be an orchestrator, but actual is: %s", nodeType)
 
@@ -73,11 +64,10 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TestConfigOverride
 	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"curl", "http://bacalhau-orchestrator-node:1234/api/v1/agent/config"})
 	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
 
-	marshalledAgentOutput, jsonType, err := s.unmarshalJSONString(agentConfigOutput)
-	s.Require().NoErrorf(err, "Error unmarshalling json string: %q", err)
-	s.Require().Equalf("object", jsonType, "incorrect json output type")
+	unmarshalledAgentOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
+	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	webuiEnabled := marshalledAgentOutput.(map[string]interface{})["WebUI"].(map[string]interface{})["Enabled"].(bool)
+	webuiEnabled := unmarshalledAgentOutput.(map[string]interface{})["WebUI"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(webuiEnabled, "Expected orchestrator to be enabled, got: %t", webuiEnabled)
 }
 

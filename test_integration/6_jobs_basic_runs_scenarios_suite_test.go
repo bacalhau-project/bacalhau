@@ -32,14 +32,6 @@ func (s *JobsBasicRunsScenariosSuite) SetupSuite() {
 		"OrchestratorStartCommand": orchestratorStartCommand,
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
-
-	_, err := s.executeCommandInDefaultJumpbox(
-		[]string{
-			"mkdir",
-			"-p",
-			fmt.Sprintf("/app/%s", s.SuiteRunIdentifier),
-		})
-	s.Require().NoErrorf(err, "Error creating a suite tmp folder in the jumpbox node: %q", err)
 }
 
 func (s *JobsBasicRunsScenariosSuite) TearDownSuite() {
