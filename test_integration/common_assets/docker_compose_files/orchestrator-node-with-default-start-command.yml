@@ -1,7 +1,8 @@
 x-common-env-variables: &common-env-variables
   NETWORK_AUTH_TOKEN: "i_am_very_secret_token"
   BACALHAU_API_PORT: "1234"
-  BACALHAU_UPDATE_SKIPCHECKS: true
+  BACALHAU_UPDATECONFIG_INTERVAL: "0"
+  BACALHAU_DISABLEANALYTICS: true
 
 networks:
   bacalhau-network:
