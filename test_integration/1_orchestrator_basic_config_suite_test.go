@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go/exec"
 	"strings"
 	"testing"
 )
@@ -99,7 +100,11 @@ func (s *OrchestratorBasicConfigSuite) TestDefaultUpdateCheckInterval() {
 			"config",
 			"list",
 			"--output=json",
-		})
+		},
+		exec.WithEnv([]string{
+			"BACALHAU_UPDATECONFIG_INTERVAL=",
+		}),
+	)
 	s.Require().NoErrorf(err, "Error listing config: %q", err)
 
 	unmarshalledOutput, err := s.unmarshalJSONString(commandOutput, JSONArray)

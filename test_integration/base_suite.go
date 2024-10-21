@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/exec"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"io"
 	"os"
@@ -119,7 +120,7 @@ func (s *BaseDockerComposeTestSuite) downWithDockerCompose() {
 	s.Cancel()
 }
 
-func (s *BaseDockerComposeTestSuite) executeCommandInContainer(containerName string, cmd []string) (string, error) {
+func (s *BaseDockerComposeTestSuite) executeCommandInContainer(containerName string, cmd []string, execOptions ...exec.ProcessOption) (string, error) {
 	typeAssertedComposeStack, ok := s.ComposeStack.(interface {
 		ServiceContainer(context.Context, string) (*testcontainers.DockerContainer, error)
 	})
@@ -132,7 +133,7 @@ func (s *BaseDockerComposeTestSuite) executeCommandInContainer(containerName str
 		return "", fmt.Errorf("executing command inside container: failed to get service container: %w", err)
 	}
 
-	exitCode, reader, err := container.Exec(s.Context, cmd)
+	exitCode, reader, err := container.Exec(s.Context, cmd, execOptions...)
 	if err != nil {
 		return "", fmt.Errorf("executing command inside container: failed to execute command: %w", err)
 	}
@@ -149,8 +150,8 @@ func (s *BaseDockerComposeTestSuite) executeCommandInContainer(containerName str
 	return output, nil
 }
 
-func (s *BaseDockerComposeTestSuite) executeCommandInDefaultJumpbox(cmd []string) (string, error) {
-	return s.executeCommandInContainer("bacalhau-jumpbox-node", cmd)
+func (s *BaseDockerComposeTestSuite) executeCommandInDefaultJumpbox(cmd []string, execOptions ...exec.ProcessOption) (string, error) {
+	return s.executeCommandInContainer("bacalhau-jumpbox-node", cmd, execOptions...)
 }
 
 func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration) (time.Duration, error) {
