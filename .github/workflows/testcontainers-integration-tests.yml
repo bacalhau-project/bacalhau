@@ -18,7 +18,9 @@ jobs:
       # Detect Go version from test_integration/go.mod
       - name: Detect Go version from test_integration/go.mod
         id: detect-test-go-version
+        shell: bash
         run: |
+          set -euo pipefail
           go_version=$(grep '^go ' test_integration/go.mod | awk '{print $2}')
           echo "Go version detected for integration tests: $go_version"
           echo "GOLANG_TEST_VERSION=$go_version" >> $GITHUB_ENV
@@ -30,7 +32,9 @@ jobs:
           cache: true
 
       - name: Run Go tests in integration test directory
+        shell: bash
         run: |
+          set -euo pipefail
           # TODO: make WebUI happy when compiling
           mkdir -p webui/build
           echo "hello test" > webui/build/index.html

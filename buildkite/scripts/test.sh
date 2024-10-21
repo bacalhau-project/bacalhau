@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # Function to set environment variables
 set_environment_variables() {
     export LOG_LEVEL=DEBUG
