@@ -9,7 +9,6 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { useApi } from '@/app/providers/ApiProvider'
-import { client } from '@/lib/api/generated'
 
 interface LogEntry {
   type: number
@@ -43,15 +42,7 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
     setError(null)
     setIsStreamEnded(false)
 
-    const baseUrl = client.getConfig().baseUrl
-    if (!baseUrl) {
-      console.error('Base URL is not set')
-      setError(
-        'Failed to connect to log stream. Client not configured properly.'
-      )
-      return
-    }
-    const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/api/v1/orchestrator/jobs/${jobId}/logs?follow=true`
+    const wsUrl = `/api/v1/orchestrator/jobs/${jobId}/logs?follow=true`
     console.log('Attempting to connect to:', wsUrl)
 
     const ws = new WebSocket(wsUrl)
@@ -62,7 +53,6 @@ const JobLogs = ({ jobId }: { jobId: string | undefined }) => {
     }
 
     ws.onmessage = (event) => {
-      console.log('Received message:', event.data)
       try {
         const message = JSON.parse(event.data)
         if (message.value && message.value.Line) {

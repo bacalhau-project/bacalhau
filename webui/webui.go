@@ -4,15 +4,17 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -27,25 +29,30 @@ type Config struct {
 }
 
 type Server struct {
-	config     Config
-	configLock sync.RWMutex
-	mux        *http.ServeMux
+	apiURL        *url.URL
+	listenAddress string
+	mux           *http.ServeMux
+	apiProxy      *httputil.ReverseProxy
 }
 
 func NewServer(cfg Config) (*Server, error) {
 	if cfg.Listen == "" {
 		return nil, fmt.Errorf("listen address cannot be empty")
 	}
-	if cfg.APIEndpoint == "" {
-		return nil, fmt.Errorf("API endpoint cannot be empty")
+	// Parse and validate API endpoint
+	apiURL, err := normalizeAPIEndpoint(cfg.APIEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid API endpoint: %w", err)
 	}
 
 	s := &Server{
-		config: cfg,
-		mux:    http.NewServeMux(),
+		apiURL:        apiURL,
+		listenAddress: cfg.Listen,
+		mux:           http.NewServeMux(),
+		apiProxy:      newReverseProxy(apiURL),
 	}
 
-	s.mux.HandleFunc("/_config", s.handleConfig)
+	s.mux.HandleFunc("/api/", s.handleAPIProxy)
 	s.mux.HandleFunc("/", s.handleFiles)
 
 	return s, nil
@@ -53,7 +60,7 @@ func NewServer(cfg Config) (*Server, error) {
 
 func (s *Server) ListenAndServe(ctx context.Context) error {
 	server := &http.Server{
-		Addr:              s.config.Listen,
+		Addr:              s.listenAddress,
 		Handler:           s.mux,
 		ReadTimeout:       time.Minute,
 		WriteTimeout:      time.Minute,
@@ -62,8 +69,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		BaseContext:       func(l net.Listener) context.Context { return ctx },
 	}
 
-	log.Info().Str("listen", s.config.Listen).Msg("Starting UI server")
-
+	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -73,22 +79,21 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		}
 	}()
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	log.Info().Str("listen", server.Addr).Str("backend", sanitizeURL(s.apiURL)).Msg("Starting server")
+	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server error: %w", err)
 	}
 
 	return nil
 }
 
-func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
-	s.configLock.RLock()
-	defer s.configLock.RUnlock()
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(s.config); err != nil {
-		log.Error().Err(err).Msg("Failed to encode config")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+func (s *Server) handleAPIProxy(w http.ResponseWriter, r *http.Request) {
+	log.Trace().
+		Str("path", r.URL.Path).
+		Str("method", r.Method).
+		Bool("is_websocket", r.Header.Get("Upgrade") == "websocket").
+		Msg("Proxying request")
+	s.apiProxy.ServeHTTP(w, r)
 }
 
 func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
@@ -231,4 +236,54 @@ func (s *Server) serve404(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write(content); err != nil {
 		log.Error().Err(err).Msg("Failed to write 404 page content")
 	}
+}
+
+// normalizeAPIEndpoint validates and normalizes the API endpoint URL
+func normalizeAPIEndpoint(endpoint string) (*url.URL, error) {
+	if !strings.HasPrefix(strings.ToLower(endpoint), "http") {
+		endpoint = "http://" + endpoint
+	}
+
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported scheme %q", u.Scheme)
+	}
+
+	if u.Host == "" {
+		return nil, fmt.Errorf("missing host")
+	}
+
+	u.Path = strings.TrimSuffix(u.Path, "/")
+	return u, nil
+}
+
+func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		response := map[string]string{
+			"error":    "Backend service unavailable",
+			"endpoint": sanitizeURL(target),
+			"method":   r.Method,
+			"path":     r.URL.Path,
+		}
+
+		log.Error().Err(err).Any("response", response).Msg("Proxy error")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		json.NewEncoder(w).Encode(response)
+	}
+	return proxy
+}
+
+// sanitizeURL removes sensitive information from URL for error messages
+func sanitizeURL(u *url.URL) string {
+	sanitized := *u
+	sanitized.User = nil
+	sanitized.RawQuery = ""
+	sanitized.Fragment = ""
+	return sanitized.String()
 }

@@ -5,7 +5,7 @@ import { useApi } from '@/app/providers/ApiProvider'
 import { Ops } from '@/lib/api/generated'
 
 export const useConnectionMonitor = (checkInterval = 5000) => {
-  const { isInitialized, apiUrl } = useApi()
+  const { isInitialized } = useApi()
   const [isOnline, setIsOnline] = useState<boolean | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,5 +35,5 @@ export const useConnectionMonitor = (checkInterval = 5000) => {
     return () => clearInterval(intervalId)
   }, [checkConnection, checkInterval])
 
-  return { isOnline, checkConnection, clientUrl: apiUrl, error }
+  return { isOnline, checkConnection, error }
 }
