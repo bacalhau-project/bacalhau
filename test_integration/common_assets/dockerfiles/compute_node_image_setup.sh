@@ -18,7 +18,7 @@ while [[ ${attempt} -le ${MAX_ATTEMPTS} ]]; do
     if docker info >/dev/null 2>&1; then
         echo "dockerd is available! Now Starting Bacalhau as a compute node"
         bacalhau config set compute.auth.token="${NETWORK_AUTH_TOKEN}"
-        bacalhau serve --compute -c compute.orchestrators="nats://${REQUESTER_NODE_LINK}:4222"
+        bacalhau serve --compute -c compute.orchestrators="nats://${ORCHESTRATOR_NODE_LINK}:4222"
         # Wait for any process to exit
         wait -n
 
