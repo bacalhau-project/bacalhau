@@ -48,62 +48,62 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 	case errdefs.IsNotFound(err):
 		return handleNotFoundError(err)
 	case errdefs.IsConflict(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Conflict).
 			WithHTTPStatusCode(http.StatusConflict)
 	case errdefs.IsUnauthorized(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Unauthorized).
 			WithHTTPStatusCode(http.StatusUnauthorized).
 			WithHint("Ensure you have the necessary permissions and that your credentials are correct. " +
 				"You may need to log in to Docker again.")
 	case errdefs.IsForbidden(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Forbidden).
 			WithHTTPStatusCode(http.StatusForbidden).
 			WithHint(fmt.Sprintf("You don't have permission to perform this action. "+
 				"Supply the node with valid Docker login credentials using the %s and %s environment variables",
 				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar))
 	case errdefs.IsDataLoss(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(DataLoss).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithFailsExecution()
 	case errdefs.IsDeadline(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Deadline).
 			WithHTTPStatusCode(http.StatusGatewayTimeout).
 			WithHint("The operation timed out. This could be due to network issues or high system load. " +
 				"Try again later or check your network connection.").
 			WithRetryable()
 	case errdefs.IsCancelled(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Cancelled).
 			WithHTTPStatusCode(http.StatusRequestTimeout).
 			WithHint("The operation was cancelled. " +
 				"This is often due to user intervention or a competing operation.")
 	case errdefs.IsUnavailable(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(Unavailable).
 			WithHTTPStatusCode(http.StatusServiceUnavailable).
 			WithHint("The Docker daemon or a required service is unavailable. " +
 				"Check if the Docker daemon is running and healthy.").
 			WithRetryable()
 	case errdefs.IsSystem(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(SystemError).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithHint("An internal system error occurred. This could be due to resource constraints. " +
 				"Check system resources and Docker logs for more information.").
 			WithFailsExecution()
 	case errdefs.IsNotImplemented(err):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(NotImplemented).
 			WithHTTPStatusCode(http.StatusNotImplemented).
 			WithHint("This feature is not implemented in your version of Docker. " +
 				"Check Docker documentation for feature availability and consider upgrading if necessary.")
 	default:
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(UnknownError).
 			WithHTTPStatusCode(http.StatusInternalServerError)
 	}
@@ -136,7 +136,7 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 }
 
 func NewCustomDockerError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New(message).
+	return bacerrors.New("%s", message).
 		WithCode(code).
 		WithComponent(Component)
 }
@@ -144,11 +144,11 @@ func NewCustomDockerError(code bacerrors.ErrorCode, message string) bacerrors.Er
 func handleNotFoundError(err error) bacerrors.Error {
 	errorLower := strings.ToLower(err.Error())
 	if strings.Contains(errorLower, "no such container") {
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err.Error()).
 			WithCode(ContainerNotFound).
 			WithHTTPStatusCode(http.StatusNotFound)
 	}
-	return bacerrors.New(err.Error()).
+	return bacerrors.New("%s", err.Error()).
 		WithCode(NotFound).
 		WithHTTPStatusCode(http.StatusNotFound)
 }

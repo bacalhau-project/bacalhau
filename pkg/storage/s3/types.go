@@ -2,6 +2,7 @@ package s3
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
@@ -33,7 +34,13 @@ func (c SourceSpec) ToMap() map[string]interface{} {
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
-		return SourceSpec{}, s3.NewS3InputSourceError(s3.BadRequestErrorCode, "invalid storage source type. expected "+models.StorageSourceS3+", but received: "+spec.Type)
+		return SourceSpec{},
+			s3.NewS3InputSourceError(
+				s3.BadRequestErrorCode,
+				fmt.Sprintf("invalid storage source type. expected %s, but received: %s",
+					models.StorageSourceS3, spec.Type,
+				),
+			)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -66,7 +73,13 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
-		return PreSignedResultSpec{}, s3.NewS3InputSourceError(s3.BadRequestErrorCode, "invalid storage source type. expected "+models.StorageSourceS3PreSigned+", but received: "+spec.Type)
+		return PreSignedResultSpec{},
+			s3.NewS3InputSourceError(
+				s3.BadRequestErrorCode,
+				fmt.Sprintf("invalid storage source type. expected %s, but received: %s",
+					models.StorageSourceS3PreSigned, spec.Type,
+				),
+			)
 	}
 
 	inputParams := spec.Params

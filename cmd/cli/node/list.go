@@ -110,10 +110,10 @@ func (o *ListOptions) run(cmd *cobra.Command, api client.API) error {
 		FilterByApproval: o.FilterByApproval,
 		FilterByStatus:   o.FilterByStatus,
 		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.Limit,
-			NextToken: o.NextToken,
-			OrderBy:   o.OrderBy,
-			Reverse:   o.Reverse,
+			Limit:     o.ListOptions.Limit,
+			NextToken: o.ListOptions.NextToken,
+			OrderBy:   o.ListOptions.OrderBy,
+			Reverse:   o.ListOptions.Reverse,
 		},
 	})
 	if err != nil {

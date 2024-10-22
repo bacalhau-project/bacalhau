@@ -19,7 +19,6 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	)
 
 	switch e := err.(type) {
-
 	case bacerrors.Error:
 		// If it is already our custom APIError, use its code and message
 		code = e.HTTPStatusCode()
@@ -76,5 +75,4 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 				Msg("Failed to send error response")
 		}
 	}
-
 }

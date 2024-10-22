@@ -1,4 +1,4 @@
-//nolint:gomnd
+//nolint:gomnd,mnd  // Ignoring magic numbers in this configuration file, since it is easier to read that way
 package types
 
 import (
@@ -39,7 +39,7 @@ var Testing = BacalhauConfig{
 		Network: NetworkConfig{
 			Port: 4222,
 		},
-		DownloadURLRequestTimeout: Duration(300 * time.Second),
+		DownloadURLRequestTimeout: Duration(5 * time.Minute),
 		VolumeSizeRequestTimeout:  Duration(2 * time.Minute),
 		DownloadURLRequestRetries: 3,
 		LoggingMode:               logger.LogModeDefault,

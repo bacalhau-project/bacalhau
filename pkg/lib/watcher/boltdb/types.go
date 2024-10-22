@@ -23,6 +23,7 @@ func newEventKey(seqNum uint64, timestamp int64) *eventKey {
 	}
 }
 
+//nolint:gosec // G115: limits within reasonable bounds
 func (k *eventKey) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, seqNumBytes+timestampBytes)
 	binary.BigEndian.PutUint64(buf[:seqNumBytes], k.SeqNum)
@@ -30,6 +31,7 @@ func (k *eventKey) MarshalBinary() ([]byte, error) {
 	return buf, nil
 }
 
+//nolint:gosec // G115: limits within reasonable bounds
 func (k *eventKey) UnmarshalBinary(data []byte) error {
 	if len(data) != seqNumBytes+timestampBytes {
 		return errors.New("invalid event key length")

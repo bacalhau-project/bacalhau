@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+const (
+	// maxStackDepth defines the maximum number of stack frames to capture
+	// in the error stack trace.
+	maxStackDepth = 32
+)
+
 // stack represents a stack of program counters.
 type stack []uintptr
 
@@ -25,9 +31,9 @@ func (s *stack) String() string {
 }
 
 func callers() *stack {
-	const depth = 32
-	var pcs [depth]uintptr
-	n := runtime.Callers(4, pcs[:])
+	const skipCallers = 32
+	var pcs [maxStackDepth]uintptr
+	n := runtime.Callers(skipCallers, pcs[:])
 	var st stack = pcs[0:n]
 	return &st
 }

@@ -11,10 +11,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
 
-const EXECUTOR_COMPONENT = "Executor"
+const ExecComponentName = "Executor"
 
-// ExecutorProvider returns a executor for the given engine type
-type ExecutorProvider = provider.Provider[Executor]
+// ExecProvider returns a executor for the given engine type
+type ExecProvider = provider.Provider[Executor]
 
 // Executor serves as an execution manager for running jobs on a specific backend, such as a Docker daemon.
 // It provides a comprehensive set of methods to initiate, monitor, terminate, and retrieve output streams for executions.
@@ -86,5 +86,5 @@ const (
 )
 
 func NewExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New(message).WithCode(code).WithComponent(EXECUTOR_COMPONENT)
+	return bacerrors.New("%s", message).WithCode(code).WithComponent(ExecComponentName)
 }

@@ -44,7 +44,18 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 
 	var header *tar.Header
 	for header, err = tr.Next(); err == nil; header, err = tr.Next() {
-		size += datasize.ByteSize(header.Size)
+		// Check for negative size
+		if header.Size < 0 {
+			return 0, fmt.Errorf("invalid negative size in tar header: %d", header.Size)
+		}
+
+		// Check for overflow before adding
+		//nolint:gosec // G115: negative values already checked
+		newSize := size + datasize.ByteSize(header.Size)
+		if newSize < size { // If newSize wrapped around
+			return 0, fmt.Errorf("total uncompressed size exceeds maximum value")
+		}
+		size = newSize
 	}
 	if err == io.EOF {
 		err = nil
@@ -54,7 +65,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 //
-//nolint:gocyclo,funlen
+//nolint:gocyclo,funlen,gosec
 func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize, stripPath bool) error {
 	_, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()
@@ -160,6 +171,7 @@ func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteS
 	return nil
 }
 
+//nolint:gosec // G115: limits within reasonable bounds
 func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 	// ensure destination directory exists
 	err := os.Mkdir(dst, worldReadOwnerWritePermission)

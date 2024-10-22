@@ -308,7 +308,15 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 	return req, nil
 }
 
-func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.Response, method, endpoint string, r *apimodels.HTTPRequest) (bacErr bacerrors.Error) {
+//nolint:funlen,gocyclo // TODO: This functions is complex and should be simplified
+func (c *httpClient) interceptError(
+	ctx context.Context,
+	err error,
+	resp *http.Response,
+	method,
+	endpoint string,
+	r *apimodels.HTTPRequest,
+) (bacErr bacerrors.Error) {
 	// Defer the addition of common attributes
 	defer func() {
 		if bacErr != nil {
@@ -398,11 +406,6 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
 		if netErr.Timeout() {
 			return bacerrors.New("request timed out").
 				WithCode(bacerrors.TimeOutError).
-				WithRetryable()
-		}
-		if netErr.Temporary() {
-			return bacerrors.New("temporary network error").
-				WithCode(bacerrors.NetworkFailure).
 				WithRetryable()
 		}
 

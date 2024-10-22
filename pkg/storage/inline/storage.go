@@ -149,6 +149,7 @@ func (*InlineStorage) Upload(ctx context.Context, path string) (models.SpecConfi
 	}
 
 	var url string
+	//nolint:gosec // G115: maximumPlaintextSize is always within reasonable bounds
 	if info.IsDir() || info.Size() > int64(maximumPlaintextSize.Bytes()) {
 		cwd, err := os.Getwd()
 		if err != nil {

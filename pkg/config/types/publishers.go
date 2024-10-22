@@ -21,7 +21,7 @@ type PublisherTypes struct {
 
 func (p PublishersConfig) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(p.Disabled, func(s string) bool {
-		return strings.ToLower(s) == strings.ToLower(kind)
+		return strings.EqualFold(s, kind)
 	})
 }
 

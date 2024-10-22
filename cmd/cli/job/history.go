@@ -103,10 +103,10 @@ func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) 
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,
 		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.Limit,
-			NextToken: o.NextToken,
-			OrderBy:   o.OrderBy,
-			Reverse:   o.Reverse,
+			Limit:     o.ListOptions.Limit,
+			NextToken: o.ListOptions.NextToken,
+			OrderBy:   o.ListOptions.OrderBy,
+			Reverse:   o.ListOptions.Reverse,
 		},
 	})
 	if err != nil {

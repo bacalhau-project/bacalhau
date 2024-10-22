@@ -102,7 +102,7 @@ type mixedExecutorFactory struct {
 func (m *mixedExecutorFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
-) (executor.ExecutorProvider, error) {
+) (executor.ExecProvider, error) {
 	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err

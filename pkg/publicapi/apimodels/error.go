@@ -111,7 +111,7 @@ func FromBacError(err bacerrors.Error) *APIError {
 
 // ToBacError converts an APIError to a bacerror.Error
 func (e *APIError) ToBacError() bacerrors.Error {
-	return bacerrors.New(e.Error()).
+	return bacerrors.New("%s", e.Error()).
 		WithHTTPStatusCode(e.HTTPStatusCode).
 		WithCode(bacerrors.Code(e.Code)).
 		WithComponent(e.Component).
