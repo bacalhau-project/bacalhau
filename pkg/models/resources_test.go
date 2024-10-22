@@ -21,8 +21,11 @@ func TestResourceBytes(t *testing.T) {
 	}
 
 	for _, p := range tests {
-		cfg, err := NewResourcesConfigBuilder().Memory(p.in).Disk(p.in).Build()
-		require.NoError(t, err)
+		cfg := ResourcesConfig{
+			Memory: p.in,
+			Disk:   p.in,
+		}
+		require.NoError(t, cfg.Validate())
 		actual, err := cfg.ToResources()
 		require.NoError(t, err)
 

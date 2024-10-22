@@ -104,8 +104,12 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	stack, _ := s.setupStack(scenario.Stack)
 
 	s.T().Log("Setting up storage")
-	task.InputSources = s.prepareStorage(stack, scenario.Inputs)
-	task.ResultPaths = scenario.Outputs
+	if len(task.InputSources) == 0 {
+		task.InputSources = s.prepareStorage(stack, scenario.Inputs)
+	}
+	if len(task.ResultPaths) == 0 {
+		task.ResultPaths = scenario.Outputs
+	}
 
 	apiServer := stack.Nodes[0].APIServer
 	apiProtocol := "http"
