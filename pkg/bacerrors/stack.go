@@ -31,7 +31,7 @@ func (s *stack) String() string {
 }
 
 func callers() *stack {
-	const skipCallers = 32
+	const skipCallers = 4
 	var pcs [maxStackDepth]uintptr
 	n := runtime.Callers(skipCallers, pcs[:])
 	var st stack = pcs[0:n]
