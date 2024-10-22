@@ -1,4 +1,4 @@
-package test_integration
+package utils
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,66 +20,14 @@ import (
 	"strings"
 )
 
-func modifyImageNamesInDockerComposeFile(node *yaml.Node, imageReplacements map[string]string) error {
-	if node.Kind != yaml.DocumentNode {
-		return fmt.Errorf("expected a document node")
-	}
-
-	// The actual content is in the first child of the document node
-	contentNode := node.Content[0]
-
-	if contentNode.Kind != yaml.MappingNode {
-		return fmt.Errorf("expected a mapping node")
-	}
-
-	// Find the "services" mapping
-	var servicesNode *yaml.Node
-	for i := 0; i < len(contentNode.Content); i += 2 {
-		if contentNode.Content[i].Value == "services" {
-			servicesNode = contentNode.Content[i+1]
-			break
-		}
-	}
-
-	if servicesNode == nil {
-		return fmt.Errorf("services section not found")
-	}
-
-	// Iterate through the services
-	for i := 0; i < len(servicesNode.Content); i += 2 {
-		serviceNode := servicesNode.Content[i+1]
-
-		// Find the "image" field in the service
-		for j := 0; j < len(serviceNode.Content); j += 2 {
-			if serviceNode.Content[j].Value == "image" {
-				imageNode := serviceNode.Content[j+1]
-
-				// Replace the image if it matches a placeholder
-				for placeholder, newImage := range imageReplacements {
-					if imageNode.Value == placeholder {
-						imageNode.Value = newImage
-						break
-					}
-				}
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
 	cli, err := dc.NewClientWithOpts(dc.FromEnv)
 	if err != nil {
 		return fmt.Errorf("failed to build docker image %q: failed to create Docker client: %v", imageName, err)
 	}
 
-	// Get the directory containing the Dockerfile
-	contextDir := filepath.Dir(dockerfilePath)
-
 	// Create a tar archive of the build context
-	tar, err := archive.TarWithOptions(contextDir, &archive.TarOptions{})
+	tar, err := archive.TarWithOptions(".", &archive.TarOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to build docker image %q: failed to create tar archive: %v", imageName, err)
 	}
@@ -88,7 +35,7 @@ func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
 
 	// Set build options
 	opts := types.ImageBuildOptions{
-		Dockerfile: filepath.Base(dockerfilePath),
+		Dockerfile: dockerfilePath,
 		Tags:       []string{fmt.Sprintf("%s:%s", imageName, imageTag)},
 		Remove:     true,
 	}
@@ -110,7 +57,7 @@ func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
 	return nil
 }
 
-func deleteDockerTestImagesAndPrune(suffix string) error {
+func DeleteDockerTestImagesAndPrune(suffix string) error {
 	// Create a new Docker client
 	ctx := context.Background()
 	cli, err := dc.NewClientWithOpts(dc.FromEnv)
@@ -152,7 +99,7 @@ func deleteDockerTestImagesAndPrune(suffix string) error {
 	return nil
 }
 
-func compileBacalhau(ctx context.Context, programPath string) error {
+func CompileBacalhau(ctx context.Context, programPath string) error {
 	programDir, err := filepath.Abs(filepath.Dir(programPath))
 	if err != nil {
 		return fmt.Errorf("compiling bacalhau: failed to get absolute path: %w", err)
@@ -211,7 +158,7 @@ func compileBacalhau(ctx context.Context, programPath string) error {
 	defer reader.Close()
 
 	// Create the output file on the host
-	outFile, err := os.Create(filepath.Join(programDir, "test_integration", "assets", "dockerfiles", "bacalhau_bin"))
+	outFile, err := os.Create(filepath.Join(programDir, "test_integration", "common_assets", "bacalhau_bin"))
 	if err != nil {
 		return fmt.Errorf("compiling bacalhau: failed to create output file: %w", err)
 	}
@@ -228,9 +175,9 @@ func compileBacalhau(ctx context.Context, programPath string) error {
 	return nil
 }
 
-func buildBaseImages(testIdentifier string) error {
+func BuildBaseImages(testIdentifier string) error {
 	err := buildDockerImage(
-		"./assets/dockerfiles/Dockerfile-JumpboxNode",
+		"common_assets/dockerfiles/Dockerfile-JumpboxNode",
 		"bacalhau-test-jumpbox-"+testIdentifier,
 		testIdentifier,
 	)
@@ -239,7 +186,7 @@ func buildBaseImages(testIdentifier string) error {
 	}
 
 	err = buildDockerImage(
-		"./assets/dockerfiles/Dockerfile-ComputeNode",
+		"common_assets/dockerfiles/Dockerfile-ComputeNode",
 		"bacalhau-test-compute-"+testIdentifier,
 		testIdentifier,
 	)
@@ -248,7 +195,7 @@ func buildBaseImages(testIdentifier string) error {
 	}
 
 	err = buildDockerImage(
-		"./assets/dockerfiles/Dockerfile-DockerImageRegistryNode",
+		"common_assets/dockerfiles/Dockerfile-DockerImageRegistryNode",
 		"bacalhau-test-registry-"+testIdentifier,
 		testIdentifier,
 	)
@@ -257,18 +204,18 @@ func buildBaseImages(testIdentifier string) error {
 	}
 
 	err = buildDockerImage(
-		"./assets/dockerfiles/Dockerfile-RequesterNode",
-		"bacalhau-test-requester-"+testIdentifier,
+		"common_assets/dockerfiles/Dockerfile-OrchestratorNode",
+		"bacalhau-test-orchestrator-"+testIdentifier,
 		testIdentifier,
 	)
 	if err != nil {
-		return fmt.Errorf("error creating the bacalhau-test-requestor image: %v", err)
+		return fmt.Errorf("error creating the bacalhau-test-orchestrator image: %v", err)
 	}
 
 	return nil
 }
 
-func setTestGlobalEnvVariables(additionalSetupEnvVars map[string]string) error {
+func SetTestGlobalEnvVariables(additionalSetupEnvVars map[string]string) error {
 	defaultEnvVars := map[string]string{
 		"TESTCONTAINERS_RYUK_DISABLED":                  "false",
 		"TESTCONTAINERS_RYUK_CONTAINER_PRIVILEGED":      "true",
@@ -296,7 +243,7 @@ func setTestGlobalEnvVariables(additionalSetupEnvVars map[string]string) error {
 	return nil
 }
 
-func extractJobIDFromOutput(jobRunOutput string, s *suite.Suite) string {
+func ExtractJobIDFromOutput(jobRunOutput string, s *suite.Suite) string {
 	s.Require().Regexpf(
 		`Job successfully submitted\. Job ID: j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,
 		jobRunOutput,
@@ -316,7 +263,7 @@ func extractJobIDFromOutput(jobRunOutput string, s *suite.Suite) string {
 	return jobID
 }
 
-func extractJobIDFromShortOutput(input string) (string, error) {
+func ExtractJobIDFromShortOutput(input string) (string, error) {
 	pattern := `j-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
 
 	re, err := regexp.Compile(pattern)
@@ -332,7 +279,7 @@ func extractJobIDFromShortOutput(input string) (string, error) {
 	return strings.TrimSpace(match), nil
 }
 
-func extractJobStateType(jobDescriptionJsonOutput string) (string, error) {
+func ExtractJobStateType(jobDescriptionJsonOutput string) (string, error) {
 	// Define a struct that matches the structure of the JSON
 	var data struct {
 		Job struct {
