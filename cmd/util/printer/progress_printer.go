@@ -245,6 +245,17 @@ func (j *JobProgressPrinter) printJobDetailsInstructions(cmd *cobra.Command, job
 	if j.isQuiet() {
 		return
 	}
+
+	// query the server for the job spec to get any server side defaults and transformations,
+	// such as if a default publisher was applied
+	resp, err := j.client.Jobs().Get(cmd.Context(), &apimodels.GetJobRequest{JobID: job.ID})
+	if err != nil {
+		// just log and continue with the existing job details
+		PrintWarning(cmd, fmt.Sprintf("Failed to get updated job details: %v", err))
+	} else {
+		job = resp.Job
+	}
+
 	cmd.Println()
 	cmd.Println("To get more details about the run, execute:")
 	cmd.Printf("\t%s job describe %s\n", os.Args[0], job.ID)

@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -41,6 +42,7 @@ func (p *ResultPath) Validate() error {
 	}
 	return errors.Join(
 		validate.NotBlank(p.Path, "missing path"),
-		validate.NotBlank(p.Name, "missing resultpath name"),
+		validate.NotBlank(p.Name, "missing name"),
+		validate.True(filepath.IsAbs(p.Path), "result path `%s` must be absolute", p.Path),
 	)
 }
