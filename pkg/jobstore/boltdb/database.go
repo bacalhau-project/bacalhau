@@ -120,7 +120,7 @@ func BucketSequenceString(_ *bolt.Tx, bucket *bolt.Bucket) string {
 
 // uint64ToBytes converts an uint64 to a byte slice
 func uint64ToBytes(i uint64) []byte {
-	//nolint:gomnd,mnd
+	//nolint:mnd
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, i)
 	return buf

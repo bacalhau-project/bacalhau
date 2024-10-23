@@ -18,7 +18,7 @@ func strToBytes(s string) []byte {
 
 // uint64ToBytes converts an uint64 to a byte slice
 func uint64ToBytes(i uint64) []byte {
-	buf := make([]byte, uint64ByteSize) //nolint:gomnd
+	buf := make([]byte, uint64ByteSize)
 	binary.BigEndian.PutUint64(buf, i)
 	return buf
 }

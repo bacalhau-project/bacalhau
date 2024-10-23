@@ -203,7 +203,7 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 func (h *executionHandler) outputStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
 	since := "1"
 	if request.Tail {
-		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:gomnd
+		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:mnd
 	}
 	select {
 	case <-ctx.Done():

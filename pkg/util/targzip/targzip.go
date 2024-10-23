@@ -230,7 +230,7 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 				return err
 			}
 			// copy over contents (max 10MB per file!)
-			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil { //nolint:gomnd
+			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil { //nolint:mnd
 				// io.EOF is expected
 				if err != io.EOF {
 					return err

@@ -125,7 +125,7 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 	defer close(eventChan)
 
 	// Create a ticker that ticks every 500 milliseconds
-	//nolint:gomnd,mnd    // Time interval easier to read this way
+	//nolint:mnd    // Time interval easier to read this way
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 

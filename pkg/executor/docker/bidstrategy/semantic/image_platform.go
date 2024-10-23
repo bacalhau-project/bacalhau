@@ -81,7 +81,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		defer func() {
 			err = ManifestCache.Set(
 				dockerEngine.Image, manifest, 1, oneDayInSeconds,
-			) //nolint:gomnd
+			) //nolint:mnd
 			if err != nil {
 				// Log the error but continue as it is not serious enough to stop
 				// processing

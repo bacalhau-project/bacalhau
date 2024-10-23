@@ -1,4 +1,4 @@
-//nolint:gomnd,mnd  // Ignoring magic numbers in this configuration file, since it is easier to read that way
+//nolint:mnd  // Ignoring magic numbers in this configuration file, since it is easier to read that way
 package types
 
 import (
