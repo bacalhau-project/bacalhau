@@ -3,17 +3,15 @@
 package devstack
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
+	"github.com/bacalhau-project/bacalhau/pkg/downloader"
+	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
-	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -26,7 +24,25 @@ func TestDefaultPublisherSuite(t *testing.T) {
 	suite.Run(t, new(DefaultPublisherSuite))
 }
 
-func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
+func getTestEngine() *models.SpecConfig {
+	return &models.SpecConfig{
+		Type: models.EngineDocker,
+		Params: dockmodels.EngineSpec{
+			Image: "ubuntu:latest",
+			Entrypoint: []string{"/bin/bash", "-c", `
+                echo "output to stdout" && \
+                if [ ! -d /outputs ]; then \
+                    mkdir -p /outputs; \
+                fi && \
+                echo "output to file" > /outputs/test.txt
+            `},
+		}.ToMap(),
+	}
+}
+
+// TestNoDefaultPublisherNoResultPath verifies that when no default publisher
+// and no result path are defined, the job succeeds but produces no results
+func (s *DefaultPublisherSuite) TestNoDefaultPublisherNoResultPath() {
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -34,18 +50,12 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 			Count: 1,
 			Tasks: []*models.Task{
 				{
-					Name: s.T().Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-						WithEntrypoint("_start").
-						WithParameters(
-							"data/hello.txt",
-							"does/not/exist.txt",
-						).
-						MustBuild(),
+					Name:   s.T().Name(),
+					Engine: getTestEngine(),
 				},
 			},
 		},
-		ResultsChecker: expectResultsNone,
+		ResultsChecker: scenario.FileNotExists(downloader.DownloadFilenameStdout),
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),
 		},
@@ -54,7 +64,9 @@ func (s *DefaultPublisherSuite) TestNoDefaultPublisher() {
 	s.RunScenario(testcase)
 }
 
-func (s *DefaultPublisherSuite) TestDefaultPublisher() {
+// TestNoDefaultPublisherWithResultPath verifies that when no default publisher
+// is defined but result path is specified, the job fails
+func (s *DefaultPublisherSuite) TestNoDefaultPublisherWithResultPath() {
 	testcase := scenario.Scenario{
 		Job: &models.Job{
 			Name:  s.T().Name(),
@@ -62,14 +74,35 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 			Count: 1,
 			Tasks: []*models.Task{
 				{
-					Name: s.T().Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
-						WithEntrypoint("_start").
-						WithParameters(
-							"data/hello.txt",
-							"does/not/exist.txt",
-						).
-						MustBuild(),
+					Name:   s.T().Name(),
+					Engine: getTestEngine(),
+					ResultPaths: []*models.ResultPath{
+						{
+							Name: "outputs",
+							Path: "/outputs",
+						},
+					},
+				},
+			},
+		},
+		SubmitChecker: scenario.SubmitJobFail(),
+	}
+
+	s.RunScenario(testcase)
+}
+
+// TestDefaultPublisherNoResultPath verifies that when default publisher is defined
+// but no result path is specified, only stdout is captured
+func (s *DefaultPublisherSuite) TestDefaultPublisherNoResultPath() {
+	testcase := scenario.Scenario{
+		Job: &models.Job{
+			Name:  s.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name:   s.T().Name(),
+					Engine: getTestEngine(),
 				},
 			},
 		},
@@ -81,7 +114,10 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 				}),
 			},
 		},
-		ResultsChecker: expectResultsSome,
+		ResultsChecker: scenario.ManyChecks(
+			scenario.FileEquals(downloader.DownloadFilenameStdout, "output to stdout\n"),
+			scenario.FileNotExists("outputs/test.txt"),
+		),
 		JobCheckers: []scenario.StateChecks{
 			scenario.WaitForSuccessfulCompletion(),
 		},
@@ -90,28 +126,43 @@ func (s *DefaultPublisherSuite) TestDefaultPublisher() {
 	s.RunScenario(testcase)
 }
 
-func expectResultsNone(resultsDir string) error {
-	fcount := fileCount(resultsDir)
-	if fcount == 0 {
-		return nil
+// TestDefaultPublisherWithResultPath verifies that when both default publisher
+// and result path are defined, both stdout and specified outputs are captured
+func (s *DefaultPublisherSuite) TestDefaultPublisherWithResultPath() {
+	testcase := scenario.Scenario{
+		Job: &models.Job{
+			Name:  s.T().Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name:   s.T().Name(),
+					Engine: getTestEngine(),
+					ResultPaths: []*models.ResultPath{
+						{
+							Name: "outputs",
+							Path: "/outputs",
+						},
+					},
+				},
+			},
+		},
+		Stack: &scenario.StackConfig{
+			DevStackOptions: []devstack.ConfigOption{
+				devstack.WithDefaultPublisher(types.DefaultPublisherConfig{
+					Type:   models.PublisherLocal,
+					Params: make(map[string]string),
+				}),
+			},
+		},
+		ResultsChecker: scenario.ManyChecks(
+			scenario.FileEquals(downloader.DownloadFilenameStdout, "output to stdout\n"),
+			scenario.FileEquals("outputs/test.txt", "output to file\n"),
+		),
+		JobCheckers: []scenario.StateChecks{
+			scenario.WaitForSuccessfulCompletion(),
+		},
 	}
 
-	return fmt.Errorf("expected no files in %s, found %d", resultsDir, fcount)
-}
-
-func expectResultsSome(resultsDir string) error {
-	fcount := fileCount(resultsDir)
-	if fcount > 0 {
-		return nil
-	}
-
-	return fmt.Errorf("expected some files in %s, found %d", resultsDir, fcount)
-}
-
-func fileCount(directory string) int {
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		return 0
-	}
-	return len(entries)
+	s.RunScenario(testcase)
 }

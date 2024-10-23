@@ -21,7 +21,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 )
 
 var (
@@ -182,16 +181,5 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 		return nil, err
 	}
 
-	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
-	if err != nil {
-		return nil, fmt.Errorf("building job spec: %w", err)
-	}
-
-	// Normalize and validate the job spec
-	job.Normalize()
-	if err := job.ValidateSubmission(); err != nil {
-		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
-	}
-
-	return job, nil
+	return helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 }

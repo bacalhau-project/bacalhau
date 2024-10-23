@@ -30,23 +30,22 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	task := mock.TaskBuilder().
-		Engine(&models.SpecConfig{
-			Type: models.EngineWasm,
-			Params: wasmmodels.EngineArguments{
-				EntryModule: storage.PreparedStorage{
-					InputSource: models.InputSource{
-						Source: &models.SpecConfig{
-							Type: models.StorageSourceInline,
-							Params: inline.Source{
-								URL: dataurl.EncodeBytes(cat.Program()),
-							}.ToMap(),
-						},
-					}},
-				EntryPoint: "_start",
-			},
-		}.ToMap()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = models.SpecConfig{
+		Type: models.EngineWasm,
+		Params: wasmmodels.EngineArguments{
+			EntryModule: storage.PreparedStorage{
+				InputSource: models.InputSource{
+					Source: &models.SpecConfig{
+						Type: models.StorageSourceInline,
+						Params: inline.Source{
+							URL: dataurl.EncodeBytes(cat.Program()),
+						}.ToMap(),
+					},
+				}},
+			EntryPoint: "_start",
+		},
+	}
 	job := mock.Job()
 	job.Tasks[0] = task
 

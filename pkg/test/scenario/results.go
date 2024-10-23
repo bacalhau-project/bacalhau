@@ -23,6 +23,9 @@ func FileContains(
 	expectedLines int,
 ) CheckResults {
 	return func(resultsDir string) error {
+		if err := FileExists(outputFilePath)(resultsDir); err != nil {
+			return err
+		}
 		outputFile := filepath.Join(resultsDir, outputFilePath)
 		resultsContent, err := os.ReadFile(outputFile)
 		if err != nil {
@@ -51,6 +54,9 @@ func FileEquals(
 	expectedString string,
 ) CheckResults {
 	return func(resultsDir string) error {
+		if err := FileExists(outputFilePath)(resultsDir); err != nil {
+			return err
+		}
 		outputFile := filepath.Join(resultsDir, outputFilePath)
 		resultsContent, err := os.ReadFile(outputFile)
 		if err != nil {
@@ -62,6 +68,62 @@ func FileEquals(
 		}
 		return nil
 	}
+}
+
+// FileExists returns a CheckResults that asserts the file exists in the results directory
+func FileExists(outputFilePath string) CheckResults {
+	return func(resultsDir string) error {
+		outputFile := filepath.Join(resultsDir, outputFilePath)
+		_, err := os.Stat(outputFile)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("file does not exist: %s\nFiles found in results directory:\n%s",
+					outputFile, listFiles(resultsDir))
+			}
+			return err
+		}
+		return nil
+	}
+}
+
+// FileNotExists returns a CheckResults that asserts the file does not exist in the results directory
+func FileNotExists(outputFilePath string) CheckResults {
+	return func(resultsDir string) error {
+		outputFile := filepath.Join(resultsDir, outputFilePath)
+		_, err := os.Stat(outputFile)
+		if err == nil {
+			return fmt.Errorf("file exists but should not: %s\nFiles found in results directory:\n%s",
+				outputFile, listFiles(resultsDir))
+		}
+		if !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+}
+
+func listFiles(dir string) string {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		if relPath != "." {
+			files = append(files, relPath)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Sprintf("error listing files: %v", err)
+	}
+	if len(files) == 0 {
+		return "no files found"
+	}
+	return strings.Join(files, "\n")
 }
 
 // ManyChecks returns a CheckResults that runs the passed checkers and returns

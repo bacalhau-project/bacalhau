@@ -23,22 +23,12 @@ func TestExecutorTestSuite(t *testing.T) {
 
 func (s *ExecutorTestSuite) TestFailingRequestedMemGreaterThan4GB() {
 	e, err := NewExecutor()
-
-	s.Require().NoError(err)
-
-	resourcesConfig, err := models.NewResourcesConfigBuilder().
-		Memory("5GB").
-		Build()
-
-	s.Require().NoError(err)
-
-	resources, err := resourcesConfig.ToResources()
 	s.Require().NoError(err)
 
 	r := &executor.RunCommandRequest{
 		JobID:       "1",
 		ExecutionID: "1",
-		Resources:   resources,
+		Resources:   &models.Resources{Memory: 5 * 1024 * 1024 * 1024},
 		EngineParams: &models.SpecConfig{
 			Type:   models.EngineWasm,
 			Params: map[string]any{},

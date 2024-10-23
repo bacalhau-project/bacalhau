@@ -182,11 +182,6 @@ func (t *Task) ValidateSubmission() error {
 	return mErr
 }
 
-// ToBuilder returns a new task builder with the same values as the task
-func (t *Task) ToBuilder() *TaskBuilder {
-	return NewTaskBuilderFromTask(t)
-}
-
 func (t *Task) AllStorageTypes() []string {
 	uniqueTypes := make(map[string]bool)
 	for _, a := range t.InputSources {
