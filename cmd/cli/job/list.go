@@ -143,10 +143,10 @@ func (o *ListOptions) run(cmd *cobra.Command, api client.API) error {
 	response, err := api.Jobs().List(ctx, &apimodels.ListJobsRequest{
 		Labels: labelRequirements,
 		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.ListOptions.Limit,
-			NextToken: o.ListOptions.NextToken,
-			OrderBy:   o.ListOptions.OrderBy,
-			Reverse:   o.ListOptions.Reverse,
+			Limit:     o.Limit,
+			NextToken: o.NextToken,
+			OrderBy:   o.OrderBy,
+			Reverse:   o.Reverse,
 		},
 	})
 	if err != nil {

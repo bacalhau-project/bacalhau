@@ -148,10 +148,10 @@ func (o *ExecutionOptions) run(cmd *cobra.Command, args []string, api client.API
 	response, err := api.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
 		JobID: jobID,
 		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.ListOptions.Limit,
-			NextToken: o.ListOptions.NextToken,
-			OrderBy:   o.ListOptions.OrderBy,
-			Reverse:   o.ListOptions.Reverse,
+			Limit:     o.Limit,
+			NextToken: o.NextToken,
+			OrderBy:   o.OrderBy,
+			Reverse:   o.Reverse,
 		},
 	})
 	if err != nil {
