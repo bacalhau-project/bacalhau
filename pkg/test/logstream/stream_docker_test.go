@@ -28,8 +28,8 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	success := make(chan bool, 1)
 	fail := make(chan bool, 1)
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:latest").
-		WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
 		Build()
 	s.Require().NoError(err)
 	task := mock.Task()

@@ -301,7 +301,7 @@ type dockerfilePermutation struct {
 func createDockerfile(d dockerfilePermutation) string {
 	ep := "\nENTRYPOINT [\"/bin/echo\"]"
 	cmd := "\nCMD [\"echo\", \"This is from CMD\"]"
-	baseDockerFile := "FROM alpine:latest"
+	baseDockerFile := "FROM busybox:latest"
 	if d.entrypoint == true {
 		baseDockerFile += ep
 	}

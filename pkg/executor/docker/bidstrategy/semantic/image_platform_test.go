@@ -45,7 +45,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 	t.Run("positive response for supported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage(t, "ubuntu"),
+			Job: jobForDockerImage(t, "busybox:latest"),
 		})
 
 		require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 		semantic.ManifestCache = cc
 
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage(t, "ubuntu:latest"),
+			Job: jobForDockerImage(t, "busybox:latest"),
 		})
 
 		require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 		// Second time we expect should be cached
 		response, err = strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage(t, "ubuntu:latest"),
+			Job: jobForDockerImage(t, "busybox:latest"),
 		})
 
 		require.NoError(t, err)
