@@ -4,7 +4,6 @@ package logstream_test
 
 import (
 	"context"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -22,7 +21,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 
 	node := s.stack.Nodes[0]
 
-	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Duration(10)*time.Second)
+	ctx, cancelFunc := context.WithCancel(s.ctx)
 	defer cancelFunc()
 
 	success := make(chan bool, 1)
@@ -69,8 +68,6 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 	}()
 
 	go func() {
-		// TODO(forrest): [correctness] we need to wait a little for the container to become active.
-		time.Sleep(time.Second * 3)
 		ch, err := waitForOutputStream(ctx, execution.ID, true, true, exec)
 		require.NoError(s.T(), err)
 		require.NotNil(s.T(), ch)
