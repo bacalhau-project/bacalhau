@@ -75,10 +75,6 @@ func Task() *models.Task {
 	return task
 }
 
-func TaskBuilder() *models.TaskBuilder {
-	return models.NewTaskBuilderFromTask(Task())
-}
-
 func Execution() *models.Execution {
 	return ExecutionForJob(Job())
 }

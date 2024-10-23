@@ -24,9 +24,8 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 		WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().
-		Engine(es).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
 	job := mock.Job()
 	job.Tasks[0] = task
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 )
 
 func JobToYaml(job *models.Job) (string, error) {
@@ -30,31 +31,27 @@ func BuildJobFromFlags(
 	jobSettings *cliflags.JobSettings,
 	taskSettings *cliflags.TaskSettings,
 ) (*models.Job, error) {
-	t, err := models.NewTaskBuilder().
-		Name(taskSettings.Name).
-		Engine(engineSpec).
-		Publisher(taskSettings.Publisher.Value()).
-		ResourcesConfig(&models.ResourcesConfig{
+	task := &models.Task{
+		Name:      taskSettings.Name,
+		Engine:    engineSpec,
+		Publisher: taskSettings.Publisher.Value(),
+		ResourcesConfig: &models.ResourcesConfig{
 			CPU:    taskSettings.Resources.CPU,
 			Memory: taskSettings.Resources.Memory,
 			Disk:   taskSettings.Resources.Disk,
 			GPU:    taskSettings.Resources.GPU,
-		}).
-		InputSources(taskSettings.InputSources.Values()...).
-		ResultPaths(taskSettings.ResultPaths...).
-		Network(&models.NetworkConfig{
+		},
+		InputSources: taskSettings.InputSources.Values(),
+		ResultPaths:  taskSettings.ResultPaths,
+		Network: &models.NetworkConfig{
 			Type:    taskSettings.Network.Network,
 			Domains: taskSettings.Network.Domains,
-		}).
-		Timeouts(&models.TimeoutConfig{
+		},
+		Timeouts: &models.TimeoutConfig{
 			TotalTimeout: taskSettings.Timeout,
 			QueueTimeout: taskSettings.QueueTimeout,
-		}).
-		Build()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create job: %w", err)
+		},
 	}
-
 	constraints, err := jobSettings.Constraints()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse job constraints: %w", err)
@@ -72,7 +69,13 @@ func BuildJobFromFlags(
 		Count:       jobSettings.Count(),
 		Constraints: constraints,
 		Labels:      labels,
-		Tasks:       []*models.Task{t},
+		Tasks:       []*models.Task{task},
+	}
+
+	// Normalize and validate the job spec
+	job.Normalize()
+	if err := job.ValidateSubmission(); err != nil {
+		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
 	return job, nil

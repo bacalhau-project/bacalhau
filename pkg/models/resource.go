@@ -104,48 +104,6 @@ func (r *ResourcesConfig) ToResources() (*Resources, error) {
 	return res, mErr
 }
 
-type ResourcesConfigBuilder struct {
-	resources *ResourcesConfig
-}
-
-func NewResourcesConfigBuilder() *ResourcesConfigBuilder {
-	return &ResourcesConfigBuilder{resources: &ResourcesConfig{}}
-}
-
-func (r *ResourcesConfigBuilder) CPU(cpu string) *ResourcesConfigBuilder {
-	r.resources.CPU = cpu
-	return r
-}
-
-func (r *ResourcesConfigBuilder) Memory(memory string) *ResourcesConfigBuilder {
-	r.resources.Memory = memory
-	return r
-}
-
-func (r *ResourcesConfigBuilder) Disk(disk string) *ResourcesConfigBuilder {
-	r.resources.Disk = disk
-	return r
-}
-
-func (r *ResourcesConfigBuilder) GPU(gpu string) *ResourcesConfigBuilder {
-	r.resources.GPU = gpu
-	return r
-}
-
-func (r *ResourcesConfigBuilder) Build() (*ResourcesConfig, error) {
-	r.resources.Normalize()
-	return r.resources, r.resources.Validate()
-}
-
-// BuildOrDie is the same as Build, but panics if an error occurs
-func (r *ResourcesConfigBuilder) BuildOrDie() *ResourcesConfig {
-	resources, err := r.Build()
-	if err != nil {
-		panic(err)
-	}
-	return resources
-}
-
 type GPUVendor string
 
 const (
