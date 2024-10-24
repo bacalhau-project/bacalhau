@@ -134,8 +134,6 @@ The build parses the OpenAPI annotations as well as the markdown files in `docs/
 * `docs/swagger.json`
 * `docs/swagger.yaml`
 
-Note that the CI pipeline will open and automatically merge a pull request titled `[circleci] Build swagger reference - this is an automatic commit ...` containing *only* the updated spec files.
-
 ### Python Libraries
 
 We ship two Python Bacalhau libraries:
