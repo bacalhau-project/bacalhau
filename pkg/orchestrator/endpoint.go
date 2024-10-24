@@ -110,7 +110,18 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 }
 
 func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (StopJobResponse, error) {
-	job, err := e.store.GetJob(ctx, request.JobID)
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		return StopJobResponse{}, jobstore.NewJobStoreError(err.Error())
+	}
+
+	defer func() {
+		if err != nil {
+			_ = txContext.Rollback()
+		}
+	}()
+
+	job, err := e.store.GetJob(txContext, request.JobID)
 	if err != nil {
 		return StopJobResponse{}, err
 	}
@@ -124,21 +135,10 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		// continue
 	}
 
-	txContext, err := e.store.BeginTx(ctx)
-	if err != nil {
-		return StopJobResponse{}, jobstore.NewJobStoreError(err.Error())
-	}
-
-	defer func() {
-		if err != nil {
-			_ = txContext.Rollback()
-		}
-	}()
-
 	// update the job state, except if the job is already completed
 	// we allow marking a failed job as canceled
 	if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
-		JobID: request.JobID,
+		JobID: job.ID, // use the job ID from the store in case the request had a short ID
 		Condition: jobstore.UpdateJobCondition{
 			UnexpectedStates: []models.JobStateType{
 				models.JobStateTypeCompleted,
@@ -161,7 +161,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		now := time.Now().UTC().UnixNano()
 		eval := &models.Evaluation{
 			ID:          uuid.NewString(),
-			JobID:       request.JobID,
+			JobID:       job.ID,
 			TriggeredBy: models.EvalTriggerJobCancel,
 			Type:        job.Type,
 			Status:      models.EvalStatusPending,
