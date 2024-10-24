@@ -87,7 +87,7 @@ func (s *JobsBasicRunsScenariosSuite) TestUnsupportedTaskEngineType() {
 			"run",
 			"/bacalhau_integration_tests/common_assets/job_specs/unsupported_engine_type.yml",
 		})
-	s.Require().NoErrorf(err, "Error job: %q", err)
+	s.Require().NoErrorf(err, "Error running job: %q", err)
 	s.Require().Contains(result, "not enough nodes to run job")
 	s.Require().Contains(result, "does not support vroomvroom")
 }

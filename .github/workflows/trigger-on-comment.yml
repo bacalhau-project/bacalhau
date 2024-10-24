@@ -11,7 +11,9 @@ jobs:
     steps:
       - name: Check if commenter is authorized
         id: check-authorization
+        shell: bash
         run: |
+          set -euo pipefail
           COMMENTER=$(jq --raw-output .comment.user.login "$GITHUB_EVENT_PATH")
           APPROVERS=$(yq e '.approvers[]' OWNERS)
           if echo "$APPROVERS" | grep -Fxq "$COMMENTER"; then

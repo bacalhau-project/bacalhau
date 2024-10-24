@@ -1,5 +1,5 @@
 # Use the docker:dind image as the base image
-FROM docker:dind
+FROM alpine:latest
 
 # Set the working directory
 WORKDIR /app
@@ -23,5 +23,3 @@ COPY ./ /bacalhau_integration_tests
 # Download and execute the Bash script from the given URL
 COPY ./common_assets/bacalhau_bin /usr/local/bin/bacalhau
 RUN chmod +x /usr/local/bin/bacalhau
-
-ENTRYPOINT ["dockerd-entrypoint.sh"]

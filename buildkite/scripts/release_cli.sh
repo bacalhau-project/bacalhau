@@ -1,6 +1,6 @@
-
 #!/bin/bash
-set -e
+
+set -euo pipefail
 
 set_environment_variables() {
     export BACALHAU_RELEASE_TOKEN=$(buildkite-agent secret get BACALHAU_RELEASE_TOKEN)
