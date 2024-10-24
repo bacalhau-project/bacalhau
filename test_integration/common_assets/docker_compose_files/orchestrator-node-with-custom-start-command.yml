@@ -30,6 +30,8 @@ services:
   bacalhau-jumpbox-node:
     image: {{ .JumpboxImageName }}
     privileged: true
+    command: tail -f /dev/null
+    restart: unless-stopped
     networks:
       - bacalhau-network
     environment:

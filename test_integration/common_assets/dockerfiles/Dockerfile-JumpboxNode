@@ -1,5 +1,5 @@
 # Use the docker:dind image as the base image
-FROM docker:dind
+FROM alpine:latest
 
 # Set the working directory
 WORKDIR /app
@@ -28,5 +28,3 @@ RUN chmod +x /usr/local/bin/bacalhau
 RUN curl -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
     && chmod +x /tmp/mc \
     && mv /tmp/mc /usr/local/bin/
-
-ENTRYPOINT ["dockerd-entrypoint.sh"]
