@@ -28,8 +28,8 @@ func getTestEngine() *models.SpecConfig {
 	return &models.SpecConfig{
 		Type: models.EngineDocker,
 		Params: dockmodels.EngineSpec{
-			Image: "ubuntu:latest",
-			Entrypoint: []string{"/bin/bash", "-c", `
+			Image: "busybox:latest",
+			Entrypoint: []string{"/bin/sh", "-c", `
                 echo "output to stdout" && \
                 if [ ! -d /outputs ]; then \
                     mkdir -p /outputs; \

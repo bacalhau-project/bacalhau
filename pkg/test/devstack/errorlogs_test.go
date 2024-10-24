@@ -55,8 +55,8 @@ func executorTestCases(t testing.TB) []*models.Job {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: dockmodels.NewDockerEngineBuilder("ubuntu:latest").
-						WithEntrypoint("bash", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;").
+					Engine: dockmodels.NewDockerEngineBuilder("busybox:latest").
+						WithEntrypoint("sh", "-c", "echo -n 'apples' >&1; echo -n 'oranges' >&2; exit 19;").
 						MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
 				},

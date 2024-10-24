@@ -24,7 +24,7 @@ const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
-const defaultDockerImage = "ubuntu:latest"
+const defaultDockerImage = "busybox:latest"
 
 const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
 
@@ -94,7 +94,7 @@ func CatFileToVolume(t testing.TB) Scenario {
 				{
 					Name: t.Name(),
 					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
-						WithEntrypoint("bash", simpleMountPath).MustBuild(),
+						WithEntrypoint("sh", simpleMountPath).MustBuild(),
 				},
 			},
 		},
