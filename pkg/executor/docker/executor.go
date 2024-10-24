@@ -355,7 +355,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 
 	if params.Resources.Memory > math.MaxInt64 {
 		return container.CreateResponse{}, fmt.Errorf(
-			"memory value %d exceeds maximum allowed value %d", params.Resources.Memory, math.MaxInt64,
+			"memory value %d exceeds maximum allowed integer value", params.Resources.Memory,
 		)
 	}
 
