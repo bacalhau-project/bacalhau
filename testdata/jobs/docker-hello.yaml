@@ -6,9 +6,9 @@ tasks:
     engine:
       type: docker
       params:
-        Image: ubuntu:latest
+        Image: busybox:latest
         Entrypoint:
-          - /bin/bash
+          - /bin/sh
         Parameters:
           - -c
           - echo Hello Bacalhau!
