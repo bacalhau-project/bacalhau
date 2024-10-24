@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/tooltip'
 
 export function ConnectionStatusIndicator() {
-  const { isOnline, clientUrl } = useConnectionMonitor()
+  const { isOnline } = useConnectionMonitor()
   const { toast } = useToast()
   const [prevOnlineState, setPrevOnlineState] = useState<boolean | undefined>(
     undefined
@@ -26,7 +26,7 @@ export function ConnectionStatusIndicator() {
       toast({
         variant: 'destructive',
         title: 'Connection Lost',
-        description: `You are currently offline. Please check your connection to ${clientUrl}.`,
+        description: `You are currently offline. Please check your connection and that Bacalhau is still running.`,
         duration: Infinity,
       })
     } else if (isOnline && prevOnlineState === false) {
@@ -41,7 +41,7 @@ export function ConnectionStatusIndicator() {
     }
 
     setPrevOnlineState(isOnline)
-  }, [isOnline, prevOnlineState, toast, clientUrl])
+  }, [isOnline, prevOnlineState, toast])
 
   const getIconColor = () => {
     if (isOnline === undefined) return 'text-gray-500'
@@ -51,7 +51,7 @@ export function ConnectionStatusIndicator() {
   const tooltipContent =
     isOnline === undefined
       ? 'Checking connection...'
-      : `${isOnline ? 'Connected to' : 'Failed to connect to'} ${clientUrl}`
+      : `${isOnline ? 'Connected successfully' : 'Failed to connect'}`
 
   return (
     <>
