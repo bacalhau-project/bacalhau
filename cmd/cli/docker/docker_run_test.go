@@ -354,7 +354,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			ctx := context.Background()
 			_, out, err := s.ExecuteTestCobraCommand(
 				"docker", "run",
-				"busybox:latest", "--", "perl", "-e", fmt.Sprintf(`print "=" x %d`, tc.inputLength),
+				"busybox:latest", "--", "sh", "-c",
+				fmt.Sprintf(`yes "=" | tr -d "\n" | head -c %d`, tc.inputLength),
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
 

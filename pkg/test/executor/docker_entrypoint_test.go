@@ -132,8 +132,8 @@ func (suite *DockerEntrypointTestSuite) TearDownSuite() {
 
 func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 	var (
-		overwriteEntrypoint = []string{"/bin/ls"}
-		overwriteCmd        = []string{"media"}
+		overwriteEntrypoint = []string{"ls"}
+		overwriteCmd        = []string{"var"}
 	)
 
 	testCases := []struct {
@@ -150,20 +150,20 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "TrueTrue - Override both entrypoint and cmd",
 			imageSuffix:    "true-true",
-			expectedStdout: "cdrom\nfloppy\nusb\n",
+			expectedStdout: "spool\nwww\n",
 			entrypoint:     overwriteEntrypoint,
 			parameters:     overwriteCmd,
 		},
 		{
 			name:           "TrueTrue - Override only cmd",
 			imageSuffix:    "true-true",
-			expectedStdout: "media\n",
+			expectedStdout: "var\n",
 			parameters:     overwriteCmd,
 		},
 		{
 			name:           "TrueTrue - Override only entrypoint",
 			imageSuffix:    "true-true",
-			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nlib64\nproc\nroot\nsys\ntmp\nusr\nvar\n",
 			entrypoint:     overwriteEntrypoint,
 		},
 		{
@@ -175,20 +175,20 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "TrueFalse - Override only cmd",
 			imageSuffix:    "true-false",
-			expectedStdout: "media\n",
+			expectedStdout: "var\n",
 			parameters:     overwriteCmd,
 		},
 		{
 			name:           "TrueFalse - Override both entrypoint and cmd",
 			imageSuffix:    "true-false",
-			expectedStdout: "cdrom\nfloppy\nusb\n",
+			expectedStdout: "spool\nwww\n",
 			entrypoint:     overwriteEntrypoint,
 			parameters:     overwriteCmd,
 		},
 		{
 			name:           "TrueFalse - Override only entrypoint",
 			imageSuffix:    "true-false",
-			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nlib64\nproc\nroot\nsys\ntmp\nusr\nvar\n",
 			entrypoint:     overwriteEntrypoint,
 		},
 		{
@@ -207,13 +207,13 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "FalseTrue - Override only entrypoint",
 			imageSuffix:    "false-true",
-			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nlib64\nproc\nroot\nsys\ntmp\nusr\nvar\n",
 			entrypoint:     overwriteEntrypoint,
 		},
 		{
 			name:           "FalseTrue - Override both entrypoint and cmd",
 			imageSuffix:    "false-true",
-			expectedStdout: "cdrom\nfloppy\nusb\n",
+			expectedStdout: "spool\nwww\n",
 			entrypoint:     overwriteEntrypoint,
 			parameters:     overwriteCmd,
 		},
@@ -233,13 +233,13 @@ func (suite *DockerEntrypointTestSuite) TestTableDriven() {
 		{
 			name:           "FalseFalse - Override only entrypoint",
 			imageSuffix:    "false-false",
-			expectedStdout: "bin\ndev\netc\nhome\nlib\nmedia\nmnt\nopt\nproc\nroot\nrun\nsbin\nsrv\nsys\ntmp\nusr\nvar\n",
+			expectedStdout: "bin\ndev\netc\nhome\nlib\nlib64\nproc\nroot\nsys\ntmp\nusr\nvar\n",
 			entrypoint:     overwriteEntrypoint,
 		},
 		{
 			name:           "FalseFalse - Override both entrypoint and cmd",
 			imageSuffix:    "false-false",
-			expectedStdout: "cdrom\nfloppy\nusb\n",
+			expectedStdout: "spool\nwww\n",
 			entrypoint:     overwriteEntrypoint,
 			parameters:     overwriteCmd,
 		},
@@ -287,7 +287,7 @@ func createTestScenario(t testing.TB, expectedStderr, expectedStdout, image stri
 		SubmitChecker: scenario.SubmitJobSuccess(),
 	}
 	if expectError == true {
-		testScenario.SubmitChecker = scenario.SubmitJobErrorContains(`"media": executable file not found in $PATH`)
+		testScenario.SubmitChecker = scenario.SubmitJobErrorContains(`"var": executable file not found in $PATH`)
 		testScenario.ResultsChecker = scenario.ManyChecks()
 	}
 	return testScenario
