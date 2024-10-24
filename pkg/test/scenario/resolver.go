@@ -191,6 +191,16 @@ func WaitForTerminalStates() StateChecks {
 	}
 }
 
+// WaitForRunningState waits until the job is in a running state, or fails if in a terminal state
+func WaitForRunningState() StateChecks {
+	return func(jobState *JobState) (bool, error) {
+		if jobState.State.StateType.IsTerminal() {
+			return false, fmt.Errorf("job is in terminal state %s", jobState.State.StateType)
+		}
+		return jobState.State.StateType == models.JobStateTypeRunning, nil
+	}
+}
+
 func WaitForSuccessfulCompletion() StateChecks {
 	return func(jobState *JobState) (bool, error) {
 		if jobState.State.StateType.IsTerminal() {
