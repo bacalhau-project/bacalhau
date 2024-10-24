@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
+	"math"
 )
 
 type LogStreamType int8
@@ -34,6 +35,9 @@ type LogMessage struct {
 // The next 8bytes are the timestamp
 // The next 4 bytes (n) are the size of the data
 // Then the remaining n bytes are the data
+// TODO: Ignoring lint for now since fixing it is a task by itself.
+//
+//nolint:gosec // G115: intentionally converting int to uint32 for message size
 func (m *LogMessage) ToBytes() []byte {
 	size := uint32(LogMessageHeaderLength + len(m.Data))
 	b := make([]byte, size)
@@ -68,7 +72,12 @@ func (m *LogMessage) FromReader(reader bufio.Reader) error {
 
 	m.Stream = LogStreamType(buffer[LogMessageStreamOffset])
 
-	m.Timestamp = int64(binary.BigEndian.Uint64(buffer[LogMessageTimestampOffset:]))
+	timestamp := binary.BigEndian.Uint64(buffer[LogMessageTimestampOffset:])
+	if timestamp > math.MaxInt64 {
+		return fmt.Errorf("timestamp value %d exceeds maximum int64 value", timestamp)
+	}
+	m.Timestamp = int64(timestamp)
+
 	m.Data = append([]byte(nil), buffer[LogMessageHeaderLength:]...)
 
 	return nil

@@ -158,6 +158,7 @@ func (r *Resources) Validate() error {
 	if r.CPU < 0 {
 		mErr = errors.Join(mErr, fmt.Errorf("invalid CPU value: %f", r.CPU))
 	}
+	//nolint:gosec // G115: GPU count should be always within reasonable bounds
 	if len(r.GPUs) > int(r.GPU) {
 		// It's not an error for the GPUs specified to be less than the number
 		// given by the GPU field – that just signifies that either:

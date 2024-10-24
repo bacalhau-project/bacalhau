@@ -36,6 +36,9 @@ import (
 // - If a user has configured a custom auth tokens path, the configured value is copied to .bacalhau/tokens.json.
 var V3Migration = V3MigrationWithConfig(system.DefaultGlobalConfig)
 
+// V3MigrationWithConfig TODO: This is a very complex function that should be simplified and split
+//
+//nolint:gocyclo
 func V3MigrationWithConfig(globalCfg system.GlobalConfig) repo.Migration {
 	return repo.NewMigration(
 		repo.Version3,
@@ -128,7 +131,6 @@ func V3MigrationWithConfig(globalCfg system.GlobalConfig) repo.Migration {
 					// if there was an error other than the file not existing, abort.
 					return fmt.Errorf("failed to read config file %s while migrating: %w", oldConfigFilePath, err)
 				}
-
 			}
 			return nil
 		},

@@ -100,14 +100,14 @@ func (j *JobProgressPrinter) followProgress(ctx context.Context, job *models.Job
 		cmd.Print("Checking job status... (Enter Ctrl+C to exit at any time, your job will continue running):\n\n")
 	}
 
-	eventPrinter := j.createEventPrinter(cmd)
+	currentEventPrinter := j.createEventPrinter(cmd)
 
 	eventChan := make(chan *models.JobHistory)
 	errChan := make(chan error, 1)
 	go j.fetchEvents(ctx, job, eventChan, errChan)
 
 	// process events until the context is canceled or the job is done
-	if err := j.handleEvents(ctx, eventPrinter, eventChan, errChan); err != nil {
+	if err := j.handleEvents(ctx, currentEventPrinter, eventChan, errChan); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			j.printTimeoutMessage(cmd)
 			return nil
@@ -125,6 +125,7 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 	defer close(eventChan)
 
 	// Create a ticker that ticks every 500 milliseconds
+	//nolint:mnd    // Time interval easier to read this way
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -163,7 +164,12 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 	}
 }
 
-func (j *JobProgressPrinter) handleEvents(ctx context.Context, printer eventPrinter, eventChan <-chan *models.JobHistory, errChan <-chan error) error {
+func (j *JobProgressPrinter) handleEvents(
+	ctx context.Context,
+	printer eventPrinter,
+	eventChan <-chan *models.JobHistory,
+	errChan <-chan error,
+) error {
 	defer printer.close() // close the printer to clear any spinner before exiting
 
 	for {

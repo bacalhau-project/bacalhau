@@ -29,7 +29,7 @@ type BaseExecutorParams struct {
 	Store                  store.ExecutionStore
 	Storages               storage.StorageProvider
 	StorageDirectory       string
-	Executors              executor.ExecutorProvider
+	Executors              executor.ExecProvider
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
 	FailureInjectionConfig models.FailureInjectionConfig
@@ -43,7 +43,7 @@ type BaseExecutor struct {
 	store            store.ExecutionStore
 	Storages         storage.StorageProvider
 	storageDirectory string
-	executors        executor.ExecutorProvider
+	executors        executor.ExecProvider
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
 	failureInjection models.FailureInjectionConfig

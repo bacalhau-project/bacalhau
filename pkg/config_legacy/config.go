@@ -1,3 +1,4 @@
+//nolint:stylecheck // ST1003: legacy package naming maintained for compatibility
 package config_legacy
 
 import (

@@ -48,7 +48,10 @@ func (c PreSignedResultSpec) ToMap() map[string]interface{} {
 
 func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
-		return SourceSpec{}, NewS3InputSourceError(BadRequestErrorCode, "invalid storage source type. expected "+models.StorageSourceS3+" but received: "+spec.Type)
+		return SourceSpec{}, NewS3InputSourceError(
+			BadRequestErrorCode,
+			fmt.Sprintf("invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type),
+		)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {

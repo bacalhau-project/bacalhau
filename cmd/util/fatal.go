@@ -42,7 +42,6 @@ func fatalError(cmd *cobra.Command, err error, code int) {
 				cmd.PrintErrln(stackTrace)
 			}
 		}
-
 	} else {
 		cmd.PrintErrln(output.RedStr("Error: ") + err.Error())
 	}

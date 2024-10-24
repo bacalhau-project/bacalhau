@@ -11,7 +11,7 @@ import (
 )
 
 type NodeInfoDecoratorParams struct {
-	Executors              executor.ExecutorProvider
+	Executors              executor.ExecProvider
 	Publisher              publisher.PublisherProvider
 	Storages               storage.StorageProvider
 	RunningCapacityTracker capacity.Tracker
@@ -21,7 +21,7 @@ type NodeInfoDecoratorParams struct {
 }
 
 type NodeInfoDecorator struct {
-	executors              executor.ExecutorProvider
+	executors              executor.ExecProvider
 	publishers             publisher.PublisherProvider
 	storages               storage.StorageProvider
 	runningCapacityTracker capacity.Tracker

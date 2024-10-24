@@ -19,7 +19,6 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	var apiError *apimodels.APIError
 
 	switch e := err.(type) {
-
 	case bacerrors.Error:
 		apiError = apimodels.FromBacError(e)
 

@@ -83,7 +83,7 @@ func (s *ComputeSuite) setupConfig() {
 					return provider.NewNoopProvider[storage.Storage](noop_storage.NewNoopStorage()), nil
 				}),
 			ExecutorsFactory: node.ExecutorsFactoryFunc(
-				func(ctx context.Context, nodeConfig node.NodeConfig) (executor_common.ExecutorProvider, error) {
+				func(ctx context.Context, nodeConfig node.NodeConfig) (executor_common.ExecProvider, error) {
 					return provider.NewMappedProvider(map[string]executor_common.Executor{
 						models.EngineNoop:   s.executor,
 						models.EngineDocker: dockerExecutor,

@@ -1,4 +1,4 @@
-//nolint:gomnd
+//nolint:mnd
 package configenv
 
 import (

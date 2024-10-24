@@ -116,7 +116,7 @@ func Wrap(err error, format string, a ...any) Error {
 		newErr.wrappingMsg = message
 		return &newErr
 	}
-	nErr := New(fmt.Sprintf("%s: %s", message, err.Error()))
+	nErr := New("%s: %s", message, err.Error())
 	nErr.(*errorImpl).wrappedErr = err
 	nErr.(*errorImpl).wrappingMsg = message
 	return nErr

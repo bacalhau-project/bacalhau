@@ -56,5 +56,4 @@ func interceptConnectionError(err error, servers string) error {
 			WithComponent(transportClientComponent).
 			WithCode(bacerrors.ConfigurationError)
 	}
-
 }

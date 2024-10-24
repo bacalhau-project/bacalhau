@@ -28,6 +28,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
+const (
+	maxPortNumber = 65535
+	minPortNumber = 0
+)
+
 type FeatureConfig struct {
 	Engines    []string
 	Publishers []string
@@ -278,12 +283,22 @@ func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Ser
 		return nil, err
 	}
 
+	givenPortNumber := cfg.BacalhauConfig.API.Port
+	if givenPortNumber < minPortNumber {
+		return nil, fmt.Errorf("invalid negative port number: %d", cfg.BacalhauConfig.API.Port)
+	}
+	if givenPortNumber > maxPortNumber {
+		return nil, fmt.Errorf("port number %d exceeds maximum allowed value (65535)", cfg.BacalhauConfig.API.Port)
+	}
+
+	safePortNumber := uint16(givenPortNumber)
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
 		Router:     echo.New(),
 		Address:    cfg.BacalhauConfig.API.Host,
-		Port:       uint16(cfg.BacalhauConfig.API.Port),
+		Port:       safePortNumber,
 		HostID:     cfg.NodeID,
 		Config:     publicapi.DefaultConfig(), // using default as we don't expose this config to the user
 		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), cfg.NodeID),

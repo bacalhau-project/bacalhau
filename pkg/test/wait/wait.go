@@ -40,7 +40,9 @@ func For(params Params) error {
 		time.Sleep(params.Backoff)
 	}
 	if lastErr == nil {
-		return fmt.Errorf("timed out after %v", time.Duration(params.Retries)*params.Backoff)
+		//nolint:gosec // G115: retry count is always within reasonable bounds
+		totalTime := params.Backoff * time.Duration(params.Retries)
+		return fmt.Errorf("timed out after %v", totalTime)
 	}
 	return lastErr
 }

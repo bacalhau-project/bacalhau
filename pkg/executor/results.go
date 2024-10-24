@@ -28,6 +28,7 @@ type outputResult struct {
 	truncated    *bool
 }
 
+//nolint:gosec // G115: limits within reasonable bounds
 func writeOutputResult(resultsDir string, output outputResult) error {
 	if output.contents == nil {
 		log.Warn().Msg("writing result output contents null")
@@ -69,7 +70,14 @@ func writeOutputResult(resultsDir string, output outputResult) error {
 		return err
 	}
 
-	_, err = io.CopyN(file, output.contents, int64(int(output.fileLimit)-fileWritten))
+	// Calculate remaining bytes
+	remainingLimit := int64(output.fileLimit)
+	if remainingLimit < int64(fileWritten) {
+		return fmt.Errorf("file written size %d exceeds limit %d", fileWritten, output.fileLimit)
+	}
+	remaining := remainingLimit - int64(fileWritten)
+
+	_, err = io.CopyN(file, output.contents, remaining)
 	if err != nil && err != io.EOF {
 		return err
 	}

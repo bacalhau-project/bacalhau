@@ -149,7 +149,6 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		if err != nil {
 			return fmt.Errorf("reloading system metadata after persisting name: %w", err)
 		}
-
 	} else {
 		// Warn if the flag was provided but node name already exists
 		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != sysmeta.NodeName {
@@ -248,8 +247,8 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		if len(cfg.Compute.AllowListedLocalPaths) > 0 {
 			startupLog.Strs("volumes", cfg.Compute.AllowListedLocalPaths)
 		}
-
 	}
+
 	if cfg.Orchestrator.Enabled {
 		startupLog.Str("orchestrator_address",
 			fmt.Sprintf("%s:%d", cfg.Orchestrator.Host, cfg.Orchestrator.Port))

@@ -227,7 +227,7 @@ func (lm *LogManager) Close() {
 	lm.wg.Wait()
 
 	go func(ctx context.Context, executionID string, filename string) {
-		tensecs := time.After(time.Duration(10) * time.Second) //nolint:gomnd
+		tensecs := time.After(time.Duration(10) * time.Second) //nolint:mnd
 		<-tensecs
 
 		log.Ctx(ctx).Debug().Msgf("logmanager removing logfile for %s: %s", executionID, filename)

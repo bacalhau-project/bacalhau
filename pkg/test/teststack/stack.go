@@ -46,7 +46,7 @@ func Setup(
 	}
 
 	// Wait for nodes to have announced their presence.
-	//nolint:gomnd
+	//nolint:mnd
 	require.Eventually(t,
 		func() bool {
 			return allNodesDiscovered(t, stack)
@@ -102,7 +102,7 @@ type mixedExecutorFactory struct {
 func (m *mixedExecutorFactory) Get(
 	ctx context.Context,
 	nodeConfig node.NodeConfig,
-) (executor.ExecutorProvider, error) {
+) (executor.ExecProvider, error) {
 	stdProvider, err := m.standardFactory.Get(ctx, nodeConfig)
 	if err != nil {
 		return nil, err
