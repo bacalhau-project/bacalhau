@@ -21,9 +21,9 @@ func TestUnmarshalJob(t *testing.T) {
       "Engine": {
         "Type": "docker",
         "Params": {
-          "Image": "ubuntu:latest",
+          "Image": "busybox:latest",
           "Entrypoint": [
-            "/bin/bash"
+            "/bin/sh"
           ],
           "Parameters": [
             "-c",
@@ -52,9 +52,9 @@ func TestUnmarshalJob(t *testing.T) {
       "Engine": {
         "Type": "docker",
         "Params": {
-          "Image": "ubuntu:latest",
+          "Image": "busybox:latest",
           "Entrypoint": [
-            "/bin/bash"
+            "/bin/sh"
           ],
           "Parameters": [
             "-c",
@@ -84,9 +84,9 @@ func TestUnmarshalJob(t *testing.T) {
       "Engine": {
         "Type": "docker",
         "Params": {
-          "Image": "ubuntu:latest",
+          "Image": "busybox:latest",
           "Entrypoint": [
-            "/bin/bash"
+            "/bin/sh"
           ],
           "Parameters": [
             "-c",
@@ -115,9 +115,9 @@ func TestUnmarshalJob(t *testing.T) {
       "Engine": {
         "Type": "docker",
         "Params": {
-          "Image": "ubuntu:latest",
+          "Image": "busybox:latest",
           "Entrypoint": [
-            "/bin/bash"
+            "/bin/sh"
           ],
           "Parameters": [
             "-c",

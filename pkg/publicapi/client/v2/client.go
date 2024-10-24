@@ -317,9 +317,13 @@ func (c *httpClient) interceptError(
 	endpoint string,
 	r *apimodels.HTTPRequest,
 ) (bacErr bacerrors.Error) {
+	// Avoid adding common attributes if the error is an API error
+	var isAPIError bool
+
 	// Defer the addition of common attributes
+	// Only applied if the error is not derived from an API error
 	defer func() {
-		if bacErr != nil {
+		if bacErr != nil && !isAPIError {
 			bacErr = bacErr.
 				WithComponent(errorComponent).
 				WithDetails(map[string]string{
@@ -360,6 +364,7 @@ func (c *httpClient) interceptError(
 
 		apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp)
 		if apiError != nil {
+			isAPIError = true
 			return apiError.ToBacError()
 		}
 
