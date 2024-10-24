@@ -23,7 +23,7 @@ jobs:
           fi
       - name: Dispatch event
         if: steps.check-authorization.outputs.authorized == 'true'
-        uses: peter-evans/repository-dispatch@v1
+        uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           event-type: ok-to-test
