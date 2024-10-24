@@ -24,7 +24,7 @@ Examples:
 -i src=s3://bucket/key,dst=/my/input/path,opt=endpoint=https://s3.example.com,opt=region=us-east-1
 `
 
-	ResultPathUsageMsg = "name=path of the output data volumes"
+	ResultPathUsageMsg = "name:path of the output data volumes"
 
 	PublisherUsageMsg = `Where to publish the result of the job`
 

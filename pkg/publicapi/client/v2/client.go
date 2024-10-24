@@ -309,9 +309,13 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 }
 
 func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.Response, method, endpoint string, r *apimodels.HTTPRequest) (bacErr bacerrors.Error) {
+	// Avoid adding common attributes if the error is an API error
+	var isAPIError bool
+
 	// Defer the addition of common attributes
+	// Only applied if the error is not derived from an API error
 	defer func() {
-		if bacErr != nil {
+		if bacErr != nil && !isAPIError {
 			bacErr = bacErr.
 				WithComponent(errorComponent).
 				WithDetails(map[string]string{
@@ -352,6 +356,7 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
 
 		apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp)
 		if apiError != nil {
+			isAPIError = true
 			return apiError.ToBacError()
 		}
 

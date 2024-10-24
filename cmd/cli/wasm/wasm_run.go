@@ -32,7 +32,6 @@ import (
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/userstrings"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -205,18 +204,7 @@ func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Jo
 		return nil, err
 	}
 
-	job, err := helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
-	if err != nil {
-		return nil, fmt.Errorf("building job spec: %w", err)
-	}
-
-	// Normalize and validate the job spec
-	job.Normalize()
-	if err := job.ValidateSubmission(); err != nil {
-		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
-	}
-
-	return job, nil
+	return helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 }
 
 func parseWasmEntryModule(ctx context.Context, in string) (*models.InputSource, error) {

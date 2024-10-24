@@ -7,9 +7,9 @@ Tasks:
     Engine:
       Type: docker
       Params:
-        Image: ubuntu:latest
+        Image: busybox:latest
         Entrypoint:
-          - /bin/bash
+          - /bin/sh
         Parameters:
           - -c
           - echo 15 > /output_custom/output.txt
