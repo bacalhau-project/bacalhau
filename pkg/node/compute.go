@@ -38,7 +38,7 @@ type Compute struct {
 	LocalEndpoint      compute.Endpoint
 	Capacity           capacity.Tracker
 	ExecutionStore     store.ExecutionStore
-	Executors          executor.ExecutorProvider
+	Executors          executor.ExecProvider
 	Storages           storage.StorageProvider
 	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
@@ -305,7 +305,7 @@ func NewBidder(
 	allocatedResources models.Resources,
 	publishers publisher.PublisherProvider,
 	storages storage.StorageProvider,
-	executors executor.ExecutorProvider,
+	executors executor.ExecProvider,
 	executionStore store.ExecutionStore,
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,

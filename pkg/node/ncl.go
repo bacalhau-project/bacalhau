@@ -16,6 +16,7 @@ func CreateMessageSerDeRegistry() (*ncl.MessageSerDeRegistry, error) {
 	)
 	return reg, err
 }
+
 const HeartbeatTopicFormat = "bacalhau.global.compute.%s.out.heartbeat"
 
 // computeHeartbeatTopic returns the subject to publish heartbeat messages to.

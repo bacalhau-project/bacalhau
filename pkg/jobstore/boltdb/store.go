@@ -167,7 +167,6 @@ func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error
 }
 
 func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
-
 	var job models.Job
 
 	jobID, err := b.reifyJobID(tx, jobID)
@@ -190,7 +189,7 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 	if idgen.ShortUUID(jobID) == jobID {
 		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
-			return "", NewBoltDbError(err)
+			return "", NewBoltDBError(err)
 		}
 
 		found := make([]string, 0, 1)
@@ -224,7 +223,7 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 	}
 
 	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobExecutions).Get(tx, false); err != nil {
-		return exec, NewBoltDbError(err)
+		return exec, NewBoltDBError(err)
 	} else {
 		data := bkt.Get([]byte(id))
 		if data == nil {
@@ -243,7 +242,7 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error) {
 	keys, err := b.executionsIndex.List(tx, []byte(id))
 	if err != nil {
-		return "", NewBoltDbError(err)
+		return "", NewBoltDBError(err)
 	}
 
 	if len(keys) != 1 {
@@ -298,7 +297,7 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
-		return nil, NewBoltDbError(err)
+		return nil, NewBoltDBError(err)
 	}
 
 	var execs []models.Execution
@@ -422,7 +421,7 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 	if query.ReturnAll || query.Namespace == "" {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
-			return nil, NewBoltDbError(err)
+			return nil, NewBoltDBError(err)
 		}
 
 		err = bkt.ForEachBucket(func(k []byte) error {
@@ -430,12 +429,12 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 			return nil
 		})
 		if err != nil {
-			return nil, NewBoltDbError(err)
+			return nil, NewBoltDBError(err)
 		}
 	} else {
 		ids, err := b.namespacesIndex.List(tx, []byte(query.Namespace))
 		if err != nil {
-			return nil, NewBoltDbError(err)
+			return nil, NewBoltDBError(err)
 		}
 
 		for _, k := range ids {
@@ -456,7 +455,7 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
-			return nil, NewBoltDbError(err)
+			return nil, NewBoltDBError(err)
 		}
 
 		for _, k := range ids {
@@ -484,7 +483,7 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
 		if err != nil {
-			return nil, NewBoltDbError(err)
+			return nil, NewBoltDBError(err)
 		}
 
 		for _, k := range ids {
@@ -516,6 +515,9 @@ func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{},
 	return result, nil
 }
 
+// TODO: Ignoring linting for now. Fixing this is a task by itself
+//
+//nolint:gosec // G115: slice length is always non-negative in Go
 func (b *BoltJobStore) getJobsWithinLimit(jobs []models.Job, query jobstore.JobQuery) ([]models.Job, bool) {
 	if query.Offset >= uint64(len(jobs)) {
 		return []models.Job{}, false
@@ -585,7 +587,7 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.
 
 	keys, err := b.inProgressIndex.List(tx)
 	if err != nil {
-		return nil, NewBoltDbError(err)
+		return nil, NewBoltDBError(err)
 	}
 
 	for _, jobIDKey := range keys {
@@ -669,7 +671,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 		if errors.Is(err, bolt.ErrBucketNotFound) {
 			return &jobstore.JobHistoryQueryResponse{}, nil
 		}
-		return nil, NewBoltDbError(err)
+		return nil, NewBoltDBError(err)
 	}
 
 	var history []models.JobHistory
@@ -687,6 +689,7 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 			lastSeq = bytesToUint64(k)
 		}
 
+		//nolint:gosec // G115: history within reasonable bounds
 		if uint32(len(history)) == limit {
 			break
 		}
@@ -718,8 +721,9 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 }
 
 func (b *BoltJobStore) parseHistoryPaginationParams(query jobstore.JobHistoryQuery) (uint64, uint32, error) {
+	const defaultTokenLimit = 100
 	offset := uint64(0)
-	limit := uint32(100)
+	limit := uint32(defaultTokenLimit)
 
 	if query.NextToken != "" {
 		token, err := models.NewPagingTokenFromString(query.NextToken)
@@ -757,7 +761,12 @@ func (b *BoltJobStore) filterHistoryItem(item models.JobHistory, query jobstore.
 	return true
 }
 
-func (b *BoltJobStore) shouldContinueHistoryPagination(tx *bolt.Tx, jobID string, cursor *bolt.Cursor, query jobstore.JobHistoryQuery) (bool, error) {
+func (b *BoltJobStore) shouldContinueHistoryPagination(
+	tx *bolt.Tx,
+	jobID string,
+	cursor *bolt.Cursor,
+	query jobstore.JobHistoryQuery,
+) (bool, error) {
 	// If there are more items in the bucket, then we should continue
 	if k, _ := cursor.Next(); k != nil {
 		return true, nil
@@ -809,7 +818,7 @@ func (b *BoltJobStore) update(ctx context.Context, update func(tx *bolt.Tx) erro
 	tx, externalTx = txFromContext(ctx)
 	if externalTx {
 		if !tx.Writable() {
-			return NewBoltDbError(errors.New("readonly transaction provided in context for update operation"))
+			return NewBoltDBError(errors.New("readonly transaction provided in context for update operation"))
 		}
 	} else {
 		tx, err = b.database.Begin(true)
@@ -849,7 +858,7 @@ func (b *BoltJobStore) view(ctx context.Context, view func(tx *bolt.Tx) error) e
 	if !externalTx {
 		tx, err = b.database.Begin(false)
 		if err != nil {
-			return NewBoltDbError(err)
+			return NewBoltDBError(err)
 		}
 	}
 
@@ -876,17 +885,17 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 
 	jobIDKey := []byte(job.ID)
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, true); err != nil {
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	} else {
 		// Create the evaluations and executions buckets and so forth
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobExecutions)); err != nil {
 			return err
 		}
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobEvaluations)); err != nil {
-			return NewBoltDbError(err)
+			return NewBoltDBError(err)
 		}
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobHistory)); err != nil {
-			return NewBoltDbError(err)
+			return NewBoltDBError(err)
 		}
 	}
 
@@ -897,7 +906,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	}
 
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	} else {
 		if err = bkt.Put(SpecKey, jobData); err != nil {
 			return err
@@ -907,11 +916,11 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 	// Create a composite key for the in progress index
 	jobkey := createInProgressIndexKey(&job)
 	if err = b.inProgressIndex.Add(tx, []byte(jobkey)); err != nil {
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	}
 
 	if err = b.namespacesIndex.Add(tx, jobIDKey, []byte(job.Namespace)); err != nil {
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	}
 
 	// Write sentinels keys for specific tags
@@ -940,7 +949,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 		if bacerrors.IsError(err) {
 			return err
 		}
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	}
 
 	tx.OnCommit(func() {
@@ -949,7 +958,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 
 	// Delete the Job bucket (and everything within it)
 	if bkt, err := NewBucketPath(BucketJobs).Get(tx, false); err != nil {
-		return NewBoltDbError(err)
+		return NewBoltDBError(err)
 	} else {
 		if err = bkt.DeleteBucket([]byte(jobID)); err != nil {
 			return err

@@ -12,8 +12,9 @@ import (
 
 // ANSI escape codes for cursor control
 const (
-	hideCursor = "\033[?25l"
-	showCursor = "\033[?25h"
+	hideCursor     = "\033[?25l"
+	showCursor     = "\033[?25h"
+	tickerInterval = 200 * time.Millisecond
 )
 
 // FishSpinner represents a simple fish emoji spinner.
@@ -96,7 +97,7 @@ func (s *FishSpinner) Resume() {
 
 // run continuously updates the spinner animation
 func (s *FishSpinner) run() {
-	ticker := time.NewTicker(200 * time.Millisecond)
+	ticker := time.NewTicker(tickerInterval)
 	defer ticker.Stop()
 
 	for {

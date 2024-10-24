@@ -461,7 +461,12 @@ func (s *Store) GetExecutionCount(ctx context.Context, state store.LocalExecutio
 			return nil
 		}
 
-		count = uint64(b.Stats().KeyN)
+		keyCount := b.Stats().KeyN
+		if keyCount < 0 {
+			return fmt.Errorf("invalid negative key count from bucket: %d", keyCount)
+		}
+
+		count = uint64(keyCount)
 		return nil
 	})
 

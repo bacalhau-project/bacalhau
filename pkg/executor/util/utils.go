@@ -84,7 +84,6 @@ func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, er
 				return nil, err
 			}
 			providers[models.StorageSourceIPFS] = tracing.Wrap(ipfsStorage)
-
 		}
 	}
 
@@ -103,7 +102,7 @@ func NewNoopStorageProvider(
 func NewStandardExecutorProvider(
 	cfg types.EngineConfig,
 	executorOptions StandardExecutorOptions,
-) (executor.ExecutorProvider, error) {
+) (executor.ExecProvider, error) {
 	providers := make(map[string]executor.Executor)
 
 	if cfg.IsNotDisabled(models.EngineDocker) {
@@ -126,7 +125,7 @@ func NewStandardExecutorProvider(
 }
 
 // return noop executors for all engines
-func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecutorProvider {
+func NewNoopExecutors(config noop_executor.ExecutorConfig) executor.ExecProvider {
 	noopExecutor := noop_executor.NewNoopExecutorWithConfig(config)
 	return provider.NewNoopProvider[executor.Executor](noopExecutor)
 }

@@ -3,6 +3,7 @@ package s3
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,8 +84,21 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 	if err != nil {
 		return 0, err
 	}
-	size := uint64(0)
+	var size uint64
 	for _, object := range objects {
+		// Check for negative size
+		if object.size < 0 {
+			return 0, fmt.Errorf("invalid negative size for object: %d", object.size)
+		}
+
+		// Check for overflow
+		// MaxUint64 - size = remaining space before overflow
+		//nolint:gosec // G115: negative values already checked
+		if object.size > 0 && uint64(object.size) > math.MaxUint64-size {
+			return 0, fmt.Errorf("total size exceeds uint64 maximum")
+		}
+
+		//nolint:gosec // G115: Already checked above
 		size += uint64(object.size)
 	}
 	return size, nil

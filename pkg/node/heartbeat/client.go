@@ -32,10 +32,9 @@ func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) er
 	heartbeat := Heartbeat{NodeID: h.nodeID, Sequence: sequence}
 
 	// Send the heartbeat to current and legacy topics
-	var err error
 	message := ncl.NewMessage(heartbeat)
-	err = errors.Join(err, h.publisher.Publish(ctx, message))
-	err = errors.Join(h.legacyPublisher.Publish(ctx, heartbeat))
+	err := h.publisher.Publish(ctx, message)
+	err = errors.Join(err, h.legacyPublisher.Publish(ctx, heartbeat))
 	return err
 }
 

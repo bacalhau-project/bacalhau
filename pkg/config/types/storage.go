@@ -23,7 +23,7 @@ type InputSourcesTypes struct {
 
 func (i InputSourcesConfig) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(i.Disabled, func(s string) bool {
-		return strings.ToLower(s) == strings.ToLower(kind)
+		return strings.EqualFold(s, kind)
 	})
 }
 

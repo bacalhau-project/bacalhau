@@ -19,7 +19,7 @@ const defaultBuffer = 100
 
 type ServerParams struct {
 	ExecutionStore store.ExecutionStore
-	Executors      executor.ExecutorProvider
+	Executors      executor.ExecProvider
 	// Buffer is the size of the channel buffer for each individual log stream.
 	// If not set (0), defaultBuffer will be used.
 	Buffer int
@@ -27,7 +27,7 @@ type ServerParams struct {
 
 type Server struct {
 	executionStore store.ExecutionStore
-	executors      executor.ExecutorProvider
+	executors      executor.ExecProvider
 	// buffer is the size of the channel buffer for each individual log stream.
 	buffer int
 }

@@ -61,7 +61,7 @@ func NewStandardStorageProvidersFactory(cfg types.Bacalhau) StorageProvidersFact
 
 func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 	return ExecutorsFactoryFunc(
-		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecutorProvider, error) {
+		func(ctx context.Context, nodeConfig NodeConfig) (executor.ExecProvider, error) {
 			pr, err := executor_util.NewStandardExecutorProvider(
 				cfg,
 				executor_util.StandardExecutorOptions{

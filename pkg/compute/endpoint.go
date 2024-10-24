@@ -52,7 +52,12 @@ func (s BaseEndpoint) GetNodeID() string {
 }
 
 func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/compute.BaseEndpoint.AskForBid", trace.WithSpanKind(trace.SpanKindInternal))
+	ctx, span := telemetry.NewSpan(
+		ctx,
+		telemetry.GetTracer(),
+		"pkg/compute.BaseEndpoint.AskForBid",
+		trace.WithSpanKind(trace.SpanKindInternal),
+	)
 	defer span.End()
 	log.Ctx(ctx).Debug().Msgf("asked to bid on: %+v", request)
 	jobsReceived.Add(ctx, 1)

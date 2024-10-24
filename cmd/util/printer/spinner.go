@@ -238,6 +238,11 @@ const (
 	WidthTimer = 0
 )
 
+const (
+	maxUint8Value = 255
+	minUint8Value = 0
+)
+
 type LineMessage struct {
 	Message      string
 	Detail       string
@@ -248,10 +253,18 @@ type LineMessage struct {
 }
 
 func NewLineMessage(msg string, maxWidth int) LineMessage {
+	safeWidth := maxWidth
+	if maxWidth > maxUint8Value {
+		safeWidth = maxUint8Value // Cap at maximum uint8 value
+	} else if maxWidth < minUint8Value {
+		safeWidth = minUint8Value // Handle negative values
+	}
+
+	//nolint:gosec    // Safe uint8 conversion - value is bounded by maxUint8Value check above
 	return LineMessage{
 		Message:      msg,
 		TimerString:  spinnerFmtDuration(SpinnerFormatDurationDefault),
-		ColumnWidths: []uint8{uint8(maxWidth), WidthDots, WidthStatus, WidthTimer},
+		ColumnWidths: []uint8{uint8(safeWidth), WidthDots, WidthStatus, WidthTimer},
 	}
 }
 
