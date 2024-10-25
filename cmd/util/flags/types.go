@@ -96,7 +96,6 @@ func (s *ArrayValueFlag[T]) Set(input string) error {
 func (s *ArrayValueFlag[T]) String() string {
 	strs := make([]string, 0, len(*s.value))
 	for _, spec := range *s.value {
-		spec := spec
 		strs = append(strs, s.stringer(&spec))
 	}
 	return strings.Join(strs, ", ")
