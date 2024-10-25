@@ -20,13 +20,12 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	docker.MustHaveDocker(s.T())
 	node := s.stack.Nodes[0]
 
-	es, err := dockermodels.NewDockerEngineBuilder("bash").
-		WithEntrypoint("bash", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep 1; done").
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().
-		Engine(es).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
 	job := mock.Job()
 	job.Tasks[0] = task
 

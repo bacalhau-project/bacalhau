@@ -33,6 +33,7 @@ const (
 
 var terminalWidth int
 
+//nolint:gosec    // terminalWidth is used for spacing and won't exceed reasonable values
 func getTerminalWidth(cmd *cobra.Command) uint {
 	if terminalWidth == 0 {
 		var err error
@@ -102,6 +103,7 @@ func SummariseHistoryEvents(history []*models.JobHistory) []models.Event {
 	return maps.Values(events)
 }
 
+//nolint:gosec    // indent is used for spacing and won't exceed reasonable values
 func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *color.Color, startIndent uint) {
 	maxWidth := getTerminalWidth(cmd)
 	blockIndent := int(startIndent) + len(prefix)

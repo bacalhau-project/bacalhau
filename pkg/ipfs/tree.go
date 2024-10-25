@@ -16,6 +16,7 @@ type IPLDTreeNode struct {
 func getTreeNode(ctx context.Context, navNode ipld.NavigableNode, path []string) (IPLDTreeNode, error) {
 	var children []IPLDTreeNode
 	for i, link := range navNode.GetIPLDNode().Links() {
+		//nolint:gosec // G115: Node links is always within reasonable bounds
 		childNavNode, err := navNode.FetchChild(ctx, uint(i))
 		if err != nil {
 			return IPLDTreeNode{}, err

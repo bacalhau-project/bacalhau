@@ -24,7 +24,7 @@ const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
-const defaultDockerImage = "ubuntu:latest"
+const defaultDockerImage = "busybox:latest"
 
 const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
 
@@ -94,7 +94,7 @@ func CatFileToVolume(t testing.TB) Scenario {
 				{
 					Name: t.Name(),
 					Engine: dockmodels.NewDockerEngineBuilder(defaultDockerImage).
-						WithEntrypoint("bash", simpleMountPath).MustBuild(),
+						WithEntrypoint("sh", simpleMountPath).MustBuild(),
 				},
 			},
 		},
@@ -262,7 +262,7 @@ func WasmEnvVars(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"AWESOME=definitely", "TEST=yes"},
-			3, //nolint:gomnd // magic number appropriate for test
+			3, //nolint:mnd // magic number appropriate for test
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -385,7 +385,7 @@ func WasmLogTest(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"https://www.gutenberg.org"}, // end of the file
-			-1,                                    //nolint:gomnd // magic number appropriate for test
+			-1,                                    //nolint:mnd // magic number appropriate for test
 		),
 		Job: &models.Job{
 			Name:  t.Name(),

@@ -20,7 +20,7 @@ type EngineConfigTypes struct {
 
 func (e EngineConfig) IsNotDisabled(kind string) bool {
 	return !slices.ContainsFunc(e.Disabled, func(s string) bool {
-		return strings.ToLower(s) == strings.ToLower(kind)
+		return strings.EqualFold(s, kind)
 	})
 }
 

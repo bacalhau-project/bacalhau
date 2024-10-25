@@ -434,3 +434,5 @@ installationid
 firstbacalhauimage
 RYUK
 buildvcs
+Nilf
+IMDS

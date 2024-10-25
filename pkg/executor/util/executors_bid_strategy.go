@@ -10,10 +10,10 @@ import (
 )
 
 type bidStrategyFromExecutor struct {
-	provider executor.ExecutorProvider
+	provider executor.ExecProvider
 }
 
-func NewExecutorSpecificBidStrategy(provider executor.ExecutorProvider) bidstrategy.BidStrategy {
+func NewExecutorSpecificBidStrategy(provider executor.ExecProvider) bidstrategy.BidStrategy {
 	return bidstrategy.NewChainedBidStrategy(
 		bidstrategy.WithSemantics(
 			semantic.NewProviderInstalledStrategy[executor.Executor](

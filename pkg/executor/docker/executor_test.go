@@ -216,14 +216,15 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	// same 0.1 value that 100m means
 	// https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications_managing-monitoring-and-updating-the-kernel#proc_controlling-distribution-of-cpu-time-for-applications-by-adjusting-cpu-bandwidth_using-cgroups-v2-to-control-distribution-of-cpu-time-for-applications
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
-		WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/cpu.max").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37").
+		WithEntrypoint("sh", "-c", "cat /sys/fs/cgroup/cpu.max").
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().
-		Engine(es).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
-		BuildOrDie()
+
+	task := mock.Task()
+	task.Engine = es
+	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
+	task.Normalize()
 
 	result, err := s.runJobGetStdout(task, uuid.New().String())
 	require.NoError(s.T(), err)
@@ -260,14 +261,15 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 	}
 
 	for _, p := range tests {
-		es, err := dockermodels.NewDockerEngineBuilder("ubuntu:20.04").
-			WithEntrypoint("bash", "-c", "cat /sys/fs/cgroup/memory.max").
+		es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37").
+			WithEntrypoint("sh", "-c", "cat /sys/fs/cgroup/memory.max").
 			Build()
 		s.Require().NoError(err)
-		task := mock.TaskBuilder().
-			Engine(es).
-			ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(p.in).BuildOrDie()).
-			BuildOrDie()
+
+		task := mock.Task()
+		task.Engine = es
+		task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: p.in}
+		task.Normalize()
 
 		result, err := s.runJobGetStdout(task, uuid.New().String())
 		require.NoError(s.T(), err)
@@ -289,12 +291,9 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkFull).
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkFull}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
@@ -303,12 +302,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkNone).
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkNone}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)
@@ -318,13 +314,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkHTTP).
-			Domains(s.containerHttpURL().Hostname()).
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
@@ -333,13 +325,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkHTTP).
-			Domains(s.containerHttpURL().Hostname(), "bacalhau.org").
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{
+		s.containerHttpURL().Hostname(), "bacalhau.org"}}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
@@ -352,13 +341,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 	hostname := s.containerHttpURL().Hostname()
 	hostroot := strings.Join(strings.SplitN(hostname, ".", 2)[:1], ".")
 
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkHTTP).
-			Domains(hostname, hostroot).
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{hostname, hostroot}}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
@@ -367,13 +352,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 }
 
 func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkHTTP).
-			Domains("bacalhau.org").
-			BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{"bacalhau.org"}}
 
 	result, err := s.runJob(task, uuid.New().String())
 	// The curl will succeed but should return a non-zero exit code and error page.
@@ -388,13 +369,9 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 		Build()
 	s.Require().NoError(err)
 
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().
-			Type(models.NetworkHTTP).
-			Domains(s.containerHttpURL().Hostname()).
-			BuildOrDie()).
-		Engine(es).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
 	result, err := s.runJob(task, uuid.New().String())
 
@@ -409,15 +386,14 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	errC := make(chan error, 1)
 	executionID := uuid.New().String()
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "-c", "sleep 30").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "-c", "sleep 30").
 		Build()
 
 	s.Require().NoError(err)
 
-	task := mock.TaskBuilder().
-		Engine(es).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
 
 	jobCtx := context.Background()
 	go func() {
@@ -456,10 +432,10 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 		_, err := w.Write([]byte(r.Header.Get("X-Bacalhau-Job-ID")))
 		s.Require().NoError(err)
 	})
-	task := mock.TaskBuilder().
-		Network(models.NewNetworkConfigBuilder().Type(models.NetworkHTTP).Domains(s.containerHttpURL().Hostname()).BuildOrDie()).
-		Engine(s.curlTask()).
-		BuildOrDie()
+
+	task := mock.Task()
+	task.Engine = s.curlTask()
+	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
 	executionID := uuid.New().String()
 	result, err := s.runJob(task, executionID)
@@ -472,13 +448,12 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	jobCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)).
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)).
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().
-		Engine(es).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
 
 	name := "timeout"
 	resultDir := s.T().TempDir()
@@ -529,14 +504,14 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "cat /sys/fs/cgroup/cpu.max").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "cat /sys/fs/cgroup/cpu.max").
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().
-		Engine(es).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
-		BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
+	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
+	task.Normalize()
 
 	go func() {
 		_, _ = s.runJobWithContext(ctx, task, id)
@@ -556,16 +531,15 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
 
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
-		WithEntrypoint("bash", "-c", "echo hello && sleep 20").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+		WithEntrypoint("sh", "-c", "echo hello && sleep 20").
 		Build()
 	s.Require().NoError(err)
 
-	task := mock.TaskBuilder().
-		Engine(es).
-		ResourcesConfig(models.NewResourcesConfigBuilder().CPU(CPU_LIMIT).Memory(MEBIBYTE_MEMORY_LIMIT).BuildOrDie()).
-		BuildOrDie()
-
+	task := mock.Task()
+	task.Engine = es
+	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
+	task.Normalize()
 	s.startJob(task, id)
 
 	reader, err := s.executor.GetLogStream(context.Background(), executor.LogStreamRequest{
@@ -591,11 +565,12 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 }
 
 func (s *ExecutorTestSuite) TestDockerOOM() {
-	es, err := dockermodels.NewDockerEngineBuilder("ubuntu").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
 		WithEntrypoint("tail", "/dev/zero").
 		Build()
 	s.Require().NoError(err)
-	task := mock.TaskBuilder().Engine(es).BuildOrDie()
+	task := mock.Task()
+	task.Engine = es
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)

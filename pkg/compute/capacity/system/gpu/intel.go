@@ -107,6 +107,7 @@ func (intel *intelGPUProvider) GetAvailableCapacity(ctx context.Context) (models
 	// Start with an empty Resources and just fold over it
 	var allGPUs models.Resources
 	for _, gpu := range gpuList.GPUs {
+		//nolint:gosec // G115: GPU indices are always within int range
 		provider := intel.getInfoProvider(int(gpu.Index))
 		gpuInfo, err := provider.GetAvailableCapacity(ctx)
 		if err != nil {

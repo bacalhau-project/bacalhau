@@ -90,6 +90,8 @@ func WithValues(values map[string]any) Option {
 
 // New returns a configuration with the provided options applied. If no options are provided, the returned config
 // contains only the default values.
+//
+//nolint:funlen,gocyclo // TODO: This function is very long and complex. Need to improve it.
 func New(opts ...Option) (*Config, error) {
 	base := viper.New()
 	base.SetEnvPrefix(environmentVariablePrefix)

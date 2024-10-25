@@ -118,7 +118,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 	for _, fixture := range jobFixtures {
 		s.clock.Add(1 * time.Second)
 		job := makeDockerEngineJob(
-			[]string{"bash", "-c", "echo hello"})
+			[]string{"sh", "-c", "echo hello"})
 
 		job.ID = fixture.id
 		job.Type = fixture.jobType
@@ -704,7 +704,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 
 func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 	job := makeDockerEngineJob(
-		[]string{"bash", "-c", "echo hello"})
+		[]string{"sh", "-c", "echo hello"})
 	job.Labels = map[string]string{"tag": "value"}
 	job.ID = "deleteme"
 	job.Namespace = "client1"
@@ -907,7 +907,7 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 	shortString := "9308d0d2"
 
 	job := makeDockerEngineJob(
-		[]string{"bash", "-c", "echo hello"})
+		[]string{"sh", "-c", "echo hello"})
 	job.ID = uuidString
 	job.Namespace = "110"
 
@@ -941,7 +941,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 	)
 
 	job := makeDockerEngineJob(
-		[]string{"bash", "-c", "echo hello"})
+		[]string{"sh", "-c", "echo hello"})
 	job.ID = "10"
 	job.Namespace = "110"
 
@@ -1244,7 +1244,7 @@ func makeDockerEngineJob(entrypointArray []string) *models.Job {
 	j.Task().Engine = &models.SpecConfig{
 		Type: models.EngineDocker,
 		Params: map[string]interface{}{
-			"Image":      "ubuntu:latest",
+			"Image":      "busybox:latest",
 			"Entrypoint": entrypointArray,
 		},
 	}

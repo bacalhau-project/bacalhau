@@ -21,41 +21,41 @@ const (
 	BoltDBValueTooLarge     bacerrors.ErrorCode = "BoltDBValueTooLarge"
 )
 
-func NewBoltDbError(err error) bacerrors.Error {
+func NewBoltDBError(err error) bacerrors.Error {
 	switch {
 	case errors.Is(err, bbolt.ErrBucketNotFound):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBBucketNotFound).
 			WithHTTPStatusCode(http.StatusNotFound).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrBucketExists):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBBucketExists).
 			WithHTTPStatusCode(http.StatusConflict).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrTxNotWritable):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBTxNotWritable).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrIncompatibleValue):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBIncompatibleValue).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrKeyRequired):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBKeyRequired).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrKeyTooLarge):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBKeyTooLarge).
 			WithComponent(BoltDBComponent)
 	case errors.Is(err, bbolt.ErrValueTooLarge):
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(BoltDBValueTooLarge).
 			WithComponent(BoltDBComponent)
 	default:
-		return bacerrors.New(err.Error()).
+		return bacerrors.New("%s", err).
 			WithCode(bacerrors.BadRequestError).
 			WithComponent(BoltDBComponent)
 	}

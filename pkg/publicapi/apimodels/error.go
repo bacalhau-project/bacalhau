@@ -45,6 +45,12 @@ type APIError struct {
 
 	// Component is the component that caused the error.
 	Component string `json:"Component"`
+
+	// Hint is a string providing additional context or suggestions related to the error.
+	Hint string `json:"Hint,omitempty"`
+
+	// Details is a map of string key-value pairs providing additional error context.
+	Details map[string]string `json:"Details,omitempty"`
 }
 
 // NewAPIError creates a new APIError with the given HTTP status code and message.
@@ -52,6 +58,7 @@ func NewAPIError(statusCode int, message string) *APIError {
 	return &APIError{
 		HTTPStatusCode: statusCode,
 		Message:        message,
+		Details:        make(map[string]string),
 	}
 }
 
@@ -106,14 +113,22 @@ func FromBacError(err bacerrors.Error) *APIError {
 		Message:        err.Error(),
 		Code:           string(err.Code()),
 		Component:      err.Component(),
+		Hint:           err.Hint(),
+		Details:        err.Details(),
 	}
 }
 
 // ToBacError converts an APIError to a bacerror.Error
 func (e *APIError) ToBacError() bacerrors.Error {
-	return bacerrors.New(e.Error()).
+	details := e.Details
+	if details == nil {
+		details = make(map[string]string)
+	}
+	details["request_id"] = e.RequestID
+	return bacerrors.New("%s", e.Error()).
 		WithHTTPStatusCode(e.HTTPStatusCode).
 		WithCode(bacerrors.Code(e.Code)).
 		WithComponent(e.Component).
-		WithDetails(map[string]string{"request_id": e.RequestID})
+		WithHint(e.Hint).
+		WithDetails(details)
 }

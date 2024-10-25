@@ -76,6 +76,8 @@ func NewDataFrameFromData(tag StreamTag, data []byte) *DataFrame {
 
 // ToBytes converts the data frame into a format suitable for
 // transmission across a Writer.
+//
+//nolint:gosec
 func (df DataFrame) ToBytes() []byte {
 	output := make([]byte, HeaderLength+df.Size)
 	binary.LittleEndian.PutUint32(output, uint32(df.Tag))

@@ -12,12 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Trigger VMI Build
+        shell: bash
         env:
           REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
           curl -L -X POST \
           -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \

@@ -43,6 +43,9 @@ func (s ResourceScaler) IsZero() bool {
 	return s.CPU == "" && s.Memory == "" && s.Disk == "" && s.GPU == ""
 }
 
+// ToResource TODO: This is a very complex function that should be simplified and split
+//
+//nolint:gocyclo
 func (s ResourceScaler) ToResource(in models.Resources) (*models.Resources, error) {
 	out := new(models.Resources)
 	if s.CPU.IsScaler() {

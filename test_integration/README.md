@@ -14,7 +14,7 @@ This test suite is designed to perform integration testing for Bacalhau using re
 
 1. **Base Suite**: Compiles the project binary and builds several Docker images:
     - Compute node
-    - Requester node
+    - Orchestrator node
     - Jumpbox node
 
 2. **TestContainers**: Used to set up and manage a Docker Compose stack for each test suite.

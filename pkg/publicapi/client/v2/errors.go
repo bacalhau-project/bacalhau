@@ -41,6 +41,8 @@ func (e UnexpectedResponseError) HasError() bool          { return e.err != nil 
 func (e UnexpectedResponseError) Unwrap() error           { return e.err }
 func (e UnexpectedResponseError) HasAdditional() bool     { return e.additional != nil }
 func (e UnexpectedResponseError) Additional() error       { return e.additional }
+
+//nolint:unused // This function is kept for future use
 func newUnexpectedResponseError(src unexpectedResponseErrorSource, opts ...unexpectedResponseErrorOption) UnexpectedResponseError {
 	nErr := src()
 	for _, opt := range opts {
@@ -82,27 +84,29 @@ func (e UnexpectedResponseError) Error() string {
 
 // UnexpectedResponseErrorOptions are functions passed to NewUnexpectedResponseError
 // to customize the created error.
+//
+//nolint:unused // This function is kept for future use
 type unexpectedResponseErrorOption func(*UnexpectedResponseError)
 
 // withError allows the addition of a Go error that may have been encountered
 // while processing the response. For example, if there is an error constructing
 // the gzip reader to process a gzip-encoded response body.
 //
-//nolint:unused
+//nolint:unused // This function is kept for future use
 func withError(e error) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.err = e }
 }
 
 // withBody overwrites the Body value with the provided custom value
 //
-//nolint:unused
+//nolint:unused // This function is kept for future use
 func withBody(b string) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.body = b }
 }
 
 // withStatusText overwrites the StatusText value the provided custom value
 //
-//nolint:unused
+//nolint:unused // This function is kept for future use
 func withStatusText(st string) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.statusText = st }
 }
@@ -110,15 +114,21 @@ func withStatusText(st string) unexpectedResponseErrorOption {
 // withExpectedStatuses provides a list of statuses that the receiving function
 // expected to receive. This can be used by API callers to provide more feedback
 // to end-users.
+//
+//nolint:unused // This function is kept for future use
 func withExpectedStatuses(s []int) unexpectedResponseErrorOption {
 	return func(u *UnexpectedResponseError) { u.expected = slices.Clone(s) }
 }
 
 // unexpectedResponseErrorSource provides the basis for a NewUnexpectedResponseError.
+//
+//nolint:unused // This function is kept for future use
 type unexpectedResponseErrorSource func() *UnexpectedResponseError
 
 // fromHTTPResponse read an open HTTP response, drains and closes its body as
 // the data for the UnexpectedResponseError.
+//
+//nolint:unused // This function is kept for future use
 func fromHTTPResponse(resp *http.Response) unexpectedResponseErrorSource {
 	return func() *UnexpectedResponseError {
 		u := new(UnexpectedResponseError)
@@ -147,22 +157,28 @@ func fromHTTPResponse(resp *http.Response) unexpectedResponseErrorSource {
 // the resolving function provided inside of the NewUnexpectedResponseError
 // implementation.
 //
-//nolint:unused
+//nolint:unused // This function is kept for future use
 func fromStatusCode(sc int) unexpectedResponseErrorSource {
 	return func() *UnexpectedResponseError { return &UnexpectedResponseError{statusCode: sc} }
 }
 
 // doRequestWrapper is a function that wraps the client's doRequest method
 // and can be used to provide error and response handling
+//
+//nolint:unused // This function is kept for future use
 type doRequestWrapper = func(time.Duration, *http.Response, error) (time.Duration, *http.Response, error)
 
 // requireOK is used to wrap doRequest and check for a 200
+//
+//nolint:unused // This function is kept for future use
 func requireOK(d time.Duration, resp *http.Response, e error) (time.Duration, *http.Response, error) {
 	return requireStatusIn(http.StatusOK)(d, resp, e)
 }
 
 // requireStatusIn is a doRequestWrapper generator that takes expected HTTP
 // response codes and validates that the received response code is among them
+//
+//nolint:unused // This function is kept for future use
 func requireStatusIn(statuses ...int) doRequestWrapper {
 	return func(d time.Duration, resp *http.Response, e error) (time.Duration, *http.Response, error) {
 		for _, status := range statuses {

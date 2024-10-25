@@ -308,10 +308,22 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 	return req, nil
 }
 
-func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.Response, method, endpoint string, r *apimodels.HTTPRequest) (bacErr bacerrors.Error) {
+//nolint:funlen,gocyclo // TODO: This functions is complex and should be simplified
+func (c *httpClient) interceptError(
+	ctx context.Context,
+	err error,
+	resp *http.Response,
+	method,
+	endpoint string,
+	r *apimodels.HTTPRequest,
+) (bacErr bacerrors.Error) {
+	// Avoid adding common attributes if the error is an API error
+	var isAPIError bool
+
 	// Defer the addition of common attributes
+	// Only applied if the error is not derived from an API error
 	defer func() {
-		if bacErr != nil {
+		if bacErr != nil && !isAPIError {
 			bacErr = bacErr.
 				WithComponent(errorComponent).
 				WithDetails(map[string]string{
@@ -352,6 +364,7 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
 
 		apiError := apimodels.GenerateAPIErrorFromHTTPResponse(resp)
 		if apiError != nil {
+			isAPIError = true
 			return apiError.ToBacError()
 		}
 
@@ -398,11 +411,6 @@ func (c *httpClient) interceptError(ctx context.Context, err error, resp *http.R
 		if netErr.Timeout() {
 			return bacerrors.New("request timed out").
 				WithCode(bacerrors.TimeOutError).
-				WithRetryable()
-		}
-		if netErr.Temporary() {
-			return bacerrors.New("temporary network error").
-				WithCode(bacerrors.NetworkFailure).
 				WithRetryable()
 		}
 

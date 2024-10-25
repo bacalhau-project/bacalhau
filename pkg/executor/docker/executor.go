@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -352,6 +353,13 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	}
 	log.Ctx(ctx).Trace().Msgf("Adding %d GPUs to request", params.Resources.GPU)
 
+	if params.Resources.Memory > math.MaxInt64 {
+		return container.CreateResponse{}, fmt.Errorf(
+			"memory value %d exceeds maximum allowed integer value", params.Resources.Memory,
+		)
+	}
+
+	//nolint:gosec // G115: negative memory values already checked above
 	hostConfig := &container.HostConfig{
 		Mounts: mounts,
 		Resources: container.Resources{

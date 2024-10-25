@@ -50,14 +50,14 @@ func NewErrInvalidJobState(id string, actual models.JobStateType, expected model
 
 func NewErrInvalidJobVersion(id string, actual, expected uint64) bacerrors.Error {
 	errorMessage := fmt.Sprintf("job %s has version %d but expected %d", id, actual, expected)
-	return bacerrors.New(errorMessage).
+	return bacerrors.New("%s", errorMessage).
 		WithCode(ConflictJobVersion).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrJobAlreadyTerminal(id string, actual models.JobStateType, newState models.JobStateType) bacerrors.Error {
 	errorMessage := fmt.Sprintf("job %s is in terminal state %s and cannot transition to %s", id, actual, newState)
-	return bacerrors.New(errorMessage).
+	return bacerrors.New("%s", errorMessage).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
@@ -88,7 +88,7 @@ func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, ex
 	} else {
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
 	}
-	return bacerrors.New(errorMessage).
+	return bacerrors.New("%s", errorMessage).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
@@ -125,13 +125,13 @@ func NewErrMultipleEvaluationsFound(id string) bacerrors.Error {
 }
 
 func NewJobStoreError(message string) bacerrors.Error {
-	return bacerrors.New(message).
+	return bacerrors.New("%s", message).
 		WithCode(bacerrors.BadRequestError).
 		WithComponent(JobStoreComponent)
 }
 
 func NewBadRequestError(message string) bacerrors.Error {
-	return bacerrors.New(message).
+	return bacerrors.New("%s", message).
 		WithCode(bacerrors.BadRequestError).
 		WithComponent(JobStoreComponent)
 }

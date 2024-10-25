@@ -6,6 +6,11 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
+const (
+	// uint64ByteSize is the number of bytes needed to represent a uint64
+	uint64ByteSize = 8
+)
+
 // strToBytes converts a string to a byte slice
 func strToBytes(s string) []byte {
 	return []byte(s)
@@ -13,7 +18,7 @@ func strToBytes(s string) []byte {
 
 // uint64ToBytes converts an uint64 to a byte slice
 func uint64ToBytes(i uint64) []byte {
-	buf := make([]byte, 8) //nolint:gomnd
+	buf := make([]byte, uint64ByteSize)
 	binary.BigEndian.PutUint64(buf, i)
 	return buf
 }

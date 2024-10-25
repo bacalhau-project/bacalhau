@@ -42,7 +42,7 @@ var (
 func ParseLogMode(s string) (LogMode, error) {
 	lm := []LogMode{LogModeDefault, LogModeJSON, LogModeCmd}
 	for _, logMode := range lm {
-		if strings.ToLower(s) == strings.ToLower(string(logMode)) {
+		if strings.EqualFold(s, string(logMode)) {
 			return logMode, nil
 		}
 	}
@@ -344,7 +344,7 @@ func marshalZapCoreLogLevel(level zapcore.Level) zerolog.Level {
 	return zerolog.PanicLevel
 }
 
-//nolint:gocyclo
+//nolint:gocyclo,gosec
 func marshalZapCoreFields[T zerologFields[T]](fields []zapcore.Field, handler T) T {
 	keyPrefix := ""
 

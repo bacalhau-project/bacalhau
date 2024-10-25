@@ -1,0 +1,14 @@
+Name: Basic Hello World
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: busybox:latest
+        Entrypoint:
+          - /bin/sh
+        Parameters:
+          - "-c"
+          - "echo hello bacalhau world"

@@ -10,10 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Trigger Deployment
+        shell: bash
         run: |
+          set -euo pipefail
           curl -X POST \
           -H "Authorization: token ${{ secrets.BACALHAU_VMI_DEPLOYMENT_SECRET }}" \
           -H "Accept: application/vnd.github+json" \

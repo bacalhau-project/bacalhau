@@ -36,7 +36,7 @@ func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
 	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
 		Conn: params.Conn,
 		Config: stream.StreamConsumerClientConfig{
-			StreamCancellationBufferDuration: 5 * time.Second, //nolint:gomnd
+			StreamCancellationBufferDuration: 5 * time.Second, //nolint:mnd
 		},
 	})
 	if err != nil {

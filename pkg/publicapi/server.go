@@ -208,6 +208,7 @@ func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 	if apiServer.Port == 0 {
 		switch addr := listener.Addr().(type) {
 		case *net.TCPAddr:
+			//nolint:gosec // G115: addr.Port should be within limit
 			apiServer.Port = uint16(addr.Port)
 		default:
 			return fmt.Errorf("unknown address %v", addr)

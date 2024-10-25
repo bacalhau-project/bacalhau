@@ -165,7 +165,14 @@ type FieldInfo struct {
 	CapitalizedPath string
 }
 
-func processStruct(prefix string, capPrefix string, structType *ast.StructType, fieldInfos map[string]FieldInfo, typeMap map[string]*ast.StructType) {
+//nolint:funlen,gocyclo // TODO: Function is very long and complex
+func processStruct(
+	prefix string,
+	capPrefix string,
+	structType *ast.StructType,
+	fieldInfos map[string]FieldInfo,
+	typeMap map[string]*ast.StructType,
+) {
 	for _, field := range structType.Fields.List {
 		// Get field names
 		var fieldNames []string

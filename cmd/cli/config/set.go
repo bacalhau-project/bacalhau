@@ -79,7 +79,12 @@ func newSetCmd() *cobra.Command {
 		ValidArgsFunction: setAutoComplete,
 	}
 
-	setCmd.PersistentFlags().VarP(cliflags.NewWriteConfigFlag(), "config", "c", "Path to the config file (default is $BACALHAU_DIR/config.yaml)")
+	setCmd.PersistentFlags().VarP(
+		cliflags.NewWriteConfigFlag(),
+		"config",
+		"c",
+		"Path to the config file (default is $BACALHAU_DIR/config.yaml)",
+	)
 	return setCmd
 }
 

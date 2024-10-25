@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 setup_environment_variables() {
   export PYPI_TOKEN=$(buildkite-agent secret get PYPI_TOKEN)
