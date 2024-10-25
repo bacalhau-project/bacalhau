@@ -41,6 +41,8 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.goarch }}
+          PRIVATE_PEM: ${{ secrets.PRIVATE_PEM }}
+          PUBLIC_PEM: ${{ secrets.PUBLIC_PEM }}
           PRIVATE_KEY_PASSPHRASE: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
         run: |
           # Add Keys to expected files
@@ -48,8 +50,8 @@ jobs:
           touch /tmp/public.pem
           chmod 600 /tmp/private.pem
           chmod 600 /tmp/public.pem
-          echo "${{ secrets.PRIVATE_PEM }}" > /tmp/private.pem
-          echo "${{ secrets.PUBLIC_PEM }}" > /tmp/public.pem
+          echo "${PRIVATE_PEM}" > /tmp/private.pem
+          echo "${PUBLIC_PEM}" > /tmp/public.pem
           
           # Start build
           echo "Building bacalhau binary for: ${GOOS} ${GOARCH}"
