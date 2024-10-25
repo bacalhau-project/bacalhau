@@ -1,0 +1,18 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["eng-292/jamlo/improve-go-linting-in-ci"]
+#  pull_request:
+#    branches: [main]
+#  repository_dispatch:
+#    types: [ok-to-test]
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  integration-tests:
+    needs: build
+    if: success()
+    uses: ./.github/workflows/testcontainers-integration-tests.yml

@@ -1,12 +1,7 @@
 name: Test Containers Integration Tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  repository_dispatch:
-    types: [ok-to-test]
+  workflow_call:
 
 jobs:
   test-build-and-run-testcontainers:
