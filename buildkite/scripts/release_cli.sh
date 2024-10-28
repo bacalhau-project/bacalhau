@@ -16,12 +16,12 @@ download_artifact() {
 upload_artifact_to_github() {
     echo "$BACALHAU_RELEASE_TOKEN" | gh auth login --with-token
 
-    if [ -z "$BUILDKITE_TAG" ]; then
+    if [ -z "${BUILDKITE_TAG:-}" ]; then
         echo "Tag is Missing"
         exit 1
     fi
 
-    gh release upload $BUILDKITE_TAG bacalhau_$BUILDKITE_TAG_*
+    gh release upload "$BUILDKITE_TAG" bacalhau_"${BUILDKITE_TAG}"*
 }
 
 main() {
