@@ -1,4 +1,4 @@
-name: Build Binaries
+name: Build Bacalhau Binaries
 
 on:
   workflow_call:
@@ -33,7 +33,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          fetch-depth: "0"
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - uses: actions/setup-go@v5
         with:
@@ -59,13 +59,16 @@ jobs:
           # Listing Builds
           echo "===> Built Artifacts:"
           ls -lh dist/
+          
+          # Remove keys, good security practice
+          rm /tmp/private.pem /tmp/public.pem
 
       - name: Upload binary artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-${{ matrix.goarch }}
           path: "dist/bacalhau_*"
-          retention-days: 1  # Short retention since these are intermediate artifacts
+          retention-days: 1  # Short retention since these are intermediate artifacts, also save money
 
       - name: Report build status
         if: always()

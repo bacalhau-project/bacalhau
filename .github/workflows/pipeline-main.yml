@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Main Pipeline
 
 on:
   push:
@@ -13,10 +13,10 @@ jobs:
     uses: ./.github/workflows/build.yml
     secrets: inherit
 
-  integration-tests:
+  testcontainers-suite:
     needs: build
     if: success()
-    uses: ./.github/workflows/testcontainers-integration-tests.yml
+    uses: ./.github/workflows/testcontainers-suite.yml
     with:
       os: linux
       arch: amd64

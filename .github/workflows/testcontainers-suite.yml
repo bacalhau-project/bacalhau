@@ -1,4 +1,4 @@
-name: TestContainers Testing
+name: TestContainers Suite
 
 on:
   workflow_call:
@@ -21,7 +21,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.os }}-${{ inputs.arch }}
-          path: tmp/
+          path: compiled-artifacts/
 
       - name: Install Golang
         uses: actions/setup-go@v5
@@ -31,14 +31,11 @@ jobs:
       - name: Run Go tests in integration test directory
         shell: bash
         run: |
-          # TODO: make WebUI happy when compiling
-          mkdir -p webui/build
-          echo "hello test" > webui/build/index.html
-          echo "===> Copy binary to tests assets"
-          cd tmp
+          echo "===> Copy compiled artifact to use in docker images..."
+          cd compiled-artifacts
           tar -xzf bacalhau_*.tar.gz
           cp ./bacalhau ../test_integration/common_assets/bacalhau_bin
-            
-          # Run tests         
+          
+          echo "===> Running tests..."       
           cd ../test_integration
           go test -v -count=1 ./...
