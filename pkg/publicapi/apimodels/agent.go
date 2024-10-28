@@ -1,6 +1,8 @@
 package apimodels
 
-import "github.com/bacalhau-project/bacalhau/pkg/models"
+import (
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
 
 // IsAliveResponse is the response to the IsAlive request.
 type IsAliveResponse struct {
@@ -29,4 +31,9 @@ type GetAgentNodeRequest struct {
 type GetAgentNodeResponse struct {
 	BaseGetResponse
 	*models.NodeState
+}
+
+type GetAgentConfigResponse struct {
+	BaseGetResponse
+	Config []byte
 }

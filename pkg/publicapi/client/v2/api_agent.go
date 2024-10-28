@@ -30,3 +30,9 @@ func (c *Agent) Node(ctx context.Context, req *apimodels.GetAgentNodeRequest) (*
 	err := c.client.Get(ctx, "/api/v1/agent/node", req, &res)
 	return &res, err
 }
+
+func (c *Agent) Config(ctx context.Context) (*apimodels.GetAgentConfigResponse, error) {
+	var res apimodels.GetAgentConfigResponse
+	err := c.client.Get(ctx, "/api/v1/agent/config", &apimodels.BaseGetRequest{}, &res)
+	return &res, err
+}

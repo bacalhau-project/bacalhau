@@ -1,10 +1,12 @@
 package agent
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -113,16 +115,22 @@ func (e *Endpoint) debug(c echo.Context) error {
 	return c.JSON(http.StatusOK, debugInfoMap)
 }
 
-// debug godoc
+// config godoc
 //
 //	@ID			agent/config
 //	@Summary	Returns the current configuration of the node.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	types.Bacalhau
+//	@Success	200	{object}	[]byte
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {
 	cfg := e.bacalhauConfig
-	return c.JSON(http.StatusOK, cfg)
+	cfgBytes, err := yaml.Marshal(cfg)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to marshal agent config: %s", err))
+	}
+	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
+		Config: cfgBytes,
+	})
 }
