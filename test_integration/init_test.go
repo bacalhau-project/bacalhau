@@ -28,13 +28,13 @@ func TestMain(m *testing.M) {
 	//	os.Exit(1)
 	//}
 	//
-	//// TODO: Maybe we do not need to created images, but just inject
-	//// TODO: them with artifacts before container starts the starts (certs and binary and configs)
-	//err = utils.BuildBaseImages(globalTestExecutionId)
-	//if err != nil {
-	//	log.Println("Error building base images: ", err.Error())
-	//	os.Exit(1)
-	//}
+	// TODO: Maybe we do not need to created images, but just inject
+	// TODO: them with artifacts before container starts the starts (certs and binary and configs)
+	err = utils.BuildBaseImages(globalTestExecutionId)
+	if err != nil {
+		log.Println("Error building base images: ", err.Error())
+		os.Exit(1)
+	}
 
 	exitCode := m.Run()
 
