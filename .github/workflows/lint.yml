@@ -1,11 +1,7 @@
 name: Lints
 
 on:
-  pull_request:
-  push:
-    branches: [main]
-  repository_dispatch:
-    types: [ok-to-test]
+  workflow_call:
 
 jobs:
   # A separate Go-Lint job since the current lint job is heavily
@@ -29,6 +25,8 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           skip-cache: true
+
+  # TODO: Decouple Each Component Linting
   lint:
     runs-on: ubuntu-latest
     steps:

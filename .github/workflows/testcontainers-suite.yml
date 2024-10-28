@@ -11,7 +11,7 @@ on:
         type: string
 
 jobs:
-  test-build-and-run-testcontainers:
+  tests:
     runs-on: ubuntu-latest
 
     steps:
