@@ -32,6 +32,8 @@ jobs:
         uses: earthly/actions-setup@v1
 
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - uses: actions/setup-go@v5
         with:
