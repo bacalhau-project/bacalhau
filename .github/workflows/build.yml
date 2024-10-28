@@ -46,26 +46,16 @@ jobs:
           PRIVATE_KEY_PASSPHRASE: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
         run: |
           # Add Keys to expected files
-          touch /tmp/private.pem
-          touch /tmp/public.pem
-          chmod 600 /tmp/private.pem
-          chmod 600 /tmp/public.pem
-          echo "${PRIVATE_PEM}" > /tmp/private.pem
-          echo "${PUBLIC_PEM}" > /tmp/public.pem
-          
-          # list tmp to check
-          ls -lth /tmp/p*
-          
-          echo "first 5 characters of /tmp/private"
-          head -c 5 /tmp/private.pem
-          echo "first 5 characters of /tmp/public"
-          head -c 5 /tmp/public.pem
+          echo "${PRIVATE_PEM}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+          echo "${PUBLIC_PEM}" > /tmp/public.pem && chmod 600 /tmp/public.pem
           
           # Start build
-          echo "Building bacalhau binary for: ${GOOS} ${GOARCH}"
+          echo "==> Building bacalhau binary for: ${GOOS} ${GOARCH}..."
           make build-bacalhau-tgz
-          echo "Built bacalhau binary for: ${GOOS} ${GOARCH}"
+          echo "===> Done building bacalhau binary."
           
+          # Listing Builds
+          echo "===> Built Artifacts:"
           ls -lh dist/
 
       - name: Upload binary artifacts

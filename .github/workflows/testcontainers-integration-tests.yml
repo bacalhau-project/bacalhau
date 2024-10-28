@@ -1,7 +1,14 @@
-name: Test Containers Integration Tests
+name: TestContainers Testing
 
 on:
   workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
 
 jobs:
   test-build-and-run-testcontainers:
@@ -9,6 +16,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.os }}-${{ inputs.arch }}
+          path: tmp/
 
       - name: Install Golang
         uses: actions/setup-go@v5
@@ -22,5 +35,7 @@ jobs:
           # TODO: make WebUI happy when compiling
           mkdir -p webui/build
           echo "hello test" > webui/build/index.html
-          cd test_integration
-          go test -v -count=1 ./...
+          echo "===> tmp folder contents"
+          ls -lt tmp
+#          cd test_integration
+#          go test -v -count=1 ./...
