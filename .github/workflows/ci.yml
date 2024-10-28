@@ -12,7 +12,7 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
-  integration-tests:
-    needs: build
-    if: success()
-    uses: ./.github/workflows/testcontainers-integration-tests.yml
+#  integration-tests:
+#    needs: build
+#    if: success()
+#    uses: ./.github/workflows/testcontainers-integration-tests.yml

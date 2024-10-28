@@ -53,6 +53,14 @@ jobs:
           echo "${PRIVATE_PEM}" > /tmp/private.pem
           echo "${PUBLIC_PEM}" > /tmp/public.pem
           
+          # list tmp to check
+          ls -lth /tmp/p*
+          
+          echo "first 5 characters of /tmp/private"
+          head -c 5 /tmp/private.pem
+          echo "first 5 characters of /tmp/public"
+          head -c 5 /tmp/public.pem
+          
           # Start build
           echo "Building bacalhau binary for: ${GOOS} ${GOARCH}"
           make build-bacalhau-tgz
