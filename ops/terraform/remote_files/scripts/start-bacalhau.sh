@@ -42,7 +42,6 @@ bacalhau serve \
   --config Orchestrator.Advertise="${BACALHAU_ORCHESTRATOR_ADVERTISE}" \
   --config WebUI.Enabled="${BACALHAU_NODE_WEBUI}" \
   --config WebUI.Listen=0.0.0.0:80 \
-  --config WebUI.Backend="${BACALHAU_WEBUI_BACKEND}" \
   --config JobDefaults.Batch.Task.Publisher.Type=local \
   --config JobDefaults.Ops.Task.Publisher.Type=local \
   --config Publishers.Types.Local.Address="${BACALHAU_LOCAL_PUBLISHER_ADDRESS}"
