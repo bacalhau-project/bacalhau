@@ -1,0 +1,77 @@
+name: Build Bacalhau Binaries
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build Binary
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ job.status }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            goarch: amd64
+          - os: linux
+            goarch: arm64
+          - os: linux
+            goarch: armv7
+          - os: linux
+            goarch: armv6
+          - os: darwin
+            goarch: amd64
+          - os: darwin
+            goarch: arm64
+          - os: windows
+            goarch: amd64
+
+    steps:
+      - name: Install earthly
+        uses: earthly/actions-setup@v1
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.goarch }}
+          PRIVATE_PEM: ${{ secrets.PRIVATE_PEM }}
+          PUBLIC_PEM: ${{ secrets.PUBLIC_PEM }}
+          PRIVATE_KEY_PASSPHRASE: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
+        run: |
+          # Add Keys to expected files
+          echo "${PRIVATE_PEM}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+          echo "${PUBLIC_PEM}" > /tmp/public.pem && chmod 600 /tmp/public.pem
+          
+          # Start build
+          echo "==> Building bacalhau binary for: ${GOOS} ${GOARCH}..."
+          make build-bacalhau-tgz
+          echo "===> Done building bacalhau binary."
+          
+          # Listing Builds
+          echo "===> Built Artifacts:"
+          ls -lh dist/
+          
+          # Remove keys, good security practice
+          rm /tmp/private.pem /tmp/public.pem
+
+      - name: Upload binary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-${{ matrix.goarch }}
+          path: "dist/bacalhau_*"
+          retention-days: 1  # Short retention since these are intermediate artifacts, also save money
+
+      - name: Report build status
+        if: always()
+        run: |
+          echo "Build completed for ${{ matrix.os }}-${{ matrix.goarch }}"
+          echo "Status: ${{ job.status }}"

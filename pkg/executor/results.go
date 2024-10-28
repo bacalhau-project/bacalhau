@@ -139,7 +139,6 @@ func WriteJobResults(
 
 	wg := multierrgroup.Group{}
 	for _, output := range outputs {
-		output := output
 		wg.Go(func() error {
 			return writeOutputResult(resultsDir, output)
 		})

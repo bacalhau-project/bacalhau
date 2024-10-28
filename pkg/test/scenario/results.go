@@ -132,7 +132,6 @@ func ManyChecks(checks ...CheckResults) CheckResults {
 	return func(resultsDir string) error {
 		var wg multierrgroup.Group
 		for _, check := range checks {
-			check := check
 			wg.Go(func() error { return check(resultsDir) })
 		}
 		return wg.Wait()

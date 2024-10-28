@@ -11,11 +11,8 @@ import (
 	dc "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/stretchr/testify/suite"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -96,82 +93,6 @@ func DeleteDockerTestImagesAndPrune(suffix string) error {
 		len(pruneReport.ImagesDeleted),
 		pruneReport.SpaceReclaimed,
 	)
-	return nil
-}
-
-func CompileBacalhau(ctx context.Context, programPath string) error {
-	programDir, err := filepath.Abs(filepath.Dir(programPath))
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to get absolute path: %w", err)
-	}
-
-	// Create a container request
-	// TODO: Improve how we build our binary
-	req := testcontainers.ContainerRequest{
-		Image: "golang:1.23",
-		Cmd: []string{
-			"go",
-			"build",
-			"-buildvcs=false",
-			"-o", "/usr/src/bacalhau-binary",
-			"-ldflags", "-linkmode external -extldflags '-static'",
-			"-a",
-			"./"},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      programDir,
-				ContainerFilePath: "/usr/src/",
-				FileMode:          0755,
-			},
-		},
-		WorkingDir: "/usr/src/bacalhau",
-		WaitingFor: wait.ForExit(),
-	}
-
-	// Start the container
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to start container: %w", err)
-	}
-	defer container.Terminate(ctx)
-
-	// Get the logs
-	logs, err := container.Logs(ctx)
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to get container logs: %w", err)
-	}
-	defer logs.Close()
-
-	// Print the logs
-	if _, err := io.Copy(os.Stdout, logs); err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to print logs: %w", err)
-	}
-
-	// Copy the compiled binary from the container to the host
-	reader, err := container.CopyFileFromContainer(ctx, "/usr/src/bacalhau-binary")
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to copy file from container: %w", err)
-	}
-	defer reader.Close()
-
-	// Create the output file on the host
-	outFile, err := os.Create(filepath.Join(programDir, "test_integration", "common_assets", "bacalhau_bin"))
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	// Copy the content from the reader to the output file
-	_, err = io.Copy(outFile, reader)
-	if err != nil {
-		return fmt.Errorf("compiling bacalhau: failed to write compiled program to file: %w", err)
-	}
-
-	fmt.Println("Compiled program has been copied to the host machine.")
-
 	return nil
 }
 
