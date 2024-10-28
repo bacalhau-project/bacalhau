@@ -2,11 +2,11 @@ name: Main Pipeline
 
 on:
   push:
-    branches: ["eng-292/jamlo/improve-go-linting-in-ci"]
-#  pull_request:
-#    branches: [main]
-#  repository_dispatch:
-#    types: [ok-to-test]
+    branches: [main]
+  pull_request:
+    branches: [main]
+  repository_dispatch:
+    types: [ok-to-test]
 
 jobs:
   build:
