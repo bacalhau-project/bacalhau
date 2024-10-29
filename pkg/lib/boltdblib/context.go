@@ -1,4 +1,4 @@
-package boltjobstore
+package boltdblib
 
 import (
 	"context"
@@ -7,9 +7,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
-
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 )
+
+// TxContext is a transactional context that can be used to commit or rollback
+type TxContext interface {
+	context.Context
+	Commit() error
+	Rollback() error
+}
 
 // contextKey is a custom type to avoid key collisions in context values.
 type contextKey int
@@ -32,9 +37,9 @@ type txContext struct {
 	mu      sync.Mutex
 }
 
-// newTxContext creates a new transactional context for a BoltDB transaction.
+// NewTxContext creates a new transactional context for a BoltDB transaction.
 // It embeds a standard context and manages transaction commit/rollback based on the context's lifecycle.
-func newTxContext(ctx context.Context, tx *bolt.Tx) *txContext {
+func NewTxContext(ctx context.Context, tx *bolt.Tx) TxContext {
 	innerCtx := context.WithValue(ctx, txContextKey, tx)
 	txCtx := &txContext{
 		Context: innerCtx,
@@ -58,8 +63,8 @@ func newTxContext(ctx context.Context, tx *bolt.Tx) *txContext {
 	return txCtx
 }
 
-// txFromContext retrieves the transaction from the context, if available.
-func txFromContext(ctx context.Context) (*bolt.Tx, bool) {
+// TxFromContext retrieves the transaction from the context, if available.
+func TxFromContext(ctx context.Context) (*bolt.Tx, bool) {
 	tx, ok := ctx.Value(txContextKey).(*bolt.Tx)
 	return tx, ok
 }
@@ -98,6 +103,3 @@ func (b *txContext) close() {
 		b.closed = true
 	}
 }
-
-// compile time check whether the txContext implements the TxContext interface from the jobstore package.
-var _ jobstore.TxContext = &txContext{}

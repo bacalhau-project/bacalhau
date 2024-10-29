@@ -2,93 +2,55 @@ package evaluation
 
 import (
 	"context"
-	"sync"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/rs/zerolog/log"
 )
 
-// Watcher is the integration between the jobstore and the evaluation broker.
-// It watches for changes in the jobstore and enqueues evaluations in the broker
-// It also handles populating the evaluation broker with non-terminal evaluations during startup
-type Watcher struct {
-	// store is the jobstore to watch
-	store jobstore.Store
-	// broker is the evaluation broker to enqueue evaluations
+// WatchHandler processes evaluation events from the event store and enqueues
+// them into the evaluation broker.
+type WatchHandler struct {
 	broker orchestrator.EvaluationBroker
-
-	watching  bool
-	startOnce sync.Once
-	stopOnce  sync.Once
-	stopChan  chan struct{}
 }
 
-// NewWatcher creates a new Watcher
-func NewWatcher(store jobstore.Store, broker orchestrator.EvaluationBroker) *Watcher {
-	return &Watcher{
-		store:    store,
-		broker:   broker,
-		stopChan: make(chan struct{}),
+func NewWatchHandler(broker orchestrator.EvaluationBroker) *WatchHandler {
+	return &WatchHandler{
+		broker: broker,
 	}
 }
 
-// IsWatching returns true if the watcher is currently watching
-func (w *Watcher) IsWatching() bool {
-	return w.watching
-}
+// HandleEvent processes evaluation events and enqueues new evaluations into the broker.
+// It only processes creation events since deletions are handled by the broker itself.
+func (h *WatchHandler) HandleEvent(ctx context.Context, event watcher.Event) error {
+	// Skip non-create operations early
+	if event.Operation != watcher.OperationCreate {
+		return nil
+	}
 
-// Start starts the watcher in a goroutine
-func (w *Watcher) Start(ctx context.Context) {
-	w.startOnce.Do(func() {
-		go w.watchAndEnqueue(ctx)
-	})
-}
+	// Skip non-evaluation events
+	if event.ObjectType != jobstore.EventObjectEvaluation {
+		return nil
+	}
 
-// Backfill populates the broker with non-terminal evaluations
-func (w *Watcher) Backfill(ctx context.Context) error {
-	// TODO: Implement Backfill
+	eval, ok := event.Object.(*models.Evaluation)
+	if !ok {
+		log.Ctx(ctx).Error().
+			Str("event_type", event.ObjectType).
+			Msgf("Received unexpected object type: %T", event.Object)
+		return nil
+	}
+
+	if err := h.broker.Enqueue(eval); err != nil {
+		log.Ctx(ctx).Error().Err(err).
+			Str("evaluation_id", eval.ID).
+			Str("job_id", eval.JobID).
+			Msg("Failed to enqueue evaluation")
+		return err
+	}
+
 	return nil
-}
-
-func (w *Watcher) watchAndEnqueue(ctx context.Context) {
-	watcher := w.store.Watch(ctx, jobstore.EvaluationWatcher, jobstore.CreateEvent)
-	defer watcher.Close()
-
-	w.watching = true
-	defer func() {
-		w.watching = false
-	}()
-
-	for {
-		select {
-		case evt := <-watcher.Channel():
-			if evt == nil {
-				log.Ctx(ctx).Debug().Msg("Watcher channel closed, stopping eval watcher")
-				return
-			}
-			eval, ok := evt.Object.(models.Evaluation)
-			if !ok {
-				log.Error().Msgf("Received unexpected object type in eval watcher: %T", evt.Object)
-				continue
-			}
-			if err := w.broker.Enqueue(&eval); err != nil {
-				log.Error().Err(err).Msgf("Failed to enqueue %s", eval.String())
-			}
-		case <-ctx.Done():
-			log.Ctx(ctx).Debug().Msg("Context cancelled, stopping eval watcher")
-			return
-		case <-w.stopChan:
-			log.Ctx(ctx).Debug().Msg("Stop channel closed, stopping eval watcher")
-			return
-		}
-	}
-}
-
-// Stop stops the watcher
-func (w *Watcher) Stop() {
-	w.stopOnce.Do(func() {
-		close(w.stopChan)
-	})
 }

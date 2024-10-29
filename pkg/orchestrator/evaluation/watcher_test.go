@@ -12,21 +12,24 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
-type WatcherTestSuite struct {
+type WatchHandlerTestSuite struct {
 	suite.Suite
-	store   jobstore.Store
-	broker  *evaluation.InMemoryBroker
-	watcher *evaluation.Watcher
+	store        jobstore.Store
+	broker       *evaluation.InMemoryBroker
+	registry     watcher.Registry
+	watchHandler *evaluation.WatchHandler
+	ctx          context.Context
 }
 
-func (s *WatcherTestSuite) SetupTest() {
-	// Open the Bolt database on the temporary file.
+func (s *WatchHandlerTestSuite) SetupTest() {
 	var err error
+	s.ctx = context.Background()
 	s.store, err = boltjobstore.NewBoltJobStore(filepath.Join(s.T().TempDir(), "evaluation-watcher.db"))
 	s.Require().NoError(err)
 
@@ -34,97 +37,94 @@ func (s *WatcherTestSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.broker.SetEnabled(true)
 
-	s.watcher = evaluation.NewWatcher(s.store, s.broker)
+	s.registry = watcher.NewRegistry(s.store.GetEventStore())
+	s.watchHandler = evaluation.NewWatchHandler(s.broker)
+
+	// Start watching for events
+	_, err = s.registry.Watch(s.ctx, "test-watcher", s.watchHandler,
+		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectEvaluation},
+			Operations:  []watcher.Operation{watcher.OperationCreate},
+		}),
+	)
+	s.Require().NoError(err)
 }
 
-func (s *WatcherTestSuite) TearDownTest() {
-	_ = s.store.Close(context.Background())
+func (s *WatchHandlerTestSuite) TearDownTest() {
+	_ = s.registry.Stop(s.ctx)
+	_ = s.store.Close(s.ctx)
 }
 
-func (s *WatcherTestSuite) TestEnqueueEval() {
-	// start the watcher
-	s.watcher.Start(context.Background())
-	s.Eventually(func() bool {
-		return s.watcher.IsWatching()
-	}, 100*time.Millisecond, 10*time.Millisecond)
-
+func (s *WatchHandlerTestSuite) TestEvaluationEnqueued() {
+	// Create an evaluation
 	eval, err := s.createEvaluation()
+	s.Require().NoError(err)
 
+	// Verify it was enqueued in the broker
 	dequeuedEval, _, err := s.broker.Dequeue([]string{eval.Type}, 100*time.Millisecond)
 	s.Require().NoError(err)
 	s.Require().NotNil(dequeuedEval, "evaluation should be enqueued")
-	s.Require().Equal(eval.ID, dequeuedEval.ID)
+	s.Equal(eval.ID, dequeuedEval.ID)
+	s.Equal(eval.JobID, dequeuedEval.JobID)
 
-	// no more evaluations
+	// Verify no more evaluations are queued
 	dequeuedEval, _, err = s.broker.Dequeue([]string{eval.Type}, 10*time.Millisecond)
 	s.Require().NoError(err)
-	s.Require().Nil(dequeuedEval, "evaluation should not be enqueued")
+	s.Require().Nil(dequeuedEval, "no more evaluations should be enqueued")
 }
 
-// TestStoppedWatcher tests that the watcher stops watching when the context is canceled
-func (s *WatcherTestSuite) TestStoppedWatcher_ContextDone() {
-	// start the watcher
-	ctx, cancel := context.WithCancel(context.Background())
-	s.watcher.Start(ctx)
-	s.Eventually(func() bool {
-		return s.watcher.IsWatching()
-	}, 100*time.Millisecond, 10*time.Millisecond)
-
-	cancel()
-	s.Eventually(func() bool {
-		return !s.watcher.IsWatching()
-	}, 100*time.Millisecond, 10*time.Millisecond)
-
-	// Create an evaluation
+func (s *WatchHandlerTestSuite) TestEvaluationDeletedIgnored() {
+	// Create and then delete an evaluation
 	eval, err := s.createEvaluation()
 	s.Require().NoError(err)
 
-	// no evaluations should be enqueued
-	dequeuedEval, _, err := s.broker.Dequeue([]string{eval.Type}, 10*time.Millisecond)
+	// Dequeue the created evaluation
+	dequeuedEval, _, err := s.broker.Dequeue([]string{eval.Type}, 100*time.Millisecond)
 	s.Require().NoError(err)
-	s.Require().Nil(dequeuedEval, "evaluation should not be enqueued")
+	s.Require().NotNil(dequeuedEval, "evaluation should be enqueued")
+
+	// Delete the evaluation
+	err = s.store.DeleteEvaluation(s.ctx, eval.ID)
+	s.Require().NoError(err)
+
+	// Verify no new evaluation was enqueued from the delete event
+	dequeuedEval, _, err = s.broker.Dequeue([]string{eval.Type}, 10*time.Millisecond)
+	s.Require().NoError(err)
+	s.Require().Nil(dequeuedEval, "delete event should not enqueue evaluation")
 }
 
-// TestStoppedWatcher_StopCalled tests that the watcher stops watching when Stop is called
-func (s *WatcherTestSuite) TestStoppedWatcher_StopCalled() {
-	// start the watcher
-	s.watcher.Start(context.Background())
-	s.Eventually(func() bool {
-		return s.watcher.IsWatching()
-	}, 100*time.Millisecond, 10*time.Millisecond)
+func (s *WatchHandlerTestSuite) TestStoppedWatcher() {
+	s.Require().NoError(s.registry.Stop(s.ctx))
 
-	s.watcher.Stop()
-	s.Eventually(func() bool {
-		return !s.watcher.IsWatching()
-	}, 100*time.Millisecond, 10*time.Millisecond)
-
-	// Create an evaluation
+	// Create an evaluation after stopping
 	eval, err := s.createEvaluation()
 	s.Require().NoError(err)
 
-	// no evaluations should be enqueued
+	// Verify no evaluations were enqueued
 	dequeuedEval, _, err := s.broker.Dequeue([]string{eval.Type}, 10*time.Millisecond)
 	s.Require().NoError(err)
-	s.Require().Nil(dequeuedEval, "evaluation should not be enqueued")
+	s.Require().Nil(dequeuedEval, "evaluation should not be enqueued after stopping")
 }
 
-func (s *WatcherTestSuite) createEvaluation() (*models.Evaluation, error) {
-	// Create a job
+func (s *WatchHandlerTestSuite) createEvaluation() (*models.Evaluation, error) {
 	job := mock.Job()
 	eval := mock.Eval()
 	eval.JobID = job.ID
 	eval.Type = job.Type
 
-	// Create job
-	err := s.store.CreateJob(context.Background(), *job)
+	tx, err := s.store.BeginTx(context.Background())
 	s.Require().NoError(err)
+	defer func(tx jobstore.TxContext) {
+		_ = tx.Rollback()
+	}(tx)
 
-	// Create an evaluation
-	err = s.store.CreateEvaluation(context.Background(), *eval)
-	s.Require().NoError(err)
-	return eval, err
+	s.Require().NoError(s.store.CreateJob(tx, *job))
+	s.Require().NoError(s.store.CreateEvaluation(tx, *eval))
+	s.Require().NoError(tx.Commit())
+	return eval, nil
 }
 
-func TestWatcherTestSuite(t *testing.T) {
-	suite.Run(t, new(WatcherTestSuite))
+func TestWatchHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(WatchHandlerTestSuite))
 }

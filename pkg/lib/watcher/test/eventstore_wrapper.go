@@ -72,11 +72,11 @@ func (w *EventStoreWrapper) WithCloseInterceptor(f Interceptor) *EventStoreWrapp
 	return w
 }
 
-func (w *EventStoreWrapper) StoreEvent(ctx context.Context, operation watcher.Operation, objectType string, object interface{}) error {
+func (w *EventStoreWrapper) StoreEvent(ctx context.Context, request watcher.StoreEventRequest) error {
 	if err := w.intercept(w.storeEventInterceptor); err != nil {
 		return err
 	}
-	return w.actualStore.StoreEvent(ctx, operation, objectType, object)
+	return w.actualStore.StoreEvent(ctx, request)
 }
 
 func (w *EventStoreWrapper) GetEvents(ctx context.Context, params watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
