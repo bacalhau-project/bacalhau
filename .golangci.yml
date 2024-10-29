@@ -69,7 +69,7 @@ linters:
   - depguard
   - dogsled
   - errcheck
-  - exportloopref
+  - copyloopvar
   - funlen
   - gochecknoinits
   - goconst
@@ -100,7 +100,7 @@ run:
   # concurrency: 16
   # Timeout for analysis, e.g. 30s, 5m.
   # Default: 1m
-  timeout: 5m
+  timeout: 10m
   # Exit code when at least one issue was found.
   # Default: 1
   issues-exit-code: 2
