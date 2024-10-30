@@ -88,16 +88,20 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 
 func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid accepted: %s", request.ExecutionID)
-	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:    request.ExecutionID,
-		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
-		NewState:       store.ExecutionStateBidAccepted,
+	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+		ExecutionID: request.ExecutionID,
+		Condition: store.UpdateExecutionCondition{
+			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
+		},
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted),
+		},
 	})
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
 
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
@@ -105,63 +109,67 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 	// Increment the number of jobs accepted by this compute node:
 	jobsAccepted.Add(ctx, 1)
 
-	err = s.executor.Run(ctx, localExecutionState)
+	err = s.executor.Run(ctx, execution)
 	if err != nil {
 		return BidAcceptedResponse{}, err
 	}
 	return BidAcceptedResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
+		ExecutionMetadata: NewExecutionMetadata(execution),
 	}, nil
 }
 
 func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid rejected: %s", request.ExecutionID)
-	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:    request.ExecutionID,
-		ExpectedStates: []store.LocalExecutionStateType{store.ExecutionStateCreated},
-		NewState:       store.ExecutionStateCancelled,
-		Comment:        "bid rejected due to: " + request.Justification,
+	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+		ExecutionID: request.ExecutionID,
+		Condition: store.UpdateExecutionCondition{
+			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
+		},
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateBidRejected).WithMessage(request.Justification),
+		},
 	})
 	if err != nil {
 		return BidRejectedResponse{}, err
 	}
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return BidRejectedResponse{}, err
 	}
 	return BidRejectedResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
+		ExecutionMetadata: NewExecutionMetadata(execution),
 	}, nil
 }
 
 func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return CancelExecutionResponse{}, err
 	}
-	if localExecutionState.State.IsTerminal() {
+	if execution.IsTerminalComputeState() {
 		return CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s",
-			localExecutionState.Execution.ID, localExecutionState.State)
+			execution.ID, execution.ComputeState.StateType)
 	}
 
-	err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	err = s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: request.ExecutionID,
-		NewState:    store.ExecutionStateCancelled,
-		Comment:     "execution canceled due to: " + request.Justification,
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateCancelled).WithMessage(request.Justification),
+		},
 	})
 	if err != nil {
 		return CancelExecutionResponse{}, err
 	}
 
-	if localExecutionState.State.IsExecuting() {
-		err = s.executor.Cancel(ctx, localExecutionState)
+	if execution.ComputeState.StateType.IsExecuting() {
+		err = s.executor.Cancel(ctx, execution)
 		if err != nil {
 			return CancelExecutionResponse{}, err
 		}
 	}
 	return CancelExecutionResponse{
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
+		ExecutionMetadata: NewExecutionMetadata(execution),
 	}, nil
 }
 

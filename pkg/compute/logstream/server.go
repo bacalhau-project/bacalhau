@@ -47,15 +47,15 @@ func NewServer(params ServerParams) *Server {
 // GetLogStream returns a stream of logs for a given execution
 func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	localExecutionState, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
+	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
 		return nil, err
 	}
 
-	if localExecutionState.State.IsTerminal() {
+	if execution.IsTerminalComputeState() {
 		return nil, fmt.Errorf("can't stream logs for completed execution: %s", request.ExecutionID)
 	}
-	engineType := localExecutionState.Execution.Job.Task().Engine.Type
+	engineType := execution.Job.Task().Engine.Type
 	exec, err := s.executors.Get(ctx, engineType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find executor for engine: %s. %w", engineType, err)

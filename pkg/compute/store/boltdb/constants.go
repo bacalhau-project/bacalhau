@@ -2,7 +2,6 @@ package boltdb
 
 const (
 	defaultSliceRetrievalCapacity = 10
-	defaultDatabasePermissions    = 0600
 )
 
 // Schema versioning
@@ -21,15 +20,15 @@ const (
 //  1. Increment the currentSchemaVersion (e.g., to "v2"). This will auto create new buckets.
 //  2. Implement a migration strategy to move data from old buckets to new ones
 //  3. The store should now read/write data from the new buckets
-const currentSchemaVersion = "v1"
+const currentSchemaVersion = "v2"
 
 // Bucket names
 // All bucket names are prefixed with the current schema version to support
 // versioning and backward compatibility
 const (
 	// Main buckets
-	executionsBucket       = currentSchemaVersion + "_executions"
-	executionHistoryBucket = currentSchemaVersion + "_execution_history"
+	executionsBucket      = currentSchemaVersion + "_executions"
+	executionEventsBucket = currentSchemaVersion + "_execution_events"
 
 	// Index buckets
 	idxExecutionsByJobBucket   = currentSchemaVersion + "_idx_executions_by_job_id"

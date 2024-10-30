@@ -6,9 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -29,7 +31,7 @@ func (s *BidRejectedSuite) TestBidRejected() {
 
 	_, err := s.node.LocalEndpoint.BidRejected(ctx, compute.BidRejectedRequest{ExecutionID: executionID})
 	s.NoError(err)
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCancelled))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateBidRejected))
 	s.NoError(err)
 }
 
@@ -43,15 +45,15 @@ func (s *BidRejectedSuite) TestWrongState() {
 	ctx := context.Background()
 
 	// loop over few states to make sure we don't accept bids, if state is not `Created`
-	for _, state := range []store.LocalExecutionStateType{
-		store.ExecutionStatePublishing,
-		store.ExecutionStateCancelled,
-		store.ExecutionStateCompleted,
+	for _, state := range []models.ExecutionStateType{
+		models.ExecutionStatePublishing,
+		models.ExecutionStateCancelled,
+		models.ExecutionStateCompleted,
 	} {
 		executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+		err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 			ExecutionID: executionID,
-			NewState:    state,
+			NewValues:   models.Execution{ComputeState: models.NewExecutionState(state)},
 		})
 		s.NoError(err)
 

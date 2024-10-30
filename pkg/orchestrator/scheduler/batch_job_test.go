@@ -20,6 +20,7 @@ type BatchJobSchedulerTestSuite struct {
 
 func (s *BatchJobSchedulerTestSuite) SetupTest() {
 	s.BatchServiceJobSchedulerTestSuite.SetupTest()
+	s.jobType = models.JobTypeBatch
 }
 
 func TestBatchJobSchedulerTestSuite(t *testing.T) {
