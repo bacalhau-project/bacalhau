@@ -416,10 +416,12 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		}
 
 		// Update execution-state index
-		if err = bucket(tx, idxExecutionsByStateBucket, stateBucketKeyStr(existingExecution)).Delete(strToBytes(existingExecution.ID)); err != nil {
+		if err = bucket(tx, idxExecutionsByStateBucket, stateBucketKeyStr(existingExecution)).
+			Delete(strToBytes(existingExecution.ID)); err != nil {
 			return err
 		}
-		stateBucket, err := bucket(tx, idxExecutionsByStateBucket).CreateBucketIfNotExists(stateBucketKey(&newExecution))
+		stateBucket, err := bucket(tx, idxExecutionsByStateBucket).
+			CreateBucketIfNotExists(stateBucketKey(&newExecution))
 		if err != nil {
 			return err
 		}
