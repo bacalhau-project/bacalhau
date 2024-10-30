@@ -1,14 +1,15 @@
 package test_integration
 
 import (
-	"bacalhau/integration_tests/utils"
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 	"strings"
 	"testing"
 	"time"
+
+	"bacalhau/integration_tests/utils"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
 type JobsBasicRunsScenariosSuite struct {

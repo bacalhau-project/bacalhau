@@ -3,10 +3,11 @@ package test_integration
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
 type OrchestratorConfigOverrideAndFlagAndConfigFlagSuite struct {
@@ -67,7 +68,7 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TestConfigOverride
 	unmarshalledAgentOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
 	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	webuiEnabled := unmarshalledAgentOutput.(map[string]interface{})["WebUI"].(map[string]interface{})["Enabled"].(bool)
+	webuiEnabled := unmarshalledAgentOutput.(map[string]interface{})["config"].(map[string]interface{})["WebUI"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(webuiEnabled, "Expected orchestrator to be enabled, got: %t", webuiEnabled)
 }
 

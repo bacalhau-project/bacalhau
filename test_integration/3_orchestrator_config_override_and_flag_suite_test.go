@@ -3,10 +3,11 @@ package test_integration
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
 type OrchestratorConfigOverrideAndFlagSuite struct {

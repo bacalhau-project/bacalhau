@@ -3,11 +3,12 @@ package test_integration
 import (
 	"context"
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go/exec"
-	"strings"
-	"testing"
 )
 
 type OrchestratorBasicConfigSuite struct {
@@ -65,7 +66,7 @@ func (s *OrchestratorBasicConfigSuite) TestOrchestratorNodeUpAndEnabled() {
 	marshalledOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
 	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	orchestratorEnabled := marshalledOutput.(map[string]interface{})["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
+	orchestratorEnabled := marshalledOutput.(map[string]interface{})["config"].(map[string]interface{})["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(orchestratorEnabled, "Expected orchestrator to be enabled, got: %t", orchestratorEnabled)
 }
 
