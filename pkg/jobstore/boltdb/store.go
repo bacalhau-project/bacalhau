@@ -107,9 +107,9 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 
 	// Create the top level buckets ready for use as they
 	// will definitely be required
-	err = db.Update(func(tx *bolt.Tx) (err error) {
-		// Create the top level jobs bucket, and the
-		_, err = tx.CreateBucketIfNotExists([]byte(BucketJobs))
+	if err = db.Update(func(tx *bolt.Tx) error {
+		// Create the top level jobs bucket
+		_, err := tx.CreateBucketIfNotExists([]byte(BucketJobs))
 		if err != nil {
 			return err
 		}
@@ -122,14 +122,16 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 			BucketEvaluationsIndex,
 		}
 		for _, ib := range indexBuckets {
-			_, err = tx.CreateBucketIfNotExists([]byte(ib))
+			_, err := tx.CreateBucketIfNotExists([]byte(ib))
 			if err != nil {
 				return err
 			}
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return nil, err
+	}
 
 	store.inProgressIndex = NewIndex(BucketProgressIndex)
 	store.namespacesIndex = NewIndex(BucketNamespacesIndex)
