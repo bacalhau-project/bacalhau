@@ -4,6 +4,7 @@ package compute_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -19,7 +20,10 @@ import (
 
 type StartupTestSuite struct {
 	suite.Suite
-	ctx context.Context
+	ctx          context.Context
+	database     store.ExecutionStore
+	mockExecutor *compute.MockExecutor
+	startup      *compute.Startup
 }
 
 func TestStartupTestSuite(t *testing.T) {
@@ -28,71 +32,118 @@ func TestStartupTestSuite(t *testing.T) {
 
 func (s *StartupTestSuite) SetupTest() {
 	s.ctx = context.Background()
-}
-
-func (s *StartupTestSuite) TestLongRunning() {
-
-	ctx := context.Background()
-	database, err := boltdb.NewStore(ctx, filepath.Join(s.T().TempDir(), "bidder-test.db"))
+	var err error
+	s.database, err = boltdb.NewStore(s.ctx, filepath.Join(s.T().TempDir(), "startup-test.db"))
 	s.Require().NoError(err)
-	defer func() {
-		database.Close(ctx)
-	}()
-
-	type testcase struct {
-		ID       string
-		job_type string
-		allNodes bool
-	}
-
-	any := gomock.Any()
-
-	testcases := []testcase{
-		{
-			ID:       "1",
-			job_type: models.JobTypeBatch,
-			allNodes: false,
-		},
-		{
-			ID:       "2",
-			job_type: models.JobTypeService,
-			allNodes: true,
-		},
-	}
-
-	// Create jobs and live executions for test cases.
-	for _, tc := range testcases {
-		j := mock.Job()
-		j.ID = tc.ID
-		j.Type = tc.job_type
-
-		execution := mock.ExecutionForJob(j)
-		execution.ID = tc.ID
-		exec := store.NewLocalExecutionState(execution, "req")
-		err := database.CreateExecution(s.ctx, *exec)
-		s.Require().NoError(err)
-
-		err = database.UpdateExecutionState(s.ctx, store.UpdateExecutionStateRequest{
-			ExecutionID: execution.ID,
-			NewState:    store.ExecutionStateRunning,
-		})
-		s.Require().NoError(err)
-	}
 
 	ctrl := gomock.NewController(s.T())
-	mockExecutor := compute.NewMockExecutor(ctrl)
+	s.mockExecutor = compute.NewMockExecutor(ctrl)
 
-	mockExecutor.EXPECT().Cancel(any, any).Return(nil)
-	mockExecutor.EXPECT().Run(any, any).Return(nil)
+	s.startup = compute.NewStartup(s.database, s.mockExecutor)
+}
 
-	execs, err := database.GetLiveExecutions(s.ctx)
+func (s *StartupTestSuite) TearDownTest() {
+	s.database.Close(s.ctx)
+}
+
+func (s *StartupTestSuite) TestEnsureLiveJobs() {
+	testCases := []struct {
+		name      string
+		jobType   string
+		expectRun bool
+	}{
+		{
+			name:      "BatchJob",
+			jobType:   models.JobTypeBatch,
+			expectRun: false,
+		},
+		{
+			name:      "ServiceJob",
+			jobType:   models.JobTypeService,
+			expectRun: true,
+		},
+		{
+			name:      "DaemonJob",
+			jobType:   models.JobTypeDaemon,
+			expectRun: true,
+		},
+		{
+			name:      "OpsJob",
+			jobType:   models.JobTypeOps,
+			expectRun: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			s.SetupTest()
+			defer s.TearDownTest()
+
+			// Create a job and live execution for the test case
+			job := mock.Job()
+			job.Type = tc.jobType
+			execution := mock.ExecutionForJob(job)
+
+			err := s.database.CreateExecution(s.ctx, *execution)
+			s.Require().NoError(err)
+
+			err = s.database.UpdateExecutionState(s.ctx, store.UpdateExecutionRequest{
+				ExecutionID: execution.ID,
+				NewValues: models.Execution{
+					ComputeState: models.NewExecutionState(models.ExecutionStateRunning),
+				},
+			})
+			s.Require().NoError(err)
+
+			if tc.expectRun {
+				s.mockExecutor.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil)
+			}
+
+			// Run the startup process
+			err = s.startup.Execute(s.ctx)
+			s.Require().NoError(err)
+
+			// Verify the execution state after startup
+			updatedExec, err := s.database.GetExecution(s.ctx, execution.ID)
+			s.Require().NoError(err)
+
+			if tc.expectRun {
+				s.Equal(models.ExecutionStateRunning, updatedExec.ComputeState.StateType,
+					"expected execution to be %s but was %s", models.ExecutionStateRunning, updatedExec.ComputeState.StateType)
+			} else {
+				s.Equal(models.ExecutionStateFailed, updatedExec.ComputeState.StateType,
+					"expected execution to be %s but was %s", models.ExecutionStateFailed, updatedExec.ComputeState.StateType)
+			}
+		})
+	}
+}
+
+func (s *StartupTestSuite) TestEnsureLiveJobsWithError() {
+	// Create a service job that will cause an error
+	job := mock.Job()
+	job.Type = models.JobTypeService
+	execution := mock.ExecutionForJob(job)
+
+	err := s.database.CreateExecution(s.ctx, *execution)
 	s.Require().NoError(err)
-	s.Require().Equal(2, len(execs))
 
-	startup := compute.NewStartup(database, mockExecutor)
-	err = startup.Execute(s.ctx)
+	err = s.database.UpdateExecutionState(s.ctx, store.UpdateExecutionRequest{
+		ExecutionID: execution.ID,
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateRunning),
+		},
+	})
 	s.Require().NoError(err)
 
-	// If we get here we're good as mock expectations didn't fail.
-	ctrl.Finish()
+	// Expect the Run method to return an error
+	s.mockExecutor.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("execution error"))
+
+	// Run the startup process
+	err = s.startup.Execute(s.ctx)
+	s.Require().Error(err)
+
+	// Verify that the error didn't prevent other operations
+	updatedExec, err := s.database.GetExecution(s.ctx, execution.ID)
+	s.Require().NoError(err)
+	s.Equal(models.ExecutionStateRunning, updatedExec.ComputeState.StateType)
 }

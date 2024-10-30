@@ -74,7 +74,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalExecutionStateType
+		expectedExecutionState models.ExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -87,7 +87,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic and resource should bid and not wait; bid complete",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -98,7 +98,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should wait resource should wait; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
@@ -108,7 +108,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should wait and resource should bid; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
@@ -118,7 +118,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should bid and resource should wait; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -159,9 +159,9 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
+				s.Require().Error(err, "expected no execution to be created")
 			} else {
-				s.Equal(tt.expectedExecutionState, exec.State, "expected: %s, actual: %s", tt.expectedExecutionState, exec.State)
+				s.Equal(tt.expectedExecutionState, exec.ComputeState.StateType, "expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
 			}
 		})
 	}
@@ -176,7 +176,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalExecutionStateType
+		expectedExecutionState models.ExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -189,7 +189,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 		},
 		{
 			name:                   "semantic and resource should bid and not wait; start running",
-			expectedExecutionState: store.ExecutionStateBidAccepted,
+			expectedExecutionState: models.ExecutionStateBidAccepted,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -261,9 +261,10 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
+				s.Require().Error(err, "expected no execution to be created")
 			} else {
-				s.Equal(tt.expectedExecutionState, exec.State, "expected: %s, actual: %s", tt.expectedExecutionState, exec.State)
+				s.Equal(tt.expectedExecutionState.String(), exec.ComputeState.StateType.String(),
+					"expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
 			}
 		})
 	}

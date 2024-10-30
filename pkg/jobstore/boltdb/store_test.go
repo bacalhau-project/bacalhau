@@ -19,6 +19,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
@@ -935,85 +937,113 @@ func (s *BoltJobstoreTestSuite) TestShortIDs() {
 }
 
 func (s *BoltJobstoreTestSuite) TestEvents() {
-	watcher := s.store.Watch(s.ctx,
-		jobstore.JobWatcher|jobstore.ExecutionWatcher,
-		jobstore.CreateEvent|jobstore.UpdateEvent|jobstore.DeleteEvent,
-	)
+	// Create test job
+	testJob := mock.Job()
+	testJob.ID = "10"
+	testJob.Namespace = "110"
+	s.Require().NoError(s.store.CreateJob(s.ctx, *testJob))
 
-	job := makeDockerEngineJob(
-		[]string{"sh", "-c", "echo hello"})
-	job.ID = "10"
-	job.Namespace = "110"
+	// Get sequence number after setup to ignore setup events
+	lastSeqNum, err := s.store.GetEventStore().GetLatestEventNum(s.ctx)
+	s.Require().NoError(err)
 
-	var execution models.Execution
-
-	s.Run("job create event", func() {
-		err := s.store.CreateJob(s.ctx, *job)
-		s.Require().NoError(err)
-
-		// Read an event, it should be a jobcreate
-		ev := <-watcher.Channel()
-		s.Require().Equal(ev.Event, jobstore.CreateEvent)
-		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
-
-		expectedJob, ok := ev.Object.(models.Job)
-		s.Require().True(ok, "expected object to be a job")
-		s.Require().Equal(expectedJob.ID, job.ID)
-	})
-
-	s.Run("execution create event", func() {
+	s.Run("execution events", func() {
+		// Create execution
 		s.clock.Add(1 * time.Second)
-		execution = *mock.Execution()
-		execution.JobID = "10"
-		execution.ComputeState = models.State[models.ExecutionStateType]{StateType: models.ExecutionStateNew}
-		err := s.store.CreateExecution(s.ctx, execution)
-		s.Require().NoError(err)
+		testExec := *mock.ExecutionForJob(testJob)
+		testExec.ComputeState.StateType = models.ExecutionStateNew
+		s.Require().NoError(s.store.CreateExecution(s.ctx, testExec))
 
-		// Read an event, it should be a ExecutionForJob Create
-		ev := <-watcher.Channel()
-		s.Require().Equal(ev.Event, jobstore.CreateEvent)
-		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
-	})
+		// Verify creation event
+		event := s.getLastEvent(lastSeqNum, jobstore.EventObjectExecutionUpsert)
+		s.verifyExecutionEvent(event, watcher.OperationCreate, testExec.ID, models.ExecutionStateNew, models.ExecutionStateUndefined)
+		lastSeqNum = event.SeqNum
 
-	s.Run("update job state event", func() {
-		request := jobstore.UpdateJobStateRequest{
-			JobID:    "10",
-			NewState: models.JobStateTypeRunning,
-			Condition: jobstore.UpdateJobCondition{
-				ExpectedState: models.JobStateTypePending,
-			},
-		}
-		_ = s.store.UpdateJobState(s.ctx, request)
-		ev := <-watcher.Channel()
-		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
-		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
-	})
-
-	s.Run("update execution state event", func() {
-		execution.ComputeState.StateType = models.ExecutionStateAskForBid
-		execution.ModifyTime = s.clock.Now().UTC().UnixNano()
-		s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
-			ExecutionID: execution.ID,
+		// Update execution state
+		s.clock.Add(1 * time.Second)
+		testExec.ComputeState.StateType = models.ExecutionStateAskForBid
+		s.Require().NoError(s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
+			ExecutionID: testExec.ID,
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 			},
-			NewValues: execution,
-		})
-		ev := <-watcher.Channel()
-		s.Require().Equal(ev.Event, jobstore.UpdateEvent)
-		s.Require().Equal(ev.Kind, jobstore.ExecutionWatcher)
+			NewValues: testExec,
+		}))
 
-		expectedExec, ok := ev.Object.(models.Execution)
-		s.Require().True(ok, "expected object to be an execution")
-		s.Require().Equal(expectedExec.ID, execution.ID)
+		// Verify update event
+		event = s.getLastEvent(lastSeqNum, jobstore.EventObjectExecutionUpsert)
+		s.verifyExecutionEvent(event, watcher.OperationUpdate, testExec.ID,
+			models.ExecutionStateAskForBid, models.ExecutionStateNew)
+		lastSeqNum = event.SeqNum
 	})
 
-	s.Run("delete job event", func() {
-		_ = s.store.DeleteJob(s.ctx, job.ID)
-		ev := <-watcher.Channel()
-		s.Require().Equal(ev.Event, jobstore.DeleteEvent)
-		s.Require().Equal(ev.Kind, jobstore.JobWatcher)
+	s.Run("evaluation events", func() {
+		// Create evaluation
+		testEval := mock.EvalForJob(testJob)
+		s.Require().NoError(s.store.CreateEvaluation(s.ctx, *testEval))
+
+		// Verify creation event
+		event := s.getLastEvent(lastSeqNum, jobstore.EventObjectEvaluation)
+		s.verifyEvaluationEvent(event, watcher.OperationCreate, testEval)
+		lastSeqNum = event.SeqNum
+
+		// Delete evaluation
+		s.Require().NoError(s.store.DeleteEvaluation(s.ctx, testEval.ID))
+
+		// Verify deletion event
+		event = s.getLastEvent(lastSeqNum, jobstore.EventObjectEvaluation)
+		s.verifyEvaluationEvent(event, watcher.OperationDelete, testEval)
 	})
+}
+
+// Helper methods for event verification
+func (s *BoltJobstoreTestSuite) getLastEvent(afterSeqNum uint64, objectType string) watcher.Event {
+	response, err := s.store.GetEventStore().GetEvents(s.ctx, watcher.GetEventsRequest{
+		EventIterator: watcher.AfterSequenceNumberIterator(afterSeqNum),
+		Filter: watcher.EventFilter{
+			ObjectTypes: []string{objectType},
+		},
+	})
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(response.Events))
+	return response.Events[0]
+}
+
+func (s *BoltJobstoreTestSuite) verifyExecutionEvent(
+	event watcher.Event,
+	expectedOp watcher.Operation,
+	execID string,
+	state models.ExecutionStateType,
+	previousState models.ExecutionStateType,
+) {
+	s.Equal(expectedOp, event.Operation)
+	s.Equal(jobstore.EventObjectExecutionUpsert, event.ObjectType)
+
+	upsertEvent, ok := event.Object.(jobstore.ExecutionUpsert)
+	s.Require().True(ok)
+	s.Equal(execID, upsertEvent.Current.ID)
+	s.Equal(state, upsertEvent.Current.ComputeState.StateType)
+
+	if !previousState.IsUndefined() {
+		s.Require().NotNil(upsertEvent.Previous)
+		s.Equal(previousState, upsertEvent.Previous.ComputeState.StateType)
+	} else {
+		s.Nil(upsertEvent.Previous)
+	}
+}
+
+func (s *BoltJobstoreTestSuite) verifyEvaluationEvent(
+	event watcher.Event,
+	expectedOp watcher.Operation,
+	expectedEval *models.Evaluation,
+) {
+	s.Equal(expectedOp, event.Operation)
+	s.Equal(jobstore.EventObjectEvaluation, event.ObjectType)
+
+	evalObj, ok := event.Object.(*models.Evaluation)
+	s.Require().True(ok)
+	s.Equal(expectedEval.ID, evalObj.ID)
+	s.Equal(expectedEval.JobID, evalObj.JobID)
 }
 
 func (s *BoltJobstoreTestSuite) TestEvaluations() {
@@ -1177,7 +1207,7 @@ func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
 	txCtx1, err := s.store.BeginTx(s.ctx)
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx1)
-	tx1, ok := txFromContext(txCtx1)
+	tx1, ok := boltdblib.TxFromContext(txCtx1)
 	s.Require().True(ok)
 	// commit to release the transaction
 	s.Require().NoError(txCtx1.Commit())
@@ -1186,7 +1216,7 @@ func (s *BoltJobstoreTestSuite) TestBeginMultipleTransactions_Sequential() {
 	txCtx2, err := s.store.BeginTx(txCtx1)
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx2)
-	tx2, ok := txFromContext(txCtx2)
+	tx2, ok := boltdblib.TxFromContext(txCtx2)
 	s.Require().True(ok)
 	// commit to release the transaction
 	s.Require().NoError(txCtx2.Commit())

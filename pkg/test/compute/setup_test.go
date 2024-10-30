@@ -4,6 +4,7 @@ package compute
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -23,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	noop_publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -95,6 +95,8 @@ func (s *ComputeSuite) setupConfig() {
 				}),
 		},
 	}
+
+	s.T().Cleanup(func() { os.RemoveAll(bacalhauConfig.DataDir) })
 }
 
 func (s *ComputeSuite) setupNode() {
@@ -133,21 +135,6 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { ns.Shutdown() })
 
 	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
-	s.Require().NoError(err)
-
-	r, err := repo.NewFS(repo.FsRepoParams{
-		Path:       s.T().TempDir(),
-		Migrations: nil,
-	})
-	s.Require().NoError(err)
-
-	c, err := config.New()
-	s.Require().NoError(err)
-
-	var cfg types.Bacalhau
-	s.Require().NoError(c.Unmarshal(&cfg))
-
-	err = r.Init()
 	s.Require().NoError(err)
 
 	// create the compute node

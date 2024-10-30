@@ -6,6 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -58,20 +59,6 @@ type TxContext interface {
 type Store interface {
 	// BeginTx starts a new transaction and returns a transactional context
 	BeginTx(ctx context.Context) (TxContext, error)
-
-	// Watch returns a channel from which the caller can read specific events
-	// as they are transmitted. When called the combination of parameters
-	// will determine which events are sent.  Both the StoreWatcherType and
-	// StoreEventType parameters can be a bitmask of entries, so to listen
-	// for Create and Delete events for Jobs and Executions you would set
-	//   types = JobWatcher | ExecutionWatcher
-	//   events = CreateEvent | DeleteEvent
-	//
-	// The structure sent down the channel when one of these events occurs
-	// will contain a timestamp, but also the StoreWatcherType and
-	// StoreEventType that triggered the event. A json encoded `[]byte`
-	// of the related object will also be included in the [WatchEvent].
-	Watch(ctx context.Context, types StoreWatcherType, events StoreEventType, options ...WatcherOption) *Watcher
 
 	// GetJob returns a job, identified by the id parameter, or an error if
 	// it does not exist.
@@ -126,6 +113,9 @@ type Store interface {
 	// DeleteEvaluation deletes the specified evaluation
 	DeleteEvaluation(ctx context.Context, id string) error
 
+	// GetEventStore returns the event store for the execution store
+	GetEventStore() watcher.EventStore
+
 	// Close provides an interface to cleanup any resources in use when the
 	// store is no longer required
 	Close(ctx context.Context) error
@@ -148,6 +138,11 @@ type UpdateJobCondition struct {
 	ExpectedState    models.JobStateType
 	UnexpectedStates []models.JobStateType
 	ExpectedRevision uint64
+}
+
+type ExecutionUpsert struct {
+	Current  *models.Execution
+	Previous *models.Execution
 }
 
 // Validate checks if the condition matches the given job
