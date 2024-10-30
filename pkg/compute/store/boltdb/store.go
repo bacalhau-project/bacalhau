@@ -385,7 +385,8 @@ func (s *Store) appendHistory(tx *bolt.Tx,
 		return err
 	}
 
-	err = s.eventStore.StoreEventTx(tx, watcher.OperationCreate, "LocalStateHistory", historyEntry)
+	err = s.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+		Operation: watcher.OperationCreate, ObjectType: "LocalStateHistory", Object: historyEntry})
 	if err != nil {
 		return err
 	}

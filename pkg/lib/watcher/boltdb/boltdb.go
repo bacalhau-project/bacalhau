@@ -119,16 +119,16 @@ func NewEventStore(db *bbolt.DB, opts ...EventStoreOption) (*EventStore, error) 
 
 // StoreEvent stores a new event in the EventStore.
 // It wraps the storage operation in a BoltDB transaction.
-func (s *EventStore) StoreEvent(ctx context.Context, operation watcher.Operation, objectType string, object interface{}) error {
+func (s *EventStore) StoreEvent(ctx context.Context, request watcher.StoreEventRequest) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
-		return s.StoreEventTx(tx, operation, objectType, object)
+		return s.StoreEventTx(tx, request)
 	})
 }
 
 // StoreEventTx stores a new event within an existing BoltDB transaction.
 // It serializes the event, stores it in the database, adds it to the cache,
 // and notifies watchers of the new event.
-func (s *EventStore) StoreEventTx(tx *bbolt.Tx, operation watcher.Operation, objectType string, object interface{}) error {
+func (s *EventStore) StoreEventTx(tx *bbolt.Tx, request watcher.StoreEventRequest) error {
 	b := tx.Bucket(s.options.eventsBucket)
 	if b == nil {
 		return fmt.Errorf("events bucket not found")
@@ -140,9 +140,9 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, operation watcher.Operation, obj
 	}
 	event := watcher.Event{
 		SeqNum:     id,
-		Operation:  operation,
-		ObjectType: objectType,
-		Object:     object,
+		Operation:  request.Operation,
+		ObjectType: request.ObjectType,
+		Object:     request.Object,
 		Timestamp:  s.clock.Now(),
 	}
 	eventBytes, err := s.options.serializer.Marshal(event)
@@ -182,13 +182,13 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, operation watcher.Operation, obj
 // GetEvents retrieves events from the store based on the provided query parameters.
 // It supports long-polling: if no events are immediately available, it waits for new events
 // or until the long-polling timeout is reached.
-func (s *EventStore) GetEvents(ctx context.Context, params watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
+func (s *EventStore) GetEvents(ctx context.Context, request watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
 	var result *watcher.GetEventsResponse
 
 	for {
 		err := s.db.View(func(tx *bbolt.Tx) error {
 			var err error
-			result, err = s.getEventsTx(tx, params)
+			result, err = s.getEventsTx(tx, request)
 			return err
 		})
 
@@ -196,7 +196,7 @@ func (s *EventStore) GetEvents(ctx context.Context, params watcher.GetEventsRequ
 			return nil, fmt.Errorf("failed to get events: %w", err)
 		}
 
-		if len(result.Events) > 0 || result.NextEventIterator != params.EventIterator {
+		if len(result.Events) > 0 || result.NextEventIterator != request.EventIterator {
 			return result, nil
 		}
 
@@ -218,11 +218,11 @@ func (s *EventStore) GetEvents(ctx context.Context, params watcher.GetEventsRequ
 
 // getEventsTx retrieves events within a BoltDB transaction based on the provided query parameters.
 // It uses the cache when possible to improve performance.
-func (s *EventStore) getEventsTx(tx *bbolt.Tx, params watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
+func (s *EventStore) getEventsTx(tx *bbolt.Tx, request watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
 	b := tx.Bucket(s.options.eventsBucket)
 	c := b.Cursor()
 
-	iterator, err := s.resolveIteratorType(tx, params)
+	iterator, err := s.resolveIteratorType(tx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (s *EventStore) getEventsTx(tx *bbolt.Tx, params watcher.GetEventsRequest) 
 	startKey := make([]byte, seqNumBytes)
 	binary.BigEndian.PutUint64(startKey, iterator.SequenceNumber)
 
-	for k, v := c.Seek(startKey); k != nil && (params.Limit == 0 || len(events) < params.Limit); k, v = c.Next() {
+	for k, v := c.Seek(startKey); k != nil && (request.Limit == 0 || len(events) < request.Limit); k, v = c.Next() {
 		var key eventKey
 		if err = key.UnmarshalBinary(k); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal key: %w", err)
@@ -256,7 +256,7 @@ func (s *EventStore) getEventsTx(tx *bbolt.Tx, params watcher.GetEventsRequest) 
 			}
 		}
 
-		if filterEvent(event, params.Filter) {
+		if filterEvent(event, request.Filter) {
 			events = append(events, event)
 		}
 	}
@@ -269,8 +269,8 @@ func (s *EventStore) getEventsTx(tx *bbolt.Tx, params watcher.GetEventsRequest) 
 
 // resolveIteratorType resolves the event iterator type based on the provided query parameters.
 // It returns a new event iterator if the type is set to EventIteratorTrimHorizon or EventIteratorLatest.
-func (s *EventStore) resolveIteratorType(tx *bbolt.Tx, params watcher.GetEventsRequest) (watcher.EventIterator, error) {
-	switch params.EventIterator.Type {
+func (s *EventStore) resolveIteratorType(tx *bbolt.Tx, request watcher.GetEventsRequest) (watcher.EventIterator, error) {
+	switch request.EventIterator.Type {
 	case watcher.EventIteratorTrimHorizon:
 		return watcher.AfterSequenceNumberIterator(0), nil
 	case watcher.EventIteratorLatest:
@@ -280,7 +280,7 @@ func (s *EventStore) resolveIteratorType(tx *bbolt.Tx, params watcher.GetEventsR
 		}
 		return watcher.AfterSequenceNumberIterator(seqNum), nil
 	default:
-		return params.EventIterator, nil
+		return request.EventIterator, nil
 	}
 }
 

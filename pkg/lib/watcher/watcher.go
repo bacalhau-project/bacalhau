@@ -64,9 +64,6 @@ func newWatcher(ctx context.Context, id string, handler EventHandler, store Even
 		w.nextEventIterator = AfterSequenceNumberIterator(checkpoint)
 	}
 
-	log.Ctx(ctx).Debug().Str("watcher_id", id).Str("starting_at", w.nextEventIterator.String()).
-		Msg("starting watcher")
-
 	return w, nil
 }
 
@@ -105,6 +102,8 @@ func (w *watcher) Start() {
 	w.ch = make(chan Event, w.options.bufferSize)
 	w.stopped = make(chan struct{}, 1)
 	w.state = StateRunning
+	log.Ctx(ctx).Debug().Str("watcher_id", w.ID()).Str("starting_at", w.nextEventIterator.String()).
+		Msg("starting watcher")
 	w.mu.Unlock()
 
 	defer func() {

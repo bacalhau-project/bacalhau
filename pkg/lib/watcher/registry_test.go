@@ -152,13 +152,13 @@ func (s *RegistryTestSuite) TestWatcherProcessesEvents() {
 	ctx := context.Background()
 	watcherID := "test-watcher"
 
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "TestObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "TestObject", Object: "test2"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "TestObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "TestObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -179,13 +179,13 @@ func (s *RegistryTestSuite) TestMultipleWatchers() {
 	watcherID1 := "test-watcher-1"
 	watcherID2 := "test-watcher-2"
 
-	events := []watcher.Event{
-		{SeqNum: 1, Operation: watcher.OperationCreate, ObjectType: "TestObject", Object: "test1"},
-		{SeqNum: 2, Operation: watcher.OperationUpdate, ObjectType: "TestObject", Object: "test2"},
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "TestObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "TestObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event.Operation, event.ObjectType, event.Object)
+		err := s.mockStore.StoreEvent(ctx, event)
 		s.Require().NoError(err)
 	}
 

@@ -24,6 +24,13 @@ type Stats struct {
 	LastListenTime         time.Time     // timestamp of the last successful listen operation
 }
 
+// StoreEventRequest represents the input for creating an event.
+type StoreEventRequest struct {
+	Operation  Operation   `json:"operation"`
+	ObjectType string      `json:"objectType"`
+	Object     interface{} `json:"object"`
+}
+
 // Watcher represents a single event watcher.
 type Watcher interface {
 	// ID returns the unique identifier for the watcher.
@@ -65,10 +72,10 @@ type Registry interface {
 // EventStore defines the interface for event storage and retrieval.
 type EventStore interface {
 	// StoreEvent stores a new event in the event store.
-	StoreEvent(ctx context.Context, operation Operation, objectType string, object interface{}) error
+	StoreEvent(ctx context.Context, request StoreEventRequest) error
 
 	// GetEvents retrieves events based on the provided query parameters.
-	GetEvents(ctx context.Context, params GetEventsRequest) (*GetEventsResponse, error)
+	GetEvents(ctx context.Context, request GetEventsRequest) (*GetEventsResponse, error)
 
 	// GetLatestEventNum returns the sequence number of the latest event.
 	GetLatestEventNum(ctx context.Context) (uint64, error)

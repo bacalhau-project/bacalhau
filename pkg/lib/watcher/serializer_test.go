@@ -24,7 +24,7 @@ func (suite *JSONSerializerTestSuite) SetupTest() {
 func (suite *JSONSerializerTestSuite) TestSerializeDeserialize() {
 	originalEvent := Event{
 		SeqNum:     1,
-		Operation:  OperationCreate,
+		Operation:  OperationUpdate,
 		ObjectType: "TestObject",
 		Object: TestObject{
 			Name:  "Test",
@@ -59,6 +59,7 @@ func (suite *JSONSerializerTestSuite) TestSerializeDeserialize() {
 
 	suite.Equal(originalObj.Name, deserializedObj.Name)
 	suite.Equal(originalObj.Value, deserializedObj.Value)
+
 }
 
 func (suite *JSONSerializerTestSuite) TestSerializeDeserializeNilObject() {
