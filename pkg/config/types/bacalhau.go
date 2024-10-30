@@ -34,7 +34,8 @@ type Bacalhau struct {
 	Logging             Logging             `yaml:"Logging,omitempty" json:"Logging,omitempty"`
 	UpdateConfig        UpdateConfig        `yaml:"UpdateConfig,omitempty" json:"UpdateConfig,omitempty"`
 	FeatureFlags        FeatureFlags        `yaml:"FeatureFlags,omitempty" json:"FeatureFlags,omitempty"`
-	DisableAnalytics    bool                `yaml:"DisableAnalytics,omitempty" json:"DisableAnalytics,omitempty"`
+	// DisableAnalytics, when true, disables sharing anonymous analytics data with the Bacalhau development team
+	DisableAnalytics bool `yaml:"DisableAnalytics,omitempty" json:"DisableAnalytics,omitempty"`
 }
 
 // Copy returns a deep copy of the Bacalhau configuration.

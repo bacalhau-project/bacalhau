@@ -6,7 +6,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/yaml.v3"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -121,16 +120,21 @@ func (e *Endpoint) debug(c echo.Context) error {
 //	@Summary	Returns the current configuration of the node.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	[]byte
+//	@Success	200	{object}	types.Bacalhau
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {
-	cfg := e.bacalhauConfig
-	cfgBytes, err := yaml.Marshal(cfg)
+	cfg, err := e.bacalhauConfig.Copy()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to marshal agent config: %s", err))
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("could not copy bacalhau config: %s", err))
+	}
+	if cfg.Compute.Auth.Token != "" {
+		cfg.Compute.Auth.Token = "<redacted>"
+	}
+	if cfg.Orchestrator.Auth.Token != "" {
+		cfg.Orchestrator.Auth.Token = "<redacted>"
 	}
 	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
-		Config: cfgBytes,
+		Config: cfg,
 	})
 }

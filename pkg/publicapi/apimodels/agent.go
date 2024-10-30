@@ -1,6 +1,7 @@
 package apimodels
 
 import (
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -35,5 +36,5 @@ type GetAgentNodeResponse struct {
 
 type GetAgentConfigResponse struct {
 	BaseGetResponse
-	Config []byte
+	Config types.Bacalhau `json:"config"`
 }
