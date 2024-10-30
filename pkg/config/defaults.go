@@ -183,9 +183,13 @@ func NewTestConfig() (types.Bacalhau, error) {
 		return types.Bacalhau{}, err
 	}
 
-	// Set the data directory to a temporary directory
-	cfg.DataDir = os.TempDir()
+	// Create a new temporary directory under the system temp directory
+	tempDir, err := os.MkdirTemp("", "bacalhau-test-*")
+	if err != nil {
+		return types.Bacalhau{}, err
+	}
 
+	cfg.DataDir = tempDir
 	return cfg, nil
 }
 

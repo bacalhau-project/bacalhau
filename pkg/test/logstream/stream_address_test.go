@@ -5,7 +5,6 @@ package logstream_test
 import (
 	"github.com/stretchr/testify/require"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -69,8 +68,7 @@ func (s *LogStreamTestSuite) TestStreamAddress() {
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), reader)
 
-	localExecutionState := store.NewLocalExecutionState(execution, "nodeID")
-	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, *localExecutionState)
+	node.ComputeNode.ExecutionStore.CreateExecution(s.ctx, *execution)
 
 	execution.ComputeState.StateType = models.ExecutionStateBidAccepted
 	err = node.RequesterNode.JobStore.CreateExecution(s.ctx, *execution)

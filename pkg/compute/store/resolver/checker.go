@@ -3,24 +3,24 @@ package resolver
 import (
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-type CheckStateFunction func(store.LocalExecutionState) (bool, error)
+type CheckStateFunction func(*models.Execution) (bool, error)
 
 func CheckForTerminalStates() CheckStateFunction {
-	return func(execution store.LocalExecutionState) (bool, error) {
-		if execution.State.IsTerminal() {
+	return func(execution *models.Execution) (bool, error) {
+		if execution.IsTerminalComputeState() {
 			return true, nil
 		}
 		return false, nil
 	}
 }
 
-func CheckForState(expectedStates ...store.LocalExecutionStateType) CheckStateFunction {
-	return func(execution store.LocalExecutionState) (bool, error) {
+func CheckForState(expectedStates ...models.ExecutionStateType) CheckStateFunction {
+	return func(execution *models.Execution) (bool, error) {
 		for _, expectedState := range expectedStates {
-			if execution.State == expectedState {
+			if execution.ComputeState.StateType == expectedState {
 				return true, nil
 			}
 		}
@@ -28,11 +28,11 @@ func CheckForState(expectedStates ...store.LocalExecutionStateType) CheckStateFu
 	}
 }
 
-func CheckForUnexpectedState(expectedStates ...store.LocalExecutionStateType) CheckStateFunction {
-	return func(execution store.LocalExecutionState) (bool, error) {
+func CheckForUnexpectedState(expectedStates ...models.ExecutionStateType) CheckStateFunction {
+	return func(execution *models.Execution) (bool, error) {
 		for _, expectedState := range expectedStates {
-			if execution.State == expectedState {
-				return false, fmt.Errorf("unexpected state: %s", execution.State)
+			if execution.ComputeState.StateType == expectedState {
+				return false, fmt.Errorf("unexpected state: %s", execution.ComputeState.StateType.String())
 			}
 		}
 		return false, nil
@@ -40,5 +40,5 @@ func CheckForUnexpectedState(expectedStates ...store.LocalExecutionStateType) Ch
 }
 
 func CheckCompleted() CheckStateFunction {
-	return CheckForState(store.ExecutionStateCompleted)
+	return CheckForState(models.ExecutionStateCompleted)
 }
