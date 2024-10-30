@@ -76,7 +76,8 @@ type ErrInvalidExecutionState struct {
 	Expected    []models.ExecutionStateType
 }
 
-func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, expected ...models.ExecutionStateType) ErrInvalidExecutionState {
+func NewErrInvalidExecutionState(
+	id string, actual models.ExecutionStateType, expected ...models.ExecutionStateType) ErrInvalidExecutionState {
 	return ErrInvalidExecutionState{ExecutionID: id, Actual: actual, Expected: expected}
 }
 

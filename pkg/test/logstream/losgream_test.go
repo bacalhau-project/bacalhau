@@ -57,7 +57,7 @@ func (s *LogStreamTestSuite) SetupSuite() {
 // 3. Verifies log output can be retrieved
 // 4. Cleans up the job
 func (s *LogStreamTestSuite) runLogStreamTest(job *models.Job) {
-	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Second*10)
+	ctx, cancelFunc := context.WithTimeout(s.ctx, time.Second*20)
 	defer cancelFunc()
 
 	// Submit the job

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	realmath "math"
 	"reflect"
 	"sort"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/boltdblib"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -514,7 +516,7 @@ func (s *Store) GetExecutionCount(ctx context.Context, state models.ExecutionSta
 			return nil
 		}
 
-		count = uint64(b.Stats().KeyN)
+		count = uint64(math.Min(b.Stats().KeyN, realmath.MaxUint64))
 		return nil
 	})
 
