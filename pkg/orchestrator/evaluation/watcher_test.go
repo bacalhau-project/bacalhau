@@ -41,7 +41,7 @@ func (s *WatchHandlerTestSuite) SetupTest() {
 	s.watchHandler = evaluation.NewWatchHandler(s.broker)
 
 	// Start watching for events
-	_, err = s.registry.Watch(s.ctx, "test-watcher", s.watchHandler,
+	w, err := s.registry.Watch(s.ctx, "test-watcher", s.watchHandler,
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectEvaluation},
@@ -49,6 +49,11 @@ func (s *WatchHandlerTestSuite) SetupTest() {
 		}),
 	)
 	s.Require().NoError(err)
+
+	// wait for the watcher to start
+	s.Eventually(func() bool {
+		return w.Stats().State == watcher.StateRunning
+	}, 200*time.Millisecond, 10*time.Millisecond)
 }
 
 func (s *WatchHandlerTestSuite) TearDownTest() {
