@@ -213,7 +213,7 @@ func (s *GetSuite) getDockerRunArgs(extraArgs []string) []string {
 	}
 	args = append(args, extraArgs...)
 	args = append(args,
-		"busybox:latest",
+		"busybox:1.37.0",
 		"--",
 		"sh", "-c",
 		"echo hello > /data/file.txt && echo hello && mkdir /data/apples && echo oranges > /data/apples/file.txt",

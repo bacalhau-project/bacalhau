@@ -14,9 +14,9 @@ import (
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 )
@@ -37,7 +37,7 @@ func (s *CancelSuite) TestCancel() {
 
 	// Create and submit the execution
 	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 
 	// Wait for the execution to start
@@ -45,7 +45,7 @@ func (s *CancelSuite) TestCancel() {
 	s.NoError(err)
 
 	// Cancel the execution
-	_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{
+	_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{
 		ExecutionID: executionID,
 	})
 
@@ -59,7 +59,7 @@ func (s *CancelSuite) TestCancelDocker() {
 	ctx := context.Background()
 
 	// prepare a docker execution that sleeps for 10 seconds so we can cancel it
-	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", "sleep 10").
 		Build()
 	s.NoError(err)
@@ -69,7 +69,7 @@ func (s *CancelSuite) TestCancelDocker() {
 
 	// Create and submit the execution
 	executionID := s.prepareAndAskForBid(ctx, execution)
-	_, err = s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+	_, err = s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 
 	// Wait for the execution to start
@@ -78,7 +78,7 @@ func (s *CancelSuite) TestCancelDocker() {
 
 	// We need to wait for the container to become active, before we cancel the execution.
 	time.Sleep(time.Second * 1)
-	_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{
+	_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{
 		ExecutionID: executionID,
 	})
 
@@ -90,7 +90,7 @@ func (s *CancelSuite) TestCancelDocker() {
 
 func (s *CancelSuite) TestDoesntExist() {
 	ctx := context.Background()
-	_, err := s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{ExecutionID: uuid.NewString()})
+	_, err := s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
@@ -120,7 +120,7 @@ func (s *CancelSuite) TestStates() {
 			})
 			s.NoError(err)
 
-			_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{ExecutionID: executionID})
+			_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{ExecutionID: executionID})
 			if tc.shouldFail {
 				// verify error and state is still the same
 				s.Error(err)

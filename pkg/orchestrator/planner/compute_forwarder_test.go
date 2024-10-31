@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -126,10 +127,10 @@ func (suite *ComputeForwarderSuite) TestProcess_OnNotifyFailure_NoStateUpdate() 
 	bidRejected := suite.mockUpdateExecution(plan, "bidRejected", models.ExecutionDesiredStateStopped, models.ExecutionStateAskForBidAccepted)
 	toCancel1 := suite.mockUpdateExecution(plan, "toCancel1", models.ExecutionDesiredStateStopped, models.ExecutionStateNew)
 
-	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toAskForBid)).Return(compute.AskForBidResponse{}, suite.plannerErr).Times(1)
-	suite.computeService.EXPECT().BidAccepted(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidAccepted)).Return(compute.BidAcceptedResponse{}, suite.plannerErr).Times(1)
-	suite.computeService.EXPECT().BidRejected(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidRejected)).Return(compute.BidRejectedResponse{}, suite.plannerErr).Times(1)
-	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toCancel1)).Return(compute.CancelExecutionResponse{}, suite.plannerErr).Times(1)
+	suite.computeService.EXPECT().AskForBid(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toAskForBid)).Return(messages.AskForBidResponse{}, suite.plannerErr).Times(1)
+	suite.computeService.EXPECT().BidAccepted(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidAccepted)).Return(messages.BidAcceptedResponse{}, suite.plannerErr).Times(1)
+	suite.computeService.EXPECT().BidRejected(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, bidRejected)).Return(messages.BidRejectedResponse{}, suite.plannerErr).Times(1)
+	suite.computeService.EXPECT().CancelExecution(suite.ctx, NewComputeRequestMatcherFromPlanUpdate(suite.T(), suite.nodeID, toCancel1)).Return(messages.CancelExecutionResponse{}, suite.plannerErr).Times(1)
 	suite.NoError(suite.computeForwarder.Process(suite.ctx, plan))
 
 	suite.waitUntilSatisfied()

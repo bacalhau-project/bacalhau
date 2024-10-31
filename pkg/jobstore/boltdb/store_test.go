@@ -1274,7 +1274,7 @@ func makeDockerEngineJob(entrypointArray []string) *models.Job {
 	j.Task().Engine = &models.SpecConfig{
 		Type: models.EngineDocker,
 		Params: map[string]interface{}{
-			"Image":      "busybox:latest",
+			"Image":      "busybox:1.37.0",
 			"Entrypoint": entrypointArray,
 		},
 	}

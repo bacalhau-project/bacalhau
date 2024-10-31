@@ -20,6 +20,7 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -39,9 +40,9 @@ type ComputeSuite struct {
 	executor         *noop_executor.NoopExecutor
 	publisher        *noop_publisher.NoopPublisher
 	stateResolver    resolver.StateResolver
-	bidChannel       chan compute.BidResult
-	failureChannel   chan compute.ComputeError
-	completedChannel chan compute.RunResult
+	bidChannel       chan messages.BidResult
+	failureChannel   chan messages.ComputeError
+	completedChannel chan messages.RunResult
 }
 
 func (s *ComputeSuite) SetupTest() {
@@ -68,8 +69,6 @@ func (s *ComputeSuite) setupConfig() {
 	nodeID := "test"
 	s.executor = noop_executor.NewNoopExecutor()
 	s.publisher = noop_publisher.NewNoopPublisher()
-	s.completedChannel = make(chan compute.RunResult)
-	s.failureChannel = make(chan compute.ComputeError)
 
 	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, bacalhauConfig.Engines.Types.Docker)
 
@@ -104,9 +103,9 @@ func (s *ComputeSuite) setupNode() {
 	s.cm = system.NewCleanupManager()
 	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
-	s.bidChannel = make(chan compute.BidResult, 1)
-	s.completedChannel = make(chan compute.RunResult)
-	s.failureChannel = make(chan compute.ComputeError)
+	s.bidChannel = make(chan messages.BidResult, 1)
+	s.completedChannel = make(chan messages.RunResult)
+	s.failureChannel = make(chan messages.ComputeError)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -118,13 +117,13 @@ func (s *ComputeSuite) setupNode() {
 	s.NoError(err)
 
 	callback := compute.CallbackMock{
-		OnBidCompleteHandler: func(ctx context.Context, result compute.BidResult) {
+		OnBidCompleteHandler: func(ctx context.Context, result messages.BidResult) {
 			s.bidChannel <- result
 		},
-		OnRunCompleteHandler: func(ctx context.Context, result compute.RunResult) {
+		OnRunCompleteHandler: func(ctx context.Context, result messages.RunResult) {
 			s.completedChannel <- result
 		},
-		OnComputeFailureHandler: func(ctx context.Context, err compute.ComputeError) {
+		OnComputeFailureHandler: func(ctx context.Context, err messages.ComputeError) {
 			s.failureChannel <- err
 		},
 	}
@@ -156,9 +155,9 @@ func (s *ComputeSuite) setupNode() {
 	s.T().Cleanup(func() { s.node.Cleanup(ctx) })
 }
 
-func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) compute.BidResult {
-	_, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		RoutingMetadata: compute.RoutingMetadata{
+func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) messages.BidResult {
+	_, err := s.node.LocalEndpoint.AskForBid(ctx, messages.AskForBidRequest{
+		RoutingMetadata: messages.RoutingMetadata{
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},
@@ -172,7 +171,7 @@ func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Executio
 		return result
 	case <-time.After(5 * time.Second):
 		s.FailNow("did not receive a bid response")
-		return compute.BidResult{}
+		return messages.BidResult{}
 	}
 }
 

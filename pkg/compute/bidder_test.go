@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -67,7 +68,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 	ctx := context.Background()
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
-	askForBidRequest := compute.AskForBidRequest{
+	askForBidRequest := messages.AskForBidRequest{
 		Execution:       execution,
 		WaitForApproval: true,
 	}
@@ -169,7 +170,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 	ctx := context.Background()
-	askForBidRequest := compute.AskForBidRequest{
+	askForBidRequest := messages.AskForBidRequest{
 		Execution:       mock.ExecutionForJob(mock.Job()),
 		WaitForApproval: false,
 	}
@@ -281,7 +282,7 @@ func NewBidResponseMatcher(accepted bool) *BidResponseMatcher {
 }
 
 func (m *BidResponseMatcher) Matches(x interface{}) bool {
-	req, ok := x.(compute.BidResult)
+	req, ok := x.(messages.BidResult)
 	if !ok {
 		return false
 	}

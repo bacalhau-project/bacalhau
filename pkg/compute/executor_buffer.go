@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -94,9 +95,9 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution *models.Execution) e
 				log.Ctx(ctx).Error().Err(updateErr).Msg("failed to update execution state while handling error")
 			}
 
-			s.callback.OnComputeFailure(ctx, ComputeError{
-				ExecutionMetadata: NewExecutionMetadata(execution),
-				RoutingMetadata: RoutingMetadata{
+			s.callback.OnComputeFailure(ctx, messages.ComputeError{
+				ExecutionMetadata: messages.NewExecutionMetadata(execution),
+				RoutingMetadata: messages.RoutingMetadata{
 					SourcePeerID: s.ID,
 					TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 				},

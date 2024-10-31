@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -422,9 +423,9 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 	}
 
 	// notify requester
-	e.callback.OnRunComplete(ctx, RunResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
+	e.callback.OnRunComplete(ctx, messages.RunResult{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 		},
@@ -466,9 +467,9 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution *models.Execution) 
 		return err
 	}
 
-	e.callback.OnCancelComplete(ctx, CancelResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
+	e.callback.OnCancelComplete(ctx, messages.CancelResult{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: e.ID,
 			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 		},
@@ -490,9 +491,9 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 	if updateError != nil {
 		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	} else {
-		e.callback.OnComputeFailure(ctx, ComputeError{
-			ExecutionMetadata: NewExecutionMetadata(execution),
-			RoutingMetadata: RoutingMetadata{
+		e.callback.OnComputeFailure(ctx, messages.ComputeError{
+			ExecutionMetadata: messages.NewExecutionMetadata(execution),
+			RoutingMetadata: messages.RoutingMetadata{
 				SourcePeerID: e.ID,
 				TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 			},
