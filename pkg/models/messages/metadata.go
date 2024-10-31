@@ -13,14 +13,14 @@ type ExecutionMetadata struct {
 }
 
 func NewExecutionMetadata(execution *models.Execution) ExecutionMetadata {
-    if execution == nil {
-        return ExecutionMetadata{}
-    }
-    if execution.Job == nil {
-        return ExecutionMetadata{ExecutionID: execution.ID}
-    }
-    return ExecutionMetadata{
-        ExecutionID: execution.ID,
-        JobID:       execution.Job.ID,
-    }
+	if execution == nil {
+		return ExecutionMetadata{}
+	}
+	if execution.Job == nil {
+		return ExecutionMetadata{ExecutionID: execution.ID}
+	}
+	return ExecutionMetadata{
+		ExecutionID: execution.ID,
+		JobID:       execution.Job.ID,
+	}
 }
