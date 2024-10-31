@@ -45,7 +45,7 @@ func TestBidsBasedOnImagePlatform(t *testing.T) {
 
 	t.Run("positive response for supported architecture", func(t *testing.T) {
 		response, err := strategy.ShouldBid(context.Background(), bidstrategy.BidStrategyRequest{
-			Job: jobForDockerImage(t, "busybox:latest"),
+			Job: jobForDockerImage(t, "busybox:1.37.0"),
 		})
 
 		require.NoError(t, err)

@@ -386,7 +386,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	errC := make(chan error, 1)
 	executionID := uuid.New().String()
 
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", "sleep 30").
 		Build()
 
@@ -448,7 +448,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	jobCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", fmt.Sprintf(`sleep 1 && echo "%s" && sleep 20`, expected)).
 		Build()
 	s.Require().NoError(err)
@@ -504,7 +504,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "cat /sys/fs/cgroup/cpu.max").
 		Build()
 	s.Require().NoError(err)
@@ -531,7 +531,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
 
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", "echo hello && sleep 20").
 		Build()
 	s.Require().NoError(err)
@@ -565,7 +565,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 }
 
 func (s *ExecutorTestSuite) TestDockerOOM() {
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("tail", "/dev/zero").
 		Build()
 	s.Require().NoError(err)

@@ -28,7 +28,7 @@ func getTestEngine() *models.SpecConfig {
 	return &models.SpecConfig{
 		Type: models.EngineDocker,
 		Params: dockmodels.EngineSpec{
-			Image: "busybox:latest",
+			Image: "busybox:1.37.0",
 			Entrypoint: []string{"/bin/sh", "-c", `
                 echo "output to stdout" && \
                 if [ ! -d /outputs ]; then \

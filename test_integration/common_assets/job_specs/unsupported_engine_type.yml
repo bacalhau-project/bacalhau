@@ -6,7 +6,7 @@ Tasks:
     Engine:
       Type: vroomvroom
       Params:
-        Image: busybox:latest
+        Image: busybox:1.37.0
         Entrypoint:
           - /bin/sh
         Parameters:
