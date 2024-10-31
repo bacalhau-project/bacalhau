@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/nats-io/nats.go"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
 
 type CallbackProxyParams struct {
@@ -30,19 +32,19 @@ func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 	return proxy
 }
 
-func (p *CallbackProxy) OnBidComplete(ctx context.Context, result compute.BidResult) {
+func (p *CallbackProxy) OnBidComplete(ctx context.Context, result messages.BidResult) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnBidComplete, result)
 }
 
-func (p *CallbackProxy) OnRunComplete(ctx context.Context, result compute.RunResult) {
+func (p *CallbackProxy) OnRunComplete(ctx context.Context, result messages.RunResult) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnRunComplete, result)
 }
 
-func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result compute.CancelResult) {
+func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnCancelComplete, result)
 }
 
-func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result compute.ComputeError) {
+func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result messages.ComputeError) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnComputeFailure, result)
 }
 

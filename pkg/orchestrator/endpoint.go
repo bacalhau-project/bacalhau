@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
 )
 
@@ -225,8 +226,8 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 		})
 		return streamer.Stream(ctx), nil
 	}
-	req := compute.ExecutionLogsRequest{
-		RoutingMetadata: compute.RoutingMetadata{
+	req := messages.ExecutionLogsRequest{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: e.id,
 			TargetPeerID: execution.NodeID,
 		},

@@ -38,5 +38,5 @@ Then:
 
 ```shell
 cd test_integration
-go test -v -count=1 ./...
+./run_locally.sh
 ```

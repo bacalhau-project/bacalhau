@@ -7,17 +7,18 @@ import (
 	"github.com/nats-io/nats.go"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
 )
 
 type HeartbeatClient struct {
-	legacyPublisher *natsPubSub.PubSub[Heartbeat]
+	legacyPublisher *natsPubSub.PubSub[messages.Heartbeat]
 	publisher       ncl.Publisher
 	nodeID          string
 }
 
 func NewClient(conn *nats.Conn, nodeID string, publisher ncl.Publisher) (*HeartbeatClient, error) {
-	legacyPublisher, err := natsPubSub.NewPubSub[Heartbeat](natsPubSub.PubSubParams{
+	legacyPublisher, err := natsPubSub.NewPubSub[messages.Heartbeat](natsPubSub.PubSubParams{
 		Subject: legacyHeartbeatTopic,
 		Conn:    conn,
 	})
@@ -29,7 +30,7 @@ func NewClient(conn *nats.Conn, nodeID string, publisher ncl.Publisher) (*Heartb
 }
 
 func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) error {
-	heartbeat := Heartbeat{NodeID: h.nodeID, Sequence: sequence}
+	heartbeat := messages.Heartbeat{NodeID: h.nodeID, Sequence: sequence}
 
 	// Send the heartbeat to current and legacy topics
 	message := ncl.NewMessage(heartbeat)

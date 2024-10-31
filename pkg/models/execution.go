@@ -27,6 +27,10 @@ const (
 	ExecutionStateAskForBidRejected
 	// ExecutionStateBidAccepted requester has accepted the bid, and the execution is expected to be running on the compute node.
 	ExecutionStateBidAccepted // aka running
+	// ExecutionStateRunning The execution is running on the compute node.
+	ExecutionStateRunning
+	// ExecutionStatePublishing The execution has completed, and the result is being published.
+	ExecutionStatePublishing
 	// ExecutionStateBidRejected requester has rejected the bid.
 	ExecutionStateBidRejected
 	// ExecutionStateCompleted The execution has been completed, and the result has been published.
@@ -36,6 +40,14 @@ const (
 	// ExecutionStateCancelled The execution has been canceled by the user
 	ExecutionStateCancelled
 )
+
+func ExecutionStateTypes() []ExecutionStateType {
+	var res []ExecutionStateType
+	for typ := ExecutionStateUndefined; typ <= ExecutionStateCancelled; typ++ {
+		res = append(res, typ)
+	}
+	return res
+}
 
 // IsUndefined returns true if the execution state is undefined
 func (s ExecutionStateType) IsUndefined() bool {
@@ -48,6 +60,11 @@ func (s ExecutionStateType) IsTerminal() bool {
 		s == ExecutionStateFailed ||
 		s == ExecutionStateCancelled ||
 		s == ExecutionStateAskForBidRejected
+}
+
+// IsExecuting returns true if the execution is running in the backend
+func (s ExecutionStateType) IsExecuting() bool {
+	return s == ExecutionStateBidAccepted || s == ExecutionStateRunning || s == ExecutionStatePublishing
 }
 
 type ExecutionDesiredStateType int
@@ -140,7 +157,7 @@ func (e *Execution) GetModifyTime() time.Time {
 // We return true if the execution is in the bid accepted state (i.e. running)
 // and the modify time is older than the expiration time
 func (e *Execution) IsExpired(expirationTime time.Time) bool {
-	return e.ComputeState.StateType == ExecutionStateBidAccepted && e.GetModifyTime().Before(expirationTime)
+	return e.ComputeState.StateType.IsExecuting() && e.GetModifyTime().Before(expirationTime)
 }
 
 // Normalize Allocation to ensure fields are initialized to the expectations
@@ -159,6 +176,9 @@ func (e *Execution) Normalize() {
 	if e.PublishedResult == nil {
 		e.PublishedResult = &SpecConfig{}
 	}
+	if e.RunOutput == nil {
+		e.RunOutput = &RunCommandResult{}
+	}
 	e.Job.Normalize()
 }
 
@@ -173,18 +193,23 @@ func (e *Execution) Copy() *Execution {
 	na.Job = na.Job.Copy()
 	na.AllocatedResources = na.AllocatedResources.Copy()
 	na.PublishedResult = na.PublishedResult.Copy()
+	na.RunOutput = na.RunOutput.Copy()
 	return na
 }
 
 // Validate is used to check a job for reasonable configuration
 func (e *Execution) Validate() error {
-	return errors.Join(
+	err := errors.Join(
 		validate.NotBlank(e.ID, "missing execution ID"),
 		validate.NoSpaces(e.ID, "execution ID contains a space"),
 		validate.NoNullChars(e.ID, "execution ID contains a null character"),
 		validate.NotBlank(e.Namespace, "execution must be in a namespace"),
 		validate.NotBlank(e.JobID, "missing execution job ID"),
 	)
+	if e.Job != nil {
+		err = errors.Join(err, e.Job.Validate())
+	}
+	return err
 }
 
 // IsTerminalState returns true if the execution desired of observed state is terminal
@@ -219,6 +244,11 @@ func (e *Execution) IsDiscarded() bool {
 
 // AllocateResources allocates resources to a task
 func (e *Execution) AllocateResources(taskID string, resources Resources) {
+	if e.AllocatedResources == nil {
+		e.AllocatedResources = &AllocatedResources{
+			Tasks: make(map[string]*Resources),
+		}
+	}
 	e.AllocatedResources.Tasks[taskID] = resources.Copy()
 }
 
@@ -254,4 +284,17 @@ func NewRunCommandResult() *RunCommandResult {
 		StderrTruncated: false, // bool describing if stderr was truncated
 		ExitCode:        -1,    // exit code of the run.
 	}
+}
+
+func (r *RunCommandResult) Copy() *RunCommandResult {
+	if r == nil {
+		return nil
+	}
+
+	newRCR := new(RunCommandResult)
+	*newRCR = *r
+
+	// Since all fields are simple types (string, bool, int),
+	// a shallow copy is sufficient.
+	return newRCR
 }

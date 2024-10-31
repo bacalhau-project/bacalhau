@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -53,18 +54,18 @@ func NewBidder(params BidderParams) Bidder {
 
 func (b Bidder) ReturnBidResult(
 	ctx context.Context,
-	localExecutionState store.LocalExecutionState,
+	execution *models.Execution,
 	response *bidstrategy.BidStrategyResponse,
 ) {
 	if response.ShouldWait {
 		return
 	}
-	result := BidResult{
-		RoutingMetadata: RoutingMetadata{
+	result := messages.BidResult{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: b.nodeID,
-			TargetPeerID: localExecutionState.RequesterNodeID,
+			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 		},
-		ExecutionMetadata: NewExecutionMetadata(localExecutionState.Execution),
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
 		Accepted:          response.ShouldBid,
 		Event:             RespondedToBidEvent(response),
 	}
@@ -87,13 +88,13 @@ type BidderRequest struct {
 // TODO: evaluate the need for async bidding and marking bids as waiting
 // https://github.com/bacalhau-project/bacalhau/issues/3732
 func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
-	routingMetadata := RoutingMetadata{
+	routingMetadata := messages.RoutingMetadata{
 		// the source of this response is the bidders nodeID.
 		SourcePeerID: b.nodeID,
 		// the target of this response is the source of the request.
 		TargetPeerID: bidRequest.SourcePeerID,
 	}
-	executionMetadata := ExecutionMetadata{
+	executionMetadata := messages.ExecutionMetadata{
 		ExecutionID: bidRequest.Execution.ID,
 		JobID:       bidRequest.Execution.JobID,
 	}
@@ -102,7 +103,7 @@ func (b Bidder) RunBidding(ctx context.Context, bidRequest *BidderRequest) {
 
 	bidResult, err := b.doBidding(ctx, job, bidRequest.ResourceUsage)
 	if err != nil {
-		b.callback.OnComputeFailure(ctx, ComputeError{
+		b.callback.OnComputeFailure(ctx, messages.ComputeError{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
 			Event:             models.EventFromError(EventTopicExecutionScanning, err),
@@ -127,13 +128,13 @@ func (b Bidder) handleBidResult(
 	execution *models.Execution,
 ) {
 	var (
-		routingMetadata = RoutingMetadata{
+		routingMetadata = messages.RoutingMetadata{
 			// the source of this response is the bidders nodeID.
 			SourcePeerID: b.nodeID,
 			// the target of this response is the source of the request.
 			TargetPeerID: targetPeer,
 		}
-		executionMetadata = ExecutionMetadata{
+		executionMetadata = messages.ExecutionMetadata{
 			ExecutionID: execution.ID,
 			JobID:       execution.JobID,
 		}
@@ -142,14 +143,14 @@ func (b Bidder) handleBidResult(
 			if err == nil {
 				err = errors.New(reason)
 			}
-			b.callback.OnComputeFailure(ctx, ComputeError{
+			b.callback.OnComputeFailure(ctx, messages.ComputeError{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
 				Event:             models.EventFromError(EventTopicExecutionScanning, err),
 			})
 		}
 		handleBidComplete = func(ctx context.Context, result *bidStrategyResponse) {
-			b.callback.OnBidComplete(ctx, BidResult{
+			b.callback.OnBidComplete(ctx, messages.BidResult{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
 				Accepted:          result.bid,
@@ -170,14 +171,13 @@ func (b Bidder) handleBidResult(
 		}
 
 		execution.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
-		localExecution := store.NewLocalExecutionState(execution, targetPeer)
-		localExecution.State = store.ExecutionStateBidAccepted
+		execution.ComputeState = models.NewExecutionState(models.ExecutionStateBidAccepted)
 
-		if err := b.store.CreateExecution(ctx, *localExecution); err != nil {
+		if err := b.store.CreateExecution(ctx, *execution); err != nil {
 			handleComputeFailure(ctx, err, "failed to create execution state")
 			return
 		}
-		if err := b.executor.Run(ctx, *localExecution); err != nil {
+		if err := b.executor.Run(ctx, execution); err != nil {
 			// no need to check for run errors as they are already handled by the executor.
 			log.Ctx(ctx).Error().Err(err).Msg("failed to run execution")
 			return
@@ -188,8 +188,7 @@ func (b Bidder) handleBidResult(
 	// if we are bidding or waiting create an execution
 	if result.bid || result.wait {
 		execution.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
-		localExecution := store.NewLocalExecutionState(execution, targetPeer)
-		if err := b.store.CreateExecution(ctx, *localExecution); err != nil {
+		if err := b.store.CreateExecution(ctx, *execution); err != nil {
 			handleComputeFailure(ctx, err, "failed to create execution state")
 			return
 		}

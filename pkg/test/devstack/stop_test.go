@@ -152,7 +152,7 @@ func (s *StopSuite) submitJob(sleepTime int) (string, error) {
 		Tasks: []*models.Task{
 			{
 				Name: "main",
-				Engine: dockmodels.NewDockerEngineBuilder("busybox:latest").
+				Engine: dockmodels.NewDockerEngineBuilder("busybox:1.37.0").
 					WithEntrypoint("sh", "-c", fmt.Sprintf("sleep %d", sleepTime)).
 					MustBuild(),
 			},

@@ -18,6 +18,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -58,7 +59,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 
 	// Setup NATS publisher and subscriber
 	s.messageSerDeRegistry = ncl.NewMessageSerDeRegistry()
-	s.Require().NoError(s.messageSerDeRegistry.Register(HeartbeatMessageType, Heartbeat{}))
+	s.Require().NoError(s.messageSerDeRegistry.Register(HeartbeatMessageType, messages.Heartbeat{}))
 
 	s.publisher, err = ncl.NewPublisher(s.natsConn,
 		ncl.WithPublisherName("test-publisher"),

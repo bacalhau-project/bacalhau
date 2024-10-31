@@ -1,13 +1,32 @@
 name: Lints
 
 on:
-  pull_request:
-  push:
-    branches: [main]
-  repository_dispatch:
-    types: [ok-to-test]
+  workflow_call:
 
 jobs:
+  # A separate Go-Lint job since the current lint job is heavily
+  # coupled with a lot of tooling, which will be removed and
+  # simplified, one step at a time.
+  # For now, we are just extracting the go-lint.
+  go-lint:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+      - name: Setup Dummy WebUi Build
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p webui/build && touch webui/build/index.html
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          skip-cache: true
+
+  # TODO: Decouple Each Component Linting
   lint:
     runs-on: ubuntu-latest
     steps:

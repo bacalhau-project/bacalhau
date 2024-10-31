@@ -13,9 +13,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 )
@@ -36,20 +37,20 @@ func (s *CancelSuite) TestCancel() {
 
 	// Create and submit the execution
 	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 
 	// Wait for the execution to start
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateRunning))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateRunning))
 	s.NoError(err)
 
 	// Cancel the execution
-	_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{
+	_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{
 		ExecutionID: executionID,
 	})
 
 	// Wait for the execution to be cancelled
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCancelled))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateCancelled))
 	s.NoError(err)
 }
 
@@ -58,7 +59,7 @@ func (s *CancelSuite) TestCancelDocker() {
 	ctx := context.Background()
 
 	// prepare a docker execution that sleeps for 10 seconds so we can cancel it
-	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", "sleep 10").
 		Build()
 	s.NoError(err)
@@ -68,28 +69,28 @@ func (s *CancelSuite) TestCancelDocker() {
 
 	// Create and submit the execution
 	executionID := s.prepareAndAskForBid(ctx, execution)
-	_, err = s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+	_, err = s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 
 	// Wait for the execution to start
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateRunning))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateRunning))
 	s.NoError(err)
 
 	// We need to wait for the container to become active, before we cancel the execution.
 	time.Sleep(time.Second * 1)
-	_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{
+	_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{
 		ExecutionID: executionID,
 	})
 
 	// Wait for the execution to be cancelled
-	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(store.ExecutionStateCancelled))
+	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateCancelled))
 	s.NoError(err)
 
 }
 
 func (s *CancelSuite) TestDoesntExist() {
 	ctx := context.Background()
-	_, err := s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{ExecutionID: uuid.NewString()})
+	_, err := s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
@@ -97,40 +98,40 @@ func (s *CancelSuite) TestStates() {
 	ctx := context.Background()
 
 	for _, tc := range []struct {
-		state      store.LocalExecutionStateType
+		state      models.ExecutionStateType
 		shouldFail bool
 	}{
 		// These states should allow the execution to be cancelled
-		{store.ExecutionStateCreated, false},
-		{store.ExecutionStateBidAccepted, false},
-		{store.ExecutionStateRunning, false},
-		{store.ExecutionStatePublishing, false},
+		{models.ExecutionStateNew, false},
+		{models.ExecutionStateBidAccepted, false},
+		{models.ExecutionStateRunning, false},
+		{models.ExecutionStatePublishing, false},
 
 		// These states should not allow the execution to be cancelled
-		{store.ExecutionStateCancelled, true},
-		{store.ExecutionStateCompleted, true},
-		{store.ExecutionStateCancelled, true},
+		{models.ExecutionStateCancelled, true},
+		{models.ExecutionStateCompleted, true},
+		{models.ExecutionStateCancelled, true},
 	} {
 		s.Run(tc.state.String(), func() {
 			executionID := s.prepareAndAskForBid(ctx, mock.Execution())
-			err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+			err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 				ExecutionID: executionID,
-				NewState:    tc.state,
+				NewValues:   models.Execution{ComputeState: models.NewExecutionState(tc.state)},
 			})
 			s.NoError(err)
 
-			_, err = s.node.LocalEndpoint.CancelExecution(ctx, compute.CancelExecutionRequest{ExecutionID: executionID})
+			_, err = s.node.LocalEndpoint.CancelExecution(ctx, messages.CancelExecutionRequest{ExecutionID: executionID})
 			if tc.shouldFail {
 				// verify error and state is still the same
 				s.Error(err)
-				state, err := s.node.ExecutionStore.GetExecution(ctx, executionID)
+				execution, err := s.node.ExecutionStore.GetExecution(ctx, executionID)
 				s.NoError(err)
-				s.Equal(tc.state, state.State)
+				s.Equal(tc.state, execution.ComputeState.StateType)
 			} else {
 				s.NoError(err)
-				state, err := s.node.ExecutionStore.GetExecution(ctx, executionID)
+				execution, err := s.node.ExecutionStore.GetExecution(ctx, executionID)
 				s.NoError(err)
-				s.Equal(store.ExecutionStateCancelled, state.State)
+				s.Equal(models.ExecutionStateCancelled, execution.ComputeState.StateType)
 			}
 
 		})

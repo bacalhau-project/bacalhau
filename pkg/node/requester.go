@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
@@ -42,6 +43,12 @@ var (
 	minBacalhauVersion = models.BuildVersionInfo{
 		Major: "1", Minor: "0", GitVersion: "v1.0.4",
 	}
+)
+
+const (
+	// orchestratorEvaluationWatcherID is the ID of the watcher that listens for evaluation events
+	// and enqueues them into the evaluation broker.
+	orchestratorEvaluationWatcherID = "evaluation-watcher"
 )
 
 type Requester struct {
@@ -77,6 +84,8 @@ func NewRequesterNode(
 		return nil, err
 	}
 
+	watcherRegistry := watcher.NewRegistry(jobStore.GetEventStore())
+
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
 		VisibilityTimeout: cfg.BacalhauConfig.Orchestrator.EvaluationBroker.VisibilityTimeout.AsTimeDuration(),
@@ -87,12 +96,17 @@ func NewRequesterNode(
 	}
 	evalBroker.SetEnabled(true)
 
-	// evaluations watcher
-	evaluationsWatcher := evaluation.NewWatcher(jobStore, evalBroker)
-	if err = evaluationsWatcher.Backfill(ctx); err != nil {
-		return nil, fmt.Errorf("failed to backfill evaluations: %w", err)
+	// Start watching for evaluation events using latest iterator
+	_, err = watcherRegistry.Watch(ctx, orchestratorEvaluationWatcherID, evaluation.NewWatchHandler(evalBroker),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectEvaluation},
+			Operations:  []watcher.Operation{watcher.OperationCreate},
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
 	}
-	evaluationsWatcher.Start(ctx)
 
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
@@ -262,6 +276,10 @@ func NewRequesterNode(
 		cleanupErr := subscriber.Close(ctx)
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
+		}
+
+		if cleanupErr = watcherRegistry.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to stop watcher registry")
 		}
 
 		// stop the housekeeping background task

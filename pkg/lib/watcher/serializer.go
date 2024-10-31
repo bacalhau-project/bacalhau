@@ -53,7 +53,7 @@ func (s *JSONSerializer) IsTypeRegistered(name string) bool {
 // Marshal serializes an Event into a byte slice
 func (s *JSONSerializer) Marshal(v Event) ([]byte, error) {
 	// Serialize the Object field separately to handle interface{} properly
-	jsonObject, err := json.Marshal(v.Object)
+	objectJSON, err := json.Marshal(v.Object)
 	if err != nil {
 		return nil, NewSerializationError(v, err)
 	}
@@ -63,7 +63,7 @@ func (s *JSONSerializer) Marshal(v Event) ([]byte, error) {
 		SeqNum:     v.SeqNum,
 		Operation:  v.Operation,
 		ObjectType: v.ObjectType,
-		Object:     jsonObject,
+		Object:     objectJSON,
 		Timestamp:  v.Timestamp.UnixNano(),
 	}
 
@@ -89,26 +89,33 @@ func (s *JSONSerializer) Unmarshal(data []byte, event *Event) error {
 	event.ObjectType = jEvent.ObjectType
 	event.Timestamp = time.Unix(0, jEvent.Timestamp).UTC()
 
-	// Handle nil object
-	if len(jEvent.Object) == 0 || string(jEvent.Object) == "null" {
-		event.Object = nil
-		return nil
-	}
 	// Look up the registered type for this object
 	t, ok := s.typeRegistry[jEvent.ObjectType]
 	if !ok {
 		return NewDeserializationError(fmt.Errorf("unknown object type: %s", jEvent.ObjectType))
 	}
 
-	// Create a new instance of the registered type
-	v := reflect.New(t).Interface()
-	err = json.Unmarshal(jEvent.Object, v)
+	event.Object, err = s.castObject(jEvent.Object, t)
 	if err != nil {
-		return NewDeserializationError(fmt.Errorf("failed to unmarshal object type: %s %w", jEvent.ObjectType, err))
+		return err
+	}
+	return nil
+}
+
+// castObject attempts to cast an object to the specified type
+func (s *JSONSerializer) castObject(obj json.RawMessage, t reflect.Type) (interface{}, error) {
+	if len(obj) == 0 || string(obj) == "null" {
+		return nil, nil
 	}
 
-	event.Object = reflect.ValueOf(v).Elem().Interface() // Get the actual value, not the pointer
-	return nil
+	// Create a new instance of the registered type
+	v := reflect.New(t).Interface()
+	err := json.Unmarshal(obj, v)
+	if err != nil {
+		return nil, NewDeserializationError(fmt.Errorf("failed to unmarshal object type: %s %w", t.Name(), err))
+	}
+
+	return reflect.ValueOf(v).Elem().Interface(), nil // Get the actual value, not the pointer
 }
 
 // compile time check for interface conformance

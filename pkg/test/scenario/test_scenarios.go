@@ -24,7 +24,7 @@ const helloWorld = "hello world"
 const simpleMountPath = "/data/file.txt"
 const simpleOutputPath = "/output_data/output_file.txt"
 const catProgram = "cat " + simpleMountPath + " > " + simpleOutputPath
-const defaultDockerImage = "busybox:latest"
+const defaultDockerImage = "busybox:1.37.0"
 
 const AllowedListedLocalPathsSuffix = string(os.PathSeparator) + "*"
 

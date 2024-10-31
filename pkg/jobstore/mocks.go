@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -296,6 +297,20 @@ func (mr *MockStoreMockRecorder) GetEvaluation(ctx, id interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvaluation", reflect.TypeOf((*MockStore)(nil).GetEvaluation), ctx, id)
 }
 
+// GetEventStore mocks base method.
+func (m *MockStore) GetEventStore() watcher.EventStore {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEventStore")
+	ret0, _ := ret[0].(watcher.EventStore)
+	return ret0
+}
+
+// GetEventStore indicates an expected call of GetEventStore.
+func (mr *MockStoreMockRecorder) GetEventStore() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEventStore", reflect.TypeOf((*MockStore)(nil).GetEventStore))
+}
+
 // GetExecutions mocks base method.
 func (m *MockStore) GetExecutions(ctx context.Context, options GetExecutionsOptions) ([]models.Execution, error) {
 	m.ctrl.T.Helper()
@@ -397,23 +412,4 @@ func (m *MockStore) UpdateJobState(ctx context.Context, request UpdateJobStateRe
 func (mr *MockStoreMockRecorder) UpdateJobState(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateJobState", reflect.TypeOf((*MockStore)(nil).UpdateJobState), ctx, request)
-}
-
-// Watch mocks base method.
-func (m *MockStore) Watch(ctx context.Context, types StoreWatcherType, events StoreEventType, options ...WatcherOption) *Watcher {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, types, events}
-	for _, a := range options {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Watch", varargs...)
-	ret0, _ := ret[0].(*Watcher)
-	return ret0
-}
-
-// Watch indicates an expected call of Watch.
-func (mr *MockStoreMockRecorder) Watch(ctx, types, events interface{}, options ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, types, events}, options...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockStore)(nil).Watch), varargs...)
 }

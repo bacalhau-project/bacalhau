@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
@@ -33,10 +33,10 @@ func (s *AskForBidSuite) TestAskForBid() {
 	s.runAskForBidTest(bidResponseTestCase{name: "empty test case"})
 }
 
-func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Resources) {
-	localState, err := s.node.ExecutionStore.GetExecution(context.Background(), response.ExecutionID)
+func (s *AskForBidSuite) verify(response messages.BidResult, expected models.Resources) {
+	execution, err := s.node.ExecutionStore.GetExecution(context.Background(), response.ExecutionID)
 	s.NoError(err)
-	s.Equal(expected, *localState.Execution.TotalAllocatedResources())
+	s.Equal(expected, *execution.TotalAllocatedResources())
 }
 
 func (s *AskForBidSuite) TestPopulateResourceUsage() {
@@ -79,10 +79,10 @@ func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
 	})
 }
 
-func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.BidResult {
+func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) messages.BidResult {
 	ctx := context.Background()
 
-	var result compute.BidResult
+	var result messages.BidResult
 	_ = s.Run(testCase.name, func() {
 		// setup default values
 		execution := testCase.execution
@@ -94,12 +94,12 @@ func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.
 		s.Equal(!testCase.rejected, result.Accepted)
 
 		// check execution state
-		localExecutionState, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
+		execution, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
 		if testCase.rejected {
 			s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
 		} else {
 			s.NoError(err)
-			s.Equal(store.ExecutionStateCreated, localExecutionState.State)
+			s.Equal(models.ExecutionStateNew, execution.ComputeState.StateType)
 		}
 	})
 

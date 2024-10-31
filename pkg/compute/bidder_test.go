@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -67,14 +68,14 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 	ctx := context.Background()
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
-	askForBidRequest := compute.AskForBidRequest{
+	askForBidRequest := messages.AskForBidRequest{
 		Execution:       execution,
 		WaitForApproval: true,
 	}
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalExecutionStateType
+		expectedExecutionState models.ExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -87,7 +88,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic and resource should bid and not wait; bid complete",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -98,7 +99,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should wait resource should wait; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
@@ -108,7 +109,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should wait and resource should bid; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
@@ -118,7 +119,7 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		},
 		{
 			name:                   "semantic should bid and resource should wait; bid NOT complete.",
-			expectedExecutionState: store.ExecutionStateCreated,
+			expectedExecutionState: models.ExecutionStateNew,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -159,9 +160,9 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
+				s.Require().Error(err, "expected no execution to be created")
 			} else {
-				s.Equal(tt.expectedExecutionState, exec.State, "expected: %s, actual: %s", tt.expectedExecutionState, exec.State)
+				s.Equal(tt.expectedExecutionState, exec.ComputeState.StateType, "expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
 			}
 		})
 	}
@@ -169,14 +170,14 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 
 func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 	ctx := context.Background()
-	askForBidRequest := compute.AskForBidRequest{
+	askForBidRequest := messages.AskForBidRequest{
 		Execution:       mock.ExecutionForJob(mock.Job()),
 		WaitForApproval: false,
 	}
 
 	tests := []struct {
 		name                   string
-		expectedExecutionState store.LocalExecutionStateType
+		expectedExecutionState models.ExecutionStateType
 		mockExpectations       func()
 	}{
 		{
@@ -189,7 +190,7 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 		},
 		{
 			name:                   "semantic and resource should bid and not wait; start running",
-			expectedExecutionState: store.ExecutionStateBidAccepted,
+			expectedExecutionState: models.ExecutionStateBidAccepted,
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
@@ -261,9 +262,10 @@ func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
 
 			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
 			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created, but found one with state: %s", exec.State)
+				s.Require().Error(err, "expected no execution to be created")
 			} else {
-				s.Equal(tt.expectedExecutionState, exec.State, "expected: %s, actual: %s", tt.expectedExecutionState, exec.State)
+				s.Equal(tt.expectedExecutionState.String(), exec.ComputeState.StateType.String(),
+					"expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
 			}
 		})
 	}
@@ -280,7 +282,7 @@ func NewBidResponseMatcher(accepted bool) *BidResponseMatcher {
 }
 
 func (m *BidResponseMatcher) Matches(x interface{}) bool {
-	req, ok := x.(compute.BidResult)
+	req, ok := x.(messages.BidResult)
 	if !ok {
 		return false
 	}

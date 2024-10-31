@@ -11,6 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -244,15 +245,20 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	if err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: execution.ID,
-		ExpectedStates: []store.LocalExecutionStateType{
-			store.ExecutionStateBidAccepted,
-			store.ExecutionStateRunning, // allow retries during node restarts
+		Condition: store.UpdateExecutionCondition{
+			ExpectedStates: []models.ExecutionStateType{
+				models.ExecutionStateBidAccepted,
+				models.ExecutionStateRunning, // allow retries during node restarts
+			},
 		},
-		NewState: store.ExecutionStateRunning,
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateRunning),
+		},
 	}); err != nil {
-		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s", store.ExecutionStateBidAccepted, store.ExecutionStateRunning)
+		result.Err = fmt.Errorf("updating execution state from expected: %s to: %s",
+			models.ExecutionStateBidAccepted, models.ExecutionStateRunning)
 		return result
 	}
 
@@ -271,8 +277,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 	return result
 }
 
-func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState) (*models.RunCommandResult, error) {
-	execution := state.Execution
+func (e *BaseExecutor) Wait(ctx context.Context, execution *models.Execution) (*models.RunCommandResult, error) {
 	jobExecutor, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get executor %s: %w", execution.Job.Task().Engine, err)
@@ -293,19 +298,18 @@ func (e *BaseExecutor) Wait(ctx context.Context, state store.LocalExecutionState
 // Run the execution after it has been accepted, and propose a result to the requester to be verified.
 //
 //nolint:funlen
-func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState) (err error) {
-	execution := state.Execution
+func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (err error) {
 	ctx = log.Ctx(ctx).With().
 		Str("job", execution.Job.ID).
 		Str("execution", execution.ID).
 		Logger().WithContext(ctx)
 
-	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, state.Execution.Job.MetricAttributes()...)
+	stopwatch := telemetry.Timer(ctx, jobDurationMilliseconds, execution.Job.MetricAttributes()...)
 	topic := EventTopicExecutionRunning
 	defer func() {
 		if err != nil {
 			if !bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyCancelled) {
-				e.handleFailure(ctx, state, err, topic)
+				e.handleFailure(ctx, execution, err, topic)
 			}
 		}
 		dur := stopwatch()
@@ -338,7 +342,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 		}
 	}
 
-	result, err := e.Wait(ctx, state)
+	result, err := e.Wait(ctx, execution)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			// TODO(forrest) [correctness]:
@@ -352,7 +356,7 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 			// become the default since canceling the context will simply result in the RPC connection closing (I think)
 			// The general solution here is to stop using contexts for canceling jobs and to instead make explicit calls
 			// the an executors `Cancel` method.
-			return NewErrExecTimeout(state.Execution.Job.Task().Timeouts.GetExecutionTimeout())
+			return NewErrExecTimeout(execution.Job.Task().Timeouts.GetExecutionTimeout())
 		}
 		return err
 	}
@@ -361,24 +365,28 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 	}
 	jobsCompleted.Add(ctx, 1)
 
-	expectedState := store.ExecutionStateRunning
+	expectedState := models.ExecutionStateRunning
 	var publishedResult *models.SpecConfig
 
 	// publish if the job has a publisher defined
 	if !execution.Job.Task().Publisher.IsEmpty() {
 		topic = EventTopicExecutionPublishing
-		if err := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-			ExecutionID:    execution.ID,
-			ExpectedStates: []store.LocalExecutionStateType{expectedState},
-			NewState:       store.ExecutionStatePublishing,
-			RunOutput:      result,
+		if err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+			ExecutionID: execution.ID,
+			Condition: store.UpdateExecutionCondition{
+				ExpectedStates: []models.ExecutionStateType{expectedState},
+			},
+			NewValues: models.Execution{
+				ComputeState: models.NewExecutionState(models.ExecutionStatePublishing),
+				RunOutput:    result,
+			},
 		}); err != nil {
 			return err
 		}
 
-		expectedState = store.ExecutionStatePublishing
+		expectedState = models.ExecutionStatePublishing
 
-		resultsDir, err := e.resultsPath.EnsureResultsDir(state.Execution.ID)
+		resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
 		if err != nil {
 			return err
 		}
@@ -392,29 +400,34 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 			}
 		}()
 
-		publishedResult, err = e.publish(ctx, state, resultsDir)
+		publishedResult, err = e.publish(ctx, execution, resultsDir)
 		if err != nil {
 			return err
 		}
 	}
 
 	// mark the execution as completed
-	if err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
-		ExecutionID:     execution.ID,
-		ExpectedStates:  []store.LocalExecutionStateType{expectedState},
-		NewState:        store.ExecutionStateCompleted,
-		PublishedResult: publishedResult,
-		RunOutput:       result,
+	if err = e.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+		ExecutionID: execution.ID,
+		Condition: store.UpdateExecutionCondition{
+			ExpectedStates: []models.ExecutionStateType{expectedState},
+		},
+		NewValues: models.Execution{
+			ComputeState:    models.NewExecutionState(models.ExecutionStateCompleted),
+			PublishedResult: publishedResult,
+			RunOutput:       result,
+		},
+		Events: []models.Event{*ExecCompletedEvent()},
 	}); err != nil {
 		return err
 	}
 
 	// notify requester
-	e.callback.OnRunComplete(ctx, RunResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
+	e.callback.OnRunComplete(ctx, messages.RunResult{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: state.RequesterNodeID,
+			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 		},
 		PublishResult:    publishedResult,
 		RunCommandResult: result,
@@ -423,10 +436,9 @@ func (e *BaseExecutor) Run(ctx context.Context, state store.LocalExecutionState)
 }
 
 // Publish the result of an execution after it has been verified.
-func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.LocalExecutionState,
+func (e *BaseExecutor) publish(ctx context.Context, execution *models.Execution,
 	resultFolder string,
 ) (*models.SpecConfig, error) {
-	execution := localExecutionState.Execution
 	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
@@ -445,52 +457,45 @@ func (e *BaseExecutor) publish(ctx context.Context, localExecutionState store.Lo
 }
 
 // Cancel the execution.
-func (e *BaseExecutor) Cancel(ctx context.Context, state store.LocalExecutionState) (err error) {
-	execution := state.Execution
-	defer func() {
-		if err != nil {
-			e.handleFailure(ctx, state, err, "Canceling")
-		}
-	}()
-
+func (e *BaseExecutor) Cancel(ctx context.Context, execution *models.Execution) error {
 	log.Ctx(ctx).Debug().Str("Execution", execution.ID).Msg("Canceling execution")
-
 	exe, err := e.executors.Get(ctx, execution.Job.Task().Engine.Type)
 	if err != nil {
 		return err
 	}
-	if err := exe.Cancel(ctx, execution.ID); err != nil {
+	if err = exe.Cancel(ctx, execution.ID); err != nil {
 		return err
 	}
 
-	e.callback.OnCancelComplete(ctx, CancelResult{
-		ExecutionMetadata: NewExecutionMetadata(execution),
-		RoutingMetadata: RoutingMetadata{
+	e.callback.OnCancelComplete(ctx, messages.CancelResult{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: e.ID,
-			TargetPeerID: state.RequesterNodeID,
+			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 		},
 	})
 	return err
 }
 
-func (e *BaseExecutor) handleFailure(ctx context.Context, state store.LocalExecutionState, err error, topic models.EventTopic) {
+func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Execution, err error, topic models.EventTopic) {
 	log.Ctx(ctx).Warn().Err(err).Msgf("%s failed", topic)
 
-	execution := state.Execution
-	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionStateRequest{
+	updateError := e.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: execution.ID,
-		NewState:    store.ExecutionStateFailed,
-		Comment:     err.Error(),
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(err.Error()),
+		},
+		Events: []models.Event{*models.NewEvent(topic).WithError(err)},
 	})
 
 	if updateError != nil {
 		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	} else {
-		e.callback.OnComputeFailure(ctx, ComputeError{
-			ExecutionMetadata: NewExecutionMetadata(execution),
-			RoutingMetadata: RoutingMetadata{
+		e.callback.OnComputeFailure(ctx, messages.ComputeError{
+			ExecutionMetadata: messages.NewExecutionMetadata(execution),
+			RoutingMetadata: messages.RoutingMetadata{
 				SourcePeerID: e.ID,
-				TargetPeerID: state.RequesterNodeID,
+				TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
 			},
 			Event: models.EventFromError(topic, err),
 		})
