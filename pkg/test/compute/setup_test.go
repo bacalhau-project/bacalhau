@@ -69,8 +69,6 @@ func (s *ComputeSuite) setupConfig() {
 	nodeID := "test"
 	s.executor = noop_executor.NewNoopExecutor()
 	s.publisher = noop_publisher.NewNoopPublisher()
-	s.completedChannel = make(chan messages.RunResult)
-	s.failureChannel = make(chan messages.ComputeError)
 
 	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, bacalhauConfig.Engines.Types.Docker)
 
