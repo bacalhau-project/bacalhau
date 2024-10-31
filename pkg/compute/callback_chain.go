@@ -1,6 +1,10 @@
 package compute
 
-import "context"
+import (
+	"context"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+)
 
 type ChainedCallbackParams struct {
 	Callbacks []Callback
@@ -17,25 +21,25 @@ func NewChainedCallback(params ChainedCallbackParams) *ChainedCallback {
 	}
 }
 
-func (c ChainedCallback) OnBidComplete(ctx context.Context, result BidResult) {
+func (c ChainedCallback) OnBidComplete(ctx context.Context, result messages.BidResult) {
 	for _, callback := range c.callbacks {
 		callback.OnBidComplete(ctx, result)
 	}
 }
 
-func (c ChainedCallback) OnRunComplete(ctx context.Context, result RunResult) {
+func (c ChainedCallback) OnRunComplete(ctx context.Context, result messages.RunResult) {
 	for _, callback := range c.callbacks {
 		callback.OnRunComplete(ctx, result)
 	}
 }
 
-func (c ChainedCallback) OnCancelComplete(ctx context.Context, result CancelResult) {
+func (c ChainedCallback) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
 	for _, callback := range c.callbacks {
 		callback.OnCancelComplete(ctx, result)
 	}
 }
 
-func (c ChainedCallback) OnComputeFailure(ctx context.Context, err ComputeError) {
+func (c ChainedCallback) OnComputeFailure(ctx context.Context, err messages.ComputeError) {
 	for _, callback := range c.callbacks {
 		callback.OnComputeFailure(ctx, err)
 	}

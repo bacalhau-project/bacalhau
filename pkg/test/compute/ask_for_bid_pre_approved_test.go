@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
@@ -78,8 +78,8 @@ func (s *AskForBidPreApprovedSuite) runAskForBidTest(testCase bidResponseTestCas
 	if execution == nil {
 		execution = mock.Execution()
 	}
-	_, err := s.node.LocalEndpoint.AskForBid(ctx, compute.AskForBidRequest{
-		RoutingMetadata: compute.RoutingMetadata{
+	_, err := s.node.LocalEndpoint.AskForBid(ctx, messages.AskForBidRequest{
+		RoutingMetadata: messages.RoutingMetadata{
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},

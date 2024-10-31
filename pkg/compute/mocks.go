@@ -10,7 +10,7 @@ import (
 
 	concurrency "github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
-	requests "github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	messages "github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -38,10 +38,10 @@ func (m *MockEndpoint) EXPECT() *MockEndpointMockRecorder {
 }
 
 // AskForBid mocks base method.
-func (m *MockEndpoint) AskForBid(arg0 context.Context, arg1 AskForBidRequest) (AskForBidResponse, error) {
+func (m *MockEndpoint) AskForBid(arg0 context.Context, arg1 messages.AskForBidRequest) (messages.AskForBidResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AskForBid", arg0, arg1)
-	ret0, _ := ret[0].(AskForBidResponse)
+	ret0, _ := ret[0].(messages.AskForBidResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -53,10 +53,10 @@ func (mr *MockEndpointMockRecorder) AskForBid(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // BidAccepted mocks base method.
-func (m *MockEndpoint) BidAccepted(arg0 context.Context, arg1 BidAcceptedRequest) (BidAcceptedResponse, error) {
+func (m *MockEndpoint) BidAccepted(arg0 context.Context, arg1 messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BidAccepted", arg0, arg1)
-	ret0, _ := ret[0].(BidAcceptedResponse)
+	ret0, _ := ret[0].(messages.BidAcceptedResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -68,10 +68,10 @@ func (mr *MockEndpointMockRecorder) BidAccepted(arg0, arg1 interface{}) *gomock.
 }
 
 // BidRejected mocks base method.
-func (m *MockEndpoint) BidRejected(arg0 context.Context, arg1 BidRejectedRequest) (BidRejectedResponse, error) {
+func (m *MockEndpoint) BidRejected(arg0 context.Context, arg1 messages.BidRejectedRequest) (messages.BidRejectedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BidRejected", arg0, arg1)
-	ret0, _ := ret[0].(BidRejectedResponse)
+	ret0, _ := ret[0].(messages.BidRejectedResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -83,10 +83,10 @@ func (mr *MockEndpointMockRecorder) BidRejected(arg0, arg1 interface{}) *gomock.
 }
 
 // CancelExecution mocks base method.
-func (m *MockEndpoint) CancelExecution(arg0 context.Context, arg1 CancelExecutionRequest) (CancelExecutionResponse, error) {
+func (m *MockEndpoint) CancelExecution(arg0 context.Context, arg1 messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelExecution", arg0, arg1)
-	ret0, _ := ret[0].(CancelExecutionResponse)
+	ret0, _ := ret[0].(messages.CancelExecutionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -98,7 +98,7 @@ func (mr *MockEndpointMockRecorder) CancelExecution(arg0, arg1 interface{}) *gom
 }
 
 // ExecutionLogs mocks base method.
-func (m *MockEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+func (m *MockEndpoint) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ExecutionLogs", ctx, request)
 	ret0, _ := ret[0].(<-chan *concurrency.AsyncResult[models.ExecutionLog])
@@ -187,7 +187,7 @@ func (m *MockCallback) EXPECT() *MockCallbackMockRecorder {
 }
 
 // OnBidComplete mocks base method.
-func (m *MockCallback) OnBidComplete(ctx context.Context, result BidResult) {
+func (m *MockCallback) OnBidComplete(ctx context.Context, result messages.BidResult) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnBidComplete", ctx, result)
 }
@@ -199,7 +199,7 @@ func (mr *MockCallbackMockRecorder) OnBidComplete(ctx, result interface{}) *gomo
 }
 
 // OnCancelComplete mocks base method.
-func (m *MockCallback) OnCancelComplete(ctx context.Context, result CancelResult) {
+func (m *MockCallback) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnCancelComplete", ctx, result)
 }
@@ -211,7 +211,7 @@ func (mr *MockCallbackMockRecorder) OnCancelComplete(ctx, result interface{}) *g
 }
 
 // OnComputeFailure mocks base method.
-func (m *MockCallback) OnComputeFailure(ctx context.Context, err ComputeError) {
+func (m *MockCallback) OnComputeFailure(ctx context.Context, err messages.ComputeError) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnComputeFailure", ctx, err)
 }
@@ -223,7 +223,7 @@ func (mr *MockCallbackMockRecorder) OnComputeFailure(ctx, err interface{}) *gomo
 }
 
 // OnRunComplete mocks base method.
-func (m *MockCallback) OnRunComplete(ctx context.Context, result RunResult) {
+func (m *MockCallback) OnRunComplete(ctx context.Context, result messages.RunResult) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnRunComplete", ctx, result)
 }
@@ -258,10 +258,10 @@ func (m *MockManagementEndpoint) EXPECT() *MockManagementEndpointMockRecorder {
 }
 
 // Register mocks base method.
-func (m *MockManagementEndpoint) Register(arg0 context.Context, arg1 requests.RegisterRequest) (*requests.RegisterResponse, error) {
+func (m *MockManagementEndpoint) Register(arg0 context.Context, arg1 messages.RegisterRequest) (*messages.RegisterResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", arg0, arg1)
-	ret0, _ := ret[0].(*requests.RegisterResponse)
+	ret0, _ := ret[0].(*messages.RegisterResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -273,10 +273,10 @@ func (mr *MockManagementEndpointMockRecorder) Register(arg0, arg1 interface{}) *
 }
 
 // UpdateInfo mocks base method.
-func (m *MockManagementEndpoint) UpdateInfo(arg0 context.Context, arg1 requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
+func (m *MockManagementEndpoint) UpdateInfo(arg0 context.Context, arg1 messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateInfo", arg0, arg1)
-	ret0, _ := ret[0].(*requests.UpdateInfoResponse)
+	ret0, _ := ret[0].(*messages.UpdateInfoResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -288,10 +288,10 @@ func (mr *MockManagementEndpointMockRecorder) UpdateInfo(arg0, arg1 interface{})
 }
 
 // UpdateResources mocks base method.
-func (m *MockManagementEndpoint) UpdateResources(arg0 context.Context, arg1 requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error) {
+func (m *MockManagementEndpoint) UpdateResources(arg0 context.Context, arg1 messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateResources", arg0, arg1)
-	ret0, _ := ret[0].(*requests.UpdateResourcesResponse)
+	ret0, _ := ret[0].(*messages.UpdateResourcesResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

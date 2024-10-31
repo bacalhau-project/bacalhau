@@ -1,37 +1,41 @@
 package compute
 
-import "context"
+import (
+	"context"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+)
 
 type CallbackMock struct {
-	OnBidCompleteHandler    func(ctx context.Context, result BidResult)
-	OnCancelCompleteHandler func(ctx context.Context, result CancelResult)
-	OnComputeFailureHandler func(ctx context.Context, err ComputeError)
-	OnRunCompleteHandler    func(ctx context.Context, result RunResult)
+	OnBidCompleteHandler    func(ctx context.Context, result messages.BidResult)
+	OnCancelCompleteHandler func(ctx context.Context, result messages.CancelResult)
+	OnComputeFailureHandler func(ctx context.Context, err messages.ComputeError)
+	OnRunCompleteHandler    func(ctx context.Context, result messages.RunResult)
 }
 
 // OnBidComplete implements Callback
-func (c CallbackMock) OnBidComplete(ctx context.Context, result BidResult) {
+func (c CallbackMock) OnBidComplete(ctx context.Context, result messages.BidResult) {
 	if c.OnBidCompleteHandler != nil {
 		c.OnBidCompleteHandler(ctx, result)
 	}
 }
 
 // OnCancelComplete implements Callback
-func (c CallbackMock) OnCancelComplete(ctx context.Context, result CancelResult) {
+func (c CallbackMock) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
 	if c.OnCancelCompleteHandler != nil {
 		c.OnCancelCompleteHandler(ctx, result)
 	}
 }
 
 // OnComputeFailure implements Callback
-func (c CallbackMock) OnComputeFailure(ctx context.Context, err ComputeError) {
+func (c CallbackMock) OnComputeFailure(ctx context.Context, err messages.ComputeError) {
 	if c.OnComputeFailureHandler != nil {
 		c.OnComputeFailureHandler(ctx, err)
 	}
 }
 
 // OnRunComplete implements Callback
-func (c CallbackMock) OnRunComplete(ctx context.Context, result RunResult) {
+func (c CallbackMock) OnRunComplete(ctx context.Context, result messages.RunResult) {
 	if c.OnRunCompleteHandler != nil {
 		c.OnRunCompleteHandler(ctx, result)
 	}

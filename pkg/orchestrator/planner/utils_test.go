@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -206,11 +206,11 @@ func NewComputeRequestMatcherFromPlanUpdate(t *testing.T, nodeID string, update 
 }
 
 func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
-	var routingMetadata compute.RoutingMetadata
+	var routingMetadata messages.RoutingMetadata
 	var executionID string
 
 	switch req := x.(type) {
-	case compute.AskForBidRequest:
+	case messages.AskForBidRequest:
 		routingMetadata = req.RoutingMetadata
 		executionID = req.Execution.ID
 		desiredState := m.execution.DesiredState.StateType
@@ -226,13 +226,13 @@ func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
 				return false
 			}
 		}
-	case compute.BidAcceptedRequest:
+	case messages.BidAcceptedRequest:
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
-	case compute.BidRejectedRequest:
+	case messages.BidRejectedRequest:
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
-	case compute.CancelExecutionRequest:
+	case messages.CancelExecutionRequest:
 		routingMetadata = req.RoutingMetadata
 		executionID = req.ExecutionID
 	default:

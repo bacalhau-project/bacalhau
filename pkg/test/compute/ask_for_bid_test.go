@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
@@ -33,7 +33,7 @@ func (s *AskForBidSuite) TestAskForBid() {
 	s.runAskForBidTest(bidResponseTestCase{name: "empty test case"})
 }
 
-func (s *AskForBidSuite) verify(response compute.BidResult, expected models.Resources) {
+func (s *AskForBidSuite) verify(response messages.BidResult, expected models.Resources) {
 	execution, err := s.node.ExecutionStore.GetExecution(context.Background(), response.ExecutionID)
 	s.NoError(err)
 	s.Equal(expected, *execution.TotalAllocatedResources())
@@ -79,10 +79,10 @@ func (s *AskForBidSuite) TestRejectUsageExceedingLimits() {
 	})
 }
 
-func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) compute.BidResult {
+func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) messages.BidResult {
 	ctx := context.Background()
 
-	var result compute.BidResult
+	var result messages.BidResult
 	_ = s.Run(testCase.name, func() {
 		// setup default values
 		execution := testCase.execution

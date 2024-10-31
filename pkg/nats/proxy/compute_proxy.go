@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/stream"
 )
 
@@ -49,27 +50,27 @@ func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
 	return proxy, nil
 }
 
-func (p *ComputeProxy) AskForBid(ctx context.Context, request compute.AskForBidRequest) (compute.AskForBidResponse, error) {
-	return proxyRequest[compute.AskForBidRequest, compute.AskForBidResponse](
-		ctx, p.conn, &BaseRequest[compute.AskForBidRequest]{
+func (p *ComputeProxy) AskForBid(ctx context.Context, request messages.AskForBidRequest) (messages.AskForBidResponse, error) {
+	return proxyRequest[messages.AskForBidRequest, messages.AskForBidResponse](
+		ctx, p.conn, &BaseRequest[messages.AskForBidRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       AskForBid,
 			Body:         request,
 		})
 }
 
-func (p *ComputeProxy) BidAccepted(ctx context.Context, request compute.BidAcceptedRequest) (compute.BidAcceptedResponse, error) {
-	return proxyRequest[compute.BidAcceptedRequest, compute.BidAcceptedResponse](
-		ctx, p.conn, &BaseRequest[compute.BidAcceptedRequest]{
+func (p *ComputeProxy) BidAccepted(ctx context.Context, request messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error) {
+	return proxyRequest[messages.BidAcceptedRequest, messages.BidAcceptedResponse](
+		ctx, p.conn, &BaseRequest[messages.BidAcceptedRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       BidAccepted,
 			Body:         request,
 		})
 }
 
-func (p *ComputeProxy) BidRejected(ctx context.Context, request compute.BidRejectedRequest) (compute.BidRejectedResponse, error) {
-	return proxyRequest[compute.BidRejectedRequest, compute.BidRejectedResponse](
-		ctx, p.conn, &BaseRequest[compute.BidRejectedRequest]{
+func (p *ComputeProxy) BidRejected(ctx context.Context, request messages.BidRejectedRequest) (messages.BidRejectedResponse, error) {
+	return proxyRequest[messages.BidRejectedRequest, messages.BidRejectedResponse](
+		ctx, p.conn, &BaseRequest[messages.BidRejectedRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       BidRejected,
 			Body:         request,
@@ -77,19 +78,19 @@ func (p *ComputeProxy) BidRejected(ctx context.Context, request compute.BidRejec
 }
 
 func (p *ComputeProxy) CancelExecution(
-	ctx context.Context, request compute.CancelExecutionRequest) (compute.CancelExecutionResponse, error) {
-	return proxyRequest[compute.CancelExecutionRequest, compute.CancelExecutionResponse](
-		ctx, p.conn, &BaseRequest[compute.CancelExecutionRequest]{
+	ctx context.Context, request messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error) {
+	return proxyRequest[messages.CancelExecutionRequest, messages.CancelExecutionResponse](
+		ctx, p.conn, &BaseRequest[messages.CancelExecutionRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       CancelExecution,
 			Body:         request,
 		})
 }
 
-func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request compute.ExecutionLogsRequest) (
+func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	return proxyStreamingRequest[compute.ExecutionLogsRequest, models.ExecutionLog](
-		ctx, p.streamingClient, &BaseRequest[compute.ExecutionLogsRequest]{
+	return proxyStreamingRequest[messages.ExecutionLogsRequest, models.ExecutionLog](
+		ctx, p.streamingClient, &BaseRequest[messages.ExecutionLogsRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       ExecutionLogs,
 			Body:         request,

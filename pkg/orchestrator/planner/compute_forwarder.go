@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
 
 type ComputeForwarder struct {
@@ -80,10 +81,10 @@ func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, execution *mod
 		s.id, execution.NodeID, execution.ID)
 
 	// Notify the compute node
-	request := compute.AskForBidRequest{
+	request := messages.AskForBidRequest{
 		Execution:       execution,
 		WaitForApproval: waitForApproval,
-		RoutingMetadata: compute.RoutingMetadata{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: execution.NodeID,
 		},
@@ -106,9 +107,9 @@ func (s *ComputeForwarder) doNotifyAskForBid(ctx context.Context, execution *mod
 // doNotifyBidAccepted notifies the target node that the bid was accepted.
 func (s *ComputeForwarder) doNotifyBidAccepted(ctx context.Context, execution *models.Execution) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidAccepted for bid: %s", s.id, execution.ID)
-	request := compute.BidAcceptedRequest{
+	request := messages.BidAcceptedRequest{
 		ExecutionID: execution.ID,
-		RoutingMetadata: compute.RoutingMetadata{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: execution.NodeID,
 		},
@@ -127,9 +128,9 @@ func (s *ComputeForwarder) doNotifyBidAccepted(ctx context.Context, execution *m
 // doNotifyBidRejected notifies the target node that the bid was rejected.
 func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, execution *models.Execution) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with BidRejected for bid: %s", s.id, execution.ID)
-	request := compute.BidRejectedRequest{
+	request := messages.BidRejectedRequest{
 		ExecutionID: execution.ID,
-		RoutingMetadata: compute.RoutingMetadata{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: execution.NodeID,
 		},
@@ -149,10 +150,10 @@ func (s *ComputeForwarder) doNotifyBidRejected(ctx context.Context, execution *m
 func (s *ComputeForwarder) notifyCancel(ctx context.Context, message string, execution *models.Execution) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s responding with Cancel for bid: %s", s.id, execution.ID)
 
-	request := compute.CancelExecutionRequest{
+	request := messages.CancelExecutionRequest{
 		ExecutionID:   execution.ID,
 		Justification: message,
-		RoutingMetadata: compute.RoutingMetadata{
+		RoutingMetadata: messages.RoutingMetadata{
 			SourcePeerID: s.id,
 			TargetPeerID: execution.NodeID,
 		},
