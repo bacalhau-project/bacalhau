@@ -54,7 +54,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmit() {
 	ctx := context.Background()
 	randomUUID := uuid.New()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-		"busybox:latest",
+		"busybox:1.37.0",
 		"echo",
 		randomUUID.String(),
 	)
@@ -67,7 +67,7 @@ func (s *DockerRunSuite) TestRun_DryRun() {
 	randomUUID := uuid.New()
 	entrypointCommand := fmt.Sprintf("echo %s", randomUUID.String())
 	stdout, _, err := s.Execute("docker", "run",
-		"busybox:latest",
+		"busybox:1.37.0",
 		entrypointCommand,
 		"--dry-run",
 	)
@@ -137,7 +137,7 @@ func (s *DockerRunSuite) TestRun_GenericSubmitWait() {
 
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 		"--wait",
-		"busybox:latest",
+		"busybox:1.37.0",
 		"--",
 		"echo", "hello from docker submit wait",
 	)
@@ -170,7 +170,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 		flagsArray := []string{"docker", "run"}
 
 		flagsArray = append(flagsArray, urls.inputURL.flag, urls.inputURL.url)
-		flagsArray = append(flagsArray, "busybox:latest", "cat", fmt.Sprintf("%s/%s", urls.inputURL.pathInContainer, urls.inputURL.filename))
+		flagsArray = append(flagsArray, "busybox:1.37.0", "cat", fmt.Sprintf("%s/%s", urls.inputURL.pathInContainer, urls.inputURL.filename))
 
 		_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 		s.Require().NoError(err, "Error submitting job")
@@ -189,7 +189,7 @@ func (s *DockerRunSuite) TestRun_SubmitUrlInputs() {
 func (s *DockerRunSuite) TestRun_CreatedAt() {
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-		"busybox:latest",
+		"busybox:1.37.0",
 		"echo", "'hello world'",
 	)
 	s.NoError(err, "Error submitting job.")
@@ -208,8 +208,8 @@ func (s *DockerRunSuite) TestRun_EdgeCaseCLI() {
 		fatalErr   bool
 		errString  string
 	}{
-		{submitArgs: []string{"busybox:latest", "-xoo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"}, // submitting flag will fail if not separated with a --
-		{submitArgs: []string{"busybox:latest", "python -xoo -bar -baz"}, fatalErr: false, errString: ""},               // separating with -- should work and allow flags
+		{submitArgs: []string{"busybox:1.37.0", "-xoo -bar -baz"}, fatalErr: true, errString: "unknown shorthand flag"}, // submitting flag will fail if not separated with a --
+		{submitArgs: []string{"busybox:1.37.0", "python -xoo -bar -baz"}, fatalErr: false, errString: ""},               // separating with -- should work and allow flags
 		// {submitString: "-v QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72:/input_images -o results:/output_images dpokidov/imagemagick -- magick mogrify -fx '((g-b)/(r+g+b))>0.02 ? 1 : 0' -resize 256x256 -quality 100 -path /output_images /input_images/*.jpg"},
 	}
 
@@ -263,7 +263,7 @@ func (s *DockerRunSuite) TestRun_SubmitWorkdir() {
 		ctx := context.Background()
 		flagsArray := []string{"docker", "run"}
 		flagsArray = append(flagsArray, "-w", tc.workdir)
-		flagsArray = append(flagsArray, "busybox:latest", "pwd")
+		flagsArray = append(flagsArray, "busybox:1.37.0", "pwd")
 
 		_, out, err := s.ExecuteTestCobraCommand(flagsArray...)
 
@@ -302,7 +302,7 @@ func (s *DockerRunSuite) TestRun_ExplodeVideos() {
 		"docker", "run",
 		"--wait",
 		"-i", fmt.Sprintf("file://%s,dst=/inputs", s.AllowListedPath),
-		"busybox:latest", "echo", "hello",
+		"busybox:1.37.0", "echo", "hello",
 	}
 
 	_, _, submitErr := s.ExecuteTestCobraCommand(allArgs...)
@@ -354,7 +354,7 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 			ctx := context.Background()
 			_, out, err := s.ExecuteTestCobraCommand(
 				"docker", "run",
-				"busybox:latest", "--", "sh", "-c",
+				"busybox:1.37.0", "--", "sh", "-c",
 				fmt.Sprintf(`yes "=" | tr -d "\n" | head -c %d`, tc.inputLength),
 			)
 			s.Require().NoError(err, "Error submitting job. Name: %s. Expected Length: %s", name, tc.expectedLength)
@@ -401,7 +401,7 @@ func (s *DockerRunSuite) TestRun_MultipleURLs() {
 
 			args = append(args, "docker", "run")
 			args = append(args, tc.inputFlags...)
-			args = append(args, "busybox:latest", "--", "ls", "/input")
+			args = append(args, "busybox:1.37.0", "--", "ls", "/input")
 
 			_, out, err := s.ExecuteTestCobraCommand(args...)
 			s.Require().NoError(err, "Error submitting job")
@@ -422,7 +422,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 		errStringContains string
 	}{
 		"good-image-good-executable": {
-			imageName:         "busybox:latest", // Good image // TODO we consider an untagged image poor practice, fix this
+			imageName:         "busybox:1.37.0", // Good image
 			executable:        "ls",             // Good executable
 			isValid:           true,
 			errStringContains: "",
@@ -434,7 +434,7 @@ func (s *DockerRunSuite) TestRun_BadExecutables() {
 			errStringContains: "image not available",
 		},
 		"good-image-bad-executable": {
-			imageName:         "busybox:latest", // Good image // TODO we consider an untagged image poor practice, fix this
+			imageName:         "busybox:1.37.0", // Good image
 			executable:        "BADEXECUTABLE",  // Bad executable
 			isValid:           false,
 			errStringContains: "executable file not found",
@@ -498,7 +498,7 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 func (s *DockerRunSuite) TestRun_Timeout_DefaultValue() {
 	ctx := context.Background()
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
-		"busybox:latest",
+		"busybox:1.37.0",
 		"echo", "'hello world'",
 	)
 	s.NoError(err, "Error submitting job without defining a timeout value")
@@ -517,7 +517,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 	_, out, err := s.ExecuteTestCobraCommand("docker", "run",
 		"--timeout", fmt.Sprintf("%d", int64(expectedTimeout.Seconds())),
 		"--queue-timeout", fmt.Sprintf("%d", int64(expectedQueueTimeout.Seconds())),
-		"busybox:latest",
+		"busybox:1.37.0",
 		"echo", "'hello world'",
 	)
 	s.NoError(err, "Error submitting job with a defined a timeout value")
@@ -531,7 +531,7 @@ func (s *DockerRunSuite) TestRun_Timeout_DefinedValue() {
 func (s *DockerRunSuite) TestRun_NoPublisher() {
 	ctx := context.Background()
 
-	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "busybox:latest", "echo", "'hello world'")
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "busybox:1.37.0", "echo", "'hello world'")
 	s.Require().NoError(err)
 
 	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
@@ -551,7 +551,7 @@ func (s *DockerRunSuite) TestRun_NoPublisher() {
 func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	ctx := context.Background()
 
-	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "-p", "local", "busybox:latest", "echo", "'hello world'")
+	_, out, err := s.ExecuteTestCobraCommand("docker", "run", "-p", "local", "busybox:1.37.0", "echo", "'hello world'")
 	s.Require().NoError(err)
 
 	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)

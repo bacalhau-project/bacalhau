@@ -59,7 +59,7 @@ func (s *CancelSuite) TestCancelDocker() {
 	ctx := context.Background()
 
 	// prepare a docker execution that sleeps for 10 seconds so we can cancel it
-	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:latest").
+	dockerSpec, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
 		WithEntrypoint("sh", "-c", "sleep 10").
 		Build()
 	s.NoError(err)

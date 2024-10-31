@@ -110,7 +110,7 @@ func (s *LogStreamTestSuite) TestDockerOutputStream() {
 				Engine: &models.SpecConfig{
 					Type: models.EngineDocker,
 					Params: dockermodels.EngineSpec{
-						Image:      "busybox:latest",
+						Image:      "busybox:1.37.0",
 						Entrypoint: []string{"sh", "-c", "for i in {1..100}; do echo \"logstreamoutput\"; sleep .1; done"},
 					}.ToMap(),
 				},
