@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
 
 const (
@@ -19,11 +19,11 @@ const (
 )
 
 type managementRequest interface {
-	requests.RegisterRequest | requests.UpdateInfoRequest | requests.UpdateResourcesRequest
+	messages.RegisterRequest | messages.UpdateInfoRequest | messages.UpdateResourcesRequest
 }
 
 type managementResponse interface {
-	requests.RegisterResponse | requests.UpdateInfoResponse | requests.UpdateResourcesResponse
+	messages.RegisterResponse | messages.UpdateInfoResponse | messages.UpdateResourcesResponse
 }
 
 type ManagementProxyParams struct {
@@ -47,11 +47,11 @@ func NewManagementProxy(params ManagementProxyParams) *ManagementProxy {
 // NodeID to the requester node. It uses NATS request-reply to get a response and returns
 // the response to the caller.
 func (p *ManagementProxy) Register(ctx context.Context,
-	request requests.RegisterRequest) (*requests.RegisterResponse, error) {
+	request messages.RegisterRequest) (*messages.RegisterResponse, error) {
 	var err error
-	var asyncRes *concurrency.AsyncResult[requests.RegisterResponse]
+	var asyncRes *concurrency.AsyncResult[messages.RegisterResponse]
 
-	asyncRes, err = send[requests.RegisterRequest, requests.RegisterResponse](
+	asyncRes, err = send[messages.RegisterRequest, messages.RegisterResponse](
 		ctx, p.conn, request.Info.NodeID, request, RegisterNode)
 
 	if err != nil {
@@ -65,11 +65,11 @@ func (p *ManagementProxy) Register(ctx context.Context,
 // We will do this even if we are not registered so that we will generate a regular
 // error explaining why the update failed.
 func (p *ManagementProxy) UpdateInfo(ctx context.Context,
-	request requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
+	request messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error) {
 	var err error
-	var asyncRes *concurrency.AsyncResult[requests.UpdateInfoResponse]
+	var asyncRes *concurrency.AsyncResult[messages.UpdateInfoResponse]
 
-	asyncRes, err = send[requests.UpdateInfoRequest, requests.UpdateInfoResponse](
+	asyncRes, err = send[messages.UpdateInfoRequest, messages.UpdateInfoResponse](
 		ctx, p.conn, request.Info.NodeID, request, UpdateNodeInfo)
 
 	if err != nil {
@@ -82,11 +82,11 @@ func (p *ManagementProxy) UpdateInfo(ctx context.Context,
 // UpdateResources sends the currently available resources from the current compute
 // node to the server.
 func (p *ManagementProxy) UpdateResources(ctx context.Context,
-	request requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error) {
+	request messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error) {
 	var err error
-	var asyncRes *concurrency.AsyncResult[requests.UpdateResourcesResponse]
+	var asyncRes *concurrency.AsyncResult[messages.UpdateResourcesResponse]
 
-	asyncRes, err = send[requests.UpdateResourcesRequest, requests.UpdateResourcesResponse](
+	asyncRes, err = send[messages.UpdateResourcesRequest, messages.UpdateResourcesResponse](
 		ctx, p.conn, request.NodeID, request, UpdateResources)
 
 	if err != nil {

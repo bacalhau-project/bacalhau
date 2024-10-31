@@ -10,6 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
@@ -51,7 +52,8 @@ func (s BaseEndpoint) GetNodeID() string {
 	return s.id
 }
 
-func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (AskForBidResponse, error) {
+func (s BaseEndpoint) AskForBid(
+	ctx context.Context, request messages.AskForBidRequest) (messages.AskForBidResponse, error) {
 	ctx, span := telemetry.NewSpan(
 		ctx,
 		telemetry.GetTracer(),
@@ -66,7 +68,7 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 	parsedUsage, err := request.Execution.Job.Task().ResourcesConfig.ToResources()
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Msg("Error parsing job resource config")
-		return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
+		return messages.AskForBidResponse{ExecutionMetadata: messages.ExecutionMetadata{
 			ExecutionID: request.Execution.ID,
 			JobID:       request.Execution.JobID,
 		}}, err
@@ -80,13 +82,14 @@ func (s BaseEndpoint) AskForBid(ctx context.Context, request AskForBidRequest) (
 		ResourceUsage:   parsedUsage,
 	})
 
-	return AskForBidResponse{ExecutionMetadata: ExecutionMetadata{
+	return messages.AskForBidResponse{ExecutionMetadata: messages.ExecutionMetadata{
 		ExecutionID: request.Execution.ID,
 		JobID:       request.Execution.JobID,
 	}}, nil
 }
 
-func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedRequest) (BidAcceptedResponse, error) {
+func (s BaseEndpoint) BidAccepted(
+	ctx context.Context, request messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid accepted: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: request.ExecutionID,
@@ -98,12 +101,12 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 		},
 	})
 	if err != nil {
-		return BidAcceptedResponse{}, err
+		return messages.BidAcceptedResponse{}, err
 	}
 
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return BidAcceptedResponse{}, err
+		return messages.BidAcceptedResponse{}, err
 	}
 
 	// Increment the number of jobs accepted by this compute node:
@@ -111,14 +114,15 @@ func (s BaseEndpoint) BidAccepted(ctx context.Context, request BidAcceptedReques
 
 	err = s.executor.Run(ctx, execution)
 	if err != nil {
-		return BidAcceptedResponse{}, err
+		return messages.BidAcceptedResponse{}, err
 	}
-	return BidAcceptedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+	return messages.BidAcceptedResponse{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
 	}, nil
 }
 
-func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedRequest) (BidRejectedResponse, error) {
+func (s BaseEndpoint) BidRejected(
+	ctx context.Context, request messages.BidRejectedRequest) (messages.BidRejectedResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("bid rejected: %s", request.ExecutionID)
 	err := s.executionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: request.ExecutionID,
@@ -130,25 +134,26 @@ func (s BaseEndpoint) BidRejected(ctx context.Context, request BidRejectedReques
 		},
 	})
 	if err != nil {
-		return BidRejectedResponse{}, err
+		return messages.BidRejectedResponse{}, err
 	}
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return BidRejectedResponse{}, err
+		return messages.BidRejectedResponse{}, err
 	}
-	return BidRejectedResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+	return messages.BidRejectedResponse{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
 	}, nil
 }
 
-func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecutionRequest) (CancelExecutionResponse, error) {
+func (s BaseEndpoint) CancelExecution(
+	ctx context.Context, request messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error) {
 	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Justification)
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
-		return CancelExecutionResponse{}, err
+		return messages.CancelExecutionResponse{}, err
 	}
 	if execution.IsTerminalComputeState() {
-		return CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s",
+		return messages.CancelExecutionResponse{}, fmt.Errorf("cannot cancel execution %s in state %s",
 			execution.ID, execution.ComputeState.StateType)
 	}
 
@@ -159,21 +164,21 @@ func (s BaseEndpoint) CancelExecution(ctx context.Context, request CancelExecuti
 		},
 	})
 	if err != nil {
-		return CancelExecutionResponse{}, err
+		return messages.CancelExecutionResponse{}, err
 	}
 
 	if execution.ComputeState.StateType.IsExecuting() {
 		err = s.executor.Cancel(ctx, execution)
 		if err != nil {
-			return CancelExecutionResponse{}, err
+			return messages.CancelExecutionResponse{}, err
 		}
 	}
-	return CancelExecutionResponse{
-		ExecutionMetadata: NewExecutionMetadata(execution),
+	return messages.CancelExecutionResponse{
+		ExecutionMetadata: messages.NewExecutionMetadata(execution),
 	}, nil
 }
 
-func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request ExecutionLogsRequest) (
+func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error,
 ) {
 	return s.logServer.GetLogStream(ctx, executor.LogStreamRequest{

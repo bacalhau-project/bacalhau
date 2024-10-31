@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
@@ -78,12 +78,12 @@ func (n *NodeManager) Start(ctx context.Context) error {
 
 // Register is part of the implementation of the ManagementEndpoint
 // interface. It is used to register a compute node with the cluster.
-func (n *NodeManager) Register(ctx context.Context, request requests.RegisterRequest) (*requests.RegisterResponse, error) {
+func (n *NodeManager) Register(ctx context.Context, request messages.RegisterRequest) (*messages.RegisterResponse, error) {
 	existing, err := n.store.Get(ctx, request.Info.NodeID)
 	if err == nil {
 		// If we have already seen this node and rejected it, then let the node know
 		if existing.Membership == models.NodeMembership.REJECTED {
-			return &requests.RegisterResponse{
+			return &messages.RegisterResponse{
 				Accepted: false,
 				Reason:   "node has been rejected",
 			}, nil
@@ -91,7 +91,7 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 
 		// Otherwise we'll allow the registration, but let the compute node
 		// that it has already been registered on a previous occasion.
-		return &requests.RegisterResponse{
+		return &messages.RegisterResponse{
 			Accepted: true,
 			Reason:   "node already registered",
 		}, nil
@@ -106,18 +106,18 @@ func (n *NodeManager) Register(ctx context.Context, request requests.RegisterReq
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
 
-	return &requests.RegisterResponse{
+	return &messages.RegisterResponse{
 		Accepted: true,
 	}, nil
 }
 
 // UpdateInfo is part of the implementation of the ManagementEndpoint
 // interface. It is used to update the node state for a particular node
-func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInfoRequest) (*requests.UpdateInfoResponse, error) {
+func (n *NodeManager) UpdateInfo(ctx context.Context, request messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error) {
 	existing, err := n.store.Get(ctx, request.Info.NodeID)
 
 	if errors.Is(err, routing.ErrNodeNotFound{}) {
-		return &requests.UpdateInfoResponse{
+		return &messages.UpdateInfoResponse{
 			Accepted: false,
 			Reason:   "node not yet registered",
 		}, nil
@@ -128,7 +128,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 	}
 
 	if existing.Membership == models.NodeMembership.REJECTED {
-		return &requests.UpdateInfoResponse{
+		return &messages.UpdateInfoResponse{
 			Accepted: false,
 			Reason:   "node registration rejected",
 		}, nil
@@ -145,7 +145,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 		return nil, errors.Wrap(err, "failed to save nodestate during node registration")
 	}
 
-	return &requests.UpdateInfoResponse{
+	return &messages.UpdateInfoResponse{
 		Accepted: true,
 	}, nil
 }
@@ -153,7 +153,7 @@ func (n *NodeManager) UpdateInfo(ctx context.Context, request requests.UpdateInf
 // UpdateResources updates the available resources in our in-memory store for each node. This data
 // is used to augment information about the available resources for each node.
 func (n *NodeManager) UpdateResources(ctx context.Context,
-	request requests.UpdateResourcesRequest) (*requests.UpdateResourcesResponse, error) {
+	request messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error) {
 	existing, err := n.store.Get(ctx, request.NodeID)
 	if errors.Is(err, routing.ErrNodeNotFound{}) {
 		return nil, fmt.Errorf("unable to update resources for missing node: %s", request.NodeID)
@@ -161,7 +161,7 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 
 	if existing.Membership == models.NodeMembership.REJECTED {
 		log.Ctx(ctx).Debug().Msg("not updating resources for rejected node ")
-		return &requests.UpdateResourcesResponse{}, nil
+		return &messages.UpdateResourcesResponse{}, nil
 	}
 
 	log.Ctx(ctx).Debug().Msgf("updating node resources availability: %+v", request)
@@ -172,7 +172,7 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 		availableCapacity: request.AvailableCapacity,
 		queueUsedCapacity: request.QueueUsedCapacity,
 	})
-	return &requests.UpdateResourcesResponse{}, nil
+	return &messages.UpdateResourcesResponse{}, nil
 }
 
 func (n *NodeManager) Add(ctx context.Context, nodeInfo models.NodeState) error {

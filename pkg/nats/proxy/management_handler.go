@@ -11,7 +11,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
 
 type ManagementHandlerParams struct {
@@ -79,8 +79,8 @@ func (h *ManagementHandler) handle(msg *nats.Msg) {
 	}
 }
 
-func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*requests.RegisterResponse, error) {
-	request := new(requests.RegisterRequest)
+func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*messages.RegisterResponse, error) {
+	request := new(messages.RegisterRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
@@ -90,8 +90,8 @@ func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.M
 	return h.endpoint.Register(ctx, *request)
 }
 
-func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*requests.UpdateInfoResponse, error) {
-	request := new(requests.UpdateInfoRequest)
+func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*messages.UpdateInfoResponse, error) {
+	request := new(messages.UpdateInfoRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
@@ -101,8 +101,8 @@ func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg
 	return h.endpoint.UpdateInfo(ctx, *request)
 }
 
-func (h *ManagementHandler) processUpdateResources(ctx context.Context, msg *nats.Msg) (*requests.UpdateResourcesResponse, error) {
-	request := new(requests.UpdateResourcesRequest)
+func (h *ManagementHandler) processUpdateResources(ctx context.Context, msg *nats.Msg) (*messages.UpdateResourcesResponse, error) {
+	request := new(messages.UpdateResourcesRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)

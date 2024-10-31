@@ -11,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/requests"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -82,7 +82,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.Register(ctx, requests.RegisterRequest{
+	response, err := m.managementProxy.Register(ctx, messages.RegisterRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -110,7 +110,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	// registered.
 
 	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.UpdateInfo(ctx, requests.UpdateInfoRequest{
+	response, err := m.managementProxy.UpdateInfo(ctx, messages.UpdateInfoRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -126,7 +126,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 }
 
 func (m *ManagementClient) updateResources(ctx context.Context) {
-	request := requests.UpdateResourcesRequest{
+	request := messages.UpdateResourcesRequest{
 		NodeID:            m.nodeID,
 		AvailableCapacity: m.availableCapacityTracker.GetAvailableCapacity(ctx),
 		QueueUsedCapacity: m.queueUsageTracker.GetUsedCapacity(ctx),

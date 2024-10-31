@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
 )
@@ -29,7 +29,7 @@ func (s *BidAcceptedSuite) TestBidAccepted() {
 	ctx := context.Background()
 	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 	s.NoError(err)
 	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateCompleted))
 	s.NoError(err)
@@ -37,7 +37,7 @@ func (s *BidAcceptedSuite) TestBidAccepted() {
 
 func (s *BidAcceptedSuite) TestDoesntExist() {
 	ctx := context.Background()
-	_, err := s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: uuid.NewString()})
+	_, err := s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
@@ -58,7 +58,7 @@ func (s *BidAcceptedSuite) TestWrongState() {
 			})
 			s.NoError(err)
 
-			_, err = s.node.LocalEndpoint.BidAccepted(ctx, compute.BidAcceptedRequest{ExecutionID: executionID})
+			_, err = s.node.LocalEndpoint.BidAccepted(ctx, messages.BidAcceptedRequest{ExecutionID: executionID})
 			s.Error(err)
 		})
 	}
