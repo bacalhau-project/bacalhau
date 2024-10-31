@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -113,7 +114,7 @@ func (e *Endpoint) debug(c echo.Context) error {
 	return c.JSON(http.StatusOK, debugInfoMap)
 }
 
-// debug godoc
+// config godoc
 //
 //	@ID			agent/config
 //	@Summary	Returns the current configuration of the node.
@@ -123,6 +124,17 @@ func (e *Endpoint) debug(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {
-	cfg := e.bacalhauConfig
-	return c.JSON(http.StatusOK, cfg)
+	cfg, err := e.bacalhauConfig.Copy()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("could not copy bacalhau config: %s", err))
+	}
+	if cfg.Compute.Auth.Token != "" {
+		cfg.Compute.Auth.Token = "<redacted>"
+	}
+	if cfg.Orchestrator.Auth.Token != "" {
+		cfg.Orchestrator.Auth.Token = "<redacted>"
+	}
+	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
+		Config: cfg,
+	})
 }

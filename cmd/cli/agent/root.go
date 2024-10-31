@@ -16,5 +16,6 @@ func NewCmd() *cobra.Command {
 	cmd.AddCommand(NewAliveCmd())
 	cmd.AddCommand(NewNodeCmd())
 	cmd.AddCommand(NewVersionCmd())
+	cmd.AddCommand(NewConfigCmd())
 	return cmd
 }

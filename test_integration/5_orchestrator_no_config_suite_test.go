@@ -2,10 +2,11 @@ package test_integration
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/suite"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/suite"
 )
 
 type OrchestratorNoConfigSuite struct {
@@ -56,7 +57,7 @@ func (s *OrchestratorNoConfigSuite) TestStartingOrchestratorNodeWithConfigFile()
 	unmarshalledOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
 	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	unmarshalledOutputMap := unmarshalledOutput.(map[string]interface{})
+	unmarshalledOutputMap := unmarshalledOutput.(map[string]interface{})["config"].(map[string]interface{})
 
 	orchestratorEnabled := unmarshalledOutputMap["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(orchestratorEnabled, "Expected orchestrator to be enabled, got: %t", orchestratorEnabled)
