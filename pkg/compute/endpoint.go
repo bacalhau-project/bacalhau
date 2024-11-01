@@ -137,11 +137,7 @@ func (s BaseEndpoint) CancelExecution(
 func (s BaseEndpoint) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error,
 ) {
-	return s.logServer.GetLogStream(ctx, messages.ExecutionLogsRequest{
-		ExecutionID: request.ExecutionID,
-		Tail:        request.Tail,
-		Follow:      request.Follow,
-	})
+	return s.logServer.GetLogStream(ctx, request)
 }
 
 // Compile-time interface check:

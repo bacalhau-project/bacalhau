@@ -45,29 +45,25 @@ func NewBidder(params BidderParams) Bidder {
 	}
 }
 
-func (b Bidder) RunBidding(ctx context.Context, execution *models.Execution) {
+func (b Bidder) RunBidding(ctx context.Context, execution *models.Execution) error {
 	bidResult, err := b.doBidding(ctx, execution.Job)
 	if err != nil {
-		b.handleError(ctx, execution, err)
-		return
+		return b.handleError(ctx, execution, err)
 	}
 	b.handleBidResult(ctx, execution, bidResult)
+	return nil
 }
 
-// doBidding returns a response based on the below semantics. It should never be the case that semantic or resource
-// strategies return `true` for both ShouldBid and ShouldWait. The last row is a special optimization case since if
-// semantic bidding states we should not bid and not wait when the resource strategy will never be evaluated.
-// We will always wait if at least one strategy specifies it. We will only bid if both strategies specify it.
-// | SemanticShouldBid | SemanticShouldWait | ResourceShouldBid | ResourceShouldWait | ShouldBid | ShouldWait |
-// |      true         |      false         |      true         |      false         |   true    |   false    |
-// |      false        |      true          |      true         |      false         |   false   |   true     |
-// |      true         |      false         |      false        |      true          |   false   |   true     |
-// |      false        |      true          |      true         |      false         |   false   |   true     |
-// |      false        |      true          |      false        |      false         |   false   |   true     |
-// |      true         |      false         |      false        |      false         |   false   |   false    |
-// |      false        |      false         |       N/A         |       N/A          |   false   |   false    |
+// doBidding returns a response based on the below semantics. We will only bid if both semantic
+// and resource strategies approve the bid. If semantic bidding rejects, we short-circuit and
+// don't evaluate resource strategies.
+// | SemanticShouldBid | ResourceShouldBid | ShouldBid |
+// |-------------------|-------------------|------------|
+// |      true         |      true         |   true     |
+// |      true         |      false        |   false    |
+// |      false        |       N/A         |   false    |
 func (b Bidder) doBidding(ctx context.Context, job *models.Job) (*bidStrategyResponse, error) {
-	// NB(forrest): allways run semantic bidding before resource bidding since generally there isn't much point in
+	// NB(forrest): always run semantic bidding before resource bidding since generally there isn't much point in
 	// calling resource strategies that require DiskUsageCalculator.Calculate (a precursor to checking bidding) if
 	// semantically the job cannot run.
 	semanticResponse, err := b.runSemanticBidding(ctx, job)
@@ -75,12 +71,12 @@ func (b Bidder) doBidding(ctx context.Context, job *models.Job) (*bidStrategyRes
 		return nil, err
 	}
 
-	// we shouldn't bid, and we're not waiting, bail.
+	// we shouldn't bid, bail.
 	if !semanticResponse.bid {
 		return semanticResponse, nil
 	}
 
-	// else the request is semantically biddable or waiting, calculate resource usage and check resource-based bidding.
+	// else the request is semantically biddable, calculate resource usage and check resource-based bidding.
 	resourceResponse, err := b.runResourceBidding(ctx, job)
 	if err != nil {
 		return nil, err
@@ -114,7 +110,6 @@ func (b Bidder) runSemanticBidding(ctx context.Context, job *models.Job) (*bidSt
 		}
 
 		if err != nil {
-			// NB: failure here results in a callback to OnComputeFailure
 			return nil, err
 		}
 
@@ -168,7 +163,6 @@ func (b Bidder) runResourceBidding(ctx context.Context, job *models.Job) (*bidSt
 		}
 
 		if err != nil {
-			// NB: failure here results in a callback to OnComputeFailure
 			return nil, err
 		}
 
@@ -204,7 +198,11 @@ func (b Bidder) handleBidResult(
 	newExecutionValues.ComputeState = models.NewExecutionState(newExecutionState).WithMessage(result.reason)
 
 	if result.bid {
-		newExecutionValues.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
+		if result.calculatedResources != nil {
+			newExecutionValues.AllocateResources(execution.Job.Task().Name, *result.calculatedResources)
+		} else {
+			log.Ctx(ctx).Error().Msg("calculatedResources is nil despite bid being true")
+		}
 	}
 
 	err := b.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
@@ -225,7 +223,7 @@ func (b Bidder) handleBidResult(
 
 // handleError is a helper function to handle errors in the bidder.
 // It updates the execution state to failed
-func (b Bidder) handleError(ctx context.Context, execution *models.Execution, err error) {
+func (b Bidder) handleError(ctx context.Context, execution *models.Execution, err error) error {
 	updatedErr := b.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: execution.ID,
 		NewValues: models.Execution{
@@ -238,5 +236,7 @@ func (b Bidder) handleError(ctx context.Context, execution *models.Execution, er
 	})
 	if updatedErr != nil {
 		log.Ctx(ctx).Error().Err(updatedErr).Msg("failed to update execution state")
+		return updatedErr
 	}
+	return nil
 }

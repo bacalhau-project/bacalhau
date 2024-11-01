@@ -32,7 +32,7 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 	execution := upsert.Current
 	switch execution.ComputeState.StateType {
 	case models.ExecutionStateNew:
-		h.bidder.RunBidding(ctx, execution)
+		return h.bidder.RunBidding(ctx, execution)
 	case models.ExecutionStateBidAccepted:
 		return h.executor.Run(ctx, execution)
 	case models.ExecutionStateCancelled:

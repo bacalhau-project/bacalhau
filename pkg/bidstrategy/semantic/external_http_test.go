@@ -22,14 +22,12 @@ func TestJobSelectionHttp(t *testing.T) {
 		contentType string
 		body        []byte
 		expectBid   bool
-		expectWait  bool
 	}{
 		{
 			"fail the response and don't select the job",
 			http.StatusInternalServerError,
 			"text/plain",
 			[]byte("500 - Something bad happened!"),
-			false,
 			false,
 		},
 		{
@@ -38,7 +36,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			"text/plain",
 			[]byte("200 - Everything is good!"),
 			true,
-			false,
 		},
 		{
 			"pass a JSON response to select the job",
@@ -46,7 +43,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			"application/json",
 			[]byte(`{"shouldBid": true, "reason": "looks like a lovely job"}`),
 			true,
-			false,
 		},
 		{
 			"pass a JSON response to reject the job",
@@ -54,15 +50,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			"application/json",
 			[]byte(`{"shouldBid": false, "reason": "this job really stinks!"}`),
 			false,
-			false,
-		},
-		{
-			"pass a JSON response to wait for a future approval",
-			http.StatusAccepted,
-			"application/json",
-			[]byte(`{"shouldWait": true, "reason": "gonna have to think about this one"}`),
-			false,
-			true,
 		},
 	}
 
