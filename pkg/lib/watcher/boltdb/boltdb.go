@@ -52,9 +52,7 @@ func (s *EventStore) removeSubscriber(sub *subscriber) {
 	}
 	s.subscribers.Delete(sub)
 	close(sub.done) // Signal any pending operations to stop
-	close(sub.notify)
 }
-
 func (s *EventStore) notifySubscribers() {
 	s.subscribers.Range(func(key, _ interface{}) bool {
 		sub := key.(*subscriber)
