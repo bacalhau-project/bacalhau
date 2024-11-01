@@ -2,6 +2,7 @@ package watchers
 
 import (
 	"context"
+	"time"
 
 	"github.com/rs/zerolog"
 
@@ -42,12 +43,13 @@ func (e *ExecutionLogger) HandleEvent(ctx context.Context, event watcher.Event) 
 
 	// Add state transition information if this is an update
 	if upsert.Previous != nil {
+		duration := time.Duration(upsert.Current.ModifyTime - upsert.Previous.ModifyTime)
 		logEvent = logEvent.
 			Str("previous_state", upsert.Previous.ComputeState.StateType.String()).
 			Str("current_state", upsert.Current.ComputeState.StateType.String()).
 			Str("previous_desired_state", upsert.Previous.DesiredState.StateType.String()).
 			Str("current_desired_state", upsert.Current.DesiredState.StateType.String()).
-			Int64("state_change_duration_ms", (upsert.Current.ModifyTime-upsert.Previous.ModifyTime)/1e6)
+			Int64("state_change_duration_ms", duration.Milliseconds())
 
 		// Log state transition message
 		logEvent.Msgf("Execution state changed from '%s' to '%s'",

@@ -20,7 +20,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
-	compute_watchers "github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -171,10 +170,9 @@ func NewComputeNode(
 		capacityCalculator,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
-		ID:              cfg.NodeID,
-		ExecutionStore:  executionStore,
-		UsageCalculator: capacityCalculator,
-		LogServer:       logserver,
+		ID:             cfg.NodeID,
+		ExecutionStore: executionStore,
+		LogServer:      logserver,
 	})
 
 	// register debug info providers for the /debug endpoint
@@ -244,35 +242,7 @@ func NewComputeNode(
 	}
 	go managementClient.Start(ctx)
 
-	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
-	_, err = watcherRegistry.Watch(ctx, computeExecutionLoggerWatcherID, watchers.NewExecutionLogger(log.Logger),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Add checkpointing or else events will be missed
-	_, err = watcherRegistry.Watch(ctx, computeCallbackForwarderWatcherID,
-		compute_watchers.NewCallbackForwarder(computeCallback),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Add checkpointing or else events will be missed
-	executionHandler := compute_watchers.NewExecutionUpsertHandler(bufferRunner, bidder)
-	_, err = watcherRegistry.Watch(ctx, computeExecutionHandlerWatcherID, executionHandler,
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	watcherRegistry, err := setupExecutionWatchers(ctx, executionStore, computeCallback, bufferRunner, bidder)
 	if err != nil {
 		return nil, err
 	}
@@ -381,4 +351,50 @@ func NewBidder(
 		UsageCalculator:  calculator,
 		Store:            executionStore,
 	})
+}
+
+func setupExecutionWatchers(
+	ctx context.Context,
+	executionStore store.ExecutionStore,
+	computeCallback compute.Callback,
+	bufferRunner *compute.ExecutorBuffer,
+	bidder compute.Bidder,
+) (watcher.Registry, error) {
+	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+
+	// Set up execution logger watcher
+	_, err := watcherRegistry.Watch(ctx, computeExecutionLoggerWatcherID,
+		watchers.NewExecutionLogger(log.Logger),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
+	}
+
+	// Set up callback forwarder watcher
+	_, err = watcherRegistry.Watch(ctx, computeCallbackForwarderWatcherID,
+		watchers.NewCallbackForwarder(computeCallback),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup callback forwarder watcher: %w", err)
+	}
+
+	// Set up execution handler watcher
+	executionHandler := watchers.NewExecutionUpsertHandler(bufferRunner, bidder)
+	_, err = watcherRegistry.Watch(ctx, computeExecutionHandlerWatcherID, executionHandler,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup execution handler watcher: %w", err)
+	}
+
+	return watcherRegistry, nil
 }

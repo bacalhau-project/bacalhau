@@ -5,7 +5,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -14,20 +13,16 @@ import (
 )
 
 type BaseEndpointParams struct {
-	ID              string
-	ExecutionStore  store.ExecutionStore
-	UsageCalculator capacity.UsageCalculator
-	LogServer       logstream.Server
+	ID             string
+	ExecutionStore store.ExecutionStore
+	LogServer      logstream.Server
 }
 
 // Base implementation of Endpoint
 type BaseEndpoint struct {
-	id              string
-	executionStore  store.ExecutionStore
-	usageCalculator capacity.UsageCalculator
-	bidder          Bidder
-	executor        Executor
-	logServer       logstream.Server
+	id             string
+	executionStore store.ExecutionStore
+	logServer      logstream.Server
 }
 
 func NewBaseEndpoint(params BaseEndpointParams) BaseEndpoint {
