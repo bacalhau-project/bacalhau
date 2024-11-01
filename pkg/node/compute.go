@@ -19,11 +19,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
+	compute_watchers "github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher/handlers"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
@@ -36,12 +37,14 @@ type Compute struct {
 	// Visible for testing
 	ID                 string
 	LocalEndpoint      compute.Endpoint
+	LogstreamServer    logstream.Server
 	Capacity           capacity.Tracker
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecProvider
 	Storages           storage.StorageProvider
 	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
+	Watchers           watcher.Registry
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
@@ -79,12 +82,6 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
-	_, err = watcherRegistry.Watch(ctx, "compute-logger", handlers.NewLoggingHandler(log.Logger),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, err
-	}
 
 	executionDir, err := cfg.BacalhauConfig.ExecutionDir()
 	if err != nil {
@@ -109,7 +106,6 @@ func NewComputeNode(
 
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     cfg.NodeID,
-		Callback:               computeCallback,
 		Store:                  executionStore,
 		StorageDirectory:       executionDir,
 		Storages:               storages,
@@ -122,7 +118,6 @@ func NewComputeNode(
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
 		ID:                     cfg.NodeID,
 		DelegateExecutor:       baseExecutor,
-		Callback:               computeCallback,
 		RunningCapacityTracker: runningCapacityTracker,
 		EnqueuedUsageTracker:   enqueuedUsageTracker,
 	})
@@ -173,16 +168,12 @@ func NewComputeNode(
 		storages,
 		executors,
 		executionStore,
-		computeCallback,
-		bufferRunner,
 		capacityCalculator,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ID:              cfg.NodeID,
 		ExecutionStore:  executionStore,
 		UsageCalculator: capacityCalculator,
-		Bidder:          bidder,
-		Executor:        bufferRunner,
 		LogServer:       logserver,
 	})
 
@@ -253,6 +244,39 @@ func NewComputeNode(
 	}
 	go managementClient.Start(ctx)
 
+	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+	_, err = watcherRegistry.Watch(ctx, computeExecutionLoggerWatcherID, watchers.NewExecutionLogger(log.Logger),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	_, err = watcherRegistry.Watch(ctx, computeCallbackForwarderWatcherID,
+		compute_watchers.NewCallbackForwarder(computeCallback),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	executionHandler := compute_watchers.NewExecutionUpsertHandler(bufferRunner, bidder)
+	_, err = watcherRegistry.Watch(ctx, computeExecutionHandlerWatcherID, executionHandler,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		if err = watcherRegistry.Stop(ctx); err != nil {
@@ -270,12 +294,14 @@ func NewComputeNode(
 	return &Compute{
 		ID:                 cfg.NodeID,
 		LocalEndpoint:      baseEndpoint,
+		LogstreamServer:    logserver,
 		Capacity:           runningCapacityTracker,
 		ExecutionStore:     executionStore,
 		Executors:          executors,
 		Storages:           storages,
 		Publishers:         publishers,
 		Bidder:             bidder,
+		Watchers:           watcherRegistry,
 		cleanupFunc:        cleanupFunc,
 		nodeInfoDecorator:  nodeInfoDecorator,
 		labelsProvider:     labelsProvider,
@@ -307,8 +333,6 @@ func NewBidder(
 	storages storage.StorageProvider,
 	executors executor.ExecProvider,
 	executionStore store.ExecutionStore,
-	computeCallback compute.Callback,
-	bufferRunner *compute.ExecutorBuffer,
 	calculator capacity.UsageCalculator,
 ) compute.Bidder {
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
@@ -352,12 +376,9 @@ func NewBidder(
 	}
 
 	return compute.NewBidder(compute.BidderParams{
-		NodeID:           cfg.NodeID,
 		SemanticStrategy: semanticBidStrats,
 		ResourceStrategy: resourceBidStrats,
-		Store:            executionStore,
-		Callback:         computeCallback,
-		Executor:         bufferRunner,
 		UsageCalculator:  calculator,
+		Store:            executionStore,
 	})
 }

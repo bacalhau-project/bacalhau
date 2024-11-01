@@ -7,9 +7,10 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
@@ -44,8 +45,7 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 		return bidstrategy.NewBidResponse(true, notConfiguredReason), nil
 	}
 
-	data := bidstrategy.GetJobSelectionPolicyProbeData(request)
-	jsonData, err := marshaller.JSONMarshalWithMax(data)
+	jsonData, err := marshaller.JSONMarshalWithMax(request)
 
 	if err != nil {
 		return bidstrategy.BidStrategyResponse{}, fmt.Errorf("ExternalHTTPStrategy: error marshaling job selection policy probe data: %w", err)

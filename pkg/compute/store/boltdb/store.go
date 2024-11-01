@@ -434,16 +434,13 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 			return err
 		}
 
-		if err = s.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+		return s.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 			Operation:  watcher.OperationUpdate,
 			ObjectType: compute.EventObjectExecutionUpsert,
 			Object: store.ExecutionUpsert{
 				Current: &newExecution, Previous: existingExecution, Events: toPtrSlice(request.Events),
 			},
-		}); err != nil {
-			return err
-		}
-		return nil
+		})
 	})
 }
 

@@ -22,7 +22,6 @@ type WatchOption func(*watchOptions)
 type watchOptions struct {
 	initialEventIterator EventIterator // starting position for watching if no checkpoint is found
 	filter               EventFilter   // filter for events
-	bufferSize           int           // size of the event buffer
 	batchSize            int           // number of events to fetch in each batch
 	initialBackoff       time.Duration // initial backoff duration for retries
 	maxBackoff           time.Duration // maximum backoff duration for retries
@@ -33,7 +32,6 @@ type watchOptions struct {
 // validate checks all options for validity
 func (o *watchOptions) validate() error {
 	return errors.Join(
-		validate.IsGreaterOrEqualToZero(o.bufferSize, "bufferSize cannot be negative"),
 		validate.IsGreaterThanZero(o.batchSize, "batchSize must be greater than zero"),
 		validate.IsGreaterOrEqualToZero(o.initialBackoff, "initialBackoff cannot be negative"),
 		validate.IsGreaterOrEqualToZero(o.maxBackoff, "maxBackoff cannot be negative"),
@@ -45,7 +43,6 @@ func (o *watchOptions) validate() error {
 func defaultWatchOptions() *watchOptions {
 	return &watchOptions{
 		initialEventIterator: TrimHorizonIterator(),
-		bufferSize:           1000,
 		batchSize:            100,
 		initialBackoff:       200 * time.Millisecond,
 		maxBackoff:           3 * time.Minute,
@@ -65,13 +62,6 @@ func WithInitialEventIterator(iterator EventIterator) WatchOption {
 func WithFilter(filter EventFilter) WatchOption {
 	return func(o *watchOptions) {
 		o.filter = filter
-	}
-}
-
-// WithBufferSize sets the size of the event buffer
-func WithBufferSize(size int) WatchOption {
-	return func(o *watchOptions) {
-		o.bufferSize = size
 	}
 }
 

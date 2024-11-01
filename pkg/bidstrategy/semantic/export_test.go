@@ -13,8 +13,7 @@ import (
 func getBidStrategyRequest(t testing.TB) bidstrategy.BidStrategyRequest {
 	job := mock.Job()
 	return bidstrategy.BidStrategyRequest{
-		NodeID: "node-id",
-		Job:    *job,
+		Job: *job,
 	}
 }
 

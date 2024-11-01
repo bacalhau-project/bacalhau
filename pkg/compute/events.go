@@ -1,9 +1,6 @@
 package compute
 
 import (
-	"time"
-
-	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -34,13 +31,4 @@ func ExecRunningEvent() *models.Event {
 // ExecFailedDueToNodeRestartEvent returns an event indicating that the execution failed due to a node restart
 func ExecFailedDueToNodeRestartEvent() *models.Event {
 	return models.NewEvent(EventTopicExecution).WithMessage(execFailingDueToNodeRestart).WithFailsExecution(true)
-}
-
-func RespondedToBidEvent(response *bidstrategy.BidStrategyResponse) models.Event {
-	return models.Event{
-		Message:   response.Reason,
-		Topic:     EventTopicExecutionScanning,
-		Timestamp: time.Now(),
-		Details:   map[string]string{},
-	}
 }

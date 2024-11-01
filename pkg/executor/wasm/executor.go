@@ -14,6 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
@@ -194,7 +195,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
-func (e *Executor) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (io.ReadCloser, error) {
+func (e *Executor) GetLogStream(ctx context.Context, request messages.ExecutionLogsRequest) (io.ReadCloser, error) {
 	handler, found := e.handlers.Get(request.ExecutionID)
 	if !found {
 		return nil, executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))

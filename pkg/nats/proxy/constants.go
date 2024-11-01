@@ -17,7 +17,6 @@ const (
 
 	OnBidComplete    = "OnBidComplete/v1"
 	OnRunComplete    = "OnRunComplete/v1"
-	OnCancelComplete = "OnCancelComplete/v1"
 	OnComputeFailure = "OnComputeFailure/v1"
 
 	RegisterNode    = "RegisterNode/v1"

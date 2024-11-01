@@ -12,8 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
 type AskForBidPreApprovedSuite struct {
@@ -88,23 +86,40 @@ func (s *AskForBidPreApprovedSuite) runAskForBidTest(testCase bidResponseTestCas
 	})
 	s.NoError(err)
 
+	// Always expect a bid response
 	select {
-	case result := <-s.completedChannel:
-		s.False(testCase.rejected, "unexpected completion: %v", result)
-	case failure := <-s.failureChannel:
-		s.True(testCase.rejected, "unexpected failure: %v", failure)
 	case bid := <-s.bidChannel:
-		s.Fail("unexpected bid: %v", bid)
+		s.Equal(!testCase.rejected, bid.Accepted, "unexpected bid acceptance state")
+	case <-s.failureChannel:
+		s.Fail("Got unexpected failure")
 	case <-time.After(5 * time.Second):
-		s.Fail("did not receive bid, completion or failure")
+		s.Fail("Timeout waiting for bid")
 	}
 
-	retrievedExecution, err := s.node.ExecutionStore.GetExecution(ctx, execution.ID)
-	if testCase.rejected {
-		s.ErrorIs(err, store.NewErrExecutionNotFound(execution.ID))
-	} else {
-		s.NoError(err)
-		s.Equal(models.ExecutionStateCompleted, retrievedExecution.ComputeState.StateType)
+	// For accepted bids, also expect a completion
+	if !testCase.rejected {
+		select {
+		case <-s.completedChannel:
+			s.T().Log("Received expected completion")
+		case <-s.failureChannel:
+			s.Fail("Got unexpected failure")
+		case <-s.bidChannel:
+			s.Fail("Got unexpected second bid")
+		case <-time.After(5 * time.Second):
+			s.Fail("Timeout waiting for completion")
+		}
 	}
+
+	// Verify final execution state
+	retrievedExecution, err := s.node.ExecutionStore.GetExecution(ctx, execution.ID)
+	s.Require().NoError(err)
+
+	expectedState := models.ExecutionStateCompleted
+	if testCase.rejected {
+		expectedState = models.ExecutionStateAskForBidRejected
+	}
+	s.Equal(expectedState, retrievedExecution.ComputeState.StateType,
+		"expected execution state %s but got %s", expectedState, retrievedExecution.ComputeState.StateType)
+
 	return execution.ID
 }

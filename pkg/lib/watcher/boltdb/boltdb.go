@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -17,6 +18,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 )
 
+type subscriber struct {
+	notify chan struct{}
+	done   chan struct{}
+}
+
 // EventStore implements the EventStore interface using BoltDB as the underlying storage.
 // It provides efficient storage and retrieval of events with support for caching,
 // checkpointing, and garbage collection.
@@ -27,11 +33,40 @@ type EventStore struct {
 	latestEventNum atomic.Uint64
 	clock          clock.Clock
 
-	// notifyCh is a channel for notifying watchers of new events.
-	// GetEvents will block on this channel when no events are immediately available,
-	// or will return empty events after a long-polling timeout.
-	notifyCh chan uint64
-	stopGC   chan struct{}
+	subscribers sync.Map // map[*subscriber]struct{}
+	stopGC      chan struct{}
+}
+
+func (s *EventStore) createSubscriber() *subscriber {
+	sub := &subscriber{
+		notify: make(chan struct{}, 1), // Buffer of 1 is enough since we just need a signal
+		done:   make(chan struct{}),
+	}
+	s.subscribers.Store(sub, struct{}{})
+	return sub
+}
+
+func (s *EventStore) removeSubscriber(sub *subscriber) {
+	if sub == nil {
+		return
+	}
+	s.subscribers.Delete(sub)
+	close(sub.done) // Signal any pending operations to stop
+	close(sub.notify)
+}
+
+func (s *EventStore) notifySubscribers() {
+	s.subscribers.Range(func(key, _ interface{}) bool {
+		sub := key.(*subscriber)
+		select {
+		case sub.notify <- struct{}{}:
+		case <-sub.done:
+			// Subscriber is being removed, skip it
+		default:
+			// Channel full (signal already pending), skip it
+		}
+		return true
+	})
 }
 
 // NewEventStore creates a new EventStore with the given options.
@@ -76,12 +111,11 @@ func NewEventStore(db *bbolt.DB, opts ...EventStoreOption) (*EventStore, error) 
 	}
 
 	store := &EventStore{
-		db:       db,
-		options:  options,
-		cache:    cache,
-		notifyCh: make(chan uint64, 100), //nolint:mnd
-		clock:    options.clock,
-		stopGC:   make(chan struct{}),
+		db:      db,
+		options: options,
+		cache:   cache,
+		clock:   options.clock,
+		stopGC:  make(chan struct{}),
 	}
 
 	// Initialize BoltDB buckets
@@ -138,6 +172,7 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, request watcher.StoreEventReques
 	if err != nil {
 		return fmt.Errorf("failed to get next sequence: %w", err)
 	}
+
 	event := watcher.Event{
 		SeqNum:     id,
 		Operation:  request.Operation,
@@ -145,6 +180,7 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, request watcher.StoreEventReques
 		Object:     request.Object,
 		Timestamp:  s.clock.Now(),
 	}
+
 	eventBytes, err := s.options.serializer.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
@@ -165,15 +201,19 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, request watcher.StoreEventReques
 		// Add to cache
 		s.cache.Add(id, event)
 
-		// Update latest event number
-		s.latestEventNum.Store(id)
-
-		// Notify watchers
-		select {
-		case s.notifyCh <- id:
-		default:
-			log.Trace().Msgf("Failed to notify watchers of new event: %d", event.SeqNum)
+		// Update latest event number - but only if it's higher than current
+		for {
+			current := s.latestEventNum.Load()
+			if id <= current {
+				break // Don't update if our ID is lower/equal
+			}
+			if s.latestEventNum.CompareAndSwap(current, id) {
+				break // Successfully updated
+			}
+			// If CAS failed, loop and try again
 		}
+
+		s.notifySubscribers()
 	})
 
 	return nil
@@ -183,8 +223,11 @@ func (s *EventStore) StoreEventTx(tx *bbolt.Tx, request watcher.StoreEventReques
 // It supports long-polling: if no events are immediately available, it waits for new events
 // or until the long-polling timeout is reached.
 func (s *EventStore) GetEvents(ctx context.Context, request watcher.GetEventsRequest) (*watcher.GetEventsResponse, error) {
-	var result *watcher.GetEventsResponse
+	// Create a new ephemeral subscriber
+	sub := s.createSubscriber()
+	defer s.removeSubscriber(sub)
 
+	var result *watcher.GetEventsResponse
 	for {
 		err := s.db.View(func(tx *bbolt.Tx) error {
 			var err error
@@ -193,22 +236,22 @@ func (s *EventStore) GetEvents(ctx context.Context, request watcher.GetEventsReq
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("failed to get events: %w", err)
+			return nil, err
 		}
 
+		// If we have events or the iterator changed, return immediately
 		if len(result.Events) > 0 || result.NextEventIterator != request.EventIterator {
 			return result, nil
 		}
 
+		// No events available, wait for notifications or timeout
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-s.notifyCh:
-			// New events might be available, loop and check again
-			// Drain any additional notifications
-			for len(s.notifyCh) > 0 {
-				<-s.notifyCh
-			}
+		case <-sub.done:
+			return result, nil
+		case <-sub.notify:
+			continue // Try fetching again
 		case <-s.clock.After(s.options.longPollingTimeout):
 			// Return empty result after timeout
 			return result, nil
@@ -443,6 +486,10 @@ func (s *EventStore) runGC() error {
 // Close stops the garbage collection process and purges the cache.
 func (s *EventStore) Close(ctx context.Context) error {
 	close(s.stopGC)
+	s.subscribers.Range(func(key, _ interface{}) bool {
+		s.removeSubscriber(key.(*subscriber))
+		return true
+	})
 	s.cache.Purge()
 	return nil
 }

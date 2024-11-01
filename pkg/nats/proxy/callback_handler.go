@@ -6,9 +6,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 )
 
 type CallbackHandlerParams struct {
@@ -57,8 +58,6 @@ func (h *CallbackHandler) handle(msg *nats.Msg) {
 		processCallback(ctx, msg, h.callback.OnBidComplete)
 	case OnRunComplete:
 		processCallback(ctx, msg, h.callback.OnRunComplete)
-	case OnCancelComplete:
-		processCallback(ctx, msg, h.callback.OnCancelComplete)
 	case OnComputeFailure:
 		processCallback(ctx, msg, h.callback.OnComputeFailure)
 	default:

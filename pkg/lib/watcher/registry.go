@@ -3,8 +3,13 @@ package watcher
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
+)
+
+const (
+	DefaultShutdownTimeout = 30 * time.Second
 )
 
 // registry manages multiple event watchers
@@ -72,19 +77,37 @@ func (r *registry) GetWatcher(watcherID string) (Watcher, error) {
 func (r *registry) Stop(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msg("Shutting down registry")
 
-	done := make(chan struct{})
+	// Create a timeout context if the parent context doesn't have a deadline
+	timeoutCtx := ctx
+	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+		var cancel context.CancelFunc
+		timeoutCtx, cancel = context.WithTimeout(ctx, DefaultShutdownTimeout)
+		defer cancel()
+	}
 
+	var wg sync.WaitGroup
+
+	// Take a snapshot of watchers under lock
+	r.mu.RLock()
+	watchers := make([]Watcher, 0, len(r.watchers))
+	for _, w := range r.watchers {
+		watchers = append(watchers, w)
+	}
+	r.mu.RUnlock()
+
+	// Stop all watchers concurrently
+	for i := range watchers {
+		w := watchers[i]
+		wg.Add(1)
+		go func(w Watcher) {
+			defer wg.Done()
+			w.Stop(timeoutCtx)
+		}(w)
+	}
+
+	// Wait for completion or timeout
+	done := make(chan struct{})
 	go func() {
-		r.mu.RLock()
-		defer r.mu.RUnlock()
-		var wg sync.WaitGroup
-		for _, w := range r.watchers {
-			wg.Add(1)
-			go func(w *watcher) {
-				defer wg.Done()
-				w.Stop(ctx)
-			}(w)
-		}
 		wg.Wait()
 		close(done)
 	}()
@@ -93,9 +116,9 @@ func (r *registry) Stop(ctx context.Context) error {
 	case <-done:
 		log.Ctx(ctx).Debug().Msg("registry shutdown complete")
 		return nil
-	case <-ctx.Done():
+	case <-timeoutCtx.Done():
 		log.Ctx(ctx).Warn().Msg("registry shutdown timed out")
-		return ctx.Err()
+		return timeoutCtx.Err()
 	}
 }
 

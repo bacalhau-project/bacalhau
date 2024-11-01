@@ -39,7 +39,6 @@ type Executor interface {
 type Callback interface {
 	OnBidComplete(ctx context.Context, result messages.BidResult)
 	OnRunComplete(ctx context.Context, result messages.RunResult)
-	OnCancelComplete(ctx context.Context, result messages.CancelResult)
 	OnComputeFailure(ctx context.Context, err messages.ComputeError)
 }
 

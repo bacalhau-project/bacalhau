@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/nats-io/nats-server/v2/server"
+	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
@@ -43,11 +45,45 @@ type ComputeSuite struct {
 	bidChannel       chan messages.BidResult
 	failureChannel   chan messages.ComputeError
 	completedChannel chan messages.RunResult
+	natsServer       *server.Server
+	natsClient       *nats.Conn
 }
 
 func (s *ComputeSuite) SetupTest() {
 	s.setupConfig()
 	s.setupNode()
+}
+
+func (s *ComputeSuite) TearDownTest() {
+	ctx := context.Background()
+
+	// Clean up channels
+	if s.bidChannel != nil {
+		close(s.bidChannel)
+	}
+
+	// Clean up node
+	if s.node != nil {
+		s.node.Cleanup(ctx)
+	}
+
+	// Clean up NATS connections
+	if s.natsClient != nil {
+		s.natsClient.Close()
+	}
+	if s.natsServer != nil {
+		s.natsServer.Shutdown()
+	}
+
+	// Clean up system resources
+	if s.cm != nil {
+		s.cm.Cleanup(ctx)
+	}
+
+	// Clean up config data directory
+	if s.config.BacalhauConfig.DataDir != "" {
+		os.RemoveAll(s.config.BacalhauConfig.DataDir)
+	}
 }
 
 // setupConfig creates a new config for testing
@@ -94,18 +130,15 @@ func (s *ComputeSuite) setupConfig() {
 				}),
 		},
 	}
-
-	s.T().Cleanup(func() { os.RemoveAll(bacalhauConfig.DataDir) })
 }
 
 func (s *ComputeSuite) setupNode() {
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
-	s.T().Cleanup(func() { s.cm.Cleanup(ctx) })
 
-	s.bidChannel = make(chan messages.BidResult, 1)
-	s.completedChannel = make(chan messages.RunResult)
-	s.failureChannel = make(chan messages.ComputeError)
+	s.bidChannel = make(chan messages.BidResult, 10)
+	s.completedChannel = make(chan messages.RunResult, 10)
+	s.failureChannel = make(chan messages.ComputeError, 10)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -130,8 +163,8 @@ func (s *ComputeSuite) setupNode() {
 
 	// setup nats server and client
 	ns, nc := testutils.StartNats(s.T())
-	s.T().Cleanup(func() { nc.Close() })
-	s.T().Cleanup(func() { ns.Shutdown() })
+	s.natsServer = ns
+	s.natsClient = nc
 
 	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
 	s.Require().NoError(err)
@@ -150,9 +183,6 @@ func (s *ComputeSuite) setupNode() {
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
 		ExecutionStore: s.node.ExecutionStore,
 	})
-
-	s.T().Cleanup(func() { close(s.bidChannel) })
-	s.T().Cleanup(func() { s.node.Cleanup(ctx) })
 }
 
 func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) messages.BidResult {
