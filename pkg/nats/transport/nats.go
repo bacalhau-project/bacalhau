@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/nats-io/nats-server/v2/server"
@@ -21,6 +22,7 @@ import (
 )
 
 const NodeInfoSubjectPrefix = "node.info."
+const NATSServerDefaultTLSTimeout = 10
 
 // reservedChars are the characters that are not allowed in node IDs as nodes
 // subscribe to subjects with their node IDs, and these are wildcards
@@ -48,6 +50,17 @@ type NATSTransportConfig struct {
 	ClusterPort              int
 	ClusterAdvertisedAddress string
 	ClusterPeers             []string
+
+	// TLS
+	ServerTLSCert    string
+	ServerTLSKey     string
+	ServerTLSTimeout int
+
+	// Used by the Nats Client when node acts as orchestrator
+	ServerTLSCACert string
+
+	// Use by the Nats Client when node acts as compute
+	ClientTLSCACert string
 }
 
 func (c *NATSTransportConfig) Validate() error {
@@ -70,6 +83,28 @@ func (c *NATSTransportConfig) Validate() error {
 	} else {
 		mErr = errors.Join(mErr, validate.IsNotEmpty(c.Orchestrators, "missing orchestrators"))
 	}
+
+	serverCertProvided := len(c.ServerTLSCert) > 0
+	serverKeyProvided := len(c.ServerTLSKey) > 0
+
+	if serverCertProvided != serverKeyProvided {
+		mErr = errors.Join(
+			mErr,
+			fmt.Errorf("both ServerTLSCert and ServerTLSKey must be set together"),
+		)
+	}
+
+	if serverCertProvided && serverKeyProvided && c.ServerTLSTimeout < 0 {
+		mErr = errors.Join(
+			mErr,
+			fmt.Errorf("NATS ServerTLSTimeout must be a positive number, got: %d", c.ServerTLSTimeout),
+		)
+	}
+
+	if serverCertProvided && serverKeyProvided && c.ServerTLSTimeout == 0 {
+		c.ServerTLSTimeout = NATSServerDefaultTLSTimeout
+	}
+
 	if mErr != nil {
 		return nats_helper.NewConfigurationError("invalid transport config:\n%s", mErr)
 	}
@@ -111,6 +146,27 @@ func NewNATSTransport(ctx context.Context,
 			JetStream:              true,
 			DisableJetStreamBanner: true,
 			StoreDir:               config.StoreDir,
+		}
+
+		if config.ServerTLSCert != "" {
+			serverTLSTimeout := NATSServerDefaultTLSTimeout
+			if config.ServerTLSTimeout > 0 {
+				serverTLSTimeout = config.ServerTLSTimeout
+			}
+
+			serverTLSConfigOpts := &server.TLSConfigOpts{
+				CertFile: config.ServerTLSCert,
+				KeyFile:  config.ServerTLSKey,
+				Timeout:  float64(serverTLSTimeout),
+			}
+
+			serverTLSConfig, err := server.GenTLSConfig(serverTLSConfigOpts)
+			if err != nil {
+				log.Error().Msgf("failed to configure NATS server TLS: %v", err)
+				return nil, err
+			}
+
+			serverOpts.TLSConfig = serverTLSConfig
 		}
 
 		// Only set cluster options if cluster peers are provided. Jetstream doesn't
@@ -209,6 +265,17 @@ func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helpe
 		nats.Name(config.NodeID),
 		nats.MaxReconnects(-1),
 	}
+
+	// We need to do this logic since the Nats Transport Layer does not differentiate
+	// between orchestrator mode and compute mode
+	if config.ServerTLSCert == "" && config.ClientTLSCACert != "" {
+		// this client is for a compute node
+		clientOptions = append(clientOptions, nats.RootCAs(config.ClientTLSCACert))
+	} else if config.ServerTLSCert != "" && config.ServerTLSCACert != "" {
+		// this client is for a orchestrator node
+		clientOptions = append(clientOptions, nats.RootCAs(config.ServerTLSCACert))
+	}
+
 	if config.AuthSecret != "" {
 		clientOptions = append(clientOptions, nats.Token(config.AuthSecret))
 	}

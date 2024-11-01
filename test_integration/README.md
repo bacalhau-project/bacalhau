@@ -38,5 +38,10 @@ Then:
 
 ```shell
 cd test_integration
-./run_locally.sh
+
+./run_locally.sh  # Will compile bacalhau binary and run all tests
+./run_locally.sh -s  # Skip compilation, and run all tests
+./run_locally.sh -t TestName  # Compile bacalhau binary and Run specific test
+./run_locally.sh -c  # Compile bacalhau binary only, do not runs tests
+./run_locally.sh -s -t TestName  # Skip compilation and run specific test
 ```

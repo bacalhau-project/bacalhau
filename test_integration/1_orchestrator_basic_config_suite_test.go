@@ -40,34 +40,51 @@ func (s *OrchestratorBasicConfigSuite) TearDownSuite() {
 }
 
 func (s *OrchestratorBasicConfigSuite) TestNodesCanBeListed() {
-	nodeListOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list", "--output=json"})
+	nodeListOutput, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau", "node", "list", "--output=json",
+		},
+	)
 	s.Require().NoErrorf(err, "Error listing nodes: %q", err)
 
-	marshalledOutput, err := s.unmarshalJSONString(nodeListOutput, JSONArray)
-	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
+	output, err := s.convertStringToDynamicJSON(nodeListOutput)
+	s.Require().NoError(err)
 
-	marshalledOutputArray := marshalledOutput.([]interface{})
-	s.Require().Equalf(1, len(marshalledOutputArray), "Node count should be 1")
+	nodeList, err := output.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(nodeList.Array()))
 
-	nodeInfo := marshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
+	nodeInfo, err := output.Query("$[0].Info.NodeType")
+	s.Require().NoError(err)
+	s.Require().Equal("Requester", nodeInfo.String())
 
-	nodeType := nodeInfo["NodeType"].(string)
-	s.Require().Equal("Requester", nodeType)
-
-	nodeLabels := nodeInfo["Labels"].(map[string]interface{})
-	s.Require().Equal("label1Value", nodeLabels["label1"].(string))
-	s.Require().Equal("label2Value", nodeLabels["label2"].(string))
+	label1Value, err := output.Query("$[0].Info.Labels.label1")
+	s.Require().NoError(err)
+	s.Require().Equal("label1Value", label1Value.String())
+	label2Value, err := output.Query("$[0].Info.Labels.label2")
+	s.Require().NoError(err)
+	s.Require().Equal("label2Value", label2Value.String())
 }
 
 func (s *OrchestratorBasicConfigSuite) TestOrchestratorNodeUpAndEnabled() {
-	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"curl", "http://bacalhau-orchestrator-node:1234/api/v1/agent/config"})
+	agentConfigOutput, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "agent", "config", "--output=json"},
+	)
 	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
 
-	marshalledOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
-	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
+	// TODO: Unfortunately the "bacalhau agent config" command is
+	// TODO: unpredictable and returns wierd first characters.
+	// TODO: For now, Trim the first character if it is not "{"
+	cleanedJsonString := strings.TrimLeftFunc(agentConfigOutput, func(r rune) bool {
+		return r != '{'
+	})
 
-	orchestratorEnabled := marshalledOutput.(map[string]interface{})["config"].(map[string]interface{})["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
-	s.Require().Truef(orchestratorEnabled, "Expected orchestrator to be enabled, got: %t", orchestratorEnabled)
+	output, err := s.convertStringToDynamicJSON(cleanedJsonString)
+	s.Require().NoError(err)
+
+	orchestratorEnabled, err := output.Query("$.Orchestrator.Enabled")
+	s.Require().NoError(err)
+	s.Require().True(orchestratorEnabled.Bool())
 }
 
 func (s *OrchestratorBasicConfigSuite) TestLocalConfigBasicPersistence() {

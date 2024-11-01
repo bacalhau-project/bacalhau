@@ -51,13 +51,13 @@ func (s *OrchestratorNoConfigSuite) TestNodesCanBeListed() {
 }
 
 func (s *OrchestratorNoConfigSuite) TestStartingOrchestratorNodeWithConfigFile() {
-	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"curl", "http://bacalhau-orchestrator-node:1234/api/v1/agent/config"})
+	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "agent", "config", "--output=json"})
 	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
 
 	unmarshalledOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
 	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
 
-	unmarshalledOutputMap := unmarshalledOutput.(map[string]interface{})["config"].(map[string]interface{})
+	unmarshalledOutputMap := unmarshalledOutput.(map[string]interface{})
 
 	orchestratorEnabled := unmarshalledOutputMap["Orchestrator"].(map[string]interface{})["Enabled"].(bool)
 	s.Require().Truef(orchestratorEnabled, "Expected orchestrator to be enabled, got: %t", orchestratorEnabled)

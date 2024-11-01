@@ -5,16 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"strings"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	dc "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/stretchr/testify/suite"
-	"io"
-	"os"
-	"regexp"
-	"strings"
 )
 
 func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
@@ -50,7 +51,13 @@ func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
 		return fmt.Errorf("failed to build docker image %q: failed to read build output: %v", imageName, err)
 	}
 
-	fmt.Printf("Image %s:%s built successfully\n", imageName, imageTag)
+	// Verify that the image was really built
+	_, _, err = cli.ImageInspectWithRaw(context.Background(), fmt.Sprintf("%s:%s", imageName, imageTag))
+	if err != nil {
+		return fmt.Errorf("unable to find image  %s:%s. Error: %v", imageName, imageTag, err)
+	}
+
+	fmt.Printf("image %s:%s built successfully\n", imageName, imageTag)
 	return nil
 }
 

@@ -67,7 +67,7 @@ func WithTLS(active bool) OptionFn {
 	}
 }
 
-// CACert specifies the location of a CA certificate file so
+// ServerTLSCACert specifies the location of a CA certificate file so
 // that it is possible to use TLS without the insecure flag
 // when the server uses a self-signed certificate
 func WithCACertificate(cacert string) OptionFn {

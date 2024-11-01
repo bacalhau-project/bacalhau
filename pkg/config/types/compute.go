@@ -11,11 +11,18 @@ type Compute struct {
 	AllocatedCapacity ResourceScaler `yaml:"AllocatedCapacity,omitempty" json:"AllocatedCapacity,omitempty"`
 	// AllowListedLocalPaths specifies a list of local file system paths that the compute node is allowed to access.
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths" json:"AllowListedLocalPaths,omitempty"`
+	// NATS specifies the NATS related configuration on the compute node.
+	NATS ComputeNats `yaml:"NATS,omitempty" json:"NATS,omitempty"`
 }
 
 type ComputeAuth struct {
 	// Token specifies the key for compute nodes to be able to access the orchestrator.
 	Token string `yaml:"Token,omitempty" json:"Token,omitempty"`
+}
+
+type ComputeNats struct {
+	// CACert specifies the CA file path that the compute node trusts when connecting to NATS server.
+	CACert string `yaml:"CACert,omitempty" json:"CACert,omitempty"`
 }
 
 type Heartbeat struct {

@@ -113,6 +113,41 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			},
 			expectedErrors: []string{"cluster port -1 must be greater than zero"},
 		},
+		{
+			name: "ServerTLSCert is set but ServerTLSKey not set",
+			config: NATSTransportConfig{
+				NodeID:        "nodeID",
+				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
+				Port:          1234,
+				ServerTLSCert: "path/to/cert",
+			},
+			expectedErrors: []string{"both ServerTLSCert and ServerTLSKey must be set together"},
+		},
+		{
+			name: "ServerTLSKey is set but ServerTLSCert not set",
+			config: NATSTransportConfig{
+				NodeID:        "nodeID",
+				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
+				Port:          1234,
+				ServerTLSKey:  "path/to/key",
+			},
+			expectedErrors: []string{"both ServerTLSCert and ServerTLSKey must be set together"},
+		},
+		{
+			name: "TLSTimeout cannot be negative",
+			config: NATSTransportConfig{
+				NodeID:           "nodeID",
+				Orchestrators:    []string{"orch1", "orch2"},
+				AuthSecret:       "sekret",
+				Port:             1234,
+				ServerTLSKey:     "path/to/key",
+				ServerTLSCert:    "path/to/cert",
+				ServerTLSTimeout: -1,
+			},
+			expectedErrors: []string{"NATS ServerTLSTimeout must be a positive number, got: -1"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -128,6 +163,42 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			}
 		})
 	}
+}
+
+func (suite *NATSTransportConfigSuite) TestNATSTransportDefaultTLSTimeoutConfig() {
+	natsConfig := NATSTransportConfig{
+		NodeID:           "nodeID",
+		Orchestrators:    []string{"orch1", "orch2"},
+		AuthSecret:       "sekret",
+		Port:             1234,
+		ServerTLSKey:     "path/to/key",
+		ServerTLSCert:    "path/to/cert",
+		ServerTLSTimeout: 0,
+	}
+
+	suite.Require().NoError(natsConfig.Validate())
+	suite.Require().Equal(10, natsConfig.ServerTLSTimeout)
+}
+
+func (suite *NATSTransportConfigSuite) TestNATSTransportHappyTLSConfig() {
+	natsConfig := NATSTransportConfig{
+		NodeID:           "nodeID",
+		Orchestrators:    []string{"orch1", "orch2"},
+		AuthSecret:       "sekret",
+		Port:             1234,
+		ServerTLSKey:     "path/to/key",
+		ServerTLSCert:    "path/to/cert",
+		ServerTLSCACert:  "path/to/ca-cert",
+		ServerTLSTimeout: 5,
+		ClientTLSCACert:  "path/to/ca-cert-2",
+	}
+
+	suite.Require().NoError(natsConfig.Validate())
+	suite.Require().Equal("path/to/key", natsConfig.ServerTLSKey)
+	suite.Require().Equal("path/to/cert", natsConfig.ServerTLSCert)
+	suite.Require().Equal("path/to/ca-cert", natsConfig.ServerTLSCACert)
+	suite.Require().Equal("path/to/ca-cert-2", natsConfig.ClientTLSCACert)
+	suite.Require().Equal(5, natsConfig.ServerTLSTimeout)
 }
 
 func TestNATSTransportConfigSuite(t *testing.T) {
