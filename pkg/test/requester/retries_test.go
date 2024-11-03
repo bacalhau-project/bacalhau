@@ -65,8 +65,8 @@ func (s *RetriesSuite) SetupSuite() {
 				},
 			},
 			SystemConfig: node.SystemConfig{
-				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false, false),
-				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false, false),
+				BidSemanticStrategy: bidstrategy.NewFixedBidStrategy(false),
+				BidResourceStrategy: bidstrategy.NewFixedBidStrategy(false),
 			},
 		},
 		{

@@ -11,7 +11,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -26,7 +25,6 @@ const StorageDirectoryPerms = 0o755
 
 type BaseExecutorParams struct {
 	ID                     string
-	Callback               Callback
 	Store                  store.ExecutionStore
 	Storages               storage.StorageProvider
 	StorageDirectory       string
@@ -40,7 +38,6 @@ type BaseExecutorParams struct {
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
 	ID               string
-	callback         Callback
 	store            store.ExecutionStore
 	Storages         storage.StorageProvider
 	storageDirectory string
@@ -53,7 +50,6 @@ type BaseExecutor struct {
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
 		ID:               params.ID,
-		callback:         params.Callback,
 		store:            params.Store,
 		Storages:         params.Storages,
 		storageDirectory: params.StorageDirectory,
@@ -422,16 +418,6 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 		return err
 	}
 
-	// notify requester
-	e.callback.OnRunComplete(ctx, messages.RunResult{
-		ExecutionMetadata: messages.NewExecutionMetadata(execution),
-		RoutingMetadata: messages.RoutingMetadata{
-			SourcePeerID: e.ID,
-			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
-		},
-		PublishResult:    publishedResult,
-		RunCommandResult: result,
-	})
 	return err
 }
 
@@ -463,18 +449,7 @@ func (e *BaseExecutor) Cancel(ctx context.Context, execution *models.Execution) 
 	if err != nil {
 		return err
 	}
-	if err = exe.Cancel(ctx, execution.ID); err != nil {
-		return err
-	}
-
-	e.callback.OnCancelComplete(ctx, messages.CancelResult{
-		ExecutionMetadata: messages.NewExecutionMetadata(execution),
-		RoutingMetadata: messages.RoutingMetadata{
-			SourcePeerID: e.ID,
-			TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
-		},
-	})
-	return err
+	return exe.Cancel(ctx, execution.ID)
 }
 
 func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Execution, err error, topic models.EventTopic) {
@@ -490,15 +465,6 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 
 	if updateError != nil {
 		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
-	} else {
-		e.callback.OnComputeFailure(ctx, messages.ComputeError{
-			ExecutionMetadata: messages.NewExecutionMetadata(execution),
-			RoutingMetadata: messages.RoutingMetadata{
-				SourcePeerID: e.ID,
-				TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
-			},
-			Event: models.EventFromError(topic, err),
-		})
 	}
 }
 

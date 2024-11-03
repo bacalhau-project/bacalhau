@@ -20,13 +20,6 @@ func (c CallbackMock) OnBidComplete(ctx context.Context, result messages.BidResu
 	}
 }
 
-// OnCancelComplete implements Callback
-func (c CallbackMock) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
-	if c.OnCancelCompleteHandler != nil {
-		c.OnCancelCompleteHandler(ctx, result)
-	}
-}
-
 // OnComputeFailure implements Callback
 func (c CallbackMock) OnComputeFailure(ctx context.Context, err messages.ComputeError) {
 	if c.OnComputeFailureHandler != nil {

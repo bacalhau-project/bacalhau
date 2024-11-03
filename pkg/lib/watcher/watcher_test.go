@@ -68,6 +68,124 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 	w.Stop(ctx)
 	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 200*time.Millisecond, 10*time.Millisecond)
 }
+func (s *WatcherTestSuite) TestDetermineStartingIterator() {
+	ctx := context.Background()
+
+	testCases := []struct {
+		name             string
+		setupCheckpoint  *uint64 // pointer to handle nil case
+		initialIter      watcher.EventIterator
+		setupLatestEvent *uint64 // what should be the latest event in store before test
+		expectedIter     watcher.EventIterator
+		expectedError    bool
+		checkpointErr    error
+		latestErr        error
+	}{
+		{
+			name:         "No checkpoint, non-latest iterator",
+			initialIter:  watcher.AfterSequenceNumberIterator(5),
+			expectedIter: watcher.AfterSequenceNumberIterator(5),
+		},
+		{
+			name:            "With checkpoint, non-latest iterator",
+			setupCheckpoint: ptr(uint64(10)),
+			initialIter:     watcher.AfterSequenceNumberIterator(5),
+			expectedIter:    watcher.AfterSequenceNumberIterator(10),
+		},
+		{
+			name:             "No checkpoint, latest iterator",
+			initialIter:      watcher.LatestIterator(),
+			setupLatestEvent: ptr(uint64(15)), // Store event up to seq 15
+			expectedIter:     watcher.AfterSequenceNumberIterator(15),
+		},
+		{
+			name:             "With checkpoint, latest iterator",
+			setupCheckpoint:  ptr(uint64(10)),
+			initialIter:      watcher.LatestIterator(),
+			setupLatestEvent: ptr(uint64(15)),
+			expectedIter:     watcher.AfterSequenceNumberIterator(10),
+		},
+		{
+			name:          "Checkpoint error",
+			initialIter:   watcher.AfterSequenceNumberIterator(5),
+			checkpointErr: errors.New("db error"),
+			expectedError: true,
+		},
+		{
+			name:          "Latest error",
+			initialIter:   watcher.LatestIterator(),
+			latestErr:     errors.New("db error"),
+			expectedError: true,
+		},
+		{
+			name:         "Empty store, latest iterator",
+			initialIter:  watcher.LatestIterator(),
+			expectedIter: watcher.AfterSequenceNumberIterator(0),
+		},
+		{
+			name:            "TrimHorizon with checkpoint",
+			setupCheckpoint: ptr(uint64(10)),
+			initialIter:     watcher.TrimHorizonIterator(),
+			expectedIter:    watcher.AfterSequenceNumberIterator(10),
+		},
+		{
+			name:         "TrimHorizon without checkpoint",
+			initialIter:  watcher.TrimHorizonIterator(),
+			expectedIter: watcher.TrimHorizonIterator(),
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			// start fresh with each run
+			s.TearDownTest()
+			s.SetupTest()
+
+			// Setup initial state if needed
+			if tc.setupLatestEvent != nil {
+				// Store events up to the desired sequence number
+				for i := uint64(1); i <= *tc.setupLatestEvent; i++ {
+					err := s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+						Operation:  watcher.OperationCreate,
+						ObjectType: "StringObject",
+						Object:     fmt.Sprintf("test%d", i),
+					})
+					s.Require().NoError(err)
+				}
+			}
+
+			if tc.setupCheckpoint != nil {
+				err := s.mockStore.StoreCheckpoint(ctx, "test-watcher", *tc.setupCheckpoint)
+				s.Require().NoError(err)
+			}
+
+			if tc.checkpointErr != nil {
+				s.mockStore.WithGetCheckpointInterceptor(func() error {
+					return tc.checkpointErr
+				})
+			}
+
+			if tc.latestErr != nil {
+				s.mockStore.WithGetLatestEventInterceptor(func() error {
+					return tc.latestErr
+				})
+			}
+
+			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+				watcher.WithInitialEventIterator(tc.initialIter))
+
+			if tc.expectedError {
+				s.Error(err)
+				return
+			}
+			s.NoError(err)
+			s.Equal(tc.expectedIter, w.Stats().NextEventIterator,
+				"Iterator mismatch - expected: %s, got: %s",
+				tc.expectedIter.String(),
+				w.Stats().NextEventIterator.String())
+		})
+	}
+}
 
 func (s *WatcherTestSuite) TestWatcherProcessEvents() {
 	ctx := context.Background()
@@ -707,6 +825,11 @@ func (s *WatcherTestSuite) waitAndStop(ctx context.Context, w watcher.Watcher, c
 	s.wait(ctx, w, continuationSeqNum)
 	w.Stop(ctx)
 	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 1*time.Second, 10*time.Millisecond)
+}
+
+// helper function to get pointer to uint64
+func ptr(u uint64) *uint64 {
+	return &u
 }
 
 func TestWatcherSuite(t *testing.T) {

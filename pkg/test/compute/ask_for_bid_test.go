@@ -11,8 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 )
 
 type AskForBidSuite struct {
@@ -95,12 +93,14 @@ func (s *AskForBidSuite) runAskForBidTest(testCase bidResponseTestCase) messages
 
 		// check execution state
 		execution, err := s.node.ExecutionStore.GetExecution(ctx, result.ExecutionID)
+		s.Require().NoError(err, "failed to get execution")
+
+		expectedState := models.ExecutionStateAskForBidAccepted
 		if testCase.rejected {
-			s.ErrorIs(err, store.NewErrExecutionNotFound(result.ExecutionID))
-		} else {
-			s.NoError(err)
-			s.Equal(models.ExecutionStateNew, execution.ComputeState.StateType)
+			expectedState = models.ExecutionStateAskForBidRejected
 		}
+		s.Equal(expectedState, execution.ComputeState.StateType,
+			"expected execution state %s but got %s", expectedState, execution.ComputeState.StateType)
 	})
 
 	return result

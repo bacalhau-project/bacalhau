@@ -14,11 +14,6 @@ var (
 		metric.WithDescription("Number of jobs received by the compute node"),
 	))
 
-	jobsAccepted = lo.Must(meter.Int64Counter(
-		"jobs_accepted",
-		metric.WithDescription("Number of jobs bid on and accepted by the compute node"),
-	))
-
 	jobsCompleted = lo.Must(meter.Int64Counter(
 		"jobs_completed",
 		metric.WithDescription("Number of jobs completed by the compute node."),

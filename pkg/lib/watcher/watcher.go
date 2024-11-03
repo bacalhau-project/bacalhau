@@ -14,8 +14,7 @@ import (
 
 // watcher holds information about a single event watcher
 type watcher struct {
-	ch      chan Event // channel for sending events to the watcher
-	id      string     // unique identifier for this watcher
+	id      string // unique identifier for this watcher
 	handler EventHandler
 	store   EventStore // event store for fetching events and checkpoints
 	options *watchOptions
@@ -43,28 +42,43 @@ func newWatcher(ctx context.Context, id string, handler EventHandler, store Even
 	}
 
 	w := &watcher{
-		id:                id,
-		handler:           handler,
-		store:             store,
-		options:           options,
-		state:             StateIdle,
-		nextEventIterator: options.initialEventIterator,
+		id:      id,
+		handler: handler,
+		store:   store,
+		options: options,
+		state:   StateIdle,
 	}
 
-	// Retrieve the checkpoint if it exists
-	checkpoint, err := store.GetCheckpoint(ctx, id)
+	// Determine the starting iterator
+	iterator, err := w.determineStartingIterator(ctx, options.initialEventIterator)
 	if err != nil {
-		if errors.Is(err, ErrCheckpointNotFound) {
-			log.Ctx(ctx).Debug().Str("watcher_id", id).
-				Msgf("No checkpoint found, starting from %s", options.initialEventIterator)
-		} else {
-			return nil, NewWatcherError(id, err)
-		}
-	} else {
-		w.nextEventIterator = AfterSequenceNumberIterator(checkpoint)
+		return nil, NewWatcherError(id, err)
 	}
+	w.nextEventIterator = iterator
 
 	return w, nil
+}
+
+func (w *watcher) determineStartingIterator(ctx context.Context, initial EventIterator) (EventIterator, error) {
+	// First try to get checkpoint
+	checkpoint, err := w.store.GetCheckpoint(ctx, w.id)
+	if err == nil {
+		return AfterSequenceNumberIterator(checkpoint), nil
+	}
+	if !errors.Is(err, ErrCheckpointNotFound) {
+		return EventIterator{}, err
+	}
+
+	// No checkpoint found, handle initial iterator
+	if initial.Type == EventIteratorLatest {
+		latestSeqNum, err := w.store.GetLatestEventNum(ctx)
+		if err != nil {
+			return EventIterator{}, err
+		}
+		return AfterSequenceNumberIterator(latestSeqNum), nil
+	}
+
+	return initial, nil
 }
 
 // ID returns the unique identifier for the watcher
@@ -99,7 +113,6 @@ func (w *watcher) Start() {
 
 	var ctx context.Context
 	ctx, w.cancel = context.WithCancel(context.Background())
-	w.ch = make(chan Event, w.options.bufferSize)
 	w.stopped = make(chan struct{}, 1)
 	w.state = StateRunning
 	log.Ctx(ctx).Debug().Str("watcher_id", w.ID()).Str("starting_at", w.nextEventIterator.String()).
@@ -155,9 +168,11 @@ func (w *watcher) fetchWithBackoff(ctx context.Context) (*GetEventsResponse, err
 			return response, nil
 		}
 
-		if !errors.Is(err, context.Canceled) {
-			log.Error().Err(err).Str("watcher_id", w.id).Msg("failed to fetch events. Retrying...")
+		if errors.Is(err, context.Canceled) {
+			return nil, err
 		}
+
+		log.Error().Err(err).Str("watcher_id", w.id).Msg("failed to fetch events. Retrying...")
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -181,6 +196,10 @@ func (w *watcher) processEventWithRetry(ctx context.Context, event Event) error 
 		err = w.handler.HandleEvent(ctx, event)
 		if err == nil {
 			return nil
+		}
+
+		if errors.Is(err, context.Canceled) {
+			return err
 		}
 
 		log.Error().Err(err).Str("watcher_id", w.id).Uint64("event_seq", event.SeqNum).
@@ -220,12 +239,10 @@ func (w *watcher) Stop(ctx context.Context) {
 	// stop the watcher
 	w.cancel()
 
-	// close the event channel
-	defer close(w.ch)
-
 	// wait for the watcher to stop
 	select {
 	case <-w.stopped:
+		log.Ctx(ctx).Debug().Str("watcher_id", w.id).Msg("watcher stopped")
 	case <-ctx.Done():
 		log.Ctx(ctx).Warn().Str("watcher_id", w.id).Msg("watcher stop timed out")
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -33,7 +32,6 @@ type ExecutorBufferParams struct {
 	ID                     string
 	DelegateExecutor       Executor
 	Store                  store.ExecutionStore
-	Callback               Callback
 	RunningCapacityTracker capacity.Tracker
 	EnqueuedUsageTracker   capacity.UsageTracker
 }
@@ -50,7 +48,6 @@ type ExecutorBuffer struct {
 	enqueuedCapacity capacity.UsageTracker
 	delegateService  Executor
 	store            store.ExecutionStore
-	callback         Callback
 	running          map[string]*bufferTask
 	queuedTasks      *collections.HashedPriorityQueue[string, *bufferTask]
 	mu               sync.Mutex
@@ -67,7 +64,6 @@ func NewExecutorBuffer(params ExecutorBufferParams) *ExecutorBuffer {
 		enqueuedCapacity: params.EnqueuedUsageTracker,
 		delegateService:  params.DelegateExecutor,
 		store:            params.Store,
-		callback:         params.Callback,
 		running:          make(map[string]*bufferTask),
 		queuedTasks:      collections.NewHashedPriorityQueue[string, *bufferTask](indexer),
 	}
@@ -94,15 +90,6 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution *models.Execution) e
 			if updateErr != nil {
 				log.Ctx(ctx).Error().Err(updateErr).Msg("failed to update execution state while handling error")
 			}
-
-			s.callback.OnComputeFailure(ctx, messages.ComputeError{
-				ExecutionMetadata: messages.NewExecutionMetadata(execution),
-				RoutingMetadata: messages.RoutingMetadata{
-					SourcePeerID: s.ID,
-					TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
-				},
-				Event: models.EventFromError(EventTopicExecutionPreparing, err),
-			})
 		}
 	}()
 

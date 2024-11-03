@@ -7,14 +7,14 @@ import (
 )
 
 // FixedBidStrategy is a bid strategy that always returns the same response, which is useful for testing
-func NewFixedBidStrategy(response, wait bool) *CallbackBidStrategy {
+func NewFixedBidStrategy(response bool) *CallbackBidStrategy {
 	return &CallbackBidStrategy{
 		OnShouldBid: func(_ context.Context, _ BidStrategyRequest) (BidStrategyResponse, error) {
-			return BidStrategyResponse{ShouldBid: response, ShouldWait: wait}, nil
+			return BidStrategyResponse{ShouldBid: response}, nil
 		},
 		OnShouldBidBasedOnUsage: func(
 			context.Context, BidStrategyRequest, models.Resources) (BidStrategyResponse, error) {
-			return BidStrategyResponse{ShouldBid: response, ShouldWait: wait}, nil
+			return BidStrategyResponse{ShouldBid: response}, nil
 		},
 	}
 }

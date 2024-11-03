@@ -26,6 +26,7 @@ import (
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
@@ -518,7 +519,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 		done <- true
 	}()
 	<-done
-	reader, err := s.executor.GetLogStream(ctx, executor.LogStreamRequest{
+	reader, err := s.executor.GetLogStream(ctx, messages.ExecutionLogsRequest{
 		ExecutionID: id,
 		Tail:        true,
 		Follow:      true,
@@ -542,7 +543,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	task.Normalize()
 	s.startJob(task, id)
 
-	reader, err := s.executor.GetLogStream(context.Background(), executor.LogStreamRequest{
+	reader, err := s.executor.GetLogStream(context.Background(), messages.ExecutionLogsRequest{
 		ExecutionID: id,
 		Tail:        true,
 		Follow:      true,

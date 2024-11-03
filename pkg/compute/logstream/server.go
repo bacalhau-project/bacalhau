@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
 
 // defaultBuffer is the default size of the channel buffer for each individual log stream.
@@ -25,7 +26,7 @@ type ServerParams struct {
 	Buffer int
 }
 
-type Server struct {
+type server struct {
 	executionStore store.ExecutionStore
 	executors      executor.ExecProvider
 	// buffer is the size of the channel buffer for each individual log stream.
@@ -33,11 +34,11 @@ type Server struct {
 }
 
 // NewServer creates a new log stream server
-func NewServer(params ServerParams) *Server {
+func NewServer(params ServerParams) Server {
 	if params.Buffer <= 0 {
 		params.Buffer = defaultBuffer
 	}
-	return &Server{
+	return &server{
 		executionStore: params.ExecutionStore,
 		executors:      params.Executors,
 		buffer:         params.Buffer,
@@ -45,7 +46,7 @@ func NewServer(params ServerParams) *Server {
 }
 
 // GetLogStream returns a stream of logs for a given execution
-func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamRequest) (
+func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	execution, err := s.executionStore.GetExecution(ctx, request.ExecutionID)
 	if err != nil {
@@ -72,3 +73,6 @@ func (s *Server) GetLogStream(ctx context.Context, request executor.LogStreamReq
 
 	return streamer.Stream(ctx), nil
 }
+
+// compile time check
+var _ Server = &server{}

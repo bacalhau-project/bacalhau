@@ -5,7 +5,6 @@ package compute_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
@@ -29,8 +27,6 @@ type BidderSuite struct {
 	mockSemanticStrategy *bidstrategy.MockSemanticBidStrategy
 	mockResourceStrategy *bidstrategy.MockResourceBidStrategy
 	mockExecutionStore   store.ExecutionStore
-	mockCallback         *compute.MockCallback
-	mockExecutor         *compute.MockExecutor
 	bidder               compute.Bidder
 }
 
@@ -51,27 +47,18 @@ func (s *BidderSuite) SetupTest() {
 	s.mockSemanticStrategy = bidstrategy.NewMockSemanticBidStrategy(s.ctrl)
 	s.mockResourceStrategy = bidstrategy.NewMockResourceBidStrategy(s.ctrl)
 	s.mockExecutionStore = execStore
-	s.mockCallback = compute.NewMockCallback(s.ctrl)
-	s.mockExecutor = compute.NewMockExecutor(s.ctrl)
 	s.bidder = compute.NewBidder(compute.BidderParams{
-		NodeID:           "testNodeID",
 		SemanticStrategy: []bidstrategy.SemanticBidStrategy{s.mockSemanticStrategy},
 		ResourceStrategy: []bidstrategy.ResourceBidStrategy{s.mockResourceStrategy},
 		Store:            s.mockExecutionStore,
-		Callback:         s.mockCallback,
-		Executor:         s.mockExecutor,
 		UsageCalculator:  capacity.NewDefaultsUsageCalculator(capacity.DefaultsUsageCalculatorParams{Defaults: models.Resources{}}),
 	})
 }
 
-func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
+func (s *BidderSuite) TestRunBidding() {
 	ctx := context.Background()
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
-	askForBidRequest := messages.AskForBidRequest{
-		Execution:       execution,
-		WaitForApproval: true,
-	}
 
 	tests := []struct {
 		name                   string
@@ -79,71 +66,50 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		mockExpectations       func()
 	}{
 		{
-			name: "semantic should not bid and should not wait; resource not evaluated.",
+			name: "semantic should not bid",
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: false}, nil)
-				s.mockCallback.EXPECT().OnBidComplete(ctx, NewBidResponseMatcher(false))
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: false}, nil)
 			},
+			expectedExecutionState: models.ExecutionStateAskForBidRejected,
 		},
 		{
-			name:                   "semantic and resource should bid and not wait; bid complete",
-			expectedExecutionState: models.ExecutionStateNew,
+			name: "semantic and resource should bid",
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
 				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockCallback.EXPECT().OnBidComplete(ctx, NewBidResponseMatcher(true))
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
 			},
+			expectedExecutionState: models.ExecutionStateAskForBidAccepted,
 		},
 		{
-			name:                   "semantic should wait resource should wait; bid NOT complete.",
-			expectedExecutionState: models.ExecutionStateNew,
+			name: "semantic should bid but resource should not",
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
 				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: false}, nil)
 			},
-		},
-		{
-			name:                   "semantic should wait and resource should bid; bid NOT complete.",
-			expectedExecutionState: models.ExecutionStateNew,
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-			},
-		},
-		{
-			name:                   "semantic should bid and resource should wait; bid NOT complete.",
-			expectedExecutionState: models.ExecutionStateNew,
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-			},
+			expectedExecutionState: models.ExecutionStateAskForBidRejected,
 		},
 		{
 			name: "semantic bid error",
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{}, errors.New("semantic error"))
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
 			},
+			expectedExecutionState: models.ExecutionStateFailed,
 		},
 		{
 			name: "resource bid error",
 			mockExpectations: func() {
 				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
+					Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
 				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
 					Return(bidstrategy.BidStrategyResponse{}, errors.New("resource error"))
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
 			},
+			expectedExecutionState: models.ExecutionStateFailed,
 		},
 	}
 
@@ -151,145 +117,36 @@ func (s *BidderSuite) TestRunBidding_WithPendingApproval() {
 		s.Run(tt.name, func() {
 			s.SetupTest()
 			tt.mockExpectations()
-			s.bidder.RunBidding(ctx, &compute.BidderRequest{
-				SourcePeerID:    askForBidRequest.SourcePeerID,
-				Execution:       askForBidRequest.Execution,
-				WaitForApproval: askForBidRequest.WaitForApproval,
-				ResourceUsage:   &models.Resources{},
-			})
+			err := s.mockExecutionStore.CreateExecution(ctx, *execution)
+			s.Require().NoError(err)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
-			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created")
-			} else {
-				s.Equal(tt.expectedExecutionState, exec.ComputeState.StateType, "expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
-			}
+			s.bidder.RunBidding(ctx, execution)
+
+			updatedExecution, err := s.mockExecutionStore.GetExecution(ctx, execution.ID)
+			s.Require().NoError(err)
+			s.Equal(tt.expectedExecutionState, updatedExecution.ComputeState.StateType,
+				"expected execution state %s but got %s", tt.expectedExecutionState, updatedExecution.ComputeState.StateType)
 		})
 	}
 }
 
-func (s *BidderSuite) TestRunBidding_WithoutPendingApproval() {
+func (s *BidderSuite) TestRunBidding_PendingApproval() {
 	ctx := context.Background()
-	askForBidRequest := messages.AskForBidRequest{
-		Execution:       mock.ExecutionForJob(mock.Job()),
-		WaitForApproval: false,
-	}
+	job := mock.Job()
+	execution := mock.ExecutionForJob(job)
+	execution.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStatePending)
 
-	tests := []struct {
-		name                   string
-		expectedExecutionState models.ExecutionStateType
-		mockExpectations       func()
-	}{
-		{
-			name: "semantic should not bid and should not wait; resource not evaluated.",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: false}, nil)
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-		{
-			name:                   "semantic and resource should bid and not wait; start running",
-			expectedExecutionState: models.ExecutionStateBidAccepted,
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockExecutor.EXPECT().Run(ctx, gomock.Any())
-			},
-		},
-		{
-			name: "semantic should wait resource should wait; fail.",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-		{
-			name: "semantic should wait and resource should bid; fail.",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-		{
-			name: "semantic should bid and resource should wait; fail.",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: false, ShouldWait: true}, nil)
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-		{
-			name: "semantic bid error",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{}, errors.New("semantic error"))
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-		{
-			name: "resource bid error",
-			mockExpectations: func() {
-				s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{ShouldBid: true, ShouldWait: false}, nil)
-				s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
-					Return(bidstrategy.BidStrategyResponse{}, errors.New("resource error"))
-				s.mockCallback.EXPECT().OnComputeFailure(ctx, gomock.Any())
-			},
-		},
-	}
+	s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
+		Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
+	s.mockResourceStrategy.EXPECT().ShouldBidBasedOnUsage(ctx, gomock.Any(), gomock.Any()).
+		Return(bidstrategy.BidStrategyResponse{ShouldBid: true}, nil)
 
-	for _, tt := range tests {
-		s.Run(tt.name, func() {
-			s.SetupTest()
-			tt.mockExpectations()
-			s.bidder.RunBidding(ctx, &compute.BidderRequest{
-				SourcePeerID:    askForBidRequest.SourcePeerID,
-				Execution:       askForBidRequest.Execution,
-				WaitForApproval: askForBidRequest.WaitForApproval,
-				ResourceUsage:   &models.Resources{},
-			})
+	err := s.mockExecutionStore.CreateExecution(ctx, *execution)
+	s.Require().NoError(err)
 
-			exec, err := s.mockExecutionStore.GetExecution(ctx, askForBidRequest.Execution.ID)
-			if tt.expectedExecutionState.IsUndefined() {
-				s.Require().Error(err, "expected no execution to be created")
-			} else {
-				s.Equal(tt.expectedExecutionState.String(), exec.ComputeState.StateType.String(),
-					"expected: %s, actual: %s", tt.expectedExecutionState, exec.ComputeState.StateType)
-			}
-		})
-	}
-}
+	s.bidder.RunBidding(ctx, execution)
 
-type BidResponseMatcher struct {
-	accepted bool
-}
-
-func NewBidResponseMatcher(accepted bool) *BidResponseMatcher {
-	return &BidResponseMatcher{
-		accepted: accepted,
-	}
-}
-
-func (m *BidResponseMatcher) Matches(x interface{}) bool {
-	req, ok := x.(messages.BidResult)
-	if !ok {
-		return false
-	}
-
-	return req.Accepted == m.accepted
-}
-
-func (m *BidResponseMatcher) String() string {
-	return fmt.Sprintf("isBidAccepted=%v", m.accepted)
+	updatedExecution, err := s.mockExecutionStore.GetExecution(ctx, execution.ID)
+	s.Require().NoError(err)
+	s.Equal(models.ExecutionStateAskForBidAccepted, updatedExecution.ComputeState.StateType)
 }

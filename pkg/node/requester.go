@@ -45,12 +45,6 @@ var (
 	}
 )
 
-const (
-	// orchestratorEvaluationWatcherID is the ID of the watcher that listens for evaluation events
-	// and enqueues them into the evaluation broker.
-	orchestratorEvaluationWatcherID = "evaluation-watcher"
-)
-
 type Requester struct {
 	// Visible for testing
 	Endpoint *orchestrator.BaseEndpoint

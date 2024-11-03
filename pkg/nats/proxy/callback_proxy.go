@@ -40,10 +40,6 @@ func (p *CallbackProxy) OnRunComplete(ctx context.Context, result messages.RunRe
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnRunComplete, result)
 }
 
-func (p *CallbackProxy) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnCancelComplete, result)
-}
-
 func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result messages.ComputeError) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnComputeFailure, result)
 }

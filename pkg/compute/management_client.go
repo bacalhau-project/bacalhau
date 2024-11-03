@@ -131,7 +131,7 @@ func (m *ManagementClient) updateResources(ctx context.Context) {
 		AvailableCapacity: m.availableCapacityTracker.GetAvailableCapacity(ctx),
 		QueueUsedCapacity: m.queueUsageTracker.GetUsedCapacity(ctx),
 	}
-	log.Ctx(ctx).Debug().Msgf("Sending updated resources: %+v", request)
+	log.Ctx(ctx).Trace().Msgf("Sending updated resources: %+v", request)
 
 	_, err := m.managementProxy.UpdateResources(ctx, request)
 	if err != nil {

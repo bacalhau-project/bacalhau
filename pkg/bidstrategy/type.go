@@ -9,14 +9,12 @@ import (
 )
 
 type BidStrategyRequest struct {
-	NodeID string
-	Job    models.Job
+	Job models.Job `json:"Job"`
 }
 
 type BidStrategyResponse struct {
-	ShouldBid  bool   `json:"shouldBid"`
-	ShouldWait bool   `json:"shouldWait"`
-	Reason     string `json:"reason"`
+	ShouldBid bool   `json:"ShouldBid"`
+	Reason    string `json:"Reason"`
 }
 
 const (
@@ -50,18 +48,6 @@ type SemanticBidStrategy interface {
 
 type ResourceBidStrategy interface {
 	ShouldBidBasedOnUsage(ctx context.Context, request BidStrategyRequest, usage models.Resources) (BidStrategyResponse, error)
-}
-
-// the JSON data we send to http or exec probes
-// TODO: can we just use the BidStrategyRequest struct?
-type JobSelectionPolicyProbeData struct {
-	NodeID string     `json:"NodeID"`
-	Job    models.Job `json:"Job"`
-}
-
-// Return JobSelectionPolicyProbeData for the given request
-func GetJobSelectionPolicyProbeData(request BidStrategyRequest) JobSelectionPolicyProbeData {
-	return JobSelectionPolicyProbeData(request)
 }
 
 type ModerateJobRequest struct {

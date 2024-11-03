@@ -394,6 +394,70 @@ func (s *BoltDBEventStoreTestSuite) TestNoCaching() {
 	s.assertEventEquals(resp.Events[0], 1, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 1})
 }
 
+func (s *BoltDBEventStoreTestSuite) TestConcurrentSubscribers() {
+	// Start 3 concurrent subscribers at different positions
+	respCh1, errCh1 := s.getEventsAsync(watcher.AfterSequenceNumberIterator(0), 1, watcher.EventFilter{})
+	respCh2, errCh2 := s.getEventsAsync(watcher.AfterSequenceNumberIterator(0), 1, watcher.EventFilter{})
+	respCh3, errCh3 := s.getEventsAsync(watcher.AfterSequenceNumberIterator(0), 1, watcher.EventFilter{})
+
+	// Verify all are waiting
+	s.assertChannelsEmpty(respCh1, errCh1)
+	s.assertChannelsEmpty(respCh2, errCh2)
+	s.assertChannelsEmpty(respCh3, errCh3)
+
+	// Store an event
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: "TestObject",
+		Object:     watchertest.TestObject{Value: 1},
+	}))
+
+	// All subscribers should get the event
+	resp1 := s.assertResponseReceived(respCh1, errCh1)
+	resp2 := s.assertResponseReceived(respCh2, errCh2)
+	resp3 := s.assertResponseReceived(respCh3, errCh3)
+
+	// Verify all got the same event
+	s.assertEventsResponse(resp1, 1, watcher.AfterSequenceNumberIterator(1))
+	s.assertEventsResponse(resp2, 1, watcher.AfterSequenceNumberIterator(1))
+	s.assertEventsResponse(resp3, 1, watcher.AfterSequenceNumberIterator(1))
+}
+
+func (s *BoltDBEventStoreTestSuite) TestLongPollingWithMultipleSubscribers() {
+	longPollingTimeout := 100 * time.Millisecond
+	s.store.options.longPollingTimeout = longPollingTimeout
+
+	// Start multiple subscribers
+	subscriberCount := 5
+	respChs := make([]<-chan *watcher.GetEventsResponse, subscriberCount)
+	errChs := make([]<-chan error, subscriberCount)
+
+	for i := 0; i < subscriberCount; i++ {
+		respCh, errCh := s.getEventsAsync(watcher.AfterSequenceNumberIterator(0), 1, watcher.EventFilter{})
+		respChs[i] = respCh
+		errChs[i] = errCh
+	}
+
+	// Verify all subscribers are waiting (no responses yet)
+	for i := 0; i < subscriberCount; i++ {
+		s.assertChannelsEmpty(respChs[i], errChs[i])
+	}
+
+	// Store an event
+	s.Require().NoError(s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: "TestObject",
+		Object:     watchertest.TestObject{Value: 1},
+	}))
+
+	// All subscribers should receive the event
+	for i := 0; i < subscriberCount; i++ {
+		resp := s.assertResponseReceived(respChs[i], errChs[i])
+		s.assertEventsResponse(resp, 1, watcher.AfterSequenceNumberIterator(1))
+		s.assertEventEquals(resp.Events[0], 1, watcher.OperationCreate, "TestObject", &watchertest.TestObject{Value: 1})
+	}
+}
+
 // Helper methods
 
 func (s *BoltDBEventStoreTestSuite) storeEvents(count int, operation watcher.Operation, objectType string) {

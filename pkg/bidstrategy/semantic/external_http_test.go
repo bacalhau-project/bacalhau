@@ -22,14 +22,12 @@ func TestJobSelectionHttp(t *testing.T) {
 		contentType string
 		body        []byte
 		expectBid   bool
-		expectWait  bool
 	}{
 		{
 			"fail the response and don't select the job",
 			http.StatusInternalServerError,
 			"text/plain",
 			[]byte("500 - Something bad happened!"),
-			false,
 			false,
 		},
 		{
@@ -38,7 +36,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			"text/plain",
 			[]byte("200 - Everything is good!"),
 			true,
-			false,
 		},
 		{
 			"pass a JSON response to select the job",
@@ -46,7 +43,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			"application/json",
 			[]byte(`{"shouldBid": true, "reason": "looks like a lovely job"}`),
 			true,
-			false,
 		},
 		{
 			"pass a JSON response to reject the job",
@@ -54,21 +50,12 @@ func TestJobSelectionHttp(t *testing.T) {
 			"application/json",
 			[]byte(`{"shouldBid": false, "reason": "this job really stinks!"}`),
 			false,
-			false,
-		},
-		{
-			"pass a JSON response to wait for a future approval",
-			http.StatusAccepted,
-			"application/json",
-			[]byte(`{"shouldWait": true, "reason": "gonna have to think about this one"}`),
-			false,
-			true,
 		},
 	}
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			var requestPayload bidstrategy.JobSelectionPolicyProbeData
+			var requestPayload bidstrategy.BidStrategyRequest
 
 			svr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				require.Equal(t, r.Method, "POST")
@@ -92,7 +79,6 @@ func TestJobSelectionHttp(t *testing.T) {
 			result, err := strategy.ShouldBid(context.Background(), request)
 			require.NoError(t, err)
 			require.Equal(t, test.expectBid, result.ShouldBid, result.Reason)
-			require.Equal(t, test.expectWait, result.ShouldWait)
 
 			// this makes sure that the http payload was given to the http endpoint
 			require.Equal(t, request.Job.ID, requestPayload.Job.ID)

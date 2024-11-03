@@ -113,7 +113,13 @@ func (s *CancelSuite) TestStates() {
 		{models.ExecutionStateCancelled, true},
 	} {
 		s.Run(tc.state.String(), func() {
+			s.TearDownTest()
+			s.SetupTest()
 			executionID := s.prepareAndAskForBid(ctx, mock.Execution())
+
+			// stop the watchers so execution state doesn't get updated beyond what we set in the test
+			s.Require().NoError(s.node.Watchers.Stop(ctx))
+
 			err := s.node.ExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 				ExecutionID: executionID,
 				NewValues:   models.Execution{ComputeState: models.NewExecutionState(tc.state)},

@@ -164,7 +164,7 @@ func (n *NodeManager) UpdateResources(ctx context.Context,
 		return &messages.UpdateResourcesResponse{}, nil
 	}
 
-	log.Ctx(ctx).Debug().Msgf("updating node resources availability: %+v", request)
+	log.Ctx(ctx).Trace().Msgf("updating node resources availability: %+v", request)
 
 	// Update the resources for the node in the stripedmap. This is a thread-safe operation as locking
 	// is handled by the stripedmap on a per-bucket basis.

@@ -53,6 +53,7 @@ type Watcher interface {
 type EventHandler interface {
 	// HandleEvent processes a single event.
 	// It returns an error if the event processing fails.
+	// Implementations MUST honor context cancellation and return immediately when ctx.Done()
 	HandleEvent(ctx context.Context, event Event) error
 }
 
