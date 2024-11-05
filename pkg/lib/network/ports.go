@@ -12,37 +12,10 @@ const defaultPortAllocatorTTL = 5 * time.Second
 // PortAllocator manages thread-safe allocation of network ports with a time-based reservation system.
 // Once a port is allocated, it won't be reallocated until after the TTL expires, helping prevent
 // race conditions in concurrent port allocation scenarios.
-func (pa *PortAllocator) GetFreePort() (int, error) {
-    pa.mu.Lock()
-    defer pa.mu.Unlock()
-
-    // Clean up expired reservations
-    now := time.Now()
-    for port, expiration := range pa.reservedPorts {
-        if now.After(expiration) {
-            delete(pa.reservedPorts, port)
-        }
-    }
-
-    port, err := getFreePortFromSystem()
-    if err != nil {
-        return 0, err
-    }
-
-    // Keep trying until we find a port that isn't reserved
-    for {
-        if _, reserved := pa.reservedPorts[port]; !reserved {
-            break
-        }
-        port, err = getFreePortFromSystem()
-        if err != nil {
-            return 0, err
-        }
-        // Note: No need to check expiration here since expired entries are already removed
-    }
-
-    pa.reservedPorts[port] = now.Add(pa.ttl)
-    return port, nil
+type PortAllocator struct {
+	mu            sync.Mutex
+	reservedPorts map[int]time.Time
+	ttl           time.Duration
 }
 
 var (
