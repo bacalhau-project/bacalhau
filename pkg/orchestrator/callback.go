@@ -80,11 +80,9 @@ func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult)
 		return
 	}
 
-	for _, event := range executionEvents {
-		if err = e.store.AddExecutionHistory(txContext, response.JobID, response.ExecutionID, event); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to add execution history")
-			return
-		}
+	if err = e.store.AddExecutionHistory(txContext, response.JobID, response.ExecutionID, executionEvents...); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to add execution history")
+		return
 	}
 
 	// enqueue evaluation to allow the scheduler to either accept the bid, or find a new node
@@ -163,11 +161,6 @@ func (e *Callback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to commit transaction")
 		return
 	}
-}
-
-func (e *Callback) OnCancelComplete(ctx context.Context, result legacy.CancelResult) {
-	log.Ctx(ctx).Debug().Msgf("Requester node %s received CancelComplete for execution: %s from %s",
-		e.id, result.ExecutionID, result.SourcePeerID)
 }
 
 func (e *Callback) OnComputeFailure(ctx context.Context, result legacy.ComputeError) {

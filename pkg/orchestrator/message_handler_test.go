@@ -4,6 +4,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -128,6 +129,27 @@ func (suite *MessageHandlerTestSuite) TestOnComputeFailure() {
 
 	err := suite.handler.OnComputeFailure(ctx, message)
 	suite.NoError(err)
+}
+
+func (suite *MessageHandlerTestSuite) TestOnBidComplete_PropagatesErrors() {
+	ctx := context.Background()
+	bidResult := &messages.BidResult{
+		BaseResponse: messages.BaseResponse{
+			ExecutionID: "exec-1",
+			JobID:       "job-1",
+			JobType:     "batch",
+		},
+		Accepted: true,
+	}
+	message := ncl.NewMessage(bidResult).WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+
+	expectedErr := errors.New("store error")
+	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
+	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(expectedErr)
+	suite.mockTx.EXPECT().Rollback().Return(nil)
+
+	err := suite.handler.OnBidComplete(ctx, message)
+	suite.ErrorIs(err, expectedErr)
 }
 
 func TestMessageHandlerTestSuite(t *testing.T) {

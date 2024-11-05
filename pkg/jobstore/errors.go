@@ -83,7 +83,7 @@ func NewErrExecutionAlreadyExists(id string) bacerrors.Error {
 
 func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, expected ...models.ExecutionStateType) bacerrors.Error {
 	var errorMessage string
-	if len(expected) > 0 {
+	if len(expected) == 0 {
 		errorMessage = fmt.Sprintf("execution %s is in unexpected state %s", id, actual)
 	} else {
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
@@ -96,7 +96,7 @@ func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, ex
 func NewErrInvalidExecutionDesiredState(
 	id string, actual models.ExecutionDesiredStateType, expected ...models.ExecutionDesiredStateType) bacerrors.Error {
 	var errorMessage string
-	if len(expected) > 0 {
+	if len(expected) == 0 {
 		errorMessage = fmt.Sprintf("execution %s is in unexpected state %s", id, actual)
 	} else {
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)

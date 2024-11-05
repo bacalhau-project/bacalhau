@@ -1,6 +1,8 @@
 package models
 
-import "os"
+import (
+	"os"
+)
 
 type Protocol string
 
@@ -36,8 +38,8 @@ func (p Protocol) String() string {
 	return string(p)
 }
 
-// GetPreferredProtocol accepts a slice of available protocols and return the
-// preferred protocol based on the order of preference
+// GetPreferredProtocol accepts a slice of available protocols and returns the
+// preferred protocol based on the order of preference along with any error
 func GetPreferredProtocol(availableProtocols []Protocol) Protocol {
 	// Check if NCL is preferred via environment variable
 	if os.Getenv(EnvPreferNCL) == "true" {
@@ -49,16 +51,11 @@ func GetPreferredProtocol(availableProtocols []Protocol) Protocol {
 		}
 	}
 
-	// create a map of available protocols for faster lookup
-	availableProtocolsMap := make(map[Protocol]struct{})
-	for _, p := range availableProtocols {
-		availableProtocolsMap[p] = struct{}{}
-	}
-
-	// iterate over preferred protocols and return the first one that is available
-	for _, p := range preferredProtocols {
-		if _, ok := availableProtocolsMap[p]; ok {
-			return p
+	for _, preferred := range preferredProtocols {
+		for _, available := range availableProtocols {
+			if preferred == available {
+				return preferred
+			}
 		}
 	}
 
