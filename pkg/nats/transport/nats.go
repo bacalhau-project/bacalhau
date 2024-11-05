@@ -237,6 +237,9 @@ func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore 
 
 // RegisterLogstreamServer registers a compute logstream server with the transport layer.
 func (t *NATSTransport) RegisterLogstreamServer(ctx context.Context, logstreamServer logstream.Server) error {
+	if logstreamServer == nil {
+		return errors.New("logstreamServer cannot be nil")
+	}
 	_, err := proxy.NewLogStreamHandler(ctx, proxy.LogStreamHandlerParams{
 		Name:            t.nodeID,
 		Conn:            t.natsClient.Client,
