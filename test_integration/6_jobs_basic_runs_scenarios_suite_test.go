@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"bacalhau/integration_tests/utils"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )

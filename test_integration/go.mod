@@ -3,6 +3,7 @@ module bacalhau/integration_tests
 go 1.23
 
 require (
+	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/docker/compose/v2 v2.28.1
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/google/uuid v1.6.0
@@ -20,6 +21,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/Microsoft/hcsshim v0.11.5 // indirect
+	github.com/PaesslerAG/gval v1.0.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/aws/aws-sdk-go-v2 v1.30.4 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.3 // indirect

@@ -8,7 +8,7 @@ repos:
   - id: detect-aws-credentials
     args: [--allow-missing-credentials]
   - id: detect-private-key
-    exclude: 'testdata/.*|test_integration/common_assets/certificates/generated_assets/.*|docker-compose-deployment/certificates/.*'
+    exclude: 'testdata/.*|test_integration/common_assets/certificates/.*|docker-compose-deployment/certificates/.*'
   - id: check-yaml
     exclude: 'test_integration/common_assets/docker_compose_files/.*'
   - id: check-json

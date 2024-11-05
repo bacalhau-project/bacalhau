@@ -19,7 +19,7 @@ func ProcessYAMLTemplate(inputFilePath string, outputFilePath string, data map[s
 		"fromYaml": fromYAML,
 	})
 
-	// Parse the template
+	// ParseToDynamicJSON the template
 	tmpl, err = tmpl.Parse(string(content))
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func ProcessYAMLTemplate(inputFilePath string, outputFilePath string, data map[s
 		return err
 	}
 
-	// Parse the processed YAML to ensure it's still valid YAML
+	// ParseToDynamicJSON the processed YAML to ensure it's still valid YAML
 	var parsedYAML interface{}
 	if err := yaml.Unmarshal(processed.Bytes(), &parsedYAML); err != nil {
 		return err
