@@ -73,7 +73,7 @@ func (s *OrchestratorBasicConfigSuite) TestOrchestratorNodeUpAndEnabled() {
 	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
 
 	// TODO: Unfortunately the "bacalhau agent config" command is
-	// TODO: unpredictable and returns wierd first characters.
+	// TODO: unpredictable and returns weird first characters.
 	// TODO: For now, Trim the first character if it is not "{"
 	cleanedJsonString := strings.TrimLeftFunc(agentConfigOutput, func(r rune) bool {
 		return r != '{'
