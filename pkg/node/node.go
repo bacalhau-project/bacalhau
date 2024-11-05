@@ -187,7 +187,8 @@ func NewNode(
 
 		err = transportLayer.RegisterLogstreamServer(ctx, computeNode.LogstreamServer)
 		if err != nil {
-			return nil, err
+			log.Ctx(ctx).Error().Err(err).Msg("Failed to register LogstreamServer")
+			return nil, fmt.Errorf("failed to register LogstreamServer: %w", err)
 		}
 		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
