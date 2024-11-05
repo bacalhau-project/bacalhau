@@ -7,6 +7,10 @@ WORKDIR /app
 # Install curl and bash
 RUN apk update && apk add --no-cache curl bash
 
+# Install Nats CLI
+RUN curl -sf https://binaries.nats.dev/nats-io/natscli/nats@v0.1.5 | sh
+RUN mv /app/nats /usr/local/bin/
+
 # Install the ca-certificates package
 RUN apk add --no-cache ca-certificates
 

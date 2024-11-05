@@ -10,7 +10,9 @@ type Orchestrator struct {
 	// Advertise specifies URL to advertise to other servers.
 	Advertise string `yaml:"Advertise,omitempty" json:"Advertise,omitempty"`
 	// Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
-	Auth             OrchestratorAuth `yaml:"Auth,omitempty" json:"Auth,omitempty"`
+	Auth OrchestratorAuth `yaml:"Auth,omitempty" json:"Auth,omitempty"`
+	// TLS specifies the TLS related configuration on the orchestrator for when compute nodes need to connect.
+	TLS              OrchestratorTLS  `yaml:"TLS,omitempty" json:"TLS,omitempty"`
 	Cluster          Cluster          `yaml:"Cluster,omitempty" json:"Cluster,omitempty"`
 	NodeManager      NodeManager      `yaml:"NodeManager,omitempty" json:"NodeManager,omitempty"`
 	Scheduler        Scheduler        `yaml:"Scheduler,omitempty" json:"Scheduler,omitempty"`
@@ -20,6 +22,18 @@ type Orchestrator struct {
 type OrchestratorAuth struct {
 	// Token specifies the key for compute nodes to be able to access the orchestrator
 	Token string `yaml:"Token,omitempty" json:"Token,omitempty"`
+}
+
+type OrchestratorTLS struct {
+	// ServerKey specifies the private key file path given to NATS server to serve TLS connections.
+	ServerKey string `yaml:"ServerKey,omitempty" json:"ServerKey,omitempty"`
+	// ServerCert specifies the certificate file path given to NATS server to serve TLS connections.
+	ServerCert string `yaml:"ServerCert,omitempty" json:"ServerCert,omitempty"`
+	// ServerTimeout specifies the TLS timeout, in seconds, set on the NATS server.
+	ServerTimeout int `yaml:"ServerTimeout,omitempty" json:"ServerTimeout,omitempty"`
+
+	// CACert specifies the CA file path that the orchestrator node trusts when connecting to NATS server.
+	CACert string `yaml:"CACert,omitempty" json:"CACert,omitempty"`
 }
 
 type Cluster struct {
