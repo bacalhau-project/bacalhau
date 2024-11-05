@@ -122,6 +122,7 @@ func (s *DispatcherTestSuite) TestHandleEvent_NodeStoreError() {
 
 // TestHandleEvent_PreferBProtocol tests that the dispatcher will prefer the BProtocol by default
 func (s *DispatcherTestSuite) TestHandleEvent_PreferBProtocol() {
+	s.T().Setenv(models.EnvPreferNCL, "false")
 	execution := mock.Execution()
 	event := watcher.Event{
 		Object: models.ExecutionUpsert{

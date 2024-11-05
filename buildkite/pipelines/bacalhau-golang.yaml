@@ -1,4 +1,3 @@
-
 # This pipeline is triggered if either of this condition is met
 # build.branch == "main" || !build.pull_request.draft ||
 # build.pull_request.labels includes "build/go" ||
@@ -55,9 +54,26 @@ steps:
     agents:
       queue: "buildkite-hosted-linux-large"
 
+  - label: ":testengine: Unit Test (NCL Protocol)"
+    command: "./buildkite/scripts/test.sh unit"
+    key: "unit-test-ncl"
+    env:
+      BACALHAU_PREFER_NCL_PROTOCOL: "true"
+    agents:
+      queue: "buildkite-hosted-linux-large"
+
   - label: ":testengine: Integration Test"
     command: "./buildkite/scripts/test.sh integration"
     key: "integration-test"
+    agents:
+      queue: "buildkite-hosted-linux-large"
+
+
+  - label: ":testengine: Integration Test (NCL Protocol)"
+    command: "./buildkite/scripts/test.sh integration"
+    key: "integration-test-ncl"
+    env:
+      BACALHAU_PREFER_NCL_PROTOCOL: "true"
     agents:
       queue: "buildkite-hosted-linux-large"
 
