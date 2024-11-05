@@ -67,4 +67,4 @@ dist/
 .aider*
 
 # Integration Tests
-test_integration/assets/dockerfiles/bacalhau_bin
+test_integration/common_assets/bacalhau_bin

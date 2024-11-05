@@ -2,11 +2,12 @@ package test_integration
 
 import (
 	"bacalhau/integration_tests/utils"
-	"github.com/google/uuid"
 	"log"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 var globalTestExecutionId string
