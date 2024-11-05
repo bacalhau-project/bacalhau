@@ -65,7 +65,7 @@ type ClientTLSConfig struct {
 
 	// Used for NodeConfig.ClientAPI, specifies the location of a ca certificate
 	// file (primarily for self-signed server certs). Will use HTTPS for requests.
-	CACert string `yaml:"ServerTLSCACert"`
+	CACert string `yaml:"CACert"`
 
 	// Used for NodeConfig.ClientAPI, and when true instructs the client to use
 	// HTTPS, but not to attempt to verify the certificate.

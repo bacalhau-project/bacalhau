@@ -11,8 +11,8 @@ type Compute struct {
 	AllocatedCapacity ResourceScaler `yaml:"AllocatedCapacity,omitempty" json:"AllocatedCapacity,omitempty"`
 	// AllowListedLocalPaths specifies a list of local file system paths that the compute node is allowed to access.
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths" json:"AllowListedLocalPaths,omitempty"`
-	// NATS specifies the NATS related configuration on the compute node.
-	NATS ComputeNats `yaml:"NATS,omitempty" json:"NATS,omitempty"`
+	// TLS specifies the TLS related configuration on the compute node when connecting with the orchestrator.
+	TLS ComputeTLS `yaml:"TLS,omitempty" json:"TLS,omitempty"`
 }
 
 type ComputeAuth struct {
@@ -20,8 +20,8 @@ type ComputeAuth struct {
 	Token string `yaml:"Token,omitempty" json:"Token,omitempty"`
 }
 
-type ComputeNats struct {
-	// CACert specifies the CA file path that the compute node trusts when connecting to NATS server.
+type ComputeTLS struct {
+	// CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.
 	CACert string `yaml:"CACert,omitempty" json:"CACert,omitempty"`
 }
 

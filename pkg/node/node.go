@@ -354,11 +354,11 @@ func createTransport(ctx context.Context, cfg NodeConfig) (*nats_transport.NATST
 		ClusterPeers:             cfg.BacalhauConfig.Orchestrator.Cluster.Peers,
 		ClusterAdvertisedAddress: cfg.BacalhauConfig.Orchestrator.Cluster.Advertise,
 		IsRequesterNode:          cfg.BacalhauConfig.Orchestrator.Enabled,
-		ServerTLSCACert:          cfg.BacalhauConfig.Orchestrator.NATS.CACert,
-		ServerTLSCert:            cfg.BacalhauConfig.Orchestrator.NATS.ServerTLSCert,
-		ServerTLSKey:             cfg.BacalhauConfig.Orchestrator.NATS.ServerTLSKey,
-		ServerTLSTimeout:         cfg.BacalhauConfig.Orchestrator.NATS.ServerTLSTimeout,
-		ClientTLSCACert:          cfg.BacalhauConfig.Compute.NATS.CACert,
+		ServerTLSCACert:          cfg.BacalhauConfig.Orchestrator.TLS.CACert,
+		ServerTLSCert:            cfg.BacalhauConfig.Orchestrator.TLS.ServerCert,
+		ServerTLSKey:             cfg.BacalhauConfig.Orchestrator.TLS.ServerKey,
+		ServerTLSTimeout:         cfg.BacalhauConfig.Orchestrator.TLS.ServerTimeout,
+		ClientTLSCACert:          cfg.BacalhauConfig.Compute.TLS.CACert,
 	}
 	if cfg.BacalhauConfig.Compute.Enabled && !cfg.BacalhauConfig.Orchestrator.Enabled {
 		config.AuthSecret = cfg.BacalhauConfig.Compute.Auth.Token

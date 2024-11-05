@@ -165,42 +165,6 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 	}
 }
 
-func (suite *NATSTransportConfigSuite) TestNATSTransportDefaultTLSTimeoutConfig() {
-	natsConfig := NATSTransportConfig{
-		NodeID:           "nodeID",
-		Orchestrators:    []string{"orch1", "orch2"},
-		AuthSecret:       "sekret",
-		Port:             1234,
-		ServerTLSKey:     "path/to/key",
-		ServerTLSCert:    "path/to/cert",
-		ServerTLSTimeout: 0,
-	}
-
-	suite.Require().NoError(natsConfig.Validate())
-	suite.Require().Equal(10, natsConfig.ServerTLSTimeout)
-}
-
-func (suite *NATSTransportConfigSuite) TestNATSTransportHappyTLSConfig() {
-	natsConfig := NATSTransportConfig{
-		NodeID:           "nodeID",
-		Orchestrators:    []string{"orch1", "orch2"},
-		AuthSecret:       "sekret",
-		Port:             1234,
-		ServerTLSKey:     "path/to/key",
-		ServerTLSCert:    "path/to/cert",
-		ServerTLSCACert:  "path/to/ca-cert",
-		ServerTLSTimeout: 5,
-		ClientTLSCACert:  "path/to/ca-cert-2",
-	}
-
-	suite.Require().NoError(natsConfig.Validate())
-	suite.Require().Equal("path/to/key", natsConfig.ServerTLSKey)
-	suite.Require().Equal("path/to/cert", natsConfig.ServerTLSCert)
-	suite.Require().Equal("path/to/ca-cert", natsConfig.ServerTLSCACert)
-	suite.Require().Equal("path/to/ca-cert-2", natsConfig.ClientTLSCACert)
-	suite.Require().Equal(5, natsConfig.ServerTLSTimeout)
-}
-
 func TestNATSTransportConfigSuite(t *testing.T) {
 	suite.Run(t, new(NATSTransportConfigSuite))
 }

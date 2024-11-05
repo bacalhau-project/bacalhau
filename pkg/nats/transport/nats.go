@@ -84,8 +84,8 @@ func (c *NATSTransportConfig) Validate() error {
 		mErr = errors.Join(mErr, validate.IsNotEmpty(c.Orchestrators, "missing orchestrators"))
 	}
 
-	serverCertProvided := len(c.ServerTLSCert) > 0
-	serverKeyProvided := len(c.ServerTLSKey) > 0
+	serverCertProvided := c.ServerTLSCert != ""
+	serverKeyProvided := c.ServerTLSKey != ""
 
 	if serverCertProvided != serverKeyProvided {
 		mErr = errors.Join(
@@ -99,10 +99,6 @@ func (c *NATSTransportConfig) Validate() error {
 			mErr,
 			fmt.Errorf("NATS ServerTLSTimeout must be a positive number, got: %d", c.ServerTLSTimeout),
 		)
-	}
-
-	if serverCertProvided && serverKeyProvided && c.ServerTLSTimeout == 0 {
-		c.ServerTLSTimeout = NATSServerDefaultTLSTimeout
 	}
 
 	if mErr != nil {

@@ -5,12 +5,12 @@ Orchestrator:
   Enabled: true
   Auth:
     Token: "i_am_very_secret_token"
-  Nats:
+  TLS:
     # The paths for these certs are within the container after
     # the assets has been copied during image creation
-    ServerTLSCert: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-orchestrator-node.crt"
-    ServerTLSKey: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-orchestrator-node.key"
-    ServerTLSTimeout: 15
+    ServerCert: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-orchestrator-node.crt"
+    ServerKey: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-orchestrator-node.key"
+    ServerTimeout: 15
 
 Labels:
   label1: label1Value
