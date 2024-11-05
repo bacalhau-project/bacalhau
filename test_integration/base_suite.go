@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/exec"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
-	"io"
-	"os"
-	"strings"
-	"time"
 )
 
 type BaseDockerComposeTestSuite struct {
@@ -213,6 +214,24 @@ func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string, expe
 	}
 
 	return data, nil
+}
+
+func (s *BaseDockerComposeTestSuite) convertStringToDynamicJSON(jsonString string) (*utils.DynamicJSON, error) {
+	// Cleanup the Json output. Unfortunate that the CLI prints extra
+	// characters at the beginning and at the end
+	cleanedJsonString := strings.TrimLeftFunc(jsonString, func(r rune) bool {
+		return r != '{' && r != '['
+	})
+	cleanedJsonString = strings.TrimRightFunc(cleanedJsonString, func(r rune) bool {
+		return r != '}' && r != ']'
+	})
+
+	parsedDynamicJSON, err := utils.ParseToDynamicJSON(cleanedJsonString)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsedDynamicJSON, nil
 }
 
 func (s *BaseDockerComposeTestSuite) renderDockerComposeFile(inputFilePath string, tmpDir string, imageReplacements map[string]interface{}) string {

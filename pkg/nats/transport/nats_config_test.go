@@ -113,6 +113,41 @@ func (suite *NATSTransportConfigSuite) TestValidate() {
 			},
 			expectedErrors: []string{"cluster port -1 must be greater than zero"},
 		},
+		{
+			name: "ServerTLSCert is set but ServerTLSKey not set",
+			config: NATSTransportConfig{
+				NodeID:        "nodeID",
+				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
+				Port:          1234,
+				ServerTLSCert: "path/to/cert",
+			},
+			expectedErrors: []string{"both ServerTLSCert and ServerTLSKey must be set together"},
+		},
+		{
+			name: "ServerTLSKey is set but ServerTLSCert not set",
+			config: NATSTransportConfig{
+				NodeID:        "nodeID",
+				Orchestrators: []string{"orch1", "orch2"},
+				AuthSecret:    "sekret",
+				Port:          1234,
+				ServerTLSKey:  "path/to/key",
+			},
+			expectedErrors: []string{"both ServerTLSCert and ServerTLSKey must be set together"},
+		},
+		{
+			name: "TLSTimeout cannot be negative",
+			config: NATSTransportConfig{
+				NodeID:           "nodeID",
+				Orchestrators:    []string{"orch1", "orch2"},
+				AuthSecret:       "sekret",
+				Port:             1234,
+				ServerTLSKey:     "path/to/key",
+				ServerTLSCert:    "path/to/cert",
+				ServerTLSTimeout: -1,
+			},
+			expectedErrors: []string{"NATS ServerTLSTimeout must be a positive number, got: -1"},
+		},
 	}
 
 	for _, tt := range tests {

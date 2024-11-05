@@ -44,32 +44,51 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TearDownSuite() {
 }
 
 func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) TestConfigOverrideFileAndFlagAndConfigFlag() {
-	nodeListOutput, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list", "--output=json"})
+	nodeListOutput, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"node",
+			"list",
+			"--output=json",
+		},
+	)
 	s.Require().NoErrorf(err, "Error listing nodes: %q", err)
 
-	unmarshalledOutput, err := s.unmarshalJSONString(nodeListOutput, JSONArray)
-	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
+	output, err := s.convertStringToDynamicJSON(nodeListOutput)
+	s.Require().NoError(err)
 
-	unmarshalledOutputArray := unmarshalledOutput.([]interface{})
-	s.Require().Equalf(1, len(unmarshalledOutputArray), "There should be only one node, but actual count is: %d", len(unmarshalledOutputArray))
+	nodeList, err := output.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(1, len(nodeList.Array()))
 
-	nodeInfo := unmarshalledOutputArray[0].(map[string]interface{})["Info"].(map[string]interface{})
-	nodeType := nodeInfo["NodeType"].(string)
-	s.Require().Equalf("Requester", nodeType, "Expected node to be an orchestrator, but actual is: %s", nodeType)
+	nodeInfo, err := output.Query("$[0].Info.NodeType")
+	s.Require().NoError(err)
+	s.Require().Equal("Requester", nodeInfo.String())
 
-	nodeLabels := nodeInfo["Labels"].(map[string]interface{})
-	s.Require().Equalf("label1Value", nodeLabels["label1"].(string), "Expected label1 to be label1Value, but actual is: %s", nodeLabels["label1"].(string))
-	s.Require().Equalf("Override2Value", nodeLabels["label2"].(string), "Expected label2 to be Override2Value, but actual is: %s", nodeLabels["label2"].(string))
+	label1Value, err := output.Query("$[0].Info.Labels.label1")
+	s.Require().NoError(err)
+	s.Require().Equal("label1Value", label1Value.String())
+	label2Value, err := output.Query("$[0].Info.Labels.label2")
+	s.Require().NoError(err)
+	s.Require().Equal("Override2Value", label2Value.String())
 
 	// Query WebUI Status
-	agentConfigOutput, err := s.executeCommandInDefaultJumpbox([]string{"curl", "http://bacalhau-orchestrator-node:1234/api/v1/agent/config"})
-	s.Require().NoErrorf(err, "Error getting orchestrator agent config: %q", err)
+	agentConfigOutput, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"agent",
+			"config",
+			"--output=json",
+		},
+	)
+	s.Require().NoError(err)
 
-	unmarshalledAgentOutput, err := s.unmarshalJSONString(agentConfigOutput, JSONObject)
-	s.Require().NoErrorf(err, "Error unmarshalling response: %q", err)
+	agentConfigJSON, err := s.convertStringToDynamicJSON(agentConfigOutput)
+	s.Require().NoError(err)
 
-	webuiEnabled := unmarshalledAgentOutput.(map[string]interface{})["config"].(map[string]interface{})["WebUI"].(map[string]interface{})["Enabled"].(bool)
-	s.Require().Truef(webuiEnabled, "Expected orchestrator to be enabled, got: %t", webuiEnabled)
+	webUIEnabled, err := agentConfigJSON.Query("$.WebUI.Enabled")
+	s.Require().NoError(err)
+	s.Require().True(webUIEnabled.Bool())
 }
 
 func TestOrchestratorConfigOverrideAndFlagAndConfigFlagSuite(t *testing.T) {
