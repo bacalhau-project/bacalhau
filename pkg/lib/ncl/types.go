@@ -36,10 +36,15 @@ type MessageSerDe interface {
 	Deserialize(rawMessage *RawMessage, payloadType reflect.Type) (*Message, error)
 }
 
+// PublishRequest encapsulates the parameters needed to publish a message.
+// Only one of Subject or SubjectPrefix should be set, not both.
 type PublishRequest struct {
-	Message       *Message
-	Subject       string
-	SubjectPrefix string
+    // Message is the payload to be published (required)
+    Message       *Message
+    // Subject is the exact NATS subject to publish to
+    Subject       string
+    // SubjectPrefix is used to construct the final subject by appending additional information
+    SubjectPrefix string
 }
 
 // NewPublishRequest creates a new PublishRequest
