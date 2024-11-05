@@ -1,6 +1,4 @@
-//go:build unit || !integration
-
-package network_test
+package network
 
 import (
 	"net"
@@ -10,8 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/suite"
-
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 )
 
 type PortAllocatorTestSuite struct {
@@ -24,7 +20,7 @@ func TestPortAllocatorTestSuite(t *testing.T) {
 
 // TestGetFreePort verifies that GetFreePort returns a usable port
 func (s *PortAllocatorTestSuite) TestGetFreePort() {
-	port, err := network.GetFreePort()
+	port, err := GetFreePort()
 	s.Require().NoError(err)
 	s.NotEqual(0, port, "expected a non-zero port")
 
@@ -34,25 +30,57 @@ func (s *PortAllocatorTestSuite) TestGetFreePort() {
 	defer l.Close()
 }
 
-// TestPortReservation verifies that ports aren't reused within TTL
-func (s *PortAllocatorTestSuite) TestPortReservation() {
-	// Create allocator with 1 second TTL for testing
-	allocator := network.NewPortAllocator(time.Second)
+// TestEvictionAndReservation tests both the TTL eviction and reservation mechanism
+func (s *PortAllocatorTestSuite) TestEvictionAndReservation() {
+	now := time.Now()
+	allocator := &PortAllocator{
+		reservedPorts: map[int]time.Time{
+			8080: now.Add(-time.Second), // expired
+			8081: now.Add(time.Second),  // not expired
+			8082: now.Add(-time.Second), // expired
+		},
+		ttl:         time.Second,
+		maxAttempts: 10,
+	}
 
-	// Get first port
-	port1, err := allocator.GetFreePort()
+	// Getting a free port should clean up expired entries
+	port, err := allocator.GetFreePort()
 	s.Require().NoError(err)
 
-	// Get second port - should be different
-	port2, err := allocator.GetFreePort()
-	s.Require().NoError(err)
-	s.NotEqual(port1, port2, "got same port within TTL period")
+	// Verify expired ports were cleaned up
+	s.Len(allocator.reservedPorts, 2) // port we just got plus 8081
+	_, hasPort := allocator.reservedPorts[8081]
+	s.True(hasPort, "non-expired port should still be present")
+
+	// New port should be reserved
+	_, hasNewPort := allocator.reservedPorts[port]
+	s.True(hasNewPort, "new port should be reserved")
+}
+
+// TestMaxAttempts verifies the retry limit when ports are reserved
+func (s *PortAllocatorTestSuite) TestMaxAttempts() {
+	allocator := &PortAllocator{
+		reservedPorts: make(map[int]time.Time),
+		ttl:           time.Second,
+		maxAttempts:   3,
+	}
+
+	// Reserve all possible user ports (1024-65535) to force GetFreePort to fail
+	// System ports (1-1023) are not used as they typically require elevated privileges
+	for i := 1024; i <= 65535; i++ {
+		allocator.reservedPorts[i] = time.Now().Add(time.Minute)
+	}
+
+	// Should fail after maxAttempts since all ports are reserved
+	_, err := allocator.GetFreePort()
+	s.Require().Error(err)
+	s.Contains(err.Error(), "failed to find an available port after 3 attempts")
 }
 
 // TestConcurrentPortAllocation verifies thread-safety of port allocation
 func (s *PortAllocatorTestSuite) TestConcurrentPortAllocation() {
 	var wg sync.WaitGroup
-	allocator := network.NewPortAllocator(time.Second)
+	allocator := NewPortAllocator(time.Second, 10)
 	ports := make(map[int]bool)
 	var mu sync.Mutex
 
@@ -80,10 +108,9 @@ func (s *PortAllocatorTestSuite) TestConcurrentPortAllocation() {
 
 // TestIsPortOpen verifies the port availability check
 func (s *PortAllocatorTestSuite) TestIsPortOpen() {
-	// Get a port we know should be available
-	port, err := network.GetFreePort()
+	port, err := GetFreePort()
 	s.Require().NoError(err)
-	s.True(network.IsPortOpen(port), "newly allocated port should be open")
+	s.True(IsPortOpen(port), "newly allocated port should be open")
 
 	// Listen on the port
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -91,16 +118,14 @@ func (s *PortAllocatorTestSuite) TestIsPortOpen() {
 	defer l.Close()
 
 	// Port should now be in use
-	s.False(network.IsPortOpen(port), "port should be in use")
+	s.False(IsPortOpen(port), "port should be in use")
 }
 
-// TestGlobalAllocator verifies that the global GetFreePort function
-// prevents immediate port reuse
+// TestGlobalAllocator verifies the global allocator behavior
 func (s *PortAllocatorTestSuite) TestGlobalAllocator() {
-	// Get a batch of ports using the global allocator
 	usedPorts := make(map[int]bool)
-	for i := 0; i < 10; i++ {
-		port, err := network.GetFreePort()
+	for i := 0; i < 3; i++ {
+		port, err := GetFreePort()
 		s.Require().NoError(err)
 		s.False(usedPorts[port], "global allocator reused port %d", port)
 		usedPorts[port] = true

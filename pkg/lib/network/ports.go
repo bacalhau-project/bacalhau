@@ -1,13 +1,17 @@
 package network
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 )
 
-const defaultPortAllocatorTTL = 5 * time.Second
+const (
+	defaultPortAllocatorTTL = 5 * time.Second
+	defaultMaxAttempts      = 10
+)
 
 // PortAllocator manages thread-safe allocation of network ports with a time-based reservation system.
 // Once a port is allocated, it won't be reallocated until after the TTL expires, helping prevent
@@ -16,19 +20,25 @@ type PortAllocator struct {
 	mu            sync.Mutex
 	reservedPorts map[int]time.Time
 	ttl           time.Duration
+	maxAttempts   uint
 }
 
 var (
 	// globalAllocator is the package-level port allocator instance used by GetFreePort
-	globalAllocator = NewPortAllocator(defaultPortAllocatorTTL)
+	globalAllocator = NewPortAllocator(defaultPortAllocatorTTL, defaultMaxAttempts)
 )
 
-// NewPortAllocator creates a new PortAllocator instance with the specified TTL.
-// The TTL determines how long a port remains reserved after allocation.
-func NewPortAllocator(ttl time.Duration) *PortAllocator {
+// NewPortAllocator creates a new PortAllocator instance.
+// ttl determines how long a port remains reserved after allocation.
+// maxAttempts limits how many times we'll try to find an unreserved port before giving up.
+func NewPortAllocator(ttl time.Duration, maxAttempts uint) *PortAllocator {
+	if maxAttempts == 0 {
+		maxAttempts = defaultMaxAttempts
+	}
 	return &PortAllocator{
 		reservedPorts: make(map[int]time.Time),
 		ttl:           ttl,
+		maxAttempts:   maxAttempts,
 	}
 }
 
@@ -41,30 +51,33 @@ func GetFreePort() (int, error) {
 
 // GetFreePort returns an available port and reserves it for the duration of the TTL.
 // If a port is already reserved but its TTL has expired, it may be returned if it's
-// still available on the system.
+// still available on the system. Returns error if unable to find an available port
+// after maxAttempts tries.
 func (pa *PortAllocator) GetFreePort() (int, error) {
 	pa.mu.Lock()
 	defer pa.mu.Unlock()
 
-	port, err := getFreePortFromSystem()
-	if err != nil {
-		return 0, err
-	}
-
-	// Keep trying until we find a port that isn't reserved or has expired reservation
+	// Clean up expired reservations eagerly to prevent memory growth
 	now := time.Now()
-	for {
-		if expiration, reserved := pa.reservedPorts[port]; !reserved || now.After(expiration) {
-			break
-		}
-		port, err = getFreePortFromSystem()
-		if err != nil {
-			return 0, err
+	for port, expiration := range pa.reservedPorts {
+		if now.After(expiration) {
+			delete(pa.reservedPorts, port)
 		}
 	}
 
-	pa.reservedPorts[port] = now.Add(pa.ttl)
-	return port, nil
+	for attempts := uint(0); attempts < pa.maxAttempts; attempts++ {
+		port, err := getFreePortFromSystem()
+		if err != nil {
+			return 0, fmt.Errorf("failed to get port from system: %w", err)
+		}
+
+		if _, reserved := pa.reservedPorts[port]; !reserved {
+			pa.reservedPorts[port] = now.Add(pa.ttl)
+			return port, nil
+		}
+	}
+
+	return 0, fmt.Errorf("failed to find an available port after %d attempts", pa.maxAttempts)
 }
 
 // getFreePortFromSystem asks the operating system for an available port by creating
