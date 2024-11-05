@@ -94,3 +94,34 @@ func IsDebugMode() bool {
 	// TODO: #4535 we need to add a flag to the CLI to enable debug mode
 	return os.Getenv("DEBUG") == "true" || zerolog.GlobalLevel() <= zerolog.DebugLevel
 }
+
+// ExtractCSVData extracts CSV data from the output
+func ExtractCSVData(output string) (csvData string, remainingOutput string, err error) {
+	lines := strings.Split(output, "\n")
+
+	if len(lines) == 0 {
+		return "", "", fmt.Errorf("output is empty")
+	}
+
+	// Assume the first line is the header
+	headerIndex := 0
+
+	// Find the index where the CSV data ends
+	endIndex := len(lines)
+	for i, line := range lines[headerIndex+1:] {
+		if strings.TrimSpace(line) == "" {
+			endIndex = headerIndex + 1 + i
+			break
+		}
+	}
+
+	// Extract the CSV lines
+	csvLines := lines[headerIndex:endIndex]
+	csvData = strings.Join(csvLines, "\n")
+
+	// Extract the remaining output
+	remainingLines := lines[endIndex:]
+	remainingOutput = strings.Join(remainingLines, "\n")
+
+	return csvData, remainingOutput, nil
+}
