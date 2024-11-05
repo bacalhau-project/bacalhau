@@ -158,7 +158,8 @@ func (o *ListOptions) run(cmd *cobra.Command, api client.API) error {
 	}
 
 	if response.NextToken != "" {
-		msg := fmt.Sprintf("To fetch more records use `--next-token %s`", response.NextToken)
+		msg := fmt.Sprint("To fetch more records use:")
+		msg += fmt.Sprintf("\n\tbacalhau job list --limit %d --next-token %s", o.Limit, response.NextToken)
 		cmd.Printf("\n%s\n", msg)
 	}
 
