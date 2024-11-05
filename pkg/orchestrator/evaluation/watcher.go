@@ -36,7 +36,7 @@ func (h *WatchHandler) HandleEvent(ctx context.Context, event watcher.Event) err
 		return nil
 	}
 
-	eval, ok := event.Object.(*models.Evaluation)
+	eval, ok := event.Object.(models.Evaluation)
 	if !ok {
 		log.Ctx(ctx).Error().
 			Str("event_type", event.ObjectType).
@@ -44,7 +44,7 @@ func (h *WatchHandler) HandleEvent(ctx context.Context, event watcher.Event) err
 		return nil
 	}
 
-	if err := h.broker.Enqueue(eval); err != nil {
+	if err := h.broker.Enqueue(&eval); err != nil {
 		log.Ctx(ctx).Error().Err(err).
 			Str("evaluation_id", eval.ID).
 			Str("job_id", eval.JobID).

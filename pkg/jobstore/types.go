@@ -132,17 +132,13 @@ type UpdateExecutionRequest struct {
 	ExecutionID string
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
+	Events      []*models.Event
 }
 
 type UpdateJobCondition struct {
 	ExpectedState    models.JobStateType
 	UnexpectedStates []models.JobStateType
 	ExpectedRevision uint64
-}
-
-type ExecutionUpsert struct {
-	Current  *models.Execution
-	Previous *models.Execution
 }
 
 // Validate checks if the condition matches the given job
@@ -164,9 +160,10 @@ func (condition UpdateJobCondition) Validate(job models.Job) error {
 }
 
 type UpdateExecutionCondition struct {
-	ExpectedStates   []models.ExecutionStateType
-	ExpectedRevision uint64
-	UnexpectedStates []models.ExecutionStateType
+	ExpectedStates        []models.ExecutionStateType
+	ExpectedDesiredStates []models.ExecutionDesiredStateType
+	ExpectedRevision      uint64
+	UnexpectedStates      []models.ExecutionStateType
 }
 
 // Validate checks if the condition matches the given execution
@@ -180,7 +177,22 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 			}
 		}
 		if !validState {
-			return NewErrInvalidExecutionState(execution.ID, execution.ComputeState.StateType, condition.ExpectedStates...)
+			return NewErrInvalidExecutionState(
+				execution.ID, execution.ComputeState.StateType, condition.ExpectedStates...)
+		}
+	}
+
+	if len(condition.ExpectedDesiredStates) > 0 {
+		validState := false
+		for _, s := range condition.ExpectedDesiredStates {
+			if s == execution.DesiredState.StateType {
+				validState = true
+				break
+			}
+		}
+		if !validState {
+			return NewErrInvalidExecutionDesiredState(
+				execution.ID, execution.DesiredState.StateType, condition.ExpectedDesiredStates...)
 		}
 	}
 

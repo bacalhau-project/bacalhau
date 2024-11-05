@@ -8,75 +8,73 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
-type CallbackForwarderTestSuite struct {
+type BProtocolDispatcherTestSuite struct {
 	suite.Suite
-	forwarder     *CallbackForwarder
-	mock          compute.CallbackMock
-	bidResult     messages.BidResult
-	runResult     messages.RunResult
-	computeError  messages.ComputeError
+	forwarder     *BProtocolDispatcher
+	mock          CallbackMock
+	bidResult     legacy.BidResult
+	runResult     legacy.RunResult
+	computeError  legacy.ComputeError
 	bidCalled     bool
 	runCalled     bool
 	failureCalled bool
 }
 
-func (suite *CallbackForwarderTestSuite) SetupTest() {
+func (suite *BProtocolDispatcherTestSuite) SetupTest() {
 	suite.bidCalled = false
 	suite.runCalled = false
 	suite.failureCalled = false
 
-	suite.mock = compute.CallbackMock{
-		OnBidCompleteHandler: func(_ context.Context, result messages.BidResult) {
+	suite.mock = CallbackMock{
+		OnBidCompleteHandler: func(_ context.Context, result legacy.BidResult) {
 			suite.bidCalled = true
 			suite.bidResult = result
 		},
-		OnRunCompleteHandler: func(_ context.Context, result messages.RunResult) {
+		OnRunCompleteHandler: func(_ context.Context, result legacy.RunResult) {
 			suite.runCalled = true
 			suite.runResult = result
 		},
-		OnComputeFailureHandler: func(_ context.Context, err messages.ComputeError) {
+		OnComputeFailureHandler: func(_ context.Context, err legacy.ComputeError) {
 			suite.failureCalled = true
 			suite.computeError = err
 		},
 	}
-	suite.forwarder = NewCallbackForwarder(suite.mock)
+	suite.forwarder = NewBProtocolDispatcher(suite.mock)
 }
 
-func (suite *CallbackForwarderTestSuite) createEvent(execution *models.Execution, includeEvent bool) watcher.Event {
+func (suite *BProtocolDispatcherTestSuite) createEvent(execution *models.Execution, includeEvent bool) watcher.Event {
 	var events []*models.Event
 	if includeEvent {
 		events = append(events, &models.Event{})
 	}
 
 	return watcher.Event{
-		Object: store.ExecutionUpsert{
+		Object: models.ExecutionUpsert{
 			Current: execution,
 			Events:  events,
 		},
 	}
 }
 
-func (suite *CallbackForwarderTestSuite) verifyRoutingMetadata(execution *models.Execution, metadata messages.RoutingMetadata) {
+func (suite *BProtocolDispatcherTestSuite) verifyRoutingMetadata(execution *models.Execution, metadata legacy.RoutingMetadata) {
 	suite.Equal(execution.NodeID, metadata.SourcePeerID, "incorrect source peer ID")
-	suite.Equal(execution.Job.Meta[models.MetaRequesterID], metadata.TargetPeerID, "incorrect target peer ID")
+	suite.Equal(execution.Job.OrchestratorID(), metadata.TargetPeerID, "incorrect target peer ID")
 }
 
-func (suite *CallbackForwarderTestSuite) verifyExecutionMetadata(execution *models.Execution, metadata messages.ExecutionMetadata) {
+func (suite *BProtocolDispatcherTestSuite) verifyExecutionMetadata(execution *models.Execution, metadata legacy.ExecutionMetadata) {
 	suite.Equal(execution.ID, metadata.ExecutionID, "incorrect execution ID")
 	suite.Equal(execution.Job.ID, metadata.JobID, "incorrect job ID")
 }
 
-func (suite *CallbackForwarderTestSuite) TestHandleEvent_BidAccepted() {
+func (suite *BProtocolDispatcherTestSuite) TestHandleEvent_BidAccepted() {
 	execution := mock.Execution()
-	execution.Job.Meta[models.MetaRequesterID] = "requester-1"
+	execution.Job.Meta[models.MetaOrchestratorID] = "requester-1"
 	execution.ComputeState.StateType = models.ExecutionStateAskForBidAccepted
 	event := suite.createEvent(execution, true)
 
@@ -91,9 +89,9 @@ func (suite *CallbackForwarderTestSuite) TestHandleEvent_BidAccepted() {
 	suite.verifyExecutionMetadata(execution, suite.bidResult.ExecutionMetadata)
 }
 
-func (suite *CallbackForwarderTestSuite) TestHandleEvent_ExecutionCompleted() {
+func (suite *BProtocolDispatcherTestSuite) TestHandleEvent_ExecutionCompleted() {
 	execution := mock.Execution()
-	execution.Job.Meta[models.MetaRequesterID] = "requester-1"
+	execution.Job.Meta[models.MetaOrchestratorID] = "requester-1"
 	execution.ComputeState.StateType = models.ExecutionStateCompleted
 	execution.PublishedResult = &models.SpecConfig{Type: "myResult"}
 	execution.RunOutput = &models.RunCommandResult{ExitCode: 0}
@@ -111,9 +109,9 @@ func (suite *CallbackForwarderTestSuite) TestHandleEvent_ExecutionCompleted() {
 	suite.verifyExecutionMetadata(execution, suite.runResult.ExecutionMetadata)
 }
 
-func (suite *CallbackForwarderTestSuite) TestHandleEvent_ExecutionFailed() {
+func (suite *BProtocolDispatcherTestSuite) TestHandleEvent_ExecutionFailed() {
 	execution := mock.Execution()
-	execution.Job.Meta[models.MetaRequesterID] = "requester-1"
+	execution.Job.Meta[models.MetaOrchestratorID] = "requester-1"
 	execution.ComputeState.StateType = models.ExecutionStateFailed
 	event := suite.createEvent(execution, true)
 
@@ -127,9 +125,9 @@ func (suite *CallbackForwarderTestSuite) TestHandleEvent_ExecutionFailed() {
 	suite.verifyExecutionMetadata(execution, suite.computeError.ExecutionMetadata)
 }
 
-func (suite *CallbackForwarderTestSuite) TestHandleEvent_UnhandledState() {
+func (suite *BProtocolDispatcherTestSuite) TestHandleEvent_UnhandledState() {
 	execution := mock.Execution()
-	execution.Job.Meta[models.MetaRequesterID] = "requester-1"
+	execution.Job.Meta[models.MetaOrchestratorID] = "requester-1"
 	execution.ComputeState.StateType = models.ExecutionStateNew
 	event := suite.createEvent(execution, false)
 
@@ -140,6 +138,6 @@ func (suite *CallbackForwarderTestSuite) TestHandleEvent_UnhandledState() {
 	suite.False(suite.failureCalled, "failure callback should not be called")
 }
 
-func TestCallbackForwarderTestSuite(t *testing.T) {
-	suite.Run(t, new(CallbackForwarderTestSuite))
+func TestBProtocolDispatcherTestSuite(t *testing.T) {
+	suite.Run(t, new(BProtocolDispatcherTestSuite))
 }

@@ -155,6 +155,7 @@ func NewNode(
 			apiServer,
 			transportLayer,
 			transportLayer.ComputeProxy(),
+			transportLayer.LogstreamServer(),
 			messageSerDeRegistry,
 			metadataStore,
 		)
@@ -184,6 +185,10 @@ func NewNode(
 			return nil, err
 		}
 
+		err = transportLayer.RegisterLogstreamServer(ctx, computeNode.LogstreamServer)
+		if err != nil {
+			return nil, err
+		}
 		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
@@ -193,13 +198,14 @@ func NewNode(
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
-	// Create a node info provider for LibP2P, and specify the default node approval state
+	// Create a node info provider, and specify the default node approval state
 	// of Approved to avoid confusion as approval state is not used for this transport type.
 	nodeInfoProvider := routing.NewNodeStateProvider(routing.NodeStateProviderParams{
 		NodeID:              cfg.NodeID,
 		LabelsProvider:      labelsProvider,
 		BacalhauVersion:     *version.Get(),
 		DefaultNodeApproval: models.NodeMembership.APPROVED,
+		SupportedProtocols:  []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
 	})
 	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
 	if computeNode != nil {
@@ -355,6 +361,7 @@ func createTransport(ctx context.Context, cfg NodeConfig) (*nats_transport.NATST
 		ClusterAdvertisedAddress: cfg.BacalhauConfig.Orchestrator.Cluster.Advertise,
 		IsRequesterNode:          cfg.BacalhauConfig.Orchestrator.Enabled,
 	}
+
 	if cfg.BacalhauConfig.Compute.Enabled && !cfg.BacalhauConfig.Orchestrator.Enabled {
 		config.AuthSecret = cfg.BacalhauConfig.Compute.Auth.Token
 	}

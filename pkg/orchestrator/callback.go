@@ -10,7 +10,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
 type CallbackParams struct {
@@ -36,7 +36,7 @@ func NewCallback(params *CallbackParams) *Callback {
 // /////////////////////////////
 
 // OnBidComplete implements compute.Callback
-func (e *Callback) OnBidComplete(ctx context.Context, response messages.BidResult) {
+func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node received bid response %+v", response)
 
 	var executionEvents []models.Event
@@ -96,7 +96,7 @@ func (e *Callback) OnBidComplete(ctx context.Context, response messages.BidResul
 	}
 }
 
-func (e *Callback) OnRunComplete(ctx context.Context, result messages.RunResult) {
+func (e *Callback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s received RunComplete for execution: %s from %s",
 		e.id, result.ExecutionID, result.SourcePeerID)
 
@@ -165,12 +165,12 @@ func (e *Callback) OnRunComplete(ctx context.Context, result messages.RunResult)
 	}
 }
 
-func (e *Callback) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
+func (e *Callback) OnCancelComplete(ctx context.Context, result legacy.CancelResult) {
 	log.Ctx(ctx).Debug().Msgf("Requester node %s received CancelComplete for execution: %s from %s",
 		e.id, result.ExecutionID, result.SourcePeerID)
 }
 
-func (e *Callback) OnComputeFailure(ctx context.Context, result messages.ComputeError) {
+func (e *Callback) OnComputeFailure(ctx context.Context, result legacy.ComputeError) {
 	log.Ctx(ctx).Debug().Err(result).Msgf("Requester node %s received ComputeFailure for execution: %s from %s",
 		e.id, result.ExecutionID, result.SourcePeerID)
 

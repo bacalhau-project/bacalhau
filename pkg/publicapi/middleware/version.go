@@ -42,7 +42,7 @@ func VersionNotifyLogger(logger *zerolog.Logger, serverVersion semver.Version) e
 
 			defer func() {
 				if notification.Message != "" {
-					logger.WithLevel(zerolog.DebugLevel).
+					logger.WithLevel(zerolog.TraceLevel).
 						Str("ClientID", notification.ClientID).
 						Str("RequestID", notification.RequestID).
 						Str("ClientVersion", notification.ClientVersion).

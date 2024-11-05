@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
@@ -21,7 +20,7 @@ import (
 type BaseEndpointParams struct {
 	ID                string
 	Store             jobstore.Store
-	ComputeProxy      compute.Endpoint
+	LogstreamServer   logstream.Server
 	JobTransformer    transformer.JobTransformer
 	ResultTransformer transformer.ResultTransformer
 }
@@ -29,7 +28,7 @@ type BaseEndpointParams struct {
 type BaseEndpoint struct {
 	id                string
 	store             jobstore.Store
-	computeProxy      compute.Endpoint
+	logstreamServer   logstream.Server
 	jobTransformer    transformer.JobTransformer
 	resultTransformer transformer.ResultTransformer
 }
@@ -38,7 +37,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 	return &BaseEndpoint{
 		id:                params.ID,
 		store:             params.Store,
-		computeProxy:      params.ComputeProxy,
+		logstreamServer:   params.LogstreamServer,
 		jobTransformer:    params.JobTransformer,
 		resultTransformer: params.ResultTransformer,
 	}
@@ -227,16 +226,13 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 		return streamer.Stream(ctx), nil
 	}
 	req := messages.ExecutionLogsRequest{
-		RoutingMetadata: messages.RoutingMetadata{
-			SourcePeerID: e.id,
-			TargetPeerID: execution.NodeID,
-		},
 		ExecutionID: execution.ID,
+		NodeID:      execution.NodeID,
 		Tail:        request.Tail,
 		Follow:      request.Follow,
 	}
 
-	return e.computeProxy.ExecutionLogs(ctx, req)
+	return e.logstreamServer.GetLogStream(ctx, req)
 }
 
 // GetResults returns the results of a job

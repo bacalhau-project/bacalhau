@@ -51,7 +51,7 @@ type Compute struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo
 func NewComputeNode(
 	ctx context.Context,
 	cfg NodeConfig,
@@ -170,9 +170,7 @@ func NewComputeNode(
 		capacityCalculator,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
-		ID:             cfg.NodeID,
 		ExecutionStore: executionStore,
-		LogServer:      logserver,
 	})
 
 	// register debug info providers for the /debug endpoint
@@ -242,13 +240,39 @@ func NewComputeNode(
 	}
 	go managementClient.Start(ctx)
 
-	watcherRegistry, err := setupExecutionWatchers(ctx, executionStore, computeCallback, bufferRunner, bidder)
+	// compute -> orchestrator ncl publisher
+	nclPublisher, err := ncl.NewPublisher(natsConn,
+		ncl.WithPublisherName(cfg.NodeID),
+		ncl.WithPublisherDestinationPrefix(computeOutSubject(cfg.NodeID)),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// orchestrator -> compute ncl subscriber
+	nclSubscriber, err := ncl.NewSubscriber(natsConn,
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
+		ncl.WithSubscriberMessageHandlers(compute.NewMessageHandler(executionStore)),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if err = nclSubscriber.Subscribe(computeInSubscription(cfg.NodeID)); err != nil {
+		return nil, err
+	}
+
+	watcherRegistry, err := setupComputeWatchers(
+		ctx, executionStore, nclPublisher, computeCallback, bufferRunner, bidder)
 	if err != nil {
 		return nil, err
 	}
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
+		if err = nclSubscriber.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to close ncl subscriber")
+		}
 		if err = watcherRegistry.Stop(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to stop watcher registry")
 		}
@@ -353,9 +377,10 @@ func NewBidder(
 	})
 }
 
-func setupExecutionWatchers(
+func setupComputeWatchers(
 	ctx context.Context,
 	executionStore store.ExecutionStore,
+	nclPublisher ncl.Publisher,
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	bidder compute.Bidder,
@@ -370,9 +395,16 @@ func setupExecutionWatchers(
 		return nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
 	}
 
-	// Set up callback forwarder watcher
-	_, err = watcherRegistry.Watch(ctx, computeCallbackForwarderWatcherID,
-		watchers.NewCallbackForwarder(computeCallback),
+	// Set up dispatcher watcher to forward execution events to the orchestrator
+	dispatcher, err := watchers.NewDispatcher(map[models.Protocol]watcher.EventHandler{
+		models.ProtocolBProtocolV2: watchers.NewBProtocolDispatcher(computeCallback),
+		models.ProtocolNCLV1:       watchers.NewNCLDispatcher(nclPublisher),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = watcherRegistry.Watch(ctx, computeToOrchestratorDispatcherWatcherID, dispatcher,
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
 		}),
@@ -380,7 +412,7 @@ func setupExecutionWatchers(
 		watcher.WithMaxRetries(3),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup callback forwarder watcher: %w", err)
+		return nil, fmt.Errorf("failed to setup dispatcher watcher: %w", err)
 	}
 
 	// Set up execution handler watcher

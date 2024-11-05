@@ -93,6 +93,19 @@ func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, ex
 		WithComponent(JobStoreComponent)
 }
 
+func NewErrInvalidExecutionDesiredState(
+	id string, actual models.ExecutionDesiredStateType, expected ...models.ExecutionDesiredStateType) bacerrors.Error {
+	var errorMessage string
+	if len(expected) > 0 {
+		errorMessage = fmt.Sprintf("execution %s is in unexpected state %s", id, actual)
+	} else {
+		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
+	}
+	return bacerrors.New("%s", errorMessage).
+		WithCode(ConflictJobState).
+		WithComponent(JobStoreComponent)
+}
+
 func NewErrInvalidExecutionVersion(id string, actual, expected uint64) bacerrors.Error {
 	return bacerrors.New("execution %s has version %d but expected %d", id, actual, expected).
 		WithCode(ConflictJobVersion).

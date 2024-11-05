@@ -40,7 +40,6 @@ func NewServer(params ServerParams) Server {
 	}
 	return &server{
 		executionStore: params.ExecutionStore,
-		executors:      params.Executors,
 		buffer:         params.Buffer,
 	}
 }

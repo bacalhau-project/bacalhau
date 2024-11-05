@@ -10,6 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
@@ -28,6 +29,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/ranking"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
@@ -64,6 +66,7 @@ func NewRequesterNode(
 	apiServer *publicapi.Server,
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
+	logstreamServer logstream.Server,
 	messageSerDeRegistry *ncl.MessageSerDeRegistry,
 	metadataStore MetadataStore,
 ) (*Requester, error) {
@@ -78,8 +81,6 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	watcherRegistry := watcher.NewRegistry(jobStore.GetEventStore())
-
 	// evaluation broker
 	evalBroker, err := evaluation.NewInMemoryBroker(evaluation.InMemoryBrokerParams{
 		VisibilityTimeout: cfg.BacalhauConfig.Orchestrator.EvaluationBroker.VisibilityTimeout.AsTimeDuration(),
@@ -90,31 +91,11 @@ func NewRequesterNode(
 	}
 	evalBroker.SetEnabled(true)
 
-	// Start watching for evaluation events using latest iterator
-	_, err = watcherRegistry.Watch(ctx, orchestratorEvaluationWatcherID, evaluation.NewWatchHandler(evalBroker),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{jobstore.EventObjectEvaluation},
-			Operations:  []watcher.Operation{watcher.OperationCreate},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
-	}
-
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
 	planners := planner.NewChain(
 		// planner that persist the desired state as defined by the scheduler
 		planner.NewStateUpdater(jobStore),
-
-		// planner that forwards the desired state to the compute nodes,
-		// and updates the observed state if the compute node accepts the desired state
-		planner.NewComputeForwarder(planner.ComputeForwarderParams{
-			ID:             nodeID,
-			ComputeService: computeProxy,
-			JobStore:       jobStore,
-		}),
 
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
@@ -212,7 +193,7 @@ func NewRequesterNode(
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
 		Store:             jobStore,
-		ComputeProxy:      computeProxy,
+		LogstreamServer:   logstreamServer,
 		JobTransformer:    jobTransformers,
 		ResultTransformer: resultTransformers,
 	})
@@ -251,16 +232,42 @@ func NewRequesterNode(
 	)
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
-	// ncl
+	// nclPublisher
+	nclPublisher, err := ncl.NewPublisher(transportLayer.Client(),
+		ncl.WithPublisherName(nodeID),
+		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	watcherRegistry, err := setupOrchestratorWatchers(
+		ctx, nodeID, jobStore, nclPublisher, evalBroker, nodeManager, computeProxy)
+	if err != nil {
+		return nil, err
+	}
+
+	// ncl subscriber
 	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
 		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(heartbeatServer),
+		ncl.WithSubscriberMessageHandlers(orchestrator.NewMessageHandler(jobStore)),
 	)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
 	}
-	err = subscriber.Subscribe(orchestratorHeartbeatSubscription())
+	if err = subscriber.Subscribe(orchestratorInSubscription()); err != nil {
+		return nil, err
+	}
+
+	// ncl heartbeat subscriber
+	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(),
+		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
+		ncl.WithSubscriberMessageHandlers(heartbeatServer),
+	)
 	if err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to create heartbeat ncl subscriber")
+	}
+	if err = heartbeatSubscriber.Subscribe(orchestratorHeartbeatSubscription()); err != nil {
 		return nil, err
 	}
 
@@ -270,6 +277,12 @@ func NewRequesterNode(
 		cleanupErr := subscriber.Close(ctx)
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
+		}
+
+		// close the ncl heartbeat subscriber
+		cleanupErr = heartbeatSubscriber.Close(ctx)
+		if cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl heartbeat subscriber")
 		}
 
 		if cleanupErr = watcherRegistry.Stop(ctx); cleanupErr != nil {
@@ -407,6 +420,74 @@ func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NAT
 		return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
 	}
 	return tracingInfoStore, nil
+}
+
+func setupOrchestratorWatchers(
+	ctx context.Context,
+	nodeID string,
+	jobStore jobstore.Store,
+	nclPublisher ncl.Publisher,
+	evalBroker orchestrator.EvaluationBroker,
+	nodeManager routing.NodeInfoStore,
+	computeProxy compute.Endpoint,
+) (watcher.Registry, error) {
+	watcherRegistry := watcher.NewRegistry(jobStore.GetEventStore())
+
+	// Start watching for evaluation events using latest iterator
+	_, err := watcherRegistry.Watch(ctx, orchestratorEvaluationWatcherID, evaluation.NewWatchHandler(evalBroker),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectEvaluation},
+			Operations:  []watcher.Operation{watcher.OperationCreate},
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
+	}
+
+	// Set up execution logger watcher
+	_, err = watcherRegistry.Watch(ctx, orchestratorExecutionLoggerWatcherID, watchers.NewExecutionLogger(log.Logger),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
+		}),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
+	}
+
+	dispatcher, err := watchers.NewDispatcher(watchers.DispatcherParams{
+		NodeStore: nodeManager,
+		Dispatchers: map[models.Protocol]watcher.EventHandler{
+			models.ProtocolBProtocolV2: watchers.NewBProtocolDispatcher(watchers.BProtocolDispatcherParams{
+				ID:             nodeID,
+				ComputeService: computeProxy,
+				JobStore:       jobStore,
+			}),
+			models.ProtocolNCLV1: watchers.NewNCLDispatcher(watchers.NCLDispatcherParams{
+				Publisher: nclPublisher,
+				SubjectFn: orchestratorOutSubjectPrefix,
+				JobStore:  jobStore,
+			}),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add checkpointing or else events will be missed
+	_, err = watcherRegistry.Watch(ctx, orchestratorToComputeDispatcherWatcherID, dispatcher,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, err
+	}
+
+	return watcherRegistry, nil
 }
 
 func (r *Requester) cleanup(ctx context.Context) {

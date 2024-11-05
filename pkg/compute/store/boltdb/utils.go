@@ -54,12 +54,3 @@ func stateBucketKey(execution *models.Execution) []byte {
 func stateBucketKeyStr(execution *models.Execution) string {
 	return execution.ComputeState.StateType.String()
 }
-
-// toPtrSlice converts a slice of type T to a slice of pointers to T
-func toPtrSlice[T any](s []T) []*T {
-	ptrs := make([]*T, len(s))
-	for i, v := range s {
-		ptrs[i] = &v
-	}
-	return ptrs
-}

@@ -413,7 +413,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 			PublishedResult: publishedResult,
 			RunOutput:       result,
 		},
-		Events: []models.Event{*ExecCompletedEvent()},
+		Events: []*models.Event{ExecCompletedEvent()},
 	}); err != nil {
 		return err
 	}
@@ -460,7 +460,7 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(err.Error()),
 		},
-		Events: []models.Event{*models.NewEvent(topic).WithError(err)},
+		Events: []*models.Event{models.NewEvent(topic).WithError(err)},
 	})
 
 	if updateError != nil {

@@ -115,7 +115,10 @@ func (w *watcher) Start() {
 	ctx, w.cancel = context.WithCancel(context.Background())
 	w.stopped = make(chan struct{}, 1)
 	w.state = StateRunning
-	log.Ctx(ctx).Debug().Str("watcher_id", w.ID()).Str("starting_at", w.nextEventIterator.String()).
+	log.Ctx(ctx).Debug().
+		Str("watcher_id", w.ID()).
+		Str("starting_at", w.nextEventIterator.String()).
+		Strs("object_types", w.options.filter.ObjectTypes).
 		Msg("starting watcher")
 	w.mu.Unlock()
 
@@ -159,6 +162,7 @@ func (w *watcher) fetchWithBackoff(ctx context.Context) (*GetEventsResponse, err
 	backoff := w.options.initialBackoff
 	for {
 		response, err := w.store.GetEvents(ctx, GetEventsRequest{
+			WatcherID:     w.ID(),
 			EventIterator: w.nextEventIterator,
 			Limit:         w.options.batchSize,
 			Filter:        w.options.filter,

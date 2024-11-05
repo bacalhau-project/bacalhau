@@ -4,21 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/nats/stream"
-)
-
-const (
-	// asyncRequestChanLen is the channel length for buffering asynchronous results.
-	asyncRequestChanLen = 8
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
 type ComputeProxyParams struct {
@@ -29,48 +21,37 @@ type ComputeProxyParams struct {
 // to a local compute node if the target peer ID is the same as the local host, and a LocalEndpoint implementation
 // is provided.
 type ComputeProxy struct {
-	conn            *nats.Conn
-	streamingClient *stream.ConsumerClient
+	conn *nats.Conn
 }
 
 func NewComputeProxy(params ComputeProxyParams) (*ComputeProxy, error) {
-	sc, err := stream.NewConsumerClient(stream.ConsumerClientParams{
-		Conn: params.Conn,
-		Config: stream.StreamConsumerClientConfig{
-			StreamCancellationBufferDuration: 5 * time.Second, //nolint:mnd
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
 	proxy := &ComputeProxy{
-		conn:            params.Conn,
-		streamingClient: sc,
+		conn: params.Conn,
 	}
 	return proxy, nil
 }
 
-func (p *ComputeProxy) AskForBid(ctx context.Context, request messages.AskForBidRequest) (messages.AskForBidResponse, error) {
-	return proxyRequest[messages.AskForBidRequest, messages.AskForBidResponse](
-		ctx, p.conn, &BaseRequest[messages.AskForBidRequest]{
+func (p *ComputeProxy) AskForBid(ctx context.Context, request legacy.AskForBidRequest) (legacy.AskForBidResponse, error) {
+	return proxyRequest[legacy.AskForBidRequest, legacy.AskForBidResponse](
+		ctx, p.conn, &BaseRequest[legacy.AskForBidRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       AskForBid,
 			Body:         request,
 		})
 }
 
-func (p *ComputeProxy) BidAccepted(ctx context.Context, request messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error) {
-	return proxyRequest[messages.BidAcceptedRequest, messages.BidAcceptedResponse](
-		ctx, p.conn, &BaseRequest[messages.BidAcceptedRequest]{
+func (p *ComputeProxy) BidAccepted(ctx context.Context, request legacy.BidAcceptedRequest) (legacy.BidAcceptedResponse, error) {
+	return proxyRequest[legacy.BidAcceptedRequest, legacy.BidAcceptedResponse](
+		ctx, p.conn, &BaseRequest[legacy.BidAcceptedRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       BidAccepted,
 			Body:         request,
 		})
 }
 
-func (p *ComputeProxy) BidRejected(ctx context.Context, request messages.BidRejectedRequest) (messages.BidRejectedResponse, error) {
-	return proxyRequest[messages.BidRejectedRequest, messages.BidRejectedResponse](
-		ctx, p.conn, &BaseRequest[messages.BidRejectedRequest]{
+func (p *ComputeProxy) BidRejected(ctx context.Context, request legacy.BidRejectedRequest) (legacy.BidRejectedResponse, error) {
+	return proxyRequest[legacy.BidRejectedRequest, legacy.BidRejectedResponse](
+		ctx, p.conn, &BaseRequest[legacy.BidRejectedRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       BidRejected,
 			Body:         request,
@@ -78,21 +59,11 @@ func (p *ComputeProxy) BidRejected(ctx context.Context, request messages.BidReje
 }
 
 func (p *ComputeProxy) CancelExecution(
-	ctx context.Context, request messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error) {
-	return proxyRequest[messages.CancelExecutionRequest, messages.CancelExecutionResponse](
-		ctx, p.conn, &BaseRequest[messages.CancelExecutionRequest]{
+	ctx context.Context, request legacy.CancelExecutionRequest) (legacy.CancelExecutionResponse, error) {
+	return proxyRequest[legacy.CancelExecutionRequest, legacy.CancelExecutionResponse](
+		ctx, p.conn, &BaseRequest[legacy.CancelExecutionRequest]{
 			TargetNodeID: request.TargetPeerID,
 			Method:       CancelExecution,
-			Body:         request,
-		})
-}
-
-func (p *ComputeProxy) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (
-	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	return proxyStreamingRequest[messages.ExecutionLogsRequest, models.ExecutionLog](
-		ctx, p.streamingClient, &BaseRequest[messages.ExecutionLogsRequest]{
-			TargetNodeID: request.TargetPeerID,
-			Method:       ExecutionLogs,
 			Body:         request,
 		})
 }
@@ -128,34 +99,6 @@ func proxyRequest[Request any, Response any](
 	}
 
 	return result.ValueOrError()
-}
-
-func proxyStreamingRequest[Request any, Response any](
-	ctx context.Context,
-	client *stream.ConsumerClient,
-	request *BaseRequest[Request]) (
-	<-chan *concurrency.AsyncResult[Response], error) {
-	subject := request.ComputeEndpoint()
-	log.Ctx(ctx).Trace().Msgf("Sending streaming request %+v to subject %s", request.Body, subject)
-
-	// serialize the request object
-	data, err := json.Marshal(request.Body)
-	if err != nil {
-		return nil, fmt.Errorf("%T: failed to marshal request: %w", request.Body, err)
-	}
-	res, err := client.OpenStream(ctx, subject, data)
-	if err != nil {
-		return nil, fmt.Errorf("%T: failed to send request to node %s: %w", request.Body, request.TargetNodeID, err)
-	}
-
-	return concurrency.AsyncChannelTransform[[]byte, Response](ctx, res, asyncRequestChanLen,
-		func(r []byte) (Response, error) {
-			response := new(concurrency.AsyncResult[Response])
-			if err := json.Unmarshal(r, response); err != nil {
-				return *new(Response), fmt.Errorf("%T: failed to decode response from node %s: %w", request.Body, request.TargetNodeID, err)
-			}
-			return response.ValueOrError()
-		}), nil
 }
 
 // Compile-time interface check:

@@ -1,3 +1,4 @@
+//go:generate mockgen --source types.go --destination mocks.go --package routing
 package routing
 
 import (

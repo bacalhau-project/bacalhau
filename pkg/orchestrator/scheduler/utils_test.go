@@ -202,12 +202,12 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 
 	stoppedExecutions := make(map[string]struct{})
 	approvedExecutions := make(map[string]struct{})
-	for _, execution := range plan.UpdatedExecutions {
-		if execution.DesiredState == models.ExecutionDesiredStateStopped {
-			stoppedExecutions[execution.Execution.ID] = struct{}{}
+	for _, update := range plan.UpdatedExecutions {
+		if update.DesiredState == models.ExecutionDesiredStateStopped {
+			stoppedExecutions[update.Execution.ID] = struct{}{}
 		}
-		if execution.DesiredState == models.ExecutionDesiredStateRunning {
-			approvedExecutions[execution.Execution.ID] = struct{}{}
+		if update.DesiredState == models.ExecutionDesiredStateRunning {
+			approvedExecutions[update.Execution.ID] = struct{}{}
 		}
 	}
 

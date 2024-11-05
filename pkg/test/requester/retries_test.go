@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/selection"
@@ -299,7 +298,6 @@ func (s *RetriesSuite) TestRetry() {
 	}
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			ctx := context.Background()
 
 			j := makeBadTargetingJob(s.T(), tc.nodes)
@@ -312,7 +310,7 @@ func (s *RetriesSuite) TestRetry() {
 			s.Require().NoError(err)
 
 			if tc.failed {
-				s.Require().Error(s.stateResolver.Wait(ctx, submittedJob.JobID, scenario.WaitForSuccessfulCompletion()))
+				s.Require().NoError(s.stateResolver.Wait(ctx, submittedJob.JobID, scenario.WaitForUnsuccessfulCompletion()))
 			} else {
 				s.Require().NoError(s.stateResolver.Wait(ctx, submittedJob.JobID, scenario.WaitForSuccessfulCompletion()))
 			}

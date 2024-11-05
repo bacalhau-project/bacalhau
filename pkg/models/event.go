@@ -186,7 +186,7 @@ func (e *Event) GetJobStateIfPresent() (JobStateType, error) {
 // This is instead of the system having a centralized set of known error types
 // and programming in specific behavior in response to them, which is brittle
 // and requires updating all of the error responses when the types change.
-func EventFromError(topic EventTopic, err error) Event {
+func EventFromError(topic EventTopic, err error) *Event {
 	event := NewEvent(topic).WithError(err)
 
 	// if error is bacerrors
@@ -212,5 +212,5 @@ func EventFromError(topic EventTopic, err error) Event {
 			event = event.WithFailsExecution(hasFailsExecution.FailsExecution())
 		}
 	}
-	return *event
+	return event
 }

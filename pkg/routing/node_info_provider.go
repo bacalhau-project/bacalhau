@@ -11,6 +11,7 @@ type NodeStateProviderParams struct {
 	LabelsProvider      models.LabelsProvider
 	BacalhauVersion     models.BuildVersionInfo
 	DefaultNodeApproval models.NodeMembershipState
+	SupportedProtocols  []models.Protocol
 }
 
 type NodeStateProvider struct {
@@ -19,6 +20,7 @@ type NodeStateProvider struct {
 	bacalhauVersion     models.BuildVersionInfo
 	nodeInfoDecorators  []models.NodeInfoDecorator
 	defaultNodeApproval models.NodeMembershipState
+	supportedProtocol   []models.Protocol
 }
 
 func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
@@ -28,6 +30,7 @@ func NewNodeStateProvider(params NodeStateProviderParams) *NodeStateProvider {
 		bacalhauVersion:     params.BacalhauVersion,
 		nodeInfoDecorators:  make([]models.NodeInfoDecorator, 0),
 		defaultNodeApproval: params.DefaultNodeApproval,
+		supportedProtocol:   params.SupportedProtocols,
 	}
 
 	// If we were not given a default approval, we default to PENDING
@@ -45,10 +48,11 @@ func (n *NodeStateProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoD
 
 func (n *NodeStateProvider) GetNodeState(ctx context.Context) models.NodeState {
 	info := models.NodeInfo{
-		NodeID:          n.nodeID,
-		BacalhauVersion: n.bacalhauVersion,
-		Labels:          n.labelsProvider.GetLabels(ctx),
-		NodeType:        models.NodeTypeRequester,
+		NodeID:             n.nodeID,
+		BacalhauVersion:    n.bacalhauVersion,
+		Labels:             n.labelsProvider.GetLabels(ctx),
+		NodeType:           models.NodeTypeRequester,
+		SupportedProtocols: n.supportedProtocol,
 	}
 	for _, decorator := range n.nodeInfoDecorators {
 		info = decorator.DecorateNodeInfo(ctx, info)

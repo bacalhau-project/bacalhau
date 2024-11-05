@@ -57,7 +57,7 @@ func RunStoreSuite(t *testing.T, creator StoreCreator) {
 }
 
 func (s *StoreSuite) TestCreateExecution() {
-	events := []models.Event{{Topic: "TestEvent"}}
+	events := []*models.Event{{Topic: "TestEvent"}}
 	err := s.executionStore.CreateExecution(s.ctx, *s.execution, events...)
 	s.Require().NoError(err)
 
@@ -96,7 +96,7 @@ func (s *StoreSuite) TestUpdateExecution() {
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(newState),
 		},
-		Events: []models.Event{{Topic: "UpdateEvent"}},
+		Events: []*models.Event{{Topic: "UpdateEvent"}},
 	}
 	err = s.executionStore.UpdateExecutionState(s.ctx, updateRequest)
 	s.Require().NoError(err)
@@ -178,7 +178,7 @@ func (s *StoreSuite) verifyWatcherExecutionEvent(event watcher.Event,
 	execution *models.Execution,
 	previousExecution models.Execution) {
 	s.Equal(expectedOperation, event.Operation)
-	executionUpsert, ok := event.Object.(store.ExecutionUpsert)
+	executionUpsert, ok := event.Object.(models.ExecutionUpsert)
 	s.True(ok)
 	s.Equal(execution, executionUpsert.Current)
 

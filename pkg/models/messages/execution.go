@@ -5,33 +5,20 @@ import (
 )
 
 type CancelExecutionRequest struct {
-	RoutingMetadata
-	ExecutionID   string
-	Justification string
-}
-
-type CancelExecutionResponse struct {
-	ExecutionMetadata
+	BaseRequest
+	ExecutionID string
 }
 
 type RunResult struct {
-	RoutingMetadata
-	ExecutionMetadata
+	BaseResponse
 	PublishResult    *models.SpecConfig
 	RunCommandResult *models.RunCommandResult
 }
 
-type CancelResult struct {
-	RoutingMetadata
-	ExecutionMetadata
-}
-
 type ComputeError struct {
-	RoutingMetadata
-	ExecutionMetadata
-	Event models.Event
+	BaseResponse
 }
 
 func (e ComputeError) Error() string {
-	return e.Event.Message
+	return e.Message()
 }

@@ -959,21 +959,31 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 		s.verifyExecutionEvent(event, watcher.OperationCreate, testExec.ID, models.ExecutionStateNew, models.ExecutionStateUndefined)
 		lastSeqNum = event.SeqNum
 
+		// Test multiple events in execution history
+		s.clock.Add(1 * time.Second)
+		events := []models.Event{
+			*models.NewEvent("test1").WithMessage("message1"),
+			*models.NewEvent("test2").WithMessage("message2"),
+		}
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, testJob.ID, testExec.ID, events...))
+
 		// Update execution state
 		s.clock.Add(1 * time.Second)
 		testExec.ComputeState.StateType = models.ExecutionStateAskForBid
+		updateEvent := models.NewEvent("update").WithMessage("state change")
 		s.Require().NoError(s.store.UpdateExecution(s.ctx, jobstore.UpdateExecutionRequest{
 			ExecutionID: testExec.ID,
 			Condition: jobstore.UpdateExecutionCondition{
 				ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 			},
 			NewValues: testExec,
+			Events:    []*models.Event{updateEvent},
 		}))
 
-		// Verify update event
+		// Verify update event has events included
 		event = s.getLastEvent(lastSeqNum, jobstore.EventObjectExecutionUpsert)
 		s.verifyExecutionEvent(event, watcher.OperationUpdate, testExec.ID,
-			models.ExecutionStateAskForBid, models.ExecutionStateNew)
+			models.ExecutionStateAskForBid, models.ExecutionStateNew, updateEvent)
 		lastSeqNum = event.SeqNum
 	})
 
@@ -1015,11 +1025,12 @@ func (s *BoltJobstoreTestSuite) verifyExecutionEvent(
 	execID string,
 	state models.ExecutionStateType,
 	previousState models.ExecutionStateType,
+	events ...*models.Event,
 ) {
 	s.Equal(expectedOp, event.Operation)
 	s.Equal(jobstore.EventObjectExecutionUpsert, event.ObjectType)
 
-	upsertEvent, ok := event.Object.(jobstore.ExecutionUpsert)
+	upsertEvent, ok := event.Object.(models.ExecutionUpsert)
 	s.Require().True(ok)
 	s.Equal(execID, upsertEvent.Current.ID)
 	s.Equal(state, upsertEvent.Current.ComputeState.StateType)
@@ -1029,6 +1040,11 @@ func (s *BoltJobstoreTestSuite) verifyExecutionEvent(
 		s.Equal(previousState, upsertEvent.Previous.ComputeState.StateType)
 	} else {
 		s.Nil(upsertEvent.Previous)
+	}
+
+	s.Require().Equal(len(events), len(upsertEvent.Events))
+	for i := range events {
+		s.Require().Equal(events[i].Message, upsertEvent.Events[i].Message)
 	}
 }
 
@@ -1040,8 +1056,8 @@ func (s *BoltJobstoreTestSuite) verifyEvaluationEvent(
 	s.Equal(expectedOp, event.Operation)
 	s.Equal(jobstore.EventObjectEvaluation, event.ObjectType)
 
-	evalObj, ok := event.Object.(*models.Evaluation)
-	s.Require().True(ok)
+	evalObj, ok := event.Object.(models.Evaluation)
+	s.Require().True(ok, "expected object to be an evaluation, but got %T", event.Object)
 	s.Equal(expectedEval.ID, evalObj.ID)
 	s.Equal(expectedEval.JobID, evalObj.JobID)
 }

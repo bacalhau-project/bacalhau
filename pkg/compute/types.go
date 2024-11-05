@@ -4,9 +4,9 @@ package compute
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
 // Endpoint is the frontend and entry point to the compute node. Requesters, whether through API, CLI or other means, do
@@ -14,16 +14,14 @@ import (
 type Endpoint interface {
 	// AskForBid asks for a bid for a given job, which will assign executionID to the job and return a bid
 	// is interested in bidding on.
-	AskForBid(context.Context, messages.AskForBidRequest) (messages.AskForBidResponse, error)
+	AskForBid(context.Context, legacy.AskForBidRequest) (legacy.AskForBidResponse, error)
 	// BidAccepted accepts a bid for a given executionID, which will trigger executing the job in the backend.
 	// The execution can be synchronous or asynchronous, depending on the backend implementation.
-	BidAccepted(context.Context, messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error)
+	BidAccepted(context.Context, legacy.BidAcceptedRequest) (legacy.BidAcceptedResponse, error)
 	// BidRejected rejects a bid for a given executionID.
-	BidRejected(context.Context, messages.BidRejectedRequest) (messages.BidRejectedResponse, error)
+	BidRejected(context.Context, legacy.BidRejectedRequest) (legacy.BidRejectedResponse, error)
 	// CancelExecution cancels a job for a given executionID.
-	CancelExecution(context.Context, messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error)
-	// ExecutionLogs returns the address of a suitable log server
-	ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error)
+	CancelExecution(context.Context, legacy.CancelExecutionRequest) (legacy.CancelExecutionResponse, error)
 }
 
 // Executor Backend service that is responsible for running and publishing executions.
@@ -37,9 +35,9 @@ type Executor interface {
 
 // Callback Callbacks are used to notify the caller of the result of a job execution.
 type Callback interface {
-	OnBidComplete(ctx context.Context, result messages.BidResult)
-	OnRunComplete(ctx context.Context, result messages.RunResult)
-	OnComputeFailure(ctx context.Context, err messages.ComputeError)
+	OnBidComplete(ctx context.Context, result legacy.BidResult)
+	OnRunComplete(ctx context.Context, result legacy.RunResult)
+	OnComputeFailure(ctx context.Context, err legacy.ComputeError)
 }
 
 // ManagementEndpoint is the transport-based interface for compute nodes to
