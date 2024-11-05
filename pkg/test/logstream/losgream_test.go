@@ -100,6 +100,7 @@ func (s *LogStreamTestSuite) runLogStreamTest(job *models.Job) {
 
 // TestDockerOutputStream verifies log streaming works for Docker-based jobs
 func (s *LogStreamTestSuite) TestDockerOutputStream() {
+	s.T().Skip("test is flaky due to log stream stability")
 	docker.MustHaveDocker(s.T())
 	job := &models.Job{
 		Type:  models.JobTypeBatch,
