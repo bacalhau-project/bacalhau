@@ -48,10 +48,15 @@ func (d *Dispatcher) HandleEvent(ctx context.Context, event watcher.Event) error
 }
 
 func (d *Dispatcher) determineProtocol(execution *models.Execution) models.Protocol {
-	protocol, ok := execution.Job.Meta[models.MetaOrchestratorProtocol]
-	if !ok {
-		// TODO: Remove this once all jobs have the protocol set when v1.5 is no longer supported
-		return models.ProtocolBProtocolV2 // Default to legacy protocol
-	}
-	return models.Protocol(protocol)
+    if execution.Job == nil || execution.Job.Meta == nil {
+        // Handle the nil Job or Meta appropriately
+        // Return default protocol or an error
+        return models.ProtocolBProtocolV2 // Default to legacy protocol
+    }
+    protocol, ok := execution.Job.Meta[models.MetaOrchestratorProtocol]
+    if !ok {
+        // TODO: Remove this once all jobs have the protocol set when v1.5 is no longer supported
+        return models.ProtocolBProtocolV2 // Default to legacy protocol
+    }
+    return models.Protocol(protocol)
 }
