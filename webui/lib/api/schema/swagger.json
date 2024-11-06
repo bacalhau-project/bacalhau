@@ -188,25 +188,6 @@
                 }
             }
         },
-        "/api/v1/healthz": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "healthz",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/types.HealthInfo"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/id": {
             "get": {
                 "produces": [
@@ -1806,6 +1787,13 @@
                 },
                 "NodeType": {
                     "$ref": "#/definitions/models.NodeType"
+                },
+                "SupportedProtocols": {
+                    "description": "SupportedProtocols indicates which communication protocols this node supports",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Protocol"
+                    }
                 }
             }
         },
@@ -1854,6 +1842,17 @@
                 "nodeTypeUndefined",
                 "NodeTypeRequester",
                 "NodeTypeCompute"
+            ]
+        },
+        "models.Protocol": {
+            "type": "string",
+            "enum": [
+                "ncl/v1",
+                "bprotocol/v2"
+            ],
+            "x-enum-varnames": [
+                "ProtocolNCLV1",
+                "ProtocolBProtocolV2"
             ]
         },
         "models.Resources": {
@@ -2230,6 +2229,7 @@
                     "type": "string"
                 },
                 "DisableAnalytics": {
+                    "description": "DisableAnalytics, when true, disables sharing anonymous analytics data with the Bacalhau development team",
                     "type": "boolean"
                 },
                 "Engines": {
@@ -2370,6 +2370,14 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "TLS": {
+                    "description": "TLS specifies the TLS related configuration on the compute node when connecting with the orchestrator.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.ComputeTLS"
+                        }
+                    ]
                 }
             }
         },
@@ -2378,6 +2386,15 @@
             "properties": {
                 "Token": {
                     "description": "Token specifies the key for compute nodes to be able to access the orchestrator.",
+                    "type": "string"
+                }
+            }
+        },
+        "types.ComputeTLS": {
+            "type": "object",
+            "properties": {
+                "CACert": {
+                    "description": "CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.",
                     "type": "string"
                 }
             }
@@ -2468,32 +2485,7 @@
             }
         },
         "types.FeatureFlags": {
-            "type": "object",
-            "properties": {
-                "ExecTranslation": {
-                    "description": "ExecTranslation enables the execution translation feature.",
-                    "type": "boolean"
-                }
-            }
-        },
-        "types.FreeSpace": {
-            "type": "object",
-            "properties": {
-                "root": {
-                    "$ref": "#/definitions/types.MountStatus"
-                },
-                "tmp": {
-                    "$ref": "#/definitions/types.MountStatus"
-                }
-            }
-        },
-        "types.HealthInfo": {
-            "type": "object",
-            "properties": {
-                "FreeSpace": {
-                    "$ref": "#/definitions/types.FreeSpace"
-                }
-            }
+            "type": "object"
         },
         "types.Heartbeat": {
             "type": "object",
@@ -2666,20 +2658,6 @@
                 }
             }
         },
-        "types.MountStatus": {
-            "type": "object",
-            "properties": {
-                "All": {
-                    "type": "integer"
-                },
-                "Free": {
-                    "type": "integer"
-                },
-                "Used": {
-                    "type": "integer"
-                }
-            }
-        },
         "types.NodeManager": {
             "type": "object",
             "properties": {
@@ -2731,6 +2709,14 @@
                 },
                 "Scheduler": {
                     "$ref": "#/definitions/types.Scheduler"
+                },
+                "TLS": {
+                    "description": "TLS specifies the TLS related configuration on the orchestrator for when compute nodes need to connect.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.OrchestratorTLS"
+                        }
+                    ]
                 }
             }
         },
@@ -2740,6 +2726,27 @@
                 "Token": {
                     "description": "Token specifies the key for compute nodes to be able to access the orchestrator",
                     "type": "string"
+                }
+            }
+        },
+        "types.OrchestratorTLS": {
+            "type": "object",
+            "properties": {
+                "CACert": {
+                    "description": "CACert specifies the CA file path that the orchestrator node trusts when connecting to NATS server.",
+                    "type": "string"
+                },
+                "ServerCert": {
+                    "description": "ServerCert specifies the certificate file path given to NATS server to serve TLS connections.",
+                    "type": "string"
+                },
+                "ServerKey": {
+                    "description": "ServerKey specifies the private key file path given to NATS server to serve TLS connections.",
+                    "type": "string"
+                },
+                "ServerTimeout": {
+                    "description": "ServerTimeout specifies the TLS timeout, in seconds, set on the NATS server.",
+                    "type": "integer"
                 }
             }
         },

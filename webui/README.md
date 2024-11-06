@@ -3,26 +3,36 @@
 Install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
 Run the development server:
 
 ```bash
-npm run dev
+yarn dev
 ```
 
-Generate API:
+## API Changes
+
+Generate new swagger schema:
 ```bash
-npm run generate-api
+# Run from project root
+make generate-swagger
 ```
+
+Update WebUI generated API:
+```bash
+yarn generate-api
+```
+
+## Testing
 
 Test the WebUI with active Bacalhau nodes:
 ```bash
 # Run from project root
 make build-webui
 make build-dev
-bacalhau serve --node-type=requester,compute --web-ui
+bacalhau serve --compute --orchestrator -c WebUI.Enabled
 ```
 
 Open [http://localhost:8438](http://localhost:8438) with your browser to see the result.

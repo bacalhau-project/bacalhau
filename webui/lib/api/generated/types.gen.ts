@@ -464,6 +464,10 @@ export type models_NodeInfo = {
      */
     NodeID?: string;
     NodeType?: models_NodeType;
+    /**
+     * SupportedProtocols indicates which communication protocols this node supports
+     */
+    SupportedProtocols?: Array<models_Protocol>;
 };
 
 export type models_NodeMembershipState = {
@@ -480,6 +484,11 @@ export enum models_NodeType {
     nodeTypeUndefined = 0,
     NodeTypeRequester = 1,
     NodeTypeCompute = 2
+}
+
+export enum models_Protocol {
+    ProtocolNCLV1 = 'ncl/v1',
+    ProtocolBProtocolV2 = 'bprotocol/v2'
 }
 
 export type models_Resources = {
@@ -760,6 +769,9 @@ export type types_Bacalhau = {
      * DataDir specifies a location on disk where the bacalhau node will maintain state.
      */
     DataDir?: string;
+    /**
+     * DisableAnalytics, when true, disables sharing anonymous analytics data with the Bacalhau development team
+     */
     DisableAnalytics?: boolean;
     Engines?: types_EngineConfig;
     FeatureFlags?: types_FeatureFlags;
@@ -845,6 +857,10 @@ export type types_Compute = {
      * Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
      */
     Orchestrators?: Array<(string)>;
+    /**
+     * TLS specifies the TLS related configuration on the compute node when connecting with the orchestrator.
+     */
+    TLS?: (types_ComputeTLS);
 };
 
 export type types_ComputeAuth = {
@@ -852,6 +868,13 @@ export type types_ComputeAuth = {
      * Token specifies the key for compute nodes to be able to access the orchestrator.
      */
     Token?: string;
+};
+
+export type types_ComputeTLS = {
+    /**
+     * CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.
+     */
+    CACert?: string;
 };
 
 export type types_DefaultPublisherConfig = {
@@ -913,21 +936,7 @@ export type types_EvaluationBroker = {
     VisibilityTimeout?: number;
 };
 
-export type types_FeatureFlags = {
-    /**
-     * ExecTranslation enables the execution translation feature.
-     */
-    ExecTranslation?: boolean;
-};
-
-export type types_FreeSpace = {
-    root?: types_MountStatus;
-    tmp?: types_MountStatus;
-};
-
-export type types_HealthInfo = {
-    FreeSpace?: types_FreeSpace;
-};
+export type types_FeatureFlags = unknown;
 
 export type types_Heartbeat = {
     /**
@@ -1054,12 +1063,6 @@ export type types_LongRunningTaskDefaultConfig = {
     Resources?: types_ResourcesConfig;
 };
 
-export type types_MountStatus = {
-    All?: number;
-    Free?: number;
-    Used?: number;
-};
-
 export type types_NodeManager = {
     /**
      * DisconnectTimeout specifies how long to wait before considering a node disconnected.
@@ -1096,6 +1099,10 @@ export type types_Orchestrator = {
      */
     Port?: number;
     Scheduler?: types_Scheduler;
+    /**
+     * TLS specifies the TLS related configuration on the orchestrator for when compute nodes need to connect.
+     */
+    TLS?: (types_OrchestratorTLS);
 };
 
 export type types_OrchestratorAuth = {
@@ -1103,6 +1110,25 @@ export type types_OrchestratorAuth = {
      * Token specifies the key for compute nodes to be able to access the orchestrator
      */
     Token?: string;
+};
+
+export type types_OrchestratorTLS = {
+    /**
+     * CACert specifies the CA file path that the orchestrator node trusts when connecting to NATS server.
+     */
+    CACert?: string;
+    /**
+     * ServerCert specifies the certificate file path given to NATS server to serve TLS connections.
+     */
+    ServerCert?: string;
+    /**
+     * ServerKey specifies the private key file path given to NATS server to serve TLS connections.
+     */
+    ServerKey?: string;
+    /**
+     * ServerTimeout specifies the TLS timeout, in seconds, set on the NATS server.
+     */
+    ServerTimeout?: number;
 };
 
 export type types_PublisherTypes = {
@@ -1290,10 +1316,6 @@ export type types_WebUI = {
 export type HomeResponse = (string);
 
 export type HomeError = unknown;
-
-export type HealthzResponse = (types_HealthInfo);
-
-export type HealthzError = unknown;
 
 export type IdResponse = (string);
 
