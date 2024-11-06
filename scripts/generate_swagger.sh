@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+
 PATH_TO_PROJECT_ROOT=$(git rev-parse --show-toplevel)
 SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/swagger"
 WEBUI_PATH="${PATH_TO_PROJECT_ROOT}/webui/lib/api/schema"
