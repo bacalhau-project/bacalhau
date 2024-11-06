@@ -1,4 +1,4 @@
-package ncl
+package envelope
 
 import (
 	"errors"
@@ -8,14 +8,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
-// MessageSerDeRegistry manages the serialization and deserialization of the Payload field
-// in NATS Message structs. It simplifies payload handling in your NCL library by providing:
+// Registry manages the serialization and deserialization of the Payload field
+// in Message structs. It simplifies payload handling in your application by providing:
 //
 // 1. Type Registration: Allows registering custom payload types with unique names.
 // 2. Serialization Management: Handles serialization and deserialization of payloads using different encoding methods.
 // 3. Type Resolution: Provides a mechanism to resolve between type names and their corresponding Go types.
 //
-// The MessageSerDeRegistry adds value to your NATS-based communication library by:
+// The Registry adds value to your application by:
 //
 //   - Automatic Payload Handling: Users can set any registered Go struct as the Message.Payload
 //     without worrying about serialization. The manager handles this based on pre-configuration.
@@ -28,30 +28,27 @@ import (
 //
 //   - Centralized Payload Type Management: Provides a single point of configuration for all
 //     payload types used in the system, simplifying maintenance and reducing code duplication.
-//
-// This abstraction significantly reduces the complexity of working with payload data in NATS messages,
-// allowing developers to focus on business logic rather than payload encoding details.
-type MessageSerDeRegistry struct {
-	nameToType  map[string]reflect.Type // Maps payload type names to their reflect.Type
-	typeToName  map[reflect.Type]string // Maps reflect.Types to their registered names
-	serializers map[string]MessageSerDe // Maps encoding types to their respective MessageSerDe
+type Registry struct {
+	nameToType  map[string]reflect.Type      // Maps payload type names to their reflect.Type
+	typeToName  map[reflect.Type]string      // Maps reflect.Types to their registered names
+	serializers map[string]PayloadSerializer // Maps encoding types to their respective PayloadSerializer
 }
 
 const (
-	// JSONPayloadSerDeType is the identifier for JSON serialization/deserialization
-	JSONPayloadSerDeType = "json"
+	// JSONPayloadType is the identifier for JSON serialization/deserialization
+	JSONPayloadType = "json"
 	// DefaultPayloadEncoding is the default encoding used if none is specified
-	DefaultPayloadEncoding = JSONPayloadSerDeType
+	DefaultPayloadEncoding = JSONPayloadType
 )
 
-// NewMessageSerDeRegistry creates and initializes a new MessageSerDeRegistry
+// NewRegistry creates and initializes a new Registry
 // It sets up the internal maps and registers the default JSON serializer
-func NewMessageSerDeRegistry() *MessageSerDeRegistry {
-	return &MessageSerDeRegistry{
+func NewRegistry() *Registry {
+	return &Registry{
 		nameToType: make(map[string]reflect.Type),
 		typeToName: make(map[reflect.Type]string),
-		serializers: map[string]MessageSerDe{
-			JSONPayloadSerDeType: &JSONMessageSerDe{},
+		serializers: map[string]PayloadSerializer{
+			JSONPayloadType: &JSONPayloadSerializer{},
 		},
 	}
 }
@@ -61,7 +58,7 @@ func NewMessageSerDeRegistry() *MessageSerDeRegistry {
 // Usage:
 //
 //	manager.Register("MyCustomType", MyCustomType{})
-func (r *MessageSerDeRegistry) Register(name string, payload any) error {
+func (r *Registry) Register(name string, payload any) error {
 	err := errors.Join(
 		validate.NotBlank(name, "name cannot be blank"),
 		validate.NotNil(payload, "payload cannot be nil"),
@@ -83,7 +80,7 @@ func (r *MessageSerDeRegistry) Register(name string, payload any) error {
 
 // getType retrieves the reflect.Type for a given payload type name
 // Returns an error if the type is not registered
-func (r *MessageSerDeRegistry) getType(name string) (reflect.Type, error) {
+func (r *Registry) getType(name string) (reflect.Type, error) {
 	t, ok := r.nameToType[name]
 	if !ok {
 		return nil, NewErrUnsupportedMessageType(name)
@@ -93,7 +90,7 @@ func (r *MessageSerDeRegistry) getType(name string) (reflect.Type, error) {
 
 // getName retrieves the registered name for a given payload instance
 // Returns an error if the type is not registered
-func (r *MessageSerDeRegistry) getName(payload any) (string, error) {
+func (r *Registry) getName(payload any) (string, error) {
 	t := reflect.TypeOf(payload)
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -111,7 +108,7 @@ func (r *MessageSerDeRegistry) getName(payload any) (string, error) {
 // Usage:
 //
 //	rawMessage, err := manager.Serialize(message)
-func (r *MessageSerDeRegistry) Serialize(message *Message) (*RawMessage, error) {
+func (r *Registry) Serialize(message *Message) (*EncodedMessage, error) {
 	// Set the default encoding if not specified
 	if message.Metadata.Get(KeyPayloadEncoding) == "" {
 		message.Metadata.Set(KeyPayloadEncoding, DefaultPayloadEncoding)
@@ -143,7 +140,7 @@ func (r *MessageSerDeRegistry) Serialize(message *Message) (*RawMessage, error) 
 // Usage:
 //
 //	message, err := manager.Deserialize(rawMessage)
-func (r *MessageSerDeRegistry) Deserialize(rawMessage *RawMessage) (*Message, error) {
+func (r *Registry) Deserialize(rawMessage *EncodedMessage) (*Message, error) {
 	// Get the deserializer for the specified encoding
 	deserializer, ok := r.serializers[rawMessage.Metadata.Get(KeyPayloadEncoding)]
 	if !ok {

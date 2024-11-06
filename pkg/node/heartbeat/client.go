@@ -6,6 +6,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsPubSub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
@@ -33,7 +34,7 @@ func (h *HeartbeatClient) SendHeartbeat(ctx context.Context, sequence uint64) er
 	heartbeat := messages.Heartbeat{NodeID: h.nodeID, Sequence: sequence}
 
 	// Send the heartbeat to current and legacy topics
-	message := ncl.NewMessage(heartbeat)
+	message := envelope.NewMessage(heartbeat)
 	err := h.publisher.Publish(ctx, ncl.NewPublishRequest(message))
 	err = errors.Join(err, h.legacyPublisher.Publish(ctx, heartbeat))
 	return err

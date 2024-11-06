@@ -8,14 +8,15 @@ import (
 
 	"github.com/nats-io/nats.go"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // publisher handles message publishing
 type publisher struct {
 	nc                   *nats.Conn
-	messageSerializer    RawMessageSerDe
-	messageSerDeRegistry *MessageSerDeRegistry
+	messageSerializer    envelope.MessageSerializer
+	messageSerDeRegistry *envelope.Registry
 	name                 string
 	destination          string
 	destinationPrefix    string
@@ -25,14 +26,14 @@ type publisher struct {
 type PublisherOption func(*publisher)
 
 // WithPublisherMessageSerializer sets the message serializer for the publisher
-func WithPublisherMessageSerializer(serializer RawMessageSerDe) PublisherOption {
+func WithPublisherMessageSerializer(serializer envelope.MessageSerializer) PublisherOption {
 	return func(p *publisher) {
 		p.messageSerializer = serializer
 	}
 }
 
 // WithPublisherMessageSerDeRegistry sets the payload registry for the publisher
-func WithPublisherMessageSerDeRegistry(registry *MessageSerDeRegistry) PublisherOption {
+func WithPublisherMessageSerDeRegistry(registry *envelope.Registry) PublisherOption {
 	return func(p *publisher) {
 		p.messageSerDeRegistry = registry
 	}
@@ -68,7 +69,7 @@ func WithPublisherDestination(destination string) PublisherOption {
 func defaultPublisher(nc *nats.Conn) *publisher {
 	return &publisher{
 		nc:                nc,
-		messageSerializer: NewEnvelopedRawMessageSerDe(),
+		messageSerializer: envelope.NewSerializer(),
 	}
 }
 
@@ -127,7 +128,7 @@ func (p *publisher) Publish(ctx context.Context, request PublishRequest) error {
 }
 
 // enrichMetadata adds metadata to the message, such as source and event time
-func (p *publisher) enrichMetadata(message *Message) {
+func (p *publisher) enrichMetadata(message *envelope.Message) {
 	message.Metadata.Set(KeySource, p.name)
 	if !message.Metadata.Has(KeyEventTime) {
 		message.Metadata.SetTime(KeyEventTime, time.Now())
@@ -139,12 +140,12 @@ func (p *publisher) getSubject(request PublishRequest) string {
 		return request.Subject
 	}
 	if request.SubjectPrefix != "" {
-		return fmt.Sprintf("%s.%s", request.SubjectPrefix, request.Message.Metadata.Get(KeyMessageType))
+		return fmt.Sprintf("%s.%s", request.SubjectPrefix, request.Message.Metadata.Get(envelope.KeyMessageType))
 	}
 	if p.destination != "" {
 		return p.destination
 	}
-	return fmt.Sprintf("%s.%s", p.destinationPrefix, request.Message.Metadata.Get(KeyMessageType))
+	return fmt.Sprintf("%s.%s", p.destinationPrefix, request.Message.Metadata.Get(envelope.KeyMessageType))
 }
 
 func (p *publisher) validateRequest(request PublishRequest) error {

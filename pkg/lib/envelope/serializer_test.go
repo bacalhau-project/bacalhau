@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package ncl
+package envelope
 
 import (
 	"encoding/binary"
@@ -10,22 +10,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type EnvelopeSerializerTestSuite struct {
+type SerializerTestSuite struct {
 	suite.Suite
-	serializer *EnvelopedRawMessageSerDe
+	serializer *Serializer
 }
 
-func (suite *EnvelopeSerializerTestSuite) SetupTest() {
-	suite.serializer = NewEnvelopedRawMessageSerDe()
+func (suite *SerializerTestSuite) SetupTest() {
+	suite.serializer = NewSerializer()
 }
 
-func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
+func (suite *SerializerTestSuite) TestSerializeDeserialize() {
 	for _, schemaVersion := range []SchemaVersion{
 		SchemaVersionJSONV1,
 		SchemaVersionProtobufV1,
 	} {
 		suite.Run(schemaVersion.String(), func() {
-			original := &RawMessage{
+			original := &EncodedMessage{
 				Metadata: &Metadata{"key": "value"},
 				Payload:  []byte(`{"test": "data"}`),
 			}
@@ -60,15 +60,15 @@ func (suite *EnvelopeSerializerTestSuite) TestSerializeDeserialize() {
 	}
 }
 
-func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidVersion() {
+func (suite *SerializerTestSuite) TestDeserializeInvalidVersion() {
 	data := []byte{255, 0, 0, 0, 0} // Invalid version
 	_, err := suite.serializer.Deserialize(data)
 	suite.Error(err)
 	suite.IsType(&ErrUnsupportedEncoding{}, err)
 }
 
-func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidCRC() {
-	original := &RawMessage{
+func (suite *SerializerTestSuite) TestDeserializeInvalidCRC() {
+	original := &EncodedMessage{
 		Metadata: &Metadata{"key": "value"},
 		Payload:  []byte(`{"test": "data"}`),
 	}
@@ -83,7 +83,7 @@ func (suite *EnvelopeSerializerTestSuite) TestDeserializeInvalidCRC() {
 	suite.Contains(err.Error(), ErrMsgCRCFailed)
 }
 
-func (suite *EnvelopeSerializerTestSuite) TestDeserializeShortMessage() {
+func (suite *SerializerTestSuite) TestDeserializeShortMessage() {
 	data := []byte{1} // Too short
 	_, err := suite.serializer.Deserialize(data)
 	suite.Error(err)
@@ -91,12 +91,12 @@ func (suite *EnvelopeSerializerTestSuite) TestDeserializeShortMessage() {
 	suite.Contains(err.Error(), ErrMsgTooShort)
 }
 
-func (suite *EnvelopeSerializerTestSuite) TestSerializeNilMessage() {
+func (suite *SerializerTestSuite) TestSerializeNilMessage() {
 	_, err := suite.serializer.Serialize(nil)
 	suite.Error(err)
 	suite.IsType(&ErrSerializationFailed{}, err)
 }
 
-func TestEnvelopeSerializerTestSuite(t *testing.T) {
-	suite.Run(t, new(EnvelopeSerializerTestSuite))
+func TestSerializerTestSuite(t *testing.T) {
+	suite.Run(t, new(SerializerTestSuite))
 }
