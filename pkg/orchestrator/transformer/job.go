@@ -110,7 +110,10 @@ func applyLongRunningTaskDefaults(defaults types.LongRunningTaskDefaultConfig, t
 // RequesterInfo is a transformer that sets the requester ID in the job meta.
 func RequesterInfo(requesterNodeID string) JobTransformer {
 	f := func(ctx context.Context, job *models.Job) error {
-		job.Meta[models.MetaRequesterID] = requesterNodeID
+		// Set both the new and legacy orchestrator ID for backwards compatibility
+		// TODO: Remove the legacy orchestrator ID
+		job.Meta[models.MetaOrchestratorID] = requesterNodeID
+		job.Meta[models.MetaOrchestratorIDLegacy] = requesterNodeID
 		return nil
 	}
 	return JobFn(f)

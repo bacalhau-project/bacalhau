@@ -36,9 +36,39 @@ type MessageSerDe interface {
 	Deserialize(rawMessage *RawMessage, payloadType reflect.Type) (*Message, error)
 }
 
+// PublishRequest encapsulates the parameters needed to publish a message.
+// Only one of Subject or SubjectPrefix should be set, not both.
+type PublishRequest struct {
+	// Message is the payload to be published (required)
+	Message *Message
+	// Subject is the exact NATS subject to publish to
+	Subject string
+	// SubjectPrefix is used to construct the final subject by appending additional information
+	SubjectPrefix string
+}
+
+// NewPublishRequest creates a new PublishRequest
+func NewPublishRequest(message *Message) PublishRequest {
+	return PublishRequest{
+		Message: message,
+	}
+}
+
+// WithSubject sets the subject for the PublishRequest
+func (r PublishRequest) WithSubject(subject string) PublishRequest {
+	r.Subject = subject
+	return r
+}
+
+// WithSubjectPrefix sets the subject prefix for the PublishRequest
+func (r PublishRequest) WithSubjectPrefix(prefix string) PublishRequest {
+	r.SubjectPrefix = prefix
+	return r
+}
+
 // Publisher publishes messages to a NATS server
 type Publisher interface {
-	Publish(ctx context.Context, message *Message) error
+	Publish(ctx context.Context, request PublishRequest) error
 }
 
 // Subscriber subscribes to messages from a NATS server

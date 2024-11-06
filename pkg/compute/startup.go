@@ -85,7 +85,7 @@ func (s *Startup) failExecution(ctx context.Context, execution *models.Execution
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).
 				WithMessage("Failed due to node restart"),
 		},
-		Events: []models.Event{*ExecFailedDueToNodeRestartEvent()},
+		Events: []*models.Event{ExecFailedDueToNodeRestartEvent()},
 	})
 }
 

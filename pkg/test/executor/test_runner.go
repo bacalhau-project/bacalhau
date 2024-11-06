@@ -72,8 +72,7 @@ func RunTestCase(
 	now := time.Now().UnixNano()
 	job.ID = fmt.Sprintf("test-job-%d", now)
 	job.Meta = make(map[string]string, 2)
-	job.Meta[models.MetaRequesterID] = "test-owner"
-	job.Meta[models.MetaClientID] = "test-client"
+	job.Meta[models.MetaOrchestratorID] = "test-owner"
 	job.State = models.NewJobState(models.JobStateTypeUndefined)
 	job.Version = 1
 	job.Revision = 1

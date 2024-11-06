@@ -21,11 +21,11 @@ type ExecutionStore interface {
 	// active state (ExecutionStateBidAccepted)
 	GetLiveExecutions(ctx context.Context) ([]*models.Execution, error)
 	// AddExecutionEvent adds an event to the execution
-	AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error
+	AddExecutionEvent(ctx context.Context, executionID string, events ...*models.Event) error
 	// GetExecutionEvents returns the history of an execution
 	GetExecutionEvents(ctx context.Context, executionID string) ([]*models.Event, error)
 	// CreateExecution creates a new execution for a given job
-	CreateExecution(ctx context.Context, execution models.Execution, events ...models.Event) error
+	CreateExecution(ctx context.Context, execution models.Execution, events ...*models.Event) error
 	// UpdateExecutionState updates the execution state
 	UpdateExecutionState(ctx context.Context, request UpdateExecutionRequest) error
 	// DeleteExecution deletes an execution
@@ -43,13 +43,7 @@ type UpdateExecutionRequest struct {
 	ExecutionID string
 	Condition   UpdateExecutionCondition
 	NewValues   models.Execution
-	Events      []models.Event
-}
-
-type ExecutionUpsert struct {
-	Current  *models.Execution
-	Previous *models.Execution
-	Events   []*models.Event
+	Events      []*models.Event
 }
 
 type UpdateExecutionCondition struct {

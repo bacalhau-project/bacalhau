@@ -111,6 +111,9 @@ type EventFilter struct {
 
 // GetEventsRequest defines parameters for querying events.
 type GetEventsRequest struct {
+	// WatcherID optionally specifies the watcher ID for logging and tracking purposes.
+	WatcherID string
+
 	// EventIterator specifies where to start reading events.
 	EventIterator EventIterator
 

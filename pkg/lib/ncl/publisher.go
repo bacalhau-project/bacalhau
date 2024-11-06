@@ -92,35 +92,27 @@ func NewPublisher(nc *nats.Conn, opts ...PublisherOption) (Publisher, error) {
 
 // validate checks if the publisher is properly configured
 func (p *publisher) validate() error {
-	err := errors.Join(
+	return errors.Join(
 		validate.NotNil(p.nc, "NATS connection cannot be nil"),
 		validate.NotBlank(p.name, "publisher name cannot be blank"),
 		validate.NotNil(p.messageSerializer, "message serializer cannot be nil"),
 		validate.NotNil(p.messageSerDeRegistry, "payload registry cannot be nil"),
 	)
-
-	// Check one of destination or destinationPrefix is set
-	if p.destination == "" && p.destinationPrefix == "" {
-		err = errors.Join(err, errors.New("destination or destination prefix must be set"))
-	} else if p.destination != "" && p.destinationPrefix != "" {
-		err = errors.Join(err, errors.New("destination and destination prefix cannot both be set"))
-	}
-	return err
 }
 
 // Publish publishes a message to the NATS server
-func (p *publisher) Publish(ctx context.Context, message *Message) error {
-	if err := validate.NotNil(message, "cannot publish nil message"); err != nil {
+func (p *publisher) Publish(ctx context.Context, request PublishRequest) error {
+	if err := p.validateRequest(request); err != nil {
 		return err
 	}
 
-	p.enrichMetadata(message)
-	rMsg, err := p.messageSerDeRegistry.Serialize(message)
+	p.enrichMetadata(request.Message)
+	rMsg, err := p.messageSerDeRegistry.Serialize(request.Message)
 	if err != nil {
 		return fmt.Errorf("failed to serialize into raw message: %w", err)
 	}
 
-	subject := p.getSubject(message)
+	subject := p.getSubject(request)
 
 	data, err := p.messageSerializer.Serialize(rMsg)
 	if err != nil {
@@ -142,11 +134,33 @@ func (p *publisher) enrichMetadata(message *Message) {
 	}
 }
 
-func (p *publisher) getSubject(message *Message) string {
+func (p *publisher) getSubject(request PublishRequest) string {
+	if request.Subject != "" {
+		return request.Subject
+	}
+	if request.SubjectPrefix != "" {
+		return fmt.Sprintf("%s.%s", request.SubjectPrefix, request.Message.Metadata.Get(KeyMessageType))
+	}
 	if p.destination != "" {
 		return p.destination
 	}
-	return fmt.Sprintf("%s.%s", p.destinationPrefix, message.Metadata.Get(KeyMessageType))
+	return fmt.Sprintf("%s.%s", p.destinationPrefix, request.Message.Metadata.Get(KeyMessageType))
+}
+
+func (p *publisher) validateRequest(request PublishRequest) error {
+	err := errors.Join(
+		validate.NotNil(request.Message, "cannot publish nil message"),
+	)
+
+	if request.Subject != "" && request.SubjectPrefix != "" {
+		err = errors.Join(err, errors.New("cannot specify both subject and subject prefix"))
+	}
+
+	// if no p.destination or p.destinationPrefix is set, then the subject or subject prefix must be set
+	if p.destination == "" && p.destinationPrefix == "" && request.Subject == "" && request.SubjectPrefix == "" {
+		err = errors.Join(err, errors.New("must specify either subject or subject prefix"))
+	}
+	return err
 }
 
 // compile-time check for interface conformance

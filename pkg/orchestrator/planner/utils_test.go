@@ -5,11 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -203,47 +200,4 @@ func NewComputeRequestMatcherFromPlanUpdate(t *testing.T, nodeID string, update 
 		execution: update.Execution,
 		update:    update,
 	}
-}
-
-func (m *ComputeRequestMatcher) Matches(x interface{}) bool {
-	var routingMetadata messages.RoutingMetadata
-	var executionID string
-
-	switch req := x.(type) {
-	case messages.AskForBidRequest:
-		routingMetadata = req.RoutingMetadata
-		executionID = req.Execution.ID
-		desiredState := m.execution.DesiredState.StateType
-		if m.update != nil {
-			desiredState = m.update.DesiredState
-		}
-		if desiredState == models.ExecutionDesiredStatePending {
-			if !req.WaitForApproval {
-				return false
-			}
-		} else {
-			if req.WaitForApproval {
-				return false
-			}
-		}
-	case messages.BidAcceptedRequest:
-		routingMetadata = req.RoutingMetadata
-		executionID = req.ExecutionID
-	case messages.BidRejectedRequest:
-		routingMetadata = req.RoutingMetadata
-		executionID = req.ExecutionID
-	case messages.CancelExecutionRequest:
-		routingMetadata = req.RoutingMetadata
-		executionID = req.ExecutionID
-	default:
-		return assert.Fail(m.t, fmt.Sprintf("unexpected type %T", x))
-	}
-
-	return m.execution.ID == executionID &&
-		m.nodeID == routingMetadata.SourcePeerID &&
-		m.execution.NodeID == routingMetadata.TargetPeerID
-}
-
-func (m *ComputeRequestMatcher) String() string {
-	return fmt.Sprintf("{Update Req: %+v}", m.update)
 }

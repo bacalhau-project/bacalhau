@@ -107,7 +107,7 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err = errors.Join(
-		eventObjectSerializer.RegisterType(compute.EventObjectExecutionUpsert, reflect.TypeOf(store.ExecutionUpsert{})),
+		eventObjectSerializer.RegisterType(compute.EventObjectExecutionUpsert, reflect.TypeOf(models.ExecutionUpsert{})),
 		eventObjectSerializer.RegisterType(compute.EventObjectExecutionEvent, reflect.TypeOf(models.Event{})),
 	)
 	if err != nil {
@@ -274,7 +274,7 @@ func (s *Store) GetExecutionEvents(ctx context.Context, executionID string) ([]*
 	return events, nil
 }
 
-func (s *Store) AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error {
+func (s *Store) AddExecutionEvent(ctx context.Context, executionID string, events ...*models.Event) error {
 	return s.database.Update(func(tx *bolt.Tx) error {
 		_, err := s.getExecutionInTx(tx, executionID)
 		if err != nil {
@@ -285,7 +285,7 @@ func (s *Store) AddExecutionEvent(ctx context.Context, executionID string, event
 	})
 }
 
-func (s *Store) addExecutionEventInTx(tx *bolt.Tx, executionID string, events []models.Event) error {
+func (s *Store) addExecutionEventInTx(tx *bolt.Tx, executionID string, events []*models.Event) error {
 	for i := range events {
 		event := events[i]
 		eventData, err := s.marshaller.Marshal(event)
@@ -318,7 +318,7 @@ func (s *Store) addExecutionEventInTx(tx *bolt.Tx, executionID string, events []
 	return nil
 }
 
-func (s *Store) CreateExecution(ctx context.Context, execution models.Execution, events ...models.Event) error {
+func (s *Store) CreateExecution(ctx context.Context, execution models.Execution, events ...*models.Event) error {
 	execution.Normalize()
 	err := store.ValidateNewExecution(&execution)
 	if err != nil {
@@ -374,7 +374,7 @@ func (s *Store) CreateExecution(ctx context.Context, execution models.Execution,
 		return s.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 			Operation:  watcher.OperationCreate,
 			ObjectType: compute.EventObjectExecutionUpsert,
-			Object:     store.ExecutionUpsert{Current: &execution, Events: toPtrSlice(events)},
+			Object:     models.ExecutionUpsert{Current: &execution, Events: events},
 		})
 	})
 }
@@ -437,8 +437,8 @@ func (s *Store) UpdateExecutionState(ctx context.Context, request store.UpdateEx
 		return s.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 			Operation:  watcher.OperationUpdate,
 			ObjectType: compute.EventObjectExecutionUpsert,
-			Object: store.ExecutionUpsert{
-				Current: &newExecution, Previous: existingExecution, Events: toPtrSlice(request.Events),
+			Object: models.ExecutionUpsert{
+				Current: &newExecution, Previous: existingExecution, Events: request.Events,
 			},
 		})
 	})

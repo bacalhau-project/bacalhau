@@ -225,6 +225,8 @@ func (s *EventStore) GetEvents(ctx context.Context, request watcher.GetEventsReq
 	sub := s.createSubscriber()
 	defer s.removeSubscriber(sub)
 
+	log.Trace().Str("watcher_id", request.WatcherID).Msgf("GetEvents request: %+v", request)
+
 	var result *watcher.GetEventsResponse
 	for {
 		err := s.db.View(func(tx *bbolt.Tx) error {
@@ -239,6 +241,7 @@ func (s *EventStore) GetEvents(ctx context.Context, request watcher.GetEventsReq
 
 		// If we have events or the iterator changed, return immediately
 		if len(result.Events) > 0 || result.NextEventIterator != request.EventIterator {
+			log.Trace().Str("watcher_id", request.WatcherID).Msgf("GetEvents response: %+v", result)
 			return result, nil
 		}
 

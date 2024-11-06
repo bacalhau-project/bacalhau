@@ -188,6 +188,7 @@ func (b Bidder) handleBidResult(
 ) {
 	var newExecutionValues models.Execution
 	var newExecutionState models.ExecutionStateType
+	var events []*models.Event
 	if !result.bid {
 		newExecutionState = models.ExecutionStateAskForBidRejected
 	} else if execution.DesiredState.StateType == models.ExecutionDesiredStatePending {
@@ -203,12 +204,15 @@ func (b Bidder) handleBidResult(
 		} else {
 			log.Ctx(ctx).Error().Msg("calculatedResources is nil despite bid being true")
 		}
+	} else {
+		// only add an event if the bid was rejected with more information
+		events = append(events, models.NewEvent(EventTopicExecutionScanning).WithMessage(result.reason))
 	}
 
 	err := b.store.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
 		ExecutionID: execution.ID,
 		NewValues:   newExecutionValues,
-		Events:      []models.Event{*models.NewEvent(EventTopicExecutionScanning).WithMessage(result.reason)},
+		Events:      events,
 		Condition: store.UpdateExecutionCondition{
 			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 		},
@@ -229,7 +233,7 @@ func (b Bidder) handleError(ctx context.Context, execution *models.Execution, er
 		NewValues: models.Execution{
 			ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(err.Error()),
 		},
-		Events: []models.Event{models.EventFromError(EventTopicExecutionScanning, err)},
+		Events: []*models.Event{models.EventFromError(EventTopicExecutionScanning, err)},
 		Condition: store.UpdateExecutionCondition{
 			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 		},

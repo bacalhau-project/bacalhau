@@ -66,6 +66,10 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 		NodeType:        models.NodeTypeCompute,
 		BacalhauVersion: *version.Get(),
 		Labels:          m.labelsProvider.GetLabels(ctx),
+		SupportedProtocols: []models.Protocol{
+			models.ProtocolBProtocolV2,
+			models.ProtocolNCLV1,
+		},
 	})
 	return ni
 }
