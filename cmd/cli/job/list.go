@@ -2,6 +2,7 @@ package job
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -158,8 +159,13 @@ func (o *ListOptions) run(cmd *cobra.Command, api client.API) error {
 	}
 
 	if response.NextToken != "" {
+		flags := []string{
+			fmt.Sprintf("--limit %d", o.Limit),
+			fmt.Sprintf("--next-token %s", response.NextToken),
+		}
+
 		msg := "To fetch more records use:"
-		msg += fmt.Sprintf("\n\tbacalhau job list --limit %d --next-token %s", o.Limit, response.NextToken)
+		msg += fmt.Sprintf("\n\tbacalhau job list %s", strings.Join(flags, " "))
 		cmd.Printf("\n%s\n", msg)
 	}
 

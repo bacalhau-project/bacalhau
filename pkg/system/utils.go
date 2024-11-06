@@ -95,33 +95,17 @@ func IsDebugMode() bool {
 	return os.Getenv("DEBUG") == "true" || zerolog.GlobalLevel() <= zerolog.DebugLevel
 }
 
-// ExtractCSVData extracts CSV data from the output
-func ExtractCSVData(output string) (csvData string, remainingOutput string, err error) {
-	lines := strings.Split(output, "\n")
-
-	if len(lines) == 0 {
-		return "", "", fmt.Errorf("output is empty")
+// ExtractJSONOutput extracts JSON data from the output
+func ExtractJSONOutput(output string) (jsonData string, remainingOutput string, err error) {
+	start := strings.Index(output, "[")
+	if start == -1 {
+		return "", "", fmt.Errorf("JSON data not found in output")
 	}
-
-	// Assume the first line is the header
-	headerIndex := 0
-
-	// Find the index where the CSV data ends
-	endIndex := len(lines)
-	for i, line := range lines[headerIndex+1:] {
-		if strings.TrimSpace(line) == "" {
-			endIndex = headerIndex + 1 + i
-			break
-		}
+	end := strings.LastIndex(output, "]")
+	if end == -1 || end < start {
+		return "", "", fmt.Errorf("JSON data not properly terminated in output")
 	}
-
-	// Extract the CSV lines
-	csvLines := lines[headerIndex:endIndex]
-	csvData = strings.Join(csvLines, "\n")
-
-	// Extract the remaining output
-	remainingLines := lines[endIndex:]
-	remainingOutput = strings.Join(remainingLines, "\n")
-
-	return csvData, remainingOutput, nil
+	jsonData = output[start : end+1]
+	remainingOutput = output[end+1:]
+	return jsonData, remainingOutput, nil
 }
