@@ -5,6 +5,7 @@ package job_test
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -74,7 +75,7 @@ func (s *ListSuite) TestJobListLimit() {
 	s.Require().NoError(err, "Error running job list")
 
 	// Extract the JSON data from the output
-	jsonData, remainingOutput, err := system.ExtractJSONOutput(listOut)
+	jsonData, remainingOutput, err := ExtractJSONOutput(listOut)
 	s.Require().NoError(err, "Error extracting JSON data from output")
 	s.Require().NotEmpty(jsonData, "JSON data is empty")
 
@@ -96,4 +97,19 @@ func (s *ListSuite) TestJobListLimit() {
 	// Verify that the message about fetching more records is present
 	expectedMessage := fmt.Sprintf("To fetch more records use:\n\tbacalhau job list --limit %d --next-token", 2)
 	s.Require().Contains(remainingOutput, expectedMessage, "Pagination message not found in output")
+}
+
+// ExtractJSONOutput extracts JSON data from the output
+func ExtractJSONOutput(output string) (jsonData string, remainingOutput string, err error) {
+	start := strings.Index(output, "[")
+	if start == -1 {
+		return "", "", fmt.Errorf("JSON data not found in output")
+	}
+	end := strings.LastIndex(output, "]")
+	if end == -1 || end < start {
+		return "", "", fmt.Errorf("JSON data not properly terminated in output")
+	}
+	jsonData = output[start : end+1]
+	remainingOutput = output[end+1:]
+	return jsonData, remainingOutput, nil
 }

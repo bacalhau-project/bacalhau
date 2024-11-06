@@ -94,18 +94,3 @@ func IsDebugMode() bool {
 	// TODO: #4535 we need to add a flag to the CLI to enable debug mode
 	return os.Getenv("DEBUG") == "true" || zerolog.GlobalLevel() <= zerolog.DebugLevel
 }
-
-// ExtractJSONOutput extracts JSON data from the output
-func ExtractJSONOutput(output string) (jsonData string, remainingOutput string, err error) {
-	start := strings.Index(output, "[")
-	if start == -1 {
-		return "", "", fmt.Errorf("JSON data not found in output")
-	}
-	end := strings.LastIndex(output, "]")
-	if end == -1 || end < start {
-		return "", "", fmt.Errorf("JSON data not properly terminated in output")
-	}
-	jsonData = output[start : end+1]
-	remainingOutput = output[end+1:]
-	return jsonData, remainingOutput, nil
-}
