@@ -11,7 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
@@ -36,10 +36,10 @@ func (suite *MessageHandlerTestSuite) TearDownTest() {
 }
 
 func (suite *MessageHandlerTestSuite) TestShouldProcess() {
-	suite.True(suite.handler.ShouldProcess(context.Background(), ncl.NewMessage(nil).WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)))
-	suite.True(suite.handler.ShouldProcess(context.Background(), ncl.NewMessage(nil).WithMetadataValue(ncl.KeyMessageType, messages.RunResultMessageType)))
-	suite.True(suite.handler.ShouldProcess(context.Background(), ncl.NewMessage(nil).WithMetadataValue(ncl.KeyMessageType, messages.ComputeErrorMessageType)))
-	suite.False(suite.handler.ShouldProcess(context.Background(), ncl.NewMessage(nil).WithMetadataValue(ncl.KeyMessageType, "UnknownType")))
+	suite.True(suite.handler.ShouldProcess(context.Background(), envelope.NewMessage(nil).WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)))
+	suite.True(suite.handler.ShouldProcess(context.Background(), envelope.NewMessage(nil).WithMetadataValue(envelope.KeyMessageType, messages.RunResultMessageType)))
+	suite.True(suite.handler.ShouldProcess(context.Background(), envelope.NewMessage(nil).WithMetadataValue(envelope.KeyMessageType, messages.ComputeErrorMessageType)))
+	suite.False(suite.handler.ShouldProcess(context.Background(), envelope.NewMessage(nil).WithMetadataValue(envelope.KeyMessageType, "UnknownType")))
 }
 
 func (suite *MessageHandlerTestSuite) TestOnBidComplete_Accepted() {
@@ -52,7 +52,7 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_Accepted() {
 		},
 		Accepted: true,
 	}
-	message := ncl.NewMessage(bidResult).WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+	message := envelope.NewMessage(bidResult).WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 
 	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(nil)
@@ -74,7 +74,7 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_Rejected() {
 		},
 		Accepted: false,
 	}
-	message := ncl.NewMessage(bidResult).WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+	message := envelope.NewMessage(bidResult).WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 
 	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(nil)
@@ -97,7 +97,7 @@ func (suite *MessageHandlerTestSuite) TestOnRunComplete() {
 		PublishResult:    &models.SpecConfig{Type: "ipfs"},
 		RunCommandResult: &models.RunCommandResult{ExitCode: 0},
 	}
-	message := ncl.NewMessage(runResult).WithMetadataValue(ncl.KeyMessageType, messages.RunResultMessageType)
+	message := envelope.NewMessage(runResult).WithMetadataValue(envelope.KeyMessageType, messages.RunResultMessageType)
 
 	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
 	suite.mockStore.EXPECT().GetJob(suite.mockTx, "job-1").Return(models.Job{Type: "batch"}, nil)
@@ -119,7 +119,7 @@ func (suite *MessageHandlerTestSuite) TestOnComputeFailure() {
 			JobType:     "batch",
 		},
 	}
-	message := ncl.NewMessage(computeError).WithMetadataValue(ncl.KeyMessageType, messages.ComputeErrorMessageType)
+	message := envelope.NewMessage(computeError).WithMetadataValue(envelope.KeyMessageType, messages.ComputeErrorMessageType)
 
 	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(nil)
@@ -141,7 +141,7 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_PropagatesErrors() {
 		},
 		Accepted: true,
 	}
-	message := ncl.NewMessage(bidResult).WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+	message := envelope.NewMessage(bidResult).WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 
 	expectedErr := errors.New("store error")
 	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)

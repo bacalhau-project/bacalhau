@@ -1,4 +1,4 @@
-package ncl
+package envelope
 
 import (
 	"encoding/binary"
@@ -17,46 +17,46 @@ const (
 	HeaderSize  = VersionSize + CRCSize
 )
 
-// EnvelopedRawMessageSerDe handles the serialization and deserialization of messages
+// Serializer handles the serialization and deserialization of messages
 // with version information and CRC checks. It wraps the actual message serialization
 // with additional metadata for versioning and integrity checking.
 //
 // Envelope Structure:
 // +----------------+----------------+--------------------+
-// | Version (1 byte)| CRC (4 bytes) | Serialized Message |
+// | Version (1 byte)| CRC (4 bytes) | Serialized envelope.Message |
 // +----------------+----------------+--------------------+
 //
 // - Version: Indicates the schema version used for serialization (1 byte)
 // - CRC: A 32-bit CRC checksum of the serialized message (4 bytes)
-// - Serialized Message: The actual message content, serialized by a version-specific serializer
+// - Serialized envelope.Message: The actual message content, serialized by a version-specific serializer
 //
-// The EnvelopedRawMessageSerDe adds a version byte and a CRC checksum to each serialized message,
+// The Serializer adds a version byte and a CRC checksum to each serialized message,
 // allowing for future extensibility, backward compatibility, and data integrity verification.
-type EnvelopedRawMessageSerDe struct {
+type Serializer struct {
 	// serializationVersion represents the current schema version used for serializing messages.
 	// This version is included in the envelope header of each serialized message.
 	// Example: SchemaVersionJSONV1 for JSON serialization
 	serializationVersion SchemaVersion
-	// serializers is a map of schema versions to their corresponding RawMessageSerDe implementations.
-	// It allows the EnvelopedRawMessageSerDe to:
+	// serializers is a map of schema versions to their corresponding MessageSerializer implementations.
+	// It allows the Serializer to:
 	// 1. Use different serialization methods based on the current schema version.
 	// 2. Deserialize messages that were encoded using different schema versions.
 	// This enables backward compatibility and supports evolution of the serialization format.
 	//
 	// Example: {
-	//    SchemaVersionJSONV1:     &JSONRawMessageSerializer{},
-	//    SchemaVersionProtobufV1: &ProtoSerializer{},
+	//    SchemaVersionJSONV1:     &JSONMessageSerializer{},
+	//    SchemaVersionProtobufV1: &ProtoMessageSerializer{},
 	// }
-	serializers map[SchemaVersion]RawMessageSerDe
+	serializers map[SchemaVersion]MessageSerializer
 }
 
-// NewEnvelopedRawMessageSerDe creates a new EnvelopedRawMessageSerDe with default serializers
-func NewEnvelopedRawMessageSerDe() *EnvelopedRawMessageSerDe {
-	return &EnvelopedRawMessageSerDe{
+// NewSerializer creates a new Serializer with default serializers
+func NewSerializer() *Serializer {
+	return &Serializer{
 		serializationVersion: DefaultSchemaVersion,
-		serializers: map[SchemaVersion]RawMessageSerDe{
-			SchemaVersionJSONV1:     &JSONRawMessageSerializer{},
-			SchemaVersionProtobufV1: &ProtoSerializer{},
+		serializers: map[SchemaVersion]MessageSerializer{
+			SchemaVersionJSONV1:     &JSONMessageSerializer{},
+			SchemaVersionProtobufV1: &ProtoMessageSerializer{},
 		},
 	}
 }
@@ -64,14 +64,14 @@ func NewEnvelopedRawMessageSerDe() *EnvelopedRawMessageSerDe {
 // WithSerializationVersion sets the schema version used for serialization.
 // This version will be used for all subsequent Serialize calls.
 // It does not affect the deserialization of messages.
-func (v *EnvelopedRawMessageSerDe) WithSerializationVersion(version SchemaVersion) *EnvelopedRawMessageSerDe {
+func (v *Serializer) WithSerializationVersion(version SchemaVersion) *Serializer {
 	v.serializationVersion = version
 	return v
 }
 
-// Serialize encodes a RawMessage into a byte slice, adding version information
+// Serialize encodes a envelope.EncodedMessage into a byte slice, adding version information
 // and a CRC checksum. It uses the serializer corresponding to the current serializationVersion.
-func (v *EnvelopedRawMessageSerDe) Serialize(msg *RawMessage) ([]byte, error) {
+func (v *Serializer) Serialize(msg *EncodedMessage) ([]byte, error) {
 	serializer := v.serializers[v.serializationVersion]
 	msgBytes, err := serializer.Serialize(msg)
 	if err != nil {
@@ -94,9 +94,9 @@ func (v *EnvelopedRawMessageSerDe) Serialize(msg *RawMessage) ([]byte, error) {
 	return finalMsg, nil
 }
 
-// Deserialize decodes a byte slice into a RawMessage. It verifies the schema version
+// Deserialize decodes a byte slice into a envelope.EncodedMessage. It verifies the schema version
 // and CRC checksum before using the appropriate deserializer to decode the message.
-func (v *EnvelopedRawMessageSerDe) Deserialize(data []byte) (*RawMessage, error) {
+func (v *Serializer) Deserialize(data []byte) (*EncodedMessage, error) {
 	if len(data) < HeaderSize {
 		return nil, NewErrBadMessage(ErrMsgTooShort)
 	}
@@ -121,5 +121,5 @@ func (v *EnvelopedRawMessageSerDe) Deserialize(data []byte) (*RawMessage, error)
 	return msg, nil
 }
 
-// Compile time checks to ensure that serializers implement the RawMessageSerDe interface
-var _ RawMessageSerDe = &EnvelopedRawMessageSerDe{}
+// Compile time checks to ensure that serializers implement the MessageSerializer interface
+var _ MessageSerializer = &Serializer{}

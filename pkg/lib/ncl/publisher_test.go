@@ -13,20 +13,22 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
 type PublisherTestSuite struct {
 	suite.Suite
 	natsServer *server.Server
 	natsConn   *nats.Conn
-	serializer *EnvelopedRawMessageSerDe
-	registry   *MessageSerDeRegistry
+	serializer *envelope.Serializer
+	registry   *envelope.Registry
 	publisher  Publisher
 }
 
 func (suite *PublisherTestSuite) SetupSuite() {
-	suite.serializer = NewEnvelopedRawMessageSerDe()
-	suite.registry = NewMessageSerDeRegistry()
+	suite.serializer = envelope.NewSerializer()
+	suite.registry = envelope.NewRegistry()
 	suite.Require().NoError(suite.registry.Register(TestPayloadType, TestPayload{}))
 
 	suite.natsServer, suite.natsConn = StartNats(suite.T())
@@ -49,7 +51,7 @@ func (suite *PublisherTestSuite) SetupTest() {
 	suite.Require().NoError(err)
 }
 
-func (suite *PublisherTestSuite) publishAndVerify(subject string, req PublishRequest) *Message {
+func (suite *PublisherTestSuite) publishAndVerify(subject string, req PublishRequest) *envelope.Message {
 	sub, err := suite.natsConn.SubscribeSync(subject)
 	suite.Require().NoError(err)
 	defer sub.Unsubscribe()
@@ -67,7 +69,7 @@ func (suite *PublisherTestSuite) publishAndVerify(subject string, req PublishReq
 	suite.Require().NoError(err)
 
 	suite.Equal("test", readMsg.Metadata.Get(KeySource))
-	suite.Equal(TestPayloadType, readMsg.Metadata.Get(KeyMessageType))
+	suite.Equal(TestPayloadType, readMsg.Metadata.Get(envelope.KeyMessageType))
 	suite.True(readMsg.Metadata.Has(KeyEventTime))
 	suite.True(readMsg.IsType(TestPayload{}))
 
@@ -80,13 +82,13 @@ func (suite *PublisherTestSuite) publishAndVerify(subject string, req PublishReq
 
 func (suite *PublisherTestSuite) TestPublish() {
 	event := TestPayload{Message: "Hello, World!"}
-	suite.publishAndVerify(TestSubject, NewPublishRequest(NewMessage(event)))
+	suite.publishAndVerify(TestSubject, NewPublishRequest(envelope.NewMessage(event)))
 }
 
 func (suite *PublisherTestSuite) TestPublishWithMetadata() {
 	event := TestPayload{Message: "Hello, World!"}
-	metadata := &Metadata{"CustomKey": "CustomValue"}
-	message := suite.publishAndVerify(TestSubject, NewPublishRequest(NewMessage(event).WithMetadata(metadata)))
+	metadata := &envelope.Metadata{"CustomKey": "CustomValue"}
+	message := suite.publishAndVerify(TestSubject, NewPublishRequest(envelope.NewMessage(event).WithMetadata(metadata)))
 	suite.Equal("CustomValue", message.Metadata.Get("CustomKey"))
 }
 
@@ -103,20 +105,20 @@ func (suite *PublisherTestSuite) TestPublishWithDestinationPrefix() {
 
 	event := TestPayload{Message: "Hello, World!"}
 	subject := fmt.Sprintf("%s.%s", TestDestinationPrefix, TestPayloadType)
-	suite.publishAndVerify(subject, NewPublishRequest(NewMessage(event)))
+	suite.publishAndVerify(subject, NewPublishRequest(envelope.NewMessage(event)))
 }
 
 func (suite *PublisherTestSuite) TestPublishWithSubject() {
 	event := TestPayload{Message: "Hello, World!"}
 	customSubject := "custom.subject"
-	suite.publishAndVerify(customSubject, NewPublishRequest(NewMessage(event)).WithSubject(customSubject))
+	suite.publishAndVerify(customSubject, NewPublishRequest(envelope.NewMessage(event)).WithSubject(customSubject))
 }
 
 func (suite *PublisherTestSuite) TestPublishWithSubjectPrefix() {
 	event := TestPayload{Message: "Hello, World!"}
 	customSubjectPrefix := "custom.prefix"
 	expectedSubject := fmt.Sprintf("%s.%s", customSubjectPrefix, TestPayloadType)
-	suite.publishAndVerify(expectedSubject, NewPublishRequest(NewMessage(event)).WithSubjectPrefix(customSubjectPrefix))
+	suite.publishAndVerify(expectedSubject, NewPublishRequest(envelope.NewMessage(event)).WithSubjectPrefix(customSubjectPrefix))
 }
 
 func (suite *PublisherTestSuite) TestPublishValidation() {
@@ -127,7 +129,7 @@ func (suite *PublisherTestSuite) TestPublishValidation() {
 
 	// Test publishing with both subject and subject prefix
 	err = suite.publisher.Publish(context.Background(), PublishRequest{
-		Message:       NewMessage(TestPayload{Message: "Test"}),
+		Message:       envelope.NewMessage(TestPayload{Message: "Test"}),
 		Subject:       "test.subject",
 		SubjectPrefix: "test.prefix",
 	})
@@ -143,7 +145,7 @@ func (suite *PublisherTestSuite) TestPublishValidation() {
 	)
 	suite.Require().NoError(err)
 	err = publisher.Publish(context.Background(), PublishRequest{
-		Message: NewMessage(TestPayload{Message: "Test"}),
+		Message: envelope.NewMessage(TestPayload{Message: "Test"}),
 	})
 	suite.Require().Error(err)
 	suite.Contains(err.Error(), "must specify either subject or subject prefix")
@@ -163,7 +165,7 @@ func (suite *PublisherTestSuite) TestConcurrentPublish() {
 			defer wg.Done()
 			for j := 0; j < numMessages; j++ {
 				payload := TestPayload{Message: fmt.Sprintf("Message %d", j)}
-				message := NewMessage(payload)
+				message := envelope.NewMessage(payload)
 				err := suite.publisher.Publish(context.Background(), PublishRequest{Message: message})
 				suite.Require().NoError(err)
 			}
@@ -181,7 +183,7 @@ func (suite *PublisherTestSuite) TestConcurrentPublish() {
 
 func (suite *PublisherTestSuite) TestLargePayload() {
 	largeMessage := strings.Repeat("a", 1024*1024) // 1MB message
-	message := NewMessage(TestPayload{Message: largeMessage})
+	message := envelope.NewMessage(TestPayload{Message: largeMessage})
 	suite.Require().Error(suite.publisher.Publish(context.Background(), PublishRequest{Message: message}), "expected error publishing large message")
 }
 

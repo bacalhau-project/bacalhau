@@ -11,6 +11,8 @@ import (
 	natstest "github.com/nats-io/nats-server/v2/test"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
 const (
@@ -25,15 +27,15 @@ type TestPayload struct {
 }
 
 type TestMessageHandler struct {
-	messages []*Message
+	messages []*envelope.Message
 	mu       sync.Mutex
 }
 
-func (h *TestMessageHandler) ShouldProcess(_ context.Context, _ *Message) bool {
+func (h *TestMessageHandler) ShouldProcess(_ context.Context, _ *envelope.Message) bool {
 	return true
 }
 
-func (h *TestMessageHandler) HandleMessage(_ context.Context, msg *Message) error {
+func (h *TestMessageHandler) HandleMessage(_ context.Context, msg *envelope.Message) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.messages = append(h.messages, msg)

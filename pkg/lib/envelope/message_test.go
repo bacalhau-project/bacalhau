@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package ncl
+package envelope
 
 import (
 	"testing"

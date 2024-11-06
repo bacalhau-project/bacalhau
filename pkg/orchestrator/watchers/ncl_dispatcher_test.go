@@ -14,6 +14,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -30,7 +31,7 @@ type NCLDispatcherTestSuite struct {
 	jobStore   *jobstore.MockStore
 	dispatcher *NCLDispatcher
 	subscriber ncl.Subscriber
-	msgChan    chan *ncl.Message
+	msgChan    chan *envelope.Message
 }
 
 // Setup and TearDown methods remain the same...
@@ -39,8 +40,8 @@ func (s *NCLDispatcherTestSuite) SetupSuite() {
 	s.natsServer, s.natsConn = testutils.StartNats(s.T())
 
 	// Create NCL publisher
-	serializer := ncl.NewEnvelopedRawMessageSerDe()
-	registry := ncl.NewMessageSerDeRegistry()
+	serializer := envelope.NewSerializer()
+	registry := envelope.NewRegistry()
 	s.Require().NoError(registry.Register(messages.AskForBidMessageType, messages.AskForBidRequest{}))
 	s.Require().NoError(registry.Register(messages.BidAcceptedMessageType, messages.BidAcceptedRequest{}))
 	s.Require().NoError(registry.Register(messages.BidRejectedMessageType, messages.BidRejectedRequest{}))
@@ -70,12 +71,12 @@ func (s *NCLDispatcherTestSuite) SetupSuite() {
 
 	// Create NCL subscriber
 	var msgHandler ncl.MessageHandlerFunc
-	msgHandler = func(_ context.Context, msg *ncl.Message) error {
+	msgHandler = func(_ context.Context, msg *envelope.Message) error {
 		s.msgChan <- msg
 		return nil
 	}
 
-	s.msgChan = make(chan *ncl.Message, 10)
+	s.msgChan = make(chan *envelope.Message, 10)
 	s.subscriber, err = ncl.NewSubscriber(
 		s.natsConn,
 		ncl.WithSubscriberMessageDeserializer(serializer),
