@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+
 PATH_TO_PROJECT_ROOT=$(git rev-parse --show-toplevel)
 SWAGGER_DIR="${PATH_TO_PROJECT_ROOT}/pkg/swagger"
 WEBUI_PATH="${PATH_TO_PROJECT_ROOT}/webui/lib/api/schema"
@@ -12,7 +15,7 @@ swag init \
 --generalInfo "api.go" \
 --overridesFile .swaggo \
 --output "${SWAGGER_DIR}" \
---dir "pkg/publicapi,pkg/models,pkg/config/types,pkg/types"
+--dir "pkg/publicapi,pkg/models,pkg/config/types"
 
 echo "swagger.json generated - moving from ${SWAGGER_DIR} to ${WEBUI_PATH}"
 
