@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -67,7 +68,7 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	computeProxy compute.Endpoint,
 	logstreamServer logstream.Server,
-	messageSerDeRegistry *ncl.MessageSerDeRegistry,
+	messageSerDeRegistry *envelope.Registry,
 	metadataStore MetadataStore,
 ) (*Requester, error) {
 	nodeID := cfg.NodeID

@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
@@ -27,16 +27,16 @@ func NewMessageHandler(store jobstore.Store) *MessageHandler {
 	}
 }
 
-func (m *MessageHandler) ShouldProcess(ctx context.Context, message *ncl.Message) bool {
-	return message.Metadata.Get(ncl.KeyMessageType) == messages.BidResultMessageType ||
-		message.Metadata.Get(ncl.KeyMessageType) == messages.RunResultMessageType ||
-		message.Metadata.Get(ncl.KeyMessageType) == messages.ComputeErrorMessageType
+func (m *MessageHandler) ShouldProcess(ctx context.Context, message *envelope.Message) bool {
+	return message.Metadata.Get(envelope.KeyMessageType) == messages.BidResultMessageType ||
+		message.Metadata.Get(envelope.KeyMessageType) == messages.RunResultMessageType ||
+		message.Metadata.Get(envelope.KeyMessageType) == messages.ComputeErrorMessageType
 }
 
 // HandleMessage handles incoming messages
 // TODO: handle messages arriving out of order gracefully
-func (m *MessageHandler) HandleMessage(ctx context.Context, message *ncl.Message) error {
-	switch message.Metadata.Get(ncl.KeyMessageType) {
+func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) error {
+	switch message.Metadata.Get(envelope.KeyMessageType) {
 	case messages.BidResultMessageType:
 		return m.OnBidComplete(ctx, message)
 	case messages.RunResultMessageType:
@@ -49,10 +49,10 @@ func (m *MessageHandler) HandleMessage(ctx context.Context, message *ncl.Message
 }
 
 // OnBidComplete handles the completion of a bid request
-func (m *MessageHandler) OnBidComplete(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) OnBidComplete(ctx context.Context, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.BidResult)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("BidResult", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("BidResult", reflect.TypeOf(message.Payload).String())
 	}
 
 	updateRequest := jobstore.UpdateExecutionRequest{
@@ -96,10 +96,10 @@ func (m *MessageHandler) OnBidComplete(ctx context.Context, message *ncl.Message
 	return txContext.Commit()
 }
 
-func (m *MessageHandler) OnRunComplete(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) OnRunComplete(ctx context.Context, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.RunResult)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("RunResult", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("RunResult", reflect.TypeOf(message.Payload).String())
 	}
 
 	txContext, err := m.store.BeginTx(ctx)
@@ -154,10 +154,10 @@ func (m *MessageHandler) OnRunComplete(ctx context.Context, message *ncl.Message
 	return txContext.Commit()
 }
 
-func (m *MessageHandler) OnComputeFailure(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) OnComputeFailure(ctx context.Context, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.ComputeError)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("ComputeError", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("ComputeError", reflect.TypeOf(message.Payload).String())
 	}
 
 	txContext, err := m.store.BeginTx(ctx)

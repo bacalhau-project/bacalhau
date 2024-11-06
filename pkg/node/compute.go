@@ -22,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -59,7 +60,7 @@ func NewComputeNode(
 	natsConn *nats.Conn,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
-	messageSerDeRegistry *ncl.MessageSerDeRegistry,
+	messageSerDeRegistry *envelope.Registry,
 ) (*Compute, error) {
 	// Setup dependencies
 	publishers, err := cfg.DependencyInjector.PublishersFactory.Get(ctx, cfg)

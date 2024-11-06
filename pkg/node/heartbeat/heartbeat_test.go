@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
@@ -32,7 +33,7 @@ type HeartbeatTestSuite struct {
 	natsConn             *nats.Conn
 	publisher            ncl.Publisher
 	subscriber           ncl.Subscriber
-	messageSerDeRegistry *ncl.MessageSerDeRegistry
+	messageSerDeRegistry *envelope.Registry
 	heartbeatServer      *HeartbeatServer
 }
 
@@ -58,7 +59,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	s.Require().NoError(s.heartbeatServer.Start(context.Background()))
 
 	// Setup NATS publisher and subscriber
-	s.messageSerDeRegistry = ncl.NewMessageSerDeRegistry()
+	s.messageSerDeRegistry = envelope.NewRegistry()
 	s.Require().NoError(s.messageSerDeRegistry.Register(HeartbeatMessageType, messages.Heartbeat{}))
 
 	s.publisher, err = ncl.NewPublisher(s.natsConn,

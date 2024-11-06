@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -41,28 +42,28 @@ func (d *NCLDispatcher) HandleEvent(ctx context.Context, event watcher.Event) er
 		JobType:     execution.Job.Type,
 		Events:      upsert.Events}
 
-	var message *ncl.Message
+	var message *envelope.Message
 	// Create appropriate message based on execution state
 	switch execution.ComputeState.StateType {
 	case models.ExecutionStateAskForBidAccepted:
 		log.Ctx(ctx).Debug().Msgf("Accepting bid for execution %s", execution.ID)
-		message = ncl.NewMessage(messages.BidResult{Accepted: true, BaseResponse: baseResponse}).
-			WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+		message = envelope.NewMessage(messages.BidResult{Accepted: true, BaseResponse: baseResponse}).
+			WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 	case models.ExecutionStateAskForBidRejected:
 		log.Ctx(ctx).Debug().Msgf("Rejecting bid for execution %s", execution.ID)
-		message = ncl.NewMessage(messages.BidResult{Accepted: false, BaseResponse: baseResponse}).
-			WithMetadataValue(ncl.KeyMessageType, messages.BidResultMessageType)
+		message = envelope.NewMessage(messages.BidResult{Accepted: false, BaseResponse: baseResponse}).
+			WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 	case models.ExecutionStateCompleted:
 		log.Ctx(ctx).Debug().Msgf("Execution %s completed", execution.ID)
-		message = ncl.NewMessage(messages.RunResult{
+		message = envelope.NewMessage(messages.RunResult{
 			BaseResponse:     baseResponse,
 			PublishResult:    execution.PublishedResult,
 			RunCommandResult: execution.RunOutput,
-		}).WithMetadataValue(ncl.KeyMessageType, messages.RunResultMessageType)
+		}).WithMetadataValue(envelope.KeyMessageType, messages.RunResultMessageType)
 	case models.ExecutionStateFailed:
 		log.Ctx(ctx).Debug().Msgf("Execution %s failed", execution.ID)
-		message = ncl.NewMessage(messages.ComputeError{BaseResponse: baseResponse}).
-			WithMetadataValue(ncl.KeyMessageType, messages.ComputeErrorMessageType)
+		message = envelope.NewMessage(messages.ComputeError{BaseResponse: baseResponse}).
+			WithMetadataValue(envelope.KeyMessageType, messages.ComputeErrorMessageType)
 	default:
 		// No message created for other states
 	}
