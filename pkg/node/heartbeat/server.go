@@ -12,6 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
@@ -210,8 +211,8 @@ func (h *HeartbeatServer) RemoveNode(nodeID string) {
 	h.livenessMap.Delete(nodeID)
 }
 
-func (h *HeartbeatServer) ShouldProcess(ctx context.Context, message *ncl.Message) bool {
-	return message.Metadata.Get(ncl.KeyMessageType) == HeartbeatMessageType
+func (h *HeartbeatServer) ShouldProcess(ctx context.Context, message *envelope.Message) bool {
+	return message.Metadata.Get(envelope.KeyMessageType) == HeartbeatMessageType
 }
 
 // Handle will handle a message received through the legacy heartbeat topic
@@ -228,10 +229,10 @@ func (h *HeartbeatServer) Handle(ctx context.Context, heartbeat messages.Heartbe
 }
 
 // HandleMessage will handle a message received through ncl and will call the Handle method
-func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *ncl.Message) error {
+func (h *HeartbeatServer) HandleMessage(ctx context.Context, message *envelope.Message) error {
 	heartbeat, ok := message.Payload.(*messages.Heartbeat)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType(
+		return envelope.NewErrUnexpectedPayloadType(
 			reflect.TypeOf(messages.Heartbeat{}).String(), reflect.TypeOf(message.Payload).String())
 	}
 	return h.Handle(ctx, *heartbeat)

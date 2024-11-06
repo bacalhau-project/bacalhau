@@ -12,6 +12,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -26,7 +27,7 @@ type NCLDispatcherTestSuite struct {
 	publisher  ncl.Publisher
 	forwarder  *NCLDispatcher
 	subscriber ncl.Subscriber
-	msgChan    chan *ncl.Message
+	msgChan    chan *envelope.Message
 }
 
 func (suite *NCLDispatcherTestSuite) SetupSuite() {
@@ -34,8 +35,8 @@ func (suite *NCLDispatcherTestSuite) SetupSuite() {
 	suite.natsServer, suite.natsConn = testutils.StartNats(suite.T())
 
 	// Create NCL publisher
-	serializer := ncl.NewEnvelopedRawMessageSerDe()
-	registry := ncl.NewMessageSerDeRegistry()
+	serializer := envelope.NewSerializer()
+	registry := envelope.NewRegistry()
 	suite.Require().NoError(registry.Register(messages.BidResultMessageType, messages.BidResult{}))
 	suite.Require().NoError(registry.Register(messages.RunResultMessageType, messages.RunResult{}))
 	suite.Require().NoError(registry.Register(messages.ComputeErrorMessageType, messages.ComputeError{}))
@@ -55,12 +56,12 @@ func (suite *NCLDispatcherTestSuite) SetupSuite() {
 
 	// Create NCL subscriber
 	var msgHandler ncl.MessageHandlerFunc
-	msgHandler = func(_ context.Context, msg *ncl.Message) error {
+	msgHandler = func(_ context.Context, msg *envelope.Message) error {
 		suite.msgChan <- msg
 		return nil
 	}
 
-	suite.msgChan = make(chan *ncl.Message, 10)
+	suite.msgChan = make(chan *envelope.Message, 10)
 	suite.subscriber, err = ncl.NewSubscriber(
 		suite.natsConn,
 		ncl.WithSubscriberMessageDeserializer(serializer),

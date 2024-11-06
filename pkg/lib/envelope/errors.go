@@ -1,7 +1,12 @@
-package ncl
+package envelope
 
 import (
 	"fmt"
+)
+
+const (
+	ErrNilMessage = "message is nil"
+	ErrEmptyData  = "data is empty"
 )
 
 // ErrUnsupportedEncoding is returned when an unsupported encoding is encountered.

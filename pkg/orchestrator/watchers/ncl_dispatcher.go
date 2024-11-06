@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -61,7 +62,7 @@ func (d *NCLDispatcher) HandleEvent(ctx context.Context, event watcher.Event) er
 	return nil
 }
 
-func (d *NCLDispatcher) createMessage(ctx context.Context, upsert models.ExecutionUpsert) *ncl.Message {
+func (d *NCLDispatcher) createMessage(ctx context.Context, upsert models.ExecutionUpsert) *envelope.Message {
 	transitions := newExecutionTransitions(upsert)
 
 	switch {
@@ -79,44 +80,44 @@ func (d *NCLDispatcher) createMessage(ctx context.Context, upsert models.Executi
 	return nil
 }
 
-func (d *NCLDispatcher) createAskForBidMessage(ctx context.Context, upsert models.ExecutionUpsert) *ncl.Message {
+func (d *NCLDispatcher) createAskForBidMessage(ctx context.Context, upsert models.ExecutionUpsert) *envelope.Message {
 	log.Ctx(ctx).Debug().
 		Str("nodeID", upsert.Current.NodeID).
 		Str("executionID", upsert.Current.ID).
 		Msg("Asking for bid")
 
-	return ncl.NewMessage(messages.AskForBidRequest{
+	return envelope.NewMessage(messages.AskForBidRequest{
 		BaseRequest: messages.BaseRequest{Events: upsert.Events},
 		Execution:   upsert.Current,
-	}).WithMetadataValue(ncl.KeyMessageType, messages.AskForBidMessageType)
+	}).WithMetadataValue(envelope.KeyMessageType, messages.AskForBidMessageType)
 }
 
-func (d *NCLDispatcher) createBidAcceptedMessage(ctx context.Context, upsert models.ExecutionUpsert) *ncl.Message {
+func (d *NCLDispatcher) createBidAcceptedMessage(ctx context.Context, upsert models.ExecutionUpsert) *envelope.Message {
 	log.Ctx(ctx).Debug().
 		Str("nodeID", upsert.Current.NodeID).
 		Str("executionID", upsert.Current.ID).
 		Msg("Accepting bid")
 
-	return ncl.NewMessage(messages.BidAcceptedRequest{
+	return envelope.NewMessage(messages.BidAcceptedRequest{
 		BaseRequest: messages.BaseRequest{Events: upsert.Events},
 		ExecutionID: upsert.Current.ID,
 		Accepted:    true,
-	}).WithMetadataValue(ncl.KeyMessageType, messages.BidAcceptedMessageType)
+	}).WithMetadataValue(envelope.KeyMessageType, messages.BidAcceptedMessageType)
 }
 
-func (d *NCLDispatcher) createBidRejectedMessage(ctx context.Context, upsert models.ExecutionUpsert) *ncl.Message {
+func (d *NCLDispatcher) createBidRejectedMessage(ctx context.Context, upsert models.ExecutionUpsert) *envelope.Message {
 	log.Ctx(ctx).Debug().
 		Str("nodeID", upsert.Current.NodeID).
 		Str("executionID", upsert.Current.ID).
 		Msg("Rejecting bid")
 
-	return ncl.NewMessage(messages.BidRejectedRequest{
+	return envelope.NewMessage(messages.BidRejectedRequest{
 		BaseRequest: messages.BaseRequest{Events: upsert.Events},
 		ExecutionID: upsert.Current.ID,
-	}).WithMetadataValue(ncl.KeyMessageType, messages.BidRejectedMessageType)
+	}).WithMetadataValue(envelope.KeyMessageType, messages.BidRejectedMessageType)
 }
 
-func (d *NCLDispatcher) createCancelMessage(ctx context.Context, upsert models.ExecutionUpsert) *ncl.Message {
+func (d *NCLDispatcher) createCancelMessage(ctx context.Context, upsert models.ExecutionUpsert) *envelope.Message {
 	log.Ctx(ctx).Debug().
 		Str("nodeID", upsert.Current.NodeID).
 		Str("executionID", upsert.Current.ID).
@@ -135,8 +136,8 @@ func (d *NCLDispatcher) createCancelMessage(ctx context.Context, upsert models.E
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to mark execution %s as cancelled", upsert.Current.ID)
 	}
 
-	return ncl.NewMessage(messages.CancelExecutionRequest{
+	return envelope.NewMessage(messages.CancelExecutionRequest{
 		BaseRequest: messages.BaseRequest{Events: upsert.Events},
 		ExecutionID: upsert.Current.ID,
-	}).WithMetadataValue(ncl.KeyMessageType, messages.CancelExecutionMessageType)
+	}).WithMetadataValue(envelope.KeyMessageType, messages.CancelExecutionMessageType)
 }

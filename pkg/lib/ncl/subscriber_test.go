@@ -10,22 +10,24 @@ import (
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
 type SubscriberTestSuite struct {
 	suite.Suite
 	natsServer     *server.Server
 	natsConn       *nats.Conn
-	serializer     *EnvelopedRawMessageSerDe
-	registry       *MessageSerDeRegistry
+	serializer     *envelope.Serializer
+	registry       *envelope.Registry
 	publisher      Publisher
 	subscriber     Subscriber
 	messageHandler *TestMessageHandler
 }
 
 func (suite *SubscriberTestSuite) SetupSuite() {
-	suite.serializer = NewEnvelopedRawMessageSerDe()
-	suite.registry = NewMessageSerDeRegistry()
+	suite.serializer = envelope.NewSerializer()
+	suite.registry = envelope.NewRegistry()
 	suite.Require().NoError(suite.registry.Register(TestPayloadType, TestPayload{}))
 
 	suite.natsServer, suite.natsConn = StartNats(suite.T())
@@ -67,7 +69,7 @@ func (suite *SubscriberTestSuite) TestSubscribe() {
 	suite.Require().NoError(err)
 
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), NewPublishRequest(NewMessage(event)))
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
 	suite.Require().NoError(err)
 
 	// Wait for message to be processed
@@ -80,7 +82,7 @@ func (suite *SubscriberTestSuite) TestSubscribe() {
 }
 
 func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
-	filter := func(metadata *Metadata) bool {
+	filter := func(metadata *envelope.Metadata) bool {
 		return metadata.Get("filter") == "true"
 	}
 
@@ -99,13 +101,13 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 
 	// Publish a message that should be filtered out
 	event1 := TestPayload{Message: "Filtered"}
-	msg1 := NewMessage(event1).WithMetadataValue("filter", "true")
+	msg1 := envelope.NewMessage(event1).WithMetadataValue("filter", "true")
 	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg1))
 	suite.Require().NoError(err)
 
 	// Publish a message that should be processed
 	event2 := TestPayload{Message: "Not Filtered"}
-	msg2 := NewMessage(event2).WithMetadataValue("filter", "false")
+	msg2 := envelope.NewMessage(event2).WithMetadataValue("filter", "false")
 	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg2))
 	suite.Require().NoError(err)
 
@@ -123,7 +125,7 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 	suite.Require().NoError(err)
 
 	event1 := TestPayload{Message: "Message 1"}
-	msg1 := NewMessage(event1)
+	msg1 := envelope.NewMessage(event1)
 	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg1))
 	suite.Require().NoError(err)
 
@@ -137,7 +139,7 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 	suite.Require().NoError(err)
 
 	event2 := TestPayload{Message: "Message 2"}
-	msg2 := NewMessage(event2)
+	msg2 := envelope.NewMessage(event2)
 	err = publisher2.Publish(context.Background(), NewPublishRequest(msg2))
 	suite.Require().NoError(err)
 
@@ -169,7 +171,7 @@ func (suite *SubscriberTestSuite) TestClose() {
 
 	// Try to publish after closing
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), NewPublishRequest(NewMessage(event)))
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
 	suite.Require().NoError(err)
 
 	// Wait for a short time

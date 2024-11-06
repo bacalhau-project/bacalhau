@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
@@ -23,17 +24,17 @@ func NewMessageHandler(executionStore store.ExecutionStore) *MessageHandler {
 	}
 }
 
-func (m *MessageHandler) ShouldProcess(ctx context.Context, message *ncl.Message) bool {
-	return message.Metadata.Get(ncl.KeyMessageType) == messages.AskForBidMessageType ||
-		message.Metadata.Get(ncl.KeyMessageType) == messages.BidAcceptedMessageType ||
-		message.Metadata.Get(ncl.KeyMessageType) == messages.BidRejectedMessageType ||
-		message.Metadata.Get(ncl.KeyMessageType) == messages.CancelExecutionMessageType
+func (m *MessageHandler) ShouldProcess(ctx context.Context, message *envelope.Message) bool {
+	return message.Metadata.Get(envelope.KeyMessageType) == messages.AskForBidMessageType ||
+		message.Metadata.Get(envelope.KeyMessageType) == messages.BidAcceptedMessageType ||
+		message.Metadata.Get(envelope.KeyMessageType) == messages.BidRejectedMessageType ||
+		message.Metadata.Get(envelope.KeyMessageType) == messages.CancelExecutionMessageType
 }
 
 // HandleMessage handles incoming messages
 // TODO: handle messages arriving out of order gracefully
-func (m *MessageHandler) HandleMessage(ctx context.Context, message *ncl.Message) error {
-	switch message.Metadata.Get(ncl.KeyMessageType) {
+func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) error {
+	switch message.Metadata.Get(envelope.KeyMessageType) {
 	case messages.AskForBidMessageType:
 		return m.handleAskForBid(ctx, message)
 	case messages.BidAcceptedMessageType:
@@ -47,10 +48,10 @@ func (m *MessageHandler) HandleMessage(ctx context.Context, message *ncl.Message
 	}
 }
 
-func (m *MessageHandler) handleAskForBid(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) handleAskForBid(ctx context.Context, message *envelope.Message) error {
 	request, ok := message.Payload.(*messages.AskForBidRequest)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("AskForBidRequest", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("AskForBidRequest", reflect.TypeOf(message.Payload).String())
 	}
 
 	// Set the protocol version in the job meta
@@ -64,10 +65,10 @@ func (m *MessageHandler) handleAskForBid(ctx context.Context, message *ncl.Messa
 	return m.executionStore.CreateExecution(ctx, *request.Execution)
 }
 
-func (m *MessageHandler) handleBidAccepted(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) handleBidAccepted(ctx context.Context, message *envelope.Message) error {
 	request, ok := message.Payload.(*messages.BidAcceptedRequest)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("BidAcceptedRequest", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("BidAcceptedRequest", reflect.TypeOf(message.Payload).String())
 	}
 
 	log.Ctx(ctx).Debug().Msgf("bid accepted %s", request.ExecutionID)
@@ -83,10 +84,10 @@ func (m *MessageHandler) handleBidAccepted(ctx context.Context, message *ncl.Mes
 	})
 }
 
-func (m *MessageHandler) handleBidRejected(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) handleBidRejected(ctx context.Context, message *envelope.Message) error {
 	request, ok := message.Payload.(*messages.BidRejectedRequest)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("BidRejectedRequest", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("BidRejectedRequest", reflect.TypeOf(message.Payload).String())
 	}
 
 	log.Ctx(ctx).Debug().Msgf("bid rejected for %s due to %s", request.ExecutionID, request.Message())
@@ -103,10 +104,10 @@ func (m *MessageHandler) handleBidRejected(ctx context.Context, message *ncl.Mes
 	})
 }
 
-func (m *MessageHandler) handleCancel(ctx context.Context, message *ncl.Message) error {
+func (m *MessageHandler) handleCancel(ctx context.Context, message *envelope.Message) error {
 	request, ok := message.Payload.(*messages.CancelExecutionRequest)
 	if !ok {
-		return ncl.NewErrUnexpectedPayloadType("CancelExecutionRequest", reflect.TypeOf(message.Payload).String())
+		return envelope.NewErrUnexpectedPayloadType("CancelExecutionRequest", reflect.TypeOf(message.Payload).String())
 	}
 
 	log.Ctx(ctx).Debug().Msgf("canceling execution %s due to %s", request.ExecutionID, request.Message())
