@@ -38,7 +38,7 @@ func (m *MockExecutionStore) EXPECT() *MockExecutionStoreMockRecorder {
 }
 
 // AddExecutionEvent mocks base method.
-func (m *MockExecutionStore) AddExecutionEvent(ctx context.Context, executionID string, events ...models.Event) error {
+func (m *MockExecutionStore) AddExecutionEvent(ctx context.Context, executionID string, events ...*models.Event) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, executionID}
 	for _, a := range events {
@@ -86,7 +86,7 @@ func (mr *MockExecutionStoreMockRecorder) Close(ctx interface{}) *gomock.Call {
 }
 
 // CreateExecution mocks base method.
-func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution models.Execution, events ...models.Event) error {
+func (m *MockExecutionStore) CreateExecution(ctx context.Context, execution models.Execution, events ...*models.Event) error {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, execution}
 	for _, a := range events {

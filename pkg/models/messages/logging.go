@@ -1,8 +1,8 @@
 package messages
 
 type ExecutionLogsRequest struct {
-	RoutingMetadata
 	ExecutionID string
+	NodeID      string
 	Tail        bool
 	Follow      bool
 }

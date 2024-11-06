@@ -21,8 +21,20 @@ import (
 
 type VersionNotifyTestSuite struct {
 	suite.Suite
-	logger zerolog.Logger
-	buf    *bytes.Buffer
+	logger        zerolog.Logger
+	buf           *bytes.Buffer
+	originalLevel zerolog.Level
+}
+
+func (suite *VersionNotifyTestSuite) SetupSuite() {
+	// Store original level
+	suite.originalLevel = zerolog.GlobalLevel()
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+}
+
+func (suite *VersionNotifyTestSuite) TearDownSuite() {
+	// Restore original level
+	zerolog.SetGlobalLevel(suite.originalLevel)
 }
 
 func (suite *VersionNotifyTestSuite) SetupTest() {

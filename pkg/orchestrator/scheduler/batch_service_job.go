@@ -190,7 +190,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		//  calculate it based on the time the job stayed in the queue so that rescheduling the job
 		//  would reset the queue timeout.
 		if job.GetCreateTime().Before(expirationTime) {
-			plan.MarkJobFailed(models.EventFromError(
+			plan.MarkJobFailed(*models.EventFromError(
 				orchestrator.EventTopicJobScheduling,
 				orchestrator.NewErrNotEnoughNodes(remainingExecutionCount, append(matching, rejected...))))
 			return nil

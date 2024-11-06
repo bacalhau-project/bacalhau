@@ -1,4 +1,4 @@
-package messages
+package legacy
 
 import "github.com/bacalhau-project/bacalhau/pkg/models"
 

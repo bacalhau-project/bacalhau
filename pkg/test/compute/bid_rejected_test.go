@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -29,7 +29,7 @@ func (s *BidRejectedSuite) TestBidRejected() {
 	ctx := context.Background()
 	executionID := s.prepareAndAskForBid(ctx, mock.Execution())
 
-	_, err := s.node.LocalEndpoint.BidRejected(ctx, messages.BidRejectedRequest{ExecutionID: executionID})
+	_, err := s.node.LocalEndpoint.BidRejected(ctx, legacy.BidRejectedRequest{ExecutionID: executionID})
 	s.NoError(err)
 	err = s.stateResolver.Wait(ctx, executionID, resolver.CheckForState(models.ExecutionStateBidRejected))
 	s.NoError(err)
@@ -37,7 +37,7 @@ func (s *BidRejectedSuite) TestBidRejected() {
 
 func (s *BidRejectedSuite) TestDoesntExist() {
 	ctx := context.Background()
-	_, err := s.node.LocalEndpoint.BidRejected(ctx, messages.BidRejectedRequest{ExecutionID: uuid.NewString()})
+	_, err := s.node.LocalEndpoint.BidRejected(ctx, legacy.BidRejectedRequest{ExecutionID: uuid.NewString()})
 	s.Error(err)
 }
 
@@ -57,7 +57,7 @@ func (s *BidRejectedSuite) TestWrongState() {
 		})
 		s.NoError(err)
 
-		_, err = s.node.LocalEndpoint.BidRejected(ctx, messages.BidRejectedRequest{ExecutionID: executionID})
+		_, err = s.node.LocalEndpoint.BidRejected(ctx, legacy.BidRejectedRequest{ExecutionID: executionID})
 		s.Error(err)
 	}
 }

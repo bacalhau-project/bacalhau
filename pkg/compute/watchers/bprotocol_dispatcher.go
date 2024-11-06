@@ -2,45 +2,46 @@ package watchers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
-// CallbackForwarder handles forwarding messages based on execution state changes
-type CallbackForwarder struct {
+// BProtocolDispatcher handles forwarding messages based on execution state changes
+type BProtocolDispatcher struct {
 	callback compute.Callback
 }
 
-// NewCallbackForwarder creates a new CallbackForwarder with the given callback
-func NewCallbackForwarder(callback compute.Callback) *CallbackForwarder {
-	return &CallbackForwarder{
+// NewBProtocolDispatcher creates a new BProtocolDispatcher with the given callback
+func NewBProtocolDispatcher(callback compute.Callback) *BProtocolDispatcher {
+	return &BProtocolDispatcher{
 		callback: callback,
 	}
 }
 
 // HandleEvent processes a watcher event and publishes appropriate messages
-func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event) error {
-	upsert, ok := event.Object.(store.ExecutionUpsert)
+func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Event) error {
+	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return fmt.Errorf("failed to cast event object to Execution. Found type %T", event.Object)
+		return bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+			WithComponent(bprotocolErrComponent)
 	}
 
 	execution := upsert.Current
+
 	// Prepare base response with common fields
-	routingMetadata := messages.RoutingMetadata{
+	routingMetadata := legacy.RoutingMetadata{
 		// the source of this response is the bidders nodeID.
 		SourcePeerID: execution.NodeID,
 		// the target of this response is the source of the request.
-		TargetPeerID: execution.Job.Meta[models.MetaRequesterID],
+		TargetPeerID: execution.Job.OrchestratorID(),
 	}
-	executionMetadata := messages.NewExecutionMetadata(execution)
+	executionMetadata := legacy.NewExecutionMetadata(execution)
 	updateEvent := models.Event{}
 	if len(upsert.Events) > 0 {
 		updateEvent = *upsert.Events[0]
@@ -50,7 +51,7 @@ func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event
 	switch execution.ComputeState.StateType {
 	case models.ExecutionStateAskForBidAccepted:
 		log.Ctx(ctx).Debug().Msgf("Accepting bid for execution %s", execution.ID)
-		h.callback.OnBidComplete(ctx, messages.BidResult{
+		d.callback.OnBidComplete(ctx, legacy.BidResult{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
 			Accepted:          true,
@@ -58,7 +59,7 @@ func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event
 		})
 	case models.ExecutionStateAskForBidRejected:
 		log.Ctx(ctx).Debug().Msgf("Rejecting bid for execution %s", execution.ID)
-		h.callback.OnBidComplete(ctx, messages.BidResult{
+		d.callback.OnBidComplete(ctx, legacy.BidResult{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
 			Accepted:          false,
@@ -68,7 +69,7 @@ func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event
 		// Handle the case where bid is asked with pre-approval where compute state jumps to BidAccepted directly
 		if upsert.Previous.ComputeState.StateType == models.ExecutionStateNew {
 			log.Ctx(ctx).Debug().Msgf("Accepting and running execution %s", execution.ID)
-			h.callback.OnBidComplete(ctx, messages.BidResult{
+			d.callback.OnBidComplete(ctx, legacy.BidResult{
 				RoutingMetadata:   routingMetadata,
 				ExecutionMetadata: executionMetadata,
 				Accepted:          true,
@@ -77,7 +78,7 @@ func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event
 		}
 	case models.ExecutionStateCompleted:
 		log.Ctx(ctx).Debug().Msgf("Execution %s completed", execution.ID)
-		h.callback.OnRunComplete(ctx, messages.RunResult{
+		d.callback.OnRunComplete(ctx, legacy.RunResult{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
 			PublishResult:     execution.PublishedResult,
@@ -85,7 +86,7 @@ func (h *CallbackForwarder) HandleEvent(ctx context.Context, event watcher.Event
 		})
 	case models.ExecutionStateFailed:
 		log.Ctx(ctx).Debug().Msgf("Execution %s failed", execution.ID)
-		h.callback.OnComputeFailure(ctx, messages.ComputeError{
+		d.callback.OnComputeFailure(ctx, legacy.ComputeError{
 			RoutingMetadata:   routingMetadata,
 			ExecutionMetadata: executionMetadata,
 			Event:             updateEvent,

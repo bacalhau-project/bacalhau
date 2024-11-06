@@ -7,8 +7,8 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // ExecutionLogger handles logging of execution-related events with detailed state transition information
@@ -30,7 +30,7 @@ func (e *ExecutionLogger) HandleEvent(ctx context.Context, event watcher.Event) 
 		return nil
 	}
 
-	upsert, ok := event.Object.(store.ExecutionUpsert)
+	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
 		e.logger.Error().
 			Str("event_type", event.ObjectType).
@@ -51,10 +51,29 @@ func (e *ExecutionLogger) HandleEvent(ctx context.Context, event watcher.Event) 
 			Str("current_desired_state", upsert.Current.DesiredState.StateType.String()).
 			Int64("state_change_duration_ms", duration.Milliseconds())
 
-		// Log state transition message
-		logEvent.Msgf("Execution state changed from '%s' to '%s'",
-			upsert.Previous.ComputeState.StateType,
-			upsert.Current.ComputeState.StateType)
+		// Determine what changed
+		computeStateChanged := upsert.Previous.ComputeState.StateType != upsert.Current.ComputeState.StateType
+		desiredStateChanged := upsert.Previous.DesiredState.StateType != upsert.Current.DesiredState.StateType
+
+		// Construct appropriate message based on what changed
+		switch {
+		case computeStateChanged && desiredStateChanged:
+			logEvent.Msgf("Execution state changed from '%s' to '%s' and desired state from '%s' to '%s'",
+				upsert.Previous.ComputeState.StateType,
+				upsert.Current.ComputeState.StateType,
+				upsert.Previous.DesiredState.StateType,
+				upsert.Current.DesiredState.StateType)
+		case computeStateChanged:
+			logEvent.Msgf("Execution state changed from '%s' to '%s'",
+				upsert.Previous.ComputeState.StateType,
+				upsert.Current.ComputeState.StateType)
+		case desiredStateChanged:
+			logEvent.Msgf("Execution desired state changed from '%s' to '%s'",
+				upsert.Previous.DesiredState.StateType,
+				upsert.Current.DesiredState.StateType)
+		default:
+			logEvent.Msg("Execution updated with no state changes")
+		}
 	} else {
 		// This is a new execution
 		logEvent = logEvent.

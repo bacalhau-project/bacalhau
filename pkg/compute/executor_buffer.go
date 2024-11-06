@@ -85,7 +85,7 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution *models.Execution) e
 				NewValues: models.Execution{
 					ComputeState: models.NewExecutionState(models.ExecutionStateFailed).WithMessage(err.Error()),
 				},
-				Events: []models.Event{*models.NewEvent(EventTopicExecutionPreparing).WithError(err)},
+				Events: []*models.Event{models.NewEvent(EventTopicExecutionPreparing).WithError(err)},
 			})
 			if updateErr != nil {
 				log.Ctx(ctx).Error().Err(updateErr).Msg("failed to update execution state while handling error")

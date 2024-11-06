@@ -84,9 +84,11 @@ const (
 )
 
 const (
-	MetaReservedPrefix = "bacalhau.org/"
-	MetaRequesterID    = "bacalhau.org/requester.id"
-	MetaClientID       = "bacalhau.org/client.id"
+	MetaReservedPrefix       = "bacalhau.org/"
+	MetaOrchestratorIDLegacy = "bacalhau.org/requester.id"
+	MetaOrchestratorID       = "bacalhau.org/orchestrator.id"
+	// MetaOrchestratorProtocol indicates which orchestrator-compute protocol is used
+	MetaOrchestratorProtocol = "bacalhau.org/orchestrator.protocol"
 
 	MetaServerInstallationID = "bacalhau.org/server.installation.id"
 	MetaServerInstanceID     = "bacalhau.org/server.instance.id"

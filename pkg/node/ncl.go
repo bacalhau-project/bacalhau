@@ -14,6 +14,13 @@ func CreateMessageSerDeRegistry() (*ncl.MessageSerDeRegistry, error) {
 	reg := ncl.NewMessageSerDeRegistry()
 	err := errors.Join(
 		reg.Register(heartbeat.HeartbeatMessageType, messages.Heartbeat{}),
+		reg.Register(messages.AskForBidMessageType, messages.AskForBidRequest{}),
+		reg.Register(messages.BidAcceptedMessageType, messages.BidAcceptedRequest{}),
+		reg.Register(messages.BidRejectedMessageType, messages.BidRejectedRequest{}),
+		reg.Register(messages.CancelExecutionMessageType, messages.CancelExecutionRequest{}),
+		reg.Register(messages.BidResultMessageType, messages.BidResult{}),
+		reg.Register(messages.RunResultMessageType, messages.RunResult{}),
+		reg.Register(messages.ComputeErrorMessageType, messages.ComputeError{}),
 	)
 	return reg, err
 }
@@ -31,4 +38,29 @@ func computeHeartbeatTopic(nodeID string) string {
 // it subscribes for heartbeat messages from all compute nodes
 func orchestratorHeartbeatSubscription() string {
 	return fmt.Sprintf(HeartbeatTopicFormat, "*")
+}
+
+// orchestratorSubjectSub returns the subject to subscribe to for orchestrator messages.
+// it subscribes to outgoing messages from all compute nodes.
+func orchestratorInSubscription() string {
+	return "bacalhau.global.compute.*.out.>"
+}
+
+// orchestratorOutSubjectPrefix returns the subject to publish orchestrator messages to.
+// it publishes to the incoming subject of a specific compute node.
+func orchestratorOutSubjectPrefix(computeNodeID string) string {
+	return fmt.Sprintf("bacalhau.global.compute.%s.in", computeNodeID)
+}
+
+// computeInSubscription returns the subject to subscribe to for compute messages.
+// it subscribes to incoming messages directed to its own node.
+func computeInSubscription(nodeID string) string {
+	return fmt.Sprintf("bacalhau.global.compute.%s.in.*", nodeID)
+}
+
+// computeOutSubject returns the subject to publish compute messages to.
+// it publishes to the outgoing subject of a specific compute node, which the
+// orchestrator subscribes to.
+func computeOutSubject(nodeID string) string {
+	return fmt.Sprintf("bacalhau.global.compute.%s.out", nodeID)
 }

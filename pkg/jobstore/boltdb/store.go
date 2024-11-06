@@ -141,7 +141,8 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err = errors.Join(
-		eventObjectSerializer.RegisterType(jobstore.EventObjectExecutionUpsert, reflect.TypeOf(jobstore.ExecutionUpsert{})),
+		eventObjectSerializer.RegisterType(jobstore.EventObjectExecutionUpsert, reflect.TypeOf(models.ExecutionUpsert{})),
+		eventObjectSerializer.RegisterType(jobstore.EventObjectEvaluation, reflect.TypeOf(models.Evaluation{})),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register event object types: %w", err)
@@ -163,7 +164,7 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 	if err != nil {
 		return nil, err
 	}
-	return jobstore.NewTracingContext(boltdblib.NewTxContext(ctx, tx)), nil
+	return boltdblib.NewTracingContext(boltdblib.NewTxContext(ctx, tx)), nil
 }
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
@@ -1010,14 +1011,20 @@ func (b *BoltJobStore) addJobHistory(tx *bolt.Tx, jobID string, event models.Eve
 	})
 }
 
-func (b *BoltJobStore) addExecutionHistory(tx *bolt.Tx, jobID, executionID string, event models.Event) error {
-	return b.addHistory(tx, jobID, models.JobHistory{
-		Type:        models.JobHistoryTypeExecutionLevel,
-		JobID:       jobID,
-		ExecutionID: executionID,
-		Event:       event,
-		Time:        b.clock.Now().UTC(),
-	})
+func (b *BoltJobStore) addExecutionHistory(tx *bolt.Tx, jobID, executionID string, events ...*models.Event) error {
+	now := b.clock.Now().UTC()
+	for _, event := range events {
+		if err := b.addHistory(tx, jobID, models.JobHistory{
+			Type:        models.JobHistoryTypeExecutionLevel,
+			JobID:       jobID,
+			ExecutionID: executionID,
+			Event:       *event,
+			Time:        now,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *BoltJobStore) addHistory(tx *bolt.Tx, jobID string, historyEntry models.JobHistory) error {
@@ -1051,8 +1058,6 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 	if execution.Revision == 0 {
 		execution.Revision = 1
 	}
-	// Ensure the job is not included in the execution when persisting it
-	execution.Job = nil
 	execution.Normalize()
 	err := execution.Validate()
 	if err != nil {
@@ -1100,7 +1105,7 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 		if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 			Operation:  watcher.OperationCreate,
 			ObjectType: jobstore.EventObjectExecutionUpsert,
-			Object:     jobstore.ExecutionUpsert{Current: &execution},
+			Object:     models.ExecutionUpsert{Current: &execution},
 		}); err != nil {
 			return err
 		}
@@ -1166,11 +1171,15 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 		}
 	}
 
+	if err = b.addExecutionHistory(tx, newExecution.JobID, newExecution.ID, request.Events...); err != nil {
+		return err
+	}
+
 	if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationUpdate,
 		ObjectType: jobstore.EventObjectExecutionUpsert,
-		Object: jobstore.ExecutionUpsert{
-			Current: &newExecution, Previous: &existingExecution,
+		Object: models.ExecutionUpsert{
+			Current: &newExecution, Previous: &existingExecution, Events: request.Events,
 		},
 	}); err != nil {
 		return err
@@ -1191,12 +1200,11 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 // AddExecutionHistory appends a new history entry to the execution history
 func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error {
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		for _, event := range events {
-			if err = b.addExecutionHistory(tx, jobID, executionID, event); err != nil {
-				return err
-			}
+		eventsValues := make([]*models.Event, len(events))
+		for i := range events {
+			eventsValues[i] = &events[i]
 		}
-		return nil
+		return b.addExecutionHistory(tx, jobID, executionID, eventsValues...)
 	})
 }
 
@@ -1240,7 +1248,7 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 	return b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,
 		ObjectType: jobstore.EventObjectEvaluation,
-		Object:     &eval,
+		Object:     eval,
 	})
 }
 
@@ -1323,7 +1331,7 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 	return b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationDelete,
 		ObjectType: jobstore.EventObjectEvaluation,
-		Object:     &eval,
+		Object:     eval,
 	})
 }
 

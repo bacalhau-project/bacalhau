@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	concurrency "github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
 	messages "github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	legacy "github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -38,10 +38,10 @@ func (m *MockEndpoint) EXPECT() *MockEndpointMockRecorder {
 }
 
 // AskForBid mocks base method.
-func (m *MockEndpoint) AskForBid(arg0 context.Context, arg1 messages.AskForBidRequest) (messages.AskForBidResponse, error) {
+func (m *MockEndpoint) AskForBid(arg0 context.Context, arg1 legacy.AskForBidRequest) (legacy.AskForBidResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AskForBid", arg0, arg1)
-	ret0, _ := ret[0].(messages.AskForBidResponse)
+	ret0, _ := ret[0].(legacy.AskForBidResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -53,10 +53,10 @@ func (mr *MockEndpointMockRecorder) AskForBid(arg0, arg1 interface{}) *gomock.Ca
 }
 
 // BidAccepted mocks base method.
-func (m *MockEndpoint) BidAccepted(arg0 context.Context, arg1 messages.BidAcceptedRequest) (messages.BidAcceptedResponse, error) {
+func (m *MockEndpoint) BidAccepted(arg0 context.Context, arg1 legacy.BidAcceptedRequest) (legacy.BidAcceptedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BidAccepted", arg0, arg1)
-	ret0, _ := ret[0].(messages.BidAcceptedResponse)
+	ret0, _ := ret[0].(legacy.BidAcceptedResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -68,10 +68,10 @@ func (mr *MockEndpointMockRecorder) BidAccepted(arg0, arg1 interface{}) *gomock.
 }
 
 // BidRejected mocks base method.
-func (m *MockEndpoint) BidRejected(arg0 context.Context, arg1 messages.BidRejectedRequest) (messages.BidRejectedResponse, error) {
+func (m *MockEndpoint) BidRejected(arg0 context.Context, arg1 legacy.BidRejectedRequest) (legacy.BidRejectedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BidRejected", arg0, arg1)
-	ret0, _ := ret[0].(messages.BidRejectedResponse)
+	ret0, _ := ret[0].(legacy.BidRejectedResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -83,10 +83,10 @@ func (mr *MockEndpointMockRecorder) BidRejected(arg0, arg1 interface{}) *gomock.
 }
 
 // CancelExecution mocks base method.
-func (m *MockEndpoint) CancelExecution(arg0 context.Context, arg1 messages.CancelExecutionRequest) (messages.CancelExecutionResponse, error) {
+func (m *MockEndpoint) CancelExecution(arg0 context.Context, arg1 legacy.CancelExecutionRequest) (legacy.CancelExecutionResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CancelExecution", arg0, arg1)
-	ret0, _ := ret[0].(messages.CancelExecutionResponse)
+	ret0, _ := ret[0].(legacy.CancelExecutionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -95,21 +95,6 @@ func (m *MockEndpoint) CancelExecution(arg0 context.Context, arg1 messages.Cance
 func (mr *MockEndpointMockRecorder) CancelExecution(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelExecution", reflect.TypeOf((*MockEndpoint)(nil).CancelExecution), arg0, arg1)
-}
-
-// ExecutionLogs mocks base method.
-func (m *MockEndpoint) ExecutionLogs(ctx context.Context, request messages.ExecutionLogsRequest) (<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecutionLogs", ctx, request)
-	ret0, _ := ret[0].(<-chan *concurrency.AsyncResult[models.ExecutionLog])
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ExecutionLogs indicates an expected call of ExecutionLogs.
-func (mr *MockEndpointMockRecorder) ExecutionLogs(ctx, request interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecutionLogs", reflect.TypeOf((*MockEndpoint)(nil).ExecutionLogs), ctx, request)
 }
 
 // MockExecutor is a mock of Executor interface.
@@ -187,7 +172,7 @@ func (m *MockCallback) EXPECT() *MockCallbackMockRecorder {
 }
 
 // OnBidComplete mocks base method.
-func (m *MockCallback) OnBidComplete(ctx context.Context, result messages.BidResult) {
+func (m *MockCallback) OnBidComplete(ctx context.Context, result legacy.BidResult) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnBidComplete", ctx, result)
 }
@@ -198,20 +183,8 @@ func (mr *MockCallbackMockRecorder) OnBidComplete(ctx, result interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnBidComplete", reflect.TypeOf((*MockCallback)(nil).OnBidComplete), ctx, result)
 }
 
-// OnCancelComplete mocks base method.
-func (m *MockCallback) OnCancelComplete(ctx context.Context, result messages.CancelResult) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "OnCancelComplete", ctx, result)
-}
-
-// OnCancelComplete indicates an expected call of OnCancelComplete.
-func (mr *MockCallbackMockRecorder) OnCancelComplete(ctx, result interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnCancelComplete", reflect.TypeOf((*MockCallback)(nil).OnCancelComplete), ctx, result)
-}
-
 // OnComputeFailure mocks base method.
-func (m *MockCallback) OnComputeFailure(ctx context.Context, err messages.ComputeError) {
+func (m *MockCallback) OnComputeFailure(ctx context.Context, err legacy.ComputeError) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnComputeFailure", ctx, err)
 }
@@ -223,7 +196,7 @@ func (mr *MockCallbackMockRecorder) OnComputeFailure(ctx, err interface{}) *gomo
 }
 
 // OnRunComplete mocks base method.
-func (m *MockCallback) OnRunComplete(ctx context.Context, result messages.RunResult) {
+func (m *MockCallback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "OnRunComplete", ctx, result)
 }

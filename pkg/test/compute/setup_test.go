@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -22,7 +22,7 @@ import (
 	noop_executor "github.com/bacalhau-project/bacalhau/pkg/executor/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -42,9 +42,9 @@ type ComputeSuite struct {
 	executor         *noop_executor.NoopExecutor
 	publisher        *noop_publisher.NoopPublisher
 	stateResolver    resolver.StateResolver
-	bidChannel       chan messages.BidResult
-	failureChannel   chan messages.ComputeError
-	completedChannel chan messages.RunResult
+	bidChannel       chan legacy.BidResult
+	failureChannel   chan legacy.ComputeError
+	completedChannel chan legacy.RunResult
 	natsServer       *server.Server
 	natsClient       *nats.Conn
 }
@@ -136,9 +136,9 @@ func (s *ComputeSuite) setupNode() {
 	ctx := context.Background()
 	s.cm = system.NewCleanupManager()
 
-	s.bidChannel = make(chan messages.BidResult, 10)
-	s.completedChannel = make(chan messages.RunResult, 10)
-	s.failureChannel = make(chan messages.ComputeError, 10)
+	s.bidChannel = make(chan legacy.BidResult, 10)
+	s.completedChannel = make(chan legacy.RunResult, 10)
+	s.failureChannel = make(chan legacy.ComputeError, 10)
 
 	apiServer, err := publicapi.NewAPIServer(publicapi.ServerParams{
 		Router:     echo.New(),
@@ -149,14 +149,14 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	callback := compute.CallbackMock{
-		OnBidCompleteHandler: func(ctx context.Context, result messages.BidResult) {
+	callback := watchers.CallbackMock{
+		OnBidCompleteHandler: func(ctx context.Context, result legacy.BidResult) {
 			s.bidChannel <- result
 		},
-		OnRunCompleteHandler: func(ctx context.Context, result messages.RunResult) {
+		OnRunCompleteHandler: func(ctx context.Context, result legacy.RunResult) {
 			s.completedChannel <- result
 		},
-		OnComputeFailureHandler: func(ctx context.Context, err messages.ComputeError) {
+		OnComputeFailureHandler: func(ctx context.Context, err legacy.ComputeError) {
 			s.failureChannel <- err
 		},
 	}
@@ -185,9 +185,9 @@ func (s *ComputeSuite) setupNode() {
 	})
 }
 
-func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) messages.BidResult {
-	_, err := s.node.LocalEndpoint.AskForBid(ctx, messages.AskForBidRequest{
-		RoutingMetadata: messages.RoutingMetadata{
+func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Execution) legacy.BidResult {
+	_, err := s.node.LocalEndpoint.AskForBid(ctx, legacy.AskForBidRequest{
+		RoutingMetadata: legacy.RoutingMetadata{
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},
@@ -201,7 +201,7 @@ func (s *ComputeSuite) askForBid(ctx context.Context, execution *models.Executio
 		return result
 	case <-time.After(5 * time.Second):
 		s.FailNow("did not receive a bid response")
-		return messages.BidResult{}
+		return legacy.BidResult{}
 	}
 }
 

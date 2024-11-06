@@ -94,9 +94,10 @@ func Setup(
 			}
 		}
 
-		if isComputeNode {
-			cfg.Compute.Orchestrators = orchestratorAddrs
-		}
+		// always override the default orchestrator address
+		// for the first orchestrator, this will be empty as it should be
+		// for the rest, it will be the address of the previous orchestrators
+		cfg.Compute.Orchestrators = orchestratorAddrs
 
 		if isRequesterNode {
 			cfg.Orchestrator.Cluster.Peers = clusterPeersAddrs

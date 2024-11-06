@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -24,9 +23,9 @@ func NewExecutionUpsertHandler(executor compute.Executor, bidder compute.Bidder)
 
 func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.Event) error {
 	// TODO: filter out old events, or make sure we don't get them during node startup
-	upsert, ok := event.Object.(store.ExecutionUpsert)
+	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return fmt.Errorf("failed to cast event object to store.ExecutionUpsert. Found type %T", event.Object)
+		return fmt.Errorf("failed to cast event object to models.ExecutionUpsert. Found type %T", event.Object)
 	}
 
 	execution := upsert.Current

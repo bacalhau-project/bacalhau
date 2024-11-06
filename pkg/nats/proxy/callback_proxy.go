@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
 type CallbackProxyParams struct {
@@ -32,15 +32,15 @@ func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 	return proxy
 }
 
-func (p *CallbackProxy) OnBidComplete(ctx context.Context, result messages.BidResult) {
+func (p *CallbackProxy) OnBidComplete(ctx context.Context, result legacy.BidResult) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnBidComplete, result)
 }
 
-func (p *CallbackProxy) OnRunComplete(ctx context.Context, result messages.RunResult) {
+func (p *CallbackProxy) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnRunComplete, result)
 }
 
-func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result messages.ComputeError) {
+func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result legacy.ComputeError) {
 	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnComputeFailure, result)
 }
 

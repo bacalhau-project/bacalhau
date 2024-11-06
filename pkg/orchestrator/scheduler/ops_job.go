@@ -144,7 +144,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 	}
 	if len(matching) == 0 {
 		plan.MarkJobFailed(
-			models.EventFromError(orchestrator.EventTopicJobScheduling, orchestrator.NewErrNoMatchingNodes(rejected)))
+			*models.EventFromError(orchestrator.EventTopicJobScheduling, orchestrator.NewErrNoMatchingNodes(rejected)))
 		return nil, nil
 	}
 	newExecs := execSet{}

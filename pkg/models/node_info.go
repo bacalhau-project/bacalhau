@@ -78,11 +78,13 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 // TODO(walid): add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
 type NodeInfo struct {
 	// TODO replace all access on this field with the `ID()` method
-	NodeID          string            `json:"NodeID"`
-	NodeType        NodeType          `json:"NodeType"`
-	Labels          map[string]string `json:"Labels"`
-	ComputeNodeInfo *ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
-	BacalhauVersion BuildVersionInfo  `json:"BacalhauVersion"`
+	NodeID   string            `json:"NodeID"`
+	NodeType NodeType          `json:"NodeType"`
+	Labels   map[string]string `json:"Labels"`
+	// SupportedProtocols indicates which communication protocols this node supports
+	SupportedProtocols []Protocol       `json:"SupportedProtocols"`
+	ComputeNodeInfo    *ComputeNodeInfo `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
+	BacalhauVersion    BuildVersionInfo `json:"BacalhauVersion"`
 }
 
 // ID returns the node ID

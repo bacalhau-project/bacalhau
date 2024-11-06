@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package jobstore
+package boltdblib
 
 import (
 	"bytes"
@@ -52,7 +52,7 @@ func (s *TracingContextTestSuite) TearDownTest() {
 	log.Logger = s.originalLogger
 }
 
-func (s *TracingContextTestSuite) TestCommitAndRollbackWithoutDelay() {
+func (s *TracingContextTestSuite) TestCommitWithoutDelay() {
 	// Create a new TracingContext
 	ctx := NewTracingContext(newMockTxContext(s.logCtx))
 
@@ -60,17 +60,46 @@ func (s *TracingContextTestSuite) TestCommitAndRollbackWithoutDelay() {
 	err := ctx.Commit()
 	assert.NoError(s.T(), err)
 	assert.NotContains(s.T(), s.buf.String(), "transaction took longer than")
+}
+
+func (s *TracingContextTestSuite) TestRollbackWithoutDelay() {
+	// Create a new TracingContext
+	ctx := NewTracingContext(newMockTxContext(s.logCtx))
 
 	// Test Rollback method without delay
-	err = ctx.Rollback()
+	err := ctx.Rollback()
 	assert.NoError(s.T(), err)
 	assert.NotContains(s.T(), s.buf.String(), "transaction took longer than")
 }
 
-func (s *TracingContextTestSuite) TestCommitAndRollbackWithDelay() {
+func (s *TracingContextTestSuite) TestCommitWithDelay() {
 	// Create a new TracingContext with delay
 	ctx := NewTracingContext(newMockTxContext(s.logCtx))
-	time.Sleep(maxTracingDuration + 1*time.Nanosecond) // simulate a delay between creation and commit/rollback
+	time.Sleep(defaultTracingDuration + 1*time.Nanosecond) // simulate a delay between creation and commit/rollback
+
+	// Test Commit method with delay
+	err := ctx.Commit()
+	assert.NoError(s.T(), err)
+	assert.Contains(s.T(), s.buf.String(), "transaction took")
+	assert.Contains(s.T(), s.buf.String(), "to commit")
+}
+
+func (s *TracingContextTestSuite) TestRollbackWithDelay() {
+	// Create a new TracingContext with delay
+	ctx := NewTracingContext(newMockTxContext(s.logCtx))
+	time.Sleep(defaultTracingDuration + 1*time.Nanosecond) // simulate a delay between creation and commit/rollback
+
+	// Test Rollback method with delay
+	err := ctx.Rollback()
+	assert.NoError(s.T(), err)
+	assert.Contains(s.T(), s.buf.String(), "transaction took")
+	assert.Contains(s.T(), s.buf.String(), "to rollback")
+}
+
+func (s *TracingContextTestSuite) TestRollbackAfterCommitWithDelay() {
+	// Create a new TracingContext with delay
+	ctx := NewTracingContext(newMockTxContext(s.logCtx))
+	time.Sleep(defaultTracingDuration + 1*time.Nanosecond) // simulate a delay between creation and commit/rollback
 
 	// Test Commit method with delay
 	err := ctx.Commit()
@@ -78,11 +107,25 @@ func (s *TracingContextTestSuite) TestCommitAndRollbackWithDelay() {
 	assert.Contains(s.T(), s.buf.String(), "transaction took")
 	assert.Contains(s.T(), s.buf.String(), "to commit")
 
-	// Test Rollback method with delay
+	s.buf.Reset()
+
+	// Test Rollback method that should not log
 	err = ctx.Rollback()
 	assert.NoError(s.T(), err)
+	assert.Empty(s.T(), s.buf.String())
+}
+
+func (s *TracingContextTestSuite) TestCustomTracingDuration() {
+	// Create a new TracingContext with custom duration
+	customDuration := 50 * time.Millisecond
+	ctx := NewTracingContext(newMockTxContext(s.logCtx)).WithTracingDuration(customDuration)
+	time.Sleep(customDuration + 1*time.Nanosecond) // simulate a delay longer than custom duration
+
+	// Test Commit method with custom duration delay
+	err := ctx.Commit()
+	assert.NoError(s.T(), err)
 	assert.Contains(s.T(), s.buf.String(), "transaction took")
-	assert.Contains(s.T(), s.buf.String(), "to rollback")
+	assert.Contains(s.T(), s.buf.String(), "to commit")
 }
 
 func TestTracingContextTestSuite(t *testing.T) {

@@ -67,7 +67,7 @@ func (suite *SubscriberTestSuite) TestSubscribe() {
 	suite.Require().NoError(err)
 
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), NewMessage(event))
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(NewMessage(event)))
 	suite.Require().NoError(err)
 
 	// Wait for message to be processed
@@ -100,13 +100,13 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 	// Publish a message that should be filtered out
 	event1 := TestPayload{Message: "Filtered"}
 	msg1 := NewMessage(event1).WithMetadataValue("filter", "true")
-	err = suite.publisher.Publish(context.Background(), msg1)
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg1))
 	suite.Require().NoError(err)
 
 	// Publish a message that should be processed
 	event2 := TestPayload{Message: "Not Filtered"}
 	msg2 := NewMessage(event2).WithMetadataValue("filter", "false")
-	err = suite.publisher.Publish(context.Background(), msg2)
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg2))
 	suite.Require().NoError(err)
 
 	// Wait for message to be processed
@@ -124,7 +124,7 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 
 	event1 := TestPayload{Message: "Message 1"}
 	msg1 := NewMessage(event1)
-	err = suite.publisher.Publish(context.Background(), msg1)
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg1))
 	suite.Require().NoError(err)
 
 	publisher2, err := NewPublisher(
@@ -138,7 +138,7 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 
 	event2 := TestPayload{Message: "Message 2"}
 	msg2 := NewMessage(event2)
-	err = publisher2.Publish(context.Background(), msg2)
+	err = publisher2.Publish(context.Background(), NewPublishRequest(msg2))
 	suite.Require().NoError(err)
 
 	// Wait for messages to be processed
@@ -169,7 +169,7 @@ func (suite *SubscriberTestSuite) TestClose() {
 
 	// Try to publish after closing
 	event := TestPayload{Message: "Hello, World!"}
-	err = suite.publisher.Publish(context.Background(), NewMessage(event))
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(NewMessage(event)))
 	suite.Require().NoError(err)
 
 	// Wait for a short time

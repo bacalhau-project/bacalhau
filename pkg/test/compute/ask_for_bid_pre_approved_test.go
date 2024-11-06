@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -76,8 +76,10 @@ func (s *AskForBidPreApprovedSuite) runAskForBidTest(testCase bidResponseTestCas
 	if execution == nil {
 		execution = mock.Execution()
 	}
-	_, err := s.node.LocalEndpoint.AskForBid(ctx, messages.AskForBidRequest{
-		RoutingMetadata: messages.RoutingMetadata{
+	execution.DesiredState = models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)
+
+	_, err := s.node.LocalEndpoint.AskForBid(ctx, legacy.AskForBidRequest{
+		RoutingMetadata: legacy.RoutingMetadata{
 			TargetPeerID: s.node.ID,
 			SourcePeerID: s.node.ID,
 		},

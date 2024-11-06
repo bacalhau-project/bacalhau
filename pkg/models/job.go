@@ -367,3 +367,14 @@ func (j *Job) IsExpired(expirationTime time.Time) bool {
 		j.Task().Timeouts.TotalTimeout > 0 &&
 		j.GetCreateTime().Before(expirationTime)
 }
+
+// OrchestratorID returns the orchestrator ID for the job from its metadata
+func (j *Job) OrchestratorID() string {
+	if j == nil {
+		return ""
+	}
+	if orchestratorID, ok := j.Meta[MetaOrchestratorID]; ok {
+		return orchestratorID
+	}
+	return j.Meta[MetaOrchestratorIDLegacy]
+}
