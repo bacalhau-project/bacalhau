@@ -12,7 +12,7 @@ export class Utils {
             url: '/'
         });
     }
-
+    
     /**
      * Returns the id of the host node.
      */
@@ -22,14 +22,14 @@ export class Utils {
             url: '/api/v1/id'
         });
     }
-
+    
     public static livez<ThrowOnError extends boolean = false>(options?: Options<unknown, ThrowOnError>) {
         return (options?.client ?? client).get<LivezResponse, LivezError, ThrowOnError>({
             ...options,
             url: '/api/v1/livez'
         });
     }
-
+    
     /**
      * Returns the info of the node.
      */
@@ -39,7 +39,7 @@ export class Utils {
             url: '/api/v1/node_info'
         });
     }
-
+    
 }
 
 export class Ops {
@@ -49,7 +49,7 @@ export class Ops {
             url: '/api/v1/agent/alive'
         });
     }
-
+    
     /**
      * Returns the current configuration of the node.
      */
@@ -59,7 +59,7 @@ export class Ops {
             url: '/api/v1/agent/config'
         });
     }
-
+    
     /**
      * Returns debug information on what the current node is doing.
      */
@@ -69,7 +69,7 @@ export class Ops {
             url: '/api/v1/agent/debug'
         });
     }
-
+    
     /**
      * Returns the info of the node.
      */
@@ -79,7 +79,7 @@ export class Ops {
             url: '/api/v1/agent/node'
         });
     }
-
+    
     /**
      * Returns the build version running on the server.
      * See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.
@@ -90,7 +90,7 @@ export class Ops {
             url: '/api/v1/agent/version'
         });
     }
-
+    
 }
 
 export class ComputeNode {
@@ -103,7 +103,7 @@ export class ComputeNode {
             url: '/api/v1/compute/debug'
         });
     }
-
+    
 }
 
 export class Orchestrator {
@@ -117,7 +117,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs'
         });
     }
-
+    
     /**
      * Submits a job to the orchestrator.
      * Submits a job to the orchestrator.
@@ -128,7 +128,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs'
         });
     }
-
+    
     /**
      * Returns a job.
      * Returns a job.
@@ -139,7 +139,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}'
         });
     }
-
+    
     /**
      * Stops a job.
      * Stops a job.
@@ -150,7 +150,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}'
         });
     }
-
+    
     /**
      * Returns the executions of a job.
      * Returns the executions of a job.
@@ -161,7 +161,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}/executions'
         });
     }
-
+    
     /**
      * Returns the history of a job.
      * Returns the history of a job.
@@ -172,7 +172,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}/history'
         });
     }
-
+    
     /**
      * Streams the logs for a current job/execution via WebSocket
      * Establishes a WebSocket connection to stream output from the job specified by `id`
@@ -184,7 +184,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}/logs'
         });
     }
-
+    
     /**
      * Returns the results of a job.
      * Returns the results of a job.
@@ -195,7 +195,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/jobs/{id}/results'
         });
     }
-
+    
     /**
      * Returns a list of orchestrator nodes.
      * Returns a list of orchestrator nodes.
@@ -206,7 +206,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/nodes'
         });
     }
-
+    
     /**
      * Update an orchestrator node.
      * Update an orchestrator node.
@@ -217,7 +217,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/nodes'
         });
     }
-
+    
     /**
      * Get an orchestrator node
      * Get an orchestrator node
@@ -228,7 +228,7 @@ export class Orchestrator {
             url: '/api/v1/orchestrator/nodes/{id}'
         });
     }
-
+    
 }
 
 export class Misc {
@@ -242,5 +242,5 @@ export class Misc {
             url: '/api/v1/version'
         });
     }
-
+    
 }
