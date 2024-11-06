@@ -19,7 +19,7 @@ install-deps:
 
 copy-code:
     FROM +install-deps
-    COPY --dir app components hooks lib public ./
+    COPY --dir app components hooks lib ./
     COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json ./
     COPY .eslintrc.json .prettierrc ./
 
