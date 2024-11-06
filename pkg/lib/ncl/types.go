@@ -2,45 +2,32 @@ package ncl
 
 import (
 	"context"
-	"reflect"
+
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
 // MessageHandler interface for processing messages
 type MessageHandler interface {
-	ShouldProcess(ctx context.Context, message *Message) bool
-	HandleMessage(ctx context.Context, message *Message) error
+	ShouldProcess(ctx context.Context, message *envelope.Message) bool
+	HandleMessage(ctx context.Context, message *envelope.Message) error
 }
 
 // MessageFilter interface for filtering messages
 type MessageFilter interface {
-	ShouldFilter(metadata *Metadata) bool
+	ShouldFilter(metadata *envelope.Metadata) bool
 }
 
 // Checkpointer interface for managing checkpoints
 type Checkpointer interface {
-	Checkpoint(message *Message) error
+	Checkpoint(message *envelope.Message) error
 	GetLastCheckpoint() (int64, error)
-}
-
-// RawMessageSerDe interface for serializing and deserializing raw messages
-// to and from byte slices.
-type RawMessageSerDe interface {
-	Serialize(*RawMessage) ([]byte, error)
-	Deserialize([]byte) (*RawMessage, error)
-}
-
-// MessageSerDe interface for serializing and deserializing messages
-// to and from raw messages.
-type MessageSerDe interface {
-	Serialize(message *Message) (*RawMessage, error)
-	Deserialize(rawMessage *RawMessage, payloadType reflect.Type) (*Message, error)
 }
 
 // PublishRequest encapsulates the parameters needed to publish a message.
 // Only one of Subject or SubjectPrefix should be set, not both.
 type PublishRequest struct {
 	// Message is the payload to be published (required)
-	Message *Message
+	Message *envelope.Message
 	// Subject is the exact NATS subject to publish to
 	Subject string
 	// SubjectPrefix is used to construct the final subject by appending additional information
@@ -48,7 +35,7 @@ type PublishRequest struct {
 }
 
 // NewPublishRequest creates a new PublishRequest
-func NewPublishRequest(message *Message) PublishRequest {
+func NewPublishRequest(message *envelope.Message) PublishRequest {
 	return PublishRequest{
 		Message: message,
 	}
@@ -78,19 +65,19 @@ type Subscriber interface {
 }
 
 // MessageHandlerFunc is a function type that implements MessageHandler
-type MessageHandlerFunc func(ctx context.Context, message *Message) error
+type MessageHandlerFunc func(ctx context.Context, message *envelope.Message) error
 
-func (f MessageHandlerFunc) ShouldProcess(ctx context.Context, message *Message) bool {
+func (f MessageHandlerFunc) ShouldProcess(ctx context.Context, message *envelope.Message) bool {
 	return true // Always process for this simple implementation
 }
 
-func (f MessageHandlerFunc) HandleMessage(ctx context.Context, message *Message) error {
+func (f MessageHandlerFunc) HandleMessage(ctx context.Context, message *envelope.Message) error {
 	return f(ctx, message)
 }
 
 // MessageFilterFunc is a function type that implements MessageFilter
-type MessageFilterFunc func(metadata *Metadata) bool
+type MessageFilterFunc func(metadata *envelope.Metadata) bool
 
-func (f MessageFilterFunc) ShouldFilter(metadata *Metadata) bool {
+func (f MessageFilterFunc) ShouldFilter(metadata *envelope.Metadata) bool {
 	return f(metadata)
 }

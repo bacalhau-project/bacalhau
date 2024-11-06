@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 )
 
 // CreateMessageSerDeRegistry creates a new payload registry.
-func CreateMessageSerDeRegistry() (*ncl.MessageSerDeRegistry, error) {
-	reg := ncl.NewMessageSerDeRegistry()
+func CreateMessageSerDeRegistry() (*envelope.Registry, error) {
+	reg := envelope.NewRegistry()
 	err := errors.Join(
 		reg.Register(heartbeat.HeartbeatMessageType, messages.Heartbeat{}),
 		reg.Register(messages.AskForBidMessageType, messages.AskForBidRequest{}),

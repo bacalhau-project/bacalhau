@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package ncl
+package envelope
 
 import (
 	"testing"
@@ -8,16 +8,16 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type MessageSerDeRegistryTestSuite struct {
+type RegistryTestSuite struct {
 	suite.Suite
-	manager *MessageSerDeRegistry
+	manager *Registry
 }
 
-func (suite *MessageSerDeRegistryTestSuite) SetupTest() {
-	suite.manager = NewMessageSerDeRegistry()
+func (suite *RegistryTestSuite) SetupTest() {
+	suite.manager = NewRegistry()
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestRegister() {
+func (suite *RegistryTestSuite) TestRegister() {
 	err := suite.manager.Register("TestPayload", TestPayload{})
 	suite.NoError(err)
 
@@ -34,7 +34,7 @@ func (suite *MessageSerDeRegistryTestSuite) TestRegister() {
 	suite.Error(err)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestGetType() {
+func (suite *RegistryTestSuite) TestGetType() {
 	suite.manager.Register("TestPayload", TestPayload{})
 
 	t, err := suite.manager.getType("TestPayload")
@@ -45,7 +45,7 @@ func (suite *MessageSerDeRegistryTestSuite) TestGetType() {
 	suite.Error(err)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestGetName() {
+func (suite *RegistryTestSuite) TestGetName() {
 	suite.manager.Register("TestPayload", TestPayload{})
 
 	name, err := suite.manager.getName(TestPayload{})
@@ -56,7 +56,7 @@ func (suite *MessageSerDeRegistryTestSuite) TestGetName() {
 	suite.Error(err)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestSerializeDeserialize() {
+func (suite *RegistryTestSuite) TestSerializeDeserialize() {
 	suite.manager.Register("TestPayload", TestPayload{})
 
 	original := &Message{
@@ -83,15 +83,15 @@ func (suite *MessageSerDeRegistryTestSuite) TestSerializeDeserialize() {
 	suite.Equal(original.Payload, deserializedPayload)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestSerializeUnregisteredPayload() {
+func (suite *RegistryTestSuite) TestSerializeUnregisteredPayload() {
 	_, err := suite.manager.Serialize(&Message{Metadata: &Metadata{}, Payload: struct{}{}})
 	suite.Error(err)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestDeserializeUnknownType() {
-	rawMessage := &RawMessage{
+func (suite *RegistryTestSuite) TestDeserializeUnknownType() {
+	rawMessage := &EncodedMessage{
 		Metadata: &Metadata{
-			KeyPayloadEncoding: JSONPayloadSerDeType,
+			KeyPayloadEncoding: JSONPayloadType,
 			KeyMessageType:     "UnknownType",
 		},
 		Payload: []byte("{}"),
@@ -100,7 +100,7 @@ func (suite *MessageSerDeRegistryTestSuite) TestDeserializeUnknownType() {
 	suite.Error(err)
 }
 
-func (suite *MessageSerDeRegistryTestSuite) TestUnsupportedEncoding() {
+func (suite *RegistryTestSuite) TestUnsupportedEncoding() {
 	suite.manager.Register("TestPayload", TestPayload{})
 
 	message := &Message{
@@ -110,7 +110,7 @@ func (suite *MessageSerDeRegistryTestSuite) TestUnsupportedEncoding() {
 	_, err := suite.manager.Serialize(message)
 	suite.Error(err)
 
-	rawMessage := &RawMessage{
+	rawMessage := &EncodedMessage{
 		Metadata: &Metadata{KeyPayloadEncoding: "unsupported"},
 		Payload:  []byte("{}"),
 	}
@@ -118,6 +118,6 @@ func (suite *MessageSerDeRegistryTestSuite) TestUnsupportedEncoding() {
 	suite.Error(err)
 }
 
-func TestMessageSerDeRegistryTestSuite(t *testing.T) {
-	suite.Run(t, new(MessageSerDeRegistryTestSuite))
+func TestRegistryTestSuite(t *testing.T) {
+	suite.Run(t, new(RegistryTestSuite))
 }

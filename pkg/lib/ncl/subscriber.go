@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
@@ -18,8 +19,8 @@ type subscriber struct {
 	messageHandlers      []MessageHandler
 	messageFilter        MessageFilter
 	checkpointer         Checkpointer
-	messageDeserializer  RawMessageSerDe
-	messageSerDeRegistry *MessageSerDeRegistry
+	messageDeserializer  envelope.MessageSerializer
+	messageSerDeRegistry *envelope.Registry
 
 	subscriptions []*nats.Subscription
 	mu            sync.Mutex
@@ -43,14 +44,14 @@ func WithSubscriberCheckpointer(checkpointer Checkpointer) SubscriberOption {
 }
 
 // WithSubscriberMessageDeserializer sets the message deserializer for the subscriber
-func WithSubscriberMessageDeserializer(deserializer RawMessageSerDe) SubscriberOption {
+func WithSubscriberMessageDeserializer(deserializer envelope.MessageSerializer) SubscriberOption {
 	return func(s *subscriber) {
 		s.messageDeserializer = deserializer
 	}
 }
 
 // WithSubscriberMessageSerDeRegistry sets the payload registry for the subscriber
-func WithSubscriberMessageSerDeRegistry(registry *MessageSerDeRegistry) SubscriberOption {
+func WithSubscriberMessageSerDeRegistry(registry *envelope.Registry) SubscriberOption {
 	return func(s *subscriber) {
 		s.messageSerDeRegistry = registry
 	}
@@ -70,7 +71,7 @@ func defaultSubscriber(nc *nats.Conn) *subscriber {
 		checkpointer:        &NoopCheckpointer{},
 		messageHandlers:     []MessageHandler{},
 		messageFilter:       NoopMessageFilter{},
-		messageDeserializer: NewEnvelopedRawMessageSerDe(),
+		messageDeserializer: envelope.NewSerializer(),
 		subscriptions:       []*nats.Subscription{},
 		mu:                  sync.Mutex{},
 	}
