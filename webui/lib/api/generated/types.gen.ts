@@ -261,10 +261,12 @@ export enum models_ExecutionStateType {
     ExecutionStateAskForBidAccepted = 3,
     ExecutionStateAskForBidRejected = 4,
     ExecutionStateBidAccepted = 5,
-    ExecutionStateBidRejected = 6,
-    ExecutionStateCompleted = 7,
-    ExecutionStateFailed = 8,
-    ExecutionStateCancelled = 9
+    ExecutionStateRunning = 6,
+    ExecutionStatePublishing = 7,
+    ExecutionStateBidRejected = 8,
+    ExecutionStateCompleted = 9,
+    ExecutionStateFailed = 10,
+    ExecutionStateCancelled = 11
 }
 
 export type models_GPU = {

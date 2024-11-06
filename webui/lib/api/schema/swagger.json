@@ -1467,7 +1467,9 @@
                 6,
                 7,
                 8,
-                9
+                9,
+                10,
+                11
             ],
             "x-enum-comments": {
                 "ExecutionStateBidAccepted": "aka running"
@@ -1479,6 +1481,8 @@
                 "ExecutionStateAskForBidAccepted",
                 "ExecutionStateAskForBidRejected",
                 "ExecutionStateBidAccepted",
+                "ExecutionStateRunning",
+                "ExecutionStatePublishing",
                 "ExecutionStateBidRejected",
                 "ExecutionStateCompleted",
                 "ExecutionStateFailed",
