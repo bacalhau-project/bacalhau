@@ -129,7 +129,7 @@ const S3Downloader: Downloader = {
   async download(data) {
     const params = data?.Items?.[0]?.Params as { PreSignedURL?: string };
     if (params?.PreSignedURL) {
-      window.open(params.PreSignedURL, "_blank");
+      safeWindowOpen(params.PreSignedURL);
     } else {
       showNoResultsToast();
     }
