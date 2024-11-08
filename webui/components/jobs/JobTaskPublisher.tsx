@@ -1,10 +1,17 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { apimodels_ListJobResultsResponse, models_JobStateType, models_State_models_JobStateType, models_Task, Orchestrator } from "@/lib/api/generated";
 import { getJobState } from "@/lib/api/utils";
 import { useApiOperation } from "@/hooks/useApiOperation";
 import { toast } from "@/hooks/use-toast";
 import { Download, Loader } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
+
+const SUPPORTED_PUBLISHERS = ['local', 's3'];
+const COMPLETED_JOB_STATES = [
+  models_JobStateType.JobStateTypeCompleted,
+  models_JobStateType.JobStateTypeFailed,
+  models_JobStateType.JobStateTypeStopped,
+];
 
 interface JobTaskPublisherDisplayProps {
   jobId: string;
@@ -20,9 +27,13 @@ interface DownloadButtonProps {
 }
 
 const DownloadButton: React.FC<DownloadButtonProps> = ({ isDownloadable, isLoading, disabledReason, onDownload }) => {
+  const enabledClass = "p-2 text-black transition-colors duration-150 hover:text-blue-500 active:text-blue-700";
+  const disabledClass = "p-2 text-gray-300";
+  const loadingClass = "p-2 text-black";
+
   if (isLoading) {
     return (
-      <button className="p-2 text-black" disabled>
+      <button className={loadingClass} disabled>
         <Loader size={18} strokeWidth={2} className="animate-spin" />
       </button>
     );
@@ -31,7 +42,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({ isDownloadable, isLoadi
   if (isDownloadable) {
     return (
       <button
-        className="p-2 text-black transition-colors duration-150 hover:text-blue-500 active:text-blue-700"
+        className={enabledClass}
         onClick={onDownload}
       >
         <Download size={18} strokeWidth={2} />
@@ -43,7 +54,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({ isDownloadable, isLoadi
     <Tooltip.Provider>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
-          <button className="p-2 text-gray-300" disabled>
+          <button className={disabledClass} disabled>
             <Download size={18} strokeWidth={2} />
           </button>
         </Tooltip.Trigger>
@@ -73,12 +84,41 @@ const showNoResultsToast = () => {
   });
 };
 
+const isValidUrl = (url: string): boolean => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const safeWindowOpen = (url: string): void => {
+  if (!isValidUrl(url)) {
+    toast({
+      variant: 'destructive',
+      title: 'Invalid download URL',
+      description: 'The download URL appears to be invalid.',
+    });
+    return;
+  }
+
+  const newWindow = window.open(url, "_blank");
+  if (!newWindow) {
+    toast({
+      variant: 'destructive',
+      title: 'Download blocked',
+      description: 'Please allow popups for this site to download results.',
+    });
+  }
+};
+
 
 const LocalDownloader: Downloader = {
   async download(data) {
     const params = data?.Items?.[0]?.Params as { URL?: string };
     if (params?.URL) {
-      window.open(params.URL, "_blank");
+      safeWindowOpen(params.URL);
     } else {
       showNoResultsToast();
     }
@@ -100,7 +140,6 @@ const getDownloader = (publisherType: string): Downloader => {
   switch (publisherType) {
     case "s3":
       return S3Downloader;
-    case "local":
     default:
       return LocalDownloader;
   }
@@ -118,16 +157,13 @@ const JobTaskPublisherDisplay: React.FC<JobTaskPublisherDisplayProps> = ({ jobId
     )
   }, [execute, jobId]);
 
-  const publisherType = tasks[0]?.Publisher?.Type ?? "UNKNOWN";
+  const publisherType = useMemo(() =>
+    tasks[0]?.Publisher?.Type ?? "UNKNOWN",
+    [tasks]
+  );
   const jobState = getJobState(state?.StateType);
-  const isSupportedPublisher = ["local", "s3"].includes(publisherType);
-  const isTaskCompleted = jobState
-    ? [
-      models_JobStateType.JobStateTypeCompleted,
-      models_JobStateType.JobStateTypeFailed,
-      models_JobStateType.JobStateTypeStopped,
-    ].includes(jobState)
-    : false;
+  const isSupportedPublisher = SUPPORTED_PUBLISHERS.includes(publisherType);
+  const isTaskCompleted = jobState ? COMPLETED_JOB_STATES.includes(jobState) : false;
   const isDownloadable = isSupportedPublisher && isTaskCompleted;
 
   let disabledReason = "";
