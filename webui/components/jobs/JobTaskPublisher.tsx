@@ -61,6 +61,51 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({ isDownloadable, isLoadi
   );
 };
 
+interface Downloader {
+  download: (data: apimodels_ListJobResultsResponse) => Promise<void>;
+}
+
+const showNoResultsToast = () => {
+  toast({
+    variant: 'destructive',
+    title: 'No results found for this job',
+    description: 'You can check the logged output of the job in the logs tab.',
+  });
+};
+
+
+const LocalDownloader: Downloader = {
+  async download(data) {
+    const params = data?.Items?.[0]?.Params as { URL?: string };
+    if (params?.URL) {
+      window.open(params.URL, "_blank");
+    } else {
+      showNoResultsToast();
+    }
+  },
+};
+
+const S3Downloader: Downloader = {
+  async download(data) {
+    const params = data?.Items?.[0]?.Params as { PreSignedURL?: string };
+    if (params?.PreSignedURL) {
+      window.open(params.PreSignedURL, "_blank");
+    } else {
+      showNoResultsToast();
+    }
+  },
+};
+
+const getDownloader = (publisherType: string): Downloader => {
+  switch (publisherType) {
+    case "s3":
+      return S3Downloader;
+    case "local":
+    default:
+      return LocalDownloader;
+  }
+};
+
 const JobTaskPublisherDisplay: React.FC<JobTaskPublisherDisplayProps> = ({ jobId, tasks, state }) => {
   const { isLoading, error, execute, } = useApiOperation<apimodels_ListJobResultsResponse>()
 
@@ -94,18 +139,10 @@ const JobTaskPublisherDisplay: React.FC<JobTaskPublisherDisplayProps> = ({ jobId
 
   const onDownload = async () => {
     const resultsData = await downloadResults();
-    if (error) return;
+    if (error || !resultsData) return;
 
-    const params = resultsData?.Items?.[0]?.Params as { URL?: string };
-    if (params?.URL) {
-      window.open(params.URL, "_blank");
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'No results found for this job',
-        description: 'You can check the logged output of the job in the logs tab.',
-      });
-    }
+    const downloader = getDownloader(publisherType);
+    await downloader.download(resultsData);
   };
 
   return (
