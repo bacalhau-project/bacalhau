@@ -4,7 +4,6 @@ import { models_Job } from '@/lib/api/generated'
 import { getJobRunTime } from '@/lib/api/utils'
 import JobStatusBadge from '@/components/jobs/JobStatusBadge'
 import JobEngineDisplay from '@/components/jobs/JobEngine'
-import JobTaskPublisherDisplay from '@/components/jobs/JobTaskPublisher'
 import Labels from '@/components/Labels'
 import InfoItem from '@/components/InfoItem'
 import { formatTimestamp } from '@/lib/time'
@@ -42,13 +41,9 @@ const JobInformation: React.FC<JobInformationProps> = ({ job }) => (
               <Labels labels={job.Labels} />
             </InfoItem>
           )}
-          {job.ID && job.Tasks?.[0]?.Publisher?.Type && (
+          {job.Tasks?.[0]?.Publisher?.Type && (
             <InfoItem label="Publisher">
-              <JobTaskPublisherDisplay
-                jobId={job.ID}
-                tasks={job.Tasks}
-                state={job.State}
-              />
+              {job.Tasks[0].Publisher.Type}
             </InfoItem>
           )}
         </div>
