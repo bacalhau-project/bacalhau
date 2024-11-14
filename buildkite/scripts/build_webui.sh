@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
-export DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME)
-export DOCKER_PASSWORD=$(buildkite-agent secret get DOCKER_PASSWORD)
+# Source docker authentication
+source "$(dirname "$0")/docker-auth.sh"
+docker_auth
+
 make build-webui

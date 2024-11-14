@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Source docker authentication
+source "$(dirname "$0")/docker-auth.sh"
+docker_auth
+
 # Function to set environment variables
 set_environment_variables() {
     export LOG_LEVEL=DEBUG
@@ -12,8 +16,6 @@ set_environment_variables() {
     export AWS_SECRET_ACCESS_KEY=$(buildkite-agent secret get AWS_SECRET_ACCESS_KEY)
     export BUILDKITE_ANALYTICS_TOKEN=$(buildkite-agent secret get TESTSUITE_TOKEN)
     export AWS_REGION=eu-west-1
-    export DOCKER_USERNAME=$(buildkite-agent secret get DOCKER_USERNAME)
-    export DOCKER_PASSWORD=$(buildkite-agent secret get DOCKER_PASSWORD)
 }
 
 # Function to initialize IPFS
