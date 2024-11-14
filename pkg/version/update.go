@@ -86,7 +86,6 @@ func CheckForUpdate(
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Errorf("failed to fetch the latest version from the server: %s", resp.Status)
 	}
-
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
