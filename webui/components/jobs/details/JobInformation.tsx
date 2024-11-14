@@ -41,6 +41,11 @@ const JobInformation: React.FC<JobInformationProps> = ({ job }) => (
               <Labels labels={job.Labels} />
             </InfoItem>
           )}
+          {job.Tasks?.[0]?.Publisher?.Type && (
+            <InfoItem label="Publisher">
+              {job.Tasks[0].Publisher.Type}
+            </InfoItem>
+          )}
         </div>
       </div>
 
