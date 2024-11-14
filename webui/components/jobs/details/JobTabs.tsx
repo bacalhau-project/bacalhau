@@ -41,7 +41,13 @@ const JobTabs = ({
       </TabsContent>
 
       <TabsContent value="executions">
-        <JobExecutions executions={executions} />
+        {job.Tasks && job.State && (
+          <JobExecutions
+            executions={executions}
+            tasks={job.Tasks}
+            state={job.State}
+          />
+        )}
       </TabsContent>
 
       <TabsContent value="inspect">
