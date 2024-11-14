@@ -21,7 +21,7 @@ import (
 
 const (
 	// the default endpoint used to check for bacalhau version updates.
-	defaultUpdateCheckerEndpoint = "http://update.bacalhau.org/version"
+	defaultUpdateCheckerEndpoint = "https://get.bacalhau.org/version"
 	// when this environment variable is set bacalhau will use the endpoint specified by it to check for updates.
 	envVarUpdateCheckerEndpoint = "BACALHAU_UPDATE_CHECKER_ENDPOINT"
 )
@@ -83,8 +83,11 @@ func CheckForUpdate(
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch the latest version from the server")
 	}
-	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("failed to fetch the latest version from the server: %s", resp.Status)
+	}
 
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read response body")
