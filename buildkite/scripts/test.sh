@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Source docker authentication
+source "$(dirname "$0")/docker-auth.sh"
+docker_auth
+
 # Function to set environment variables
 set_environment_variables() {
     export LOG_LEVEL=DEBUG
