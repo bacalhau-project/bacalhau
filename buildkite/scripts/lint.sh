@@ -3,6 +3,10 @@
 set -euo pipefail
 set -x
 
+# Source docker authentication
+source "$(dirname "$0")/docker-auth.sh"
+docker_auth
+
 # NB(forrest/udit): this step needs to be done before linting as without it the code doesn't compile since webuid/build DNE.
 make build-webui
 
