@@ -234,10 +234,10 @@ func NewRequesterNode(
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
 	// nclPublisher
-	nclPublisher, err := ncl.NewPublisher(transportLayer.Client(),
-		ncl.WithPublisherName(nodeID),
-		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
-	)
+	nclPublisher, err := ncl.NewOrderedPublisher(transportLayer.Client(), ncl.OrderedPublisherConfig{
+		Name:            cfg.NodeID,
+		MessageRegistry: messageSerDeRegistry,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -249,33 +249,35 @@ func NewRequesterNode(
 	}
 
 	// ncl subscriber
-	subscriber, err := ncl.NewSubscriber(transportLayer.Client(),
-		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(orchestrator.NewMessageHandler(jobStore)),
-	)
+	nclSubscriber, err := ncl.NewSubscriber(transportLayer.Client(), ncl.SubscriberConfig{
+		Name:            cfg.NodeID,
+		MessageRegistry: messageSerDeRegistry,
+		MessageHandler:  orchestrator.NewMessageHandler(jobStore),
+	})
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
 	}
-	if err = subscriber.Subscribe(orchestratorInSubscription()); err != nil {
+	if err = nclSubscriber.Subscribe(ctx, orchestratorInSubscription()); err != nil {
 		return nil, err
 	}
 
 	// ncl heartbeat subscriber
-	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(),
-		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(heartbeatServer),
-	)
+	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(), ncl.SubscriberConfig{
+		Name:            nodeID,
+		MessageRegistry: messageSerDeRegistry,
+		MessageHandler:  heartbeatServer,
+	})
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create heartbeat ncl subscriber")
 	}
-	if err = heartbeatSubscriber.Subscribe(orchestratorHeartbeatSubscription()); err != nil {
+	if err = heartbeatSubscriber.Subscribe(ctx, orchestratorHeartbeatSubscription()); err != nil {
 		return nil, err
 	}
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		// close the ncl subscriber
-		cleanupErr := subscriber.Close(ctx)
+		cleanupErr := nclSubscriber.Close(ctx)
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
 		}
@@ -427,7 +429,7 @@ func setupOrchestratorWatchers(
 	ctx context.Context,
 	nodeID string,
 	jobStore jobstore.Store,
-	nclPublisher ncl.Publisher,
+	nclPublisher ncl.OrderedPublisher,
 	evalBroker orchestrator.EvaluationBroker,
 	nodeManager routing.NodeInfoStore,
 	computeProxy compute.Endpoint,

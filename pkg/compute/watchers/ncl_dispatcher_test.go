@@ -42,13 +42,12 @@ func (suite *NCLDispatcherTestSuite) SetupSuite() {
 	suite.Require().NoError(registry.Register(messages.ComputeErrorMessageType, messages.ComputeError{}))
 
 	var err error
-	suite.publisher, err = ncl.NewPublisher(
-		suite.natsConn,
-		ncl.WithPublisherName("test-publisher"),
-		ncl.WithPublisherDestinationPrefix("test"),
-		ncl.WithPublisherMessageSerializer(serializer),
-		ncl.WithPublisherMessageSerDeRegistry(registry),
-	)
+	suite.publisher, err = ncl.NewPublisher(suite.natsConn, ncl.PublisherConfig{
+		Name:              "test-publisher",
+		DestinationPrefix: "test",
+		MessageSerializer: serializer,
+		MessageRegistry:   registry,
+	})
 	suite.Require().NoError(err)
 
 	// Create NCLDispatcher
@@ -62,12 +61,12 @@ func (suite *NCLDispatcherTestSuite) SetupSuite() {
 	}
 
 	suite.msgChan = make(chan *envelope.Message, 10)
-	suite.subscriber, err = ncl.NewSubscriber(
-		suite.natsConn,
-		ncl.WithSubscriberMessageDeserializer(serializer),
-		ncl.WithSubscriberMessageSerDeRegistry(registry),
-		ncl.WithSubscriberMessageHandlers(msgHandler),
-	)
+	suite.subscriber, err = ncl.NewSubscriber(suite.natsConn, ncl.SubscriberConfig{
+		Name:              "test-subscriber",
+		MessageSerializer: serializer,
+		MessageRegistry:   registry,
+		MessageHandler:    msgHandler,
+	})
 	suite.Require().NoError(err)
 }
 
@@ -93,7 +92,7 @@ func (suite *NCLDispatcherTestSuite) TestHandleEvent_BidAccepted() {
 		},
 	}
 
-	err := suite.subscriber.Subscribe(fmt.Sprintf("test.%s", messages.BidResultMessageType))
+	err := suite.subscriber.Subscribe(context.Background(), fmt.Sprintf("test.%s", messages.BidResultMessageType))
 	suite.Require().NoError(err)
 
 	err = suite.forwarder.HandleEvent(context.Background(), event)
@@ -133,7 +132,7 @@ func (suite *NCLDispatcherTestSuite) TestHandleEvent_ExecutionCompleted() {
 		},
 	}
 
-	err := suite.subscriber.Subscribe(fmt.Sprintf("test.%s", messages.RunResultMessageType))
+	err := suite.subscriber.Subscribe(context.Background(), fmt.Sprintf("test.%s", messages.RunResultMessageType))
 	suite.Require().NoError(err)
 
 	err = suite.forwarder.HandleEvent(context.Background(), event)
@@ -172,7 +171,7 @@ func (suite *NCLDispatcherTestSuite) TestHandleEvent_ExecutionFailed() {
 		},
 	}
 
-	err := suite.subscriber.Subscribe(fmt.Sprintf("test.%s", messages.ComputeErrorMessageType))
+	err := suite.subscriber.Subscribe(context.Background(), fmt.Sprintf("test.%s", messages.ComputeErrorMessageType))
 	suite.Require().NoError(err)
 
 	err = suite.forwarder.HandleEvent(context.Background(), event)
@@ -213,7 +212,7 @@ func (suite *NCLDispatcherTestSuite) TestHandleEvent_UnhandledState() {
 	suite.Require().NoError(err)
 
 	// Ensure no message was published
-	err = suite.subscriber.Subscribe("test.*")
+	err = suite.subscriber.Subscribe(context.Background(), "test.*")
 	suite.Require().NoError(err)
 
 	select {

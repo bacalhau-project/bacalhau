@@ -7,8 +7,8 @@ import (
 
 // Metadata keys
 const (
-	KeyMessageType     = "Type"
-	KeyPayloadEncoding = "PayloadEncoding"
+	KeyMessageType     = "Bacalhau-Type"
+	KeyPayloadEncoding = "Bacalhau-PayloadEncoding"
 )
 
 // Metadata contains metadata about the message
@@ -16,7 +16,16 @@ type Metadata map[string]string
 
 // ToMap returns the Metadata as a regular map[string]string
 func (m Metadata) ToMap() map[string]string {
-	return map[string]string(m)
+	return m
+}
+
+// ToHeaders returns the Metadata as a map[string][]string
+func (m Metadata) ToHeaders() map[string][]string {
+	headers := make(map[string][]string, len(m))
+	for k, v := range m {
+		headers[k] = []string{v}
+	}
+	return headers
 }
 
 // NewMetadataFromMap creates a new shallow copy Metadata object from a map.

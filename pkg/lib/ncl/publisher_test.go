@@ -41,13 +41,12 @@ func (suite *PublisherTestSuite) TearDownSuite() {
 
 func (suite *PublisherTestSuite) SetupTest() {
 	var err error
-	suite.publisher, err = NewPublisher(
-		suite.natsConn,
-		WithPublisherName("test"),
-		WithPublisherDestination(TestSubject),
-		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherMessageSerDeRegistry(suite.registry),
-	)
+	suite.publisher, err = NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		Destination:       TestSubject,
+	})
 	suite.Require().NoError(err)
 }
 
@@ -94,13 +93,12 @@ func (suite *PublisherTestSuite) TestPublishWithMetadata() {
 
 func (suite *PublisherTestSuite) TestPublishWithDestinationPrefix() {
 	var err error
-	suite.publisher, err = NewPublisher(
-		suite.natsConn,
-		WithPublisherName("test"),
-		WithPublisherDestinationPrefix(TestDestinationPrefix),
-		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherMessageSerDeRegistry(suite.registry),
-	)
+	suite.publisher, err = NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		DestinationPrefix: TestDestinationPrefix,
+	})
 	suite.Require().NoError(err)
 
 	event := TestPayload{Message: "Hello, World!"}
@@ -137,14 +135,13 @@ func (suite *PublisherTestSuite) TestPublishValidation() {
 	suite.Contains(err.Error(), "cannot specify both subject and subject prefix")
 
 	// Test publishing without subject or subject prefix when destination and destination prefix are not set
-	publisher, err := NewPublisher(
-		suite.natsConn,
-		WithPublisherName("test"),
-		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherMessageSerDeRegistry(suite.registry),
-	)
+	pub, err := NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+	})
 	suite.Require().NoError(err)
-	err = publisher.Publish(context.Background(), PublishRequest{
+	err = pub.Publish(context.Background(), PublishRequest{
 		Message: envelope.NewMessage(TestPayload{Message: "Test"}),
 	})
 	suite.Require().Error(err)

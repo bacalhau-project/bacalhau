@@ -48,12 +48,11 @@ func (s *NCLDispatcherTestSuite) SetupSuite() {
 	s.Require().NoError(registry.Register(messages.CancelExecutionMessageType, messages.CancelExecutionRequest{}))
 
 	var err error
-	s.publisher, err = ncl.NewPublisher(
-		s.natsConn,
-		ncl.WithPublisherName("test-publisher"),
-		ncl.WithPublisherMessageSerializer(serializer),
-		ncl.WithPublisherMessageSerDeRegistry(registry),
-	)
+	s.publisher, err = ncl.NewPublisher(s.natsConn, ncl.PublisherConfig{
+		Name:              "test-publisher",
+		MessageSerializer: serializer,
+		MessageRegistry:   registry,
+	})
 	s.Require().NoError(err)
 
 	// Add mock jobstore
@@ -77,12 +76,12 @@ func (s *NCLDispatcherTestSuite) SetupSuite() {
 	}
 
 	s.msgChan = make(chan *envelope.Message, 10)
-	s.subscriber, err = ncl.NewSubscriber(
-		s.natsConn,
-		ncl.WithSubscriberMessageDeserializer(serializer),
-		ncl.WithSubscriberMessageSerDeRegistry(registry),
-		ncl.WithSubscriberMessageHandlers(msgHandler),
-	)
+	s.subscriber, err = ncl.NewSubscriber(s.natsConn, ncl.SubscriberConfig{
+		Name:              "test-subscriber",
+		MessageSerializer: serializer,
+		MessageRegistry:   registry,
+		MessageHandler:    msgHandler,
+	})
 	s.Require().NoError(err)
 }
 
@@ -203,7 +202,7 @@ func (s *NCLDispatcherTestSuite) TestHandleEvent_UnhandledState() {
 
 // setupAndHandleEvent sets up a test case by subscribing to the appropriate NATS subject and creating the event
 func (s *NCLDispatcherTestSuite) setupAndHandleEvent(upsert models.ExecutionUpsert, subject string) error {
-	if err := s.subscriber.Subscribe(subject); err != nil {
+	if err := s.subscriber.Subscribe(context.Background(), subject); err != nil {
 		return err
 	}
 	return s.dispatcher.HandleEvent(context.Background(), createExecutionEvent(upsert))
