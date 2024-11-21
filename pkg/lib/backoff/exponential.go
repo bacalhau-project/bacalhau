@@ -25,16 +25,23 @@ func (eb *Exponential) Backoff(ctx context.Context, attempts int) {
 		return
 	}
 
-	backoff := float64(eb.BaseBackoff) * math.Pow(2, float64(attempts-1))
-	if backoff > float64(eb.MaxBackoff) {
-		backoff = float64(eb.MaxBackoff)
-	}
-
-	backoffDuration := time.Duration(backoff)
+	backoffDuration := eb.BackoffDuration(attempts)
 	select {
 	case <-time.After(backoffDuration):
 	case <-ctx.Done():
 	}
+}
+
+func (eb *Exponential) BackoffDuration(attempts int) time.Duration {
+	if attempts == 0 {
+		return 0
+	}
+
+	backoff := float64(eb.BaseBackoff) * math.Pow(2, float64(attempts-1))
+	if backoff > float64(eb.MaxBackoff) {
+		backoff = float64(eb.MaxBackoff)
+	}
+	return time.Duration(backoff)
 }
 
 // compile time check whether the Exponential implements the Backoff interface.
