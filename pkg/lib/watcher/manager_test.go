@@ -152,8 +152,9 @@ func (s *ManagerTestSuite) TestStopWithTimeout() {
 	}, 200*time.Millisecond, 10*time.Millisecond)
 
 	// sleep and verify that the watcher is still stopping
-	time.Sleep(100 * time.Millisecond)
-	s.Require().Equal(watcher.StateStopping, w.Stats().State)
+	s.Require().Eventually(func() bool {
+		return w.Stats().State == watcher.StateStopping
+	}, 200*time.Millisecond, 10*time.Millisecond)
 
 	// Unblock GetEvents
 	close(getEventsCh)
