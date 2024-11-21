@@ -21,9 +21,10 @@ import (
 type WatcherTestSuite struct {
 	suite.Suite
 	ctrl        *gomock.Controller
+	ctx         context.Context
+	cancel      context.CancelFunc
 	mockStore   *watchertest.EventStoreWrapper
 	mockHandler *watcher.MockEventHandler
-	registry    watcher.Registry
 }
 
 func (s *WatcherTestSuite) SetupTest() {
@@ -38,24 +39,30 @@ func (s *WatcherTestSuite) SetupTest() {
 	)
 	s.Require().NoError(err)
 
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	s.ctrl = gomock.NewController(s.T())
 	s.mockStore = watchertest.NewEventStoreWrapper(boltdbEventStore)
 	s.mockHandler = watcher.NewMockEventHandler(s.ctrl)
-	s.registry = watcher.NewRegistry(s.mockStore)
 }
 
 func (s *WatcherTestSuite) TearDownTest() {
 	s.ctrl.Finish()
-	s.registry.Stop(context.Background())
+	s.cancel()
 }
 
 func (s *WatcherTestSuite) TestCreateWatcher() {
-	ctx := context.Background()
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler)
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 	s.Require().NoError(err)
 	s.Require().NotNil(w)
 	s.Equal("test-watcher", w.ID())
-	s.Eventually(func() bool { return w.Stats().State == watcher.StateRunning }, 200*time.Millisecond, 10*time.Millisecond)
+
+	// Set handler after creation
+	err = w.SetHandler(s.mockHandler)
+	s.Require().NoError(err)
+
+	// Start watcher async
+	s.Require().NoError(w.Start(s.ctx))
+	s.Require().Eventually(func() bool { return w.Stats().State == watcher.StateRunning }, 200*time.Millisecond, 10*time.Millisecond)
 
 	// verify stats
 	stats := w.Stats()
@@ -65,11 +72,34 @@ func (s *WatcherTestSuite) TestCreateWatcher() {
 	s.Equal(time.Time{}, stats.LastProcessedEventTime)
 
 	// Stop the watcher
-	w.Stop(ctx)
-	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 200*time.Millisecond, 10*time.Millisecond)
+	w.Stop(s.ctx)
+	s.Require().Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 200*time.Millisecond, 10*time.Millisecond)
 }
+
+func (s *WatcherTestSuite) TestSetHandlerErrors() {
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+	s.Require().NoError(err)
+
+	// Test setting nil handler
+	err = w.SetHandler(nil)
+	s.Error(err)
+
+	// Test setting handler twice
+	err = w.SetHandler(s.mockHandler)
+	s.NoError(err)
+	err = w.SetHandler(s.mockHandler)
+	s.Equal(watcher.ErrHandlerExists, err)
+}
+
+func (s *WatcherTestSuite) TestStartWithoutHandler() {
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+	s.Require().NoError(err)
+
+	s.Require().Error(w.Start(s.ctx))
+	s.Never(func() bool { return w.Stats().State == watcher.StateRunning }, 200*time.Millisecond, 10*time.Millisecond)
+}
+
 func (s *WatcherTestSuite) TestDetermineStartingIterator() {
-	ctx := context.Background()
 
 	testCases := []struct {
 		name             string
@@ -145,7 +175,7 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 			if tc.setupLatestEvent != nil {
 				// Store events up to the desired sequence number
 				for i := uint64(1); i <= *tc.setupLatestEvent; i++ {
-					err := s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+					err := s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 						Operation:  watcher.OperationCreate,
 						ObjectType: "StringObject",
 						Object:     fmt.Sprintf("test%d", i),
@@ -155,7 +185,7 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 			}
 
 			if tc.setupCheckpoint != nil {
-				err := s.mockStore.StoreCheckpoint(ctx, "test-watcher", *tc.setupCheckpoint)
+				err := s.mockStore.StoreCheckpoint(s.ctx, "test-watcher", *tc.setupCheckpoint)
 				s.Require().NoError(err)
 			}
 
@@ -171,7 +201,7 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 				})
 			}
 
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithInitialEventIterator(tc.initialIter))
 
 			if tc.expectedError {
@@ -183,19 +213,22 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 				"Iterator mismatch - expected: %s, got: %s",
 				tc.expectedIter.String(),
 				w.Stats().NextEventIterator.String())
+			s.Equal(tc.expectedIter, w.Stats().CheckpointIterator,
+				"Checkpoint iterator mismatch - expected: %s, got: %s",
+				tc.expectedIter.String(),
+				w.Stats().CheckpointIterator.String())
 		})
 	}
 }
 
 func (s *WatcherTestSuite) TestWatcherProcessEvents() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -204,14 +237,15 @@ func (s *WatcherTestSuite) TestWatcherProcessEvents() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
 	)
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler)
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.Require().NoError(w.Start(s.ctx))
 
-	s.waitAndStop(ctx, w, 2)
+	s.waitAndStop(s.ctx, w, 2)
 }
 
 func (s *WatcherTestSuite) TestWithStartSeqNum() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
@@ -219,7 +253,7 @@ func (s *WatcherTestSuite) TestWithStartSeqNum() {
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -228,15 +262,15 @@ func (s *WatcherTestSuite) TestWithStartSeqNum() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(3)).Return(nil).Times(1),
 	)
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 		watcher.WithInitialEventIterator(watcher.AfterSequenceNumberIterator(1)))
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
 
-	s.waitAndStop(ctx, w, 3)
+	s.startWaitAndStop(s.ctx, w, 3)
 }
 
 func (s *WatcherTestSuite) TestWithFilter() {
-	ctx := context.Background()
 	filter := watcher.EventFilter{
 		ObjectTypes: []string{"StringObject"},
 		Operations:  []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
@@ -250,7 +284,7 @@ func (s *WatcherTestSuite) TestWithFilter() {
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -260,22 +294,22 @@ func (s *WatcherTestSuite) TestWithFilter() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(4)).Return(nil).Times(1),
 	)
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler, watcher.WithFilter(filter))
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore, watcher.WithFilter(filter))
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
 
-	s.waitAndStop(ctx, w, 5)
+	s.startWaitAndStop(s.ctx, w, 5)
 	s.Equal(uint64(4), w.Stats().LastProcessedSeqNum) // last event not processed
 }
 
 func (s *WatcherTestSuite) TestCheckpoint() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -283,34 +317,77 @@ func (s *WatcherTestSuite) TestCheckpoint() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
 	)
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler)
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
 
-	s.wait(ctx, w, 2)
+	s.startAndWait(s.ctx, w, 2)
 
 	// Manually checkpoint
-	err = w.Checkpoint(ctx, 1)
+	err = w.Checkpoint(s.ctx, 1)
 	s.Require().NoError(err)
 
-	w.Stop(ctx)
-
-	// Verify the checkpoint
-	checkpoint, err := s.mockStore.GetCheckpoint(ctx, w.ID())
+	// Verify both checkpoint and checkpointIterator
+	checkpoint, err := s.mockStore.GetCheckpoint(s.ctx, w.ID())
 	s.Require().NoError(err)
 	s.Equal(uint64(1), checkpoint)
+	s.Equal(watcher.AfterSequenceNumberIterator(1), w.Stats().CheckpointIterator)
 
-	// Start a new watcher and verify that it starts from the checkpoint
+	w.Stop(s.ctx)
+
+	// Start a new watcher and verify it starts from checkpoint
 	newHandler := watcher.NewMockEventHandler(s.ctrl)
 	newHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1)
 
-	w, err = s.registry.Watch(ctx, "test-watcher", newHandler)
+	w, err = watcher.New(s.ctx, "test-watcher", s.mockStore)
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(newHandler))
 
-	s.waitAndStop(ctx, w, 2)
+	// Verify both iterators start at checkpoint
+	s.Equal(watcher.AfterSequenceNumberIterator(1), w.Stats().CheckpointIterator)
+	s.Equal(watcher.AfterSequenceNumberIterator(1), w.Stats().NextEventIterator)
+
+	s.startWaitAndStop(s.ctx, w, 2)
+}
+
+func (s *WatcherTestSuite) TestRestartFromCheckpoint() {
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	// First start and process events
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+	)
+
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.Require().NoError(w.Start(s.ctx))
+
+	// Wait and checkpoint at 1
+	s.wait(s.ctx, w, 2)
+	s.Require().NoError(w.Checkpoint(s.ctx, 1))
+	w.Stop(s.ctx)
+
+	// Restart and verify it starts from checkpoint
+	s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1)
+
+	s.Require().NoError(w.Start(s.ctx))
+	s.Equal(watcher.AfterSequenceNumberIterator(1), w.Stats().NextEventIterator)
+	s.Equal(watcher.AfterSequenceNumberIterator(1), w.Stats().CheckpointIterator)
+
+	s.waitAndStop(s.ctx, w, 2)
 }
 
 func (s *WatcherTestSuite) TestSeekToOffset() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
@@ -318,7 +395,7 @@ func (s *WatcherTestSuite) TestSeekToOffset() {
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -329,25 +406,23 @@ func (s *WatcherTestSuite) TestSeekToOffset() {
 		// last event is processed twice after seek
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(3)).Return(nil).Times(2),
 	)
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler)
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 	s.Require().NoError(err)
-	s.wait(ctx, w, 3)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.startAndWait(s.ctx, w, 3)
 
 	// Seek to offset 2
-	err = w.SeekToOffset(ctx, 2)
-	s.Require().NoError(err)
+	s.Require().NoError(w.SeekToOffset(s.ctx, 2))
 
 	// Verify the checkpoint
-	checkpoint, err := s.mockStore.GetCheckpoint(ctx, w.ID())
+	checkpoint, err := s.mockStore.GetCheckpoint(s.ctx, w.ID())
 	s.Require().NoError(err)
 	s.Equal(uint64(2), checkpoint)
 
-	s.waitAndStop(ctx, w, 3)
+	s.waitAndStop(s.ctx, w, 3)
 }
 
 func (s *WatcherTestSuite) TestCheckpointAndStartSeqNum() {
-	ctx := context.Background()
-
 	testCases := []struct {
 		name           string
 		checkpoint     uint64
@@ -408,13 +483,13 @@ func (s *WatcherTestSuite) TestCheckpointAndStartSeqNum() {
 			}
 
 			for _, event := range events {
-				err := s.mockStore.StoreEvent(ctx, event)
+				err := s.mockStore.StoreEvent(s.ctx, event)
 				s.Require().NoError(err)
 			}
 
 			// Set up the checkpoint if provided
 			if tc.checkpoint != 0 {
-				err := s.mockStore.StoreCheckpoint(ctx, "test-watcher", tc.checkpoint)
+				err := s.mockStore.StoreCheckpoint(s.ctx, "test-watcher", tc.checkpoint)
 				s.Require().NoError(err)
 			}
 
@@ -424,25 +499,25 @@ func (s *WatcherTestSuite) TestCheckpointAndStartSeqNum() {
 			}
 
 			// Start the watcher
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithInitialEventIterator(watcher.AfterSequenceNumberIterator(tc.startSeqNum)))
 			s.Require().NoError(err)
+			s.Require().NoError(w.SetHandler(s.mockHandler))
 
 			// Wait for processing and stop
-			s.waitAndStop(ctx, w, uint64(5))
+			s.startWaitAndStop(s.ctx, w, uint64(5))
 		})
 	}
 }
 
 func (s *WatcherTestSuite) TestHandleEventErrorWithBlockStrategy() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -461,20 +536,20 @@ func (s *WatcherTestSuite) TestHandleEventErrorWithBlockStrategy() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
 	)
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 		watcher.WithMaxRetries(3), // will be ignored with block strategy
 		watcher.WithInitialBackoff(1*time.Nanosecond),
 		watcher.WithMaxBackoff(1*time.Nanosecond),
 		watcher.WithRetryStrategy(watcher.RetryStrategyBlock))
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
 
-	s.waitAndStop(ctx, w, 2)
+	s.startWaitAndStop(s.ctx, w, 2)
 	s.Equal(uint64(2), w.Stats().LastProcessedSeqNum)
 	s.Equal(maxFails+1, failCount) // Verify that it failed 100 times before succeeding
 }
 
 func (s *WatcherTestSuite) TestDifferentIteratorTypes() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
@@ -483,7 +558,7 @@ func (s *WatcherTestSuite) TestDifferentIteratorTypes() {
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -521,17 +596,17 @@ func (s *WatcherTestSuite) TestDifferentIteratorTypes() {
 				s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(seqNum)).Return(nil).Times(1)
 			}
 
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithInitialEventIterator(tc.iterator))
 			s.Require().NoError(err)
+			s.Require().NoError(w.SetHandler(s.mockHandler))
 
-			s.waitAndStop(ctx, w, 4)
+			s.startWaitAndStop(s.ctx, w, 4)
 		})
 	}
 }
 
 func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
-	ctx := context.Background()
 
 	testCases := []struct {
 		name             string
@@ -570,10 +645,11 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 			s.mockHandler = watcher.NewMockEventHandler(s.ctrl)
 
 			// Test with empty store
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithInitialEventIterator(tc.iterator))
 			s.Require().NoError(err)
-			s.waitAndStop(ctx, w, tc.expectedIterator.SequenceNumber)
+			s.Require().NoError(w.SetHandler(s.mockHandler))
+			s.startWaitAndStop(s.ctx, w, tc.expectedIterator.SequenceNumber)
 
 			// Check if the next event iterator matches the expected iterator
 			s.Equal(tc.expectedIterator, w.Stats().NextEventIterator)
@@ -582,14 +658,13 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 }
 
 func (s *WatcherTestSuite) TestHandleEventErrorWithSkipStrategy() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -598,18 +673,18 @@ func (s *WatcherTestSuite) TestHandleEventErrorWithSkipStrategy() {
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
 	)
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 		watcher.WithMaxRetries(3),
 		watcher.WithInitialBackoff(1*time.Nanosecond),
 		watcher.WithRetryStrategy(watcher.RetryStrategySkip))
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
 
-	s.waitAndStop(ctx, w, 2)
+	s.startWaitAndStop(s.ctx, w, 2)
 	s.Equal(uint64(2), w.Stats().LastProcessedSeqNum)
 }
 
 func (s *WatcherTestSuite) TestBatchOptions() {
-	ctx := context.Background()
 
 	testCases := []struct {
 		name          string
@@ -629,7 +704,7 @@ func (s *WatcherTestSuite) TestBatchOptions() {
 			s.SetupTest()
 
 			for i := 0; i < tc.eventCount; i++ {
-				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+				s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: fmt.Sprintf("test%d", i+1),
 				}))
 			}
@@ -640,21 +715,21 @@ func (s *WatcherTestSuite) TestBatchOptions() {
 				return nil
 			})
 
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithBatchSize(tc.batchSize),
 			)
 			s.Require().NoError(err)
+			s.Require().NoError(w.SetHandler(s.mockHandler))
 
 			s.mockHandler.EXPECT().HandleEvent(gomock.Any(), gomock.Any()).Return(nil).Times(tc.eventCount)
 
-			s.waitAndStop(ctx, w, uint64(tc.eventCount))
+			s.startWaitAndStop(s.ctx, w, uint64(tc.eventCount))
 			s.Equal(tc.expectedCalls+1, getEventsCallCount) // one extra call longpolling for new events
 		})
 	}
 }
 
 func (s *WatcherTestSuite) TestFilterEdgeCases() {
-	ctx := context.Background()
 
 	testCases := []struct {
 		name           string
@@ -702,32 +777,32 @@ func (s *WatcherTestSuite) TestFilterEdgeCases() {
 
 		s.Run(tc.name, func() {
 			for _, event := range tc.events {
-				err := s.mockStore.StoreEvent(ctx, event)
+				err := s.mockStore.StoreEvent(s.ctx, event)
 				s.Require().NoError(err)
 			}
 
-			w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+			w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 				watcher.WithFilter(tc.filter))
 			s.Require().NoError(err)
+			s.Require().NoError(w.SetHandler(s.mockHandler))
 
 			s.mockHandler.EXPECT().HandleEvent(gomock.Any(), gomock.Any()).
 				Return(nil).Times(tc.expectedEvents)
 
-			s.waitAndStop(ctx, w, uint64(len(tc.events)))
+			s.startWaitAndStop(s.ctx, w, uint64(len(tc.events)))
 			s.Equal(uint64(tc.expectedEvents), w.Stats().LastProcessedSeqNum)
 		})
 	}
 }
 
 func (s *WatcherTestSuite) TestRestartBehavior() {
-	ctx := context.Background()
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
 		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
 	}
 
 	for _, event := range events {
-		err := s.mockStore.StoreEvent(ctx, event)
+		err := s.mockStore.StoreEvent(s.ctx, event)
 		s.Require().NoError(err)
 	}
 
@@ -738,19 +813,21 @@ func (s *WatcherTestSuite) TestRestartBehavior() {
 			handler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
 		)
 
-		w, err := s.registry.Watch(ctx, "test-watcher", handler)
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 		s.Require().NoError(err)
-		s.waitAndStop(ctx, w, 2)
+
+		s.Require().NoError(w.SetHandler(handler))
+		s.startWaitAndStop(s.ctx, w, 2)
 	}
 }
 
 func (s *WatcherTestSuite) TestListenAndStoreConcurrently() {
-	ctx := context.Background()
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 		watcher.WithBatchSize(7))
 	s.Require().NoError(err)
-	s.wait(ctx, w, 0)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.startAndWait(s.ctx, w, 0)
 
 	eventCount := 100
 
@@ -764,7 +841,7 @@ func (s *WatcherTestSuite) TestListenAndStoreConcurrently() {
 	done := make(chan struct{})
 	go func() {
 		for i := 0; i < eventCount; i++ {
-			s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+			s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 				Operation:  watcher.OperationCreate,
 				ObjectType: "StringObject",
 				Object:     fmt.Sprintf("test%d", i),
@@ -776,25 +853,26 @@ func (s *WatcherTestSuite) TestListenAndStoreConcurrently() {
 	<-done
 	gomock.InOrder(expectations...)
 
-	s.waitAndStop(ctx, w, uint64(eventCount))
+	s.waitAndStop(s.ctx, w, uint64(eventCount))
 }
 
 func (s *WatcherTestSuite) TestEventStoreConsistency() {
-	ctx := context.Background()
 
-	w, err := s.registry.Watch(ctx, "test-watcher", s.mockHandler,
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
 		watcher.WithBatchSize(2))
 	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.startAndWait(s.ctx, w, 0)
 
 	// Set up expectations
 	gomock.InOrder(
 		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).DoAndReturn(
 			func(ctx context.Context, event watcher.Event) error {
 				// Store more events while processing
-				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+				s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
 				}))
-				s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+				s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 					Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
 				}))
 				return nil
@@ -805,26 +883,115 @@ func (s *WatcherTestSuite) TestEventStoreConsistency() {
 	)
 
 	// Store initial events
-	s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+	s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 		Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
 	}))
-	s.Require().NoError(s.mockStore.StoreEvent(ctx, watcher.StoreEventRequest{
+	s.Require().NoError(s.mockStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
 		Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test",
 	}))
 
-	s.waitAndStop(ctx, w, 4)
+	s.waitAndStop(s.ctx, w, 4)
+}
+
+func (s *WatcherTestSuite) TestStopStates() {
+
+	s.Run("stop running watcher", func() {
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+		s.Require().NoError(err)
+		s.Require().NoError(w.SetHandler(s.mockHandler))
+		s.startAndWait(s.ctx, w, 0)
+
+		w.Stop(s.ctx)
+		s.Equal(watcher.StateStopped, w.Stats().State)
+	})
+
+	s.Run("stop stopped watcher", func() {
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+		s.Require().NoError(err)
+		s.Require().NoError(w.SetHandler(s.mockHandler))
+		s.startAndWait(s.ctx, w, 0)
+
+		w.Stop(s.ctx)
+		s.Equal(watcher.StateStopped, w.Stats().State)
+
+		// Stop again
+		w.Stop(s.ctx)
+		s.Equal(watcher.StateStopped, w.Stats().State)
+	})
+
+	s.Run("stop unstarted watcher", func() {
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+		s.Require().NoError(err)
+		s.Equal(watcher.StateIdle, w.Stats().State)
+
+		w.Stop(s.ctx)
+		s.Equal(watcher.StateStopped, w.Stats().State)
+	})
+
+	s.Run("concurrent stop calls", func() {
+		// Create a channel to control GetEvents
+		getEventsCh := make(chan struct{})
+
+		// Set up the mockStore to block on GetEvents
+		s.mockStore.WithGetEventsInterceptor(func() error {
+			<-getEventsCh
+			return nil
+		})
+
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+		s.Require().NoError(err)
+		s.Require().NoError(w.SetHandler(s.mockHandler))
+		s.startAndWait(s.ctx, w, 0)
+
+		// Start first stop operation - will be blocked due to GetEvents
+		go w.Stop(s.ctx)
+
+		// Wait for watcher to enter stopping state
+		s.Eventually(func() bool {
+			return w.Stats().State == watcher.StateStopping
+		}, 200*time.Millisecond, 10*time.Millisecond)
+
+		// Try second stop while first one is still in progress
+		go w.Stop(s.ctx)
+
+		// State should still be stopping
+		s.Eventually(func() bool {
+			return w.Stats().State == watcher.StateStopping
+		}, 200*time.Millisecond, 10*time.Millisecond)
+
+		// Unblock GetEvents
+		close(getEventsCh)
+
+		// Now watcher should transition to stopped
+		s.Eventually(func() bool {
+			return w.Stats().State == watcher.StateStopped
+		}, 200*time.Millisecond, 10*time.Millisecond)
+	})
 }
 
 func (s *WatcherTestSuite) wait(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
-	// wait for the watcher to consume the events
-	s.Eventually(func() bool { return w.Stats().NextEventIterator.SequenceNumber == continuationSeqNum }, 1*time.Second, 10*time.Millisecond)
-	s.Equal(watcher.StateRunning, w.Stats().State)
+	s.Require().Eventually(func() bool {
+		return w.Stats().State == watcher.StateRunning &&
+			w.Stats().NextEventIterator.SequenceNumber == continuationSeqNum
+	}, 1*time.Second, 10*time.Millisecond)
+}
+
+// startWaitAndStop
+func (s *WatcherTestSuite) startAndWait(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
+	s.Require().NoError(w.Start(s.ctx))
+	s.wait(s.ctx, w, continuationSeqNum)
+}
+
+// startWaitAndStop
+func (s *WatcherTestSuite) startWaitAndStop(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
+	s.Require().NoError(w.Start(s.ctx))
+	s.waitAndStop(s.ctx, w, continuationSeqNum)
 }
 
 func (s *WatcherTestSuite) waitAndStop(ctx context.Context, w watcher.Watcher, continuationSeqNum uint64) {
-	s.wait(ctx, w, continuationSeqNum)
-	w.Stop(ctx)
-	s.Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 1*time.Second, 10*time.Millisecond)
+	s.wait(s.ctx, w, continuationSeqNum)
+	w.Stop(s.ctx)
+	s.Require().Eventually(func() bool { return w.Stats().State == watcher.StateStopped }, 1*time.Second, 10*time.Millisecond)
 }
 
 // helper function to get pointer to uint64

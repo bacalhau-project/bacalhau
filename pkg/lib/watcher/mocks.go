@@ -76,6 +76,34 @@ func (mr *MockWatcherMockRecorder) SeekToOffset(ctx, eventSeqNum interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SeekToOffset", reflect.TypeOf((*MockWatcher)(nil).SeekToOffset), ctx, eventSeqNum)
 }
 
+// SetHandler mocks base method.
+func (m *MockWatcher) SetHandler(handler EventHandler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetHandler", handler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetHandler indicates an expected call of SetHandler.
+func (mr *MockWatcherMockRecorder) SetHandler(handler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetHandler", reflect.TypeOf((*MockWatcher)(nil).SetHandler), handler)
+}
+
+// Start mocks base method.
+func (m *MockWatcher) Start(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Start", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Start indicates an expected call of Start.
+func (mr *MockWatcherMockRecorder) Start(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockWatcher)(nil).Start), ctx)
+}
+
 // Stats mocks base method.
 func (m *MockWatcher) Stats() Stats {
 	m.ctrl.T.Helper()
@@ -139,7 +167,7 @@ func (mr *MockEventHandlerMockRecorder) HandleEvent(ctx, event interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleEvent", reflect.TypeOf((*MockEventHandler)(nil).HandleEvent), ctx, event)
 }
 
-// MockRegistry is a mock of Registry interface.
+// MockRegistry is a mock of Manager interface.
 type MockRegistry struct {
 	ctrl     *gomock.Controller
 	recorder *MockRegistryMockRecorder
@@ -162,19 +190,39 @@ func (m *MockRegistry) EXPECT() *MockRegistryMockRecorder {
 	return m.recorder
 }
 
-// GetWatcher mocks base method.
-func (m *MockRegistry) GetWatcher(watcherID string) (Watcher, error) {
+// CreateWatcher mocks base method.
+func (m *MockRegistry) Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWatcher", watcherID)
+	varargs := []interface{}{ctx, watcherID}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Create", varargs...)
 	ret0, _ := ret[0].(Watcher)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetWatcher indicates an expected call of GetWatcher.
-func (mr *MockRegistryMockRecorder) GetWatcher(watcherID interface{}) *gomock.Call {
+// CreateWatcher indicates an expected call of CreateWatcher.
+func (mr *MockRegistryMockRecorder) CreateWatcher(ctx, watcherID interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWatcher", reflect.TypeOf((*MockRegistry)(nil).GetWatcher), watcherID)
+	varargs := append([]interface{}{ctx, watcherID}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRegistry)(nil).Create), varargs...)
+}
+
+// LookupWatcher mocks base method.
+func (m *MockRegistry) Lookup(watcherID string) (Watcher, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Lookup", watcherID)
+	ret0, _ := ret[0].(Watcher)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LookupWatcher indicates an expected call of LookupWatcher.
+func (mr *MockRegistryMockRecorder) LookupWatcher(watcherID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockRegistry)(nil).Lookup), watcherID)
 }
 
 // Stop mocks base method.
@@ -189,26 +237,6 @@ func (m *MockRegistry) Stop(ctx context.Context) error {
 func (mr *MockRegistryMockRecorder) Stop(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockRegistry)(nil).Stop), ctx)
-}
-
-// Watch mocks base method.
-func (m *MockRegistry) Watch(ctx context.Context, watcherID string, handler EventHandler, opts ...WatchOption) (Watcher, error) {
-	m.ctrl.T.Helper()
-	varargs := []interface{}{ctx, watcherID, handler}
-	for _, a := range opts {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Watch", varargs...)
-	ret0, _ := ret[0].(Watcher)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Watch indicates an expected call of Watch.
-func (mr *MockRegistryMockRecorder) Watch(ctx, watcherID, handler interface{}, opts ...interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]interface{}{ctx, watcherID, handler}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Watch", reflect.TypeOf((*MockRegistry)(nil).Watch), varargs...)
 }
 
 // MockEventStore is a mock of EventStore interface.
@@ -264,18 +292,18 @@ func (mr *MockEventStoreMockRecorder) GetCheckpoint(ctx, watcherID interface{}) 
 }
 
 // GetEvents mocks base method.
-func (m *MockEventStore) GetEvents(ctx context.Context, params GetEventsRequest) (*GetEventsResponse, error) {
+func (m *MockEventStore) GetEvents(ctx context.Context, request GetEventsRequest) (*GetEventsResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEvents", ctx, params)
+	ret := m.ctrl.Call(m, "GetEvents", ctx, request)
 	ret0, _ := ret[0].(*GetEventsResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEvents indicates an expected call of GetEvents.
-func (mr *MockEventStoreMockRecorder) GetEvents(ctx, params interface{}) *gomock.Call {
+func (mr *MockEventStoreMockRecorder) GetEvents(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvents", reflect.TypeOf((*MockEventStore)(nil).GetEvents), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvents", reflect.TypeOf((*MockEventStore)(nil).GetEvents), ctx, request)
 }
 
 // GetLatestEventNum mocks base method.
@@ -308,17 +336,17 @@ func (mr *MockEventStoreMockRecorder) StoreCheckpoint(ctx, watcherID, eventSeqNu
 }
 
 // StoreEvent mocks base method.
-func (m *MockEventStore) StoreEvent(ctx context.Context, event StoreEventRequest) error {
+func (m *MockEventStore) StoreEvent(ctx context.Context, request StoreEventRequest) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreEvent", ctx, event)
+	ret := m.ctrl.Call(m, "StoreEvent", ctx, request)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StoreEvent indicates an expected call of StoreEvent.
-func (mr *MockEventStoreMockRecorder) StoreEvent(ctx, event interface{}) *gomock.Call {
+func (mr *MockEventStoreMockRecorder) StoreEvent(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreEvent", reflect.TypeOf((*MockEventStore)(nil).StoreEvent), ctx, event)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreEvent", reflect.TypeOf((*MockEventStore)(nil).StoreEvent), ctx, request)
 }
 
 // MockSerializer is a mock of Serializer interface.

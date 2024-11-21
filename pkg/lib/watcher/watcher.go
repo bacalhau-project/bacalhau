@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	mathgo "math"
 	"sync"
 	"time"
@@ -19,7 +20,8 @@ type watcher struct {
 	store   EventStore // event store for fetching events and checkpoints
 	options *watchOptions
 
-	nextEventIterator      EventIterator
+	nextEventIterator      EventIterator // for processing
+	checkpointIterator     EventIterator // for confirmed checkpoints
 	lastProcessedSeqNum    uint64
 	lastProcessedEventTime time.Time
 	lastListenTime         time.Time
@@ -30,8 +32,8 @@ type watcher struct {
 	mu      sync.RWMutex
 }
 
-// newWatcher creates a new watcher with the given parameters
-func newWatcher(ctx context.Context, id string, handler EventHandler, store EventStore, opts ...WatchOption) (*watcher, error) {
+// New creates a new watcher with the given parameters
+func New(ctx context.Context, id string, store EventStore, opts ...WatchOption) (Watcher, error) {
 	options := defaultWatchOptions()
 	for _, opt := range opts {
 		opt(options)
@@ -43,18 +45,36 @@ func newWatcher(ctx context.Context, id string, handler EventHandler, store Even
 
 	w := &watcher{
 		id:      id,
-		handler: handler,
 		store:   store,
 		options: options,
 		state:   StateIdle,
+		stopped: make(chan struct{}),
 	}
+
+	// Initially close stopped channel since the watcher starts in idle/stopped state
+	close(w.stopped)
 
 	// Determine the starting iterator
 	iterator, err := w.determineStartingIterator(ctx, options.initialEventIterator)
 	if err != nil {
 		return nil, NewWatcherError(id, err)
 	}
+	w.checkpointIterator = iterator
 	w.nextEventIterator = iterator
+
+	// set the handler if provided
+	if options.handler != nil {
+		if err = w.SetHandler(options.handler); err != nil {
+			return nil, err
+		}
+	}
+
+	// Auto-start if requested and handler is set
+	if options.autoStart {
+		if err = w.Start(ctx); err != nil {
+			return nil, NewWatcherError(id, fmt.Errorf("failed to auto-start watcher: %w", err))
+		}
+	}
 
 	return w, nil
 }
@@ -95,26 +115,47 @@ func (w *watcher) Stats() Stats {
 		ID:                     w.id,
 		State:                  w.state,
 		NextEventIterator:      w.nextEventIterator,
+		CheckpointIterator:     w.checkpointIterator,
 		LastProcessedSeqNum:    w.lastProcessedSeqNum,
 		LastProcessedEventTime: w.lastProcessedEventTime,
 		LastListenTime:         w.lastListenTime,
 	}
 }
 
-// Start begins the event listening process
-func (w *watcher) Start() {
-	w.mu.Lock()
-	if w.state != StateIdle && w.state != StateStopped {
-		log.Warn().Str("watcher_id", w.id).Str("state", string(w.state)).
-			Msg("watcher already running/stopped, skipping start")
-		w.mu.Unlock()
-		return
+// SetHandler sets the event handler for this watcher
+func (w *watcher) SetHandler(handler EventHandler) error {
+	if handler == nil {
+		return errors.New("handler cannot be nil")
 	}
 
-	var ctx context.Context
-	ctx, w.cancel = context.WithCancel(context.Background())
-	w.stopped = make(chan struct{}, 1)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.handler != nil {
+		return ErrHandlerExists
+	}
+
+	w.handler = handler
+	return nil
+}
+
+// Start begins the event listening process
+func (w *watcher) Start(ctx context.Context) error {
+	w.mu.Lock()
+	if w.state != StateIdle && w.state != StateStopped {
+		w.mu.Unlock()
+		return NewWatcherError(w.id, fmt.Errorf("cannot start watcher in state %s", w.state))
+	}
+
+	if w.handler == nil {
+		w.mu.Unlock()
+		return NewWatcherError(w.id, ErrNoHandler)
+	}
+
+	ctx, w.cancel = context.WithCancel(ctx)
+	w.stopped = make(chan struct{})
 	w.state = StateRunning
+	w.nextEventIterator = w.checkpointIterator
 	log.Ctx(ctx).Debug().
 		Str("watcher_id", w.ID()).
 		Str("starting_at", w.nextEventIterator.String()).
@@ -122,11 +163,17 @@ func (w *watcher) Start() {
 		Msg("starting watcher")
 	w.mu.Unlock()
 
+	go w.run(ctx)
+	return nil
+}
+
+// run is the main event processing loop
+func (w *watcher) run(ctx context.Context) {
 	defer func() {
 		w.mu.Lock()
 		w.state = StateStopped
 		w.mu.Unlock()
-		w.stopped <- struct{}{}
+		close(w.stopped)
 	}()
 
 	for {
@@ -136,6 +183,9 @@ func (w *watcher) Start() {
 		default:
 			response, err := w.fetchWithBackoff(ctx)
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 				continue
 			}
 
@@ -230,12 +280,12 @@ func (w *watcher) updateLastProcessedEvent(event Event) {
 // Stop gracefully stops the watcher
 func (w *watcher) Stop(ctx context.Context) {
 	w.mu.Lock()
-	if w.state != StateRunning {
-		log.Warn().Str("watcher_id", w.id).Str("state", string(w.state)).
-			Msg("watcher not running, skipping stop")
+	if w.state == StateStopped || w.state == StateIdle {
+		w.state = StateStopped
 		w.mu.Unlock()
 		return
 	}
+
 	w.state = StateStopping
 	w.mu.Unlock()
 
@@ -254,25 +304,36 @@ func (w *watcher) Stop(ctx context.Context) {
 
 // Checkpoint saves the current progress of the watcher
 func (w *watcher) Checkpoint(ctx context.Context, eventSeqNum uint64) error {
-	return w.store.StoreCheckpoint(ctx, w.id, eventSeqNum)
+	if err := w.store.StoreCheckpoint(ctx, w.id, eventSeqNum); err != nil {
+		return err
+	}
+	log.Ctx(ctx).Trace().Str("watcher_id", w.id).Uint64("event_seq", eventSeqNum).
+		Msg("checkpoint saved")
+
+	// Update checkpoint iterator after successful store
+	w.mu.Lock()
+	w.checkpointIterator = AfterSequenceNumberIterator(eventSeqNum)
+	w.mu.Unlock()
+
+	return nil
 }
 
 // SeekToOffset moves the watcher to a specific event sequence number
 func (w *watcher) SeekToOffset(ctx context.Context, eventSeqNum uint64) error {
+	log.Ctx(ctx).Debug().Str("watcher_id", w.id).Uint64("event_seq", eventSeqNum).
+		Msg("seeking to event sequence number")
 	// stop the watcher so that it doesn't process events while we're updating the offset
 	w.Stop(ctx)
 
-	// update the offset
-	w.nextEventIterator = AfterSequenceNumberIterator(eventSeqNum)
-
 	// persist the offset so that the watcher resumes at the correct position if started
-	if err := w.store.StoreCheckpoint(ctx, w.id, eventSeqNum); err != nil {
-		log.Ctx(ctx).Error().Err(err).Str("watcher_id", w.id).
-			Msg("seek failed to persist offset. Watcher might not resume at the correct position")
+	if err := w.Checkpoint(ctx, eventSeqNum); err != nil {
+		return NewCheckpointError(w.id, fmt.Errorf("failed to persist seek offset: %w", err))
 	}
 
-	// restart the watcher
-	go w.Start()
+	// Restart watcher
+	if err := w.Start(ctx); err != nil {
+		return NewWatcherError(w.id, fmt.Errorf("failed to restart watcher after seek: %w", err))
+	}
 	return nil
 }
 

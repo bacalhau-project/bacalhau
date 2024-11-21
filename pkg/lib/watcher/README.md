@@ -20,7 +20,7 @@ The Watcher Library is an internal component of the Bacalhau project that provid
 
 ## Key Components
 
-1. **Registry**: Manages multiple watchers and provides methods to create and manage watchers.
+1. **Manager**: Manages multiple watchers and provides methods to create, lookup, and stop watchers.
 2. **Watcher**: Represents a single event watcher that processes events sequentially.
 3. **EventStore**: Responsible for storing and retrieving events, with BoltDB as the default implementation.
 4. **EventHandler**: Interface for handling individual events.
@@ -42,9 +42,9 @@ An `Event` represents a single occurrence in the system. It has the following pr
 
 The `EventStore` is responsible for persisting events and providing methods to retrieve them. It uses BoltDB as the underlying storage engine and supports features like caching, checkpointing, and garbage collection.
 
-### Registry
+### Manager
 
-The `Registry` manages multiple watchers. It's the main entry point for components that want to subscribe to events.
+The `Manager` manages multiple watchers and provides methods to create, lookup, and stop watchers.
 
 ### Watcher
 
@@ -70,9 +70,9 @@ db, _ := bbolt.Open("events.db", 0600, nil)
 store, _ := boltdb.NewEventStore(db)
 ```
 
-2. Create a Registry:
+2. Create a manager:
 ```go
-registry := watcher.NewRegistry(store)
+manager := watcher.NewManager(store)
 ```
 
 3. Implement an EventHandler:
@@ -86,9 +86,32 @@ func (h *MyHandler) HandleEvent(ctx context.Context, event watcher.Event) error 
 ```
 
 
-4. Start watching for events:
+4. Create a watcher and set handler:
+
+There are two main approaches to create and configure a watcher with a handler:
+
+a.  Two-Step Creation (Handler After Creation):
 ```go
-watcher, _ := registry.Watch(ctx, "my-watcher", &MyHandler{}, 
+// Create watcher
+w, _ := manager.Watch(ctx, "my-watcher", 
+    watcher.WithFilter(watcher.EventFilter{
+        ObjectTypes: []string{"Job", "Execution"},
+        Operations: []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
+    }),
+)
+
+// Set handler
+err = w.SetHandler(&MyHandler{})
+
+// Start watching
+err = w.Start(ctx)
+```
+
+b. One-Step Creation (With Auto-Start):
+```go
+w, _ := manager.Create(ctx, "my-watcher",
+    watcher.WithHandler(&MyHandler{}),
+    watcher.WithAutoStart(),
     watcher.WithFilter(watcher.EventFilter{
         ObjectTypes: []string{"Job", "Execution"},
         Operations: []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
@@ -109,6 +132,8 @@ store.StoreEvent(ctx, watcher.OperationCreate, "Job", jobData)
 When creating a watcher, you can configure it with various options:
 
 - `WithInitialEventIterator(iterator EventIterator)`: Sets the starting position for watching if no checkpoint is found.
+- `WithHandler(handler EventHandler)`: Sets the event handler for the watcher.
+- `WithAutoStart()`: Enables automatic start of the watcher after creation.
 - `WithFilter(filter EventFilter)`: Sets the event filter for watching.
 - `WithBufferSize(size int)`: Sets the size of the event buffer.
 - `WithBatchSize(size int)`: Sets the number of events to fetch in each batch.
@@ -120,8 +145,10 @@ When creating a watcher, you can configure it with various options:
 Example:
 
 ```go
-watcher, err := registry.Watch(ctx, "my-watcher", &MyHandler{},
+w, err := manager.Create(ctx, "my-watcher",
     watcher.WithInitialEventIterator(watcher.TrimHorizonIterator()),
+    watcher.WithHandler(&MyHandler{}),
+    watcher.WithAutoStart(),
     watcher.WithFilter(watcher.EventFilter{
         ObjectTypes: []string{"Job", "Execution"},
         Operations: []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},

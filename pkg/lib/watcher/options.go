@@ -21,22 +21,30 @@ type WatchOption func(*watchOptions)
 // watchOptions holds configuration options for watching events
 type watchOptions struct {
 	initialEventIterator EventIterator // starting position for watching if no checkpoint is found
+	handler              EventHandler  // event handler
 	filter               EventFilter   // filter for events
 	batchSize            int           // number of events to fetch in each batch
 	initialBackoff       time.Duration // initial backoff duration for retries
 	maxBackoff           time.Duration // maximum backoff duration for retries
 	maxRetries           int
 	retryStrategy        RetryStrategy
+	autoStart            bool
 }
 
 // validate checks all options for validity
 func (o *watchOptions) validate() error {
-	return errors.Join(
+	err := errors.Join(
 		validate.IsGreaterThanZero(o.batchSize, "batchSize must be greater than zero"),
 		validate.IsGreaterOrEqualToZero(o.initialBackoff, "initialBackoff cannot be negative"),
 		validate.IsGreaterOrEqualToZero(o.maxBackoff, "maxBackoff cannot be negative"),
 		validate.IsGreaterOrEqualToZero(o.maxRetries, "maxRetries cannot be negative"),
 		validate.IsGreaterOrEqual(o.maxBackoff, o.initialBackoff, "maxBackoff must be greater than or equal to initialBackoff"))
+
+	// validate handler is set if autoStart is enabled
+	if o.autoStart && o.handler == nil {
+		err = errors.Join(err, errors.New("handler must be set when autoStart is enabled"))
+	}
+	return err
 }
 
 // defaultWatchOptions returns the default watch options
@@ -51,10 +59,24 @@ func defaultWatchOptions() *watchOptions {
 	}
 }
 
+// WithAutoStart enables auto-start for the watcher right after creation
+func WithAutoStart() WatchOption {
+	return func(o *watchOptions) {
+		o.autoStart = true
+	}
+}
+
 // WithInitialEventIterator sets the starting position for watching if no checkpoint is found
 func WithInitialEventIterator(iterator EventIterator) WatchOption {
 	return func(o *watchOptions) {
 		o.initialEventIterator = iterator
+	}
+}
+
+// WithHandler sets the event handler for watching
+func WithHandler(handler EventHandler) WatchOption {
+	return func(o *watchOptions) {
+		o.handler = handler
 	}
 }
 

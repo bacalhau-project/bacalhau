@@ -9,6 +9,8 @@ var (
 	ErrWatcherAlreadyExists = errors.New("watcher already exists")
 	ErrWatcherNotFound      = errors.New("watcher not found")
 	ErrCheckpointNotFound   = errors.New("checkpoint not found")
+	ErrNoHandler            = errors.New("no handler configured")
+	ErrHandlerExists        = errors.New("handler already exists")
 )
 
 // WatcherError represents an error related to a specific watcher

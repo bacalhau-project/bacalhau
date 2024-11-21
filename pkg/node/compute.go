@@ -44,7 +44,7 @@ type Compute struct {
 	Storages           storage.StorageProvider
 	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
-	Watchers           watcher.Registry
+	Watchers           watcher.Manager
 	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
 	nodeInfoDecorator  models.NodeInfoDecorator
@@ -385,12 +385,13 @@ func setupComputeWatchers(
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	bidder compute.Bidder,
-) (watcher.Registry, error) {
-	watcherRegistry := watcher.NewRegistry(executionStore.GetEventStore())
+) (watcher.Manager, error) {
+	watcherRegistry := watcher.NewManager(executionStore.GetEventStore())
 
 	// Set up execution logger watcher
-	_, err := watcherRegistry.Watch(ctx, computeExecutionLoggerWatcherID,
-		watchers.NewExecutionLogger(log.Logger),
+	_, err := watcherRegistry.Create(ctx, computeExecutionLoggerWatcherID,
+		watcher.WithHandler(watchers.NewExecutionLogger(log.Logger)),
+		watcher.WithAutoStart(),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
@@ -405,7 +406,9 @@ func setupComputeWatchers(
 		return nil, err
 	}
 
-	_, err = watcherRegistry.Watch(ctx, computeToOrchestratorDispatcherWatcherID, dispatcher,
+	_, err = watcherRegistry.Create(ctx, computeToOrchestratorDispatcherWatcherID,
+		watcher.WithHandler(dispatcher),
+		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
 		}),
@@ -418,7 +421,9 @@ func setupComputeWatchers(
 
 	// Set up execution handler watcher
 	executionHandler := watchers.NewExecutionUpsertHandler(bufferRunner, bidder)
-	_, err = watcherRegistry.Watch(ctx, computeExecutionHandlerWatcherID, executionHandler,
+	_, err = watcherRegistry.Create(ctx, computeExecutionHandlerWatcherID,
+		watcher.WithHandler(executionHandler),
+		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
 		}),
