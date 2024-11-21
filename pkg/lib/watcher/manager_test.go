@@ -34,8 +34,8 @@ func (s *ManagerTestSuite) SetupTest() {
 }
 
 func (s *ManagerTestSuite) TearDownTest() {
-	s.ctrl.Finish()
 	s.Require().NoError(s.manager.Stop(context.Background()), "failed to stop manager in teardown")
+	s.ctrl.Finish()
 }
 
 func (s *ManagerTestSuite) TestCreate() {
