@@ -80,7 +80,7 @@ func (s *ManagerTestSuite) TestLookup() {
 	s.Require().NoError(err)
 
 	// Lookup existing watcher
-	retrievedWatcher, err := s.manager.Lookup(watcherID)
+	retrievedWatcher, err := s.manager.Lookup(context.Background(), watcherID)
 	s.Require().NoError(err)
 	s.Require().NotNil(retrievedWatcher)
 	s.Equal(watcherID, retrievedWatcher.ID())
@@ -88,7 +88,7 @@ func (s *ManagerTestSuite) TestLookup() {
 }
 
 func (s *ManagerTestSuite) TestLookupNonExistentWatcher() {
-	_, err := s.manager.Lookup("non-existent")
+	_, err := s.manager.Lookup(context.Background(), "non-existent")
 	s.Require().Error(err)
 	s.Contains(err.Error(), "watcher not found")
 }
