@@ -19,6 +19,7 @@ type Stats struct {
 	ID                     string
 	State                  State
 	NextEventIterator      EventIterator // Next event iterator for the watcher
+	CheckpointIterator     EventIterator // Checkpoint iterator for the watcher
 	LastProcessedSeqNum    uint64        // SeqNum of the last event processed by this watcher
 	LastProcessedEventTime time.Time     // timestamp of the last processed event
 	LastListenTime         time.Time     // timestamp of the last successful listen operation
@@ -39,6 +40,15 @@ type Watcher interface {
 	// Stats returns the current statistics for the watcher.
 	Stats() Stats
 
+	// SetHandler sets the event handler for the watcher. Must be set before calling Start.
+	// Will fail if the handler is already set.
+	// Returns error if handler is nil or already configured.
+	SetHandler(handler EventHandler) error
+
+	// Start begins processing events.
+	// Returns error if no handler configured or already running.
+	Start(ctx context.Context) error
+
 	// Stop gracefully stops the watcher.
 	Stop(ctx context.Context)
 
@@ -46,6 +56,7 @@ type Watcher interface {
 	Checkpoint(ctx context.Context, eventSeqNum uint64) error
 
 	// SeekToOffset moves the watcher to a specific event sequence number.
+	// Will stop and restart the watcher if running.
 	SeekToOffset(ctx context.Context, eventSeqNum uint64) error
 }
 
@@ -57,16 +68,16 @@ type EventHandler interface {
 	HandleEvent(ctx context.Context, event Event) error
 }
 
-// Registry manages multiple event watchers and provides methods to watch for events.
-type Registry interface {
-	// Watch starts watching for events with the given options.
-	// It returns a Watcher that can be used to receive events.
-	Watch(ctx context.Context, watcherID string, handler EventHandler, opts ...WatchOption) (Watcher, error)
+// Manager handles lifecycle of multiple watchers with shared resources
+type Manager interface {
+	// Create creates a new not-started watcher with the given ID and options.
+	// The watcher must be configured with a handler before it can start watching.
+	Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error)
 
-	// GetWatcher retrieves an existing watcher by its ID.
-	GetWatcher(watcherID string) (Watcher, error)
+	// Lookup retrieves an existing watcher by its ID.
+	Lookup(ctx context.Context, watcherID string) (Watcher, error)
 
-	// Stop gracefully shuts down the registry and all its watchers.
+	// Stop gracefully shuts down the manager and all its watchers.
 	Stop(ctx context.Context) error
 }
 

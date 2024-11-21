@@ -431,11 +431,13 @@ func setupOrchestratorWatchers(
 	evalBroker orchestrator.EvaluationBroker,
 	nodeManager routing.NodeInfoStore,
 	computeProxy compute.Endpoint,
-) (watcher.Registry, error) {
-	watcherRegistry := watcher.NewRegistry(jobStore.GetEventStore())
+) (watcher.Manager, error) {
+	watcherRegistry := watcher.NewManager(jobStore.GetEventStore())
 
 	// Start watching for evaluation events using latest iterator
-	_, err := watcherRegistry.Watch(ctx, orchestratorEvaluationWatcherID, evaluation.NewWatchHandler(evalBroker),
+	_, err := watcherRegistry.Create(ctx, orchestratorEvaluationWatcherID,
+		watcher.WithHandler(evaluation.NewWatchHandler(evalBroker)),
+		watcher.WithAutoStart(),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectEvaluation},
@@ -447,7 +449,9 @@ func setupOrchestratorWatchers(
 	}
 
 	// Set up execution logger watcher
-	_, err = watcherRegistry.Watch(ctx, orchestratorExecutionLoggerWatcherID, watchers.NewExecutionLogger(log.Logger),
+	_, err = watcherRegistry.Create(ctx, orchestratorExecutionLoggerWatcherID,
+		watcher.WithHandler(watchers.NewExecutionLogger(log.Logger)),
+		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
 		}),
@@ -477,7 +481,9 @@ func setupOrchestratorWatchers(
 	}
 
 	// TODO: Add checkpointing or else events will be missed
-	_, err = watcherRegistry.Watch(ctx, orchestratorToComputeDispatcherWatcherID, dispatcher,
+	_, err = watcherRegistry.Create(ctx, orchestratorToComputeDispatcherWatcherID,
+		watcher.WithHandler(dispatcher),
+		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
 		}),

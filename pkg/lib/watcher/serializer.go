@@ -28,7 +28,7 @@ func NewJSONSerializer() *JSONSerializer {
 	}
 }
 
-// RegisterType adds a new type to the serializer's type registry
+// RegisterType adds a new type to the serializer's type manager
 // It returns an error if the type is already registered or if the provided type is invalid
 func (s *JSONSerializer) RegisterType(name string, t reflect.Type) error {
 	if _, exists := s.typeRegistry[name]; exists {
@@ -44,7 +44,7 @@ func (s *JSONSerializer) RegisterType(name string, t reflect.Type) error {
 	return nil
 }
 
-// IsTypeRegistered checks if a type is registered in the serializer's type registry
+// IsTypeRegistered checks if a type is registered in the serializer's type manager
 func (s *JSONSerializer) IsTypeRegistered(name string) bool {
 	_, exists := s.typeRegistry[name]
 	return exists
