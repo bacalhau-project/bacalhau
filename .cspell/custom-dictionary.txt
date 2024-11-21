@@ -384,6 +384,7 @@ pqueue
 Routez
 Connz
 Subsz
+Streamz
 nuid
 Noticef
 Warnf

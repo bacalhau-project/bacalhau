@@ -144,6 +144,7 @@ func NewNATSTransport(ctx context.Context,
 			JetStream:              true,
 			DisableJetStreamBanner: true,
 			StoreDir:               config.StoreDir,
+			NoSigs:                 true, // disable terminating the server on SIGINT/SIGTERM
 		}
 
 		if config.ServerTLSCert != "" {
