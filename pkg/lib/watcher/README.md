@@ -93,7 +93,7 @@ There are two main approaches to create and configure a watcher with a handler:
 a.  Two-Step Creation (Handler After Creation):
 ```go
 // Create watcher
-w, _ := manager.Watch(ctx, "my-watcher", 
+w, _ := manager.Create(ctx, "my-watcher", 
     watcher.WithFilter(watcher.EventFilter{
         ObjectTypes: []string{"Job", "Execution"},
         Operations: []watcher.Operation{watcher.OperationCreate, watcher.OperationUpdate},
