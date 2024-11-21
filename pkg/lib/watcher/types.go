@@ -75,7 +75,7 @@ type Manager interface {
 	Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error)
 
 	// Lookup retrieves an existing watcher by its ID.
-	Lookup(watcherID string) (Watcher, error)
+	Lookup(ctx context.Context, watcherID string) (Watcher, error)
 
 	// Stop gracefully shuts down the manager and all its watchers.
 	Stop(ctx context.Context) error

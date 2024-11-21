@@ -59,7 +59,7 @@ func (m *manager) Create(ctx context.Context, watcherID string, opts ...WatchOpt
 }
 
 // Lookup retrieves a specific watcher by ID
-func (m *manager) Lookup(watcherID string) (Watcher, error) {
+func (m *manager) Lookup(_ context.Context, watcherID string) (Watcher, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

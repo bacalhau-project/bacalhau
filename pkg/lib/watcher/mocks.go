@@ -167,31 +167,31 @@ func (mr *MockEventHandlerMockRecorder) HandleEvent(ctx, event interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleEvent", reflect.TypeOf((*MockEventHandler)(nil).HandleEvent), ctx, event)
 }
 
-// MockRegistry is a mock of Manager interface.
-type MockRegistry struct {
+// MockManager is a mock of Manager interface.
+type MockManager struct {
 	ctrl     *gomock.Controller
-	recorder *MockRegistryMockRecorder
+	recorder *MockManagerMockRecorder
 }
 
-// MockRegistryMockRecorder is the mock recorder for MockRegistry.
-type MockRegistryMockRecorder struct {
-	mock *MockRegistry
+// MockManagerMockRecorder is the mock recorder for MockManager.
+type MockManagerMockRecorder struct {
+	mock *MockManager
 }
 
-// NewMockRegistry creates a new mock instance.
-func NewMockRegistry(ctrl *gomock.Controller) *MockRegistry {
-	mock := &MockRegistry{ctrl: ctrl}
-	mock.recorder = &MockRegistryMockRecorder{mock}
+// NewMockManager creates a new mock instance.
+func NewMockManager(ctrl *gomock.Controller) *MockManager {
+	mock := &MockManager{ctrl: ctrl}
+	mock.recorder = &MockManagerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockRegistry) EXPECT() *MockRegistryMockRecorder {
+func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 	return m.recorder
 }
 
-// CreateWatcher mocks base method.
-func (m *MockRegistry) Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error) {
+// Create mocks base method.
+func (m *MockManager) Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, watcherID}
 	for _, a := range opts {
@@ -203,30 +203,30 @@ func (m *MockRegistry) Create(ctx context.Context, watcherID string, opts ...Wat
 	return ret0, ret1
 }
 
-// CreateWatcher indicates an expected call of CreateWatcher.
-func (mr *MockRegistryMockRecorder) CreateWatcher(ctx, watcherID interface{}, opts ...interface{}) *gomock.Call {
+// Create indicates an expected call of Create.
+func (mr *MockManagerMockRecorder) Create(ctx, watcherID interface{}, opts ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, watcherID}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRegistry)(nil).Create), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockManager)(nil).Create), varargs...)
 }
 
-// LookupWatcher mocks base method.
-func (m *MockRegistry) Lookup(watcherID string) (Watcher, error) {
+// Lookup mocks base method.
+func (m *MockManager) Lookup(ctx context.Context, watcherID string) (Watcher, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Lookup", watcherID)
+	ret := m.ctrl.Call(m, "Lookup", ctx, watcherID)
 	ret0, _ := ret[0].(Watcher)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// LookupWatcher indicates an expected call of LookupWatcher.
-func (mr *MockRegistryMockRecorder) LookupWatcher(watcherID interface{}) *gomock.Call {
+// Lookup indicates an expected call of Lookup.
+func (mr *MockManagerMockRecorder) Lookup(ctx, watcherID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockRegistry)(nil).Lookup), watcherID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lookup", reflect.TypeOf((*MockManager)(nil).Lookup), ctx, watcherID)
 }
 
 // Stop mocks base method.
-func (m *MockRegistry) Stop(ctx context.Context) error {
+func (m *MockManager) Stop(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Stop", ctx)
 	ret0, _ := ret[0].(error)
@@ -234,9 +234,9 @@ func (m *MockRegistry) Stop(ctx context.Context) error {
 }
 
 // Stop indicates an expected call of Stop.
-func (mr *MockRegistryMockRecorder) Stop(ctx interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) Stop(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockRegistry)(nil).Stop), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockManager)(nil).Stop), ctx)
 }
 
 // MockEventStore is a mock of EventStore interface.

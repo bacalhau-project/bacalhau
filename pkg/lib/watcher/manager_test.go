@@ -151,10 +151,9 @@ func (s *ManagerTestSuite) TestStopWithTimeout() {
 		return w.Stats().State == watcher.StateStopping
 	}, 200*time.Millisecond, 10*time.Millisecond)
 
-	// sleep and verify that the watcher is still stopping
-	s.Require().Eventually(func() bool {
-		return w.Stats().State == watcher.StateStopping
-	}, 200*time.Millisecond, 10*time.Millisecond)
+	// verify that the watcher is still stopping
+	time.Sleep(100 * time.Millisecond)
+	s.Require().Equal(watcher.StateStopping, w.Stats().State)
 
 	// Unblock GetEvents
 	close(getEventsCh)
@@ -187,7 +186,9 @@ func (s *ManagerTestSuite) TestWatcherProcessesEvents() {
 	s.startAndWait(ctx, w)
 
 	// Wait for events to be processed
-	time.Sleep(100 * time.Millisecond)
+	s.Require().Eventually(func() bool {
+		return w.Stats().LastProcessedSeqNum == 2
+	}, 200*time.Millisecond, 10*time.Millisecond)
 
 	err = s.manager.Stop(ctx)
 	s.Require().NoError(err)
@@ -222,7 +223,10 @@ func (s *ManagerTestSuite) TestMultipleWatchers() {
 	s.Require().NoError(w2.SetHandler(s.mockHandler))
 	s.startAndWait(ctx, w2)
 
-	time.Sleep(100 * time.Millisecond)
+	// Wait for events to be processed
+	s.Require().Eventually(func() bool {
+		return w1.Stats().LastProcessedSeqNum == 2 && w2.Stats().LastProcessedSeqNum == 2
+	}, 200*time.Millisecond, 10*time.Millisecond)
 
 	// Stop one watcher and ensure the other is still running
 	w1.Stop(ctx)
