@@ -25,6 +25,47 @@ func (s *ExponentialBackoffSuite) SetupTest() {
 	s.backoff = NewExponential(s.baseBackoff, s.maxBackoff)
 }
 
+func (s *ExponentialBackoffSuite) TestBackoffDuration() {
+	testCases := []struct {
+		name     string
+		attempts int
+		expected time.Duration
+	}{
+		{
+			name:     "Attempts0",
+			attempts: 0,
+			expected: 0,
+		},
+		{
+			name:     "Attempts1",
+			attempts: 1,
+			expected: s.baseBackoff,
+		},
+		{
+			name:     "Attempts2",
+			attempts: 2,
+			expected: 2 * s.baseBackoff,
+		},
+		{
+			name:     "Attempts4",
+			attempts: 4,
+			expected: 8 * s.baseBackoff,
+		},
+		{
+			name:     "Attempts100",
+			attempts: 100,
+			expected: s.maxBackoff,
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			duration := s.backoff.BackoffDuration(tc.attempts)
+			s.Equal(tc.expected, duration)
+		})
+	}
+}
+
 func (s *ExponentialBackoffSuite) TestBackoffDurationElapsed() {
 	testCases := []struct {
 		name     string
