@@ -950,7 +950,7 @@ func (s *WatcherTestSuite) TestStopStates() {
 		s.Equal(watcher.StateStopped, w.Stats().State)
 	})
 
-	s.Run("stop unstarted watcher", func() {
+	s.Run("stop not-started watcher", func() {
 		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
 		s.Require().NoError(err)
 		s.Equal(watcher.StateIdle, w.Stats().State)

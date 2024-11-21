@@ -70,7 +70,7 @@ type EventHandler interface {
 
 // Manager handles lifecycle of multiple watchers with shared resources
 type Manager interface {
-	// Create creates a new unstarted watcher with the given ID and options.
+	// Create creates a new not-started watcher with the given ID and options.
 	// The watcher must be configured with a handler before it can start watching.
 	Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error)
 

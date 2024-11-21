@@ -38,8 +38,8 @@ func NewManager(store EventStore) Manager {
 	}
 }
 
-// Create creates an unstarted watcher. SetHandler must be called before
-// Start can be called successfully.
+// Create creates a new watcher. SetHandler must be called before Start can be called successfully,
+// or pass WithHandler option to Create to set the handler at creation time.
 func (m *manager) Create(ctx context.Context, watcherID string, opts ...WatchOption) (Watcher, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
