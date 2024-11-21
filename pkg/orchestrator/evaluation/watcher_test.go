@@ -22,7 +22,7 @@ type WatchHandlerTestSuite struct {
 	suite.Suite
 	store        jobstore.Store
 	broker       *evaluation.InMemoryBroker
-	registry     watcher.Registry
+	registry     watcher.Manager
 	watchHandler *evaluation.WatchHandler
 	ctx          context.Context
 }
@@ -37,11 +37,13 @@ func (s *WatchHandlerTestSuite) SetupTest() {
 	s.Require().NoError(err)
 	s.broker.SetEnabled(true)
 
-	s.registry = watcher.NewRegistry(s.store.GetEventStore())
+	s.registry = watcher.NewManager(s.store.GetEventStore())
 	s.watchHandler = evaluation.NewWatchHandler(s.broker)
 
 	// Start watching for events
-	w, err := s.registry.Watch(s.ctx, "test-watcher", s.watchHandler,
+	w, err := s.registry.Create(s.ctx, "test-watcher",
+		watcher.WithHandler(s.watchHandler),
+		watcher.WithAutoStart(),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectEvaluation},

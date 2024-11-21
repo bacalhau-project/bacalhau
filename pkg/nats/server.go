@@ -86,18 +86,29 @@ func (sm *ServerManager) GetDebugInfo(ctx context.Context) (models.DebugInfo, er
 	if err != nil {
 		return models.DebugInfo{}, err
 	}
-	subsz, err := sm.Server.Subsz(&server.SubszOptions{})
+	subsz, err := sm.Server.Subsz(&server.SubszOptions{
+		Subscriptions: true,
+	})
 	if err != nil {
 		return models.DebugInfo{}, err
 	}
+	jsz, err := sm.Server.Jsz(&server.JSzOptions{
+		Streams:  true,
+		Consumer: true,
+	})
+	if err != nil {
+		return models.DebugInfo{}, err
+	}
+
 	return models.DebugInfo{
 		Component: "NATSServer",
 		Info: map[string]interface{}{
-			"ID":     sm.Server.ID(),
-			"Varz":   varz,
-			"Connz":  connz,
-			"Routez": routez,
-			"Subsz":  subsz,
+			"ID":         sm.Server.ID(),
+			"Varz":       varz,
+			"Connz":      connz,
+			"Routez":     routez,
+			"Subsz":      subsz,
+			"JetStreamz": jsz,
 		},
 	}, nil
 }
