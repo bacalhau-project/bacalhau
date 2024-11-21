@@ -302,6 +302,37 @@ func (s *WatcherTestSuite) TestWithFilter() {
 	s.Equal(uint64(4), w.Stats().LastProcessedSeqNum) // last event not processed
 }
 
+func (s *WatcherTestSuite) TestWithHandlerAndAutoStart() {
+	s.Run("WithAutoStart requires handler", func() {
+		// Should fail because no handler is set
+		_, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+			watcher.WithAutoStart())
+		s.Require().Error(err)
+		s.Contains(err.Error(), "handler must be set when autoStart is enabled")
+	})
+
+	s.Run("WithHandler and WithAutoStart starts automatically", func() {
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+			watcher.WithHandler(s.mockHandler),
+			watcher.WithAutoStart())
+		s.Require().NoError(err)
+
+		// Should be automatically running
+		s.Require().Eventually(func() bool {
+			return w.Stats().State == watcher.StateRunning
+		}, 200*time.Millisecond, 10*time.Millisecond)
+
+		w.Stop(s.ctx)
+	})
+
+	s.Run("WithHandler only does not auto-start", func() {
+		w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+			watcher.WithHandler(s.mockHandler))
+		s.Require().NoError(err)
+		s.Equal(watcher.StateIdle, w.Stats().State)
+	})
+}
+
 func (s *WatcherTestSuite) TestCheckpoint() {
 	events := []watcher.StoreEventRequest{
 		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
