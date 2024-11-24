@@ -70,6 +70,9 @@ func NackWithDelay(m *nats.Msg, err error, delay time.Duration) error {
 
 // Handle serialization in one place
 func sendResult(m *nats.Msg, resp *Result) error {
+	if m == nil {
+		return fmt.Errorf("message cannot be nil")
+	}
 	if m.Reply == "" {
 		// No reply subject, nothing to do
 		return nil
