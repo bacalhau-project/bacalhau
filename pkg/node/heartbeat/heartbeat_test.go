@@ -62,20 +62,22 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	s.messageSerDeRegistry = envelope.NewRegistry()
 	s.Require().NoError(s.messageSerDeRegistry.Register(HeartbeatMessageType, messages.Heartbeat{}))
 
-	s.publisher, err = ncl.NewPublisher(s.natsConn,
-		ncl.WithPublisherName("test-publisher"),
-		ncl.WithPublisherDestination(TestTopic),
-		ncl.WithPublisherMessageSerDeRegistry(s.messageSerDeRegistry),
-	)
+	s.publisher, err = ncl.NewPublisher(s.natsConn, ncl.PublisherConfig{
+		Name:            "test-publisher",
+		Destination:     TestTopic,
+		MessageRegistry: s.messageSerDeRegistry,
+	})
+
 	s.Require().NoError(err)
 
-	s.subscriber, err = ncl.NewSubscriber(s.natsConn,
-		ncl.WithSubscriberMessageSerDeRegistry(s.messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(s.heartbeatServer),
-	)
+	s.subscriber, err = ncl.NewSubscriber(s.natsConn, ncl.SubscriberConfig{
+		Name:            "test-subscriber",
+		MessageRegistry: s.messageSerDeRegistry,
+		MessageHandler:  s.heartbeatServer,
+	})
 	s.Require().NoError(err)
-	s.Require().NoError(s.subscriber.Subscribe(TestTopic))
-	s.Require().NoError(s.subscriber.Subscribe(legacyHeartbeatTopic))
+	s.Require().NoError(s.subscriber.Subscribe(context.Background(), TestTopic))
+	s.Require().NoError(s.subscriber.Subscribe(context.Background(), legacyHeartbeatTopic))
 }
 
 func (s *HeartbeatTestSuite) TearDownTest() {

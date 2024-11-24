@@ -1,6 +1,8 @@
 package ncl
 
 import (
+	"context"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
@@ -8,7 +10,9 @@ import (
 type NoopCheckpointer struct{}
 
 // Checkpoint does nothing
-func (n *NoopCheckpointer) Checkpoint(_ *envelope.Message) error { return nil }
+func (n *NoopCheckpointer) Checkpoint(ctx context.Context, message *envelope.Message) error {
+	return nil
+}
 
 // GetLastCheckpoint returns 0
 func (n *NoopCheckpointer) GetLastCheckpoint() (int64, error) { return 0, nil }

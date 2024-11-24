@@ -4,6 +4,7 @@ package ncl
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -27,8 +28,14 @@ type TestPayload struct {
 }
 
 type TestMessageHandler struct {
-	messages []*envelope.Message
-	mu       sync.Mutex
+	messages        []*envelope.Message
+	failWithMessage string
+	mu              sync.Mutex
+}
+
+// WithFailureMessage will cause the handler to fail with the given message
+func (h *TestMessageHandler) WithFailureMessage(msg string) {
+	h.failWithMessage = msg
 }
 
 func (h *TestMessageHandler) ShouldProcess(_ context.Context, _ *envelope.Message) bool {
@@ -38,8 +45,17 @@ func (h *TestMessageHandler) ShouldProcess(_ context.Context, _ *envelope.Messag
 func (h *TestMessageHandler) HandleMessage(_ context.Context, msg *envelope.Message) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.failWithMessage != "" {
+		return errors.New(h.failWithMessage)
+	}
 	h.messages = append(h.messages, msg)
 	return nil
+}
+
+func setupTestRegistry(t *testing.T) *envelope.Registry {
+	registry := envelope.NewRegistry()
+	require.NoError(t, registry.Register(TestPayloadType, TestPayload{}))
+	return registry
 }
 
 // StartNats will start a NATS server on a random port and return a server and client instances

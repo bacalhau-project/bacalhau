@@ -4,6 +4,8 @@ package ncl
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,13 +18,15 @@ import (
 
 type SubscriberTestSuite struct {
 	suite.Suite
-	natsServer     *server.Server
-	natsConn       *nats.Conn
-	serializer     *envelope.Serializer
-	registry       *envelope.Registry
-	publisher      Publisher
-	subscriber     Subscriber
-	messageHandler *TestMessageHandler
+	natsServer       *server.Server
+	natsConn         *nats.Conn
+	serializer       *envelope.Serializer
+	registry         *envelope.Registry
+	publisher        Publisher
+	orderedPublisher *orderedPublisher
+	subscriber       Subscriber
+	messageHandler   *TestMessageHandler
+	acks             []*nats.Msg
 }
 
 func (suite *SubscriberTestSuite) SetupSuite() {
@@ -40,22 +44,44 @@ func (suite *SubscriberTestSuite) TearDownSuite() {
 
 func (suite *SubscriberTestSuite) SetupTest() {
 	var err error
-	suite.publisher, err = NewPublisher(
-		suite.natsConn,
-		WithPublisherName("test"),
-		WithPublisherDestination(TestSubject),
-		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherMessageSerDeRegistry(suite.registry),
-	)
+	suite.publisher, err = NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		Destination:       TestSubject,
+	})
 	suite.Require().NoError(err)
 
+	pub, err := NewOrderedPublisher(suite.natsConn, OrderedPublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		Destination:       TestSubject,
+	})
+	suite.Require().NoError(err)
+	suite.orderedPublisher = pub.(*orderedPublisher)
+
+	// subscribe to acks for ordered publisher
+	var ackMutex sync.Mutex
+	subscription, err := suite.natsConn.Subscribe(suite.orderedPublisher.inbox+".*", func(msg *nats.Msg) {
+		ackMutex.Lock()
+		defer ackMutex.Unlock()
+		suite.T().Log("Received ack", string(msg.Data))
+		suite.acks = append(suite.acks, msg)
+
+	})
+	suite.Require().NoError(err)
+	suite.T().Cleanup(func() {
+		suite.Require().NoError(subscription.Unsubscribe())
+	})
+
 	suite.messageHandler = &TestMessageHandler{}
-	suite.subscriber, err = NewSubscriber(
-		suite.natsConn,
-		WithSubscriberMessageHandlers(suite.messageHandler),
-		WithSubscriberMessageDeserializer(suite.serializer),
-		WithSubscriberMessageSerDeRegistry(suite.registry),
-	)
+	suite.subscriber, err = NewSubscriber(suite.natsConn, SubscriberConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		MessageHandler:    suite.messageHandler,
+	})
 	suite.Require().NoError(err)
 }
 
@@ -65,7 +91,7 @@ func (suite *SubscriberTestSuite) TearDownTest() {
 }
 
 func (suite *SubscriberTestSuite) TestSubscribe() {
-	err := suite.subscriber.Subscribe(TestSubject)
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
 	suite.Require().NoError(err)
 
 	event := TestPayload{Message: "Hello, World!"}
@@ -87,16 +113,16 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 	}
 
 	var err error
-	suite.subscriber, err = NewSubscriber(
-		suite.natsConn,
-		WithSubscriberMessageHandlers(suite.messageHandler),
-		WithSubscriberMessageDeserializer(suite.serializer),
-		WithSubscriberMessageSerDeRegistry(suite.registry),
-		WithSubscriberMessageFilter(MessageFilterFunc(filter)),
-	)
+	suite.subscriber, err = NewSubscriber(suite.natsConn, SubscriberConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		MessageHandler:    suite.messageHandler,
+		MessageFilter:     MessageFilterFunc(filter),
+	})
 	suite.Require().NoError(err)
 
-	err = suite.subscriber.Subscribe(TestSubject)
+	err = suite.subscriber.Subscribe(context.Background(), TestSubject)
 	suite.Require().NoError(err)
 
 	// Publish a message that should be filtered out
@@ -120,8 +146,53 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 	suite.Equal("Not Filtered", suite.messageHandler.messages[0].Payload.(*TestPayload).Message)
 }
 
+func (suite *SubscriberTestSuite) TestSubscribeWithAck() {
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
+	suite.Require().NoError(err)
+	suite.publishAndVerifyAck(nil)
+}
+
+func (suite *SubscriberTestSuite) TestSubscribeWithNack() {
+	// mock message handler to return an error
+	suite.messageHandler.WithFailureMessage("my error")
+
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
+	suite.Require().NoError(err)
+
+	suite.publishAndVerifyAck(errors.New("my error"))
+}
+
+func (suite *SubscriberTestSuite) TestSubscribeWithNackDelays() {
+	// mock message handler to return an error
+	suite.messageHandler.WithFailureMessage("my error")
+
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
+	suite.Require().NoError(err)
+
+	// First failure should have initial delay
+	nack1 := suite.publishAndVerifyAck(errors.New("my error"))
+	suite.Require().Greater(nack1.Delay, time.Duration(0))
+
+	// Second failure should have longer delay
+	nack2 := suite.publishAndVerifyAck(errors.New("my error"))
+	suite.Require().Greater(nack2.Delay, nack1.Delay)
+
+	// Third failure should have even longer delay
+	nack3 := suite.publishAndVerifyAck(errors.New("my error"))
+	suite.Require().Greater(nack3.Delay, nack2.Delay)
+
+	// Now let's succeed to reset the backoff
+	suite.messageHandler.WithFailureMessage("")
+	suite.publishAndVerifyAck(nil)
+
+	// Now fail again - should be back to initial delay
+	suite.messageHandler.WithFailureMessage("my error")
+	nack4 := suite.publishAndVerifyAck(errors.New("my error"))
+	suite.Require().Equal(nack4.Delay, nack1.Delay)
+}
+
 func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
-	err := suite.subscriber.Subscribe(TestSubject, TestDestinationPrefix+".>")
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject, TestDestinationPrefix+".>")
 	suite.Require().NoError(err)
 
 	event1 := TestPayload{Message: "Message 1"}
@@ -129,13 +200,12 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 	err = suite.publisher.Publish(context.Background(), NewPublishRequest(msg1))
 	suite.Require().NoError(err)
 
-	publisher2, err := NewPublisher(
-		suite.natsConn,
-		WithPublisherName("test"),
-		WithPublisherDestinationPrefix(TestDestinationPrefix),
-		WithPublisherMessageSerializer(suite.serializer),
-		WithPublisherMessageSerDeRegistry(suite.registry),
-	)
+	publisher2, err := NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		DestinationPrefix: TestDestinationPrefix,
+	})
 	suite.Require().NoError(err)
 
 	event2 := TestPayload{Message: "Message 2"}
@@ -163,7 +233,7 @@ func (suite *SubscriberTestSuite) TestMultipleSubscriptions() {
 }
 
 func (suite *SubscriberTestSuite) TestClose() {
-	err := suite.subscriber.Subscribe(TestSubject)
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
 	suite.Require().NoError(err)
 
 	err = suite.subscriber.Close(context.Background())
@@ -177,6 +247,42 @@ func (suite *SubscriberTestSuite) TestClose() {
 	// Wait for a short time
 	time.Sleep(200 * time.Millisecond)
 	suite.Require().Len(suite.messageHandler.messages, 0)
+}
+
+func (suite *SubscriberTestSuite) publishAndVerifyAck(nackErr error) *Result {
+	// reset ack msgs first
+	suite.acks = suite.acks[:0]
+
+	// Publish message
+	event := TestPayload{Message: "Message"}
+	err := suite.orderedPublisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
+
+	// Verify error, if any
+	if nackErr != nil {
+		suite.Require().Error(err)
+		suite.Require().Contains(err.Error(), nackErr.Error())
+	} else {
+		suite.Require().NoError(err)
+	}
+
+	// wait for ack/nack
+	suite.Eventuallyf(func() bool {
+		return len(suite.acks) > 0
+	}, 1000*time.Millisecond, 50*time.Millisecond, "Expected ack/nack")
+
+	// Verify ack/nack
+	suite.Require().Len(suite.acks, 1)
+	res, err := ParseResult(suite.acks[len(suite.acks)-1])
+	suite.Require().NoError(err)
+
+	if nackErr != nil {
+		suite.Require().Error(res.Err())
+		suite.Require().Contains(res.Err().Error(), nackErr.Error())
+	} else {
+		suite.Require().NoError(res.Err())
+		suite.Require().Zero(res.Delay)
+	}
+	return res
 }
 
 func TestSubscriberTestSuite(t *testing.T) {

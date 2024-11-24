@@ -60,7 +60,7 @@ func NewComputeNode(
 	natsConn *nats.Conn,
 	computeCallback compute.Callback,
 	managementProxy compute.ManagementEndpoint,
-	messageSerDeRegistry *envelope.Registry,
+	messageRegistry *envelope.Registry,
 ) (*Compute, error) {
 	// Setup dependencies
 	publishers, err := cfg.DependencyInjector.PublishersFactory.Get(ctx, cfg)
@@ -209,11 +209,11 @@ func NewComputeNode(
 	regFilename = filepath.Join(computeDir, regFilename)
 
 	// heartbeat client
-	heartbeatPublisher, err := ncl.NewPublisher(natsConn,
-		ncl.WithPublisherName(cfg.NodeID),
-		ncl.WithPublisherDestination(computeHeartbeatTopic(cfg.NodeID)),
-		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
-	)
+	heartbeatPublisher, err := ncl.NewPublisher(natsConn, ncl.PublisherConfig{
+		Name:            cfg.NodeID,
+		Destination:     computeHeartbeatTopic(cfg.NodeID),
+		MessageRegistry: messageRegistry,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -242,24 +242,25 @@ func NewComputeNode(
 	go managementClient.Start(ctx)
 
 	// compute -> orchestrator ncl publisher
-	nclPublisher, err := ncl.NewPublisher(natsConn,
-		ncl.WithPublisherName(cfg.NodeID),
-		ncl.WithPublisherDestinationPrefix(computeOutSubject(cfg.NodeID)),
-		ncl.WithPublisherMessageSerDeRegistry(messageSerDeRegistry),
-	)
+	nclPublisher, err := ncl.NewOrderedPublisher(natsConn, ncl.OrderedPublisherConfig{
+		Name:              cfg.NodeID,
+		DestinationPrefix: computeOutSubject(cfg.NodeID),
+		MessageRegistry:   messageRegistry,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// orchestrator -> compute ncl subscriber
-	nclSubscriber, err := ncl.NewSubscriber(natsConn,
-		ncl.WithSubscriberMessageSerDeRegistry(messageSerDeRegistry),
-		ncl.WithSubscriberMessageHandlers(compute.NewMessageHandler(executionStore)),
-	)
+	nclSubscriber, err := ncl.NewSubscriber(natsConn, ncl.SubscriberConfig{
+		Name:            cfg.NodeID,
+		MessageRegistry: messageRegistry,
+		MessageHandler:  compute.NewMessageHandler(executionStore),
+	})
 	if err != nil {
 		return nil, err
 	}
-	if err = nclSubscriber.Subscribe(computeInSubscription(cfg.NodeID)); err != nil {
+	if err = nclSubscriber.Subscribe(ctx, computeInSubscription(cfg.NodeID)); err != nil {
 		return nil, err
 	}
 
@@ -381,7 +382,7 @@ func NewBidder(
 func setupComputeWatchers(
 	ctx context.Context,
 	executionStore store.ExecutionStore,
-	nclPublisher ncl.Publisher,
+	nclPublisher ncl.OrderedPublisher,
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	bidder compute.Bidder,

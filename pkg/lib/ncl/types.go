@@ -3,6 +3,8 @@ package ncl
 import (
 	"context"
 
+	"github.com/nats-io/nats.go"
+
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
@@ -19,7 +21,7 @@ type MessageFilter interface {
 
 // Checkpointer interface for managing checkpoints
 type Checkpointer interface {
-	Checkpoint(message *envelope.Message) error
+	Checkpoint(ctx context.Context, message *envelope.Message) error
 	GetLastCheckpoint() (int64, error)
 }
 
@@ -58,9 +60,35 @@ type Publisher interface {
 	Publish(ctx context.Context, request PublishRequest) error
 }
 
+type OrderedPublisher interface {
+	Publisher // Embed the Publisher interface
+	PublishAsync(ctx context.Context, request PublishRequest) (PubFuture, error)
+	Reset(ctx context.Context)
+	Close(ctx context.Context) error
+}
+
+type PubFuture interface {
+	// Done returns a receive only channel that can be used to wait for the future to be done.
+	Done() <-chan struct{}
+
+	// Err returns
+	// If Done is not yet closed, Err returns nil.
+	Err() error
+
+	// Result returns the result of the future.
+	// If Done is not yet closed, Result returns nil.
+	Result() *Result
+
+	// Msg returns the message that was sent to the server.
+	Msg() *nats.Msg
+
+	// Wait blocks until the future is done or the context is cancelled.
+	Wait(ctx context.Context) error
+}
+
 // Subscriber subscribes to messages from a NATS server
 type Subscriber interface {
-	Subscribe(subjects ...string) error
+	Subscribe(ctx context.Context, subjects ...string) error
 	Close(ctx context.Context) error
 }
 
