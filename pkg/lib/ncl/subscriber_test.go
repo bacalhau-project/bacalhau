@@ -5,6 +5,7 @@ package ncl
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,9 +62,13 @@ func (suite *SubscriberTestSuite) SetupTest() {
 	suite.orderedPublisher = pub.(*orderedPublisher)
 
 	// subscribe to acks for ordered publisher
-	suite.acks = make([]*nats.Msg, 0)
+	var ackMutex sync.Mutex
 	subscription, err := suite.natsConn.Subscribe(suite.orderedPublisher.inbox+".*", func(msg *nats.Msg) {
+		ackMutex.Lock()
+		defer ackMutex.Unlock()
+		suite.T().Log("Received ack", string(msg.Data))
 		suite.acks = append(suite.acks, msg)
+
 	})
 	suite.Require().NoError(err)
 	suite.T().Cleanup(func() {
@@ -144,8 +149,7 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 func (suite *SubscriberTestSuite) TestSubscribeWithAck() {
 	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
 	suite.Require().NoError(err)
-
-	suite.publishAndVerifyAck()
+	suite.publishAndVerifyAck(nil)
 }
 
 func (suite *SubscriberTestSuite) TestSubscribeWithNack() {
@@ -155,7 +159,7 @@ func (suite *SubscriberTestSuite) TestSubscribeWithNack() {
 	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
 	suite.Require().NoError(err)
 
-	suite.publishAndVerifyNack(errors.New("my error"))
+	suite.publishAndVerifyAck(errors.New("my error"))
 }
 
 func (suite *SubscriberTestSuite) TestSubscribeWithNackDelays() {
@@ -166,24 +170,24 @@ func (suite *SubscriberTestSuite) TestSubscribeWithNackDelays() {
 	suite.Require().NoError(err)
 
 	// First failure should have initial delay
-	nack1 := suite.publishAndVerifyNack(errors.New("my error"))
+	nack1 := suite.publishAndVerifyAck(errors.New("my error"))
 	suite.Require().Greater(nack1.Delay, time.Duration(0))
 
 	// Second failure should have longer delay
-	nack2 := suite.publishAndVerifyNack(errors.New("my error"))
+	nack2 := suite.publishAndVerifyAck(errors.New("my error"))
 	suite.Require().Greater(nack2.Delay, nack1.Delay)
 
 	// Third failure should have even longer delay
-	nack3 := suite.publishAndVerifyNack(errors.New("my error"))
+	nack3 := suite.publishAndVerifyAck(errors.New("my error"))
 	suite.Require().Greater(nack3.Delay, nack2.Delay)
 
 	// Now let's succeed to reset the backoff
 	suite.messageHandler.WithFailureMessage("")
-	suite.publishAndVerifyAck()
+	suite.publishAndVerifyAck(nil)
 
 	// Now fail again - should be back to initial delay
 	suite.messageHandler.WithFailureMessage("my error")
-	nack4 := suite.publishAndVerifyNack(errors.New("my error"))
+	nack4 := suite.publishAndVerifyAck(errors.New("my error"))
 	suite.Require().Equal(nack4.Delay, nack1.Delay)
 }
 
@@ -245,41 +249,40 @@ func (suite *SubscriberTestSuite) TestClose() {
 	suite.Require().Len(suite.messageHandler.messages, 0)
 }
 
-func (suite *SubscriberTestSuite) publishAndVerifyAck() *Result {
+func (suite *SubscriberTestSuite) publishAndVerifyAck(nackErr error) *Result {
 	// reset ack msgs first
 	suite.acks = suite.acks[:0]
 
-	// Publish message that will ack
-	event := TestPayload{Message: "Ack Message"}
+	// Publish message
+	event := TestPayload{Message: "Message"}
 	err := suite.orderedPublisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
-	suite.Require().NoError(err)
 
-	// Verify ack
+	// Verify error, if any
+	if nackErr != nil {
+		suite.Require().Error(err)
+		suite.Require().Contains(err.Error(), nackErr.Error())
+	} else {
+		suite.Require().NoError(err)
+	}
+
+	// wait for ack/nack
+	suite.Eventuallyf(func() bool {
+		return len(suite.acks) > 0
+	}, 1000*time.Millisecond, 50*time.Millisecond, "Expected ack/nack")
+
+	// Verify ack/nack
 	suite.Require().Len(suite.acks, 1)
-	ack, err := ParseResult(suite.acks[0])
+	res, err := ParseResult(suite.acks[len(suite.acks)-1])
 	suite.Require().NoError(err)
-	suite.Require().NoError(ack.Err())
-	suite.Require().Zero(ack.Delay)
-	return ack
-}
 
-func (suite *SubscriberTestSuite) publishAndVerifyNack(nackErr error) *Result {
-	// reset ack msgs first
-	suite.acks = suite.acks[:0]
-
-	// Publish message that will nack
-	event := TestPayload{Message: "Nack Message"}
-	err := suite.orderedPublisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
-	suite.Require().Error(err)
-	suite.Require().Contains(err.Error(), "my error")
-
-	// Verify nack
-	suite.Require().Len(suite.acks, 1)
-	nack, err := ParseResult(suite.acks[0])
-	suite.Require().NoError(err)
-	suite.Require().Error(nack.Err())
-	suite.Require().Contains(nack.Err().Error(), nackErr.Error())
-	return nack
+	if nackErr != nil {
+		suite.Require().Error(res.Err())
+		suite.Require().Contains(res.Err().Error(), nackErr.Error())
+	} else {
+		suite.Require().NoError(res.Err())
+		suite.Require().Zero(res.Delay)
+	}
+	return res
 }
 
 func TestSubscriberTestSuite(t *testing.T) {
