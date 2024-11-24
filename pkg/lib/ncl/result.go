@@ -2,6 +2,7 @@ package ncl
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -44,7 +45,7 @@ func (r *Result) WithDelay(delay time.Duration) *Result {
 // Err converts result to error if it represents a failure
 func (r *Result) Err() error {
 	if r.Error != "" {
-		return fmt.Errorf(r.Error)
+		return errors.New(r.Error)
 	}
 	return nil
 }

@@ -42,9 +42,9 @@ type SubscriberConfig struct {
 }
 
 const (
-	DefaultProcessingTimeout     = 5 * time.Second
-	DefaultBackoffInitialDelay   = 100 * time.Millisecond
-	DefaultBackoffMaximumDelay   = 5 * time.Second
+	DefaultProcessingTimeout   = 5 * time.Second
+	DefaultBackoffInitialDelay = 100 * time.Millisecond
+	DefaultBackoffMaximumDelay = 5 * time.Second
 )
 
 func DefaultSubscriberConfig() SubscriberConfig {
@@ -53,9 +53,9 @@ func DefaultSubscriberConfig() SubscriberConfig {
 		MessageFilter:     &NoopMessageFilter{},
 		Checkpointer:      &NoopCheckpointer{},
 		ProcessingTimeout: DefaultProcessingTimeout,
-		Backoff:           backoff.NewExponential(
+		Backoff: backoff.NewExponential(
 			DefaultBackoffInitialDelay,
-			DefaultBackoffMaximumDelay
+			DefaultBackoffMaximumDelay,
 		),
 	}
 }

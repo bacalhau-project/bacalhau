@@ -144,7 +144,6 @@ func (p *orderedPublisher) Reset(ctx context.Context) {
 	p.reset <- struct{}{}
 	p.drain(errors.New("publisher reset"))
 	p.resetDone <- struct{}{}
-
 }
 
 func (p *orderedPublisher) Close(ctx context.Context) error {
@@ -305,7 +304,6 @@ drainInflight:
 		p.inflightCount.Add(-1)
 		return true
 	})
-
 }
 
 // Compile-time interface checks
