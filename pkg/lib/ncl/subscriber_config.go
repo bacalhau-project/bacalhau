@@ -41,13 +41,22 @@ type SubscriberConfig struct {
 	Backoff backoff.Backoff
 }
 
+const (
+	DefaultProcessingTimeout     = 5 * time.Second
+	DefaultBackoffInitialDelay   = 100 * time.Millisecond
+	DefaultBackoffMaximumDelay   = 5 * time.Second
+)
+
 func DefaultSubscriberConfig() SubscriberConfig {
 	return SubscriberConfig{
 		MessageSerializer: envelope.NewSerializer(),
 		MessageFilter:     &NoopMessageFilter{},
 		Checkpointer:      &NoopCheckpointer{},
-		ProcessingTimeout: 5 * time.Second,
-		Backoff:           backoff.NewExponential(100*time.Millisecond, 5*time.Second),
+		ProcessingTimeout: DefaultProcessingTimeout,
+		Backoff:           backoff.NewExponential(
+			DefaultBackoffInitialDelay,
+			DefaultBackoffMaximumDelay
+		),
 	}
 }
 
