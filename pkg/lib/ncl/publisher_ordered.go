@@ -147,7 +147,17 @@ func (p *orderedPublisher) Reset(ctx context.Context) {
 }
 
 func (p *orderedPublisher) Close(ctx context.Context) error {
-	close(p.shutdown)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	select {
+	case <-p.shutdown:
+		// Already closed
+		return nil
+	default:
+		close(p.shutdown)
+	}
+
 	if err := p.subscription.Unsubscribe(); err != nil {
 		return fmt.Errorf("failed to unsubscribe: %w", err)
 	}
