@@ -69,7 +69,7 @@ func (suite *RecoveryTestSuite) TestHandleFirstError() {
 	)
 
 	// Initial state checks
-	suite.False(suite.recovery.isInRecovery())
+	suite.False(suite.recovery.isRecovering)
 	suite.Equal(0, suite.recovery.failures)
 	suite.True(suite.recovery.lastFailure.IsZero())
 
@@ -78,7 +78,7 @@ func (suite *RecoveryTestSuite) TestHandleFirstError() {
 
 	// Verify final state
 	suite.Eventually(func() bool {
-		return !suite.recovery.isInRecovery() &&
+		return !suite.recovery.isRecovering &&
 			suite.recovery.failures == 1
 	}, 1*time.Second, 50*time.Millisecond)
 }
