@@ -1,39 +1,34 @@
 package watchers
 
 import (
-	"context"
-
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/transport"
 )
 
-// NCLDispatcher handles forwarding messages based on execution state changes
-type NCLDispatcher struct {
-	publisher ncl.Publisher
+type NCLMessageCreator struct {
 }
 
-// NewNCLDispatcher creates a new NCLDispatcher with the given publisher
-func NewNCLDispatcher(publisher ncl.Publisher) *NCLDispatcher {
-	return &NCLDispatcher{
-		publisher,
-	}
+func NewNCLMessageCreator() *NCLMessageCreator {
+	return &NCLMessageCreator{}
 }
 
-// HandleEvent processes a watcher event and publishes appropriate messages
-func (d *NCLDispatcher) HandleEvent(ctx context.Context, event watcher.Event) error {
+func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Message, error) {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return nil, bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(nclDispatcherErrComponent)
 	}
 
 	execution := upsert.Current
+	if execution.OrchestrationProtocol() != models.ProtocolNCLV1 {
+		return nil, nil
+	}
 
 	// Prepare base response with common fields
 	baseResponse := messages.BaseResponse{
@@ -46,31 +41,30 @@ func (d *NCLDispatcher) HandleEvent(ctx context.Context, event watcher.Event) er
 	// Create appropriate message based on execution state
 	switch execution.ComputeState.StateType {
 	case models.ExecutionStateAskForBidAccepted:
-		log.Ctx(ctx).Debug().Msgf("Accepting bid for execution %s", execution.ID)
+		log.Debug().Msgf("Accepting bid for execution %s", execution.ID)
 		message = envelope.NewMessage(messages.BidResult{Accepted: true, BaseResponse: baseResponse}).
 			WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 	case models.ExecutionStateAskForBidRejected:
-		log.Ctx(ctx).Debug().Msgf("Rejecting bid for execution %s", execution.ID)
+		log.Debug().Msgf("Rejecting bid for execution %s", execution.ID)
 		message = envelope.NewMessage(messages.BidResult{Accepted: false, BaseResponse: baseResponse}).
 			WithMetadataValue(envelope.KeyMessageType, messages.BidResultMessageType)
 	case models.ExecutionStateCompleted:
-		log.Ctx(ctx).Debug().Msgf("Execution %s completed", execution.ID)
+		log.Debug().Msgf("Execution %s completed", execution.ID)
 		message = envelope.NewMessage(messages.RunResult{
 			BaseResponse:     baseResponse,
 			PublishResult:    execution.PublishedResult,
 			RunCommandResult: execution.RunOutput,
 		}).WithMetadataValue(envelope.KeyMessageType, messages.RunResultMessageType)
 	case models.ExecutionStateFailed:
-		log.Ctx(ctx).Debug().Msgf("Execution %s failed", execution.ID)
+		log.Debug().Msgf("Execution %s failed", execution.ID)
 		message = envelope.NewMessage(messages.ComputeError{BaseResponse: baseResponse}).
 			WithMetadataValue(envelope.KeyMessageType, messages.ComputeErrorMessageType)
 	default:
 		// No message created for other states
 	}
 
-	// Publish the message if one was created
-	if message != nil {
-		return d.publisher.Publish(ctx, ncl.NewPublishRequest(message))
-	}
-	return nil
+	return message, nil
 }
+
+// compile-time check that NCLMessageCreator implements dispatcher.MessageCreator
+var _ transport.MessageCreator = &NCLMessageCreator{}

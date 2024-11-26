@@ -33,6 +33,9 @@ func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Eve
 	}
 
 	execution := upsert.Current
+	if execution.OrchestrationProtocol() != models.ProtocolBProtocolV2 {
+		return nil
+	}
 
 	// Prepare base response with common fields
 	routingMetadata := legacy.RoutingMetadata{

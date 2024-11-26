@@ -32,20 +32,37 @@ func (m *MessageHandler) ShouldProcess(ctx context.Context, message *envelope.Me
 }
 
 // HandleMessage handles incoming messages
-// TODO: handle messages arriving out of order gracefully
 func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) error {
+	var err error
+
 	switch message.Metadata.Get(envelope.KeyMessageType) {
 	case messages.AskForBidMessageType:
-		return m.handleAskForBid(ctx, message)
+		err = m.handleAskForBid(ctx, message)
 	case messages.BidAcceptedMessageType:
-		return m.handleBidAccepted(ctx, message)
+		err = m.handleBidAccepted(ctx, message)
 	case messages.BidRejectedMessageType:
-		return m.handleBidRejected(ctx, message)
+		err = m.handleBidRejected(ctx, message)
 	case messages.CancelExecutionMessageType:
-		return m.handleCancel(ctx, message)
-	default:
+		err = m.handleCancel(ctx, message)
+	}
+
+	return m.handleError(ctx, message, err)
+}
+
+// handleError logs the error with context and returns nil.
+// In the future, this can be extended to handle different error types differently.
+func (m *MessageHandler) handleError(ctx context.Context, message *envelope.Message, err error) error {
+	if err == nil {
 		return nil
 	}
+
+	// For now, just log the error and return nil
+	logger := log.Ctx(ctx).Error()
+	for key, value := range message.Metadata.ToMap() {
+		logger = logger.Str(key, value)
+	}
+	logger.Err(err).Msg("Error handling message")
+	return nil
 }
 
 func (m *MessageHandler) handleAskForBid(ctx context.Context, message *envelope.Message) error {

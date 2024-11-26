@@ -31,6 +31,7 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/dispatcher"
 )
 
 type Compute struct {
@@ -243,9 +244,9 @@ func NewComputeNode(
 
 	// compute -> orchestrator ncl publisher
 	nclPublisher, err := ncl.NewOrderedPublisher(natsConn, ncl.OrderedPublisherConfig{
-		Name:              cfg.NodeID,
-		DestinationPrefix: computeOutSubject(cfg.NodeID),
-		MessageRegistry:   messageRegistry,
+		Name:            cfg.NodeID,
+		Destination:     computeOutSubject(cfg.NodeID),
+		MessageRegistry: messageRegistry,
 	})
 	if err != nil {
 		return nil, err
@@ -264,7 +265,7 @@ func NewComputeNode(
 		return nil, err
 	}
 
-	watcherRegistry, err := setupComputeWatchers(
+	watcherRegistry, nclDispatcher, err := setupComputeWatchers(
 		ctx, executionStore, nclPublisher, computeCallback, bufferRunner, bidder)
 	if err != nil {
 		return nil, err
@@ -274,6 +275,9 @@ func NewComputeNode(
 	cleanupFunc := func(ctx context.Context) {
 		if err = nclSubscriber.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close ncl subscriber")
+		}
+		if err = nclDispatcher.Stop(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to stop dispatcher")
 		}
 		if err = watcherRegistry.Stop(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to stop watcher registry")
@@ -386,7 +390,7 @@ func setupComputeWatchers(
 	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	bidder compute.Bidder,
-) (watcher.Manager, error) {
+) (watcher.Manager, *dispatcher.Dispatcher, error) {
 	watcherRegistry := watcher.NewManager(executionStore.GetEventStore())
 
 	// Set up execution logger watcher
@@ -395,35 +399,12 @@ func setupComputeWatchers(
 		watcher.WithAutoStart(),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
-	}
-
-	// Set up dispatcher watcher to forward execution events to the orchestrator
-	dispatcher, err := watchers.NewDispatcher(map[models.Protocol]watcher.EventHandler{
-		models.ProtocolBProtocolV2: watchers.NewBProtocolDispatcher(computeCallback),
-		models.ProtocolNCLV1:       watchers.NewNCLDispatcher(nclPublisher),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = watcherRegistry.Create(ctx, computeToOrchestratorDispatcherWatcherID,
-		watcher.WithHandler(dispatcher),
-		watcher.WithAutoStart(),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup dispatcher watcher: %w", err)
+		return nil, nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
 	}
 
 	// Set up execution handler watcher
-	executionHandler := watchers.NewExecutionUpsertHandler(bufferRunner, bidder)
 	_, err = watcherRegistry.Create(ctx, computeExecutionHandlerWatcherID,
-		watcher.WithHandler(executionHandler),
+		watcher.WithHandler(watchers.NewExecutionUpsertHandler(bufferRunner, bidder)),
 		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
@@ -432,8 +413,43 @@ func setupComputeWatchers(
 		watcher.WithMaxRetries(3),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup execution handler watcher: %w", err)
+		return nil, nil, fmt.Errorf("failed to setup execution handler watcher: %w", err)
 	}
 
-	return watcherRegistry, nil
+	// setup bprotocol dispatcher watcher
+	_, err = watcherRegistry.Create(ctx, computeBProtocolDispatcherWatcherID,
+		watcher.WithHandler(watchers.NewBProtocolDispatcher(computeCallback)),
+		watcher.WithAutoStart(),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup bprotocol dispatcher watcher: %w", err)
+	}
+
+	// setup ncl dispatcher
+	nclDispatcherWatcher, err := watcherRegistry.Create(ctx, computeNCLDispatcherWatcherID,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup ncl dispatcher watcher: %w", err)
+	}
+
+	nclDispatcher, err := dispatcher.New(
+		nclPublisher, nclDispatcherWatcher, watchers.NewNCLMessageCreator(), dispatcher.DefaultConfig())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create dispatcher: %w", err)
+	}
+
+	if err = nclDispatcher.Start(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to start dispatcher: %w", err)
+	}
+
+	return watcherRegistry, nclDispatcher, nil
 }

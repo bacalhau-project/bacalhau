@@ -250,6 +250,8 @@ cloud.google.com/go/vpcaccess v1.7.8/go.mod h1:fOd55qBAQiAFPA/hYwnOWgYNjcbvRMxd0
 cloud.google.com/go/webrisk v1.9.8/go.mod h1:ywUL9x0E81fft6TYggLWc+HUaCkuhMBl/RHnG8q5d5M=
 cloud.google.com/go/websecurityscanner v1.6.8/go.mod h1:VyEfLCEjX9PN6mhOzuuuIVKHQ9FLHPKsbSg+KxzTW8k=
 cloud.google.com/go/workflows v1.12.7/go.mod h1:W33pjrwjgNIDBYY5xdQfHeUxE3icFjO5x7Fh9kA4P2M=
+dario.cat/mergo v1.0.1 h1:Ra4+bf83h2ztPIQYNP99R6m+Y7KfnARDfID+a+vLl4s=
+dario.cat/mergo v1.0.1/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 gioui.org v0.0.0-20210308172011-57750fc8a0a6/go.mod h1:RSH6KIUZ0p2xy5zHDxgAM4zumjgTw83q2ge/PI+yyw8=
 git.sr.ht/~sbinet/gg v0.3.1/go.mod h1:KGYtlADtqsqANL9ueOFkWymvzUvLMQllU5Ixo+8v3pc=

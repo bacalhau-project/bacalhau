@@ -2,7 +2,6 @@ package watchers
 
 // Error components
 const (
-	dispatcherErrComponent    = "Dispatcher"
-	nclDispatcherErrComponent = "NCLDispatcher"
+	nclDispatcherErrComponent = "NCLMessageCreator"
 	bprotocolErrComponent     = "BProtocolDispatcher"
 )
