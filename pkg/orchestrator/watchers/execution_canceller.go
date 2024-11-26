@@ -15,7 +15,8 @@ type ExecutionCanceller struct {
 	jobStore jobstore.Store
 }
 
-// NewExecutionCanceller creates a new NCL protocol dispatcher
+// NewExecutionCanceller creates a new ExecutionCanceller that watches for and
+// handles execution state changes using the provided job store.
 func NewExecutionCanceller(jobStore jobstore.Store) *ExecutionCanceller {
 	return &ExecutionCanceller{
 		jobStore: jobStore,
