@@ -72,7 +72,7 @@ func (f *Forwarder) Stop(ctx context.Context) error {
 func (f *Forwarder) HandleEvent(ctx context.Context, event watcher.Event) error {
 	message, err := f.creator.CreateMessage(event)
 	if err != nil {
-		return fmt.Errorf("create message failed: %w", err)
+		return fmt.Errorf("creaddte message failed: %w", err)
 	}
 	if message == nil {
 		return nil

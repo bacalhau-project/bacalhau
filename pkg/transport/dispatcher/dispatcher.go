@@ -2,15 +2,17 @@ package dispatcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
-	"dario.cat/mergo"
-	"github.com/pkg/errors"
+	"github.com/imdario/mergo"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/transport"
 )
@@ -41,14 +43,16 @@ type Dispatcher struct {
 func New(publisher ncl.OrderedPublisher,
 	watcher watcher.Watcher,
 	messageCreator transport.MessageCreator, config Config) (*Dispatcher, error) {
-	if publisher == nil {
-		return nil, fmt.Errorf("publisher cannot be nil")
-	}
-	if watcher == nil {
-		return nil, fmt.Errorf("watcher cannot be nil")
+	err := errors.Join(
+		validate.NotNil(publisher, "publisher cannot be nil"),
+		validate.NotNil(watcher, "watcher cannot be nil"),
+		validate.NotNil(messageCreator, "message creator cannot be nil"),
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	err := mergo.Merge(&config, DefaultConfig())
+	err = mergo.Merge(&config, DefaultConfig())
 	if err != nil {
 		return nil, fmt.Errorf("failed to merge config: %w", err)
 	}
@@ -120,7 +124,7 @@ func (d *Dispatcher) Stop(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return errors.Wrap(ctx.Err(), "dispatcher shutdown timed out")
+		return pkgerrors.Wrap(ctx.Err(), "dispatcher shutdown timed out")
 	case <-done:
 		log.Debug().Msg("Dispatcher shutdown completed")
 		return nil

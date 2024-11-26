@@ -3,7 +3,6 @@ module github.com/bacalhau-project/bacalhau
 go 1.23
 
 require (
-	dario.cat/mergo v1.0.1
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/aws/aws-sdk-go-v2 v1.32.2
