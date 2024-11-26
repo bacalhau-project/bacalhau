@@ -276,8 +276,10 @@ func NewComputeNode(
 		if err = nclSubscriber.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close ncl subscriber")
 		}
-		if err = nclDispatcher.Stop(ctx); err != nil {
-			log.Error().Err(err).Msg("failed to stop dispatcher")
+		if nclDispatcher != nil {
+			if err = nclDispatcher.Stop(ctx); err != nil {
+				log.Error().Err(err).Msg("failed to stop dispatcher")
+			}
 		}
 		if err = watcherRegistry.Stop(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to stop watcher registry")
