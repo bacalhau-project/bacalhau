@@ -43,6 +43,10 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 	if !upsert.HasStateChange() {
 		return nil, nil
 	}
+	if upsert.Current == nil {
+		return nil, bacerrors.New("upsert.Current is nil").
+			WithComponent(nclDispatcherErrComponent)
+	}
 	execution := upsert.Current
 	preferredProtocol, err := d.protocolRouter.PreferredProtocol(context.Background(), execution)
 	if err != nil {
