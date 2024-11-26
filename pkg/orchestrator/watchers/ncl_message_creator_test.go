@@ -50,6 +50,10 @@ func (s *NCLMessageCreatorTestSuite) SetupTest() {
 	})
 }
 
+func (s *NCLMessageCreatorTestSuite) TearDownTest() {
+    s.ctrl.Finish()
+}
+
 func (s *NCLMessageCreatorTestSuite) TestCreateMessage_InvalidObject() {
 	msg, err := s.creator.CreateMessage(watcher.Event{
 		Object: "not an execution upsert",
