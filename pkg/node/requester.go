@@ -289,8 +289,8 @@ func NewRequesterNode(
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl heartbeat subscriber")
 		}
 
-		if err = nclForwarder.Stop(ctx); err != nil {
-			log.Error().Err(err).Msg("failed to stop dispatcher")
+		if cleanupErr = nclForwarder.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl forwarder")
 		}
 
 		if cleanupErr = watcherRegistry.Stop(ctx); cleanupErr != nil {
