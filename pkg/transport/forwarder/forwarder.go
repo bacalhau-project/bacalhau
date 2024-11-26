@@ -60,13 +60,11 @@ func (f *Forwarder) Start(ctx context.Context) error {
 
 func (f *Forwarder) Stop(ctx context.Context) error {
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	if !f.running {
-		f.mu.Unlock()
 		return nil
 	}
 	f.running = false
-	f.mu.Unlock()
-
 	f.watcher.Stop(ctx)
 	return nil
 }
