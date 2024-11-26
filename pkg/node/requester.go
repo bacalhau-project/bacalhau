@@ -477,6 +477,8 @@ func setupOrchestratorWatchers(
 			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
 		}),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
