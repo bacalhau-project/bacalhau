@@ -40,6 +40,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/forwarder"
 )
 
 var (
@@ -242,7 +243,7 @@ func NewRequesterNode(
 		return nil, err
 	}
 
-	watcherRegistry, err := setupOrchestratorWatchers(
+	watcherRegistry, nclForwarder, err := setupOrchestratorWatchers(
 		ctx, nodeID, jobStore, nclPublisher, evalBroker, nodeManager, computeProxy)
 	if err != nil {
 		return nil, err
@@ -286,6 +287,10 @@ func NewRequesterNode(
 		cleanupErr = heartbeatSubscriber.Close(ctx)
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl heartbeat subscriber")
+		}
+
+		if cleanupErr = nclForwarder.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl forwarder")
 		}
 
 		if cleanupErr = watcherRegistry.Stop(ctx); cleanupErr != nil {
@@ -425,6 +430,7 @@ func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NAT
 	return tracingInfoStore, nil
 }
 
+//nolint:funlen
 func setupOrchestratorWatchers(
 	ctx context.Context,
 	nodeID string,
@@ -433,7 +439,7 @@ func setupOrchestratorWatchers(
 	evalBroker orchestrator.EvaluationBroker,
 	nodeManager routing.NodeInfoStore,
 	computeProxy compute.Endpoint,
-) (watcher.Manager, error) {
+) (watcher.Manager, *forwarder.Forwarder, error) {
 	watcherRegistry := watcher.NewManager(jobStore.GetEventStore())
 
 	// Start watching for evaluation events using latest iterator
@@ -447,7 +453,7 @@ func setupOrchestratorWatchers(
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
+		return nil, nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
 	}
 
 	// Set up execution logger watcher
@@ -460,43 +466,76 @@ func setupOrchestratorWatchers(
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
+		return nil, nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
 	}
 
-	dispatcher, err := watchers.NewDispatcher(watchers.DispatcherParams{
-		NodeStore: nodeManager,
-		Dispatchers: map[models.Protocol]watcher.EventHandler{
-			models.ProtocolBProtocolV2: watchers.NewBProtocolDispatcher(watchers.BProtocolDispatcherParams{
-				ID:             nodeID,
-				ComputeService: computeProxy,
-				JobStore:       jobStore,
-			}),
-			models.ProtocolNCLV1: watchers.NewNCLDispatcher(watchers.NCLDispatcherParams{
-				Publisher: nclPublisher,
-				SubjectFn: orchestratorOutSubjectPrefix,
-				JobStore:  jobStore,
-			}),
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Add checkpointing or else events will be missed
-	_, err = watcherRegistry.Create(ctx, orchestratorToComputeDispatcherWatcherID,
-		watcher.WithHandler(dispatcher),
+	// Set up execution canceller watcher
+	_, err = watcherRegistry.Create(ctx, orchestratorExecutionCancellerWatcherID,
+		watcher.WithHandler(watchers.NewExecutionCanceller(jobStore)),
 		watcher.WithAutoStart(),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
+		}),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()),
+		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
+		watcher.WithMaxRetries(3),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
+	}
+
+	protocolRouter, err := watchers.NewProtocolRouter(watchers.ProtocolRouterParams{
+		NodeStore:          nodeManager,
+		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create protocol router: %w", err)
+	}
+
+	// setup bprotocol dispatcher watcher
+	_, err = watcherRegistry.Create(ctx, orchestratorBProtocolDispatcherWatcherID,
+		watcher.WithHandler(watchers.NewBProtocolDispatcher(watchers.BProtocolDispatcherParams{
+			ID:             nodeID,
+			ComputeService: computeProxy,
+			ProtocolRouter: protocolRouter,
+		})),
+		watcher.WithAutoStart(),
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
 		}),
 		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
 		watcher.WithMaxRetries(3),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, err
+		return nil, nil, fmt.Errorf("failed to setup bprotocol dispatcher watcher: %w", err)
 	}
 
-	return watcherRegistry, nil
+	// setup ncl dispatcher
+	nclDispatcherWatcher, err := watcherRegistry.Create(ctx, orchestratorNCLDispatcherWatcherID,
+		watcher.WithFilter(watcher.EventFilter{
+			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
+		}),
+		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
+		watcher.WithInitialEventIterator(watcher.LatestIterator()))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup ncl dispatcher watcher: %w", err)
+	}
+
+	nclMessageCreator := watchers.NewNCLMessageCreator(watchers.NCLMessageCreatorParams{
+		ProtocolRouter: protocolRouter,
+		SubjectFn:      orchestratorOutSubject,
+	})
+
+	nclForwarder, err := forwarder.New(nclPublisher, nclDispatcherWatcher, nclMessageCreator)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create forwarder: %w", err)
+	}
+
+	if err = nclForwarder.Start(ctx); err != nil {
+		return nil, nil, fmt.Errorf("failed to start forwarder: %w", err)
+	}
+
+	return watcherRegistry, nclForwarder, nil
 }
 
 func (r *Requester) cleanup(ctx context.Context) {

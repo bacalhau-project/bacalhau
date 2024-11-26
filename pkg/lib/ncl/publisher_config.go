@@ -8,6 +8,17 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
+// AckMode determines how published messages should be acknowledged
+type AckMode int
+
+const (
+	// ExplicitAck requires explicit acknowledgment from one subscriber
+	ExplicitAck AckMode = iota
+
+	// NoAck means the message is considered delivered as soon as it's published
+	NoAck
+)
+
 // PublisherConfig defines configuration for a NATS publisher
 type PublisherConfig struct {
 	// Name identifies this publisher instance
@@ -79,6 +90,10 @@ type OrderedPublisherConfig struct {
 	// Optional: defaults to 5s
 	AckWait time.Duration
 
+	// AckMode determines how messages should be acknowledged
+	// Optional: defaults to ExplicitAck for backwards compatibility
+	AckMode AckMode
+
 	// MaxPending is the maximum number of queued messages
 	// Optional: defaults to 1000
 	MaxPending int
@@ -99,6 +114,7 @@ func DefaultOrderedPublisherConfig() OrderedPublisherConfig {
 		MaxPending:        1000,
 		RetryAttempts:     3,
 		RetryWait:         time.Second,
+		AckMode:           ExplicitAck,
 	}
 }
 

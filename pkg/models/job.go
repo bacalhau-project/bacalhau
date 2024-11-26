@@ -378,3 +378,17 @@ func (j *Job) OrchestratorID() string {
 	}
 	return j.Meta[MetaOrchestratorIDLegacy]
 }
+
+// OrchestrationProtocol returns the orchestrator protocol for the job
+func (j *Job) OrchestrationProtocol() Protocol {
+	// TODO: Remove this once all jobs have the protocol set when v1.5 is no longer supported
+	defaultProtocol := ProtocolBProtocolV2 // Default to legacy protocol
+	if j == nil || j.Meta == nil {
+		return defaultProtocol
+	}
+	protocol, ok := j.Meta[MetaOrchestratorProtocol]
+	if !ok {
+		return defaultProtocol
+	}
+	return Protocol(protocol)
+}

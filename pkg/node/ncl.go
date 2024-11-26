@@ -43,19 +43,19 @@ func orchestratorHeartbeatSubscription() string {
 // orchestratorSubjectSub returns the subject to subscribe to for orchestrator messages.
 // it subscribes to outgoing messages from all compute nodes.
 func orchestratorInSubscription() string {
-	return "bacalhau.global.compute.*.out.msgs.>"
+	return "bacalhau.global.compute.*.out.msgs"
 }
 
-// orchestratorOutSubjectPrefix returns the subject to publish orchestrator messages to.
+// orchestratorOutSubject returns the subject to publish orchestrator messages to.
 // it publishes to the incoming subject of a specific compute node.
-func orchestratorOutSubjectPrefix(computeNodeID string) string {
+func orchestratorOutSubject(computeNodeID string) string {
 	return fmt.Sprintf("bacalhau.global.compute.%s.in.msgs", computeNodeID)
 }
 
 // computeInSubscription returns the subject to subscribe to for compute messages.
 // it subscribes to incoming messages directed to its own node.
 func computeInSubscription(nodeID string) string {
-	return fmt.Sprintf("bacalhau.global.compute.%s.in.msgs.>", nodeID)
+	return fmt.Sprintf("bacalhau.global.compute.%s.in.msgs", nodeID)
 }
 
 // computeOutSubject returns the subject to publish compute messages to.

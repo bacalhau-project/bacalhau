@@ -11,10 +11,11 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 type BProtocolDispatcherSuite struct {
@@ -22,7 +23,8 @@ type BProtocolDispatcherSuite struct {
 	ctx            context.Context
 	ctrl           *gomock.Controller
 	computeService *compute.MockEndpoint
-	jobStore       *jobstore.MockStore
+	nodeStore      *routing.MockNodeInfoStore
+	protocolRouter *ProtocolRouter
 	nodeID         string
 	computeErr     error
 	dispatcher     *BProtocolDispatcher
@@ -36,14 +38,32 @@ func (s *BProtocolDispatcherSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.ctrl = gomock.NewController(s.T())
 	s.computeService = compute.NewMockEndpoint(s.ctrl)
-	s.jobStore = jobstore.NewMockStore(s.ctrl)
+	s.nodeStore = routing.NewMockNodeInfoStore(s.ctrl)
 	s.nodeID = "test-node"
 	s.computeErr = errors.New("compute error")
+
+	var err error
+	s.protocolRouter, err = NewProtocolRouter(ProtocolRouterParams{
+		NodeStore:          s.nodeStore,
+		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
+	})
+	s.Require().NoError(err)
+
 	s.dispatcher = NewBProtocolDispatcher(BProtocolDispatcherParams{
 		ID:             s.nodeID,
 		ComputeService: s.computeService,
-		JobStore:       s.jobStore,
+		ProtocolRouter: s.protocolRouter,
 	})
+}
+
+// Helper to expect protocol router check
+func (s *BProtocolDispatcherSuite) expectProtocolSupport(execution *models.Execution) {
+	s.nodeStore.EXPECT().Get(s.ctx, execution.NodeID).Return(
+		models.NodeState{
+			Info: models.NodeInfo{
+				SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2},
+			},
+		}, nil)
 }
 
 func (s *BProtocolDispatcherSuite) TestHandleEvent_InvalidObject() {
@@ -51,6 +71,63 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_InvalidObject() {
 		Object: "not an execution upsert",
 	})
 	s.Error(err)
+}
+
+func (s *BProtocolDispatcherSuite) TestHandleEvent_NoStateChange() {
+	// Create upsert with identical Previous and Current
+	execution := mock.Execution()
+	upsert := models.ExecutionUpsert{
+		Previous: execution,
+		Current:  execution,
+	}
+
+	// No protocol check should happen
+	// No compute service calls should happen
+	err := s.dispatcher.HandleEvent(s.ctx, createExecutionEvent(upsert))
+	s.NoError(err)
+}
+
+func (s *BProtocolDispatcherSuite) TestHandleEvent_UnsupportedProtocol() {
+	// Create new execution that should normally trigger AskForBid
+	upsert := setupNewExecution(
+		models.ExecutionDesiredStatePending,
+		models.ExecutionStateNew,
+	)
+
+	// Setup protocol support check to return NCL only
+	s.nodeStore.EXPECT().Get(s.ctx, upsert.Current.NodeID).Return(
+		models.NodeState{
+			Info: models.NodeInfo{
+				// Only supports NCL protocol
+				SupportedProtocols: []models.Protocol{models.ProtocolNCLV1},
+			},
+		}, nil)
+
+	// No compute service calls should happen
+	err := s.dispatcher.HandleEvent(s.ctx, createExecutionEvent(upsert))
+	s.NoError(err)
+}
+
+func (s *BProtocolDispatcherSuite) TestHandleEvent_NoSupportedProtocols() {
+	// Create new execution that should normally trigger AskForBid
+	upsert := setupNewExecution(
+		models.ExecutionDesiredStatePending,
+		models.ExecutionStateNew,
+	)
+
+	// Setup protocol support check to return empty protocols
+	s.nodeStore.EXPECT().Get(s.ctx, upsert.Current.NodeID).Return(
+		models.NodeState{
+			Info: models.NodeInfo{
+				SupportedProtocols: []models.Protocol{}, // No protocols supported
+			},
+		}, nil)
+
+	// AskForBid should be called
+	s.computeService.EXPECT().AskForBid(s.ctx, gomock.Any()).Return(legacy.AskForBidResponse{}, nil)
+	err := s.dispatcher.HandleEvent(s.ctx, createExecutionEvent(upsert))
+	s.NoError(err)
+
 }
 
 func (s *BProtocolDispatcherSuite) TestHandleEvent_AskForBid() {
@@ -78,6 +155,8 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_AskForBid() {
 				models.ExecutionStateNew,
 			)
 
+			s.expectProtocolSupport(upsert.Current)
+
 			s.computeService.EXPECT().AskForBid(s.ctx, gomock.Any()).DoAndReturn(
 				func(_ context.Context, req legacy.AskForBidRequest) (legacy.AskForBidResponse, error) {
 					s.Equal(upsert.Current, req.Execution)
@@ -101,6 +180,8 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_BidAccepted() {
 		models.ExecutionStateAskForBidAccepted,
 	)
 
+	s.expectProtocolSupport(upsert.Current)
+
 	s.computeService.EXPECT().BidAccepted(s.ctx, gomock.Any()).DoAndReturn(
 		func(_ context.Context, req legacy.BidAcceptedRequest) (legacy.BidAcceptedResponse, error) {
 			s.Equal(upsert.Current.ID, req.ExecutionID)
@@ -120,6 +201,8 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_BidRejected() {
 		models.ExecutionDesiredStateStopped,
 		models.ExecutionStateAskForBidAccepted,
 	)
+
+	s.expectProtocolSupport(upsert.Current)
 
 	s.computeService.EXPECT().BidRejected(s.ctx, gomock.Any()).DoAndReturn(
 		func(_ context.Context, req legacy.BidRejectedRequest) (legacy.BidRejectedResponse, error) {
@@ -141,20 +224,14 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_Cancel() {
 		models.ExecutionStateRunning,
 	)
 
+	s.expectProtocolSupport(upsert.Current)
+
 	s.computeService.EXPECT().CancelExecution(s.ctx, gomock.Any()).DoAndReturn(
 		func(_ context.Context, req legacy.CancelExecutionRequest) (legacy.CancelExecutionResponse, error) {
 			s.Equal(upsert.Current.ID, req.ExecutionID)
 			s.Equal(s.nodeID, req.RoutingMetadata.SourcePeerID)
 			s.Equal(upsert.Current.NodeID, req.RoutingMetadata.TargetPeerID)
 			return legacy.CancelExecutionResponse{}, nil
-		})
-
-	// Expect jobstore update when cancelling
-	s.jobStore.EXPECT().UpdateExecution(s.ctx, gomock.Any()).DoAndReturn(
-		func(_ context.Context, req jobstore.UpdateExecutionRequest) error {
-			s.Equal(upsert.Current.ID, req.ExecutionID)
-			s.Equal(models.ExecutionStateCancelled, req.NewValues.ComputeState.StateType)
-			return nil
 		})
 
 	err := s.dispatcher.HandleEvent(s.ctx, createExecutionEvent(upsert))
@@ -223,7 +300,6 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_ComputeErrors() {
 				s.computeService.EXPECT().
 					CancelExecution(s.ctx, gomock.Any()).
 					Return(legacy.CancelExecutionResponse{}, s.computeErr)
-				s.jobStore.EXPECT().UpdateExecution(s.ctx, gomock.Any()).Return(nil)
 			},
 			expectErr: false,
 		},
@@ -231,6 +307,7 @@ func (s *BProtocolDispatcherSuite) TestHandleEvent_ComputeErrors() {
 
 	for _, tc := range tests {
 		s.Run(tc.name, func() {
+			s.expectProtocolSupport(tc.upsert.Current)
 			tc.setupMock()
 			err := s.dispatcher.HandleEvent(s.ctx, createExecutionEvent(tc.upsert))
 			if tc.expectErr {

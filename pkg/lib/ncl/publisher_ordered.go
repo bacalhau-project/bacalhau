@@ -56,22 +56,29 @@ func NewOrderedPublisher(nc *nats.Conn, config OrderedPublisherConfig) (OrderedP
 		resetDone: make(chan struct{}),
 	}
 
-	// Validate like jetstream does
+	// Validate
 	if err := p.validate(); err != nil {
 		return nil, fmt.Errorf("invalid ordered publisher config: %w", err)
 	}
 
-	// Subscribe to responses
-	p.inbox = nc.NewInbox()
-	sub, err := nc.Subscribe(p.inbox+".*", p.handleResponse)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create response subscription: %w", err)
-	}
-	p.subscription = sub
-
-	p.wg.Add(2)
+	// Always need publishLoop
+	p.wg.Add(1)
 	go p.publishLoop()
-	go p.timeoutLoop()
+
+	// Start timeoutLoop and subscribe to inbox if ack mode is enabled
+	if config.AckMode != NoAck {
+		// Subscribe to responses
+		p.inbox = nc.NewInbox()
+		sub, err := nc.Subscribe(p.inbox+".*", p.handleResponse)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create response subscription: %w", err)
+		}
+		p.subscription = sub
+
+		// Start timeout loop
+		p.wg.Add(1)
+		go p.timeoutLoop()
+	}
 	return p, nil
 }
 
@@ -158,8 +165,10 @@ func (p *orderedPublisher) Close(ctx context.Context) error {
 		close(p.shutdown)
 	}
 
-	if err := p.subscription.Unsubscribe(); err != nil {
-		return fmt.Errorf("failed to unsubscribe: %w", err)
+	if p.subscription != nil {
+		if err := p.subscription.Unsubscribe(); err != nil {
+			return fmt.Errorf("failed to unsubscribe: %w", err)
+		}
 	}
 
 	// create a done channel to wait for the publisher to finish
@@ -234,8 +243,10 @@ func (p *orderedPublisher) createMsg(request PublishRequest) (*nats.Msg, error) 
 		return nil, err
 	}
 
-	// Generate unique reply subject
-	msg.Reply = p.inbox + "." + uuid.NewString()
+	// Generate unique reply subject, if we expect an ack
+	if p.config.AckMode != NoAck {
+		msg.Reply = p.inbox + "." + uuid.NewString()
+	}
 	return msg, nil
 }
 
@@ -257,8 +268,13 @@ func (p *orderedPublisher) processMessage(pubMsg *pendingMsg) {
 		return
 	}
 
-	p.inflight.Store(pubMsg.msg.Reply, pubMsg)
-	p.inflightCount.Add(1)
+	// If no ack mode, set result
+	if p.config.AckMode == NoAck {
+		pubMsg.future.setResult(&Result{})
+	} else {
+		p.inflight.Store(pubMsg.msg.Reply, pubMsg)
+		p.inflightCount.Add(1)
+	}
 }
 
 func (p *orderedPublisher) handleResponse(msg *nats.Msg) {

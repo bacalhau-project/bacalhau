@@ -252,6 +252,11 @@ func (e *Execution) AllocateResources(taskID string, resources Resources) {
 	e.AllocatedResources.Tasks[taskID] = resources.Copy()
 }
 
+// OrchestrationProtocol is the protocol used to orchestrate the execution
+func (e *Execution) OrchestrationProtocol() Protocol {
+	return e.Job.OrchestrationProtocol()
+}
+
 func (e *Execution) TotalAllocatedResources() *Resources {
 	return e.AllocatedResources.Total()
 }

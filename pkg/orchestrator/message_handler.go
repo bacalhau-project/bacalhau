@@ -36,16 +36,33 @@ func (m *MessageHandler) ShouldProcess(ctx context.Context, message *envelope.Me
 // HandleMessage handles incoming messages
 // TODO: handle messages arriving out of order gracefully
 func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) error {
+	var err error
 	switch message.Metadata.Get(envelope.KeyMessageType) {
 	case messages.BidResultMessageType:
-		return m.OnBidComplete(ctx, message)
+		err = m.OnBidComplete(ctx, message)
 	case messages.RunResultMessageType:
-		return m.OnRunComplete(ctx, message)
+		err = m.OnRunComplete(ctx, message)
 	case messages.ComputeErrorMessageType:
-		return m.OnComputeFailure(ctx, message)
-	default:
+		err = m.OnComputeFailure(ctx, message)
+	}
+
+	return m.handleError(ctx, message, err)
+}
+
+// handleError logs the error with context and returns nil.
+// In the future, this can be extended to handle different error types differently.
+func (m *MessageHandler) handleError(ctx context.Context, message *envelope.Message, err error) error {
+	if err == nil {
 		return nil
 	}
+
+	// For now, just log the error and return nil
+	logger := log.Ctx(ctx).Error()
+	for key, value := range message.Metadata.ToMap() {
+		logger = logger.Str(key, value)
+	}
+	logger.Err(err).Msg("Error handling message")
+	return nil
 }
 
 // OnBidComplete handles the completion of a bid request

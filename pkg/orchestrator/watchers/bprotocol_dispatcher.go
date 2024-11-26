@@ -7,7 +7,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
@@ -20,20 +19,20 @@ import (
 type BProtocolDispatcher struct {
 	id             string
 	computeService compute.Endpoint
-	jobStore       jobstore.Store
+	protocolRouter *ProtocolRouter
 }
 
 type BProtocolDispatcherParams struct {
 	ID             string
 	ComputeService compute.Endpoint
-	JobStore       jobstore.Store
+	ProtocolRouter *ProtocolRouter
 }
 
 func NewBProtocolDispatcher(params BProtocolDispatcherParams) *BProtocolDispatcher {
 	return &BProtocolDispatcher{
 		id:             params.ID,
 		computeService: params.ComputeService,
-		jobStore:       params.JobStore,
+		protocolRouter: params.ProtocolRouter,
 	}
 }
 
@@ -49,8 +48,20 @@ func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Eve
 		return nil
 	}
 
-	transitions := newExecutionTransitions(upsert)
 	execution := upsert.Current
+
+	// Check protocol support first before processing any transitions
+	preferredProtocol, err := d.protocolRouter.PreferredProtocol(ctx, execution)
+	if err != nil {
+		return bacerrors.Wrap(err, "failed to determine preferred protocol for execution %s", execution.ID).
+			WithComponent(bprotocolErrComponent)
+	}
+	if preferredProtocol != models.ProtocolBProtocolV2 {
+		return nil
+	}
+
+	// Only process transitions if this node should handle BProtocol
+	transitions := newExecutionTransitions(upsert)
 
 	switch {
 	case transitions.shouldAskForPendingBid():
@@ -154,18 +165,6 @@ func (d *BProtocolDispatcher) handleCancel(ctx context.Context, message string, 
 	if _, err := d.computeService.CancelExecution(ctx, request); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("Failed to notify node %s that execution %s was canceled",
 			execution.NodeID, execution.ID)
-	}
-
-	// Mark execution as cancelled
-	if err := d.jobStore.UpdateExecution(ctx, jobstore.UpdateExecutionRequest{
-		ExecutionID: execution.ID,
-		NewValues: models.Execution{
-			ComputeState: models.State[models.ExecutionStateType]{
-				StateType: models.ExecutionStateCancelled,
-			},
-		},
-	}); err != nil {
-		log.Ctx(ctx).Error().Err(err).Msgf("Failed to mark execution %s as cancelled", execution.ID)
 	}
 
 	return nil
