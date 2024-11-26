@@ -258,7 +258,7 @@ func (s *DispatcherE2ETestSuite) storeEvents(count int) {
 }
 
 func (s *DispatcherE2ETestSuite) verifyMsg(msg *envelope.Message, i int) {
-	payload, ok := msg.GetPayload("")
+	payload, ok := msg.GetPayload("string")
 	s.Require().True(ok, "payload missing or not a string")
 	s.Contains(payload, fmt.Sprintf("event-%d", i))
 	s.Require().Equal(fmt.Sprintf("%d", i), msg.Metadata.Get(dispatcher.KeySeqNum))
