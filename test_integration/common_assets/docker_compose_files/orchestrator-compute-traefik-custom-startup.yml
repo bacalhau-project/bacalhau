@@ -1,0 +1,86 @@
+x-common-env-variables: &common-env-variables
+  NETWORK_AUTH_TOKEN: "i_am_very_secret_token"
+  BACALHAU_API_PORT: "1234"
+  BACALHAU_UPDATECONFIG_INTERVAL: "0"
+  BACALHAU_DISABLEANALYTICS: true
+
+networks:
+  bacalhau-network:
+    driver: bridge
+
+services:
+  bacalhau-orchestrator-node:
+    image: {{ .OrchestratorImageName }}
+    networks:
+      - bacalhau-network
+    environment: *common-env-variables
+    privileged: true
+    command:
+      - /bin/bash
+      - -c
+      - |
+        {{ .OrchestratorStartCommand }}
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 2s
+
+  bacalhau-traefik-node:
+    image: {{ .TraefikImageName }}
+    networks:
+      - bacalhau-network
+    environment: *common-env-variables
+    command:
+      - {{ .TraefikStartCommand }}
+    depends_on:
+      bacalhau-orchestrator-node:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -zv localhost 4222" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 2s
+
+  bacalhau-compute-node:
+    image: {{ .ComputeImageName }}
+    privileged: true
+    entrypoint: ["/usr/bin/env"]
+    networks:
+      - bacalhau-network
+    depends_on:
+      bacalhau-traefik-node:
+        condition: service_healthy
+    environment:
+      <<: *common-env-variables
+      ORCHESTRATOR_NODE_LINK: 'bacalhau-traefik-node'
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /bacalhau_integration_tests/common_assets/scripts/compute_node_with_start_cmd.sh -c "{{ .ComputeStartCommand }}"
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+  bacalhau-jumpbox-node:
+    image: {{ .JumpboxImageName }}
+    privileged: true
+    command: tail -f /dev/null
+    restart: unless-stopped
+    networks:
+      - bacalhau-network
+    depends_on:
+      bacalhau-orchestrator-node:
+        condition: service_healthy
+      bacalhau-compute-node:
+        condition: service_healthy
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: 'bacalhau-orchestrator-node'
+      BACALHAU_COMPUTE_NODE_HOST: 'bacalhau-compute-node'
