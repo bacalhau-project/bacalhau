@@ -23,6 +23,9 @@ type ComputeAuth struct {
 type ComputeTLS struct {
 	// CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.
 	CACert string `yaml:"CACert,omitempty" json:"CACert,omitempty"`
+
+	// RequireTLS specifies if the compute node enforces encrypted communication with orchestrator.
+	RequireTLS bool `yaml:"RequireTLS,omitempty" json:"RequireTLS,omitempty"`
 }
 
 type Heartbeat struct {

@@ -140,6 +140,15 @@ func BuildBaseImages(testIdentifier string) error {
 		return fmt.Errorf("error creating the bacalhau-test-orchestrator image: %v", err)
 	}
 
+	err = buildDockerImage(
+		"common_assets/dockerfiles/Dockerfile-TraefikNode",
+		"bacalhau-test-traefik-"+testIdentifier,
+		testIdentifier,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating the bacalhau-test-traefik image: %v", err)
+	}
+
 	return nil
 }
 
