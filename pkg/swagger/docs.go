@@ -2400,6 +2400,10 @@ const docTemplate = `{
                 "CACert": {
                     "description": "CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.",
                     "type": "string"
+                },
+                "RequireTLS": {
+                    "description": "RequireTLS specifies if the compute node enforces encrypted communication with orchestrator.",
+                    "type": "boolean"
                 }
             }
         },
@@ -2713,6 +2717,10 @@ const docTemplate = `{
                 },
                 "Scheduler": {
                     "$ref": "#/definitions/types.Scheduler"
+                },
+                "SupportReverseProxy": {
+                    "description": "SupportReverseProxy configures the orchestrator node to run behind a reverse proxy",
+                    "type": "boolean"
                 },
                 "TLS": {
                     "description": "TLS specifies the TLS related configuration on the orchestrator for when compute nodes need to connect.",
