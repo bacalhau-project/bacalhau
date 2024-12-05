@@ -1,0 +1,40 @@
+x-common-env-variables: &common-env-variables
+  NETWORK_AUTH_TOKEN: "i_am_very_secret_token"
+  BACALHAU_API_PORT: "1234"
+  BACALHAU_UPDATECONFIG_INTERVAL: "0"
+  BACALHAU_DISABLEANALYTICS: true
+
+networks:
+  bacalhau-network:
+    driver: bridge
+
+services:
+  bacalhau-orchestrator-node:
+    image: {{ .OrchestratorImageName }}
+    networks:
+      - bacalhau-network
+    environment: *common-env-variables
+    privileged: true
+    command:
+      - /bin/bash
+      - -c
+      - |
+        {{ .OrchestratorStartCommand }}
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -zv localhost 1234" ]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+      # Need to increase the time since ubuntu container takes a bit longer to start
+      start_period: 20s
+
+  bacalhau-jumpbox-node:
+    image: {{ .JumpboxImageName }}
+    privileged: true
+    command: tail -f /dev/null
+    restart: unless-stopped
+    networks:
+      - bacalhau-network
+    environment:
+      <<: *common-env-variables
+      BACALHAU_API_HOST: 'bacalhau-orchestrator-node'
