@@ -39,7 +39,7 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 
 	var base string
 
-	if isValidUrl, processedUrl := parseURL(apiHost, apiPort); isValidUrl {
+	if isValidURL, processedUrl := parseURL(apiHost, apiPort); isValidURL {
 		base = processedUrl
 	} else {
 		scheme := "http"
