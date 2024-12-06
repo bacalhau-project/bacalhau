@@ -3,7 +3,9 @@ package util
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -35,11 +37,17 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		}
 	}
 
-	apiSheme := "http"
-	if tlsCfg.UseTLS {
-		apiSheme = "https"
+	var base string
+
+	if isValidUrl, processedUrl := parseURL(apiHost, apiPort); isValidUrl {
+		base = processedUrl
+	} else {
+		scheme := "http"
+		if tlsCfg.UseTLS {
+			scheme = "https"
+		}
+		base = fmt.Sprintf("%s://%s:%d", scheme, apiHost, apiPort)
 	}
-	base := fmt.Sprintf("%s://%s:%d", apiSheme, apiHost, apiPort)
 
 	bv := version.Get()
 	headers := map[string][]string{
@@ -96,4 +104,73 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 			},
 		},
 	), nil
+}
+
+func parseURL(rawURL string, defaultPort int) (bool, string) {
+	// Remove any whitespace
+	rawURL = strings.TrimSpace(rawURL)
+
+	// Parse the URL
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false, ""
+	}
+
+	// Check if the URL has a scheme and host
+	if parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return false, ""
+	}
+
+	// Check if scheme is http or https
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return false, ""
+	}
+
+	// Reject URLs with path, query, or fragment
+	if parsedURL.Path != "" && parsedURL.Path != "/" {
+		return false, ""
+	}
+	if parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return false, ""
+	}
+
+	// Extract host and port
+	host := parsedURL.Host
+	var port string
+	var processedHost string
+
+	// Handle IPv6 addresses with port
+	if strings.HasPrefix(host, "[") && strings.Contains(host, "]:") {
+		// IPv6 with port
+		lastColon := strings.LastIndex(host, ":")
+		port = host[lastColon+1:]
+		processedHost = host[:lastColon] // Keep the brackets
+	} else if strings.HasPrefix(host, "[") {
+		// IPv6 without port
+		processedHost = host
+		port = fmt.Sprintf("%d", defaultPort)
+	} else if strings.Count(host, ":") == 1 {
+		// IPv4 or hostname with port
+		hostParts := strings.Split(host, ":")
+		processedHost = hostParts[0]
+		port = hostParts[1]
+	} else {
+		// IPv4 or hostname without port
+		processedHost = host
+		port = fmt.Sprintf("%d", defaultPort)
+	}
+
+	// Construct final URL with just scheme, host, and port
+	finalURL := parsedURL.Scheme + "://"
+
+	// If it's an IPv6 address without brackets, add them
+	if strings.Count(processedHost, ":") > 1 && !strings.HasPrefix(processedHost, "[") {
+		finalURL += "[" + processedHost + "]"
+	} else {
+		finalURL += processedHost
+	}
+
+	finalURL += ":" + port
+
+	return true, finalURL
 }
