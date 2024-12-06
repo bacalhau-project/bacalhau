@@ -19,6 +19,6 @@ RUN update-ca-certificates
 RUN mkdir -p /bacalhau_integration_tests
 COPY ./ /bacalhau_integration_tests
 
-# Download and execute the Bash script from the given URL
 COPY ./common_assets/bacalhau_bin /usr/local/bin/bacalhau
-RUN chmod +x /usr/local/bin/bacalhau
+RUN chown root:root /usr/local/bin/bacalhau && \
+    chmod 755 /usr/local/bin/bacalhau

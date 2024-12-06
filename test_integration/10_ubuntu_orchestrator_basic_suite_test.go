@@ -29,7 +29,7 @@ func (s *UbuntuOrchestratorBasicConfigSuite) SetupSuite() {
 	orchestratorStartCommand := fmt.Sprintf("bacalhau serve --config=%s", orchestratorConfigFile)
 	extraRenderingData := map[string]interface{}{
 		"OrchestratorStartCommand": orchestratorStartCommand,
-		"OrchestratorImageName":    fmt.Sprintf("bacalhau-test-ubuntu-compute-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
+		"OrchestratorImageName":    fmt.Sprintf("bacalhau-test-ubuntu-orchestrator-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
 }

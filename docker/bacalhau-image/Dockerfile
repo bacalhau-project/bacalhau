@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Automatically set by Docker to be the --platform flag
 ARG TARGETPLATFORM
