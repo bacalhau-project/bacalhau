@@ -31,7 +31,7 @@ var alwaysColumns = []output.TableColumn[*models.NodeState]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "status"},
 		Value: func(ni *models.NodeState) string {
-			return ni.Connection.String()
+			return ni.ConnectionState.Status.String()
 		},
 	},
 }

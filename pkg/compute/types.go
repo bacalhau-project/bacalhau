@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
@@ -38,15 +37,4 @@ type Callback interface {
 	OnBidComplete(ctx context.Context, result legacy.BidResult)
 	OnRunComplete(ctx context.Context, result legacy.RunResult)
 	OnComputeFailure(ctx context.Context, err legacy.ComputeError)
-}
-
-// ManagementEndpoint is the transport-based interface for compute nodes to
-// register with the requester node, update information and perform heartbeats.
-type ManagementEndpoint interface {
-	// Register registers a compute node with the requester node.
-	Register(context.Context, messages.RegisterRequest) (*messages.RegisterResponse, error)
-	// UpdateInfo sends an update of node info to the requester node
-	UpdateInfo(context.Context, messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error)
-	// UpdateResources updates the resources currently in use by a specific node
-	UpdateResources(context.Context, messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error)
 }

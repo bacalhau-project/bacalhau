@@ -29,6 +29,7 @@ type watchOptions struct {
 	maxRetries           int
 	retryStrategy        RetryStrategy
 	autoStart            bool
+	ignoreCheckpoint     bool // whether to ignore checkpoint and use initial iterator
 }
 
 // validate checks all options for validity
@@ -70,6 +71,13 @@ func WithAutoStart() WatchOption {
 func WithInitialEventIterator(iterator EventIterator) WatchOption {
 	return func(o *watchOptions) {
 		o.initialEventIterator = iterator
+	}
+}
+
+// WithIgnoreCheckpoint sets whether to ignore any existing checkpoint and use the initial iterator
+func WithIgnoreCheckpoint() WatchOption {
+	return func(o *watchOptions) {
+		o.ignoreCheckpoint = true
 	}
 }
 

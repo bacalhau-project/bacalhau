@@ -11,18 +11,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_helper "github.com/bacalhau-project/bacalhau/pkg/nats"
-	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
-	nats_pubsub "github.com/bacalhau-project/bacalhau/pkg/nats/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/pubsub"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 )
 
-const NodeInfoSubjectPrefix = "node.info."
 const NATSServerDefaultTLSTimeout = 10
 
 // reservedChars are the characters that are not allowed in node IDs as nodes
@@ -109,16 +102,9 @@ func (c *NATSTransportConfig) Validate() error {
 }
 
 type NATSTransport struct {
-	Config            *NATSTransportConfig
-	nodeID            string
-	natsServer        *nats_helper.ServerManager
-	natsClient        *nats_helper.ClientManager
-	computeProxy      compute.Endpoint
-	logstreamProxy    logstream.Server
-	callbackProxy     compute.Callback
-	nodeInfoPubSub    pubsub.PubSub[models.NodeState]
-	nodeInfoDecorator models.NodeInfoDecorator
-	managementProxy   compute.ManagementEndpoint
+	Config     *NATSTransportConfig
+	nodeID     string
+	natsServer *nats_helper.ServerManager
 }
 
 //nolint:funlen
@@ -197,58 +183,13 @@ func NewNATSTransport(ctx context.Context,
 		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
 	}
 
-	nc, err := CreateClient(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-
-	// PubSub to publish and consume node info messages
-	nodeInfoPubSub, err := nats_pubsub.NewPubSub[models.NodeState](nats_pubsub.PubSubParams{
-		Conn:                nc.Client,
-		Subject:             NodeInfoSubjectPrefix + config.NodeID,
-		SubscriptionSubject: NodeInfoSubjectPrefix + "*",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// logstream compute proxy
-	logStreamProxy, err := proxy.NewLogStreamProxy(proxy.LogStreamProxyParams{
-		Conn: nc.Client,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// compute proxy
-	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
-		Conn: nc.Client,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Callback to send compute events (i.e. requester endpoint)
-	computeCallback := proxy.NewCallbackProxy(proxy.CallbackProxyParams{
-		Conn: nc.Client,
-	})
-
-	// A proxy to register and unregister compute nodes with the requester
-	managementProxy := proxy.NewManagementProxy(proxy.ManagementProxyParams{
-		Conn: nc.Client,
-	})
-
+	// create transport
 	return &NATSTransport{
-		nodeID:            config.NodeID,
-		natsServer:        sm,
-		natsClient:        nc,
-		Config:            config,
-		logstreamProxy:    logStreamProxy,
-		computeProxy:      computeProxy,
-		callbackProxy:     computeCallback,
-		nodeInfoPubSub:    nodeInfoPubSub,
-		nodeInfoDecorator: models.NoopNodeInfoDecorator{},
-		managementProxy:   managementProxy,
+		nodeID:     config.NodeID,
+		natsServer: sm,
+		Config:     config,
 	}, nil
+
 }
 
 // CreateClient creates a new NATS client.
@@ -258,11 +199,6 @@ func (t *NATSTransport) CreateClient(ctx context.Context) (*nats.Conn, error) {
 		return nil, err
 	}
 	return clientManager.Client, nil
-}
-
-// Client returns the existing NATS client.
-func (t *NATSTransport) Client() *nats.Conn {
-	return t.natsClient.Client
 }
 
 func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helper.ClientManager, error) {
@@ -292,102 +228,17 @@ func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helpe
 	)
 }
 
-func (t *NATSTransport) RegisterNodeInfoConsumer(ctx context.Context, infostore routing.NodeInfoStore) error {
-	// subscribe to nodeInfo subject and add nodeInfo to nodeInfoStore
-	nodeInfoSubscriber := pubsub.NewChainedSubscriber[models.NodeState](true)
-	nodeInfoSubscriber.Add(pubsub.SubscriberFunc[models.NodeState](infostore.Add))
-	return t.nodeInfoPubSub.Subscribe(ctx, nodeInfoSubscriber)
-}
-
-// RegisterLogstreamServer registers a compute logstream server with the transport layer.
-func (t *NATSTransport) RegisterLogstreamServer(ctx context.Context, logstreamServer logstream.Server) error {
-	if logstreamServer == nil {
-		return errors.New("logstreamServer cannot be nil")
-	}
-	_, err := proxy.NewLogStreamHandler(ctx, proxy.LogStreamHandlerParams{
-		Name:            t.nodeID,
-		Conn:            t.natsClient.Client,
-		LogstreamServer: logstreamServer,
-	})
-	return err
-}
-
-// RegisterComputeCallback registers a compute callback with the transport layer.
-func (t *NATSTransport) RegisterComputeCallback(callback compute.Callback) error {
-	_, err := proxy.NewCallbackHandler(proxy.CallbackHandlerParams{
-		Name:     t.nodeID,
-		Conn:     t.natsClient.Client,
-		Callback: callback,
-	})
-	return err
-}
-
-// RegisterComputeEndpoint registers a compute endpoint with the transport layer.
-func (t *NATSTransport) RegisterComputeEndpoint(ctx context.Context, endpoint compute.Endpoint) error {
-	_, err := proxy.NewComputeHandler(ctx, proxy.ComputeHandlerParams{
-		Name:            t.nodeID,
-		Conn:            t.natsClient.Client,
-		ComputeEndpoint: endpoint,
-	})
-	return err
-}
-
-// RegisterManagementEndpoint registers a requester endpoint with the transport layer
-func (t *NATSTransport) RegisterManagementEndpoint(endpoint compute.ManagementEndpoint) error {
-	_, err := proxy.NewManagementHandler(proxy.ManagementHandlerParams{
-		Conn:               t.natsClient.Client,
-		ManagementEndpoint: endpoint,
-	})
-	return err
-}
-
-// LogstreamServer returns the compute logstream server.
-func (t *NATSTransport) LogstreamServer() logstream.Server {
-	return t.logstreamProxy
-}
-
-// ComputeProxy returns the compute proxy.
-func (t *NATSTransport) ComputeProxy() compute.Endpoint {
-	return t.computeProxy
-}
-
-// CallbackProxy returns the callback proxy.
-func (t *NATSTransport) CallbackProxy() compute.Callback {
-	return t.callbackProxy
-}
-
-// ManagementProxy returns the previously created registration proxy.
-func (t *NATSTransport) ManagementProxy() compute.ManagementEndpoint {
-	return t.managementProxy
-}
-
-// NodeInfoPubSub returns the node info pubsub.
-func (t *NATSTransport) NodeInfoPubSub() pubsub.PubSub[models.NodeState] {
-	return t.nodeInfoPubSub
-}
-
-// NodeInfoDecorator returns the node info decorator.
-func (t *NATSTransport) NodeInfoDecorator() models.NodeInfoDecorator {
-	return t.nodeInfoDecorator
-}
-
 // DebugInfoProviders returns the debug info of the NATS transport layer
 func (t *NATSTransport) DebugInfoProviders() []models.DebugInfoProvider {
 	var debugInfoProviders []models.DebugInfoProvider
 	if t.natsServer != nil {
 		debugInfoProviders = append(debugInfoProviders, t.natsServer)
 	}
-	if t.natsClient != nil {
-		debugInfoProviders = append(debugInfoProviders, t.natsClient)
-	}
 	return debugInfoProviders
 }
 
 // Close closes the transport layer.
 func (t *NATSTransport) Close(ctx context.Context) error {
-	if t.natsClient != nil {
-		t.natsClient.Stop()
-	}
 	if t.natsServer != nil {
 		log.Ctx(ctx).Debug().Msgf("Shutting down server %s", t.natsServer.Server.Name())
 		t.natsServer.Stop()

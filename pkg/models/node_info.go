@@ -37,6 +37,10 @@ func (e *NodeType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
+type NodeInfoProvider interface {
+	GetNodeInfo(ctx context.Context) NodeInfo
+}
+
 type NodeStateProvider interface {
 	GetNodeState(ctx context.Context) NodeState
 }
@@ -95,6 +99,12 @@ func (n NodeInfo) ID() string {
 // IsComputeNode returns true if the node is a compute node
 func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
+}
+
+// HasNodeInfoChanged returns true if the node info has changed compared to the previous call
+// TODO: implement this function
+func HasNodeInfoChanged(prev, current NodeInfo) bool {
+	return false
 }
 
 // ComputeNodeInfo contains metadata about the current state and abilities of a compute node. Compute Nodes share

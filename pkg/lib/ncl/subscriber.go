@@ -109,11 +109,8 @@ func (s *subscriber) processMessage(data []byte) error {
 		}
 	}
 
-	// Checkpoint
-	if err = s.config.Checkpointer.Checkpoint(ctx, message); err != nil {
-		// continue even if checkpoint fails
-		log.Warn().Err(err).Msg("failed to checkpoint message")
-	}
+	// Notify successful processing
+	s.config.ProcessingNotifier.OnProcessed(ctx, message)
 
 	return nil
 }

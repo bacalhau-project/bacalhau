@@ -4,8 +4,8 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 )
 
@@ -13,14 +13,14 @@ type EndpointParams struct {
 	Router       *echo.Echo
 	Orchestrator *orchestrator.BaseEndpoint
 	JobStore     jobstore.Store
-	NodeManager  *manager.NodeManager
+	NodeManager  nodes.Manager
 }
 
 type Endpoint struct {
 	router       *echo.Echo
 	orchestrator *orchestrator.BaseEndpoint
 	store        jobstore.Store
-	nodeManager  *manager.NodeManager
+	nodeManager  nodes.Manager
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {

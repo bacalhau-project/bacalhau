@@ -99,6 +99,16 @@ func (m Metadata) GetInt64(key string) int64 {
 	return 0
 }
 
+// GetUint64 gets the value as a uint64, returning 0 if the key doesn't exist or the value isn't a valid uint64
+func (m Metadata) GetUint64(key string) uint64 {
+	if val, ok := m[key]; ok {
+		if i, err := strconv.ParseUint(val, 10, 64); err == nil {
+			return i
+		}
+	}
+	return 0
+}
+
 // GetTime gets the value as a time.Time, returning the zero time if the key doesn't exist or the value isn't a valid time
 func (m Metadata) GetTime(key string) time.Time {
 	if val, ok := m[key]; ok {

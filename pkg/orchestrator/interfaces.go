@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 // EvaluationBroker is used to manage brokering of evaluations. When an evaluation is
@@ -90,9 +90,9 @@ type Planner interface {
 }
 
 // NodeDiscoverer discovers nodes in the network that are suitable to execute a job.
-// NodeDiscoverer is a subset of the routing.NodeInfoStore interface.
+// NodeDiscoverer is a subset of the models.NodeInfoStore interface.
 type NodeDiscoverer interface {
-	List(ctx context.Context, filter ...routing.NodeStateFilter) ([]models.NodeState, error)
+	List(ctx context.Context, filter ...nodes.NodeStateFilter) ([]models.NodeState, error)
 }
 
 // NodeRanker ranks nodes based on their suitability to execute a job.
