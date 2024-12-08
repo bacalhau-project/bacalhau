@@ -128,6 +128,31 @@ export type models_ComputeNodeInfo = {
     StorageSources?: Array<(string)>;
 };
 
+export type models_ConnectionState = {
+    /**
+     * Connection tracking
+     */
+    ConnectedSince?: string;
+    DisconnectedSince?: string;
+    /**
+     * Message sequencing for reliable delivery
+     */
+    LastComputeSeqNum?: number;
+    LastError?: string;
+    /**
+     * Last successful heartbeat timestamp
+     */
+    LastHeartbeat?: string;
+    /**
+     * Last seq received from orchestrator
+     */
+    LastOrchestratorSeqNum?: number;
+    /**
+     * Connection status
+     */
+    Status?: (models_NodeConnectionState);
+};
+
 export type models_DebugInfo = {
     component?: string;
     info?: unknown;
@@ -475,8 +500,18 @@ export type models_NodeMembershipState = {
 };
 
 export type models_NodeState = {
-    Connection?: models_NodeConnectionState;
-    Info?: models_NodeInfo;
+    /**
+     * Deprecated: Use ConnectionState.Status instead
+     */
+    Connection?: (models_NodeConnectionState);
+    /**
+     * Connection and messaging state
+     */
+    ConnectionState?: (models_ConnectionState);
+    /**
+     * Durable node information
+     */
+    Info?: (models_NodeInfo);
     Membership?: models_NodeMembershipState;
 };
 
@@ -875,6 +910,10 @@ export type types_ComputeTLS = {
      * CACert specifies the CA file path that the compute node trusts when connecting to orchestrator.
      */
     CACert?: string;
+    /**
+     * RequireTLS specifies if the compute node enforces encrypted communication with orchestrator.
+     */
+    RequireTLS?: boolean;
 };
 
 export type types_DefaultPublisherConfig = {
@@ -1099,6 +1138,10 @@ export type types_Orchestrator = {
      */
     Port?: number;
     Scheduler?: types_Scheduler;
+    /**
+     * SupportReverseProxy configures the orchestrator node to run behind a reverse proxy
+     */
+    SupportReverseProxy?: boolean;
     /**
      * TLS specifies the TLS related configuration on the orchestrator for when compute nodes need to connect.
      */

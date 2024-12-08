@@ -1265,6 +1265,41 @@
                 }
             }
         },
+        "models.ConnectionState": {
+            "type": "object",
+            "properties": {
+                "ConnectedSince": {
+                    "description": "Connection tracking",
+                    "type": "string"
+                },
+                "DisconnectedSince": {
+                    "type": "string"
+                },
+                "LastComputeSeqNum": {
+                    "description": "Message sequencing for reliable delivery",
+                    "type": "integer"
+                },
+                "LastError": {
+                    "type": "string"
+                },
+                "LastHeartbeat": {
+                    "description": "Last successful heartbeat timestamp",
+                    "type": "string"
+                },
+                "LastOrchestratorSeqNum": {
+                    "description": "Last seq received from orchestrator",
+                    "type": "integer"
+                },
+                "Status": {
+                    "description": "Connection status",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.NodeConnectionState"
+                        }
+                    ]
+                }
+            }
+        },
         "models.DebugInfo": {
             "type": "object",
             "properties": {
@@ -1821,10 +1856,28 @@
             "type": "object",
             "properties": {
                 "Connection": {
-                    "$ref": "#/definitions/models.NodeConnectionState"
+                    "description": "Deprecated: Use ConnectionState.Status instead",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.NodeConnectionState"
+                        }
+                    ]
+                },
+                "ConnectionState": {
+                    "description": "Connection and messaging state",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.ConnectionState"
+                        }
+                    ]
                 },
                 "Info": {
-                    "$ref": "#/definitions/models.NodeInfo"
+                    "description": "Durable node information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.NodeInfo"
+                        }
+                    ]
                 },
                 "Membership": {
                     "$ref": "#/definitions/models.NodeMembershipState"
