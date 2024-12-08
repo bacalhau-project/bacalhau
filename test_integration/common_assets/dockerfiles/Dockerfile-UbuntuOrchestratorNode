@@ -1,0 +1,24 @@
+FROM ubuntu:24.04
+
+# Set the working directory
+WORKDIR /app
+
+RUN apt update && apt install -y \
+    bash \
+    netcat-traditional \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy a root ca into the image
+COPY ./common_assets/certificates/generated_assets/bacalhau_test_root_ca.crt /usr/local/share/ca-certificates/bacalhau_test_root_ca.crt
+
+# Update CA certificates
+RUN update-ca-certificates
+
+# Copy Tests Assets
+RUN mkdir -p /bacalhau_integration_tests
+COPY ./ /bacalhau_integration_tests
+
+COPY ./common_assets/bacalhau_bin /usr/local/bin/bacalhau
+RUN chown root:root /usr/local/bin/bacalhau && \
+    chmod 755 /usr/local/bin/bacalhau
