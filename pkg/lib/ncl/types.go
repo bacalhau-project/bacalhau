@@ -15,15 +15,21 @@ type MessageHandler interface {
 	HandleMessage(ctx context.Context, message *envelope.Message) error
 }
 
-// MessageFilter interface for filtering messages
-type MessageFilter interface {
-	ShouldFilter(metadata *envelope.Metadata) bool
+// RequestHandler processes incoming requests and returns responses
+type RequestHandler interface {
+	// HandleRequest processes a request message and returns a response
+	HandleRequest(ctx context.Context, message *envelope.Message) (*envelope.Message, error)
 }
 
-// Checkpointer interface for managing checkpoints
-type Checkpointer interface {
-	Checkpoint(ctx context.Context, message *envelope.Message) error
-	GetLastCheckpoint() (int64, error)
+// MessageFilter interface for filtering messages
+type MessageFilter interface {
+	ShouldFilter(metadata nats.Header) bool
+}
+
+// ProcessingNotifier provides callbacks for message processing events
+type ProcessingNotifier interface {
+	// OnProcessed is called when a message has been successfully processed
+	OnProcessed(ctx context.Context, message *envelope.Message)
 }
 
 // PublishRequest encapsulates the parameters needed to publish a message.
@@ -56,9 +62,14 @@ func (r PublishRequest) WithSubjectPrefix(prefix string) PublishRequest {
 	return r
 }
 
-// Publisher publishes messages to a NATS server
+// Publisher interface combines publish and request operations
 type Publisher interface {
+	// Publish sends a message without expecting a response
 	Publish(ctx context.Context, request PublishRequest) error
+
+	// Request sends a message and waits for a response
+	// Returns error if no response is received within the timeout
+	Request(ctx context.Context, request PublishRequest) (*envelope.Message, error)
 }
 
 type OrderedPublisher interface {
@@ -93,6 +104,14 @@ type Subscriber interface {
 	Close(ctx context.Context) error
 }
 
+// Responder handles incoming requests and sends back responses
+type Responder interface {
+	// Listen starts listening for requests of the given type
+	Listen(ctx context.Context, messageType string, handler RequestHandler) error
+	// Close stops listening for requests
+	Close(ctx context.Context) error
+}
+
 // MessageHandlerFunc is a function type that implements MessageHandler
 type MessageHandlerFunc func(ctx context.Context, message *envelope.Message) error
 
@@ -104,9 +123,16 @@ func (f MessageHandlerFunc) HandleMessage(ctx context.Context, message *envelope
 	return f(ctx, message)
 }
 
-// MessageFilterFunc is a function type that implements MessageFilter
-type MessageFilterFunc func(metadata *envelope.Metadata) bool
+// RequestHandlerFunc is a function type that implements RequestHandler
+type RequestHandlerFunc func(ctx context.Context, message *envelope.Message) (*envelope.Message, error)
 
-func (f MessageFilterFunc) ShouldFilter(metadata *envelope.Metadata) bool {
+func (f RequestHandlerFunc) HandleRequest(ctx context.Context, message *envelope.Message) (*envelope.Message, error) {
+	return f(ctx, message)
+}
+
+// MessageFilterFunc is a function type that implements MessageFilter
+type MessageFilterFunc func(metadata nats.Header) bool
+
+func (f MessageFilterFunc) ShouldFilter(metadata nats.Header) bool {
 	return f(metadata)
 }

@@ -52,10 +52,15 @@ func (h *TestMessageHandler) HandleMessage(_ context.Context, msg *envelope.Mess
 	return nil
 }
 
-func setupTestRegistry(t *testing.T) *envelope.Registry {
-	registry := envelope.NewRegistry()
-	require.NoError(t, registry.Register(TestPayloadType, TestPayload{}))
-	return registry
+type TestNotifier struct {
+	notifications []*envelope.Message
+	mu            sync.Mutex
+}
+
+func (n *TestNotifier) OnProcessed(ctx context.Context, message *envelope.Message) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.notifications = append(n.notifications, message)
 }
 
 // StartNats will start a NATS server on a random port and return a server and client instances
