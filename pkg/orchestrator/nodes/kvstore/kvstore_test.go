@@ -1,19 +1,24 @@
 //go:build unit || !integration
 
-package inmemory_test
+package kvstore_test
 
 import (
 	"context"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/nats-io/nats-server/v2/server"
+	natsserver "github.com/nats-io/nats-server/v2/test"
+	"github.com/nats-io/nats.go"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/inmemory"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/kvstore"
 )
+
+const TEST_PORT = 8369
 
 var nodeIDs = []string{
 	"QmdZQ7ZbhnvWY1J12XYKGHApJ6aufKyLNSvf8jZBrBaAVL",
@@ -21,98 +26,106 @@ var nodeIDs = []string{
 	"QmYgxZiySj3MRkwLSL4X2MF5F9f2PMhAE3LV49XkfNL1o3",
 }
 
-type InMemoryNodeStoreSuite struct {
+type KVNodeInfoStoreSuite struct {
 	suite.Suite
-	store *inmemory.NodeStore
+	nats  *server.Server
+	store nodes.Store
 }
 
-func (s *InMemoryNodeStoreSuite) SetupTest() {
-	s.store = inmemory.NewNodeStore(inmemory.NodeStoreParams{
-		TTL: 1 * time.Hour,
+func (s *KVNodeInfoStoreSuite) SetupTest() {
+	opts := &natsserver.DefaultTestOptions
+	opts.Port = TEST_PORT
+	opts.JetStream = true
+	opts.StoreDir = s.T().TempDir()
+
+	s.nats = natsserver.RunServer(opts)
+	natsClient, err := nats.Connect(s.nats.Addr().String())
+	s.Require().NoError(err)
+
+	s.store, _ = kvstore.NewNodeStore(context.Background(), kvstore.NodeStoreParams{
+		BucketName: "test_nodes",
+		Client:     natsClient,
 	})
 }
 
-func TestInMemoryNodeStoreSuite(t *testing.T) {
-	suite.Run(t, new(InMemoryNodeStoreSuite))
+func (s *KVNodeInfoStoreSuite) TearDownTest() {
+	s.nats.Shutdown()
 }
 
-func (s *InMemoryNodeStoreSuite) Test_Get() {
+func TestKVNodeInfoStoreSuite(t *testing.T) {
+	suite.Run(t, new(KVNodeInfoStoreSuite))
+}
+
+func (s *KVNodeInfoStoreSuite) Test_Get() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	// test Get
 	res1, err := s.store.Get(ctx, nodeInfo0.Info.ID())
 	s.NoError(err)
-	s.Equal(nodeInfo0, res1)
+	s.Equal(nodeInfo0.Info.ID(), res1.Info.ID())
 
 	res2, err := s.store.Get(ctx, nodeInfo1.Info.ID())
 	s.NoError(err)
-	s.Equal(nodeInfo1, res2)
+	s.Equal(nodeInfo1.Info.ID(), res2.Info.ID())
 }
 
-func (s *InMemoryNodeStoreSuite) Test_GetNotFound() {
+func (s *KVNodeInfoStoreSuite) Test_GetNotFound() {
 	ctx := context.Background()
 	_, err := s.store.Get(ctx, nodeIDs[0])
 	s.Error(err)
-	s.IsType(routing.ErrNodeNotFound{}, err)
-
+	s.IsType(nodes.ErrNodeNotFound{}, err)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_SingleMatch() {
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_SingleMatch() {
 	ctx := context.Background()
 	nodeInfo := generateNodeState(nodeIDs[0], models.EngineDocker)
-	s.NoError(s.store.Add(ctx, nodeInfo))
+	s.NoError(s.store.Put(ctx, nodeInfo))
 
 	res, err := s.store.GetByPrefix(ctx, "QmdZQ7")
 	s.NoError(err)
 	s.Equal(nodeInfo, res)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_MultipleMatches() {
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_MultipleMatches() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	_, err := s.store.GetByPrefix(ctx, "Qm")
 	s.Error(err)
-	s.IsType(routing.ErrMultipleNodesFound{}, err)
+	s.IsType(nodes.ErrMultipleNodesFound{}, err)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_NoMatch() {
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_Empty() {
 	ctx := context.Background()
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
-	s.IsType(routing.ErrNodeNotFound{}, err)
+	s.IsType(nodes.ErrNodeNotFound{}, err)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_ExpiredNode() {
+func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
 	ctx := context.Background()
-	store := inmemory.NewNodeStore(inmemory.NodeStoreParams{
-		TTL: 10 * time.Millisecond,
-	})
 
-	nodeInfo := generateNodeState(nodeIDs[0], models.EngineDocker)
-	s.NoError(store.Add(ctx, nodeInfo))
+	nodeInfo0 := generateNodeState(nodeIDs[1], models.EngineWasm)
+	s.NoError(s.store.Put(ctx, nodeInfo0))
 
-	// Wait for the item to expire
-	time.Sleep(20 * time.Millisecond)
-
-	_, err := store.GetByPrefix(ctx, "QmdZQ7")
+	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
-	s.IsType(routing.ErrNodeNotFound{}, err)
+	s.IsType(nodes.ErrNodeNotFound{}, err)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_List() {
+func (s *KVNodeInfoStoreSuite) Test_List() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	// test List
 	allNodeInfos, err := s.store.List(ctx)
@@ -120,12 +133,12 @@ func (s *InMemoryNodeStoreSuite) Test_List() {
 	s.ElementsMatch([]models.NodeState{nodeInfo0, nodeInfo1}, allNodeInfos)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_ListWithFilters() {
+func (s *KVNodeInfoStoreSuite) Test_ListWithFilters() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	// Match one record
 	filterPartialID := func(node models.NodeState) bool {
@@ -153,34 +166,36 @@ func (s *InMemoryNodeStoreSuite) Test_ListWithFilters() {
 	s.Equal(0, len(nodes))
 }
 
-func (s *InMemoryNodeStoreSuite) Test_Delete() {
+func (s *KVNodeInfoStoreSuite) Test_Delete() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
 	nodeInfo1 := generateNodeState(nodeIDs[1], models.EngineDocker, models.EngineWasm)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	// delete first node
 	s.NoError(s.store.Delete(ctx, nodeInfo0.Info.ID()))
+
 	nodes, err := s.store.List(ctx)
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeState{nodeInfo1}, nodes)
 
 	// delete second node
 	s.NoError(s.store.Delete(ctx, nodeInfo1.Info.ID()))
+
 	nodes, err = s.store.List(ctx)
 	s.NoError(err)
 	s.Empty(nodes)
 }
 
-func (s *InMemoryNodeStoreSuite) Test_Replace() {
+func (s *KVNodeInfoStoreSuite) Test_Replace() {
 	ctx := context.Background()
 	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
+	s.NoError(s.store.Put(ctx, nodeInfo0))
 
 	nodeInfo1 := generateNodeState(nodeIDs[0], models.EngineWasm)
 	nodeInfo1.Info.NodeID = nodeInfo0.Info.NodeID
-	s.NoError(s.store.Add(ctx, nodeInfo1))
+	s.NoError(s.store.Put(ctx, nodeInfo1))
 
 	res, err := s.store.Get(ctx, nodeInfo0.Info.ID())
 	s.NoError(err)
@@ -190,27 +205,6 @@ func (s *InMemoryNodeStoreSuite) Test_Replace() {
 	allNodeInfos, err := s.store.List(ctx)
 	s.NoError(err)
 	s.ElementsMatch([]models.NodeState{nodeInfo1}, allNodeInfos)
-}
-
-func (s *InMemoryNodeStoreSuite) Test_Eviction() {
-	ttl := 1 * time.Second
-	s.store = inmemory.NewNodeStore(inmemory.NodeStoreParams{
-		TTL: ttl,
-	})
-	ctx := context.Background()
-	nodeInfo0 := generateNodeState(nodeIDs[0], models.EngineDocker)
-	s.NoError(s.store.Add(ctx, nodeInfo0))
-
-	// test Get
-	res, err := s.store.Get(ctx, nodeInfo0.Info.ID())
-	s.NoError(err)
-	s.Equal(nodeInfo0, res)
-
-	// wait for eviction
-	time.Sleep(ttl + 100*time.Millisecond)
-	_, err = s.store.Get(ctx, nodeInfo0.Info.ID())
-	s.Error(err)
-	s.IsType(routing.ErrNodeNotFound{}, err)
 }
 
 func generateNodeState(peerID string, engines ...string) models.NodeState {
@@ -223,7 +217,7 @@ func generateNodeInfo(peerID string, engines ...string) models.NodeInfo {
 	return models.NodeInfo{
 		NodeID:   peerID,
 		NodeType: models.NodeTypeCompute,
-		ComputeNodeInfo: &models.ComputeNodeInfo{
+		ComputeNodeInfo: models.ComputeNodeInfo{
 			ExecutionEngines: engines,
 		},
 	}

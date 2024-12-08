@@ -27,17 +27,10 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 		expected int
 	}{
 		{
-			name:     "nil ComputeNodeInfo",
-			factor:   1,
-			node:     models.NodeInfo{ComputeNodeInfo: nil},
-			job:      models.Resources{},
-			expected: orchestrator.RankUnsuitable,
-		},
-		{
 			name:   "empty ComputeNodeInfo",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{},
+				ComputeNodeInfo: models.ComputeNodeInfo{},
 			},
 			job:      models.Resources{},
 			expected: orchestrator.RankUnsuitable,
@@ -46,7 +39,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "no factor, job matches available capacity",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 8},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 8000, Disk: 50000, GPU: 4},
 					QueueUsedCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},
@@ -59,7 +52,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "no factor, job slightly higher than available capacity",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 8},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 8000, Disk: 50000, GPU: 4},
 					QueueUsedCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},
@@ -72,7 +65,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "no factor, empty job, no available capacity",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 8},
 					AvailableCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},
 					QueueUsedCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},
@@ -85,7 +78,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "1.5 factor, total usage matches oversubscribe capacity",
 			factor: 1.5,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 8},
 					QueueUsedCapacity: models.Resources{CPU: 1.99, Memory: 7999, Disk: 49999, GPU: 3},
 				},
@@ -97,7 +90,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "1.5 factor, total usage slightly higher oversubscribe capacity",
 			factor: 1.5,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 8},
 					QueueUsedCapacity: models.Resources{CPU: 1.99, Memory: 7999, Disk: 49999, GPU: 3},
 				},
@@ -109,7 +102,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "matches over-subscribed capacity, but empty job",
 			factor: 2,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 4000, Disk: 4000, GPU: 4},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 2000, Disk: 2000, GPU: 2},
 					QueueUsedCapacity: models.Resources{CPU: 6, Memory: 6000, Disk: 6000, GPU: 6},
@@ -122,7 +115,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "only CPU over-subscribed",
 			factor: 2,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 4000, Disk: 4000, GPU: 4},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 2000, Disk: 2000, GPU: 2},
 					QueueUsedCapacity: models.Resources{CPU: 6, Memory: 6000, Disk: 6000, GPU: 6},
@@ -135,7 +128,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "only Memory over-subscribed",
 			factor: 2,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 4000, Disk: 4000, GPU: 4},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 2000, Disk: 2000, GPU: 2},
 					QueueUsedCapacity: models.Resources{CPU: 6, Memory: 6000, Disk: 6000, GPU: 6},
@@ -148,7 +141,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "only Disk over-subscribed",
 			factor: 2,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 4000, Disk: 4000, GPU: 4},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 2000, Disk: 2000, GPU: 2},
 					QueueUsedCapacity: models.Resources{CPU: 6, Memory: 6000, Disk: 6000, GPU: 6},
@@ -161,7 +154,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "only GPU over-subscribed",
 			factor: 2,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 4000, Disk: 4000, GPU: 4},
 					AvailableCapacity: models.Resources{CPU: 2, Memory: 2000, Disk: 2000, GPU: 2},
 					QueueUsedCapacity: models.Resources{CPU: 6, Memory: 6000, Disk: 6000, GPU: 6},
@@ -174,7 +167,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "no factor and non-empty queue",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 1},
 					AvailableCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},
 					QueueUsedCapacity: models.Resources{CPU: 0.01, Memory: 10, Disk: 100, GPU: 0},
@@ -187,7 +180,7 @@ func (suite *OverSubscriptionNodeRankerSuite) TestRankNodes() {
 			name:   "no factor and empty queue",
 			factor: 1,
 			node: models.NodeInfo{
-				ComputeNodeInfo: &models.ComputeNodeInfo{
+				ComputeNodeInfo: models.ComputeNodeInfo{
 					MaxCapacity:       models.Resources{CPU: 4, Memory: 16000, Disk: 100000, GPU: 0},
 					AvailableCapacity: models.Resources{CPU: 0.01, Memory: 1, Disk: 1, GPU: 0},
 					QueueUsedCapacity: models.Resources{CPU: 0, Memory: 0, Disk: 0, GPU: 0},

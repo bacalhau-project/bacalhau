@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 type discoveredNodesProvider struct {
-	discoverer orchestrator.NodeDiscoverer
+	discoverer nodes.Lookup
 }
 
-func NewDebugInfoProvider(discoverer orchestrator.NodeDiscoverer) models.DebugInfoProvider {
+func NewDebugInfoProvider(discoverer nodes.Lookup) models.DebugInfoProvider {
 	return &discoveredNodesProvider{discoverer: discoverer}
 }
 

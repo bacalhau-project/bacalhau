@@ -33,7 +33,7 @@ func (s *MaxUsageNodeRanker) RankNodes(ctx context.Context, job models.Job, node
 	for i, node := range nodes {
 		rank := orchestrator.RankPossible
 		reason := "max job resource requirements not set or unknown"
-		if jobResourceUsageSet && node.ComputeNodeInfo != nil {
+		if jobResourceUsageSet {
 			if jobResourceUsage.LessThanEq(node.ComputeNodeInfo.MaxJobRequirements) {
 				rank = orchestrator.RankPreferred
 				reason = "job requires less resources than are available"

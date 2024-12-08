@@ -11,7 +11,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -19,7 +19,7 @@ type ProtocolRouterTestSuite struct {
 	suite.Suite
 	ctx       context.Context
 	ctrl      *gomock.Controller
-	nodeStore *routing.MockNodeInfoStore
+	nodeStore *nodes.MockLookup
 	router    *ProtocolRouter
 }
 
@@ -30,7 +30,7 @@ func TestProtocolRouterSuite(t *testing.T) {
 func (s *ProtocolRouterTestSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.ctrl = gomock.NewController(s.T())
-	s.nodeStore = routing.NewMockNodeInfoStore(s.ctrl)
+	s.nodeStore = nodes.NewMockLookup(s.ctrl)
 
 	// Create router with both protocols supported
 	var err error

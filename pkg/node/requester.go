@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/nats-io/nats.go"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -18,11 +19,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
-	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
@@ -35,11 +36,9 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
+	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/forwarder"
 )
 
@@ -54,9 +53,7 @@ type Requester struct {
 	Endpoint *orchestrator.BaseEndpoint
 	JobStore jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
-	NodeInfoStore      routing.NodeInfoStore
-	NodeDiscoverer     orchestrator.NodeDiscoverer
-	nodeManager        *manager.NodeManager
+	NodeInfoStore      nodes.Store
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []models.DebugInfoProvider
 }
@@ -72,8 +69,13 @@ func NewRequesterNode(
 	messageSerDeRegistry *envelope.Registry,
 	metadataStore MetadataStore,
 ) (*Requester, error) {
+	natsConn, err := transportLayer.CreateClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeID := cfg.NodeID
-	nodeManager, heartbeatServer, err := createNodeManager(ctx, cfg, transportLayer)
+	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, natsConn)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +122,7 @@ func NewRequesterNode(
 	}
 
 	nodeSelector := selector.NewNodeSelector(
-		nodeManager,
+		nodesManager,
 		nodeRanker,
 		// selector constraints: require nodes be online and approved to schedule
 		orchestrator.NodeSelectionConstraints{
@@ -212,7 +214,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []models.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeManager),
+		discovery.NewDebugInfoProvider(nodesManager),
 	}
 
 	// TODO: delete this when we are ready to stop serving a deprecation notice.
@@ -222,7 +224,7 @@ func NewRequesterNode(
 		Router:       apiServer.Router,
 		Orchestrator: endpointV2,
 		JobStore:     jobStore,
-		NodeManager:  nodeManager,
+		NodeManager:  nodesManager,
 	})
 
 	authenticators, err := cfg.DependencyInjector.AuthenticatorsFactory.Get(ctx, cfg)
@@ -244,7 +246,7 @@ func NewRequesterNode(
 	}
 
 	watcherRegistry, nclForwarder, err := setupOrchestratorWatchers(
-		ctx, nodeID, jobStore, nclPublisher, evalBroker, nodeManager, computeProxy)
+		ctx, nodeID, jobStore, nclPublisher, evalBroker, nodesManager, computeProxy)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +265,10 @@ func NewRequesterNode(
 	}
 
 	// ncl heartbeat subscriber
+	heartbeatServer := bprotocolorchestrator.NewServer(nodesManager)
+	if err = transportLayer.RegisterManagementEndpoint(heartbeatServer); err != nil {
+		return nil, err
+	}
 	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(), ncl.SubscriberConfig{
 		Name:            nodeID,
 		MessageRegistry: messageSerDeRegistry,
@@ -324,10 +330,8 @@ func NewRequesterNode(
 
 	return &Requester{
 		Endpoint:           endpointV2,
-		NodeDiscoverer:     nodeManager,
-		NodeInfoStore:      nodeManager,
+		NodeInfoStore:      nodeStore,
 		JobStore:           jobStore,
-		nodeManager:        nodeManager,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
@@ -359,45 +363,6 @@ func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.Nod
 	return nodeRankerChain, nil
 }
 
-func createNodeManager(ctx context.Context,
-	cfg NodeConfig,
-	transportLayer *nats_transport.NATSTransport) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
-	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// heartbeat service
-	heartbeatParams := heartbeat.HeartbeatServerParams{
-		NodeID:                cfg.NodeID,
-		Client:                transportLayer.Client(),
-		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
-	}
-	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
-	if err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
-	}
-
-	// node manager
-	// Create a new node manager to keep track of compute nodes connecting
-	// to the network. Provide it with a mechanism to lookup (and enhance)
-	// node info, and a reference to the heartbeat server
-	nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-		NodeInfo:       nodeInfoStore,
-		Heartbeats:     heartbeatSvr,
-		ManualApproval: cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
-	})
-
-	// Start the nodemanager, ensuring it doesn't block the main thread and
-	// that any errors are logged. If we are unable to start the manager
-	// then we should not start the node.
-	if err = nodeManager.Start(ctx); err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
-	}
-
-	return nodeManager, heartbeatSvr, transportLayer.RegisterManagementEndpoint(nodeManager)
-}
-
 func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) {
 	jobStoreDBPath, err := cfg.BacalhauConfig.JobStoreFilePath()
 	if err != nil {
@@ -410,24 +375,31 @@ func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) 
 	return jobStore, nil
 }
 
-func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NATSTransport) (routing.NodeInfoStore, error) {
-	// nodeInfoStore
+func createNodeManager(ctx context.Context, cfg NodeConfig, natsConn *nats.Conn) (
+	nodes.Manager, nodes.Store, error) {
 	nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 		BucketName: kvstore.BucketNameCurrent,
-		Client:     transportLayer.Client(),
+		Client:     natsConn,
 	})
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
+		return nil, nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 	}
 
-	tracingInfoStore := tracing.NewNodeStore(nodeInfoStore)
+	nodeManager, err := nodes.NewNodeManager(nodes.NodeManagerParams{
+		Store:                 nodeInfoStore,
+		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
+		ManualApproval:        cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
+	})
 
-	// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
-	// of node info.
-	if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
+	if err != nil {
+		return nil, nil, pkgerrors.Wrap(err, "failed to create node manager")
 	}
-	return tracingInfoStore, nil
+
+	if err = nodeManager.Start(ctx); err != nil {
+		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
+	}
+
+	return nodeManager, nodeInfoStore, nil
 }
 
 //nolint:funlen
@@ -437,7 +409,7 @@ func setupOrchestratorWatchers(
 	jobStore jobstore.Store,
 	nclPublisher ncl.OrderedPublisher,
 	evalBroker orchestrator.EvaluationBroker,
-	nodeManager routing.NodeInfoStore,
+	nodeManager nodes.Lookup,
 	computeProxy compute.Endpoint,
 ) (watcher.Manager, *forwarder.Forwarder, error) {
 	watcherRegistry := watcher.NewManager(jobStore.GetEventStore())
