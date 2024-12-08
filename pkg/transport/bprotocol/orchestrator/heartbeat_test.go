@@ -55,7 +55,7 @@ func (s *HeartbeatTestSuite) SetupTest() {
 	s.natsServer, s.natsConn = testutils.StartNats(s.T())
 
 	// Setup real node manager
-	s.nodeManager, err = nodes.NewNodeManager(nodes.NodeManagerParams{
+	s.nodeManager, err = nodes.NewManager(nodes.ManagerParams{
 		Clock:                 s.clock,
 		Store:                 inmemory.NewNodeStore(inmemory.NodeStoreParams{TTL: 1 * time.Hour}),
 		NodeDisconnectedAfter: 5 * time.Second,

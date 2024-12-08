@@ -391,7 +391,7 @@ func createNodeManager(ctx context.Context, cfg NodeConfig, natsConn *nats.Conn)
 		return nil, nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 	}
 
-	nodeManager, err := nodes.NewNodeManager(nodes.NodeManagerParams{
+	nodeManager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 nodeInfoStore,
 		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
 		ManualApproval:        cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
