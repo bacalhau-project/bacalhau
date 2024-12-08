@@ -14,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -23,7 +23,7 @@ type BProtocolDispatcherSuite struct {
 	ctx            context.Context
 	ctrl           *gomock.Controller
 	computeService *compute.MockEndpoint
-	nodeStore      *routing.MockNodeInfoStore
+	nodeStore      *nodes.MockLookup
 	protocolRouter *ProtocolRouter
 	nodeID         string
 	computeErr     error
@@ -38,7 +38,7 @@ func (s *BProtocolDispatcherSuite) SetupTest() {
 	s.ctx = context.Background()
 	s.ctrl = gomock.NewController(s.T())
 	s.computeService = compute.NewMockEndpoint(s.ctrl)
-	s.nodeStore = routing.NewMockNodeInfoStore(s.ctrl)
+	s.nodeStore = nodes.NewMockLookup(s.ctrl)
 	s.nodeID = "test-node"
 	s.computeErr = errors.New("compute error")
 

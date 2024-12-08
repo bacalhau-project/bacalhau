@@ -80,13 +80,15 @@ func New(ctx context.Context, id string, store EventStore, opts ...WatchOption) 
 }
 
 func (w *watcher) determineStartingIterator(ctx context.Context, initial EventIterator) (EventIterator, error) {
-	// First try to get checkpoint
-	checkpoint, err := w.store.GetCheckpoint(ctx, w.id)
-	if err == nil {
-		return AfterSequenceNumberIterator(checkpoint), nil
-	}
-	if !errors.Is(err, ErrCheckpointNotFound) {
-		return EventIterator{}, err
+	// First try to get checkpoint if not ignoring it
+	if !w.options.ignoreCheckpoint {
+		checkpoint, err := w.store.GetCheckpoint(ctx, w.id)
+		if err == nil {
+			return AfterSequenceNumberIterator(checkpoint), nil
+		}
+		if !errors.Is(err, ErrCheckpointNotFound) {
+			return EventIterator{}, err
+		}
 	}
 
 	// No checkpoint found, handle initial iterator
@@ -161,6 +163,7 @@ func (w *watcher) Start(ctx context.Context) error {
 		Str("starting_at", w.nextEventIterator.String()).
 		Strs("object_types", w.options.filter.ObjectTypes).
 		Msg("starting watcher")
+	log.Trace().Msgf("starting watcher %+v", w)
 	w.mu.Unlock()
 
 	go w.run(ctx)
@@ -179,6 +182,7 @@ func (w *watcher) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Ctx(ctx).Debug().Str("watcher_id", w.id).Msg("context canceled. Stopping watcher")
 			return
 		default:
 			response, err := w.fetchWithBackoff(ctx)

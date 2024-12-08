@@ -37,4 +37,7 @@ const (
 	// Event-related buckets
 	eventsBucket      = currentSchemaVersion + "_events"
 	checkpointsBucket = currentSchemaVersion + "_checkpoints"
+
+	// Sequence tracking checkpoints
+	sequenceTrackingBucket = currentSchemaVersion + "_sequence_tracking"
 )

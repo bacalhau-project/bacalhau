@@ -15,15 +15,21 @@ type MessageHandler interface {
 	HandleMessage(ctx context.Context, message *envelope.Message) error
 }
 
+// RequestHandler processes incoming requests and returns responses
+type RequestHandler interface {
+	// HandleRequest processes a request message and returns a response
+	HandleRequest(ctx context.Context, message *envelope.Message) (*envelope.Message, error)
+}
+
 // MessageFilter interface for filtering messages
 type MessageFilter interface {
 	ShouldFilter(metadata *envelope.Metadata) bool
 }
 
-// Checkpointer interface for managing checkpoints
-type Checkpointer interface {
-	Checkpoint(ctx context.Context, message *envelope.Message) error
-	GetLastCheckpoint() (int64, error)
+// ProcessingNotifier provides callbacks for message processing events
+type ProcessingNotifier interface {
+	// OnProcessed is called when a message has been successfully processed
+	OnProcessed(ctx context.Context, message *envelope.Message)
 }
 
 // PublishRequest encapsulates the parameters needed to publish a message.
@@ -61,6 +67,10 @@ type Publisher interface {
 	Publish(ctx context.Context, request PublishRequest) error
 }
 
+type Requester interface {
+	Request(ctx context.Context, request PublishRequest) (*envelope.Message, error)
+}
+
 type OrderedPublisher interface {
 	Publisher // Embed the Publisher interface
 	PublishAsync(ctx context.Context, request PublishRequest) (PubFuture, error)
@@ -93,6 +103,14 @@ type Subscriber interface {
 	Close(ctx context.Context) error
 }
 
+// Responder handles incoming requests and sends back responses
+type Responder interface {
+	// Listen starts listening for requests of the given type
+	Listen(ctx context.Context, messageType string, handler RequestHandler) error
+	// Close stops listening for requests
+	Close(ctx context.Context) error
+}
+
 // MessageHandlerFunc is a function type that implements MessageHandler
 type MessageHandlerFunc func(ctx context.Context, message *envelope.Message) error
 
@@ -101,6 +119,13 @@ func (f MessageHandlerFunc) ShouldProcess(ctx context.Context, message *envelope
 }
 
 func (f MessageHandlerFunc) HandleMessage(ctx context.Context, message *envelope.Message) error {
+	return f(ctx, message)
+}
+
+// RequestHandlerFunc is a function type that implements RequestHandler
+type RequestHandlerFunc func(ctx context.Context, message *envelope.Message) (*envelope.Message, error)
+
+func (f RequestHandlerFunc) HandleRequest(ctx context.Context, message *envelope.Message) (*envelope.Message, error) {
 	return f(ctx, message)
 }
 

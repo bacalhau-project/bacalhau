@@ -7,20 +7,20 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 // ProtocolRouter routes commands from orchestrator to compute nodes using their
 // supported protocols. It handles command dispatch for job execution, bidding,
 // and cancellation.
 type ProtocolRouter struct {
-	nodeStore          routing.NodeInfoStore
+	nodeStore          nodes.Lookup
 	supportedProtocols map[models.Protocol]bool
 }
 
 // ProtocolRouterParams configures a new ProtocolRouter
 type ProtocolRouterParams struct {
-	NodeStore          routing.NodeInfoStore
+	NodeStore          nodes.Lookup
 	SupportedProtocols []models.Protocol
 }
 

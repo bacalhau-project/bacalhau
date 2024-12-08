@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
-	messages "github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	legacy "github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -205,72 +204,4 @@ func (m *MockCallback) OnRunComplete(ctx context.Context, result legacy.RunResul
 func (mr *MockCallbackMockRecorder) OnRunComplete(ctx, result interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnRunComplete", reflect.TypeOf((*MockCallback)(nil).OnRunComplete), ctx, result)
-}
-
-// MockManagementEndpoint is a mock of ManagementEndpoint interface.
-type MockManagementEndpoint struct {
-	ctrl     *gomock.Controller
-	recorder *MockManagementEndpointMockRecorder
-}
-
-// MockManagementEndpointMockRecorder is the mock recorder for MockManagementEndpoint.
-type MockManagementEndpointMockRecorder struct {
-	mock *MockManagementEndpoint
-}
-
-// NewMockManagementEndpoint creates a new mock instance.
-func NewMockManagementEndpoint(ctrl *gomock.Controller) *MockManagementEndpoint {
-	mock := &MockManagementEndpoint{ctrl: ctrl}
-	mock.recorder = &MockManagementEndpointMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockManagementEndpoint) EXPECT() *MockManagementEndpointMockRecorder {
-	return m.recorder
-}
-
-// Register mocks base method.
-func (m *MockManagementEndpoint) Register(arg0 context.Context, arg1 messages.RegisterRequest) (*messages.RegisterResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", arg0, arg1)
-	ret0, _ := ret[0].(*messages.RegisterResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Register indicates an expected call of Register.
-func (mr *MockManagementEndpointMockRecorder) Register(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockManagementEndpoint)(nil).Register), arg0, arg1)
-}
-
-// UpdateInfo mocks base method.
-func (m *MockManagementEndpoint) UpdateInfo(arg0 context.Context, arg1 messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateInfo", arg0, arg1)
-	ret0, _ := ret[0].(*messages.UpdateInfoResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateInfo indicates an expected call of UpdateInfo.
-func (mr *MockManagementEndpointMockRecorder) UpdateInfo(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateInfo", reflect.TypeOf((*MockManagementEndpoint)(nil).UpdateInfo), arg0, arg1)
-}
-
-// UpdateResources mocks base method.
-func (m *MockManagementEndpoint) UpdateResources(arg0 context.Context, arg1 messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateResources", arg0, arg1)
-	ret0, _ := ret[0].(*messages.UpdateResourcesResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateResources indicates an expected call of UpdateResources.
-func (mr *MockManagementEndpointMockRecorder) UpdateResources(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateResources", reflect.TypeOf((*MockManagementEndpoint)(nil).UpdateResources), arg0, arg1)
 }

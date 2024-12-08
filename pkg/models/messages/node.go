@@ -1,39 +1,41 @@
 package messages
 
-import "github.com/bacalhau-project/bacalhau/pkg/models"
+import (
+	"time"
 
-// Heartbeat represents a heartbeat message from a specific node.
-// It contains the node ID and the sequence number of the heartbeat
-// which is monotonically increasing (reboots aside). We do not
-// use timestamps on the client, we rely solely on the server-side
-// time to avoid clock drift issues.
-type Heartbeat struct {
-	NodeID   string
-	Sequence uint64
+	"github.com/bacalhau-project/bacalhau/pkg/models"
+)
+
+// HandshakeRequest is exchanged during initial connection
+type HandshakeRequest struct {
+	NodeInfo               models.NodeInfo `json:"NodeInfo"`
+	StartTime              time.Time       `json:"StartTime"`
+	LastOrchestratorSeqNum uint64          `json:"LastOrchestratorSeqNum"` // Last seq received from orchestrator
 }
 
-type RegisterRequest struct {
-	Info models.NodeInfo
+// HandshakeResponse is sent in response to handshake requests
+type HandshakeResponse struct {
+	Accepted          bool   `json:"accepted"`
+	Reason            string `json:"reason,omitempty"`
+	LastComputeSeqNum uint64 `json:"LastComputeSeqNum"` // Last seq received from compute node
 }
 
-type RegisterResponse struct {
-	Accepted bool
-	Reason   string
+type HeartbeatRequest struct {
+	NodeID                 string           `json:"NodeID"`
+	AvailableCapacity      models.Resources `json:"AvailableCapacity"`
+	QueueUsedCapacity      models.Resources `json:"QueueUsedCapacity"`
+	LastOrchestratorSeqNum uint64           `json:"LastOrchestratorSeqNum"` // Last seq received from orchestrator
 }
 
-type UpdateInfoRequest struct {
-	Info models.NodeInfo
+type HeartbeatResponse struct {
+	LastComputeSeqNum uint64 `json:"LastComputeSeqNum"` // Last seq received from compute node
 }
 
-type UpdateInfoResponse struct {
-	Accepted bool
-	Reason   string
+// UpdateNodeInfoRequest is used to update the node info
+type UpdateNodeInfoRequest struct {
+	NodeInfo models.NodeInfo `json:"NodeInfo"`
 }
-
-type UpdateResourcesRequest struct {
-	NodeID            string
-	AvailableCapacity models.Resources
-	QueueUsedCapacity models.Resources
+type UpdateNodeInfoResponse struct {
+	Accepted bool   `json:"accepted"`
+	Reason   string `json:"reason,omitempty"`
 }
-
-type UpdateResourcesResponse struct{}

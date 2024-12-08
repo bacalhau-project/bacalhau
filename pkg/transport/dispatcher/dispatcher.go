@@ -91,12 +91,17 @@ func (d *Dispatcher) Start(ctx context.Context) error {
 	d.running = true
 	d.mu.Unlock()
 
-	d.routinesWg.Add(3) // For the three goroutines
-
 	// Start background processing
+	d.routinesWg.Add(1)
 	go d.processPublishResults(ctx)
+
+	d.routinesWg.Add(1)
 	go d.checkStalledMessages(ctx)
-	go d.checkpointLoop(ctx)
+
+	if d.config.CheckpointInterval > 0 {
+		d.routinesWg.Add(1)
+		go d.checkpointLoop(ctx)
+	}
 
 	// Start the watcher
 	return d.watcher.Start(ctx)
@@ -146,7 +151,6 @@ func (d *Dispatcher) processPublishResults(ctx context.Context) {
 		case <-ticker.C:
 			// Get copy of all pending messages
 			msgs := d.state.pending.GetAll()
-			log.Debug().Int("numPending", len(msgs)).Msg("Processing pending messages")
 			for _, msg := range msgs {
 				select {
 				case <-msg.future.Done():

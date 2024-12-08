@@ -8,6 +8,18 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+type ClientFactory interface {
+	CreateClient(ctx context.Context) (*nats.Conn, error)
+}
+
+// ClientFactoryFunc is a function that creates a NATS client
+type ClientFactoryFunc func(ctx context.Context) (*nats.Conn, error)
+
+// CreateClient creates a NATS client
+func (f ClientFactoryFunc) CreateClient(ctx context.Context) (*nats.Conn, error) {
+	return f(ctx)
+}
+
 type ClientManager struct {
 	Client *nats.Conn
 }

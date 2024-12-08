@@ -31,7 +31,7 @@ type GetAgentNodeRequest struct {
 
 type GetAgentNodeResponse struct {
 	BaseGetResponse
-	*models.NodeState
+	*models.NodeInfo
 }
 
 type GetAgentConfigResponse struct {

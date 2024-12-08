@@ -2,6 +2,7 @@
 package transport
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
@@ -20,6 +21,10 @@ type MessageCreator interface {
 	// Returns nil if no message should be published for this event.
 	// Any error will halt event processing.
 	CreateMessage(event watcher.Event) (*envelope.Message, error)
+}
+
+type MessageCreatorFactory interface {
+	CreateMessageCreator(ctx context.Context, nodeID string) MessageCreator
 }
 
 // GenerateMsgID Message ID generation helper

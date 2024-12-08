@@ -25,6 +25,11 @@ func uint64ToBytes(i uint64) []byte {
 	return buf
 }
 
+// bytesToUint64 converts a byte slice to an uint64
+func bytesToUint64(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b)
+}
+
 // Helper function to safely access buckets and nested buckets
 func bucket(tx *bolt.Tx, bucketNames ...string) *bolt.Bucket {
 	var b *bolt.Bucket

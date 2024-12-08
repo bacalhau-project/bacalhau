@@ -4,25 +4,24 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/nats-io/nats.go"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
+	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
-	"github.com/bacalhau-project/bacalhau/pkg/node/manager"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/evaluation"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/kvstore"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/planner"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/scheduler"
@@ -35,12 +34,11 @@ import (
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
 	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/kvstore"
-	"github.com/bacalhau-project/bacalhau/pkg/routing/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
-	"github.com/bacalhau-project/bacalhau/pkg/transport/forwarder"
+	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
+	transportcore "github.com/bacalhau-project/bacalhau/pkg/transport/core"
+	transportorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/orchestrator"
 )
 
 var (
@@ -54,9 +52,7 @@ type Requester struct {
 	Endpoint *orchestrator.BaseEndpoint
 	JobStore jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
-	NodeInfoStore      routing.NodeInfoStore
-	NodeDiscoverer     orchestrator.NodeDiscoverer
-	nodeManager        *manager.NodeManager
+	NodeInfoStore      nodes.Store
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []models.DebugInfoProvider
 }
@@ -67,13 +63,16 @@ func NewRequesterNode(
 	cfg NodeConfig,
 	apiServer *publicapi.Server,
 	transportLayer *nats_transport.NATSTransport,
-	computeProxy compute.Endpoint,
-	logstreamServer logstream.Server,
-	messageSerDeRegistry *envelope.Registry,
 	metadataStore MetadataStore,
 ) (*Requester, error) {
+
+	natsConn, err := transportLayer.CreateClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	nodeID := cfg.NodeID
-	nodeManager, heartbeatServer, err := createNodeManager(ctx, cfg, transportLayer)
+	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, natsConn)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +112,14 @@ func NewRequesterNode(
 		retryStrategy = retryStrategyChain
 	}
 
+	protocolRouter, err := watchers.NewProtocolRouter(watchers.ProtocolRouterParams{
+		NodeStore:          nodesManager,
+		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create protocol router: %w", err)
+	}
+
 	// node selector
 	nodeRanker, err := createNodeRanker(cfg, jobStore)
 	if err != nil {
@@ -120,7 +127,7 @@ func NewRequesterNode(
 	}
 
 	nodeSelector := selector.NewNodeSelector(
-		nodeManager,
+		nodesManager,
 		nodeRanker,
 		// selector constraints: require nodes be online and approved to schedule
 		orchestrator.NodeSelectionConstraints{
@@ -192,10 +199,17 @@ func NewRequesterNode(
 		transformer.DefaultsApplier(cfg.BacalhauConfig.JobDefaults),
 	}
 
+	logStreamProxy, err := proxy.NewLogStreamProxy(proxy.LogStreamProxyParams{
+		Conn: natsConn,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	endpointV2 := orchestrator.NewBaseEndpoint(&orchestrator.BaseEndpointParams{
 		ID:                nodeID,
 		Store:             jobStore,
-		LogstreamServer:   logstreamServer,
+		LogstreamServer:   logStreamProxy,
 		JobTransformer:    jobTransformers,
 		ResultTransformer: resultTransformers,
 	})
@@ -212,7 +226,7 @@ func NewRequesterNode(
 
 	// register debug info providers for the /debug endpoint
 	debugInfoProviders := []models.DebugInfoProvider{
-		discovery.NewDebugInfoProvider(nodeManager),
+		discovery.NewDebugInfoProvider(nodesManager),
 	}
 
 	// TODO: delete this when we are ready to stop serving a deprecation notice.
@@ -222,7 +236,7 @@ func NewRequesterNode(
 		Router:       apiServer.Router,
 		Orchestrator: endpointV2,
 		JobStore:     jobStore,
-		NodeManager:  nodeManager,
+		NodeManager:  nodesManager,
 	})
 
 	authenticators, err := cfg.DependencyInjector.AuthenticatorsFactory.Get(ctx, cfg)
@@ -234,63 +248,57 @@ func NewRequesterNode(
 	)
 	auth_endpoint.BindEndpoint(ctx, apiServer.Router, authenticators)
 
-	// nclPublisher
-	nclPublisher, err := ncl.NewOrderedPublisher(transportLayer.Client(), ncl.OrderedPublisherConfig{
-		Name:            cfg.NodeID,
-		MessageRegistry: messageSerDeRegistry,
+	// legacy connection manager
+	legacyConnectionManager, err := bprotocolorchestrator.NewConnectionManager(bprotocolorchestrator.Config{
+		NodeID:         nodeID,
+		ClientFactory:  natsutil.ClientFactoryFunc(transportLayer.CreateClient),
+		NodeManager:    nodesManager,
+		EventStore:     jobStore.GetEventStore(),
+		ProtocolRouter: protocolRouter,
+		Callback:       orchestrator.NewCallback(&orchestrator.CallbackParams{ID: nodeID, Store: jobStore}),
 	})
 	if err != nil {
-		return nil, err
+		return nil, pkgerrors.Wrap(err, "failed to create connection manager")
+	}
+	if err = legacyConnectionManager.Start(ctx); err != nil {
+		return nil, pkgerrors.Wrap(err, "failed to start connection manager")
 	}
 
-	watcherRegistry, nclForwarder, err := setupOrchestratorWatchers(
-		ctx, nodeID, jobStore, nclPublisher, evalBroker, nodeManager, computeProxy)
-	if err != nil {
-		return nil, err
-	}
-
-	// ncl subscriber
-	nclSubscriber, err := ncl.NewSubscriber(transportLayer.Client(), ncl.SubscriberConfig{
-		Name:            cfg.NodeID,
-		MessageRegistry: messageSerDeRegistry,
-		MessageHandler:  orchestrator.NewMessageHandler(jobStore),
+	// connection manager
+	connectionManager, err := transportorchestrator.NewComputeManager(transportorchestrator.Config{
+		NodeID:                  cfg.NodeID,
+		ClientFactory:           natsutil.ClientFactoryFunc(transportLayer.CreateClient),
+		NodeManager:             nodesManager,
+		HeartbeatTimeout:        cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
+		DataPlaneMessageHandler: orchestrator.NewMessageHandler(jobStore),
+		DataPlaneMessageCreatorFactory: watchers.NewNCLMessageCreatorFactory(watchers.NCLMessageCreatorFactoryParams{
+			ProtocolRouter: protocolRouter,
+			SubjectFn:      transportcore.NatsSubjectComputeInMsgs,
+		}),
+		EventStore: jobStore.GetEventStore(),
 	})
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create ncl subscriber")
-	}
-	if err = nclSubscriber.Subscribe(ctx, orchestratorInSubscription()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create connection manager: %w", err)
 	}
 
-	// ncl heartbeat subscriber
-	heartbeatSubscriber, err := ncl.NewSubscriber(transportLayer.Client(), ncl.SubscriberConfig{
-		Name:            nodeID,
-		MessageRegistry: messageSerDeRegistry,
-		MessageHandler:  heartbeatServer,
-	})
-	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create heartbeat ncl subscriber")
+	if err = connectionManager.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start connection manager: %w", err)
 	}
-	if err = heartbeatSubscriber.Subscribe(ctx, orchestratorHeartbeatSubscription()); err != nil {
+
+	watcherRegistry, err := setupOrchestratorWatchers(ctx, jobStore, evalBroker)
+	if err != nil {
 		return nil, err
 	}
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		// close the ncl subscriber
-		cleanupErr := nclSubscriber.Close(ctx)
-		if cleanupErr != nil {
-			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl subscriber")
-		}
+		var cleanupErr error
+		// stop the legacy connection manager
+		legacyConnectionManager.Stop(ctx)
 
-		// close the ncl heartbeat subscriber
-		cleanupErr = heartbeatSubscriber.Close(ctx)
-		if cleanupErr != nil {
-			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl heartbeat subscriber")
-		}
-
-		if cleanupErr = nclForwarder.Stop(ctx); cleanupErr != nil {
-			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown ncl forwarder")
+		// stop the connection manager
+		if cleanupErr = connectionManager.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown connection manager")
 		}
 
 		if cleanupErr = watcherRegistry.Stop(ctx); cleanupErr != nil {
@@ -309,25 +317,18 @@ func NewRequesterNode(
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown jobstore")
 		}
-	}
 
-	// This endpoint implements the protocol formerly known as `bprotocol`.
-	// It provides the compute call back endpoints for interacting with compute nodes.
-	// e.g. bidding, job completions, cancellations, and failures
-	callback := orchestrator.NewCallback(&orchestrator.CallbackParams{
-		ID:    nodeID,
-		Store: jobStore,
-	})
-	if err = transportLayer.RegisterComputeCallback(callback); err != nil {
-		return nil, err
+		// stop the nodes manager
+		if cleanupErr = nodesManager.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown node manager")
+		}
+
 	}
 
 	return &Requester{
 		Endpoint:           endpointV2,
-		NodeDiscoverer:     nodeManager,
-		NodeInfoStore:      nodeManager,
+		NodeInfoStore:      nodeStore,
 		JobStore:           jobStore,
-		nodeManager:        nodeManager,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
@@ -359,45 +360,6 @@ func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.Nod
 	return nodeRankerChain, nil
 }
 
-func createNodeManager(ctx context.Context,
-	cfg NodeConfig,
-	transportLayer *nats_transport.NATSTransport) (*manager.NodeManager, *heartbeat.HeartbeatServer, error) {
-	nodeInfoStore, err := createNodeInfoStore(ctx, transportLayer)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// heartbeat service
-	heartbeatParams := heartbeat.HeartbeatServerParams{
-		NodeID:                cfg.NodeID,
-		Client:                transportLayer.Client(),
-		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
-	}
-	heartbeatSvr, err := heartbeat.NewServer(heartbeatParams)
-	if err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to create heartbeat server using NATS transport connection info")
-	}
-
-	// node manager
-	// Create a new node manager to keep track of compute nodes connecting
-	// to the network. Provide it with a mechanism to lookup (and enhance)
-	// node info, and a reference to the heartbeat server
-	nodeManager := manager.NewNodeManager(manager.NodeManagerParams{
-		NodeInfo:       nodeInfoStore,
-		Heartbeats:     heartbeatSvr,
-		ManualApproval: cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
-	})
-
-	// Start the nodemanager, ensuring it doesn't block the main thread and
-	// that any errors are logged. If we are unable to start the manager
-	// then we should not start the node.
-	if err = nodeManager.Start(ctx); err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
-	}
-
-	return nodeManager, heartbeatSvr, transportLayer.RegisterManagementEndpoint(nodeManager)
-}
-
 func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) {
 	jobStoreDBPath, err := cfg.BacalhauConfig.JobStoreFilePath()
 	if err != nil {
@@ -410,36 +372,39 @@ func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) 
 	return jobStore, nil
 }
 
-func createNodeInfoStore(ctx context.Context, transportLayer *nats_transport.NATSTransport) (routing.NodeInfoStore, error) {
-	// nodeInfoStore
+func createNodeManager(ctx context.Context, cfg NodeConfig, natsConn *nats.Conn) (nodes.Manager, nodes.Store, error) {
 	nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 		BucketName: kvstore.BucketNameCurrent,
-		Client:     transportLayer.Client(),
+		Client:     natsConn,
 	})
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
+		return nil, nil, pkgerrors.Wrap(err, "failed to create node info store using NATS transport connection info")
 	}
 
-	tracingInfoStore := tracing.NewNodeStore(nodeInfoStore)
+	nodeManager, err := nodes.NewNodeManager(nodes.NodeManagerParams{
+		Store:                 nodeInfoStore,
+		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
+		ManualApproval:        cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
+	})
 
-	// Once the KV store has been created, it can be offered to the transport layer to be used as a consumer
-	// of node info.
-	if err = transportLayer.RegisterNodeInfoConsumer(ctx, tracingInfoStore); err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to register node info consumer with nats transport")
+	if err != nil {
+		return nil, nil, pkgerrors.Wrap(err, "failed to create node manager")
 	}
-	return tracingInfoStore, nil
+
+	if err = nodeManager.Start(ctx); err != nil {
+		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
+	}
+
+	return nodeManager, nodeInfoStore, nil
+
 }
 
 //nolint:funlen
 func setupOrchestratorWatchers(
 	ctx context.Context,
-	nodeID string,
 	jobStore jobstore.Store,
-	nclPublisher ncl.OrderedPublisher,
 	evalBroker orchestrator.EvaluationBroker,
-	nodeManager routing.NodeInfoStore,
-	computeProxy compute.Endpoint,
-) (watcher.Manager, *forwarder.Forwarder, error) {
+) (watcher.Manager, error) {
 	watcherRegistry := watcher.NewManager(jobStore.GetEventStore())
 
 	// Start watching for evaluation events using latest iterator
@@ -453,7 +418,7 @@ func setupOrchestratorWatchers(
 		}),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
+		return nil, fmt.Errorf("failed to start evaluation watcher: %w", err)
 	}
 
 	// Set up execution logger watcher
@@ -466,7 +431,7 @@ func setupOrchestratorWatchers(
 		watcher.WithInitialEventIterator(watcher.LatestIterator()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
+		return nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
 	}
 
 	// Set up execution canceller watcher
@@ -481,61 +446,10 @@ func setupOrchestratorWatchers(
 		watcher.WithMaxRetries(3),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
+		return nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
 	}
 
-	protocolRouter, err := watchers.NewProtocolRouter(watchers.ProtocolRouterParams{
-		NodeStore:          nodeManager,
-		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create protocol router: %w", err)
-	}
-
-	// setup bprotocol dispatcher watcher
-	_, err = watcherRegistry.Create(ctx, orchestratorBProtocolDispatcherWatcherID,
-		watcher.WithHandler(watchers.NewBProtocolDispatcher(watchers.BProtocolDispatcherParams{
-			ID:             nodeID,
-			ComputeService: computeProxy,
-			ProtocolRouter: protocolRouter,
-		})),
-		watcher.WithAutoStart(),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup bprotocol dispatcher watcher: %w", err)
-	}
-
-	// setup ncl dispatcher
-	nclDispatcherWatcher, err := watcherRegistry.Create(ctx, orchestratorNCLDispatcherWatcherID,
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup ncl dispatcher watcher: %w", err)
-	}
-
-	nclMessageCreator := watchers.NewNCLMessageCreator(watchers.NCLMessageCreatorParams{
-		ProtocolRouter: protocolRouter,
-		SubjectFn:      orchestratorOutSubject,
-	})
-
-	nclForwarder, err := forwarder.New(nclPublisher, nclDispatcherWatcher, nclMessageCreator)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create forwarder: %w", err)
-	}
-
-	if err = nclForwarder.Start(ctx); err != nil {
-		return nil, nil, fmt.Errorf("failed to start forwarder: %w", err)
-	}
-
-	return watcherRegistry, nclForwarder, nil
+	return watcherRegistry, nil
 }
 
 func (r *Requester) cleanup(ctx context.Context) {

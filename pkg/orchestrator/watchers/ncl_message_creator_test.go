@@ -13,7 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -21,7 +21,7 @@ type NCLMessageCreatorTestSuite struct {
 	suite.Suite
 	ctrl           *gomock.Controller
 	protocolRouter *ProtocolRouter
-	nodeStore      *routing.MockNodeInfoStore
+	nodeStore      *nodes.MockLookup
 	creator        *NCLMessageCreator
 	subjectFn      func(nodeID string) string
 }
@@ -32,7 +32,7 @@ func TestNCLMessageCreatorTestSuite(t *testing.T) {
 
 func (s *NCLMessageCreatorTestSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.nodeStore = routing.NewMockNodeInfoStore(s.ctrl)
+	s.nodeStore = nodes.NewMockLookup(s.ctrl)
 	var err error
 	s.protocolRouter, err = NewProtocolRouter(ProtocolRouterParams{
 		NodeStore:          s.nodeStore,
@@ -51,7 +51,7 @@ func (s *NCLMessageCreatorTestSuite) SetupTest() {
 }
 
 func (s *NCLMessageCreatorTestSuite) TearDownTest() {
-    s.ctrl.Finish()
+	s.ctrl.Finish()
 }
 
 func (s *NCLMessageCreatorTestSuite) TestCreateMessage_InvalidObject() {

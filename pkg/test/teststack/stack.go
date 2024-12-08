@@ -76,7 +76,7 @@ func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 		}
 
 		expectedNodes := stack.GetNodeIds()
-		discoveredNodes, err := node.RequesterNode.NodeDiscoverer.List(ctx)
+		discoveredNodes, err := node.RequesterNode.NodeInfoStore.List(ctx)
 		require.NoError(t, err)
 
 		if len(discoveredNodes) < len(expectedNodes) {

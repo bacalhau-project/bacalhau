@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -117,7 +118,7 @@ func (e *Endpoint) listNodes(c echo.Context) error {
 			continue
 		}
 
-		if args.FilterByStatus != "" && args.FilterByStatus != node.Connection.String() {
+		if args.FilterByStatus != "" && args.FilterByStatus != node.ConnectionState.Status.String() {
 			continue
 		}
 
@@ -209,22 +210,21 @@ func (e *Endpoint) updateNode(c echo.Context) error {
 		return err
 	}
 
-	var action func(context.Context, string, string) (bool, string)
+	var action func(context.Context, string) error
 	if args.Action == string(apimodels.NodeActionApprove) {
-		action = e.nodeManager.ApproveAction
+		action = e.nodeManager.ApproveNode
 	} else if args.Action == string(apimodels.NodeActionReject) {
-		action = e.nodeManager.RejectAction
+		action = e.nodeManager.RejectNode
 	} else if args.Action == string(apimodels.NodeActionDelete) {
-		action = e.nodeManager.DeleteAction
+		action = e.nodeManager.DeleteNode
 	} else {
-		action = func(context.Context, string, string) (bool, string) {
-			return false, "unsupported action"
+		action = func(context.Context, string) error {
+			return fmt.Errorf("unsupported action %s", args.Action)
 		}
 	}
 
-	success, msg := action(ctx, nodeID, args.Message)
-	return c.JSON(http.StatusOK, apimodels.PutNodeResponse{
-		Success: success,
-		Error:   msg,
-	})
+	if err := action(ctx, nodeID); err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, apimodels.PutNodeResponse{})
 }
