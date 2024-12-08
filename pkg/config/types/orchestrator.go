@@ -17,6 +17,8 @@ type Orchestrator struct {
 	NodeManager      NodeManager      `yaml:"NodeManager,omitempty" json:"NodeManager,omitempty"`
 	Scheduler        Scheduler        `yaml:"Scheduler,omitempty" json:"Scheduler,omitempty"`
 	EvaluationBroker EvaluationBroker `yaml:"EvaluationBroker,omitempty" json:"EvaluationBroker,omitempty"`
+	// SupportReverseProxy configures the orchestrator node to run behind a reverse proxy
+	SupportReverseProxy bool `yaml:"SupportReverseProxy,omitempty" json:"SupportReverseProxy,omitempty"`
 }
 
 type OrchestratorAuth struct {

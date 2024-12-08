@@ -53,8 +53,15 @@ type NATSTransportConfig struct {
 	// Used by the Nats Client when node acts as orchestrator
 	ServerTLSCACert string
 
-	// Use by the Nats Client when node acts as compute
+	// Used by the Nats Client when node acts as compute
 	ClientTLSCACert string
+
+	// Used to configure Orchestrator (actually the NATS server) to run behind
+	// a reverse proxy
+	ServerSupportReverseProxy bool
+
+	// Used to configure compute node nats client to require TLS connection
+	ComputeClientRequireTLS bool
 }
 
 func (c *NATSTransportConfig) Validate() error {
@@ -154,6 +161,21 @@ func NewNATSTransport(ctx context.Context,
 			serverOpts.TLSConfig = serverTLSConfig
 		}
 
+		if config.ServerSupportReverseProxy {
+			// If the ServerSupportReverseProxy is enabled, we need to set
+			// serverOpts.TLSConfig to an empty config, if it is null.
+			// Reason for that , unfortunately that's the only eay NATS server will
+			// work behind a reverse proxy, that's how NATS documentation recommends doing it.
+			// See: https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls#tls-terminating-reverse-proxies
+			serverOpts.AllowNonTLS = true
+
+			// We need to make sure not to override TLS configuration if it was set. Maybe the operator want TLS
+			// between reverse proxy and NATS server, up to them.
+			if serverOpts.TLSConfig == nil {
+				serverOpts.TLSConfig, _ = server.GenTLSConfig(&server.TLSConfigOpts{})
+			}
+		}
+
 		// Only set cluster options if cluster peers are provided. Jetstream doesn't
 		// like the setting to be present with no values, or with values that are
 		// a local address (e.g. it can't RAFT to itself).
@@ -180,7 +202,25 @@ func NewNATSTransport(ctx context.Context,
 			return nil, err
 		}
 
-		config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
+		if config.ServerSupportReverseProxy {
+			// Server.ClientURL() (in core NATS code), will check if TLSConfig of the server
+			// is not null, and changes the URL Scheme from "nats" to "tls". When running
+			// the server with ServerSupportReverseProxy setting, almost all the time
+			// the NATS server will not be supporting TLS. This will make the orchestrator NATS client
+			// fail, since it was given the "tls://" NATS server URL to connect to, but the
+			// server does not support TLS. It is unfortunate that the ClientURL method does that.
+			// So here, we are checking, if NATS server was not started with a cert and key, and at the
+			// same time it was started with ServerSupportReverseProxy set to true, then we will change
+			// URL the scheme back to "nats://" from "tls://".
+
+			clientURL := sm.Server.ClientURL()
+			if strings.HasPrefix(clientURL, "tls://") && config.ServerTLSCert == "" {
+				clientURL = strings.Replace(clientURL, "tls://", "nats://", 1)
+			}
+			config.Orchestrators = append(config.Orchestrators, clientURL)
+		} else {
+			config.Orchestrators = append(config.Orchestrators, sm.Server.ClientURL())
+		}
 	}
 
 	// create transport
@@ -207,6 +247,11 @@ func CreateClient(ctx context.Context, config *NATSTransportConfig) (*nats_helpe
 	clientOptions := []nats.Option{
 		nats.Name(config.NodeID),
 		nats.MaxReconnects(-1),
+	}
+
+	// When Compute Node requires TLS, enforce it
+	if config.ComputeClientRequireTLS {
+		clientOptions = append(clientOptions, nats.TLSHandshakeFirst())
 	}
 
 	// We need to do this logic since the Nats Transport Layer does not differentiate

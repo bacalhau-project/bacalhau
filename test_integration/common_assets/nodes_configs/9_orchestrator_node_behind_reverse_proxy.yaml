@@ -1,0 +1,8 @@
+NameProvider: "uuid"
+API:
+  Port: 1234
+Orchestrator:
+  Enabled: true
+  Auth:
+    Token: "i_am_very_secret_token"
+  SupportReverseProxy: true

@@ -39,6 +39,7 @@ func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, re
 		"OrchestratorImageName": fmt.Sprintf("bacalhau-test-orchestrator-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 		"ComputeImageName":      fmt.Sprintf("bacalhau-test-compute-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 		"JumpboxImageName":      fmt.Sprintf("bacalhau-test-jumpbox-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
+		"TraefikImageName":      fmt.Sprintf("bacalhau-test-traefik-%s:%s", s.GlobalRunIdentifier, s.GlobalRunIdentifier),
 	}
 
 	// Merge Rendering Data

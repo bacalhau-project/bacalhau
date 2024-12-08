@@ -1,0 +1,28 @@
+# Dynamic configuration
+tls:
+  certificates:
+    - certFile: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-traefik-node.crt"
+      keyFile: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-traefik-node.key"
+      stores:
+        - default
+
+  stores:
+    default:
+      defaultCertificate:
+        certFile: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-traefik-node.crt"
+        keyFile: "/bacalhau_integration_tests/common_assets/certificates/generated_assets/bacalhau-traefik-node.key"
+
+tcp:
+  routers:
+    orchestrator-router:
+      entryPoints:
+        - nats
+      rule: "HostSNI(`*`)"
+      service: orchestrator-service
+      tls: {}
+
+  services:
+    orchestrator-service:
+      loadBalancer:
+        servers:
+          - address: "bacalhau-orchestrator-node:4222"

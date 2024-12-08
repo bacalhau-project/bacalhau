@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.4
 FROM ubuntu:24.04
 
 # Automatically set by Docker to be the --platform flag

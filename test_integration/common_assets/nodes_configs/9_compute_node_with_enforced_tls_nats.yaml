@@ -1,0 +1,15 @@
+# In the configuration we do not specify the CA cert of NATS since it was already embedded in the
+# container trust store
+NameProvider: "uuid"
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://bacalhau-traefik-node:4222
+  Auth:
+    Token: "i_am_very_secret_token"
+  TLS:
+    # The means enforce TLS communication with NATS server on
+    # the orchestrator node. If NATS server cannot do TLS, it will fail
+    RequireTLS: true
