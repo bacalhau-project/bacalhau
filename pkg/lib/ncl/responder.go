@@ -66,7 +66,10 @@ func (r *responder) validate() error {
 	)
 }
 
-// Listen registers a handler for a specific message type
+// Listen registers a handler for a specific message type. When messages of this type
+// are received, they will be dispatched to the provided handler. If this is the first
+// handler being registered, it will create the NATS subscription.
+// Returns ErrHandlerExists if a handler is already registered for this message type.
 func (r *responder) Listen(ctx context.Context, messageType string, handler RequestHandler) error {
 	if err := validate.NotBlank(messageType, "message type cannot be blank"); err != nil {
 		return err
@@ -116,6 +119,13 @@ func (r *responder) Close(ctx context.Context) error {
 	return nil
 }
 
+// handleRequest is the NATS message callback that processes incoming requests.
+// It:
+// 1. Validates the message has a reply subject
+// 2. Deserializes the request envelope
+// 3. Finds the appropriate handler for the message type
+// 4. Processes the request and sends back a response
+// Any errors during processing result in an error response being sent back.
 func (r *responder) handleRequest(msg *nats.Msg) {
 	// Check for reply subject
 	if msg.Reply == "" {
@@ -166,6 +176,8 @@ func (r *responder) handleRequest(msg *nats.Msg) {
 	r.sendResponse(msg, response)
 }
 
+// sendResponse sends a response message back through NATS.
+// It preserves correlation IDs and handles serialization of the response envelope.
 func (r *responder) sendResponse(natsMsg *nats.Msg, response *envelope.Message) {
 	// Preserve request correlation ID if present
 	if reqID := natsMsg.Header.Get(KeyMessageID); reqID != "" {
@@ -191,11 +203,15 @@ func (r *responder) sendResponse(natsMsg *nats.Msg, response *envelope.Message) 
 	}
 }
 
+// sendErrorResponse is a convenience method to send an error response.
+// It converts the ErrorResponse to an envelope before sending.
 func (r *responder) sendErrorResponse(msg *nats.Msg, response ErrorResponse) {
 	r.sendResponse(msg, response.ToEnvelope())
 }
 
-// sendOrLogError
+// sendOrLogError handles errors that occur while sending error responses.
+// If we fail to send an error response, we log it instead of trying again
+// to avoid potential infinite loops.
 func (r *responder) sendOrLogError(msg *nats.Msg, originalResponse *envelope.Message, errorResponse ErrorResponse) {
 	if originalResponse.Metadata.Get(envelope.KeyMessageType) == ErrorMessageType {
 		log.Error().Msgf("failed to send error response to %s: %s", msg.Subject, originalResponse.Payload)

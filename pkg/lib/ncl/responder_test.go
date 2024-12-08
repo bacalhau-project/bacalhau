@@ -22,6 +22,7 @@ type ResponderTestSuite struct {
 	serializer        *envelope.Serializer
 	registry          *envelope.Registry
 	responder         Responder
+	publisher         Publisher
 	processingTimeout time.Duration
 }
 
@@ -31,6 +32,15 @@ func (suite *ResponderTestSuite) SetupSuite() {
 	suite.Require().NoError(suite.registry.Register(TestPayloadType, TestPayload{}))
 
 	suite.natsServer, suite.natsConn = StartNats(suite.T())
+
+	// Create a publisher to make requests
+	var err error
+	suite.publisher, err = NewPublisher(suite.natsConn, PublisherConfig{
+		Name:              "test-publisher",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+	})
+	suite.Require().NoError(err)
 }
 
 func (suite *ResponderTestSuite) TearDownSuite() {
@@ -57,19 +67,6 @@ func (suite *ResponderTestSuite) TearDownTest() {
 	}
 }
 
-func (suite *ResponderTestSuite) makeRequest(msg *envelope.Message) (*envelope.Message, error) {
-	// Create a publisher to make requests
-	pub, err := NewPublisher(suite.natsConn, PublisherConfig{
-		Name:              "test-publisher",
-		MessageSerializer: suite.serializer,
-		MessageRegistry:   suite.registry,
-	})
-	suite.Require().NoError(err)
-
-	// Make request
-	return pub.Request(context.Background(), NewPublishRequest(msg).WithSubject(TestSubject))
-}
-
 func (suite *ResponderTestSuite) TestBasicRequestResponse() {
 	// Register handler
 	err := suite.responder.Listen(context.Background(), TestPayloadType, RequestHandlerFunc(
@@ -86,7 +83,7 @@ func (suite *ResponderTestSuite) TestBasicRequestResponse() {
 
 	// Make request
 	request := envelope.NewMessage(TestPayload{Message: "Hello"})
-	response, err := suite.makeRequest(request)
+	response, err := suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 
 	// Verify response
 	suite.Require().NoError(err)
@@ -110,7 +107,7 @@ func (suite *ResponderTestSuite) TestHandlerTimeout() {
 	suite.Require().NoError(err)
 
 	request := envelope.NewMessage(TestPayload{Message: "Hello"})
-	response, err := suite.makeRequest(request)
+	response, err := suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 
 	suite.Require().Error(err)
 	suite.Nil(response)
@@ -127,7 +124,7 @@ func (suite *ResponderTestSuite) TestHandlerError() {
 
 	// Make request
 	request := envelope.NewMessage(TestPayload{Message: "Hello"})
-	response, err := suite.makeRequest(request)
+	response, err := suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 
 	suite.Require().Error(err)
 	suite.Nil(response)
@@ -144,7 +141,7 @@ func (suite *ResponderTestSuite) TestNoHandlerForType() {
 
 	// Make request without registering handler
 	request := envelope.NewMessage(TestPayload{Message: "Hello"})
-	response, err := suite.makeRequest(request)
+	response, err := suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 
 	suite.Require().Error(err)
 	suite.Nil(response)
@@ -193,7 +190,7 @@ func (suite *ResponderTestSuite) TestCloseAndReopen() {
 
 	// Try request after close
 	request := envelope.NewMessage(TestPayload{Message: "Hello"})
-	response, err := suite.makeRequest(request)
+	response, err := suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 	suite.Require().Error(err)
 	suite.Nil(response)
 
@@ -206,7 +203,7 @@ func (suite *ResponderTestSuite) TestCloseAndReopen() {
 	suite.Require().NoError(err)
 
 	// Request should work again
-	response, err = suite.makeRequest(request)
+	response, err = suite.publisher.Request(context.Background(), NewPublishRequest(request).WithSubject(TestSubject))
 	suite.Require().NoError(err)
 	suite.NotNil(response)
 }

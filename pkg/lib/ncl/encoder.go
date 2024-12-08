@@ -3,7 +3,6 @@ package ncl
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
@@ -42,7 +41,7 @@ func newEncoder(config encoderConfig) (*encoder, error) {
 
 	// Register error response type
 	if err := config.messageRegistry.Register(ErrorMessageType, ErrorResponse{}); err != nil {
-		if !strings.Contains(err.Error(), "already registered") {
+		if errors.Is(err, envelope.ErrAlreadyRegistered{}) {
 			return nil, fmt.Errorf("failed to register error response type: %w", err)
 		}
 	}
