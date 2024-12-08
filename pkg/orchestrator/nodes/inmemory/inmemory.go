@@ -2,12 +2,12 @@ package inmemory
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
@@ -74,8 +74,7 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 		return state, nil
 	}
 	// return the error if it's not a node not found error
-	var errNotFound nodes.ErrNodeNotFound
-	if !errors.As(err, &errNotFound) {
+	if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
 		return models.NodeState{}, err
 	}
 

@@ -4,7 +4,6 @@ package nodes_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
@@ -502,8 +502,7 @@ func (s *NodeManagerTestSuite) TestNodeDeletion() {
 	// Verify node is deleted
 	_, err = s.manager.Get(s.ctx, nodeInfo.ID())
 	assert.Error(s.T(), err)
-	var notFound nodes.ErrNodeNotFound
-	assert.True(s.T(), errors.As(err, &notFound))
+	assert.True(s.T(), bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *NodeManagerTestSuite) TestConnectionStateChangeEvents() {

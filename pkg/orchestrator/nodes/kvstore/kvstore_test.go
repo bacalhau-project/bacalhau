@@ -13,6 +13,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/kvstore"
@@ -77,7 +78,7 @@ func (s *KVNodeInfoStoreSuite) Test_GetNotFound() {
 	ctx := context.Background()
 	_, err := s.store.Get(ctx, nodeIDs[0])
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_SingleMatch() {
@@ -99,14 +100,14 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_MultipleMatches() {
 
 	_, err := s.store.GetByPrefix(ctx, "Qm")
 	s.Error(err)
-	s.IsType(nodes.ErrMultipleNodesFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, nodes.MultipleNodesFound))
 }
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_Empty() {
 	ctx := context.Background()
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
@@ -117,7 +118,7 @@ func (s *KVNodeInfoStoreSuite) Test_GetByPrefix_NoMatch_NotEmpty() {
 
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *KVNodeInfoStoreSuite) Test_List() {

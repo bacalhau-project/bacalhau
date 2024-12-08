@@ -18,8 +18,6 @@ import (
 const (
 	// BucketNameCurrent is the bucket name for bacalhau version v1.3.1 and beyond.
 	BucketNameCurrent = "node_v1"
-	// BucketNameV0 is the bucket name for bacalhau version v1.3.0 and below.
-	BucketNameV0 = "nodes"
 )
 
 type NodeStoreParams struct {

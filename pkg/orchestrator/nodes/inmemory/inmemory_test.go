@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/inmemory"
@@ -57,7 +58,7 @@ func (s *InMemoryNodeStoreSuite) Test_GetNotFound() {
 	ctx := context.Background()
 	_, err := s.store.Get(ctx, nodeIDs[0])
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 
 }
 
@@ -80,14 +81,14 @@ func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_MultipleMatches() {
 
 	_, err := s.store.GetByPrefix(ctx, "Qm")
 	s.Error(err)
-	s.IsType(nodes.ErrMultipleNodesFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, nodes.MultipleNodesFound))
 }
 
 func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_NoMatch() {
 	ctx := context.Background()
 	_, err := s.store.GetByPrefix(ctx, "nonexistent")
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_ExpiredNode() {
@@ -104,7 +105,7 @@ func (s *InMemoryNodeStoreSuite) Test_GetByPrefix_ExpiredNode() {
 
 	_, err := store.GetByPrefix(ctx, "QmdZQ7")
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func (s *InMemoryNodeStoreSuite) Test_List() {
@@ -210,7 +211,7 @@ func (s *InMemoryNodeStoreSuite) Test_Eviction() {
 	time.Sleep(ttl + 100*time.Millisecond)
 	_, err = s.store.Get(ctx, nodeInfo0.Info.ID())
 	s.Error(err)
-	s.IsType(nodes.ErrNodeNotFound{}, err)
+	s.True(bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError))
 }
 
 func generateNodeState(peerID string, engines ...string) models.NodeState {

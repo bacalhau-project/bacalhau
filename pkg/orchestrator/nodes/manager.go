@@ -2,14 +2,13 @@ package nodes
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
@@ -164,7 +163,9 @@ func (n *nodesManager) Start(ctx context.Context) error {
 	defer n.mu.Unlock()
 
 	if n.running {
-		return errors.New("node manager already running")
+		return bacerrors.New("node manager already running").
+			WithCode(bacerrors.BadRequestError).
+			WithComponent(errComponent)
 	}
 
 	// Initialize clean state
@@ -478,10 +479,9 @@ func (n *nodesManager) UpdateNodeInfo(
 	ctx context.Context, request messages.UpdateNodeInfoRequest) (messages.UpdateNodeInfoResponse, error) {
 	existing, err := n.Get(ctx, request.NodeInfo.ID())
 	if err != nil {
-		if errors.As(err, &ErrNodeNotFound{}) {
+		if bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
 			// return an error that a handshake is first required
-			return messages.UpdateNodeInfoResponse{},
-				fmt.Errorf("node %s not yet registered - handshake required", request.NodeInfo.ID())
+			return messages.UpdateNodeInfoResponse{}, NewErrHandshakeRequired(request.NodeInfo.ID())
 		}
 		return messages.UpdateNodeInfoResponse{}, err
 	}
@@ -519,12 +519,12 @@ func (n *nodesManager) Heartbeat(
 		// Get existing live state
 		existingEntry, ok := n.liveState.Load(request.NodeID)
 		if !ok {
-			return messages.HeartbeatResponse{}, fmt.Errorf("node %s not connected - handshake required", request.NodeID)
+			return messages.HeartbeatResponse{}, NewErrHandshakeRequired(request.NodeID)
 		}
 
 		existing := existingEntry.(*trackedLiveState)
 		if existing.connectionState.Status != models.NodeStates.CONNECTED {
-			return messages.HeartbeatResponse{}, fmt.Errorf("node %s not connected - handshake required", request.NodeID)
+			return messages.HeartbeatResponse{}, NewErrHandshakeRequired(request.NodeID)
 		}
 
 		// updated connection state
@@ -550,7 +550,7 @@ func (n *nodesManager) Heartbeat(
 			LastComputeSeqNum: updated.LastComputeSeqNum,
 		}, nil
 	}
-	return messages.HeartbeatResponse{}, errors.New("concurrent update conflict")
+	return messages.HeartbeatResponse{}, NewErrConcurrentModification()
 }
 
 // ApproveNode approves a node for cluster participation.
@@ -568,7 +568,7 @@ func (n *nodesManager) ApproveNode(ctx context.Context, nodeID string) error {
 	}
 
 	if state.Membership == models.NodeMembership.APPROVED {
-		return errors.New("node already approved")
+		return NewErrNodeAlreadyApproved(nodeID)
 	}
 
 	state.Membership = models.NodeMembership.APPROVED
@@ -593,7 +593,7 @@ func (n *nodesManager) RejectNode(ctx context.Context, nodeID string) error {
 	}
 
 	if state.Membership == models.NodeMembership.REJECTED {
-		return errors.New("node already rejected")
+		return NewErrNodeAlreadyRejected(nodeID)
 	}
 
 	// Update persistent state first
