@@ -315,6 +315,12 @@ func NewRequesterNode(
 		if cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown jobstore")
 		}
+
+		// stop node manager
+		cleanupErr = nodesManager.Stop(ctx)
+		if cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown node manager")
+		}
 	}
 
 	// This endpoint implements the protocol formerly known as `bprotocol`.
