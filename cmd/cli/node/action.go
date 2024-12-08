@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
@@ -56,7 +57,7 @@ func (n *NodeActionCmd) run(cmd *cobra.Command, args []string, api client.API) e
 		Message: n.message,
 	})
 	if err != nil {
-		util.Fatal(cmd, fmt.Errorf("could not %s node %s: %w", n.action, nodeID, err), 1)
+		return bacerrors.Wrap(err, "failed to %s node %s", n.action, nodeID)
 	}
 
 	if response.Success {

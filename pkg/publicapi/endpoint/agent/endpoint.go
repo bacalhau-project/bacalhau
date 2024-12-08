@@ -16,14 +16,14 @@ import (
 
 type EndpointParams struct {
 	Router             *echo.Echo
-	NodeStateProvider  models.NodeStateProvider
+	NodeInfoProvider   models.NodeInfoProvider
 	DebugInfoProviders []models.DebugInfoProvider
 	BacalhauConfig     types.Bacalhau
 }
 
 type Endpoint struct {
 	router             *echo.Echo
-	nodeStateProvider  models.NodeStateProvider
+	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []models.DebugInfoProvider
 	bacalhauConfig     types.Bacalhau
 }
@@ -31,7 +31,7 @@ type Endpoint struct {
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
 		router:             params.Router,
-		nodeStateProvider:  params.NodeStateProvider,
+		nodeInfoProvider:   params.NodeInfoProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 		bacalhauConfig:     params.BacalhauConfig,
 	}
@@ -86,9 +86,9 @@ func (e *Endpoint) version(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/node [get]
 func (e *Endpoint) node(c echo.Context) error {
-	nodeState := e.nodeStateProvider.GetNodeState(c.Request().Context())
+	nodeInfo := e.nodeInfoProvider.GetNodeInfo(c.Request().Context())
 	return c.JSON(http.StatusOK, apimodels.GetAgentNodeResponse{
-		NodeState: &nodeState,
+		NodeInfo: &nodeInfo,
 	})
 }
 

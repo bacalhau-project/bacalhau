@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	models "github.com/bacalhau-project/bacalhau/pkg/models"
-	routing "github.com/bacalhau-project/bacalhau/pkg/routing"
+	nodes "github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -288,7 +288,7 @@ func (m *MockNodeDiscoverer) EXPECT() *MockNodeDiscovererMockRecorder {
 }
 
 // List mocks base method.
-func (m *MockNodeDiscoverer) List(ctx context.Context, filter ...routing.NodeStateFilter) ([]models.NodeState, error) {
+func (m *MockNodeDiscoverer) List(ctx context.Context, filter ...nodes.NodeStateFilter) ([]models.NodeState, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx}
 	for _, a := range filter {

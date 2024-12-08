@@ -11,20 +11,21 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	bprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
 type ManagementClientParams struct {
 	NodeID                   string
 	LabelsProvider           models.LabelsProvider
-	ManagementProxy          ManagementEndpoint
+	ManagementProxy          bprotocol.ManagementEndpoint
 	NodeInfoDecorator        models.NodeInfoDecorator
 	AvailableCapacityTracker capacity.Tracker
 	QueueUsageTracker        capacity.UsageTracker
 	RegistrationFilePath     string
-	HeartbeatClient          heartbeat.Client
+	HeartbeatClient          *bprotocolcompute.HeartbeatClient
 	HeartbeatConfig          types.Heartbeat
 }
 
@@ -35,13 +36,13 @@ type ManagementClientParams struct {
 type ManagementClient struct {
 	done                     chan struct{}
 	labelsProvider           models.LabelsProvider
-	managementProxy          ManagementEndpoint
+	managementProxy          bprotocol.ManagementEndpoint
 	nodeID                   string
 	nodeInfoDecorator        models.NodeInfoDecorator
 	availableCapacityTracker capacity.Tracker
 	queueUsageTracker        capacity.UsageTracker
 	registrationFile         *RegistrationFile
-	heartbeatClient          heartbeat.Client
+	heartbeatClient          *bprotocolcompute.HeartbeatClient
 	heartbeatConfig          types.Heartbeat
 }
 
@@ -86,7 +87,7 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.Register(ctx, messages.RegisterRequest{
+	response, err := m.managementProxy.Register(ctx, legacy.RegisterRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -114,7 +115,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	// registered.
 
 	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.UpdateInfo(ctx, messages.UpdateInfoRequest{
+	response, err := m.managementProxy.UpdateInfo(ctx, legacy.UpdateInfoRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -130,7 +131,7 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 }
 
 func (m *ManagementClient) updateResources(ctx context.Context) {
-	request := messages.UpdateResourcesRequest{
+	request := legacy.UpdateResourcesRequest{
 		NodeID:            m.nodeID,
 		AvailableCapacity: m.availableCapacityTracker.GetAvailableCapacity(ctx),
 		QueueUsedCapacity: m.queueUsageTracker.GetUsedCapacity(ctx),

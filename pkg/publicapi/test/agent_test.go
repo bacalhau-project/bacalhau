@@ -32,7 +32,7 @@ func (s *ServerSuite) TestAgentNode() {
 	resp, err := s.client.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeState)
+	s.Require().NotNil(resp.NodeInfo)
 
 	requesterNode := s.requesterNode
 	// NB(forrest): we are only asserting NodeInfos are equal (which excludes approvals and liveness from NodeState)
@@ -40,7 +40,7 @@ func (s *ServerSuite) TestAgentNode() {
 	// and since the requester doesn't send heartbeat messages to itself it will consider itself disconnected
 	expectedNode, err := requesterNode.RequesterNode.NodeInfoStore.Get(context.Background(), s.requesterNode.ID)
 	s.Require().NoError(err)
-	s.Require().Equal(expectedNode.Info, resp.Info)
+	s.Require().Equal(&expectedNode.Info, resp.NodeInfo)
 }
 
 func (s *ServerSuite) TestAgentNodeCompute() {
@@ -48,5 +48,5 @@ func (s *ServerSuite) TestAgentNodeCompute() {
 	resp, err := s.computeClient.Agent().Node(ctx, &apimodels.GetAgentNodeRequest{})
 	s.Require().NoError(err)
 	s.Require().NotEmpty(resp)
-	s.Require().NotNil(resp.NodeState)
+	s.Require().NotNil(resp.NodeInfo)
 }

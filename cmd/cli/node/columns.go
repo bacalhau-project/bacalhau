@@ -31,7 +31,7 @@ var alwaysColumns = []output.TableColumn[*models.NodeState]{
 	{
 		ColumnConfig: table.ColumnConfig{Name: "status"},
 		Value: func(ni *models.NodeState) string {
-			return ni.Connection.String()
+			return ni.ConnectionState.Status.String()
 		},
 	},
 }
@@ -70,19 +70,19 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeState]{
 	"features": {
 		{
 			ColumnConfig: table.ColumnConfig{Name: "engines", WidthMax: maxLen(models.EngineNames), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return strings.Join(cni.ExecutionEngines, " ")
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "inputs from", WidthMax: maxLen(models.StoragesNames), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return strings.Join(cni.StorageSources, " ")
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "outputs", WidthMax: maxLen(models.PublisherNames), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return strings.Join(cni.Publishers, " ")
 			}),
 		},
@@ -90,25 +90,25 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeState]{
 	"capacity": {
 		{
 			ColumnConfig: table.ColumnConfig{Name: "cpu", WidthMax: len("1.0 / "), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return fmt.Sprintf("%.1f / %.1f", cni.AvailableCapacity.CPU, cni.MaxCapacity.CPU)
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "memory", WidthMax: len("10.0 GB / "), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return fmt.Sprintf("%s / %s", datasize.ByteSize(cni.AvailableCapacity.Memory).HR(), datasize.ByteSize(cni.MaxCapacity.Memory).HR())
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "disk", WidthMax: len("100.0 GB / "), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return fmt.Sprintf("%s / %s", datasize.ByteSize(cni.AvailableCapacity.Disk).HR(), datasize.ByteSize(cni.MaxCapacity.Disk).HR())
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "gpu", WidthMax: len("1 / "), WidthMaxEnforcer: text.WrapSoft},
-			Value: ifComputeNode(func(cni *models.ComputeNodeInfo) string {
+			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
 				return fmt.Sprintf("%d / %d", cni.AvailableCapacity.GPU, cni.MaxCapacity.GPU)
 			}),
 		},
@@ -119,9 +119,9 @@ func maxLen(val []string) int {
 	return lo.Max(lo.Map[string, int](val, func(item string, index int) int { return len(item) })) + 1
 }
 
-func ifComputeNode(getFromCNInfo func(*models.ComputeNodeInfo) string) func(state *models.NodeState) string {
+func ifComputeNode(getFromCNInfo func(models.ComputeNodeInfo) string) func(state *models.NodeState) string {
 	return func(ni *models.NodeState) string {
-		if ni.Info.ComputeNodeInfo == nil {
+		if !ni.Info.IsComputeNode() {
 			return ""
 		}
 		return getFromCNInfo(ni.Info.ComputeNodeInfo)

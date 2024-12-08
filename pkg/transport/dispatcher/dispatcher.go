@@ -146,7 +146,6 @@ func (d *Dispatcher) processPublishResults(ctx context.Context) {
 		case <-ticker.C:
 			// Get copy of all pending messages
 			msgs := d.state.pending.GetAll()
-			log.Debug().Int("numPending", len(msgs)).Msg("Processing pending messages")
 			for _, msg := range msgs {
 				select {
 				case <-msg.future.Done():

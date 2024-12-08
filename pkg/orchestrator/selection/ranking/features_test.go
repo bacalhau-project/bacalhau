@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type FeatureNodeRankerSuite struct {
@@ -22,23 +23,23 @@ func (s *FeatureNodeRankerSuite) Nodes() []models.NodeInfo {
 	return []models.NodeInfo{
 		{
 			NodeID:          "docker",
-			ComputeNodeInfo: &models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineDocker}},
+			ComputeNodeInfo: models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineDocker}},
 		},
 		{
 			NodeID:          "wasm",
-			ComputeNodeInfo: &models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineWasm}},
+			ComputeNodeInfo: models.ComputeNodeInfo{ExecutionEngines: []string{models.EngineWasm}},
 		},
 		{
 			NodeID:          "ipfs",
-			ComputeNodeInfo: &models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceIPFS}},
+			ComputeNodeInfo: models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceIPFS}},
 		},
 		{
 			NodeID:          "url",
-			ComputeNodeInfo: &models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceURL}},
+			ComputeNodeInfo: models.ComputeNodeInfo{StorageSources: []string{models.StorageSourceURL}},
 		},
 		{
 			NodeID: "combo",
-			ComputeNodeInfo: &models.ComputeNodeInfo{
+			ComputeNodeInfo: models.ComputeNodeInfo{
 				ExecutionEngines: []string{models.EngineDocker, models.EngineWasm},
 				Publishers:       []string{models.PublisherIPFS, models.PublisherS3},
 				StorageSources:   []string{models.StorageSourceIPFS, models.StorageSourceURL},
@@ -69,7 +70,7 @@ func (s *FeatureNodeRankerSuite) TestEngineDocker() {
 	assertEquals(s.T(), ranks, "docker", 10)
 	assertEquals(s.T(), ranks, "wasm", -1)
 	assertEquals(s.T(), ranks, "combo", 10)
-	assertEquals(s.T(), ranks, "unknown", 0)
+	assertEquals(s.T(), ranks, "unknown", -1)
 }
 func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 	job := mock.Job()
@@ -80,7 +81,7 @@ func (s *FeatureNodeRankerSuite) TestEngineWasm() {
 	assertEquals(s.T(), ranks, "docker", -1)
 	assertEquals(s.T(), ranks, "wasm", 10)
 	assertEquals(s.T(), ranks, "combo", 10)
-	assertEquals(s.T(), ranks, "unknown", 0)
+	assertEquals(s.T(), ranks, "unknown", -1)
 }
 
 func (s *FeatureNodeRankerSuite) TestEngineNoop() {
@@ -92,7 +93,7 @@ func (s *FeatureNodeRankerSuite) TestEngineNoop() {
 	assertEquals(s.T(), ranks, "docker", -1)
 	assertEquals(s.T(), ranks, "wasm", -1)
 	assertEquals(s.T(), ranks, "combo", -1)
-	assertEquals(s.T(), ranks, "unknown", 0)
+	assertEquals(s.T(), ranks, "unknown", -1)
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
@@ -106,7 +107,7 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFS() {
 	assertEquals(s.T(), ranks, "ipfs", 10)
 	assertEquals(s.T(), ranks, "url", -1)
 	assertEquals(s.T(), ranks, "combo", 10)
-	assertEquals(s.T(), ranks, "unknown", 0)
+	assertEquals(s.T(), ranks, "unknown", -1)
 }
 
 func (s *FeatureNodeRankerSuite) TestStorageIPFSAndURL() {
@@ -121,5 +122,5 @@ func (s *FeatureNodeRankerSuite) TestStorageIPFSAndURL() {
 	assertEquals(s.T(), ranks, "ipfs", -1)
 	assertEquals(s.T(), ranks, "url", -1)
 	assertEquals(s.T(), ranks, "combo", 10)
-	assertEquals(s.T(), ranks, "unknown", 0)
+	assertEquals(s.T(), ranks, "unknown", -1)
 }

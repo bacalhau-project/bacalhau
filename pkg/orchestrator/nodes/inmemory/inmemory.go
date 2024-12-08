@@ -2,14 +2,14 @@ package inmemory
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 // TODO: replace the manual and lazy eviction with a more efficient caching library
@@ -35,7 +35,7 @@ func NewNodeStore(params NodeStoreParams) *NodeStore {
 	}
 }
 
-func (r *NodeStore) Add(ctx context.Context, state models.NodeState) error {
+func (r *NodeStore) Put(ctx context.Context, state models.NodeState) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -55,11 +55,11 @@ func (r *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, e
 	defer r.mu.RUnlock()
 	infoWrapper, ok := r.nodeInfoMap[nodeID]
 	if !ok {
-		return models.NodeState{}, routing.NewErrNodeNotFound(nodeID)
+		return models.NodeState{}, nodes.NewErrNodeNotFound(nodeID)
 	}
 	if time.Now().After(infoWrapper.evictAt) {
 		go r.evict(ctx, infoWrapper)
-		return models.NodeState{}, routing.NewErrNodeNotFound(nodeID)
+		return models.NodeState{}, nodes.NewErrNodeNotFound(nodeID)
 	}
 	return infoWrapper.NodeState, nil
 }
@@ -74,8 +74,7 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 		return state, nil
 	}
 	// return the error if it's not a node not found error
-	var errNotFound routing.ErrNodeNotFound
-	if !errors.As(err, &errNotFound) {
+	if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
 		return models.NodeState{}, err
 	}
 
@@ -95,17 +94,17 @@ func (r *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	}
 
 	if len(nodeIDsWithPrefix) == 0 {
-		return models.NodeState{}, routing.NewErrNodeNotFound(prefix)
+		return models.NodeState{}, nodes.NewErrNodeNotFound(prefix)
 	}
 
 	if len(nodeIDsWithPrefix) > 1 {
-		return models.NodeState{}, routing.NewErrMultipleNodesFound(prefix, nodeIDsWithPrefix)
+		return models.NodeState{}, nodes.NewErrMultipleNodesFound(prefix, nodeIDsWithPrefix)
 	}
 
 	return r.nodeInfoMap[nodeIDsWithPrefix[0]].NodeState, nil
 }
 
-func (r *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {
+func (r *NodeStore) List(ctx context.Context, filters ...nodes.NodeStateFilter) ([]models.NodeState, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -163,4 +162,4 @@ func (r *NodeStore) doDelete(ctx context.Context, nodeID string) error {
 }
 
 // compile time check that we implement the interface
-var _ routing.NodeInfoStore = (*NodeStore)(nil)
+var _ nodes.Store = (*NodeStore)(nil)

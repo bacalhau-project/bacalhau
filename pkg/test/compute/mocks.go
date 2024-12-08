@@ -3,37 +3,37 @@ package compute
 import (
 	"context"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
 type ManagementEndpointMock struct {
-	RegisterHandler        func(ctx context.Context, request messages.RegisterRequest) (*messages.RegisterResponse, error)
-	UpdateInfoHandler      func(ctx context.Context, request messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error)
-	UpdateResourcesHandler func(ctx context.Context, request messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error)
+	RegisterHandler        func(ctx context.Context, request legacy.RegisterRequest) (*legacy.RegisterResponse, error)
+	UpdateInfoHandler      func(ctx context.Context, request legacy.UpdateInfoRequest) (*legacy.UpdateInfoResponse, error)
+	UpdateResourcesHandler func(ctx context.Context, request legacy.UpdateResourcesRequest) (*legacy.UpdateResourcesResponse, error)
 }
 
-func (m ManagementEndpointMock) Register(ctx context.Context, request messages.RegisterRequest) (*messages.RegisterResponse, error) {
+func (m ManagementEndpointMock) Register(ctx context.Context, request legacy.RegisterRequest) (*legacy.RegisterResponse, error) {
 	if m.RegisterHandler != nil {
 		return m.RegisterHandler(ctx, request)
 	}
-	return &messages.RegisterResponse{Accepted: true}, nil
+	return &legacy.RegisterResponse{Accepted: true}, nil
 }
 
-func (m ManagementEndpointMock) UpdateInfo(ctx context.Context, request messages.UpdateInfoRequest) (*messages.UpdateInfoResponse, error) {
+func (m ManagementEndpointMock) UpdateInfo(ctx context.Context, request legacy.UpdateInfoRequest) (*legacy.UpdateInfoResponse, error) {
 	if m.UpdateInfoHandler != nil {
 		return m.UpdateInfoHandler(ctx, request)
 	}
-	return &messages.UpdateInfoResponse{Accepted: true}, nil
+	return &legacy.UpdateInfoResponse{Accepted: true}, nil
 }
 
 func (m ManagementEndpointMock) UpdateResources(
-	ctx context.Context, request messages.UpdateResourcesRequest) (*messages.UpdateResourcesResponse, error) {
+	ctx context.Context, request legacy.UpdateResourcesRequest) (*legacy.UpdateResourcesResponse, error) {
 	if m.UpdateResourcesHandler != nil {
 		return m.UpdateResourcesHandler(ctx, request)
 	}
-	return &messages.UpdateResourcesResponse{}, nil
+	return &legacy.UpdateResourcesResponse{}, nil
 }
 
 // compile time check if ManagementEndpointMock implements ManagementEndpoint
-var _ compute.ManagementEndpoint = ManagementEndpointMock{}
+var _ bprotocol.ManagementEndpoint = ManagementEndpointMock{}
