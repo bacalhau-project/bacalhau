@@ -268,11 +268,6 @@ func (r *Resources) Max(other Resources) *Resources {
 	return newR
 }
 
-// Equal returns true if the resources are equal
-func (r *Resources) Equal(other Resources) bool {
-	return r.CPU == other.CPU && r.Memory == other.Memory && r.Disk == other.Disk && r.GPU == other.GPU
-}
-
 func (r *Resources) IsZero() bool {
 	return r.CPU == 0 && r.Memory == 0 && r.Disk == 0 && r.GPU == 0
 }

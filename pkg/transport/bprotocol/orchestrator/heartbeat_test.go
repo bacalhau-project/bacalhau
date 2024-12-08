@@ -252,7 +252,7 @@ func (s *HeartbeatTestSuite) TestConcurrentHeartbeats() {
 
 			for j := 0; j < numHeartbeatsPerNode; j++ {
 				s.Require().NoError(client.SendHeartbeat(ctx, uint64(j)))
-				time.Sleep(time.Millisecond) // Small delay to simulate real-world scenario
+				s.clock.Add(time.Millisecond)
 			}
 		}(fmt.Sprintf("node-%d", i))
 	}
