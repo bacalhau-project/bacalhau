@@ -923,6 +923,189 @@ func (s *WatcherTestSuite) TestEventStoreConsistency() {
 
 	s.waitAndStop(s.ctx, w, 4)
 }
+func (s *WatcherTestSuite) TestEphemeralWatcherBasic() {
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	// Create ephemeral watcher
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+		watcher.WithEphemeral())
+	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+
+	// Verify events are processed
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+	)
+
+	s.startWaitAndStop(s.ctx, w, 2)
+}
+
+func (s *WatcherTestSuite) TestEphemeralWatcherIgnoresCheckpoint() {
+	// Store some events
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	// Store a checkpoint
+	err := s.mockStore.StoreCheckpoint(s.ctx, "test-watcher", 2)
+	s.Require().NoError(err)
+
+	// Create ephemeral watcher - should start from beginning despite checkpoint
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+		watcher.WithEphemeral(),
+		watcher.WithInitialEventIterator(watcher.TrimHorizonIterator()))
+	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+
+	// Should process all events from the beginning
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(3)).Return(nil).Times(1),
+	)
+
+	s.startWaitAndStop(s.ctx, w, 3)
+}
+
+func (s *WatcherTestSuite) TestEphemeralWatcherCheckpointFails() {
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+		watcher.WithEphemeral())
+	s.Require().NoError(err)
+
+	// Attempt to checkpoint should fail
+	err = w.Checkpoint(s.ctx, 1)
+	s.Require().Error(err)
+	s.Contains(err.Error(), "cannot checkpoint ephemeral watcher")
+
+	// Verify no checkpoint was stored
+	_, err = s.mockStore.GetCheckpoint(s.ctx, "test-watcher")
+	s.Require().Error(err)
+	s.True(errors.Is(err, watcher.ErrCheckpointNotFound))
+}
+
+func (s *WatcherTestSuite) TestEphemeralWatcherSeek() {
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+		{Operation: watcher.OperationDelete, ObjectType: "StringObject", Object: "test3"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+
+		// last event is processed twice after seek
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(3)).Return(nil).Times(2),
+	)
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore, watcher.WithEphemeral())
+	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+	s.startAndWait(s.ctx, w, 3)
+
+	// Seek to offset 2
+	s.Require().NoError(w.SeekToOffset(s.ctx, 2))
+
+	// Verify no checkpoint
+	_, err = s.mockStore.GetCheckpoint(s.ctx, w.ID())
+	s.Require().Error(err)
+
+	s.waitAndStop(s.ctx, w, 3)
+}
+
+func (s *WatcherTestSuite) TestEphemeralWatcherRestart() {
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	w, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+		watcher.WithEphemeral(),
+		watcher.WithInitialEventIterator(watcher.TrimHorizonIterator()))
+	s.Require().NoError(err)
+	s.Require().NoError(w.SetHandler(s.mockHandler))
+
+	// First start and process events
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+	)
+
+	s.startWaitAndStop(s.ctx, w, 2)
+
+	// Restart and verify it starts from beginning again
+	s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1)
+	s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1)
+
+	s.Require().NoError(w.Start(s.ctx))
+	s.waitAndStop(s.ctx, w, 2)
+}
+
+func (s *WatcherTestSuite) TestEphemeralVsNonEphemeralRestart() {
+	events := []watcher.StoreEventRequest{
+		{Operation: watcher.OperationCreate, ObjectType: "StringObject", Object: "test1"},
+		{Operation: watcher.OperationUpdate, ObjectType: "StringObject", Object: "test2"},
+	}
+
+	for _, event := range events {
+		err := s.mockStore.StoreEvent(s.ctx, event)
+		s.Require().NoError(err)
+	}
+
+	// First with regular watcher
+	regularWatcher, err := watcher.New(s.ctx, "test-watcher", s.mockStore)
+	s.Require().NoError(err)
+	s.Require().NoError(regularWatcher.SetHandler(s.mockHandler))
+
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+	)
+
+	s.startAndWait(s.ctx, regularWatcher, 2)
+	err = regularWatcher.Checkpoint(s.ctx, 2)
+	s.Require().NoError(err)
+	regularWatcher.Stop(s.ctx)
+
+	// Then with ephemeral watcher using same ID
+	ephemeralWatcher, err := watcher.New(s.ctx, "test-watcher", s.mockStore,
+		watcher.WithEphemeral())
+	s.Require().NoError(err)
+	s.Require().NoError(ephemeralWatcher.SetHandler(s.mockHandler))
+
+	// Should process all events despite existing checkpoint
+	gomock.InOrder(
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(1)).Return(nil).Times(1),
+		s.mockHandler.EXPECT().HandleEvent(gomock.Any(), watchertest.EventWithSeqNum(2)).Return(nil).Times(1),
+	)
+
+	s.startWaitAndStop(s.ctx, ephemeralWatcher, 2)
+}
 
 func (s *WatcherTestSuite) TestStopStates() {
 
