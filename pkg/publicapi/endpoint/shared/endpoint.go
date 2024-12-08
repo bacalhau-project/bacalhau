@@ -11,22 +11,22 @@ import (
 )
 
 type EndpointParams struct {
-	Router            *echo.Echo
-	NodeID            string
-	NodeStateProvider models.NodeStateProvider
+	Router           *echo.Echo
+	NodeID           string
+	NodeInfoProvider models.NodeInfoProvider
 }
 
 type Endpoint struct {
-	router            *echo.Echo
-	nodeID            string
-	nodeStateProvider models.NodeStateProvider
+	router           *echo.Echo
+	nodeID           string
+	nodeInfoProvider models.NodeInfoProvider
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
-		router:            params.Router,
-		nodeID:            params.NodeID,
-		nodeStateProvider: params.NodeStateProvider,
+		router:           params.Router,
+		nodeID:           params.NodeID,
+		nodeInfoProvider: params.NodeInfoProvider,
 	}
 
 	// JSON group
@@ -73,7 +73,7 @@ func (e *Endpoint) id(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/node_info [get]
 func (e *Endpoint) nodeInfo(c echo.Context) error {
-	return c.JSON(http.StatusOK, e.nodeStateProvider.GetNodeState(c.Request().Context()))
+	return c.JSON(http.StatusOK, e.nodeInfoProvider.GetNodeInfo(c.Request().Context()))
 }
 
 type VersionRequest struct {

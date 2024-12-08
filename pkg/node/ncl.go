@@ -6,14 +6,14 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
 )
 
 // CreateMessageSerDeRegistry creates a new payload registry.
 func CreateMessageSerDeRegistry() (*envelope.Registry, error) {
 	reg := envelope.NewRegistry()
 	err := errors.Join(
-		reg.Register(heartbeat.HeartbeatMessageType, messages.Heartbeat{}),
+		reg.Register(legacy.HeartbeatMessageType, legacy.Heartbeat{}),
 		reg.Register(messages.AskForBidMessageType, messages.AskForBidRequest{}),
 		reg.Register(messages.BidAcceptedMessageType, messages.BidAcceptedRequest{}),
 		reg.Register(messages.BidRejectedMessageType, messages.BidRejectedRequest{}),

@@ -26,11 +26,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	bprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/dispatcher"
 )
 
@@ -60,7 +61,7 @@ func NewComputeNode(
 	apiServer *publicapi.Server,
 	natsConn *nats.Conn,
 	computeCallback compute.Callback,
-	managementProxy compute.ManagementEndpoint,
+	managementProxy bprotocol.ManagementEndpoint,
 	messageRegistry *envelope.Registry,
 ) (*Compute, error) {
 	// Setup dependencies
@@ -218,7 +219,7 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	heartbeatClient, err := heartbeat.NewClient(natsConn, cfg.NodeID, heartbeatPublisher)
+	heartbeatClient, err := bprotocolcompute.NewHeartbeatClient(cfg.NodeID, heartbeatPublisher)
 	if err != nil {
 		return nil, err
 	}

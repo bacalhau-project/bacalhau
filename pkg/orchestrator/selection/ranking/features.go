@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	modelsutils "github.com/bacalhau-project/bacalhau/pkg/models/utils"
-	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
@@ -52,17 +53,9 @@ func NewStoragesNodeRanker() *featureNodeRanker {
 
 // rankNode ranks a single node based on the features the compute node is accepting.
 // - Rank 10: Node is supporting the type(s) the job is requiring.
-// - Rank 0: We don't have information on what the node supports.
 // - Rank -1: Node is not supporting a type the job is requiring.
 func (s *featureNodeRanker) rankNode(ctx context.Context, node models.NodeInfo, requiredKeys []string) (rank int, reason string) {
-	if node.ComputeNodeInfo == nil {
-		// Node supported types are not set, or the node was discovered not
-		// through nodeInfoPublisher (e.g. identity protocol). We will give the
-		// node the benefit of the doubt and ask it to bid.
-		return orchestrator.RankPossible, "supported types are not known"
-	}
-
-	providedKeys := s.getNodeProvidedKeys(*node.ComputeNodeInfo)
+	providedKeys := s.getNodeProvidedKeys(node.ComputeNodeInfo)
 	for _, requiredKey := range requiredKeys {
 		found := false
 		for _, providedKey := range providedKeys {

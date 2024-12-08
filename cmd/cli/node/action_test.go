@@ -41,14 +41,14 @@ func (s *NodeActionSuite) TestListNodes() {
 	nodeID := cells[0]
 
 	// Try to approve, expect failure
-	_, out, err = s.ExecuteTestCobraCommand(
+	_, _, err = s.ExecuteTestCobraCommand(
 		"node",
 		"approve",
 		nodeID,
 	)
-	s.Require().NoError(err)
-	s.Require().Contains(out, "node already approved")
-	s.Require().Contains(out, nodeID)
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "already approved")
+	s.Require().ErrorContains(err, nodeID)
 
 	// Now reject the node
 	_, out, err = s.ExecuteTestCobraCommand(
@@ -65,8 +65,9 @@ func (s *NodeActionSuite) TestListNodes() {
 		"reject",
 		nodeID,
 	)
-	s.Require().NoError(err)
-	s.Require().Contains(out, "node already rejected")
+	s.Require().Error(err)
+	s.Require().ErrorContains(err, "already rejected")
+	s.Require().ErrorContains(err, nodeID)
 
 	// Set it to approve again
 	_, out, err = s.ExecuteTestCobraCommand(
