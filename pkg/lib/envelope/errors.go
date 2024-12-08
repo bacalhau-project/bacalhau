@@ -9,6 +9,21 @@ const (
 	ErrEmptyData  = "data is empty"
 )
 
+// ErrAlreadyRegistered is returned when a type is already registered.
+type ErrAlreadyRegistered struct {
+	Type string
+}
+
+// NewErrAlreadyRegistered creates a new ErrAlreadyRegistered error.
+func NewErrAlreadyRegistered(typeName string) *ErrAlreadyRegistered {
+	return &ErrAlreadyRegistered{Type: typeName}
+}
+
+// Error implements the error interface for ErrAlreadyRegistered.
+func (e ErrAlreadyRegistered) Error() string {
+	return fmt.Sprintf("type %s is already registered", e.Type)
+}
+
 // ErrUnsupportedEncoding is returned when an unsupported encoding is encountered.
 type ErrUnsupportedEncoding struct {
 	Encoding string

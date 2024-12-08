@@ -1,11 +1,8 @@
 package envelope
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-
-	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
 
 // Registry manages the serialization and deserialization of the Payload field
@@ -59,14 +56,16 @@ func NewRegistry() *Registry {
 //
 //	manager.Register("MyCustomType", MyCustomType{})
 func (r *Registry) Register(name string, payload any) error {
-	err := errors.Join(
-		validate.NotBlank(name, "name cannot be blank"),
-		validate.NotNil(payload, "payload cannot be nil"),
-		validate.KeyNotInMap(name, r.nameToType, "name %s already registered", name),
-	)
+	if name == "" {
+		return fmt.Errorf("name cannot be blank")
+	}
 
-	if err != nil {
-		return fmt.Errorf("failed to register payload: %w", err)
+	if payload == nil {
+		return fmt.Errorf("payload cannot be nil")
+	}
+
+	if _, exists := r.nameToType[name]; exists {
+		return NewErrAlreadyRegistered(name)
 	}
 
 	t := reflect.TypeOf(payload)

@@ -26,6 +26,7 @@ type SubscriberTestSuite struct {
 	orderedPublisher *orderedPublisher
 	subscriber       Subscriber
 	messageHandler   *TestMessageHandler
+	notifier         *TestNotifier
 	acks             []*nats.Msg
 }
 
@@ -76,11 +77,13 @@ func (suite *SubscriberTestSuite) SetupTest() {
 	})
 
 	suite.messageHandler = &TestMessageHandler{}
+	suite.notifier = &TestNotifier{}
 	suite.subscriber, err = NewSubscriber(suite.natsConn, SubscriberConfig{
-		Name:              "test",
-		MessageSerializer: suite.serializer,
-		MessageRegistry:   suite.registry,
-		MessageHandler:    suite.messageHandler,
+		Name:               "test",
+		MessageSerializer:  suite.serializer,
+		MessageRegistry:    suite.registry,
+		MessageHandler:     suite.messageHandler,
+		ProcessingNotifier: suite.notifier,
 	})
 	suite.Require().NoError(err)
 }
@@ -105,20 +108,25 @@ func (suite *SubscriberTestSuite) TestSubscribe() {
 
 	suite.Require().Len(suite.messageHandler.messages, 1)
 	suite.Equal("Hello, World!", suite.messageHandler.messages[0].Payload.(*TestPayload).Message)
+
+	// Verify notifier
+	suite.Require().Len(suite.notifier.notifications, 1)
+	suite.Equal("Hello, World!", suite.notifier.notifications[0].Payload.(*TestPayload).Message)
 }
 
 func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
-	filter := func(metadata *envelope.Metadata) bool {
+	filter := func(metadata nats.Header) bool {
 		return metadata.Get("filter") == "true"
 	}
 
 	var err error
 	suite.subscriber, err = NewSubscriber(suite.natsConn, SubscriberConfig{
-		Name:              "test",
-		MessageSerializer: suite.serializer,
-		MessageRegistry:   suite.registry,
-		MessageHandler:    suite.messageHandler,
-		MessageFilter:     MessageFilterFunc(filter),
+		Name:               "test",
+		MessageSerializer:  suite.serializer,
+		MessageRegistry:    suite.registry,
+		MessageHandler:     suite.messageHandler,
+		MessageFilter:      MessageFilterFunc(filter),
+		ProcessingNotifier: suite.notifier,
 	})
 	suite.Require().NoError(err)
 
@@ -144,6 +152,28 @@ func (suite *SubscriberTestSuite) TestSubscribeWithFilter() {
 
 	suite.Require().Len(suite.messageHandler.messages, 1)
 	suite.Equal("Not Filtered", suite.messageHandler.messages[0].Payload.(*TestPayload).Message)
+
+	// Verify notifier
+	suite.Require().Len(suite.notifier.notifications, 1)
+	suite.Equal("Not Filtered", suite.notifier.notifications[0].Payload.(*TestPayload).Message)
+}
+
+func (suite *SubscriberTestSuite) TestSubscribeErrorHandling() {
+	err := suite.subscriber.Subscribe(context.Background(), TestSubject)
+	suite.Require().NoError(err)
+
+	// Set handler to fail
+	suite.messageHandler.WithFailureMessage("handler error")
+
+	// Publish a message
+	event := TestPayload{Message: "Will fail"}
+	err = suite.publisher.Publish(context.Background(), NewPublishRequest(envelope.NewMessage(event)))
+	suite.Require().NoError(err)
+
+	// Wait a bit to ensure no notification is sent
+	time.Sleep(100 * time.Millisecond)
+
+	suite.Len(suite.notifier.notifications, 0, "Should not receive notification when handler fails")
 }
 
 func (suite *SubscriberTestSuite) TestSubscribeWithAck() {
