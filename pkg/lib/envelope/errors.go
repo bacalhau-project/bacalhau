@@ -151,6 +151,7 @@ var (
 	_ error = (*ErrSerializationFailed)(nil)
 	_ error = (*ErrDeserializationFailed)(nil)
 	_ error = (*ErrUnexpectedPayloadType)(nil)
+	_ error = (*ErrAlreadyRegistered)(nil)
 )
 
 // Ensure error types that wrap other errors implement the unwrap interface.

@@ -28,7 +28,7 @@ type responder struct {
 
 	handlers     map[string]RequestHandler
 	subscription *nats.Subscription
-	mu           sync.Mutex
+	mu           sync.RWMutex
 }
 
 // NewResponder creates a new responder instance
@@ -126,11 +126,11 @@ func (r *responder) Close(ctx context.Context) error {
 // 3. Finds the appropriate handler for the message type
 // 4. Processes the request and sends back a response
 // Any errors during processing result in an error response being sent back.
-func (r *responder) handleRequest(msg *nats.Msg) {
+func (r *responder) handleRequest(requestMsg *nats.Msg) {
 	// Check for reply subject
-	if msg.Reply == "" {
+	if requestMsg.Reply == "" {
 		log.Warn().
-			Str("subject", msg.Subject).
+			Str("subject", requestMsg.Subject).
 			Msg("Received message without reply subject")
 		return
 	}
@@ -140,27 +140,27 @@ func (r *responder) handleRequest(msg *nats.Msg) {
 	defer cancel()
 
 	// Deserialize request envelope
-	request, err := r.encoder.decode(msg.Data)
+	request, err := r.encoder.decode(requestMsg.Data)
 	if err != nil {
 		errorResponse := NewErrorResponse(StatusBadRequest, err.Error())
-		r.sendErrorResponse(msg, errorResponse)
+		r.sendErrorResponse(requestMsg, errorResponse)
 		return
 	}
 
 	// Get message type and find handler
 	messageType := request.Metadata.Get(envelope.KeyMessageType)
-	r.mu.Lock()
+	r.mu.RLock()
 	handler, exists := r.handlers[messageType]
-	r.mu.Unlock()
+	r.mu.RUnlock()
 
 	if !exists {
 		log.Warn().
 			Str("messageType", messageType).
-			Str("subject", msg.Subject).
+			Str("subject", requestMsg.Subject).
 			Msg("No handler registered for message type")
 		errorResponse := NewErrorResponse(
 			StatusNotFound, fmt.Errorf("no handler found for message type: %s", messageType).Error())
-		r.sendErrorResponse(msg, errorResponse)
+		r.sendErrorResponse(requestMsg, errorResponse)
 		return
 	}
 
@@ -169,18 +169,18 @@ func (r *responder) handleRequest(msg *nats.Msg) {
 	if err != nil {
 		errorResponse := NewErrorResponse(
 			StatusServerError, fmt.Errorf("failed to process request: %w", err).Error())
-		r.sendErrorResponse(msg, errorResponse)
+		r.sendErrorResponse(requestMsg, errorResponse)
 		return
 	}
 
-	r.sendResponse(msg, response)
+	r.sendResponse(requestMsg, response)
 }
 
 // sendResponse sends a response message back through NATS.
 // It preserves correlation IDs and handles serialization of the response envelope.
-func (r *responder) sendResponse(natsMsg *nats.Msg, response *envelope.Message) {
+func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Message) {
 	// Preserve request correlation ID if present
-	if reqID := natsMsg.Header.Get(KeyMessageID); reqID != "" {
+	if reqID := requestMsg.Header.Get(KeyMessageID); reqID != "" {
 		response.WithMetadataValue(KeyMessageID, reqID)
 	}
 
@@ -188,35 +188,35 @@ func (r *responder) sendResponse(natsMsg *nats.Msg, response *envelope.Message) 
 	data, err := r.encoder.encode(response)
 	if err != nil {
 		errorResponse := NewErrorResponse(StatusServerError, err.Error())
-		r.sendOrLogError(natsMsg, response, errorResponse)
+		r.sendOrLogError(requestMsg, response, errorResponse)
 		return
 	}
 
 	// Send response
-	if err = natsMsg.RespondMsg(&nats.Msg{
+	if err = requestMsg.RespondMsg(&nats.Msg{
 		Data:   data,
 		Header: response.Metadata.ToHeaders(),
 	}); err != nil {
 		log.Error().Err(err).
-			Str("subject", natsMsg.Subject).
+			Str("subject", requestMsg.Subject).
 			Msg("Failed to send response")
 	}
 }
 
 // sendErrorResponse is a convenience method to send an error response.
 // It converts the ErrorResponse to an envelope before sending.
-func (r *responder) sendErrorResponse(msg *nats.Msg, response ErrorResponse) {
-	r.sendResponse(msg, response.ToEnvelope())
+func (r *responder) sendErrorResponse(requestMsg *nats.Msg, response ErrorResponse) {
+	r.sendResponse(requestMsg, response.ToEnvelope())
 }
 
 // sendOrLogError handles errors that occur while sending error responses.
 // If we fail to send an error response, we log it instead of trying again
 // to avoid potential infinite loops.
-func (r *responder) sendOrLogError(msg *nats.Msg, originalResponse *envelope.Message, errorResponse ErrorResponse) {
+func (r *responder) sendOrLogError(requestMsg *nats.Msg, originalResponse *envelope.Message, errorResponse ErrorResponse) {
 	if originalResponse.Metadata.Get(envelope.KeyMessageType) == ErrorMessageType {
-		log.Error().Msgf("failed to send error response to %s: %s", msg.Subject, originalResponse.Payload)
+		log.Error().Msgf("failed to send error response to %s: %s", requestMsg.Subject, originalResponse.Payload)
 	} else {
-		r.sendResponse(msg, originalResponse)
+		r.sendResponse(requestMsg, originalResponse)
 	}
 }
 
