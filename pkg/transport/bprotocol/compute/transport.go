@@ -5,6 +5,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nats-io/nats.go"
@@ -13,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
@@ -63,6 +65,17 @@ type ConnectionManager struct {
 // NewConnectionManager creates a new ConnectionManager with the given configuration.
 // The manager will not be active until Start is called.
 func NewConnectionManager(config Config) (*ConnectionManager, error) {
+	err := errors.Join(
+		validate.NotNil(config.NodeID, "NodeID cannot be empty"),
+		validate.NotNil(config.ClientFactory, "ClientFactory cannot be nil"),
+		validate.NotNil(config.NodeInfoProvider, "NodeInfoProvider cannot be nil"),
+		validate.NotNil(config.ComputeEndpoint, "ComputeEndpoint cannot be nil"),
+		validate.NotNil(config.EventStore, "EventStore cannot be nil"),
+		validate.NotNil(config.HeartbeatConfig, "HeartbeatConfig cannot be nil"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ConnectionManager configuration: %w", err)
+	}
 	return &ConnectionManager{
 		config: config,
 	}, nil

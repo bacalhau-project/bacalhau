@@ -5,6 +5,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nats-io/nats.go"
@@ -12,8 +13,8 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
@@ -30,8 +31,8 @@ type Config struct {
 	// NodeID uniquely identifies this orchestrator node in the cluster
 	NodeID string
 
-	// ClientFactory creates NATS client connections with the appropriate settings
-	ClientFactory natsutil.ClientFactory
+	//NatsConn is the NATS connection to use for communication
+	NatsConn *nats.Conn
 
 	// NodeManager handles node discovery, tracking, and health monitoring
 	NodeManager nodes.Manager
@@ -54,27 +55,35 @@ type Config struct {
 // - Event dispatching to compute nodes
 type ConnectionManager struct {
 	config              Config
-	natsConn            *nats.Conn      // Connection to NATS server
-	nodeManager         nodes.Manager   // Manages compute node lifecycle
-	HeartbeatSubscriber ncl.Subscriber  // Receives heartbeats from compute nodes
-	DispatcherWatcher   watcher.Watcher // Watches and forwards execution events
+	heartbeatSubscriber ncl.Subscriber  // Receives heartbeats from compute nodes
+	dispatcherWatcher   watcher.Watcher // Watches and forwards execution events
 }
 
 // NewConnectionManager creates a new ConnectionManager with the given configuration.
 // The manager will not be active until Start is called.
 func NewConnectionManager(config Config) (*ConnectionManager, error) {
+	err := errors.Join(
+		validate.NotBlank(config.NodeID, "NodeID cannot be empty"),
+		validate.NotNil(config.NatsConn, "NatsConn cannot be nil"),
+		validate.NotNil(config.NodeManager, "NodeManager cannot be nil"),
+		validate.NotNil(config.EventStore, "EventStore cannot be nil"),
+		validate.NotNil(config.ProtocolRouter, "ProtocolRouter cannot be nil"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ConnectionManager configuration: %w", err)
+	}
+
 	return &ConnectionManager{
 		config: config,
 	}, nil
 }
 
 // Start initializes all transport components in the following order:
-// 1. Establishes NATS connection
-// 2. Sets up heartbeat monitoring
-// 3. Initializes management endpoints for compute node registration
-// 4. Creates compute proxy for job distribution
-// 5. Sets up callback handling for compute responses
-// 6. Starts event dispatching
+// 1. Sets up heartbeat monitoring
+// 2. Initializes management endpoints for compute node registration
+// 3. Creates compute proxy for job distribution
+// 4. Sets up callback handling for compute responses
+// 5. Starts event dispatching
 //
 // If any step fails, all initialized components are cleaned up via Stop.
 func (cm *ConnectionManager) Start(ctx context.Context) error {
@@ -85,16 +94,11 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 		}
 	}()
 
-	cm.natsConn, err = cm.config.ClientFactory.CreateClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create NATS client: %s", err)
-	}
-
 	// heartbeat server
-	heartbeatServer := NewServer(cm.nodeManager)
+	heartbeatServer := NewServer(cm.config.NodeManager)
 
 	// ncl heartbeat subscriber
-	cm.HeartbeatSubscriber, err = ncl.NewSubscriber(cm.natsConn, ncl.SubscriberConfig{
+	cm.heartbeatSubscriber, err = ncl.NewSubscriber(cm.config.NatsConn, ncl.SubscriberConfig{
 		Name:            cm.config.NodeID,
 		MessageRegistry: bprotocol.MustCreateMessageRegistry(),
 		MessageHandler:  heartbeatServer,
@@ -102,13 +106,13 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to create heartbeat ncl subscriber")
 	}
-	if err = cm.HeartbeatSubscriber.Subscribe(ctx, bprotocol.OrchestratorHeartbeatSubscription()); err != nil {
+	if err = cm.heartbeatSubscriber.Subscribe(ctx, bprotocol.OrchestratorHeartbeatSubscription()); err != nil {
 		return err
 	}
 
 	// management handler
 	_, err = proxy.NewManagementHandler(proxy.ManagementHandlerParams{
-		Conn:               cm.natsConn,
+		Conn:               cm.config.NatsConn,
 		ManagementEndpoint: heartbeatServer,
 	})
 	if err != nil {
@@ -117,7 +121,7 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 
 	// compute proxy
 	computeProxy, err := proxy.NewComputeProxy(proxy.ComputeProxyParams{
-		Conn: cm.natsConn,
+		Conn: cm.config.NatsConn,
 	})
 	if err != nil {
 		return err
@@ -126,7 +130,7 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 	// setup callback handler
 	_, err = proxy.NewCallbackHandler(proxy.CallbackHandlerParams{
 		Name:     cm.config.NodeID,
-		Conn:     cm.natsConn,
+		Conn:     cm.config.NatsConn,
 		Callback: cm.config.Callback,
 	})
 	if err != nil {
@@ -134,7 +138,7 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 	}
 
 	// setup bprotocol dispatcher watcher
-	cm.DispatcherWatcher, err = watcher.New(ctx, watcherID, cm.config.EventStore,
+	cm.dispatcherWatcher, err = watcher.New(ctx, watcherID, cm.config.EventStore,
 		watcher.WithHandler(watchers.NewBProtocolDispatcher(watchers.BProtocolDispatcherParams{
 			ID:             cm.config.NodeID,
 			ComputeService: computeProxy,
@@ -161,18 +165,13 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 // The order of shutdown is important to prevent message loss:
 // 1. Stop event dispatcher to prevent new messages to compute nodes
 // 2. Stop heartbeat subscriber to prevent false node state updates
-// 3. Close NATS connection
 func (cm *ConnectionManager) Stop(ctx context.Context) {
-	if cm.DispatcherWatcher != nil {
-		cm.DispatcherWatcher.Stop(ctx)
-		cm.DispatcherWatcher = nil
+	if cm.dispatcherWatcher != nil {
+		cm.dispatcherWatcher.Stop(ctx)
+		cm.dispatcherWatcher = nil
 	}
-	if cm.HeartbeatSubscriber != nil {
-		cm.HeartbeatSubscriber.Close(ctx)
-		cm.HeartbeatSubscriber = nil
-	}
-	if cm.natsConn != nil {
-		cm.natsConn.Close()
-		cm.natsConn = nil
+	if cm.heartbeatSubscriber != nil {
+		cm.heartbeatSubscriber.Close(ctx)
+		cm.heartbeatSubscriber = nil
 	}
 }

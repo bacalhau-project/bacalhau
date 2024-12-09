@@ -16,7 +16,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -251,7 +250,7 @@ func NewRequesterNode(
 	// legacy connection manager
 	legacyConnectionManager, err := bprotocolorchestrator.NewConnectionManager(bprotocolorchestrator.Config{
 		NodeID:         nodeID,
-		ClientFactory:  natsutil.ClientFactoryFunc(transportLayer.CreateClient),
+		NatsConn:       natsConn,
 		NodeManager:    nodesManager,
 		EventStore:     jobStore.GetEventStore(),
 		ProtocolRouter: protocolRouter,
