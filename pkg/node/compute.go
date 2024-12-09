@@ -24,7 +24,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/nats"
-	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -54,8 +53,8 @@ func NewComputeNode(
 	ctx context.Context,
 	cfg NodeConfig,
 	apiServer *publicapi.Server,
-	transportLayer *nats_transport.NATSTransport,
-	nodeInfoProvider *models.BaseNodeInfoProvider,
+	clientFactory nats.ClientFactory,
+	nodeInfoProvider models.DecoratorNodeInfoProvider,
 ) (*Compute, error) {
 	// Setup dependencies
 	publishers, err := cfg.DependencyInjector.PublishersFactory.Get(ctx, cfg)
@@ -191,7 +190,7 @@ func NewComputeNode(
 	// legacyConnectionManager
 	legacyConnectionManager, err := bprotocolcompute.NewConnectionManager(bprotocolcompute.Config{
 		NodeID:           cfg.NodeID,
-		ClientFactory:    nats.ClientFactoryFunc(transportLayer.CreateClient),
+		ClientFactory:    clientFactory,
 		NodeInfoProvider: nodeInfoProvider,
 		HeartbeatConfig:  cfg.BacalhauConfig.Compute.Heartbeat,
 		ComputeEndpoint:  baseEndpoint,
@@ -206,7 +205,7 @@ func NewComputeNode(
 	}
 
 	// compute -> orchestrator ncl publisher
-	natsConn, err := transportLayer.CreateClient(ctx)
+	natsConn, err := clientFactory.CreateClient(ctx)
 	if err != nil {
 		return nil, err
 	}

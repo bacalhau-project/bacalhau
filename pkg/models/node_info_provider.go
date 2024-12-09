@@ -61,4 +61,4 @@ func (n *BaseNodeInfoProvider) GetNodeInfo(ctx context.Context) NodeInfo {
 }
 
 // compile-time interface check
-var _ NodeInfoProvider = &BaseNodeInfoProvider{}
+var _ DecoratorNodeInfoProvider = &BaseNodeInfoProvider{}

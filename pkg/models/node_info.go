@@ -49,6 +49,12 @@ type LabelsProvider interface {
 	GetLabels(ctx context.Context) map[string]string
 }
 
+type DecoratorNodeInfoProvider interface {
+	NodeInfoProvider
+	RegisterNodeInfoDecorator(decorator NodeInfoDecorator)
+	RegisterLabelProvider(provider LabelsProvider)
+}
+
 type mergeProvider struct {
 	providers []LabelsProvider
 }
