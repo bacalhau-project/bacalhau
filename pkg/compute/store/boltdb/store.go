@@ -91,7 +91,12 @@ func NewStore(ctx context.Context, dbPath string) (*Store, error) {
 	}
 
 	err = database.Update(func(tx *bolt.Tx) error {
-		buckets := []string{executionsBucket, executionEventsBucket, idxExecutionsByJobBucket, idxExecutionsByStateBucket}
+		buckets := []string{
+			executionsBucket,
+			executionEventsBucket,
+			idxExecutionsByJobBucket,
+			idxExecutionsByStateBucket,
+			sequenceTrackingBucket}
 		for _, b := range buckets {
 			_, err = tx.CreateBucketIfNotExists(strToBytes(b))
 			if err != nil {
@@ -518,6 +523,52 @@ func (s *Store) GetExecutionCount(ctx context.Context, state models.ExecutionSta
 	})
 
 	return count, err
+}
+
+func (s *Store) Checkpoint(ctx context.Context, name string, sequenceNumber uint64) error {
+	if name == "" {
+		return store.NewErrCheckpointNameBlank()
+	}
+	return s.database.Update(func(tx *bolt.Tx) error {
+		b := bucket(tx, sequenceTrackingBucket)
+		if b == nil {
+			return fmt.Errorf("sequence tracking bucket not found")
+		}
+
+		// Store sequence number as bytes
+		err := b.Put(strToBytes(name), uint64ToBytes(sequenceNumber))
+		if err != nil {
+			return fmt.Errorf("store sequence number: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func (s *Store) GetCheckpoint(ctx context.Context, name string) (uint64, error) {
+	if name == "" {
+		return 0, store.NewErrCheckpointNameBlank()
+	}
+	var seq uint64
+	err := s.database.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(strToBytes(sequenceTrackingBucket))
+		if b == nil {
+			return nil // Return 0 if bucket doesn't exist yet
+		}
+
+		data := b.Get(strToBytes(name))
+		if data == nil {
+			return nil // Return 0 if sequence doesn't exist
+		}
+
+		seq = bytesToUint64(data)
+		return nil
+	})
+	if err != nil {
+		return 0, fmt.Errorf("get sequence tracking value: %w", err)
+	}
+
+	return seq, nil
 }
 
 // compile-time check that we implement the interface ExecutionStore

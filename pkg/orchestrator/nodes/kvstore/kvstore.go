@@ -12,14 +12,12 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 const (
 	// BucketNameCurrent is the bucket name for bacalhau version v1.3.1 and beyond.
 	BucketNameCurrent = "node_v1"
-	// BucketNameV0 is the bucket name for bacalhau version v1.3.0 and below.
-	BucketNameV0 = "nodes"
 )
 
 type NodeStoreParams struct {
@@ -43,10 +41,6 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 		return nil, pkgerrors.New("bucket name is required")
 	}
 
-	if err := migrateJetStreamBucket(ctx, js, BucketNameV0, bucketName, migrateNodeInfoToNodeState); err != nil {
-		return nil, err
-	}
-
 	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket: bucketName,
 	})
@@ -60,8 +54,8 @@ func NewNodeStore(ctx context.Context, params NodeStoreParams) (*NodeStore, erro
 	}, nil
 }
 
-// Add adds a node state to the repo.
-func (n *NodeStore) Add(ctx context.Context, state models.NodeState) error {
+// Put adds a node state to the repo.
+func (n *NodeStore) Put(ctx context.Context, state models.NodeState) error {
 	data, err := json.Marshal(state)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal node state adding to node store")
@@ -80,7 +74,7 @@ func (n *NodeStore) Get(ctx context.Context, nodeID string) (models.NodeState, e
 	entry, err := n.kv.Get(ctx, nodeID)
 	if err != nil {
 		if pkgerrors.Is(err, jetstream.ErrKeyNotFound) {
-			return models.NodeState{}, routing.NewErrNodeNotFound(nodeID)
+			return models.NodeState{}, nodes.NewErrNodeNotFound(nodeID)
 		}
 
 		return models.NodeState{}, pkgerrors.Wrap(err, "failed to get node state from node store")
@@ -102,7 +96,7 @@ func (n *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	keys, err := n.kv.Keys(ctx)
 	if err != nil {
 		if pkgerrors.Is(err, jetstream.ErrNoKeysFound) {
-			return models.NodeState{}, routing.NewErrNodeNotFound(prefix)
+			return models.NodeState{}, nodes.NewErrNodeNotFound(prefix)
 		}
 		return models.NodeState{}, pkgerrors.Wrap(err, "failed to get by prefix when listing keys")
 	}
@@ -113,16 +107,16 @@ func (n *NodeStore) GetByPrefix(ctx context.Context, prefix string) (models.Node
 	})
 
 	if len(keys) == 0 {
-		return models.NodeState{}, routing.NewErrNodeNotFound(prefix)
+		return models.NodeState{}, nodes.NewErrNodeNotFound(prefix)
 	} else if len(keys) > 1 {
-		return models.NodeState{}, routing.NewErrMultipleNodesFound(prefix, keys)
+		return models.NodeState{}, nodes.NewErrMultipleNodesFound(prefix, keys)
 	}
 
 	return n.Get(ctx, keys[0])
 }
 
 // List returns a list of nodes
-func (n *NodeStore) List(ctx context.Context, filters ...routing.NodeStateFilter) ([]models.NodeState, error) {
+func (n *NodeStore) List(ctx context.Context, filters ...nodes.NodeStateFilter) ([]models.NodeState, error) {
 	keys, err := n.kv.Keys(ctx)
 	if err != nil {
 		// Return an empty list rather than an error if there are no keys in the bucket
@@ -168,4 +162,4 @@ func (n *NodeStore) Delete(ctx context.Context, nodeID string) error {
 	return nil
 }
 
-var _ routing.NodeInfoStore = (*NodeStore)(nil)
+var _ nodes.Store = (*NodeStore)(nil)

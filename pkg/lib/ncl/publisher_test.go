@@ -4,6 +4,7 @@ package ncl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -77,6 +78,25 @@ func (suite *PublisherTestSuite) publishAndVerify(subject string, req PublishReq
 	suite.Equal(req.Message.Payload, readPayload)
 
 	return readMsg
+}
+
+func (suite *PublisherTestSuite) requestAndVerify(ctx context.Context, request PublishRequest, handler func(ctx context.Context, msg *envelope.Message) (*envelope.Message, error)) (*envelope.Message, error) {
+	// Setup responder
+	responder, err := NewResponder(suite.natsConn, ResponderConfig{
+		Name:              "test-responder",
+		MessageSerializer: suite.serializer,
+		MessageRegistry:   suite.registry,
+		Subject:           TestSubject,
+	})
+	suite.Require().NoError(err)
+	defer responder.Close(context.Background())
+
+	// Add handler for our test payload type
+	err = responder.Listen(context.Background(), TestPayloadType, RequestHandlerFunc(handler))
+	suite.Require().NoError(err)
+
+	// Make the request
+	return suite.publisher.Request(ctx, request)
 }
 
 func (suite *PublisherTestSuite) TestPublish() {
@@ -182,6 +202,101 @@ func (suite *PublisherTestSuite) TestLargePayload() {
 	largeMessage := strings.Repeat("a", 1024*1024) // 1MB message
 	message := envelope.NewMessage(TestPayload{Message: largeMessage})
 	suite.Require().Error(suite.publisher.Publish(context.Background(), PublishRequest{Message: message}), "expected error publishing large message")
+}
+
+func (suite *PublisherTestSuite) TestRequestSuccess() {
+	handler := func(ctx context.Context, msg *envelope.Message) (*envelope.Message, error) {
+		payload, ok := msg.GetPayload(TestPayload{})
+		if !ok {
+			return nil, fmt.Errorf("unexpected payload type: %T", msg.Payload)
+		}
+
+		return envelope.NewMessage(TestPayload{
+			Message: "Response: " + payload.(TestPayload).Message,
+		}), nil
+	}
+
+	request := NewPublishRequest(envelope.NewMessage(TestPayload{Message: "Hello"}))
+	response, err := suite.requestAndVerify(context.Background(), request, handler)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(response)
+
+	// Verify response
+	suite.Equal(TestPayloadType, response.Metadata.Get(envelope.KeyMessageType))
+	payload, ok := response.GetPayload(TestPayload{})
+	suite.True(ok)
+	suite.Equal("Response: Hello", payload.(TestPayload).Message)
+}
+
+func (suite *PublisherTestSuite) TestRequestError() {
+	handler := func(ctx context.Context, msg *envelope.Message) (*envelope.Message, error) {
+		return nil, fmt.Errorf("test error")
+	}
+
+	request := NewPublishRequest(envelope.NewMessage(TestPayload{Message: "Hello"}))
+	response, err := suite.requestAndVerify(context.Background(), request, handler)
+
+	suite.Require().Error(err)
+	suite.Nil(response)
+	suite.Contains(err.Error(), "test error")
+}
+
+func (suite *PublisherTestSuite) TestRequestSlowResponse() {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	handler := func(ctx context.Context, msg *envelope.Message) (*envelope.Message, error) {
+		time.Sleep(200 * time.Millisecond)
+		return envelope.NewMessage(TestPayload{Message: "too late"}), nil
+	}
+
+	request := NewPublishRequest(envelope.NewMessage(TestPayload{Message: "Hello"}))
+	response, err := suite.requestAndVerify(ctx, request, handler)
+
+	suite.Require().Error(err)
+	suite.Nil(response)
+	suite.True(errors.Is(err, context.DeadlineExceeded))
+}
+
+func (suite *PublisherTestSuite) TestRequestNoResponders() {
+	// Send request without any subscribers
+	req := NewPublishRequest(envelope.NewMessage(TestPayload{Message: "Hello"}))
+	response, err := suite.publisher.Request(context.Background(), req)
+	suite.Require().Error(err)
+	suite.True(errors.Is(err, nats.ErrNoResponders))
+	suite.Nil(response)
+}
+
+func (suite *PublisherTestSuite) TestRequestValidation() {
+	testCases := []struct {
+		name    string
+		request PublishRequest
+		errMsg  string
+	}{
+		{
+			name:    "nil message",
+			request: PublishRequest{},
+			errMsg:  "cannot publish nil message",
+		},
+		{
+			name: "both subject and prefix",
+			request: PublishRequest{
+				Message:       envelope.NewMessage(TestPayload{Message: "test"}),
+				Subject:       "test.subject",
+				SubjectPrefix: "test.prefix",
+			},
+			errMsg: "cannot specify both subject and subject prefix",
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			response, err := suite.publisher.Request(context.Background(), tc.request)
+			suite.Require().Error(err)
+			suite.Contains(err.Error(), tc.errMsg)
+			suite.Nil(response)
+		})
+	}
 }
 
 func TestPublisherTestSuite(t *testing.T) {

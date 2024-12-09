@@ -37,12 +37,22 @@ func (e *NodeType) UnmarshalText(text []byte) (err error) {
 	return
 }
 
+type NodeInfoProvider interface {
+	GetNodeInfo(ctx context.Context) NodeInfo
+}
+
 type NodeStateProvider interface {
 	GetNodeState(ctx context.Context) NodeState
 }
 
 type LabelsProvider interface {
 	GetLabels(ctx context.Context) map[string]string
+}
+
+type DecoratorNodeInfoProvider interface {
+	NodeInfoProvider
+	RegisterNodeInfoDecorator(decorator NodeInfoDecorator)
+	RegisterLabelProvider(provider LabelsProvider)
 }
 
 type mergeProvider struct {
@@ -83,7 +93,7 @@ type NodeInfo struct {
 	Labels   map[string]string `json:"Labels"`
 	// SupportedProtocols indicates which communication protocols this node supports
 	SupportedProtocols []Protocol       `json:"SupportedProtocols"`
-	ComputeNodeInfo    *ComputeNodeInfo `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
+	ComputeNodeInfo    ComputeNodeInfo  `json:"ComputeNodeInfo,omitempty" yaml:",omitempty"`
 	BacalhauVersion    BuildVersionInfo `json:"BacalhauVersion"`
 }
 

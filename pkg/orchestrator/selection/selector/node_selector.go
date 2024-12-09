@@ -10,16 +10,17 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
 type NodeSelector struct {
-	discoverer  orchestrator.NodeDiscoverer
+	discoverer  nodes.Lookup
 	ranker      orchestrator.NodeRanker
 	constraints orchestrator.NodeSelectionConstraints
 }
 
 func NewNodeSelector(
-	discoverer orchestrator.NodeDiscoverer,
+	discoverer nodes.Lookup,
 	ranker orchestrator.NodeRanker,
 	constraints orchestrator.NodeSelectionConstraints,
 ) *NodeSelector {
@@ -35,7 +36,7 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
 	}
-	// extract slice of models.NodeInfo from slice of routing.NodeConnectionState
+	// extract slice of models.NodeInfo from slice of models.NodeConnectionState
 	nodeInfos := make([]models.NodeInfo, 0, len(nodeStates))
 	for _, ns := range nodeStates {
 		nodeInfos = append(nodeInfos, ns.Info)
@@ -80,7 +81,7 @@ func (n NodeSelector) rankAndFilterNodes(
 			return false
 		}
 
-		if n.constraints.RequireConnected && nodeState.Connection != models.NodeStates.CONNECTED {
+		if n.constraints.RequireConnected && nodeState.ConnectionState.Status != models.NodeStates.CONNECTED {
 			return false
 		}
 

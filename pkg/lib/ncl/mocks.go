@@ -64,6 +64,44 @@ func (mr *MockMessageHandlerMockRecorder) ShouldProcess(ctx, message interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldProcess", reflect.TypeOf((*MockMessageHandler)(nil).ShouldProcess), ctx, message)
 }
 
+// MockRequestHandler is a mock of RequestHandler interface.
+type MockRequestHandler struct {
+	ctrl     *gomock.Controller
+	recorder *MockRequestHandlerMockRecorder
+}
+
+// MockRequestHandlerMockRecorder is the mock recorder for MockRequestHandler.
+type MockRequestHandlerMockRecorder struct {
+	mock *MockRequestHandler
+}
+
+// NewMockRequestHandler creates a new mock instance.
+func NewMockRequestHandler(ctrl *gomock.Controller) *MockRequestHandler {
+	mock := &MockRequestHandler{ctrl: ctrl}
+	mock.recorder = &MockRequestHandlerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRequestHandler) EXPECT() *MockRequestHandlerMockRecorder {
+	return m.recorder
+}
+
+// HandleRequest mocks base method.
+func (m *MockRequestHandler) HandleRequest(ctx context.Context, message *envelope.Message) (*envelope.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleRequest", ctx, message)
+	ret0, _ := ret[0].(*envelope.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HandleRequest indicates an expected call of HandleRequest.
+func (mr *MockRequestHandlerMockRecorder) HandleRequest(ctx, message interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleRequest", reflect.TypeOf((*MockRequestHandler)(nil).HandleRequest), ctx, message)
+}
+
 // MockMessageFilter is a mock of MessageFilter interface.
 type MockMessageFilter struct {
 	ctrl     *gomock.Controller
@@ -88,7 +126,7 @@ func (m *MockMessageFilter) EXPECT() *MockMessageFilterMockRecorder {
 }
 
 // ShouldFilter mocks base method.
-func (m *MockMessageFilter) ShouldFilter(metadata *envelope.Metadata) bool {
+func (m *MockMessageFilter) ShouldFilter(metadata nats.Header) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShouldFilter", metadata)
 	ret0, _ := ret[0].(bool)
@@ -101,56 +139,39 @@ func (mr *MockMessageFilterMockRecorder) ShouldFilter(metadata interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShouldFilter", reflect.TypeOf((*MockMessageFilter)(nil).ShouldFilter), metadata)
 }
 
-// MockCheckpointer is a mock of Checkpointer interface.
-type MockCheckpointer struct {
+// MockProcessingNotifier is a mock of ProcessingNotifier interface.
+type MockProcessingNotifier struct {
 	ctrl     *gomock.Controller
-	recorder *MockCheckpointerMockRecorder
+	recorder *MockProcessingNotifierMockRecorder
 }
 
-// MockCheckpointerMockRecorder is the mock recorder for MockCheckpointer.
-type MockCheckpointerMockRecorder struct {
-	mock *MockCheckpointer
+// MockProcessingNotifierMockRecorder is the mock recorder for MockProcessingNotifier.
+type MockProcessingNotifierMockRecorder struct {
+	mock *MockProcessingNotifier
 }
 
-// NewMockCheckpointer creates a new mock instance.
-func NewMockCheckpointer(ctrl *gomock.Controller) *MockCheckpointer {
-	mock := &MockCheckpointer{ctrl: ctrl}
-	mock.recorder = &MockCheckpointerMockRecorder{mock}
+// NewMockProcessingNotifier creates a new mock instance.
+func NewMockProcessingNotifier(ctrl *gomock.Controller) *MockProcessingNotifier {
+	mock := &MockProcessingNotifier{ctrl: ctrl}
+	mock.recorder = &MockProcessingNotifierMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockCheckpointer) EXPECT() *MockCheckpointerMockRecorder {
+func (m *MockProcessingNotifier) EXPECT() *MockProcessingNotifierMockRecorder {
 	return m.recorder
 }
 
-// Checkpoint mocks base method.
-func (m *MockCheckpointer) Checkpoint(ctx context.Context, message *envelope.Message) error {
+// OnProcessed mocks base method.
+func (m *MockProcessingNotifier) OnProcessed(ctx context.Context, message *envelope.Message) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Checkpoint", ctx, message)
-	ret0, _ := ret[0].(error)
-	return ret0
+	m.ctrl.Call(m, "OnProcessed", ctx, message)
 }
 
-// Checkpoint indicates an expected call of Checkpoint.
-func (mr *MockCheckpointerMockRecorder) Checkpoint(ctx, message interface{}) *gomock.Call {
+// OnProcessed indicates an expected call of OnProcessed.
+func (mr *MockProcessingNotifierMockRecorder) OnProcessed(ctx, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Checkpoint", reflect.TypeOf((*MockCheckpointer)(nil).Checkpoint), ctx, message)
-}
-
-// GetLastCheckpoint mocks base method.
-func (m *MockCheckpointer) GetLastCheckpoint() (int64, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetLastCheckpoint")
-	ret0, _ := ret[0].(int64)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetLastCheckpoint indicates an expected call of GetLastCheckpoint.
-func (mr *MockCheckpointerMockRecorder) GetLastCheckpoint() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastCheckpoint", reflect.TypeOf((*MockCheckpointer)(nil).GetLastCheckpoint))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OnProcessed", reflect.TypeOf((*MockProcessingNotifier)(nil).OnProcessed), ctx, message)
 }
 
 // MockPublisher is a mock of Publisher interface.
@@ -188,6 +209,21 @@ func (m *MockPublisher) Publish(ctx context.Context, request PublishRequest) err
 func (mr *MockPublisherMockRecorder) Publish(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockPublisher)(nil).Publish), ctx, request)
+}
+
+// Request mocks base method.
+func (m *MockPublisher) Request(ctx context.Context, request PublishRequest) (*envelope.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Request", ctx, request)
+	ret0, _ := ret[0].(*envelope.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Request indicates an expected call of Request.
+func (mr *MockPublisherMockRecorder) Request(ctx, request interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Request", reflect.TypeOf((*MockPublisher)(nil).Request), ctx, request)
 }
 
 // MockOrderedPublisher is a mock of OrderedPublisher interface.
@@ -254,6 +290,21 @@ func (m *MockOrderedPublisher) PublishAsync(ctx context.Context, request Publish
 func (mr *MockOrderedPublisherMockRecorder) PublishAsync(ctx, request interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishAsync", reflect.TypeOf((*MockOrderedPublisher)(nil).PublishAsync), ctx, request)
+}
+
+// Request mocks base method.
+func (m *MockOrderedPublisher) Request(ctx context.Context, request PublishRequest) (*envelope.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Request", ctx, request)
+	ret0, _ := ret[0].(*envelope.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Request indicates an expected call of Request.
+func (mr *MockOrderedPublisherMockRecorder) Request(ctx, request interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Request", reflect.TypeOf((*MockOrderedPublisher)(nil).Request), ctx, request)
 }
 
 // Reset mocks base method.
@@ -415,4 +466,55 @@ func (mr *MockSubscriberMockRecorder) Subscribe(ctx interface{}, subjects ...int
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx}, subjects...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockSubscriber)(nil).Subscribe), varargs...)
+}
+
+// MockResponder is a mock of Responder interface.
+type MockResponder struct {
+	ctrl     *gomock.Controller
+	recorder *MockResponderMockRecorder
+}
+
+// MockResponderMockRecorder is the mock recorder for MockResponder.
+type MockResponderMockRecorder struct {
+	mock *MockResponder
+}
+
+// NewMockResponder creates a new mock instance.
+func NewMockResponder(ctrl *gomock.Controller) *MockResponder {
+	mock := &MockResponder{ctrl: ctrl}
+	mock.recorder = &MockResponderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockResponder) EXPECT() *MockResponderMockRecorder {
+	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockResponder) Close(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockResponderMockRecorder) Close(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockResponder)(nil).Close), ctx)
+}
+
+// Listen mocks base method.
+func (m *MockResponder) Listen(ctx context.Context, messageType string, handler RequestHandler) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Listen", ctx, messageType, handler)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Listen indicates an expected call of Listen.
+func (mr *MockResponderMockRecorder) Listen(ctx, messageType, handler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Listen", reflect.TypeOf((*MockResponder)(nil).Listen), ctx, messageType, handler)
 }

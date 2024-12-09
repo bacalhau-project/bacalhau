@@ -1,14 +1,14 @@
 package ncl
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
+	"github.com/nats-io/nats.go"
 )
 
 // NoopMessageFilter is a no-op message filter
 type NoopMessageFilter struct{}
 
 // ShouldFilter always returns false
-func (n NoopMessageFilter) ShouldFilter(_ *envelope.Metadata) bool {
+func (n NoopMessageFilter) ShouldFilter(_ nats.Header) bool {
 	return false
 }
 

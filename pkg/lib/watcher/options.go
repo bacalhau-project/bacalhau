@@ -29,6 +29,7 @@ type watchOptions struct {
 	maxRetries           int
 	retryStrategy        RetryStrategy
 	autoStart            bool
+	ephemeral            bool // whether the watcher is ephemeral (doesn't persist checkpoints)
 }
 
 // validate checks all options for validity
@@ -56,6 +57,7 @@ func defaultWatchOptions() *watchOptions {
 		maxBackoff:           3 * time.Minute,
 		maxRetries:           mathgo.MaxInt, // infinite retries
 		retryStrategy:        RetryStrategyBlock,
+		ephemeral:            false,
 	}
 }
 
@@ -70,6 +72,13 @@ func WithAutoStart() WatchOption {
 func WithInitialEventIterator(iterator EventIterator) WatchOption {
 	return func(o *watchOptions) {
 		o.initialEventIterator = iterator
+	}
+}
+
+// WithEphemeral sets the watcher to be ephemeral (non-checkpointing)
+func WithEphemeral() WatchOption {
+	return func(o *watchOptions) {
+		o.ephemeral = true
 	}
 }
 

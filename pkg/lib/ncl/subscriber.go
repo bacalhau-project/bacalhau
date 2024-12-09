@@ -14,8 +14,9 @@ import (
 
 // subscriber handles message consumption
 type subscriber struct {
-	nc     *nats.Conn
-	config SubscriberConfig
+	nc      *nats.Conn
+	config  SubscriberConfig
+	encoder *encoder
 
 	subscriptions       []*nats.Subscription
 	consecutiveFailures int
@@ -26,9 +27,19 @@ type subscriber struct {
 func NewSubscriber(nc *nats.Conn, config SubscriberConfig) (Subscriber, error) {
 	config.setDefaults()
 
+	enc, err := newEncoder(encoderConfig{
+		source:            config.Name,
+		messageSerializer: config.MessageSerializer,
+		messageRegistry:   config.MessageRegistry,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	s := &subscriber{
-		nc:     nc,
-		config: config,
+		nc:      nc,
+		config:  config,
+		encoder: enc,
 	}
 
 	// Validate the subscriber
@@ -63,7 +74,7 @@ func (s *subscriber) Subscribe(ctx context.Context, subjects ...string) error {
 
 // messageHandler is the callback function for message processing
 func (s *subscriber) handleNatsMessage(m *nats.Msg) {
-	if err := s.processMessage(m.Data); err != nil {
+	if err := s.processMessage(m); err != nil {
 		log.Error().Err(err).Msg("failed to process message")
 
 		s.consecutiveFailures += 1
@@ -80,24 +91,19 @@ func (s *subscriber) handleNatsMessage(m *nats.Msg) {
 	}
 }
 
-func (s *subscriber) processMessage(data []byte) error {
+func (s *subscriber) processMessage(m *nats.Msg) error {
 	// TODO: interrupt processing if subscriber is closed
 	ctx, cancel := context.WithTimeout(context.Background(), s.config.ProcessingTimeout)
 	defer cancel()
 
 	// Deserialize message envelope
-	rMsg, err := s.config.MessageSerializer.Deserialize(data)
-	if err != nil {
-		return fmt.Errorf("failed to deserialize message envelope: %w", err)
-	}
-
 	// Apply filter
-	if s.config.MessageFilter.ShouldFilter(rMsg.Metadata) {
+	if s.config.MessageFilter.ShouldFilter(m.Header) {
 		return nil
 	}
 
 	// Deserialize payload
-	message, err := s.config.MessageRegistry.Deserialize(rMsg)
+	message, err := s.encoder.decode(m.Data)
 	if err != nil {
 		return fmt.Errorf("failed to deserialize message payload: %w", err)
 	}
@@ -109,11 +115,8 @@ func (s *subscriber) processMessage(data []byte) error {
 		}
 	}
 
-	// Checkpoint
-	if err = s.config.Checkpointer.Checkpoint(ctx, message); err != nil {
-		// continue even if checkpoint fails
-		log.Warn().Err(err).Msg("failed to checkpoint message")
-	}
+	// Notify successful processing
+	s.config.ProcessingNotifier.OnProcessed(ctx, message)
 
 	return nil
 }

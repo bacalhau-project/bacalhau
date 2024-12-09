@@ -8,24 +8,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
-	"github.com/bacalhau-project/bacalhau/pkg/version"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
 type ManagementClientParams struct {
-	NodeID                   string
-	LabelsProvider           models.LabelsProvider
-	ManagementProxy          ManagementEndpoint
-	NodeInfoDecorator        models.NodeInfoDecorator
-	AvailableCapacityTracker capacity.Tracker
-	QueueUsageTracker        capacity.UsageTracker
-	RegistrationFilePath     string
-	HeartbeatClient          heartbeat.Client
-	HeartbeatConfig          types.Heartbeat
+	NodeInfoProvider models.NodeInfoProvider
+	ManagementProxy  bprotocol.ManagementEndpoint
+	HeartbeatClient  *HeartbeatClient
+	HeartbeatConfig  types.Heartbeat
 }
 
 // ManagementClient is used to call management functions with
@@ -33,45 +26,21 @@ type ManagementClientParams struct {
 // it will periodically send an update to the requester node with
 // the latest node info for this node.
 type ManagementClient struct {
-	done                     chan struct{}
-	labelsProvider           models.LabelsProvider
-	managementProxy          ManagementEndpoint
-	nodeID                   string
-	nodeInfoDecorator        models.NodeInfoDecorator
-	availableCapacityTracker capacity.Tracker
-	queueUsageTracker        capacity.UsageTracker
-	registrationFile         *RegistrationFile
-	heartbeatClient          heartbeat.Client
-	heartbeatConfig          types.Heartbeat
+	nodeInfoProvider models.NodeInfoProvider
+	done             chan struct{}
+	managementProxy  bprotocol.ManagementEndpoint
+	heartbeatClient  *HeartbeatClient
+	heartbeatConfig  types.Heartbeat
 }
 
 func NewManagementClient(params *ManagementClientParams) *ManagementClient {
 	return &ManagementClient{
-		done:                     make(chan struct{}, 1),
-		labelsProvider:           params.LabelsProvider,
-		managementProxy:          params.ManagementProxy,
-		nodeID:                   params.NodeID,
-		nodeInfoDecorator:        params.NodeInfoDecorator,
-		registrationFile:         NewRegistrationFile(params.RegistrationFilePath),
-		availableCapacityTracker: params.AvailableCapacityTracker,
-		queueUsageTracker:        params.QueueUsageTracker,
-		heartbeatClient:          params.HeartbeatClient,
-		heartbeatConfig:          params.HeartbeatConfig,
+		done:             make(chan struct{}, 1),
+		nodeInfoProvider: params.NodeInfoProvider,
+		managementProxy:  params.ManagementProxy,
+		heartbeatClient:  params.HeartbeatClient,
+		heartbeatConfig:  params.HeartbeatConfig,
 	}
-}
-
-func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
-	ni := m.nodeInfoDecorator.DecorateNodeInfo(ctx, models.NodeInfo{
-		NodeID:          m.nodeID,
-		NodeType:        models.NodeTypeCompute,
-		BacalhauVersion: *version.Get(),
-		Labels:          m.labelsProvider.GetLabels(ctx),
-		SupportedProtocols: []models.Protocol{
-			models.ProtocolBProtocolV2,
-			models.ProtocolNCLV1,
-		},
-	})
-	return ni
 }
 
 // RegisterNode sends a registration request to the requester node. If we successfully
@@ -80,13 +49,8 @@ func (m *ManagementClient) getNodeInfo(ctx context.Context) models.NodeInfo {
 // attempt to register again, expecting the requester node to gracefully handle any
 // previous registrations.
 func (m *ManagementClient) RegisterNode(ctx context.Context) error {
-	if m.registrationFile.Exists() {
-		log.Ctx(ctx).Debug().Msg("not registering with requester, already registered")
-		return nil
-	}
-
-	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.Register(ctx, messages.RegisterRequest{
+	nodeInfo := m.nodeInfoProvider.GetNodeInfo(ctx)
+	response, err := m.managementProxy.Register(ctx, legacy.RegisterRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -94,9 +58,6 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	}
 
 	if response.Accepted {
-		if err := m.registrationFile.Set(); err != nil {
-			return errors.Wrap(err, "failed to record local registration status")
-		}
 		log.Ctx(ctx).Debug().Msg("register request accepted")
 	} else {
 		// Might be an error, or might be rejected because it is in a pending
@@ -113,8 +74,8 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 	// by doing so we will get frequent errors that the node is not
 	// registered.
 
-	nodeInfo := m.getNodeInfo(ctx)
-	response, err := m.managementProxy.UpdateInfo(ctx, messages.UpdateInfoRequest{
+	nodeInfo := m.nodeInfoProvider.GetNodeInfo(ctx)
+	response, err := m.managementProxy.UpdateInfo(ctx, legacy.UpdateInfoRequest{
 		Info: nodeInfo,
 	})
 	if err != nil {
@@ -130,10 +91,11 @@ func (m *ManagementClient) deliverInfo(ctx context.Context) {
 }
 
 func (m *ManagementClient) updateResources(ctx context.Context) {
-	request := messages.UpdateResourcesRequest{
-		NodeID:            m.nodeID,
-		AvailableCapacity: m.availableCapacityTracker.GetAvailableCapacity(ctx),
-		QueueUsedCapacity: m.queueUsageTracker.GetUsedCapacity(ctx),
+	nodeInfo := m.nodeInfoProvider.GetNodeInfo(ctx)
+	request := legacy.UpdateResourcesRequest{
+		NodeID:            nodeInfo.ID(),
+		AvailableCapacity: nodeInfo.ComputeNodeInfo.AvailableCapacity,
+		QueueUsedCapacity: nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
 	}
 	log.Ctx(ctx).Trace().Msgf("Sending updated resources: %+v", request)
 

@@ -9,20 +9,20 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
-	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 )
 
 type ManagementHandlerParams struct {
 	Conn               *nats.Conn
-	ManagementEndpoint compute.ManagementEndpoint
+	ManagementEndpoint bprotocol.ManagementEndpoint
 }
 
-// Management handles NATS messages for cluster management
+// Management handles NATS legacy for cluster management
 type ManagementHandler struct {
 	conn     *nats.Conn
-	endpoint compute.ManagementEndpoint
+	endpoint bprotocol.ManagementEndpoint
 }
 
 func NewManagementHandler(params ManagementHandlerParams) (*ManagementHandler, error) {
@@ -43,7 +43,7 @@ func NewManagementHandler(params ManagementHandlerParams) (*ManagementHandler, e
 	return handler, nil
 }
 
-// handle handles incoming NATS messages.
+// handle handles incoming NATS legacy.
 func (h *ManagementHandler) handle(msg *nats.Msg) {
 	ctx := context.Background()
 
@@ -79,8 +79,8 @@ func (h *ManagementHandler) handle(msg *nats.Msg) {
 	}
 }
 
-func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*messages.RegisterResponse, error) {
-	request := new(messages.RegisterRequest)
+func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.Msg) (*legacy.RegisterResponse, error) {
+	request := new(legacy.RegisterRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
@@ -90,8 +90,8 @@ func (h *ManagementHandler) processRegistration(ctx context.Context, msg *nats.M
 	return h.endpoint.Register(ctx, *request)
 }
 
-func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*messages.UpdateInfoResponse, error) {
-	request := new(messages.UpdateInfoRequest)
+func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg) (*legacy.UpdateInfoResponse, error) {
+	request := new(legacy.UpdateInfoRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)
@@ -101,8 +101,8 @@ func (h *ManagementHandler) processUpdateInfo(ctx context.Context, msg *nats.Msg
 	return h.endpoint.UpdateInfo(ctx, *request)
 }
 
-func (h *ManagementHandler) processUpdateResources(ctx context.Context, msg *nats.Msg) (*messages.UpdateResourcesResponse, error) {
-	request := new(messages.UpdateResourcesRequest)
+func (h *ManagementHandler) processUpdateResources(ctx context.Context, msg *nats.Msg) (*legacy.UpdateResourcesResponse, error) {
+	request := new(legacy.UpdateResourcesRequest)
 	err := json.Unmarshal(msg.Data, request)
 	if err != nil {
 		log.Ctx(ctx).Error().Msgf("error decoding %s: %s", reflect.TypeOf(request), err)

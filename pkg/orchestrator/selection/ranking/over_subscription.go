@@ -39,7 +39,7 @@ func (s *OverSubscriptionNodeRanker) RankNodes(
 		var rank int
 		var reason string
 
-		if node.ComputeNodeInfo == nil || node.ComputeNodeInfo.MaxCapacity.IsZero() {
+		if node.ComputeNodeInfo.MaxCapacity.IsZero() {
 			rank = orchestrator.RankUnsuitable
 			reason = "node queue usage is unknown"
 		} else {

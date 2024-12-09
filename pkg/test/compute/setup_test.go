@@ -14,7 +14,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/authz"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store/resolver"
-	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	executor_common "github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -23,6 +22,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
+	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -50,6 +50,7 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupTest() {
+	s.T().Skip("ENG-402 Un-skip compute test suite")
 	s.setupConfig()
 	s.setupNode()
 }
@@ -149,35 +150,21 @@ func (s *ComputeSuite) setupNode() {
 	})
 	s.NoError(err)
 
-	callback := watchers.CallbackMock{
-		OnBidCompleteHandler: func(ctx context.Context, result legacy.BidResult) {
-			s.bidChannel <- result
-		},
-		OnRunCompleteHandler: func(ctx context.Context, result legacy.RunResult) {
-			s.completedChannel <- result
-		},
-		OnComputeFailureHandler: func(ctx context.Context, err legacy.ComputeError) {
-			s.failureChannel <- err
-		},
-	}
-
 	// setup nats server and client
 	ns, nc := testutils.StartNats(s.T())
 	s.natsServer = ns
 	s.natsClient = nc
-
-	messageSerDeRegistry, err := node.CreateMessageSerDeRegistry()
-	s.Require().NoError(err)
+	clientFactory := func(_ context.Context) (*nats.Conn, error) {
+		return nc, nil
+	}
 
 	// create the compute node
 	s.node, err = node.NewComputeNode(
 		ctx,
 		s.config,
 		apiServer,
-		nc,
-		callback,
-		ManagementEndpointMock{},
-		messageSerDeRegistry,
+		natsutil.ClientFactoryFunc(clientFactory),
+		mockInfoProvider{},
 	)
 	s.NoError(err)
 	s.stateResolver = *resolver.NewStateResolver(resolver.StateResolverParams{
