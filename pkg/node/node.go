@@ -138,10 +138,6 @@ func NewNode(
 	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
-	messageSerDeRegistry, err := CreateMessageSerDeRegistry()
-	if err != nil {
-		return nil, err
-	}
 	var requesterNode *Requester
 	var computeNode *Compute
 
@@ -161,9 +157,6 @@ func NewNode(
 			cfg,
 			apiServer,
 			transportLayer,
-			transportLayer.ComputeProxy(),
-			transportLayer.LogstreamServer(),
-			messageSerDeRegistry,
 			metadataStore,
 		)
 		if err != nil {
@@ -179,21 +172,9 @@ func NewNode(
 			ctx,
 			cfg,
 			apiServer,
-			transportLayer.Client(),
-			transportLayer.CallbackProxy(),
-			transportLayer.ManagementProxy(),
-			messageSerDeRegistry,
+			transportLayer,
+			nodeInfoProvider,
 		)
-		if err != nil {
-			return nil, err
-		}
-
-		err = transportLayer.RegisterLogstreamServer(ctx, computeNode.LogstreamServer)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Failed to register LogstreamServer")
-			return nil, fmt.Errorf("failed to register LogstreamServer: %w", err)
-		}
-		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
 		if err != nil {
 			return nil, err
 		}
