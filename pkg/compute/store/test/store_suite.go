@@ -251,6 +251,16 @@ func (s *StoreSuite) TestCheckpointWithClosedStore() {
 	s.Error(err)
 }
 
+func (s *StoreSuite) TestGetCheckpointBlankName() {
+	_, err := s.executionStore.GetCheckpoint(s.ctx, "")
+	s.ErrorAs(err, &store.ErrCheckpointNameBlank{})
+}
+
+func (s *StoreSuite) TestCheckpointBlankName() {
+	err := s.executionStore.Checkpoint(s.ctx, "", 42)
+	s.ErrorAs(err, &store.ErrCheckpointNameBlank{})
+}
+
 func (s *StoreSuite) verifyWatcherExecutionEvent(event watcher.Event,
 	expectedOperation watcher.Operation,
 	execution *models.Execution,

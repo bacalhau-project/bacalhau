@@ -527,9 +527,8 @@ func (s *Store) GetExecutionCount(ctx context.Context, state models.ExecutionSta
 
 func (s *Store) Checkpoint(ctx context.Context, name string, sequenceNumber uint64) error {
 	if name == "" {
-		return fmt.Errorf("checkpoint name cannot be empty")
+		return store.NewErrCheckpointNameBlank()
 	}
-
 	return s.database.Update(func(tx *bolt.Tx) error {
 		b := bucket(tx, sequenceTrackingBucket)
 		if b == nil {
@@ -547,6 +546,9 @@ func (s *Store) Checkpoint(ctx context.Context, name string, sequenceNumber uint
 }
 
 func (s *Store) GetCheckpoint(ctx context.Context, name string) (uint64, error) {
+	if name == "" {
+		return 0, store.NewErrCheckpointNameBlank()
+	}
 	var seq uint64
 	err := s.database.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(strToBytes(sequenceTrackingBucket))
