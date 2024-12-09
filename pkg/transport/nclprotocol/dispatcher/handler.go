@@ -8,16 +8,16 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
 type messageHandler struct {
-	creator   transport.MessageCreator
+	creator   nclprotocol.MessageCreator
 	publisher ncl.OrderedPublisher
 	state     *dispatcherState
 }
 
-func newMessageHandler(creator transport.MessageCreator, publisher ncl.OrderedPublisher, state *dispatcherState) *messageHandler {
+func newMessageHandler(creator nclprotocol.MessageCreator, publisher ncl.OrderedPublisher, state *dispatcherState) *messageHandler {
 	return &messageHandler{
 		creator:   creator,
 		publisher: publisher,

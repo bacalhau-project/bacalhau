@@ -8,7 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
 type NCLMessageCreator struct {
@@ -67,4 +67,4 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 }
 
 // compile-time check that NCLMessageCreator implements dispatcher.MessageCreator
-var _ transport.MessageCreator = &NCLMessageCreator{}
+var _ nclprotocol.MessageCreator = &NCLMessageCreator{}

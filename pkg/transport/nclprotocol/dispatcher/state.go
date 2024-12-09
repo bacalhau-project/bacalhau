@@ -55,7 +55,7 @@ func (s *dispatcherState) getCheckpointSeqNum() uint64 {
 		checkpointTarget = s.lastAckedSeqNum
 	}
 
-	log.Debug().Uint64("lastCheckpoint", s.lastCheckpoint).
+	log.Trace().Uint64("lastCheckpoint", s.lastCheckpoint).
 		Uint64("checkpointTarget", checkpointTarget).
 		Uint64("lastObserved", s.lastObservedSeq).
 		Uint64("lastAcked", s.lastAckedSeqNum).

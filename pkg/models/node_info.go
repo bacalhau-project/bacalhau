@@ -107,6 +107,12 @@ func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
 }
 
+// HasNodeInfoChanged returns true if the node info has changed compared to the previous call
+// TODO: implement this function
+func HasNodeInfoChanged(prev, current NodeInfo) bool {
+	return false
+}
+
 // ComputeNodeInfo contains metadata about the current state and abilities of a compute node. Compute Nodes share
 // this state with Requester nodes by including it in the NodeInfo they share across the network.
 type ComputeNodeInfo struct {
