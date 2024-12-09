@@ -2,67 +2,134 @@
 
 ## Overview
 
-The NCL (NATS Client Library) is an internal library for Bacalhau, designed to provide reliable, scalable, and efficient communication between orchestrator and compute nodes. It leverages NATS for messaging and implements an event-driven architecture with support for asynchronous communication and granular event logging.
+The NCL (NATS Client Library) is an internal library for Bacalhau, designed to provide reliable, scalable, and efficient communication between orchestrator and compute nodes. It leverages NATS for messaging and implements an event-driven architecture with support for both publish-subscribe and request-response patterns.
 
 ## Key Components
 
-1. **Publisher**: Handles asynchronous message publishing
-2. **Subscriber**: Manages message consumption and processing
-3. **MessageHandler**: Interface for processing received messages
-4. **MessageFilter**: Interface for filtering incoming messages
-5. **Checkpointer**: Interface for managing checkpoints in message processing
+1. **Publisher**: Handles all message delivery patterns
+   - Synchronous publishing with delivery guarantees
+   - Request-response communication
+   - Optional message ordering and delivery tracking
+   - Configurable subjects and message routing
+
+2. **Subscriber**: Manages message consumption
+   - Subject-based subscription management
+   - Message filtering capabilities
+   - Automatic acknowledgments and retries
+   - Processing notifications
+   - Backoff strategies for failures
+
+3. **Responder**: Handles request-response pattern
+   - Type-based request routing
+   - Handler registration
+   - Automatic error responses
+   - Request timeouts
+
+4. **Encoder**: Manages message serialization
+   - Consistent message encoding/decoding
+   - Metadata enrichment
+   - Error handling
+   - Type registration
 
 ## Technical Details
 
 ### Message Flow
 
-1. **Publishing**:
-   - The publisher accepts a message through its `Publish` method
-   - Message is serialized using the [envelope](https://github.com/bacalhau-project/bacalhau/pkg/lib/envelope) library
-   - The serialized message is published to NATS using the configured subject
+1. **Publishing and Requesting**:
+   - Messages are encoded using the encoder
+   - Messages are published to configured subjects
+   - Optional request-response with reply subjects
+   - OrderedPublisher ensures delivery ordering
 
 2. **Subscribing**:
-   - The subscriber sets up a NATS subscription for specified subjects
-   - When a message is received, it's deserialized using the envelope library
-   - The message filter is applied to determine if it should be processed
-   - Filtered messages are passed to configured MessageHandlers
+   - Subscribers set up NATS subscriptions
+   - Messages are decoded using the encoder
+   - Filters determine message processing
+   - Handlers process valid messages
+   - Success/failure notifications are sent
+   - Automatic ack/nack with backoff
 
+### Component Interfaces
 
-### Publisher
-
-The `publisher` struct handles message publishing. It supports:
-
-- Asynchronous publishing
-- Configurable destination subjects/prefixes
-- Message retries and timeout handling
-- Error handling and recovery
-
-Key method:
+#### Publisher
 ```go
-Publish(ctx context.Context, message *Message) error
+type Publisher interface {
+    // Fire-and-forget publishing
+    Publish(ctx context.Context, request PublishRequest) error
+    
+    // Request-response pattern
+    Request(ctx context.Context, request PublishRequest) (*envelope.Message, error)
+}
 ```
 
-### Subscriber
-
-The `subscriber` struct manages message consumption. Key features:
-
-* NATS subscription management
-* Message filtering
-* Handler routing
-* Checkpoint management
-* Graceful shutdown
-
-Key methods:
+#### OrderedPublisher
 ```go
-Subscribe(subjects ...string) error
-Close(ctx context.Context) error
+type OrderedPublisher interface {
+    Publisher
+    PublishAsync(ctx context.Context, request PublishRequest) (PubFuture, error)
+    Reset(ctx context.Context)
+    Close(ctx context.Context) error
+}
+```
+
+#### Subscriber
+```go
+type Subscriber interface {
+    Subscribe(ctx context.Context, subjects ...string) error
+    Close(ctx context.Context) error
+}
+```
+
+#### Responder
+```go
+type Responder interface {
+    Listen(ctx context.Context, messageType string, handler RequestHandler) error
+    Close(ctx context.Context) error
+}
+```
+
+### Example Usage
+
+```go
+// Create a publisher for both publishing and requests
+publisher, _ := NewPublisher(nc, PublisherConfig{
+    Name:            "compute-node",
+    MessageRegistry: registry,
+})
+
+// Publish a message
+err := publisher.Publish(ctx, NewPublishRequest(message))
+
+// Make a request
+response, err := publisher.Request(ctx, NewPublishRequest(request))
+
+// Create a responder for handling requests
+responder, _ := NewResponder(nc, ResponderConfig{
+    Name:     "orchestrator",
+    Subject:  "requests",
+})
+
+// Register request handlers
+err = responder.Listen(ctx, "JobRequest", handler)
+
+// Create a subscriber for message consumption
+subscriber, _ := NewSubscriber(nc, SubscriberConfig{
+    Name:           "worker",
+    MessageHandler: handler,
+})
+
+// Subscribe to subjects
+err = subscriber.Subscribe(ctx, "updates.>")
 ```
 
 ## Usage Within Bacalhau
 
-This library is designed to be used internally within the Bacalhau project. It should be integrated into the orchestrator and compute node components to handle all inter-node communication.
+This library is designed to be used internally within the Bacalhau project. It integrates into the orchestrator and compute node components to handle all inter-node communication.
 
 Example integration points:
 1. Job assignment from orchestrator to compute nodes
 2. Status updates from compute nodes to orchestrator
 3. Heartbeat messages for health monitoring
+4. Compute node registration and discovery
+
+Each component type (Publisher, Subscriber, Responder) handles specific communication patterns while sharing the same underlying message encoding and metadata handling through the encoder.

@@ -28,9 +28,9 @@ type SubscriberConfig struct {
 	// Optional: defaults to NoopMessageFilter which processes all messages
 	MessageFilter MessageFilter
 
-	// Checkpointer tracks processed message positions
-	// Optional: defaults to NoopCheckpointer
-	Checkpointer Checkpointer
+	// ProcessingNotifier is notified when messages are successfully processed
+	// Optional: defaults to NoopNotifier
+	ProcessingNotifier ProcessingNotifier
 
 	// ProcessingTimeout is the maximum time allowed for processing a message
 	// Optional: defaults to 5 seconds
@@ -49,10 +49,10 @@ const (
 
 func DefaultSubscriberConfig() SubscriberConfig {
 	return SubscriberConfig{
-		MessageSerializer: envelope.NewSerializer(),
-		MessageFilter:     &NoopMessageFilter{},
-		Checkpointer:      &NoopCheckpointer{},
-		ProcessingTimeout: DefaultProcessingTimeout,
+		MessageSerializer:  envelope.NewSerializer(),
+		MessageFilter:      &NoopMessageFilter{},
+		ProcessingNotifier: &NoopNotifier{},
+		ProcessingTimeout:  DefaultProcessingTimeout,
 		Backoff: backoff.NewExponential(
 			DefaultBackoffInitialDelay,
 			DefaultBackoffMaximumDelay,
@@ -68,8 +68,8 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.MessageFilter == nil {
 		c.MessageFilter = defaults.MessageFilter
 	}
-	if c.Checkpointer == nil {
-		c.Checkpointer = defaults.Checkpointer
+	if c.ProcessingNotifier == nil {
+		c.ProcessingNotifier = defaults.ProcessingNotifier
 	}
 	if c.ProcessingTimeout == 0 {
 		c.ProcessingTimeout = defaults.ProcessingTimeout
@@ -86,7 +86,7 @@ func (c *SubscriberConfig) Validate() error {
 		validate.NotNil(c.MessageRegistry, "message registry cannot be nil"),
 		validate.NotNil(c.MessageHandler, "message handler cannot be nil"),
 		validate.NotNil(c.MessageFilter, "message filter cannot be nil"),
-		validate.NotNil(c.Checkpointer, "checkpointer cannot be nil"),
+		validate.NotNil(c.ProcessingNotifier, "processing notifier cannot be nil"),
 		validate.IsGreaterThanZero(c.ProcessingTimeout, "processing timeout must be positive"),
 		validate.NotNil(c.Backoff, "backoff cannot be nil"),
 	)

@@ -44,11 +44,13 @@ type pendingMsg struct {
 func NewOrderedPublisher(nc *nats.Conn, config OrderedPublisherConfig) (OrderedPublisher, error) {
 	config.setDefaults()
 
+	parentPublisher, err := NewPublisher(nc, *config.toPublisherConfig())
+	if err != nil {
+		return nil, err
+	}
+
 	p := &orderedPublisher{
-		publisher: &publisher{
-			nc:     nc,
-			config: *config.toPublisherConfig(),
-		},
+		publisher: parentPublisher.(*publisher),
 		config:    config,
 		queue:     make(chan *pendingMsg, queueSize),
 		shutdown:  make(chan struct{}),
