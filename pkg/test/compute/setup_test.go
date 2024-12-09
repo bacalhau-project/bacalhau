@@ -50,7 +50,7 @@ type ComputeSuite struct {
 }
 
 func (s *ComputeSuite) SetupTest() {
-	s.T().Skip("ENG-402 Unskip compute test suite")
+	s.T().Skip("ENG-402 Un-skip compute test suite")
 	s.setupConfig()
 	s.setupNode()
 }
