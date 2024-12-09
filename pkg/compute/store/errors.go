@@ -116,3 +116,14 @@ func (e ErrExecutionAlreadyTerminal) Error() string {
 	return fmt.Sprintf("execution %s is in terminal state %s and cannot transition to %s",
 		e.ExecutionID, e.Actual.String(), e.NewState.String())
 }
+
+// ErrCheckpointNameBlank is returned when attempting to checkpoint with an empty name
+type ErrCheckpointNameBlank struct{}
+
+func NewErrCheckpointNameBlank() ErrCheckpointNameBlank {
+	return ErrCheckpointNameBlank{}
+}
+
+func (e ErrCheckpointNameBlank) Error() string {
+	return "checkpoint name cannot be blank"
+}

@@ -1,5 +1,6 @@
 //go:build unit || !integration
 
+//nolint:all // Test suite file
 package test
 
 import (
@@ -171,6 +172,93 @@ func (s *StoreSuite) TestDeleteExecutionDoesntExist() {
 func (s *StoreSuite) TestGetExecutionEventsDoesntExist() {
 	_, err := s.executionStore.GetExecutionEvents(s.ctx, uuid.NewString())
 	s.ErrorAs(err, &store.ErrExecutionEventsNotFound{})
+}
+
+func (s *StoreSuite) TestGetCheckpointReturnsZeroForNonExistent() {
+	seq, err := s.executionStore.GetCheckpoint(s.ctx, "test-checkpoint")
+	s.Require().NoError(err)
+	s.Equal(uint64(0), seq)
+}
+
+func (s *StoreSuite) TestCheckpointStoresAndRetrieves() {
+	checkpointName := "test-checkpoint"
+	expectedSeq := uint64(42)
+
+	// Store checkpoint
+	err := s.executionStore.Checkpoint(s.ctx, checkpointName, expectedSeq)
+	s.Require().NoError(err)
+
+	// Retrieve checkpoint
+	seq, err := s.executionStore.GetCheckpoint(s.ctx, checkpointName)
+	s.Require().NoError(err)
+	s.Equal(expectedSeq, seq)
+}
+
+func (s *StoreSuite) TestMultipleCheckpointsCoexist() {
+	checkpoints := map[string]uint64{
+		"checkpoint-1": 42,
+		"checkpoint-2": 100,
+		"checkpoint-3": 999,
+	}
+
+	// Store multiple checkpoints
+	for name, seq := range checkpoints {
+		err := s.executionStore.Checkpoint(s.ctx, name, seq)
+		s.Require().NoError(err)
+	}
+
+	// Verify each checkpoint
+	for name, expectedSeq := range checkpoints {
+		seq, err := s.executionStore.GetCheckpoint(s.ctx, name)
+		s.Require().NoError(err)
+		s.Equal(expectedSeq, seq)
+	}
+}
+
+func (s *StoreSuite) TestCheckpointCanBeUpdated() {
+	checkpointName := "update-test"
+	initialSeq := uint64(42)
+	updatedSeq := uint64(100)
+
+	// Store initial checkpoint
+	err := s.executionStore.Checkpoint(s.ctx, checkpointName, initialSeq)
+	s.Require().NoError(err)
+
+	// Verify initial value
+	seq, err := s.executionStore.GetCheckpoint(s.ctx, checkpointName)
+	s.Require().NoError(err)
+	s.Equal(initialSeq, seq)
+
+	// Update checkpoint
+	err = s.executionStore.Checkpoint(s.ctx, checkpointName, updatedSeq)
+	s.Require().NoError(err)
+
+	// Verify updated value
+	seq, err = s.executionStore.GetCheckpoint(s.ctx, checkpointName)
+	s.Require().NoError(err)
+	s.Equal(updatedSeq, seq)
+}
+
+func (s *StoreSuite) TestCheckpointWithClosedStore() {
+	s.Require().NoError(s.executionStore.Close(s.ctx))
+
+	// Try to set checkpoint after closing
+	err := s.executionStore.Checkpoint(s.ctx, "test-checkpoint", 42)
+	s.Error(err)
+
+	// Try to get checkpoint after closing
+	_, err = s.executionStore.GetCheckpoint(s.ctx, "test-checkpoint")
+	s.Error(err)
+}
+
+func (s *StoreSuite) TestGetCheckpointBlankName() {
+	_, err := s.executionStore.GetCheckpoint(s.ctx, "")
+	s.ErrorAs(err, &store.ErrCheckpointNameBlank{})
+}
+
+func (s *StoreSuite) TestCheckpointBlankName() {
+	err := s.executionStore.Checkpoint(s.ctx, "", 42)
+	s.ErrorAs(err, &store.ErrCheckpointNameBlank{})
 }
 
 func (s *StoreSuite) verifyWatcherExecutionEvent(event watcher.Event,
