@@ -414,7 +414,8 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 
 	var reason string
 	var unhealthy bool
-	if cm.GetHealth().LastSuccessfulHeartbeat.Before(heartbeatDeadline) {
+	health := cm.GetHealth()
+	if health.LastSuccessfulHeartbeat.Before(heartbeatDeadline) {
 		reason = fmt.Sprintf("no heartbeat for %d intervals", cm.config.HeartbeatMissFactor)
 		unhealthy = true
 	} else if cm.natsConn.IsClosed() {
