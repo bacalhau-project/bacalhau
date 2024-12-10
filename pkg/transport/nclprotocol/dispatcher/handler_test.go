@@ -13,14 +13,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
 type HandlerTestSuite struct {
 	suite.Suite
 	ctrl      *gomock.Controller
 	ctx       context.Context
-	creator   *transport.MockMessageCreator
+	creator   *nclprotocol.MockMessageCreator
 	publisher *ncl.MockOrderedPublisher
 	state     *dispatcherState
 	handler   *messageHandler
@@ -29,7 +29,7 @@ type HandlerTestSuite struct {
 func (suite *HandlerTestSuite) SetupTest() {
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.ctx = context.Background()
-	suite.creator = transport.NewMockMessageCreator(suite.ctrl)
+	suite.creator = nclprotocol.NewMockMessageCreator(suite.ctrl)
 	suite.publisher = ncl.NewMockOrderedPublisher(suite.ctrl)
 	suite.state = newDispatcherState()
 	suite.handler = newMessageHandler(suite.creator, suite.publisher, suite.state)

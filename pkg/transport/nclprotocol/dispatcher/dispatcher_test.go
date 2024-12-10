@@ -13,7 +13,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
 type DispatcherTestSuite struct {
@@ -22,7 +22,7 @@ type DispatcherTestSuite struct {
 	ctx       context.Context
 	publisher *ncl.MockOrderedPublisher
 	watcher   *watcher.MockWatcher
-	creator   *transport.MockMessageCreator
+	creator   *nclprotocol.MockMessageCreator
 	config    Config
 	handler   watcher.EventHandler
 }
@@ -32,7 +32,7 @@ func (suite *DispatcherTestSuite) SetupTest() {
 	suite.ctx = context.Background()
 	suite.publisher = ncl.NewMockOrderedPublisher(suite.ctrl)
 	suite.watcher = watcher.NewMockWatcher(suite.ctrl)
-	suite.creator = transport.NewMockMessageCreator(suite.ctrl)
+	suite.creator = nclprotocol.NewMockMessageCreator(suite.ctrl)
 	suite.config = DefaultConfig()
 }
 

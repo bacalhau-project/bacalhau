@@ -9,7 +9,7 @@ import (
 
 const (
 	// Default checkpoint settings
-	defaultCheckpointInterval = 5 * time.Second
+	defaultCheckpointInterval = 30 * time.Second
 	defaultCheckpointTimeout  = 5 * time.Second
 
 	// Default stall detection settings
@@ -30,6 +30,7 @@ const (
 type Config struct {
 	// CheckpointInterval determines how often the dispatcher saves its progress.
 	// Lower values provide better durability at the cost of more IO operations.
+	// Negative values disable checkpointing.
 	// Default: 5 seconds
 	CheckpointInterval time.Duration
 
@@ -92,7 +93,6 @@ func DefaultConfig() Config {
 func (c *Config) Validate() error {
 	return errors.Join(
 		// Intervals must be positive
-		validate.IsGreaterThanZero(c.CheckpointInterval, "CheckpointInterval must be positive"),
 		validate.IsGreaterThanZero(c.ProcessInterval, "ProcessInterval must be positive"),
 		validate.IsGreaterThanZero(c.StallCheckInterval, "StallCheckInterval must be positive"),
 

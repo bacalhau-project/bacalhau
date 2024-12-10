@@ -11,15 +11,43 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
+type NCLMessageCreatorFactory struct {
+	protocolRouter *ProtocolRouter
+	subjectFn      func(nodeID string) string
+}
+
+type NCLMessageCreatorFactoryParams struct {
+	ProtocolRouter *ProtocolRouter
+	SubjectFn      func(nodeID string) string
+}
+
+// NewNCLMessageCreatorFactory creates a new NCL protocol dispatcher factory
+func NewNCLMessageCreatorFactory(params NCLMessageCreatorFactoryParams) *NCLMessageCreatorFactory {
+	return &NCLMessageCreatorFactory{
+		protocolRouter: params.ProtocolRouter,
+		subjectFn:      params.SubjectFn,
+	}
+}
+
+func (f *NCLMessageCreatorFactory) CreateMessageCreator(ctx context.Context, nodeID string) nclprotocol.MessageCreator {
+	return NewNCLMessageCreator(NCLMessageCreatorParams{
+		NodeID:         nodeID,
+		ProtocolRouter: f.protocolRouter,
+		SubjectFn:      f.subjectFn,
+	})
+}
+
 type NCLMessageCreator struct {
+	nodeID         string
 	protocolRouter *ProtocolRouter
 	subjectFn      func(nodeID string) string
 }
 
 type NCLMessageCreatorParams struct {
+	NodeID         string
 	ProtocolRouter *ProtocolRouter
 	SubjectFn      func(nodeID string) string
 }
@@ -27,6 +55,7 @@ type NCLMessageCreatorParams struct {
 // NewNCLMessageCreator creates a new NCL protocol dispatcher
 func NewNCLMessageCreator(params NCLMessageCreatorParams) *NCLMessageCreator {
 	return &NCLMessageCreator{
+		nodeID:         params.NodeID,
 		protocolRouter: params.ProtocolRouter,
 		subjectFn:      params.SubjectFn,
 	}
@@ -47,6 +76,12 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 		return nil, bacerrors.New("upsert.Current is nil").
 			WithComponent(nclDispatcherErrComponent)
 	}
+
+	// Filter events not meant for the node this dispatcher is handling
+	if upsert.Current.NodeID != d.nodeID {
+		return nil, nil
+	}
+
 	execution := upsert.Current
 	preferredProtocol, err := d.protocolRouter.PreferredProtocol(context.Background(), execution)
 	if err != nil {
@@ -129,4 +164,4 @@ func (d *NCLMessageCreator) createCancelMessage(upsert models.ExecutionUpsert) *
 }
 
 // compile-time check that NCLMessageCreator implements dispatcher.MessageCreator
-var _ transport.MessageCreator = &NCLMessageCreator{}
+var _ nclprotocol.MessageCreator = &NCLMessageCreator{}

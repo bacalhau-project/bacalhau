@@ -14,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/transport"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
 // Dispatcher handles reliable delivery of events from a watcher to NATS.
@@ -42,7 +42,7 @@ type Dispatcher struct {
 // Returns an error if any dependencies are nil or if config validation fails.
 func New(publisher ncl.OrderedPublisher,
 	watcher watcher.Watcher,
-	messageCreator transport.MessageCreator, config Config) (*Dispatcher, error) {
+	messageCreator nclprotocol.MessageCreator, config Config) (*Dispatcher, error) {
 	err := errors.Join(
 		validate.NotNil(publisher, "publisher cannot be nil"),
 		validate.NotNil(watcher, "watcher cannot be nil"),
@@ -91,12 +91,17 @@ func (d *Dispatcher) Start(ctx context.Context) error {
 	d.running = true
 	d.mu.Unlock()
 
-	d.routinesWg.Add(3) // For the three goroutines
-
 	// Start background processing
+	d.routinesWg.Add(1)
 	go d.processPublishResults(ctx)
+
+	d.routinesWg.Add(1)
 	go d.checkStalledMessages(ctx)
-	go d.checkpointLoop(ctx)
+
+	if d.config.CheckpointInterval > 0 {
+		d.routinesWg.Add(1)
+		go d.checkpointLoop(ctx)
+	}
 
 	// Start the watcher
 	return d.watcher.Start(ctx)

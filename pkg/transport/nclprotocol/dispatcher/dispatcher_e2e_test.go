@@ -20,7 +20,7 @@ import (
 	watchertest "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/test"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/bacalhau-project/bacalhau/pkg/transport/dispatcher"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/dispatcher"
 )
 
 type DispatcherE2ETestSuite struct {

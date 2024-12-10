@@ -52,6 +52,16 @@ func (h *Server) HandleMessage(ctx context.Context, message *envelope.Message) e
 
 // Register handles compute node registration requests
 func (h *Server) Register(ctx context.Context, request legacy.RegisterRequest) (*legacy.RegisterResponse, error) {
+	// Check if the node supports NCLv1 protocol
+	for _, protocol := range request.Info.SupportedProtocols {
+		if protocol == models.ProtocolNCLV1 {
+			return &legacy.RegisterResponse{
+				Accepted: false,
+				Reason:   bprotocol.ErrUpgradeAvailable.Error(),
+			}, nil
+		}
+	}
+
 	resp, err := h.nodeManager.Handshake(ctx, messages.HandshakeRequest{
 		NodeInfo:  request.Info,
 		StartTime: time.Now(),

@@ -41,7 +41,9 @@ func (e *ExecutionLogger) HandleEvent(ctx context.Context, event watcher.Event) 
 	}
 
 	// Create base log event with common fields
-	logEvent := e.logger.Debug().Str("execution_id", upsert.Current.ID)
+	logEvent := e.logger.Debug().
+		Str("execution_id", upsert.Current.ID).
+		Uint64("sequence_number", event.SeqNum)
 
 	// Add state transition information if this is an update
 	if upsert.Previous != nil {
