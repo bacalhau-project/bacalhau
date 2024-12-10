@@ -78,6 +78,8 @@ func (c *Config) Validate() error {
 }
 
 // DefaultConfig returns a new Config with default values
+//
+//nolint:mnd
 func DefaultConfig() Config {
 	// defaults for heartbeatInterval and nodeInfoUpdateInterval are provided by BacalhauConfig,
 	// and equal to 15 seconds and 1 minute respectively

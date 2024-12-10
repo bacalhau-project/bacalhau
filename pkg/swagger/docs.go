@@ -2560,7 +2560,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "ResourceUpdateInterval": {
-                    "description": "ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.",
+                    "description": "Deprecated: use Interval instead",
                     "type": "integer"
                 }
             }
