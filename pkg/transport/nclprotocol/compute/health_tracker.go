@@ -36,7 +36,6 @@ func (ht *HealthTracker) MarkConnected() {
 	ht.health.LastSuccessfulHeartbeat = ht.clock.Now()
 	ht.health.ConsecutiveFailures = 0
 	ht.health.LastError = nil
-	ht.health.CurrentState = nclprotocol.Connected
 }
 
 // MarkDisconnected updates status when connection is lost
