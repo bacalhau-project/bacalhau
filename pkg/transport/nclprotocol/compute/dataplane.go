@@ -93,7 +93,9 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 		Conn:            dp.Client,
 		LogstreamServer: dp.config.LogStreamServer,
 	})
-
+	if err != nil {
+		return fmt.Errorf("failed to set up log stream handler: %w", err)
+	}
 	// Initialize ordered publisher for reliable message delivery
 	dp.publisher, err = ncl.NewOrderedPublisher(dp.Client, ncl.OrderedPublisherConfig{
 		Name:              dp.config.NodeID,
