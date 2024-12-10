@@ -31,8 +31,7 @@ type ComputeTLS struct {
 type Heartbeat struct {
 	// InfoUpdateInterval specifies the time between updates of non-resource information to the orchestrator.
 	InfoUpdateInterval Duration `yaml:"InfoUpdateInterval,omitempty" json:"InfoUpdateInterval,omitempty"`
-	// ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.
-	// Deprecated: only used by legacy transport, will be removed in the future.
+	// Deprecated: use Interval instead
 	ResourceUpdateInterval Duration `yaml:"ResourceUpdateInterval,omitempty" json:"ResourceUpdateInterval,omitempty"`
 	// Interval specifies the time between heartbeat signals sent to the orchestrator.
 	Interval Duration `yaml:"Interval,omitempty" json:"Interval,omitempty"`
