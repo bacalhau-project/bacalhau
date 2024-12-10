@@ -145,7 +145,8 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 		HeartbeatConfig: cm.config.HeartbeatConfig,
 	})
 	if err = managementClient.RegisterNode(ctx); err != nil {
-		if errors.As(err, &bprotocol.ErrUpgradeAvailable) {
+		var upgradeErr *bprotocol.ErrUpgradeAvailable
+		if errors.As(err, &upgradeErr) {
 			log.Info().Msg("Disabling bprotocol management client due to upgrade available")
 			cm.Stop(ctx)
 			return nil
