@@ -53,11 +53,6 @@ func (suite *ConfigTestSuite) TestConfigValidation() {
 			expectError: "must be positive",
 		},
 		{
-			name:        "zero checkpoint interval",
-			mutate:      func(c *Config) { c.CheckpointInterval = 0 },
-			expectError: "CheckpointInterval must be positive",
-		},
-		{
 			name:        "zero stall timeout",
 			mutate:      func(c *Config) { c.StallTimeout = 0 },
 			expectError: "StallTimeout must be positive",

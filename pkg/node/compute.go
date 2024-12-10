@@ -194,7 +194,6 @@ func NewComputeNode(
 	}
 	if err = legacyConnectionManager.Start(ctx); err != nil {
 		log.Warn().Err(err).Msg("failed to start legacy connection manager. continuing without it")
-		err = nil
 	}
 
 	// connection manager

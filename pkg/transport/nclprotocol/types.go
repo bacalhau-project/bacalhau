@@ -67,7 +67,7 @@ type MessageCreator interface {
 }
 
 type MessageCreatorFactory interface {
-	CreateMessageCreator(ctx context.Context, nodeID string) MessageCreator
+	CreateMessageCreator(ctx context.Context, nodeID string) (MessageCreator, error)
 }
 
 // GenerateMsgID Message ID generation helper

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
@@ -145,7 +146,7 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 		HeartbeatConfig: cm.config.HeartbeatConfig,
 	})
 	if err = managementClient.RegisterNode(ctx); err != nil {
-		if errors.Is(err, bprotocol.ErrUpgradeAvailable) {
+		if strings.Contains(err.Error(), bprotocol.ErrUpgradeAvailable.Error()) {
 			log.Info().Msg("Disabling bprotocol management client due to upgrade available")
 			cm.Stop(ctx)
 			return nil

@@ -182,8 +182,11 @@ func (dp *DataPlane) setupDispatcher(ctx context.Context) error {
 	}
 
 	// Create message creator for this compute node
-	messageCreator := dp.config.MessageCreatorFactory.CreateMessageCreator(
+	messageCreator, err := dp.config.MessageCreatorFactory.CreateMessageCreator(
 		ctx, dp.config.NodeID)
+	if err != nil {
+		return fmt.Errorf("create message creator: %w", err)
+	}
 
 	// Disable checkpointing in dispatcher since we handle it elsewhere
 	config := dp.config.DispatcherConfig
