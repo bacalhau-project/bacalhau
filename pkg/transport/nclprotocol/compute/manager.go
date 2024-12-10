@@ -425,7 +425,7 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 
 	if unhealthy {
 		log.Warn().
-			Time("lastHeartbeat", cm.GetHealth().LastSuccessfulHeartbeat).
+			Time("lastHeartbeat", health.LastSuccessfulHeartbeat).
 			Time("deadline", heartbeatDeadline).
 			Int("heartbeatMissFactor", cm.config.HeartbeatMissFactor).
 			Str("reason", reason).
