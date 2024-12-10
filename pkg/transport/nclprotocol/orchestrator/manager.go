@@ -220,7 +220,7 @@ func (cm *ComputeManager) setupDataPlane(
 	// Atomically replace old with new, stopping old if it exists
 	if existing, loaded := cm.dataPlanes.Swap(nodeInfo.ID(), dataPlane); loaded {
 		if dp, ok := existing.(*DataPlane); ok {
-			if err = dp.Stop(context.TODO()); err != nil {
+			if err = dp.Stop(ctx); err != nil {
 				log.Error().
 					Err(err).
 					Str("nodeID", nodeInfo.ID()).
@@ -283,6 +283,13 @@ func (cm *ComputeManager) handleNodeInfoUpdateRequest(ctx context.Context, msg *
 
 // handleConnectionStateChange responds to node connection state changes
 func (cm *ComputeManager) handleConnectionStateChange(event nodes.NodeConnectionEvent) {
+	// Check if we're shutting down
+	select {
+	case <-cm.stopCh:
+		return
+	default:
+	}
+
 	// If node disconnected, stop and remove data plane
 	if event.Current == models.NodeStates.DISCONNECTED {
 		if dataPlane, ok := cm.dataPlanes.LoadAndDelete(event.NodeID); ok {

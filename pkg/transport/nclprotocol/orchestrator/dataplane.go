@@ -200,7 +200,7 @@ func (dp *DataPlane) setupDispatcher(ctx context.Context) error {
 		return fmt.Errorf("create dispatcher: %w", err)
 	}
 
-	if err = dp.dispatcher.Start(ctx); err != nil {
+	if err = dp.dispatcher.Start(context.TODO()); err != nil {
 		return fmt.Errorf("start dispatcher: %w", err)
 	}
 

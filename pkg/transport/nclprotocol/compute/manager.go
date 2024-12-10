@@ -133,13 +133,13 @@ func (cm *ConnectionManager) Close(ctx context.Context) error {
 	}
 	cm.running = false
 	close(cm.stopCh)
-	close(cm.stateChanges)
 	cm.mu.Unlock()
 
 	// Wait for graceful shutdown
 	done := make(chan struct{})
 	go func() {
 		cm.wg.Wait()
+		close(cm.stateChanges)
 		close(done)
 	}()
 
@@ -464,15 +464,39 @@ func (cm *ConnectionManager) transitionState(newState nclprotocol.ConnectionStat
 func (cm *ConnectionManager) handleStateChanges() {
 	defer cm.wg.Done()
 
-	for change := range cm.stateChanges {
-		cm.stateHandlersMu.RLock()
-		handlers := make([]nclprotocol.ConnectionStateHandler, len(cm.stateHandlers))
-		copy(handlers, cm.stateHandlers)
-		cm.stateHandlersMu.RUnlock()
-
-		for _, handler := range handlers {
-			handler(change.state)
+	for {
+		select {
+		case <-cm.stopCh:
+			// Process any remaining state changes before exiting
+			for {
+				select {
+				case change, ok := <-cm.stateChanges:
+					if !ok {
+						return
+					}
+					cm.processStateChange(change)
+				default:
+					return
+				}
+			}
+		case change, ok := <-cm.stateChanges:
+			if !ok {
+				return
+			}
+			cm.processStateChange(change)
 		}
+	}
+}
+
+// processStateChange handles a single state change notification
+func (cm *ConnectionManager) processStateChange(change stateChange) {
+	cm.stateHandlersMu.RLock()
+	handlers := make([]nclprotocol.ConnectionStateHandler, len(cm.stateHandlers))
+	copy(handlers, cm.stateHandlers)
+	cm.stateHandlersMu.RUnlock()
+
+	for _, handler := range handlers {
+		handler(change.state)
 	}
 }
 
