@@ -168,7 +168,12 @@ func (s *DataPlaneTestSuite) TestStartupFailureCleanup() {
 			name: "context cancellation",
 			preStart: func() {
 				s.cancel()
-				time.Sleep(10 * time.Millisecond) // Allow cancellation to propagate
+				select {
+				case <-s.ctx.Done():
+				    // Context cancellation has propagated
+				case <-time.After(100 * time.Millisecond):
+				    s.Require().Fail("Timeout waiting for context cancellation")
+				}
 			},
 			expectError: "context canceled",
 		},
