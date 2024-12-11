@@ -15,10 +15,12 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes/inmemory"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 type NodeManagerTestSuite struct {
@@ -26,6 +28,7 @@ type NodeManagerTestSuite struct {
 	ctx          context.Context
 	clock        *clock.Mock
 	store        nodes.Store
+	eventStore   watcher.EventStore
 	manager      nodes.Manager
 	disconnected time.Duration
 }
@@ -44,8 +47,11 @@ func (s *NodeManagerTestSuite) SetupTest() {
 		TTL: time.Hour,
 	})
 
+	s.eventStore, _ = testutils.CreateStringEventStore(s.T())
+
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -61,6 +67,10 @@ func (s *NodeManagerTestSuite) SetupTest() {
 
 func (s *NodeManagerTestSuite) TearDownTest() {
 	err := s.manager.Stop(s.ctx)
+	s.Require().NoError(err)
+
+	// Cleanup event store
+	err = s.eventStore.Close(s.ctx)
 	s.Require().NoError(err)
 }
 
@@ -138,6 +148,134 @@ func (s *NodeManagerTestSuite) TestHeartbeatMaintainsConnection() {
 }
 
 // Edge Cases and Error Scenarios
+
+func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberLogic() {
+	// Test initial handshake with new node
+	nodeInfo := s.createNodeInfo("new-node")
+
+	// First add some events to the event store to have a non-zero latest sequence
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		err := s.eventStore.StoreEvent(ctx, watcher.StoreEventRequest{
+			Operation:  watcher.OperationCreate,
+			ObjectType: testutils.TypeString,
+			Object:     fmt.Sprintf("test-event-%d", i),
+		})
+		s.Require().NoError(err)
+	}
+
+	// Get the latest sequence number for verification
+	latestSeqNum, err := s.eventStore.GetLatestEventNum(ctx)
+	s.Require().NoError(err)
+
+	// Perform initial handshake
+	resp1, err := s.manager.Handshake(ctx, messages.HandshakeRequest{
+		NodeInfo:               nodeInfo,
+		LastOrchestratorSeqNum: 100, // Should be ignored for new nodes
+	})
+	s.Require().NoError(err)
+	s.Require().True(resp1.Accepted)
+
+	// Verify the node was assigned the latest sequence number
+	state, err := s.manager.Get(ctx, nodeInfo.ID())
+	s.Require().NoError(err)
+	s.Assert().Equal(latestSeqNum, state.ConnectionState.LastOrchestratorSeqNum,
+		"New node should be assigned latest sequence number")
+
+	// Update sequence numbers via heartbeat
+	updatedOrchSeqNum := uint64(200)
+	updatedComputeSeqNum := uint64(150)
+	_, err = s.manager.Heartbeat(ctx, nodes.ExtendedHeartbeatRequest{
+		HeartbeatRequest: messages.HeartbeatRequest{
+			NodeID:                 nodeInfo.ID(),
+			LastOrchestratorSeqNum: updatedOrchSeqNum,
+		},
+		LastComputeSeqNum: updatedComputeSeqNum,
+	})
+	s.Require().NoError(err)
+
+	// Simulate disconnect
+	s.clock.Add(s.disconnected + time.Second)
+	s.Eventually(func() bool {
+		state, err := s.manager.Get(ctx, nodeInfo.ID())
+		s.Require().NoError(err)
+		return state.ConnectionState.Status == models.NodeStates.DISCONNECTED
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Reconnect with different sequence number - should keep existing
+	resp2, err := s.manager.Handshake(ctx, messages.HandshakeRequest{
+		NodeInfo:               nodeInfo,
+		LastOrchestratorSeqNum: 300, // Should be ignored for reconnecting nodes
+	})
+	s.Require().NoError(err)
+	s.Require().True(resp2.Accepted)
+	s.Assert().Contains(resp2.Reason, "reconnected")
+
+	// Verify sequence numbers were preserved from previous state
+	state, err = s.manager.Get(ctx, nodeInfo.ID())
+	s.Require().NoError(err)
+	s.Assert().Equal(updatedOrchSeqNum, state.ConnectionState.LastOrchestratorSeqNum,
+		"Reconnected node should preserve previous orchestrator sequence number")
+	s.Assert().Equal(updatedComputeSeqNum, state.ConnectionState.LastComputeSeqNum,
+		"Reconnected node should preserve previous compute sequence number")
+}
+
+func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberEdgeCases() {
+	ctx := context.Background()
+
+	// Test zero sequence numbers in event store
+	nodeInfo1 := s.createNodeInfo("zero-seq-node")
+	resp1, err := s.manager.Handshake(ctx, messages.HandshakeRequest{
+		NodeInfo: nodeInfo1,
+	})
+	s.Require().NoError(err)
+	s.Require().True(resp1.Accepted)
+
+	state1, err := s.manager.Get(ctx, nodeInfo1.ID())
+	s.Require().NoError(err)
+	s.Assert().Equal(uint64(0), state1.ConnectionState.LastOrchestratorSeqNum,
+		"New node should get zero sequence when event store is empty")
+
+	// Test concurrent handshakes with sequence numbers
+	var wg sync.WaitGroup
+	const numConcurrent = 10
+
+	// Add some events first
+	for i := 0; i < 5; i++ {
+		err = s.eventStore.StoreEvent(ctx, watcher.StoreEventRequest{
+			Operation:  watcher.OperationCreate,
+			ObjectType: testutils.TypeString,
+			Object:     fmt.Sprintf("test-event-%d", i),
+		})
+		s.Require().NoError(err)
+	}
+
+	latestSeqNum, err := s.eventStore.GetLatestEventNum(ctx)
+	s.Require().NoError(err)
+
+	for i := 0; i < numConcurrent; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			nodeInfo := s.createNodeInfo(fmt.Sprintf("concurrent-node-%d", id))
+			resp, err := s.manager.Handshake(ctx, messages.HandshakeRequest{
+				NodeInfo:               nodeInfo,
+				LastOrchestratorSeqNum: 999, // Should be ignored
+			})
+			s.Require().NoError(err)
+			s.Require().True(resp.Accepted)
+
+			// Verify assigned sequence number
+			state, err := s.manager.Get(ctx, nodeInfo.ID())
+			s.Require().NoError(err)
+			s.Assert().Equal(latestSeqNum, state.ConnectionState.LastOrchestratorSeqNum,
+				"Concurrent new nodes should all get latest sequence number")
+		}(i)
+	}
+
+	wg.Wait()
+}
 
 func (s *NodeManagerTestSuite) TestHeartbeatWithoutHandshake() {
 	_, err := s.manager.Heartbeat(s.ctx, nodes.ExtendedHeartbeatRequest{
