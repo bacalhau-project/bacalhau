@@ -14,3 +14,12 @@ type BuildVersionInfo struct {
 	GOOS       string    `json:"GOOS" example:"linux"`
 	GOARCH     string    `json:"GOARCH" example:"amd64"`
 }
+
+func (b *BuildVersionInfo) Copy() *BuildVersionInfo {
+	if b == nil {
+		return nil
+	}
+	newB := new(BuildVersionInfo)
+	*newB = *b
+	return newB
+}

@@ -987,7 +987,7 @@ export type types_Heartbeat = {
      */
     Interval?: number;
     /**
-     * ResourceUpdateInterval specifies the time between updates of resource information to the orchestrator.
+     * Deprecated: use Interval instead
      */
     ResourceUpdateInterval?: number;
 };

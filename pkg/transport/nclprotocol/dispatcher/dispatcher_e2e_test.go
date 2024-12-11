@@ -5,7 +5,6 @@ package dispatcher_test
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -16,11 +15,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
-	watchertest "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/test"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
-	"github.com/bacalhau-project/bacalhau/pkg/transport/dispatcher"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/dispatcher"
 )
 
 type DispatcherE2ETestSuite struct {
@@ -44,18 +41,7 @@ func (s *DispatcherE2ETestSuite) SetupTest() {
 	s.natsServer, s.nc = testutils.StartNats(s.T())
 
 	// Create boltdb store and watcher
-	eventObjectSerializer := watcher.NewJSONSerializer()
-	s.Require().NoError(eventObjectSerializer.RegisterType("test", reflect.TypeOf("")))
-	store, err := boltdb.NewEventStore(
-		watchertest.CreateBoltDB(s.T()),
-		boltdb.WithEventSerializer(eventObjectSerializer),
-	)
-	s.Require().NoError(err)
-	s.store = store
-
-	// Create registry
-	s.registry = envelope.NewRegistry()
-	s.Require().NoError(s.registry.Register("test", "string"))
+	s.store, s.registry = testutils.CreateStringEventStore(s.T())
 
 	// Create subscriber
 	s.received = make([]*envelope.Message, 0)
@@ -245,7 +231,7 @@ func (s *DispatcherE2ETestSuite) TestCheckpointingAndRestart() {
 func (s *DispatcherE2ETestSuite) storeEvent(index int) {
 	err := s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,
-		ObjectType: "test",
+		ObjectType: "string",
 		Object:     fmt.Sprintf("event-%d", index),
 	})
 	s.Require().NoError(err)

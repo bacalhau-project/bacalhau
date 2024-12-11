@@ -305,7 +305,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 				GPU:    "1",
 			}),
 			Heartbeat: types.Heartbeat{
-				ResourceUpdateInterval: types.Duration(50 * time.Millisecond),
+				Interval: types.Duration(50 * time.Millisecond),
 			},
 		},
 	})

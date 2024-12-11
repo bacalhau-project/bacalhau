@@ -7,8 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/nats-io/nats.go"
+	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
@@ -144,6 +146,11 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 		HeartbeatConfig: cm.config.HeartbeatConfig,
 	})
 	if err = managementClient.RegisterNode(ctx); err != nil {
+		if strings.Contains(err.Error(), bprotocol.ErrUpgradeAvailable.Error()) {
+			log.Info().Msg("Disabling bprotocol management client due to upgrade available")
+			cm.Stop(ctx)
+			return nil
+		}
 		return fmt.Errorf("failed to register node with requester: %s", err)
 	}
 

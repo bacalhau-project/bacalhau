@@ -47,9 +47,8 @@ var Default = types.Bacalhau{
 		Enabled:       false,
 		Orchestrators: []string{"nats://127.0.0.1:4222"},
 		Heartbeat: types.Heartbeat{
-			InfoUpdateInterval:     types.Minute,
-			ResourceUpdateInterval: 30 * types.Second,
-			Interval:               15 * types.Second,
+			InfoUpdateInterval: types.Minute,
+			Interval:           15 * types.Second,
 		},
 		AllocatedCapacity: types.ResourceScaler{
 			CPU:    "70%",

@@ -9,4 +9,12 @@ const (
 	BidResultMessageType    = "BidResult"
 	RunResultMessageType    = "RunResult"
 	ComputeErrorMessageType = "ComputeError"
+
+	HandshakeRequestMessageType      = "transport.HandshakeRequest"
+	HeartbeatRequestMessageType      = "transport.HeartbeatRequest"
+	NodeInfoUpdateRequestMessageType = "transport.UpdateNodeInfoRequest"
+
+	HandshakeResponseType      = "transport.HandshakeResponse"
+	HeartbeatResponseType      = "transport.HeartbeatResponse"
+	NodeInfoUpdateResponseType = "transport.UpdateNodeInfoResponse"
 )

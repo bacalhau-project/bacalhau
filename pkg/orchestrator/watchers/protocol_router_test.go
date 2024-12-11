@@ -101,29 +101,7 @@ func (s *ProtocolRouterTestSuite) TestPreferredProtocol_NodeStoreError() {
 	s.Empty(protocol)
 }
 
-func (s *ProtocolRouterTestSuite) TestPreferredProtocol_PreferBProtocol() {
-	s.T().Setenv(models.EnvPreferNCL, "false")
-	execution := mock.Execution()
-
-	// Node supports both protocols
-	nodeState := models.NodeState{
-		Info: models.NodeInfo{
-			SupportedProtocols: []models.Protocol{
-				models.ProtocolNCLV1,
-				models.ProtocolBProtocolV2,
-			},
-		},
-	}
-
-	s.nodeStore.EXPECT().Get(s.ctx, execution.NodeID).Return(nodeState, nil)
-
-	protocol, err := s.router.PreferredProtocol(s.ctx, execution)
-	s.NoError(err)
-	s.Equal(models.ProtocolBProtocolV2, protocol)
-}
-
 func (s *ProtocolRouterTestSuite) TestPreferredProtocol_PreferNCL() {
-	s.T().Setenv(models.EnvPreferNCL, "true")
 	execution := mock.Execution()
 
 	// Node supports both protocols

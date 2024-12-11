@@ -113,7 +113,7 @@ func (m *ManagementClient) heartbeat(ctx context.Context, seq uint64) {
 
 func (m *ManagementClient) Start(ctx context.Context) {
 	infoTicker := time.NewTicker(m.heartbeatConfig.InfoUpdateInterval.AsTimeDuration())
-	resourceTicker := time.NewTicker(m.heartbeatConfig.ResourceUpdateInterval.AsTimeDuration())
+	resourceTicker := time.NewTicker(m.heartbeatConfig.Interval.AsTimeDuration())
 
 	// The heartbeat ticker will be used to send heartbeats to the requester node and
 	// should be configured to be about half of the heartbeat frequency of the requester node
