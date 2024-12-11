@@ -2,11 +2,13 @@ package envelope
 
 import (
 	"strconv"
+	"strings"
 	"time"
 )
 
 // Metadata keys
 const (
+	HeaderPrefix       = "Bacalhau-"
 	KeyMessageType     = "Bacalhau-Type"
 	KeyPayloadEncoding = "Bacalhau-PayloadEncoding"
 )
@@ -50,7 +52,15 @@ func NewMetadataFromMapCopy(m map[string]string) *Metadata {
 
 // Get returns the value for a given key, or an empty string if the key doesn't exist
 func (m Metadata) Get(key string) string {
-	return m[key]
+	if v, ok := m[key]; ok {
+		return v
+	}
+	// backward compatible with old headers
+	if key == KeyMessageType || key == KeyPayloadEncoding {
+		// return keys excluding header prefix
+		return m[strings.TrimPrefix(key, HeaderPrefix)]
+	}
+	return ""
 }
 
 // Has checks if a key exists in the metadata

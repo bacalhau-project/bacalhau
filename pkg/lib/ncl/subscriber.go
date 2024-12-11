@@ -75,7 +75,7 @@ func (s *subscriber) Subscribe(ctx context.Context, subjects ...string) error {
 // messageHandler is the callback function for message processing
 func (s *subscriber) handleNatsMessage(m *nats.Msg) {
 	if err := s.processMessage(m); err != nil {
-		log.Error().Err(err).Msg("failed to process message")
+		log.Error().Err(err).Str("handler", s.config.Name).Msg("failed to process message")
 
 		s.consecutiveFailures += 1
 		delay := s.config.Backoff.BackoffDuration(s.consecutiveFailures)
