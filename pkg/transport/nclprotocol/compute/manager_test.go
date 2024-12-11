@@ -82,7 +82,7 @@ func (s *ConnectionManagerTestSuite) SetupTest() {
 	}
 
 	// Setup mock responder
-	mockResponder, err := ncltest.NewMockResponder(s.natsConn, nil)
+	mockResponder, err := ncltest.NewMockResponder(s.ctx, s.natsConn, nil)
 	s.Require().NoError(err)
 	s.mockResponder = mockResponder
 

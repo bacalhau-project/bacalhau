@@ -22,3 +22,12 @@ func ValidateSlice[T Validatable](slice []T) error {
 	}
 	return nil
 }
+
+// Helper function for copying or getting zero value
+func copyOrZero[T any](v *T) T {
+	var zero T // Create zero value
+	if v == nil {
+		return zero
+	}
+	return *v
+}

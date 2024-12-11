@@ -30,7 +30,7 @@ func NewMockNodeInfoProvider() *MockNodeInfoProvider {
 func (m *MockNodeInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.nodeInfo
+	return *m.nodeInfo.Copy()
 }
 
 func (m *MockNodeInfoProvider) SetNodeInfo(nodeInfo models.NodeInfo) {

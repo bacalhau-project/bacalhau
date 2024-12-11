@@ -28,14 +28,7 @@ func CreateComputeEventStore(t *testing.T) watcher.EventStore {
 	)
 	require.NoError(t, err)
 
-	database := watchertest.CreateBoltDB(t)
-
-	eventStore, err := boltdb_watcher.NewEventStore(database,
-		boltdb_watcher.WithEventsBucket("events"),
-		boltdb_watcher.WithCheckpointBucket("checkpoints"),
-		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
-	)
-	require.NoError(t, err)
+	eventStore := createEventStore(t, eventObjectSerializer)
 	return eventStore
 }
 
@@ -43,36 +36,35 @@ func CreateJobEventStore(t *testing.T) watcher.EventStore {
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err := errors.Join(
 		eventObjectSerializer.RegisterType(jobstore.EventObjectExecutionUpsert, reflect.TypeOf(models.ExecutionUpsert{})),
-		eventObjectSerializer.RegisterType(jobstore.EventObjectEvaluation, reflect.TypeOf(models.Event{})),
+		eventObjectSerializer.RegisterType(jobstore.EventObjectEvaluation, reflect.TypeOf(models.Evaluation{})),
 	)
 	require.NoError(t, err)
 
-	database := watchertest.CreateBoltDB(t)
-
-	eventStore, err := boltdb_watcher.NewEventStore(database,
-		boltdb_watcher.WithEventsBucket("events"),
-		boltdb_watcher.WithCheckpointBucket("checkpoints"),
-		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
-	)
-	require.NoError(t, err)
+	eventStore := createEventStore(t, eventObjectSerializer)
 	return eventStore
 }
 
+// CreateStringEventStore creates a new event store for string events using BoltDB
+// and returns both the event store and an envelope registry.
+// The returned EventStore must be closed by the caller when no longer needed.
 func CreateStringEventStore(t *testing.T) (watcher.EventStore, *envelope.Registry) {
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	require.NoError(t, eventObjectSerializer.RegisterType(TypeString, reflect.TypeOf("")))
 
-	database := watchertest.CreateBoltDB(t)
-
-	eventStore, err := boltdb_watcher.NewEventStore(database,
-		boltdb_watcher.WithEventsBucket("events"),
-		boltdb_watcher.WithCheckpointBucket("checkpoints"),
-		boltdb_watcher.WithEventSerializer(eventObjectSerializer),
-	)
-	require.NoError(t, err)
-
+	eventStore := createEventStore(t, eventObjectSerializer)
 	registry := envelope.NewRegistry()
 	require.NoError(t, registry.Register(TypeString, ""))
 
 	return eventStore, registry
+}
+
+func createEventStore(t *testing.T, serializer *watcher.JSONSerializer) watcher.EventStore {
+	database := watchertest.CreateBoltDB(t)
+	eventStore, err := boltdb_watcher.NewEventStore(database,
+		boltdb_watcher.WithEventsBucket("events"),
+		boltdb_watcher.WithCheckpointBucket("checkpoints"),
+		boltdb_watcher.WithEventSerializer(serializer),
+	)
+	require.NoError(t, err)
+	return eventStore
 }

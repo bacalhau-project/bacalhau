@@ -121,8 +121,8 @@ func (n *NodeInfo) Copy() *NodeInfo {
 	// Deep copy maps
 	cpy.Labels = maps.Clone(n.Labels)
 	cpy.SupportedProtocols = slices.Clone(n.SupportedProtocols)
-	cpy.ComputeNodeInfo = *n.ComputeNodeInfo.Copy()
-	cpy.BacalhauVersion = *n.BacalhauVersion.Copy()
+	cpy.ComputeNodeInfo = copyOrZero(n.ComputeNodeInfo.Copy())
+	cpy.BacalhauVersion = copyOrZero(n.BacalhauVersion.Copy())
 	return cpy
 }
 
@@ -173,9 +173,9 @@ func (c *ComputeNodeInfo) Copy() *ComputeNodeInfo {
 	cpy.ExecutionEngines = slices.Clone(c.ExecutionEngines)
 	cpy.Publishers = slices.Clone(c.Publishers)
 	cpy.StorageSources = slices.Clone(c.StorageSources)
-	cpy.MaxCapacity = *c.MaxCapacity.Copy()
-	cpy.QueueUsedCapacity = *c.QueueUsedCapacity.Copy()
-	cpy.AvailableCapacity = *c.AvailableCapacity.Copy()
-	cpy.MaxJobRequirements = *c.MaxJobRequirements.Copy()
+	cpy.MaxCapacity = copyOrZero(c.MaxCapacity.Copy())
+	cpy.QueueUsedCapacity = copyOrZero(c.QueueUsedCapacity.Copy())
+	cpy.AvailableCapacity = copyOrZero(c.AvailableCapacity.Copy())
+	cpy.MaxJobRequirements = copyOrZero(c.MaxJobRequirements.Copy())
 	return cpy
 }

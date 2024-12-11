@@ -55,7 +55,7 @@ type MockResponder struct {
 
 // NewMockResponder creates a new mock responder with the given behavior.
 // If behavior is nil, default success responses are used.
-func NewMockResponder(conn *nats.Conn, behavior *MockResponderBehavior) (*MockResponder, error) {
+func NewMockResponder(ctx context.Context, conn *nats.Conn, behavior *MockResponderBehavior) (*MockResponder, error) {
 	if behavior == nil {
 		behavior = &MockResponderBehavior{
 			HandshakeResponse: struct {
@@ -94,8 +94,8 @@ func NewMockResponder(conn *nats.Conn, behavior *MockResponderBehavior) (*MockRe
 		responder: responder,
 	}
 
-	if err := mr.setupHandlers(context.Background()); err != nil {
-		responder.Close(context.Background())
+	if err := mr.setupHandlers(ctx); err != nil {
+		responder.Close(ctx)
 		return nil, err
 	}
 
