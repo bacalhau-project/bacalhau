@@ -15,9 +15,10 @@ type HandshakeRequest struct {
 
 // HandshakeResponse is sent in response to handshake requests
 type HandshakeResponse struct {
-	Accepted          bool   `json:"accepted"`
-	Reason            string `json:"reason,omitempty"`
-	LastComputeSeqNum uint64 `json:"LastComputeSeqNum"` // Last seq received from compute node
+	Accepted                   bool   `json:"accepted"`
+	Reason                     string `json:"reason,omitempty"`
+	LastComputeSeqNum          uint64 `json:"LastComputeSeqNum"`      // Last seq received from compute node
+	StartingOrchestratorSeqNum uint64 `json:"LastOrchestratorSeqNum"` // Seq to start sending to compute node
 }
 
 type HeartbeatRequest struct {

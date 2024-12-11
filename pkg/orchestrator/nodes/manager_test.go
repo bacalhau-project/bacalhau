@@ -148,7 +148,6 @@ func (s *NodeManagerTestSuite) TestHeartbeatMaintainsConnection() {
 }
 
 // Edge Cases and Error Scenarios
-
 func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberLogic() {
 	// Test initial handshake with new node
 	nodeInfo := s.createNodeInfo("new-node")
@@ -181,6 +180,8 @@ func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberLogic() {
 	s.Require().NoError(err)
 	s.Assert().Equal(latestSeqNum, state.ConnectionState.LastOrchestratorSeqNum,
 		"New node should be assigned latest sequence number")
+	s.Assert().Equal(latestSeqNum, resp1.StartingOrchestratorSeqNum,
+		"New node should receive latest sequence number as starting point")
 
 	// Update sequence numbers via heartbeat
 	updatedOrchSeqNum := uint64(200)
@@ -210,6 +211,8 @@ func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberLogic() {
 	s.Require().NoError(err)
 	s.Require().True(resp2.Accepted)
 	s.Assert().Contains(resp2.Reason, "reconnected")
+	s.Assert().Equal(updatedOrchSeqNum, resp2.StartingOrchestratorSeqNum,
+		"Reconnecting node should receive its last known sequence number")
 
 	// Verify sequence numbers were preserved from previous state
 	state, err = s.manager.Get(ctx, nodeInfo.ID())
@@ -235,6 +238,8 @@ func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberEdgeCases() {
 	s.Require().NoError(err)
 	s.Assert().Equal(uint64(0), state1.ConnectionState.LastOrchestratorSeqNum,
 		"New node should get zero sequence when event store is empty")
+	s.Assert().Equal(uint64(0), resp1.StartingOrchestratorSeqNum,
+		"New node should receive zero as starting sequence when event store is empty")
 
 	// Test concurrent handshakes with sequence numbers
 	var wg sync.WaitGroup
@@ -271,6 +276,8 @@ func (s *NodeManagerTestSuite) TestHandshakeSequenceNumberEdgeCases() {
 			s.Require().NoError(err)
 			s.Assert().Equal(latestSeqNum, state.ConnectionState.LastOrchestratorSeqNum,
 				"Concurrent new nodes should all get latest sequence number")
+			s.Assert().Equal(latestSeqNum, resp.StartingOrchestratorSeqNum,
+				"Concurrent new nodes should receive latest sequence number as starting point")
 		}(i)
 	}
 

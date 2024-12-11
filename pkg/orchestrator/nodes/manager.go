@@ -492,9 +492,10 @@ func (n *nodesManager) Handshake(
 		reason = "node reconnected"
 	}
 	return messages.HandshakeResponse{
-		Accepted:          true,
-		Reason:            reason,
-		LastComputeSeqNum: state.ConnectionState.LastComputeSeqNum,
+		Accepted:                   true,
+		Reason:                     reason,
+		LastComputeSeqNum:          state.ConnectionState.LastComputeSeqNum,
+		StartingOrchestratorSeqNum: state.ConnectionState.LastOrchestratorSeqNum,
 	}, nil
 }
 
