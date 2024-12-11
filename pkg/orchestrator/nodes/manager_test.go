@@ -532,6 +532,7 @@ func (s *NodeManagerTestSuite) TestConcurrentOperations() {
 
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 clock.New(), // Use real clock for this test
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -690,6 +691,7 @@ func (s *NodeManagerTestSuite) TestStartStop() {
 	// Create a new manager without starting it
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -716,6 +718,7 @@ func (s *NodeManagerTestSuite) TestStartAlreadyStarted() {
 	// Create and start a manager
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 	})
@@ -741,6 +744,7 @@ func (s *NodeManagerTestSuite) TestStartAlreadyStarted() {
 func (s *NodeManagerTestSuite) TestStartContextCancellation() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -768,6 +772,7 @@ func (s *NodeManagerTestSuite) TestStopAlreadyStopped() {
 	// Create and start a manager
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 	})
@@ -795,6 +800,7 @@ func (s *NodeManagerTestSuite) TestPeriodicStatePersistence() {
 	persistInterval := 100 * time.Millisecond
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       persistInterval,
@@ -858,6 +864,7 @@ func (s *NodeManagerTestSuite) TestStatePersistenceOnStop() {
 	// Create manager
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       time.Hour, // Long interval to ensure persistence happens on stop
@@ -902,6 +909,7 @@ func (s *NodeManagerTestSuite) TestPersistenceWithContextCancellation() {
 	// Create manager with short persist interval
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
+		EventStore:            s.eventStore,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       100 * time.Millisecond,

@@ -448,12 +448,13 @@ func (n *nodesManager) Handshake(
 		},
 	}
 
-	// If a node is reconnecting, then use LastOrchestratorSeqNum latest sequence number the orchestrator
-	// knows it has delivered, otherwise start from the latest event number in the store.
-	// This avoids:
-	// - Compute node losing its state and asking to start from 0
-	// - Orchestrator losing its state and compute nodes asking to start from future seqNum
-	// - New compute nodes joining and streaming from 0
+	// If a node is reconnecting, we trust and preserve the sequence numbers from its previous state,
+	// rather than using the sequence numbers from the handshake request. For new nodes,
+	// we assign them the latest event sequence number from the event store.
+	// This prevents several edge cases:
+	// - Compute node losing its state. The handshake will ask to start from 0.
+	// - Orchestrator losing their state and compute nodes asking to start from a later seqNum that no longer exist.
+	// - New compute nodes joining. The handshake will also ask to start from 0.
 	if isReconnect {
 		state.Membership = existing.Membership
 		state.ConnectionState.LastComputeSeqNum = existing.ConnectionState.LastComputeSeqNum
