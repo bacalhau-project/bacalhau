@@ -171,6 +171,7 @@ func (dp *DataPlane) setupDispatcher(ctx context.Context) error {
 	dispatcherWatcher, err := watcher.New(ctx,
 		fmt.Sprintf("orchestrator-dispatcher-%s", dp.config.NodeID),
 		dp.config.EventStore,
+		watcher.WithEphemeral(),
 		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
 		watcher.WithInitialEventIterator(watcher.AfterSequenceNumberIterator(dp.config.StartSeqNum)),
 		watcher.WithFilter(watcher.EventFilter{

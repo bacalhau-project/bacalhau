@@ -2,6 +2,8 @@ package nodes
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,6 +11,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 )
@@ -42,8 +46,9 @@ const (
 // state persistence with configurable intervals.
 type nodesManager struct {
 	// Core dependencies
-	store Store       // Persistent storage for node states
-	clock clock.Clock // Time source (can be mocked for testing)
+	store      Store              // Persistent storage for node states
+	eventstore watcher.EventStore // Store for events
+	clock      clock.Clock        // Time source (can be mocked for testing)
 
 	// Configuration
 	defaultApprovalState    models.NodeMembershipState // Initial membership state for new nodes
@@ -94,6 +99,10 @@ type ManagerParams struct {
 
 	// ShutdownTimeout is the timeout for graceful shutdown (optional)
 	ShutdownTimeout time.Duration
+
+	// EventStore provides storage for events so that node manager can assign
+	// new nodes with latest sequence number in the store
+	EventStore watcher.EventStore
 }
 
 // trackedLiveState holds the runtime state for an active node.
@@ -138,8 +147,16 @@ func NewManager(params ManagerParams) (Manager, error) {
 		params.ShutdownTimeout = defaultShutdownTimeout
 	}
 
+	if err := errors.Join(
+		validate.NotNil(params.Store, "store required"),
+		validate.NotNil(params.EventStore, "event store required"),
+	); err != nil {
+		return nil, fmt.Errorf("node manager invalid params: %w", err)
+	}
+
 	return &nodesManager{
 		store:                   params.Store,
+		eventstore:              params.EventStore,
 		clock:                   params.Clock,
 		liveState:               &sync.Map{},
 		defaultApprovalState:    defaultApprovalState,
@@ -425,16 +442,29 @@ func (n *nodesManager) Handshake(
 		Info:       request.NodeInfo,
 		Membership: n.defaultApprovalState,
 		ConnectionState: models.ConnectionState{
-			Status:                 models.NodeStates.CONNECTED,
-			ConnectedSince:         n.clock.Now(),
-			LastHeartbeat:          n.clock.Now(),
-			LastOrchestratorSeqNum: request.LastOrchestratorSeqNum,
+			Status:         models.NodeStates.CONNECTED,
+			ConnectedSince: n.clock.Now(),
+			LastHeartbeat:  n.clock.Now(),
 		},
 	}
 
+	// If a node is reconnecting, we trust and preserve the sequence numbers from its previous state,
+	// rather than using the sequence numbers from the handshake request. For new nodes,
+	// we assign them the latest event sequence number from the event store.
+	// This prevents several edge cases:
+	// - Compute node losing its state. The handshake will ask to start from 0.
+	// - Orchestrator losing their state and compute nodes asking to start from a later seqNum that no longer exist.
+	// - New compute nodes joining. The handshake will also ask to start from 0.
 	if isReconnect {
 		state.Membership = existing.Membership
 		state.ConnectionState.LastComputeSeqNum = existing.ConnectionState.LastComputeSeqNum
+		state.ConnectionState.LastOrchestratorSeqNum = existing.ConnectionState.LastOrchestratorSeqNum
+	} else {
+		// Assign the latest sequence number from the event store
+		state.ConnectionState.LastOrchestratorSeqNum, err = n.eventstore.GetLatestEventNum(ctx)
+		if err != nil {
+			return messages.HandshakeResponse{}, fmt.Errorf("failed to initialize node with latest event number: %w", err)
+		}
 	}
 
 	if err = n.store.Put(ctx, state); err != nil {
