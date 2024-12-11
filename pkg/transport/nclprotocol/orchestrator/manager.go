@@ -186,7 +186,7 @@ func (cm *ComputeManager) handleHandshakeRequest(ctx context.Context, msg *envel
 	}
 
 	// Create data plane for accepted node
-	if err = cm.setupDataPlane(ctx, request.NodeInfo, request.LastOrchestratorSeqNum); err != nil {
+	if err = cm.setupDataPlane(ctx, request.NodeInfo, response.StartingOrchestratorSeqNum); err != nil {
 		return nil, fmt.Errorf("setup data plane failed: %w", err)
 	}
 
