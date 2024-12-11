@@ -1,5 +1,5 @@
 package dispatcher
 
 const (
-	KeySeqNum = "Bacalhau-SeqNum"
+	KeySeqNum = "SeqNum"
 )

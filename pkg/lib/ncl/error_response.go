@@ -12,7 +12,7 @@ const (
 	ErrorMessageType = "ncl.ErrorResponse"
 
 	// KeyStatusCode is the key for the status code
-	KeyStatusCode = "Bacalhau-StatusCode"
+	KeyStatusCode = "StatusCode"
 
 	// StatusBadRequest is the status code for a bad request
 	StatusBadRequest = 400
