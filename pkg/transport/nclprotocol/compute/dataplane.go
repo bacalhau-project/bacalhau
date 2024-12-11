@@ -52,6 +52,12 @@ type DataPlaneParams struct {
 // NewDataPlane creates a new DataPlane instance with the provided parameters.
 // It initializes the data plane but does not start any operations - Start() must be called.
 func NewDataPlane(params DataPlaneParams) (*DataPlane, error) {
+	if params.Client == nil {
+		return nil, fmt.Errorf("NATS client is required")
+	}
+	if params.Config.NodeID == "" {
+		return nil, fmt.Errorf("node ID is required")
+	}
 	dp := &DataPlane{
 		config:             params.Config,
 		Client:             params.Client,
