@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -20,6 +21,9 @@ import (
 type Server struct {
 	nodeManager nodes.Manager
 	resources   sync.Map // map[string]nodeResources
+	// Track nodes that failed registration to avoid infinite retries
+	failedRegistrations sync.Map // map[string]struct{}
+	reregistrationMu    sync.Mutex
 }
 
 type nodeResources struct {
@@ -30,7 +34,9 @@ type nodeResources struct {
 
 func NewServer(manager nodes.Manager) *Server {
 	return &Server{
-		nodeManager: manager,
+		nodeManager:         manager,
+		failedRegistrations: sync.Map{},
+		reregistrationMu:    sync.Mutex{},
 	}
 }
 
@@ -124,7 +130,6 @@ func (h *Server) UpdateResources(ctx context.Context, request legacy.UpdateResou
 	return &legacy.UpdateResourcesResponse{}, nil
 }
 
-// Heartbeat handles heartbeat messages from compute nodes, enriching them with the latest resource info
 func (h *Server) Heartbeat(ctx context.Context, request legacy.Heartbeat) error {
 	// Create base heartbeat request
 	heartbeat := messages.HeartbeatRequest{
@@ -142,10 +147,64 @@ func (h *Server) Heartbeat(ctx context.Context, request legacy.Heartbeat) error 
 		HeartbeatRequest: heartbeat,
 	})
 
-	// handle errors gracefully
-	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to process heartbeat")
+	// If handshake required error, attempt re-registration
+	if err != nil && bacerrors.IsErrorWithCode(err, nodes.HandshakeRequired) {
+		if err := h.tryReregisterNode(ctx, request.NodeID); err != nil {
+			return err
+		}
+
+		// Retry heartbeat after successful re-registration
+		_, err = h.nodeManager.Heartbeat(ctx, nodes.ExtendedHeartbeatRequest{
+			HeartbeatRequest: heartbeat,
+		})
 	}
+
+	return err
+}
+
+// tryReregisterNode attempts to re-register a node that failed a heartbeat
+// due to missing handshake. Returns error if registration fails.
+func (h *Server) tryReregisterNode(ctx context.Context, nodeID string) error {
+	// Check if we've already tried and failed to register this node
+	if _, failed := h.failedRegistrations.Load(nodeID); failed {
+		return nodes.NewErrHandshakeRequired(nodeID)
+	}
+
+	// Prevent concurrent re-registration attempts
+	h.reregistrationMu.Lock()
+	defer h.reregistrationMu.Unlock()
+
+	// check again if we've already tried and failed to register this node
+	if _, failed := h.failedRegistrations.Load(nodeID); failed {
+		return nodes.NewErrHandshakeRequired(nodeID)
+	}
+
+	// Get the node info from the manager
+	state, err := h.nodeManager.Get(ctx, nodeID)
+	if err != nil {
+		// If node not found, mark as failed registration and don't retry
+		h.failedRegistrations.Store(nodeID, struct{}{})
+		log.Error().Err(err).Str("node", nodeID).Msg("Failed to get node info for re-registration")
+		return err
+	}
+
+	// Attempt to re-register the node
+	resp, err := h.Register(ctx, legacy.RegisterRequest{
+		Info: state.Info,
+	})
+	if err != nil {
+		h.failedRegistrations.Store(nodeID, struct{}{})
+		log.Error().Err(err).Str("node", nodeID).Msg("Failed to re-register node")
+		return err
+	}
+
+	if !resp.Accepted {
+		h.failedRegistrations.Store(nodeID, struct{}{})
+		log.Error().Str("node", nodeID).Str("reason", resp.Reason).Msg("Node re-registration rejected")
+		return nodes.NewErrHandshakeRequired(nodeID)
+	}
+
+	log.Info().Str("node", nodeID).Msg("Successfully re-registered legacy node")
 	return nil
 }
 
