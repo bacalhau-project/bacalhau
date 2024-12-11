@@ -18,6 +18,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
@@ -41,6 +42,7 @@ type HeartbeatTestSuite struct {
 	messageSerDeRegistry *envelope.Registry
 	heartbeatServer      *orchestrator.Server
 	nodeManager          nodes.Manager
+	eventStore           watcher.EventStore
 }
 
 func TestHeartbeatTestSuite(t *testing.T) {
@@ -53,12 +55,14 @@ func (s *HeartbeatTestSuite) SetupTest() {
 
 	// Setup NATS server and client
 	s.natsServer, s.natsConn = testutils.StartNats(s.T())
+	s.eventStore, _ = testutils.CreateStringEventStore(s.T())
 
 	// Setup real node manager
 	s.nodeManager, err = nodes.NewManager(nodes.ManagerParams{
 		Clock:                 s.clock,
 		Store:                 inmemory.NewNodeStore(inmemory.NodeStoreParams{TTL: 1 * time.Hour}),
 		NodeDisconnectedAfter: 5 * time.Second,
+		EventStore:            s.eventStore,
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.nodeManager.Start(context.Background()))
@@ -99,6 +103,9 @@ func (s *HeartbeatTestSuite) TearDownTest() {
 	}
 	if s.nodeManager != nil {
 		s.nodeManager.Stop(context.Background())
+	}
+	if s.eventStore != nil {
+		s.eventStore.Close(context.Background())
 	}
 }
 
