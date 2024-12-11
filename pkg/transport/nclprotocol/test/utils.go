@@ -13,5 +13,7 @@ type MockLogStreamServer struct{}
 
 func (m *MockLogStreamServer) GetLogStream(ctx context.Context, request messages.ExecutionLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
-	return nil, nil
+	ch := make(chan *concurrency.AsyncResult[models.ExecutionLog])
+	close(ch)
+	return ch, nil
 }
