@@ -64,7 +64,7 @@ type stateChange struct {
 // NewConnectionManager creates a new connection manager with the given configuration.
 // It initializes the manager but does not start any connections - Start() must be called.
 func NewConnectionManager(cfg Config) (*ConnectionManager, error) {
-	cfg.setDefaults()
+	cfg.SetDefaults()
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
@@ -105,7 +105,6 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to get last checkpoint: %w", err)
 	}
 	cm.incomingSeqTracker = nclprotocol.NewSequenceTracker().WithLastSeqNum(checkpoint)
-	cm.config.NodeInfoProvider.GetNodeInfo(ctx)
 
 	// create new channels in case the connection manager is restarted
 	cm.stopCh = make(chan struct{})
@@ -113,7 +112,7 @@ func (cm *ConnectionManager) Start(ctx context.Context) error {
 
 	// Start connection management in background
 	cm.wg.Add(1)
-	go cm.maintainConnection(context.TODO())
+	go cm.maintainConnectionLoop(context.TODO())
 
 	// Start state change notification handler
 	cm.wg.Add(1)
@@ -309,7 +308,12 @@ func (cm *ConnectionManager) performHandshake(
 			"invalid handshake response payload. expected messages.HandshakeResponse, got %T", payload)
 	}
 
-	return payload.(messages.HandshakeResponse), nil
+	handshakeResponse := payload.(messages.HandshakeResponse)
+	if !handshakeResponse.Accepted {
+		return messages.HandshakeResponse{}, fmt.Errorf(
+			"handshake rejected by orchestrator due to %s", handshakeResponse.Reason)
+	}
+	return handshakeResponse, nil
 }
 
 // setupControlPlane creates and starts the control plane
@@ -352,46 +356,49 @@ func (cm *ConnectionManager) setupDataPlane(ctx context.Context, handshake messa
 	return nil
 }
 
-// maintainConnection runs a periodic loop that manages the connection lifecycle.
+// maintainConnectionLoop runs a periodic loop that manages the connection lifecycle.
 // It handles initial connection, health monitoring, and reconnection with backoff.
-func (cm *ConnectionManager) maintainConnection(ctx context.Context) {
+func (cm *ConnectionManager) maintainConnectionLoop(ctx context.Context) {
 	defer cm.wg.Done()
 
-	// Create timer that fires immediately for first connection
-	timer := time.NewTimer(0)
-	defer timer.Stop()
+	// Initial connection attempt
+	cm.maintainConnection(ctx)
+
+	// Start periodic connection maintenance
+	ticker := cm.config.Clock.Ticker(cm.config.ReconnectInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-cm.stopCh:
 			return
-
-		case <-timer.C:
-			switch cm.getState() {
-			case nclprotocol.Disconnected:
-				if err := cm.connect(ctx); err != nil {
-					failures := cm.GetHealth().ConsecutiveFailures
-					backoffDuration := cm.config.ReconnectBackoff.BackoffDuration(failures)
-
-					log.Error().
-						Err(err).
-						Int("consecutiveFailures", failures).
-						Str("backoffDuration", backoffDuration.String()).
-						Msg("Connection attempt failed")
-
-					cm.config.ReconnectBackoff.Backoff(ctx, failures)
-				}
-
-			case nclprotocol.Connected:
-				cm.checkConnectionHealth()
-
-			default:
-				// Ignore other states, such as connecting
-			}
-
-			// Reset timer for next interval
-			timer.Reset(cm.config.ReconnectInterval)
+		case <-ticker.C:
+			cm.maintainConnection(ctx)
 		}
+	}
+}
+
+func (cm *ConnectionManager) maintainConnection(ctx context.Context) {
+	switch cm.getState() {
+	case nclprotocol.Disconnected:
+		if err := cm.connect(ctx); err != nil {
+			failures := cm.GetHealth().ConsecutiveFailures
+			backoffDuration := cm.config.ReconnectBackoff.BackoffDuration(failures)
+
+			log.Error().
+				Err(err).
+				Int("consecutiveFailures", failures).
+				Str("backoffDuration", backoffDuration.String()).
+				Msg("Connection attempt failed")
+
+			cm.config.ReconnectBackoff.Backoff(ctx, failures)
+		}
+
+	case nclprotocol.Connected:
+		cm.checkConnectionHealth()
+
+	default:
+		// Ignore other states, such as connecting
 	}
 }
 
@@ -443,9 +450,12 @@ func (cm *ConnectionManager) transitionState(newState nclprotocol.ConnectionStat
 	}
 
 	// Update state tracking
-	if newState == nclprotocol.Connected {
+	switch newState {
+	case nclprotocol.Connecting:
+		cm.healthTracker.MarkConnecting()
+	case nclprotocol.Connected:
 		cm.healthTracker.MarkConnected()
-	} else if newState == nclprotocol.Disconnected {
+	case nclprotocol.Disconnected:
 		cm.healthTracker.MarkDisconnected(err)
 	}
 

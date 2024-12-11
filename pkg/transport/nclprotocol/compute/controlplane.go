@@ -76,6 +76,8 @@ func (cp *ControlPlane) Start(ctx context.Context) error {
 		return fmt.Errorf("control plane already running")
 	}
 
+	cp.latestNodeInfo = cp.cfg.NodeInfoProvider.GetNodeInfo(ctx)
+
 	cp.wg.Add(1)
 	go cp.run(ctx)
 
@@ -89,15 +91,9 @@ func (cp *ControlPlane) run(ctx context.Context) {
 	defer cp.wg.Done()
 
 	// Initialize timers for periodic operations
-	heartbeat := time.NewTimer(cp.cfg.HeartbeatInterval)
-	nodeInfo := time.NewTimer(cp.cfg.NodeInfoUpdateInterval)
-	checkpoint := time.NewTimer(cp.cfg.CheckpointInterval)
-
-	defer func() {
-		heartbeat.Stop()
-		nodeInfo.Stop()
-		checkpoint.Stop()
-	}()
+	heartbeat := time.NewTicker(cp.cfg.HeartbeatInterval)
+	nodeInfo := time.NewTicker(cp.cfg.NodeInfoUpdateInterval)
+	checkpoint := time.NewTicker(cp.cfg.CheckpointInterval)
 
 	for {
 		select {
@@ -110,19 +106,14 @@ func (cp *ControlPlane) run(ctx context.Context) {
 			if err := cp.heartbeat(ctx); err != nil {
 				log.Error().Err(err).Msg("Failed to send heartbeat")
 			}
-			heartbeat.Reset(cp.cfg.HeartbeatInterval)
-
 		case <-nodeInfo.C:
 			if err := cp.updateNodeInfo(ctx); err != nil {
 				log.Error().Err(err).Msg("Failed to update node info")
 			}
-			nodeInfo.Reset(cp.cfg.NodeInfoUpdateInterval)
-
 		case <-checkpoint.C:
 			if err := cp.checkpointProgress(ctx); err != nil {
 				log.Error().Err(err).Msg("Failed to checkpoint progress")
 			}
-			checkpoint.Reset(cp.cfg.CheckpointInterval)
 		}
 	}
 }
@@ -173,7 +164,7 @@ func (cp *ControlPlane) updateNodeInfo(ctx context.Context) error {
 	// Only send updates when node info has changed
 	prevNodeInfo := cp.latestNodeInfo
 	cp.latestNodeInfo = cp.cfg.NodeInfoProvider.GetNodeInfo(ctx)
-	if !models.HasNodeInfoChanged(prevNodeInfo, cp.latestNodeInfo) {
+	if !prevNodeInfo.HasStaticConfigChanged(cp.latestNodeInfo) {
 		return nil
 	}
 

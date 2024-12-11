@@ -31,8 +31,8 @@ type DataPlane struct {
 
 	// Core messaging components
 	Client     *nats.Conn             // NATS connection for messaging
-	publisher  ncl.OrderedPublisher   // Handles ordered message publishing
-	dispatcher *dispatcher.Dispatcher // Manages event watching and dispatch
+	Publisher  ncl.OrderedPublisher   // Handles ordered message publishing
+	Dispatcher *dispatcher.Dispatcher // Manages event watching and dispatch
 
 	// Sequence tracking
 	lastReceivedSeqNum uint64 // Last sequence number received from orchestrator
@@ -78,6 +78,10 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 		return fmt.Errorf("data plane already running")
 	}
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	var err error
 	defer func() {
 		if err != nil {
@@ -97,7 +101,7 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to set up log stream handler: %w", err)
 	}
 	// Initialize ordered publisher for reliable message delivery
-	dp.publisher, err = ncl.NewOrderedPublisher(dp.Client, ncl.OrderedPublisherConfig{
+	dp.Publisher, err = ncl.NewOrderedPublisher(dp.Client, ncl.OrderedPublisherConfig{
 		Name:              dp.config.NodeID,
 		MessageRegistry:   dp.config.MessageRegistry,
 		MessageSerializer: dp.config.MessageSerializer,
@@ -121,8 +125,8 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 	}
 
 	// Initialize dispatcher to handle event watching and publishing
-	dp.dispatcher, err = dispatcher.New(
-		dp.publisher,
+	dp.Dispatcher, err = dispatcher.New(
+		dp.Publisher,
 		dispatcherWatcher,
 		dp.config.DataPlaneMessageCreator,
 		dp.config.DispatcherConfig,
@@ -132,7 +136,7 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 	}
 
 	// Start the dispatcher
-	if err = dp.dispatcher.Start(ctx); err != nil {
+	if err = dp.Dispatcher.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start dispatcher: %w", err)
 	}
 
@@ -157,25 +161,32 @@ func (dp *DataPlane) Stop(ctx context.Context) error {
 	return dp.cleanup(ctx)
 }
 
+// IsRunning returns true if the data plane is currently running.
+func (dp *DataPlane) IsRunning() bool {
+	dp.mu.RLock()
+	defer dp.mu.RUnlock()
+	return dp.running
+}
+
 // cleanup handles the orderly shutdown of data plane components.
 // It ensures resources are released in the correct order and collects any errors.
 func (dp *DataPlane) cleanup(ctx context.Context) error {
 	var errs error
 
 	// Stop dispatcher first to prevent new messages
-	if dp.dispatcher != nil {
-		if err := dp.dispatcher.Stop(ctx); err != nil {
+	if dp.Dispatcher != nil {
+		if err := dp.Dispatcher.Stop(ctx); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		dp.dispatcher = nil
+		dp.Dispatcher = nil
 	}
 
 	// Then close the publisher
-	if dp.publisher != nil {
-		if err := dp.publisher.Close(ctx); err != nil {
+	if dp.Publisher != nil {
+		if err := dp.Publisher.Close(ctx); err != nil {
 			errs = errors.Join(errs, err)
 		}
-		dp.publisher = nil
+		dp.Publisher = nil
 	}
 
 	if errs != nil {

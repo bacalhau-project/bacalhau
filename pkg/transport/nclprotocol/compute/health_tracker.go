@@ -48,6 +48,14 @@ func (ht *HealthTracker) MarkDisconnected(err error) {
 	ht.health.ConsecutiveFailures++
 }
 
+// MarkConnecting update status when connection is in progress
+func (ht *HealthTracker) MarkConnecting() {
+	ht.mu.Lock()
+	defer ht.mu.Unlock()
+
+	ht.health.CurrentState = nclprotocol.Connecting
+}
+
 // HeartbeatSuccess records successful heartbeat
 func (ht *HealthTracker) HeartbeatSuccess() {
 	ht.mu.Lock()

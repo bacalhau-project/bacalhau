@@ -96,7 +96,7 @@ func DefaultConfig() Config {
 	}
 }
 
-func (c *Config) setDefaults() {
+func (c *Config) SetDefaults() {
 	defaults := DefaultConfig()
 	if c.HeartbeatMissFactor == 0 {
 		c.HeartbeatMissFactor = defaults.HeartbeatMissFactor

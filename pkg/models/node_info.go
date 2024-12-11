@@ -4,8 +4,11 @@ package models
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"golang.org/x/exp/maps"
 )
 
@@ -107,10 +110,41 @@ func (n NodeInfo) IsComputeNode() bool {
 	return n.NodeType == NodeTypeCompute
 }
 
-// HasNodeInfoChanged returns true if the node info has changed compared to the previous call
-// TODO: implement this function
-func HasNodeInfoChanged(prev, current NodeInfo) bool {
-	return false
+// Copy returns a deep copy of the NodeInfo
+func (n *NodeInfo) Copy() *NodeInfo {
+	if n == nil {
+		return nil
+	}
+	cpy := new(NodeInfo)
+	*cpy = *n
+
+	// Deep copy maps
+	cpy.Labels = maps.Clone(n.Labels)
+	cpy.SupportedProtocols = slices.Clone(n.SupportedProtocols)
+	cpy.ComputeNodeInfo = *n.ComputeNodeInfo.Copy()
+	cpy.BacalhauVersion = *n.BacalhauVersion.Copy()
+	return cpy
+}
+
+// HasStaticConfigChanged returns true if the static/configuration aspects of this node
+// have changed compared to other. It ignores dynamic operational fields like queue capacity
+// and execution counts that change frequently during normal operation.
+func (n NodeInfo) HasStaticConfigChanged(other NodeInfo) bool {
+	// Define which fields to ignore in the comparison
+	opts := []cmp.Option{
+		cmpopts.IgnoreFields(ComputeNodeInfo{},
+			"QueueUsedCapacity",
+			"AvailableCapacity",
+			"RunningExecutions",
+			"EnqueuedExecutions",
+		),
+		// Ignore ordering in slices
+		cmpopts.SortSlices(func(a, b string) bool { return a < b }),
+		cmpopts.SortSlices(func(a, b Protocol) bool { return string(a) < string(b) }),
+		cmpopts.SortSlices(func(a, b GPU) bool { return a.Less(b) }), // Sort GPUs by all fields for stable comparison
+	}
+
+	return !cmp.Equal(n, other, opts...)
 }
 
 // ComputeNodeInfo contains metadata about the current state and abilities of a compute node. Compute Nodes share
@@ -125,4 +159,23 @@ type ComputeNodeInfo struct {
 	MaxJobRequirements Resources `json:"MaxJobRequirements"`
 	RunningExecutions  int       `json:"RunningExecutions"`
 	EnqueuedExecutions int       `json:"EnqueuedExecutions"`
+}
+
+// Copy provides a copy of the allocation and deep copies the job
+func (c *ComputeNodeInfo) Copy() *ComputeNodeInfo {
+	if c == nil {
+		return nil
+	}
+	cpy := new(ComputeNodeInfo)
+	*cpy = *c
+
+	// Deep copy slices
+	cpy.ExecutionEngines = slices.Clone(c.ExecutionEngines)
+	cpy.Publishers = slices.Clone(c.Publishers)
+	cpy.StorageSources = slices.Clone(c.StorageSources)
+	cpy.MaxCapacity = *c.MaxCapacity.Copy()
+	cpy.QueueUsedCapacity = *c.QueueUsedCapacity.Copy()
+	cpy.AvailableCapacity = *c.AvailableCapacity.Copy()
+	cpy.MaxJobRequirements = *c.MaxJobRequirements.Copy()
+	return cpy
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	bprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/compute"
-	transportcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
+	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/dispatcher"
 )
 
@@ -197,7 +197,7 @@ func NewComputeNode(
 	}
 
 	// connection manager
-	connectionManager, err := transportcompute.NewConnectionManager(transportcompute.Config{
+	connectionManager, err := nclprotocolcompute.NewConnectionManager(nclprotocolcompute.Config{
 		NodeID:                  cfg.NodeID,
 		ClientFactory:           clientFactory,
 		NodeInfoProvider:        nodeInfoProvider,

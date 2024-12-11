@@ -126,6 +126,24 @@ type GPU struct {
 	PCIAddress string
 }
 
+// Less compares this GPU with another for sorting/ordering purposes
+// The comparison order is: Index, Name, Vendor, Memory, PCIAddress
+func (g GPU) Less(other GPU) bool {
+	if g.Index != other.Index {
+		return g.Index < other.Index
+	}
+	if g.Name != other.Name {
+		return g.Name < other.Name
+	}
+	if g.Vendor != other.Vendor {
+		return g.Vendor < other.Vendor
+	}
+	if g.Memory != other.Memory {
+		return g.Memory < other.Memory
+	}
+	return g.PCIAddress < other.PCIAddress
+}
+
 type Resources struct {
 	// CPU units
 	CPU float64 `json:"CPU,omitempty"`

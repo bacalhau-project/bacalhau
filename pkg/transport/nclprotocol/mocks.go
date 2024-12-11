@@ -127,11 +127,12 @@ func (m *MockMessageCreatorFactory) EXPECT() *MockMessageCreatorFactoryMockRecor
 }
 
 // CreateMessageCreator mocks base method.
-func (m *MockMessageCreatorFactory) CreateMessageCreator(ctx context.Context, nodeID string) MessageCreator {
+func (m *MockMessageCreatorFactory) CreateMessageCreator(ctx context.Context, nodeID string) (MessageCreator, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMessageCreator", ctx, nodeID)
 	ret0, _ := ret[0].(MessageCreator)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // CreateMessageCreator indicates an expected call of CreateMessageCreator.
