@@ -65,18 +65,18 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	metadataStore MetadataStore,
 ) (*Requester, error) {
+	jobStore, err := createJobStore(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	natsConn, err := transportLayer.CreateClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	nodeID := cfg.NodeID
-	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, natsConn)
-	if err != nil {
-		return nil, err
-	}
-
-	jobStore, err := createJobStore(ctx, cfg)
+	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, jobStore.GetEventStore(), natsConn)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +371,7 @@ func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) 
 	return jobStore, nil
 }
 
-func createNodeManager(ctx context.Context, cfg NodeConfig, natsConn *nats.Conn) (
+func createNodeManager(ctx context.Context, cfg NodeConfig, eventStore watcher.EventStore, natsConn *nats.Conn) (
 	nodes.Manager, nodes.Store, error) {
 	nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 		BucketName: kvstore.BucketNameCurrent,
@@ -385,6 +385,7 @@ func createNodeManager(ctx context.Context, cfg NodeConfig, natsConn *nats.Conn)
 		Store:                 nodeInfoStore,
 		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
 		ManualApproval:        cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
+		EventStore:            eventStore,
 	})
 
 	if err != nil {
