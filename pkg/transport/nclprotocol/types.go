@@ -53,7 +53,7 @@ type ConnectionHealth struct {
 }
 
 const (
-	KeySeqNum = "SeqNum"
+	KeySeqNum = "Bacalhau-SeqNum"
 )
 
 // MessageCreator defines how events from the watcher are converted into

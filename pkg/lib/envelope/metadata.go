@@ -9,8 +9,8 @@ import (
 // Metadata keys
 const (
 	HeaderPrefix       = "Bacalhau-"
-	KeyMessageType     = "Type"
-	KeyPayloadEncoding = "PayloadEncoding"
+	KeyMessageType     = "Bacalhau-Type"
+	KeyPayloadEncoding = "Bacalhau-PayloadEncoding"
 )
 
 // Metadata contains metadata about the message
@@ -25,25 +25,9 @@ func (m Metadata) ToMap() map[string]string {
 func (m Metadata) ToHeaders() map[string][]string {
 	headers := make(map[string][]string, len(m))
 	for k, v := range m {
-		headers[HeaderPrefix+k] = []string{v}
+		headers[k] = []string{v}
 	}
 	return headers
-}
-
-// FromHeaders creates a new Metadata object from a map[string][]string
-func FromHeaders(headers map[string][]string) Metadata {
-	metadata := make(Metadata, len(headers))
-	for k, v := range headers {
-		if len(v) == 0 {
-			continue
-		}
-		key := k
-		if strings.HasPrefix(k, HeaderPrefix) && len(k) > len(HeaderPrefix) {
-			key = k[len(HeaderPrefix):]
-		}
-		metadata[key] = v[0]
-	}
-	return metadata
 }
 
 // NewMetadataFromMap creates a new shallow copy Metadata object from a map.
@@ -68,7 +52,15 @@ func NewMetadataFromMapCopy(m map[string]string) *Metadata {
 
 // Get returns the value for a given key, or an empty string if the key doesn't exist
 func (m Metadata) Get(key string) string {
-	return m[key]
+	if v, ok := m[key]; ok {
+		return v
+	}
+	// backward compatible with old headers
+	if key == KeyMessageType || key == KeyPayloadEncoding {
+		// return keys excluding header prefix
+		return m[strings.TrimPrefix(key, HeaderPrefix)]
+	}
+	return ""
 }
 
 // Has checks if a key exists in the metadata

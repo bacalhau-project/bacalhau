@@ -2,9 +2,9 @@ package ncl
 
 // Metadata keys
 const (
-	KeySource      = "Source"
-	KeyEventTime   = "EventTime"
-	KeyMessageUUID = "MessageUUID"
-	KeyMessageID   = "MessageID"
-	KeySubject     = "Subject"
+	KeySource      = "Bacalhau-Source"
+	KeyEventTime   = "Bacalhau-EventTime"
+	KeyMessageUUID = "Bacalhau-MessageUUID"
+	KeyMessageID   = "Bacalhau-MessageID"
+	KeySubject     = "Bacalhau-Subject"
 )
