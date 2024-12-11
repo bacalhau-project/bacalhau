@@ -30,14 +30,19 @@ func (m Metadata) ToHeaders() map[string][]string {
 }
 
 // FromHeaders creates a new Metadata object from a map[string][]string
-func FromHeaders(headers map[string][]string) *Metadata {
+func FromHeaders(headers map[string][]string) Metadata {
 	metadata := make(Metadata, len(headers))
 	for k, v := range headers {
-		if len(v) > 0 {
-			metadata[k[len(HeaderPrefix):]] = v[0]
+		if len(v) == 0 {
+			continue
 		}
+		key := k
+		if strings.HasPrefix(k, HeaderPrefix) && len(k) > len(HeaderPrefix) {
+			key = k[len(HeaderPrefix):]
+		}
+		metadata[key] = v[0]
 	}
-	return &metadata
+	return metadata
 }
 
 // NewMetadataFromMap creates a new shallow copy Metadata object from a map.
