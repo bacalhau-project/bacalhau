@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -27,6 +28,7 @@ import (
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
 	bprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/compute"
 	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/dispatcher"
@@ -192,9 +194,6 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
-	if err = legacyConnectionManager.Start(ctx); err != nil {
-		log.Warn().Err(err).Msg("failed to start legacy connection manager. continuing without it")
-	}
 
 	// connection manager
 	connectionManager, err := nclprotocolcompute.NewConnectionManager(nclprotocolcompute.Config{
@@ -217,8 +216,19 @@ func NewComputeNode(
 		return nil, err
 	}
 
-	if err = connectionManager.Start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start connection manager: %w", err)
+	// First we attempt to start the legacy connection manager to maintain backward compatibility
+	// with older orchestrator nodes. If it fails, or we receive an upgrade available message, we
+	// start the new connection manager.
+	if err = legacyConnectionManager.Start(ctx); err != nil {
+		if strings.Contains(err.Error(), bprotocol.ErrUpgradeAvailable.Error()) {
+			log.Debug().Msg("Disabling bprotocol management client due to upgrade available")
+		} else {
+			log.Warn().Err(err).Msg("failed to start legacy connection manager. falling back to ncl protocol")
+		}
+
+		if err = connectionManager.Start(ctx); err != nil {
+			return nil, fmt.Errorf("failed to start connection manager: %w", err)
+		}
 	}
 
 	watcherRegistry, err := setupComputeWatchers(
