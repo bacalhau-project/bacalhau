@@ -229,42 +229,46 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		}()
 	}
 
+	isDebug := system.IsDebugMode()
 	startupLog := log.Info().
-		Str("name", sysmeta.NodeName).
-		Str("address", fmt.Sprintf("%s:%d", hostAddress, cfg.API.Port)).
-		Bool("compute_enabled", cfg.Compute.Enabled).
-		Bool("orchestrator_enabled", cfg.Orchestrator.Enabled).
-		Bool("webui_enabled", cfg.WebUI.Enabled)
-	if cfg.Compute.Enabled {
-		capacity := standardNode.ComputeNode.Capacity.GetMaxCapacity(ctx)
-		startupLog.
-			Strs("engines", standardNode.ComputeNode.Executors.Keys(ctx)).
-			Strs("publishers", standardNode.ComputeNode.Publishers.Keys(ctx)).
-			Strs("storages", standardNode.ComputeNode.Storages.Keys(ctx)).
-			Strs("orchestrators", cfg.Compute.Orchestrators).
-			Str("capacity", capacity.String())
+		Str("name", sysmeta.NodeName)
 
-		if len(cfg.Compute.AllowListedLocalPaths) > 0 {
-			startupLog.Strs("volumes", cfg.Compute.AllowListedLocalPaths)
+	if isDebug {
+		startupLog.
+			Str("address", fmt.Sprintf("%s:%d", hostAddress, cfg.API.Port)).
+			Bool("compute_enabled", cfg.Compute.Enabled).
+			Bool("orchestrator_enabled", cfg.Orchestrator.Enabled).
+			Bool("webui_enabled", cfg.WebUI.Enabled)
+	}
+	if cfg.Compute.Enabled {
+		startupLog.Strs("orchestrators", cfg.Compute.Orchestrators)
+
+		if isDebug {
+			capacity := standardNode.ComputeNode.Capacity.GetMaxCapacity(ctx)
+			startupLog.
+				Strs("engines", standardNode.ComputeNode.Executors.Keys(ctx)).
+				Strs("publishers", standardNode.ComputeNode.Publishers.Keys(ctx)).
+				Strs("storages", standardNode.ComputeNode.Storages.Keys(ctx)).
+				Str("capacity", capacity.String())
+			if len(cfg.Compute.AllowListedLocalPaths) > 0 {
+				startupLog.Strs("volumes", cfg.Compute.AllowListedLocalPaths)
+			}
 		}
 	}
 
 	if cfg.Orchestrator.Enabled {
-		startupLog.Str("orchestrator_address",
-			fmt.Sprintf("%s:%d", cfg.Orchestrator.Host, cfg.Orchestrator.Port))
+		if isDebug {
+			startupLog.Str("orchestrator_address",
+				fmt.Sprintf("%s:%d", cfg.Orchestrator.Host, cfg.Orchestrator.Port))
+		}
 	}
 	startupLog.Msg("bacalhau node running")
 
 	envvars := buildEnvVariables(cfg)
-	cmd.Println()
-	cmd.Println("To connect to this node from the local client, run the following commands in your shell:")
-	cmd.Println(envvars)
-
 	riPath, err := fsRepo.WriteRunInfo(ctx, envvars)
 	if err != nil {
 		return err
 	}
-	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
 	defer os.Remove(riPath)
 
 	<-ctx.Done() // block until killed
