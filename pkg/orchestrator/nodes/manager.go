@@ -46,9 +46,10 @@ const (
 // state persistence with configurable intervals.
 type nodesManager struct {
 	// Core dependencies
-	store      Store              // Persistent storage for node states
-	eventstore watcher.EventStore // Store for events
-	clock      clock.Clock        // Time source (can be mocked for testing)
+	store            Store                   // Persistent storage for node states
+	eventstore       watcher.EventStore      // Event store for sequence number tracking
+	nodeInfoProvider models.NodeInfoProvider // Provides node information for self registration
+	clock            clock.Clock             // Time source (can be mocked for testing)
 
 	// Configuration
 	defaultApprovalState    models.NodeMembershipState // Initial membership state for new nodes
@@ -81,6 +82,9 @@ type ManagerParams struct {
 
 	// Clock is the time source (defaults to real clock if nil)
 	Clock clock.Clock
+
+	// NodeInfoProvider provides node information for self registration
+	NodeInfoProvider models.NodeInfoProvider
 
 	// NodeDisconnectedAfter is how long to wait before marking nodes as disconnected
 	NodeDisconnectedAfter time.Duration
@@ -150,6 +154,7 @@ func NewManager(params ManagerParams) (Manager, error) {
 	if err := errors.Join(
 		validate.NotNil(params.Store, "store required"),
 		validate.NotNil(params.EventStore, "event store required"),
+		validate.NotNil(params.NodeInfoProvider, "node info provider required"),
 	); err != nil {
 		return nil, fmt.Errorf("node manager invalid params: %w", err)
 	}
@@ -157,6 +162,7 @@ func NewManager(params ManagerParams) (Manager, error) {
 	return &nodesManager{
 		store:                   params.Store,
 		eventstore:              params.EventStore,
+		nodeInfoProvider:        params.NodeInfoProvider,
 		clock:                   params.Clock,
 		liveState:               &sync.Map{},
 		defaultApprovalState:    defaultApprovalState,
@@ -188,6 +194,11 @@ func (n *nodesManager) Start(ctx context.Context) error {
 	// Initialize clean state
 	n.liveState = &sync.Map{}
 	n.stopCh = make(chan struct{})
+
+	// self register the node's info in the store
+	if err := n.selfRegister(ctx); err != nil {
+		return err
+	}
 
 	// Start background tasks
 	n.startBackgroundTask("health-check", n.healthCheckLoop)
@@ -313,7 +324,7 @@ func (n *nodesManager) checkNodeHealth() {
 		// Try to update live state only if it hasn't changed since we checked it
 		newConnectionState := node.state.connectionState
 		newConnectionState.Status = models.NodeStates.DISCONNECTED
-		newConnectionState.DisconnectedSince = n.clock.Now()
+		newConnectionState.DisconnectedSince = n.clock.Now().UTC()
 		newConnectionState.LastError = "heartbeat timeout"
 
 		newState := &trackedLiveState{
@@ -331,7 +342,7 @@ func (n *nodesManager) checkNodeHealth() {
 			NodeID:    node.id,
 			Previous:  models.NodeStates.CONNECTED,
 			Current:   models.NodeStates.DISCONNECTED,
-			Timestamp: n.clock.Now(),
+			Timestamp: n.clock.Now().UTC(),
 		})
 	}
 }
@@ -443,8 +454,8 @@ func (n *nodesManager) Handshake(
 		Membership: n.defaultApprovalState,
 		ConnectionState: models.ConnectionState{
 			Status:         models.NodeStates.CONNECTED,
-			ConnectedSince: n.clock.Now(),
-			LastHeartbeat:  n.clock.Now(),
+			ConnectedSince: n.clock.Now().UTC(),
+			LastHeartbeat:  n.clock.Now().UTC(),
 		},
 	}
 
@@ -482,7 +493,7 @@ func (n *nodesManager) Handshake(
 		NodeID:    request.NodeInfo.ID(),
 		Previous:  existingConnectionState,
 		Current:   state.ConnectionState.Status,
-		Timestamp: n.clock.Now(),
+		Timestamp: n.clock.Now().UTC(),
 	})
 
 	log.Info().Msgf("handshake successful with node %s", request.NodeInfo.ID())
@@ -560,7 +571,7 @@ func (n *nodesManager) Heartbeat(
 
 		// updated connection state
 		updated := existing.connectionState
-		updated.LastHeartbeat = n.clock.Now()
+		updated.LastHeartbeat = n.clock.Now().UTC()
 		if request.LastOrchestratorSeqNum > 0 {
 			updated.LastOrchestratorSeqNum = request.LastOrchestratorSeqNum
 		}
@@ -630,7 +641,7 @@ func (n *nodesManager) RejectNode(ctx context.Context, nodeID string) error {
 	// Update persistent state first
 	state.Membership = models.NodeMembership.REJECTED
 	state.ConnectionState.Status = models.NodeStates.DISCONNECTED
-	state.ConnectionState.DisconnectedSince = n.clock.Now()
+	state.ConnectionState.DisconnectedSince = n.clock.Now().UTC()
 	state.ConnectionState.LastError = "node rejected"
 
 	if err = n.store.Put(ctx, state); err != nil {
@@ -644,7 +655,7 @@ func (n *nodesManager) RejectNode(ctx context.Context, nodeID string) error {
 				NodeID:    state.Info.ID(),
 				Previous:  models.NodeStates.CONNECTED,
 				Current:   models.NodeStates.DISCONNECTED,
-				Timestamp: n.clock.Now(),
+				Timestamp: n.clock.Now().UTC(),
 			})
 		}
 	}
@@ -679,7 +690,7 @@ func (n *nodesManager) DeleteNode(ctx context.Context, nodeID string) error {
 				NodeID:    state.Info.ID(),
 				Previous:  models.NodeStates.CONNECTED,
 				Current:   models.NodeStates.DISCONNECTED,
-				Timestamp: n.clock.Now(),
+				Timestamp: n.clock.Now().UTC(),
 			})
 		}
 	}
@@ -782,6 +793,44 @@ func (n *nodesManager) enrichState(state *models.NodeState) {
 	}
 	//nolint:staticcheck
 	state.Connection = state.ConnectionState.Status // for backward compatibility
+}
+
+func (n *nodesManager) selfRegister(ctx context.Context) error {
+	// get latest node info
+	nodeInfo := n.nodeInfoProvider.GetNodeInfo(ctx)
+
+	// get node info from the store if it exists
+	state, err := n.store.Get(ctx, nodeInfo.ID())
+	if err != nil {
+		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
+			return bacerrors.New("failed to self-register node: %v", err).
+				WithComponent(errComponent)
+		}
+		state = models.NodeState{
+			Info:       nodeInfo,
+			Membership: models.NodeMembership.APPROVED,
+			ConnectionState: models.ConnectionState{
+				ConnectedSince: n.clock.Now().UTC(),
+			},
+		}
+	}
+	// update the node info and make as connected
+	state.Info = nodeInfo
+	state.ConnectionState.Status = models.NodeStates.CONNECTED
+	state.ConnectionState.LastHeartbeat = n.clock.Now().UTC()
+
+	// for backward compatibility before connection state was introduced
+	if state.ConnectionState.ConnectedSince.IsZero() {
+		state.ConnectionState.ConnectedSince = n.clock.Now().UTC()
+	}
+
+	// store the updated state
+	if err = n.store.Put(ctx, state); err != nil {
+		return bacerrors.New("failed to self-register node: %v", err).
+			WithComponent(errComponent)
+	}
+
+	return nil
 }
 
 // compile-time check that nodesManager implements the Manager interface

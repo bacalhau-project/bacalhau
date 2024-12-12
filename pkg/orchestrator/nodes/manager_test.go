@@ -25,12 +25,14 @@ import (
 
 type NodeManagerTestSuite struct {
 	suite.Suite
-	ctx          context.Context
-	clock        *clock.Mock
-	store        nodes.Store
-	eventStore   watcher.EventStore
-	manager      nodes.Manager
-	disconnected time.Duration
+	ctx              context.Context
+	clock            *clock.Mock
+	store            nodes.Store
+	eventStore       watcher.EventStore
+	manager          nodes.Manager
+	disconnected     time.Duration
+	nodeInfo         models.NodeInfo
+	nodeInfoProvider models.NodeInfoProvider
 }
 
 func TestNodeManagerSuite(t *testing.T) {
@@ -48,10 +50,17 @@ func (s *NodeManagerTestSuite) SetupTest() {
 	})
 
 	s.eventStore, _ = testutils.CreateStringEventStore(s.T())
+	s.nodeInfo = models.NodeInfo{
+		NodeID:   "orchestrator-node",
+		NodeType: models.NodeTypeRequester,
+		Labels:   map[string]string{"test": "true"},
+	}
+	s.nodeInfoProvider = &mockNodeInfoProvider{info: s.nodeInfo}
 
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -446,7 +455,7 @@ func (s *NodeManagerTestSuite) TestConcurrentHandshakes() {
 	// Verify all nodes are registered
 	nodes, err := s.manager.List(s.ctx)
 	s.Require().NoError(err)
-	assert.Len(s.T(), nodes, numNodes)
+	assert.Len(s.T(), nodes, numNodes+1) // +1 for the current node
 }
 
 func (s *NodeManagerTestSuite) TestConcurrentHealthCheckAndHeartbeat() {
@@ -540,6 +549,7 @@ func (s *NodeManagerTestSuite) TestConcurrentOperations() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 clock.New(), // Use real clock for this test
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -589,10 +599,14 @@ func (s *NodeManagerTestSuite) TestConcurrentOperations() {
 	// Verify final state of all nodes
 	nodes, err := manager.List(ctx)
 	s.Require().NoError(err)
-	s.Require().Len(nodes, numNodes)
+	s.Require().Len(nodes, numNodes+1) // +1 for the current node
 
 	// Verify each node's state and sequence numbers
 	for _, state := range nodes {
+		// Skip current node
+		if state.Info.ID() == s.nodeInfo.ID() {
+			continue
+		}
 		// Verify connection status
 		s.Assert().Equal(models.NodeStates.CONNECTED, state.ConnectionState.Status)
 
@@ -699,6 +713,7 @@ func (s *NodeManagerTestSuite) TestStartStop() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -726,6 +741,7 @@ func (s *NodeManagerTestSuite) TestStartAlreadyStarted() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 	})
@@ -752,6 +768,7 @@ func (s *NodeManagerTestSuite) TestStartContextCancellation() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		HealthCheckFrequency:  1 * time.Second,
@@ -780,6 +797,7 @@ func (s *NodeManagerTestSuite) TestStopAlreadyStopped() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 	})
@@ -800,6 +818,90 @@ func (s *NodeManagerTestSuite) TestStopAlreadyStopped() {
 	s.Require().False(manager.Running())
 }
 
+func (s *NodeManagerTestSuite) TestSelfRegistration() {
+	tests := []struct {
+		name          string
+		existingState *models.NodeState
+		providerInfo  models.NodeInfo
+		validateState func(*testing.T, models.NodeState)
+	}{
+		{
+			name: "new registration",
+			providerInfo: models.NodeInfo{
+				NodeID:   "node1",
+				NodeType: models.NodeTypeRequester,
+			},
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, models.NodeMembership.APPROVED, state.Membership)
+				assert.Equal(t, models.NodeStates.CONNECTED, state.ConnectionState.Status)
+				assert.False(t, state.ConnectionState.ConnectedSince.IsZero())
+			},
+		},
+		{
+			name: "preserves existing state",
+			existingState: &models.NodeState{
+				Info: models.NodeInfo{NodeID: "node2", NodeType: models.NodeTypeRequester},
+				ConnectionState: models.ConnectionState{
+					LastOrchestratorSeqNum: 42,
+					LastComputeSeqNum:      24,
+				},
+				Membership: models.NodeMembership.APPROVED,
+			},
+			providerInfo: models.NodeInfo{
+				NodeID:   "node2",
+				NodeType: models.NodeTypeRequester,
+				Labels:   map[string]string{"new": "true"},
+			},
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, uint64(42), state.ConnectionState.LastOrchestratorSeqNum)
+				assert.Equal(t, uint64(24), state.ConnectionState.LastComputeSeqNum)
+				assert.Equal(t, "true", state.Info.Labels["new"])
+			},
+		},
+		{
+			name: "updates zero connected time",
+			existingState: &models.NodeState{
+				Info: models.NodeInfo{NodeID: "node3", NodeType: models.NodeTypeRequester},
+				ConnectionState: models.ConnectionState{
+					Status: models.NodeStates.DISCONNECTED,
+				},
+			},
+			providerInfo: models.NodeInfo{NodeID: "node3", NodeType: models.NodeTypeRequester},
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, s.clock.Now().UTC(), state.ConnectionState.ConnectedSince)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Setup existing state if needed
+			if tt.existingState != nil {
+				require.NoError(s.T(), s.store.Put(s.ctx, *tt.existingState))
+			}
+
+			// Create and start manager
+			manager, err := nodes.NewManager(nodes.ManagerParams{
+				Store:                 s.store,
+				EventStore:            s.eventStore,
+				Clock:                 s.clock,
+				NodeInfoProvider:      &mockNodeInfoProvider{info: tt.providerInfo},
+				NodeDisconnectedAfter: s.disconnected,
+			})
+			require.NoError(s.T(), err)
+
+			err = manager.Start(s.ctx)
+			require.NoError(s.T(), err)
+			defer manager.Stop(s.ctx)
+
+			// Verify state
+			state, err := manager.Get(s.ctx, tt.providerInfo.ID())
+			require.NoError(s.T(), err)
+			tt.validateState(s.T(), state)
+		})
+	}
+}
+
 // Persistence Tests
 
 func (s *NodeManagerTestSuite) TestPeriodicStatePersistence() {
@@ -808,6 +910,7 @@ func (s *NodeManagerTestSuite) TestPeriodicStatePersistence() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       persistInterval,
@@ -872,6 +975,7 @@ func (s *NodeManagerTestSuite) TestStatePersistenceOnStop() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       time.Hour, // Long interval to ensure persistence happens on stop
@@ -917,6 +1021,7 @@ func (s *NodeManagerTestSuite) TestPersistenceWithContextCancellation() {
 	manager, err := nodes.NewManager(nodes.ManagerParams{
 		Store:                 s.store,
 		EventStore:            s.eventStore,
+		NodeInfoProvider:      s.nodeInfoProvider,
 		Clock:                 s.clock,
 		NodeDisconnectedAfter: s.disconnected,
 		PersistInterval:       100 * time.Millisecond,
@@ -965,4 +1070,12 @@ func (s *NodeManagerTestSuite) TestPersistenceWithContextCancellation() {
 	assert.Equal(s.T(), newResources, state.Info.ComputeNodeInfo.AvailableCapacity)
 	assert.Equal(s.T(), lastOrchestratorSeqNum, state.ConnectionState.LastOrchestratorSeqNum)
 	assert.Equal(s.T(), lastComputeSeqNum, state.ConnectionState.LastComputeSeqNum)
+}
+
+type mockNodeInfoProvider struct {
+	info models.NodeInfo
+}
+
+func (m *mockNodeInfoProvider) GetNodeInfo(context.Context) models.NodeInfo {
+	return m.info
 }

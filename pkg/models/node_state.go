@@ -27,12 +27,12 @@ type ConnectionState struct {
 	LastHeartbeat time.Time `json:"LastHeartbeat"`
 
 	// Message sequencing for reliable delivery
-	LastComputeSeqNum      uint64 `json:"LastComputeSeqNum"`      // Last seq received from compute node
-	LastOrchestratorSeqNum uint64 `json:"LastOrchestratorSeqNum"` // Last seq received from orchestrator
+	LastComputeSeqNum      uint64 `json:"LastComputeSeqNum,omitempty"`      // Last seq received from compute node
+	LastOrchestratorSeqNum uint64 `json:"LastOrchestratorSeqNum,omitempty"` // Last seq received from orchestrator
 
 	// Connection tracking
 	ConnectedSince    time.Time `json:"ConnectedSince"`
-	DisconnectedSince time.Time `json:"DisconnectedSince,omitempty"`
+	DisconnectedSince time.Time `json:"DisconnectedSince"`
 	LastError         string    `json:"LastError,omitempty"`
 }
 
