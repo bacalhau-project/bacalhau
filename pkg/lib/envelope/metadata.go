@@ -2,15 +2,15 @@ package envelope
 
 import (
 	"strconv"
-	"strings"
 	"time"
 )
 
 // Metadata keys
 const (
-	HeaderPrefix       = "Bacalhau-"
 	KeyMessageType     = "Bacalhau-Type"
 	KeyPayloadEncoding = "Bacalhau-PayloadEncoding"
+	LegacyMessageType  = "Type"
+	LegacyEncoding     = "PayloadEncoding"
 )
 
 // Metadata contains metadata about the message
@@ -56,21 +56,42 @@ func (m Metadata) Get(key string) string {
 		return v
 	}
 	// backward compatible with old headers
-	if key == KeyMessageType || key == KeyPayloadEncoding {
-		// return keys excluding header prefix
-		return m[strings.TrimPrefix(key, HeaderPrefix)]
+	// TODO: remove by v1.7 after v1.5 is no longer supported
+	if key == KeyMessageType {
+		return m[LegacyMessageType]
+	}
+	if key == KeyPayloadEncoding {
+		return m[LegacyEncoding]
 	}
 	return ""
 }
 
 // Has checks if a key exists in the metadata
 func (m Metadata) Has(key string) bool {
-	_, ok := m[key]
-	return ok
+	if _, ok := m[key]; ok {
+		return ok
+	}
+	// backward compatible with old headers
+	// TODO: remove by v1.7 after v1.5 is no longer supported
+	if key == KeyMessageType {
+		_, ok := m[LegacyMessageType]
+		return ok
+	}
+	if key == KeyPayloadEncoding {
+		_, ok := m[LegacyEncoding]
+		return ok
+	}
+	return false
 }
 
 // Set sets the value for a given key
 func (m Metadata) Set(key, value string) {
+	if key == KeyMessageType {
+		m[LegacyMessageType] = value
+	}
+	if key == KeyPayloadEncoding {
+		m[LegacyEncoding] = value
+	}
 	m[key] = value
 }
 

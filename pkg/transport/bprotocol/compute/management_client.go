@@ -60,9 +60,6 @@ func (m *ManagementClient) RegisterNode(ctx context.Context) error {
 	if response.Accepted {
 		log.Ctx(ctx).Debug().Msg("register request accepted")
 	} else {
-		// Might be an error, or might be rejected because it is in a pending
-		// state instead
-		log.Ctx(ctx).Error().Msgf("register request rejected: %s", response.Reason)
 		return fmt.Errorf("registration rejected: %s", response.Reason)
 	}
 
