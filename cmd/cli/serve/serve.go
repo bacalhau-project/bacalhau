@@ -265,15 +265,10 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	startupLog.Msg("bacalhau node running")
 
 	envvars := buildEnvVariables(cfg)
-	cmd.Println()
-	cmd.Println("To connect to this node from the local client, run the following commands in your shell:")
-	cmd.Println(envvars)
-
 	riPath, err := fsRepo.WriteRunInfo(ctx, envvars)
 	if err != nil {
 		return err
 	}
-	cmd.Printf("A copy of these variables have been written to: %s\n", riPath)
 	defer os.Remove(riPath)
 
 	<-ctx.Done() // block until killed
