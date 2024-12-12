@@ -188,26 +188,28 @@ func defaultLogFormat(w *zerolog.ConsoleWriter) {
 	isTerminal := isatty.IsTerminal(os.Stdout.Fd())
 	w.Out = os.Stdout
 	w.NoColor = !isTerminal
-	w.TimeFormat = "15:04:05.999 |"
-	w.PartsOrder = []string{
-		zerolog.TimestampFieldName,
-		zerolog.LevelFieldName,
-		zerolog.CallerFieldName,
-		zerolog.MessageFieldName,
-	}
 
-	// TODO: figure out a way to show the custom fields at the beginning of the log line rather than at the end.
-	//  Adding the fields to the parts section didn't help as it just printed the fields twice.
-	w.FormatFieldName = func(i interface{}) string {
-		return fmt.Sprintf("[%s:", i)
-	}
+	// Get the current log level to determine format
+	level := zerolog.GlobalLevel()
+	isDebug := level <= zerolog.DebugLevel
 
-	w.FormatFieldValue = func(i interface{}) string {
-		// don't print nil in case field value wasn't preset. e.g. no nodeID
-		if i == nil {
-			i = ""
+	if isDebug {
+		// Debug mode - show detailed information
+		w.TimeFormat = "15:04:05.999 |"
+		w.PartsOrder = []string{
+			zerolog.TimestampFieldName,
+			zerolog.LevelFieldName,
+			zerolog.CallerFieldName,
+			zerolog.MessageFieldName,
 		}
-		return fmt.Sprintf("%s]", i)
+	} else {
+		// Normal mode - simplified, user-friendly format
+		w.TimeFormat = "15:04:05 |"
+		w.PartsOrder = []string{
+			zerolog.TimestampFieldName,
+			zerolog.LevelFieldName,
+			zerolog.MessageFieldName,
+		}
 	}
 }
 
