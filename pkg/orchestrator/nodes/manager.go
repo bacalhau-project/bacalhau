@@ -803,7 +803,7 @@ func (n *nodesManager) selfRegister(ctx context.Context) error {
 	state, err := n.store.Get(ctx, nodeInfo.ID())
 	if err != nil {
 		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
-			return bacerrors.New("failed to self-register node: %w", err).
+			return bacerrors.New("failed to self-register node: %v", err).
 				WithComponent(errComponent)
 		}
 		state = models.NodeState{
@@ -826,7 +826,7 @@ func (n *nodesManager) selfRegister(ctx context.Context) error {
 
 	// store the updated state
 	if err = n.store.Put(ctx, state); err != nil {
-		return bacerrors.New("failed to self-register node: %w", err).
+		return bacerrors.New("failed to self-register node: %v", err).
 			WithComponent(errComponent)
 	}
 
