@@ -158,6 +158,7 @@ func NewNode(
 			apiServer,
 			transportLayer,
 			metadataStore,
+			nodeInfoProvider,
 		)
 		if err != nil {
 			return nil, err
@@ -194,21 +195,6 @@ func NewNode(
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
 	})
-
-	// We want to register the current requester node to the node store
-	// TODO (walid): revisit self node registration of requester node
-	if cfg.BacalhauConfig.Orchestrator.Enabled && !cfg.BacalhauConfig.Compute.Enabled {
-		nodeState := models.NodeState{
-			Info:       nodeInfoProvider.GetNodeInfo(ctx),
-			Membership: models.NodeMembership.APPROVED,
-			ConnectionState: models.ConnectionState{
-				Status: models.NodeStates.CONNECTED,
-			},
-		}
-		if err = requesterNode.NodeInfoStore.Put(ctx, nodeState); err != nil {
-			return nil, err
-		}
-	}
 
 	// Start periodic software update checks.
 	version.RunUpdateChecker(
