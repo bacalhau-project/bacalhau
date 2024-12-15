@@ -52,7 +52,7 @@ type Requester struct {
 	Endpoint *orchestrator.BaseEndpoint
 	JobStore jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
-	NodeInfoStore      nodes.Store
+	NodeInfoStore      nodes.Lookup
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []models.DebugInfoProvider
 }
@@ -77,7 +77,7 @@ func NewRequesterNode(
 	}
 
 	nodeID := cfg.NodeID
-	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, jobStore.GetEventStore(), nodeInfoProvider, natsConn)
+	nodesManager, _, err := createNodeManager(ctx, cfg, jobStore.GetEventStore(), nodeInfoProvider, natsConn)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func NewRequesterNode(
 
 	return &Requester{
 		Endpoint:           endpointV2,
-		NodeInfoStore:      nodeStore,
+		NodeInfoStore:      nodesManager,
 		JobStore:           jobStore,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,

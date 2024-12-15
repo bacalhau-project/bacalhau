@@ -77,6 +77,10 @@ func New(publisher ncl.OrderedPublisher,
 	return d, nil
 }
 
+func (d *Dispatcher) State() State {
+	return d.state.GetState()
+}
+
 // Start begins processing events and managing async publish results.
 // It launches background goroutines for processing publish results,
 // checking for stalled messages, and checkpointing progress.
@@ -88,6 +92,11 @@ func (d *Dispatcher) Start(ctx context.Context) error {
 		d.mu.Unlock()
 		return fmt.Errorf("dispatcher already running")
 	}
+
+	// Reset state before starting
+	d.state.reset()
+	d.recovery.reset()
+
 	d.running = true
 	d.mu.Unlock()
 
@@ -117,7 +126,13 @@ func (d *Dispatcher) Stop(ctx context.Context) error {
 	d.running = false
 	d.mu.Unlock()
 
+	// Signal recovery to stop
+	d.recovery.stop()
+
+	// Stop background goroutines
 	close(d.stopCh)
+
+	// Stop watcher after recovery to avoid new messages
 	d.watcher.Stop(ctx)
 
 	// Wait with timeout for all goroutines
@@ -208,7 +223,7 @@ func (d *Dispatcher) checkStalledMessages(ctx context.Context) {
 						Uint64("eventSeq", msg.eventSeqNum).
 						Time("publishTime", msg.publishTime).
 						Msg("Message publish stalled")
-					// Could implement recovery logic here
+					// TODO: Could implement recovery logic here
 				}
 			}
 		}
@@ -226,19 +241,30 @@ func (d *Dispatcher) checkpointLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-d.stopCh:
+			d.doCheckpoint(ctx) // Final checkpoint on shutdown
 			return
 		case <-ticker.C:
-			checkpointTarget := d.state.getCheckpointSeqNum()
-			// Only checkpoint if we have something new to save
-			if checkpointTarget > 0 {
-				checkpointCtx, cancel := context.WithTimeout(ctx, d.config.CheckpointTimeout)
-				if err := d.watcher.Checkpoint(checkpointCtx, checkpointTarget); err != nil {
-					log.Error().Err(err).Msg("Failed to checkpoint watcher")
-				} else {
-					d.state.updateLastCheckpoint(checkpointTarget)
-				}
-				cancel()
-			}
+			d.doCheckpoint(ctx) // Periodic checkpoint
 		}
 	}
+}
+
+// doCheckpoint attempts to checkpoint the current sequence number if needed
+func (d *Dispatcher) doCheckpoint(ctx context.Context) {
+	checkpointTarget := d.state.getCheckpointSeqNum()
+	if checkpointTarget == 0 { // Nothing new to checkpoint
+		return
+	}
+
+	checkpointCtx, cancel := context.WithTimeout(ctx, d.config.CheckpointTimeout)
+	defer cancel()
+
+	if err := d.watcher.Checkpoint(checkpointCtx, checkpointTarget); err != nil {
+		log.Error().Err(err).
+			Uint64("target", checkpointTarget).
+			Msg("Failed to checkpoint watcher")
+		return
+	}
+
+	d.state.updateLastCheckpoint(checkpointTarget)
 }

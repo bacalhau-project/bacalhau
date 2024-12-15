@@ -11,6 +11,12 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 )
 
+type State struct {
+	LastAckedSeqNum    uint64
+	LastObservedSeqNum uint64
+	LastCheckpoint     uint64
+}
+
 // dispatcherState manages all state tracking for the dispatcher including
 // sequence numbers, pending messages, and recovery state
 type dispatcherState struct {
@@ -27,6 +33,17 @@ type dispatcherState struct {
 func newDispatcherState() *dispatcherState {
 	return &dispatcherState{
 		pending: newPendingMessageStore(),
+	}
+}
+
+// GetState returns
+func (s *dispatcherState) GetState() State {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return State{
+		LastAckedSeqNum:    s.lastAckedSeqNum,
+		LastObservedSeqNum: s.lastObservedSeq,
+		LastCheckpoint:     s.lastCheckpoint,
 	}
 }
 

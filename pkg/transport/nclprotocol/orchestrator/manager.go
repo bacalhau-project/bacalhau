@@ -110,6 +110,8 @@ func (cm *ComputeManager) setupControlPlane(ctx context.Context) error {
 			ncl.RequestHandlerFunc(cm.handleHeartbeatRequest)),
 		cm.responder.Listen(ctx, messages.NodeInfoUpdateRequestMessageType,
 			ncl.RequestHandlerFunc(cm.handleNodeInfoUpdateRequest)),
+		cm.responder.Listen(ctx, messages.ShutdownNoticeRequestMessageType,
+			ncl.RequestHandlerFunc(cm.handleShutdownRequest)),
 	)
 }
 
@@ -258,7 +260,7 @@ func (cm *ComputeManager) handleHeartbeatRequest(ctx context.Context, msg *envel
 		return nil, err
 	}
 
-	return envelope.NewMessage(response), nil
+	return envelope.NewMessage(response).WithMetadataValue(envelope.KeyMessageType, messages.HeartbeatResponseType), nil
 }
 
 // handleNodeInfoUpdateRequest processes node info updates from compute nodes.
@@ -278,7 +280,35 @@ func (cm *ComputeManager) handleNodeInfoUpdateRequest(ctx context.Context, msg *
 		return nil, err
 	}
 
-	return envelope.NewMessage(response), nil
+	return envelope.NewMessage(response).
+		WithMetadataValue(envelope.KeyMessageType, messages.NodeInfoUpdateResponseType), nil
+}
+
+// handleShutdownRequest processes a node's shutdown notification.
+// The actual cleanup of the data plane will happen through handleConnectionStateChange
+// after the node manager transitions the node state to disconnected.
+func (cm *ComputeManager) handleShutdownRequest(ctx context.Context, msg *envelope.Message) (*envelope.Message, error) {
+	notification := msg.Payload.(*messages.ShutdownNoticeRequest)
+
+	// Get data plane to access sequence numbers
+	dataPlane, exists := cm.getDataPlane(notification.NodeID)
+	if !exists {
+		return nil, fmt.Errorf("no active data plane for node %s", notification.NodeID)
+	}
+
+	response, err := cm.nodeManager.ShutdownNotice(ctx, nodes.ExtendedShutdownNoticeRequest{
+		ShutdownNoticeRequest: *notification,
+		LastComputeSeqNum:     dataPlane.GetLastProcessedSequence(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// handleConnectionStateChange will take care of cleaning up the data plane
+
+	// Send response with our last processed sequence number
+	return envelope.NewMessage(response).WithMetadataValue(
+		envelope.KeyMessageType, messages.ShutdownNoticeResponseType), nil
 }
 
 // handleConnectionStateChange responds to node connection state changes
@@ -294,7 +324,7 @@ func (cm *ComputeManager) handleConnectionStateChange(event nodes.NodeConnection
 	if event.Current == models.NodeStates.DISCONNECTED {
 		if dataPlane, ok := cm.dataPlanes.LoadAndDelete(event.NodeID); ok {
 			if dp, ok := dataPlane.(*DataPlane); ok {
-				if err := dp.Stop(context.Background()); err != nil {
+				if err := dp.Stop(context.TODO()); err != nil {
 					log.Error().Err(err).
 						Str("nodeID", event.NodeID).
 						Msg("Failed to stop data plane for disconnected node")
