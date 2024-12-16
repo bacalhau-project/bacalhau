@@ -112,9 +112,10 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 		latestErr        error
 	}{
 		{
-			name:         "No checkpoint, non-latest iterator",
-			initialIter:  watcher.AfterSequenceNumberIterator(5),
-			expectedIter: watcher.AfterSequenceNumberIterator(5),
+			name:             "No checkpoint, non-latest iterator",
+			setupLatestEvent: ptr(uint64(10)), // Store event up to seq 15
+			initialIter:      watcher.AfterSequenceNumberIterator(5),
+			expectedIter:     watcher.AfterSequenceNumberIterator(5),
 		},
 		{
 			name:            "With checkpoint, non-latest iterator",
@@ -153,6 +154,16 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 			expectedIter: watcher.AfterSequenceNumberIterator(0),
 		},
 		{
+			name:         "Empty store, at iterator",
+			initialIter:  watcher.AtSequenceNumberIterator(0),
+			expectedIter: watcher.AtSequenceNumberIterator(0),
+		},
+		{
+			name:         "Empty store, after iterator",
+			initialIter:  watcher.AfterSequenceNumberIterator(0),
+			expectedIter: watcher.AfterSequenceNumberIterator(0),
+		},
+		{
 			name:            "TrimHorizon with checkpoint",
 			setupCheckpoint: ptr(uint64(10)),
 			initialIter:     watcher.TrimHorizonIterator(),
@@ -162,6 +173,25 @@ func (s *WatcherTestSuite) TestDetermineStartingIterator() {
 			name:         "TrimHorizon without checkpoint",
 			initialIter:  watcher.TrimHorizonIterator(),
 			expectedIter: watcher.TrimHorizonIterator(),
+		},
+		{
+			name:             "Sequence at latest",
+			setupLatestEvent: ptr(uint64(15)),
+			initialIter:      watcher.AtSequenceNumberIterator(15),
+			expectedIter:     watcher.AtSequenceNumberIterator(15),
+		},
+
+		{
+			name:             "Sequence too high, start after latest",
+			setupLatestEvent: ptr(uint64(15)),
+			initialIter:      watcher.AtSequenceNumberIterator(20),
+			expectedIter:     watcher.AfterSequenceNumberIterator(15),
+		},
+		{
+			name:             "After sequence too high, start after latest",
+			setupLatestEvent: ptr(uint64(15)),
+			initialIter:      watcher.AfterSequenceNumberIterator(20),
+			expectedIter:     watcher.AfterSequenceNumberIterator(15),
 		},
 	}
 
