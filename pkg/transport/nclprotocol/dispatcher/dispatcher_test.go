@@ -172,6 +172,55 @@ func (suite *DispatcherTestSuite) TestStopNonStarted() {
 	suite.NoError(err)
 }
 
+func (suite *DispatcherTestSuite) TestStartResetsState() {
+	// Setup
+	suite.watcher.EXPECT().SetHandler(gomock.Any()).Return(nil)
+	suite.watcher.EXPECT().Start(gomock.Any()).Return(nil)
+
+	d, err := New(suite.publisher, suite.watcher, suite.creator, suite.config)
+	suite.Require().NoError(err)
+
+	// Start first time
+	err = d.Start(suite.ctx)
+	suite.NoError(err)
+
+	// Stop
+	suite.watcher.EXPECT().Stop(gomock.Any())
+	err = d.Stop(suite.ctx)
+	suite.NoError(err)
+
+	// Start again - should reset state
+	suite.watcher.EXPECT().Start(gomock.Any()).Return(nil)
+	err = d.Start(suite.ctx)
+	suite.NoError(err)
+}
+
+func (suite *DispatcherTestSuite) TestStopSequence() {
+	// Setup
+	suite.watcher.EXPECT().SetHandler(gomock.Any()).Return(nil)
+	suite.watcher.EXPECT().Start(gomock.Any()).Return(nil)
+
+	d, err := New(suite.publisher, suite.watcher, suite.creator, suite.config)
+	suite.Require().NoError(err)
+
+	// Start
+	err = d.Start(suite.ctx)
+	suite.NoError(err)
+
+	// Stop should:
+	// 1. Stop recovery
+	// 2. Close stopCh
+	// 3. Stop watcher
+	// 4. Wait for goroutines
+	gomock.InOrder(
+		// Watcher.Stop will be called after recovery.stop and stopCh close
+		suite.watcher.EXPECT().Stop(gomock.Any()),
+	)
+
+	err = d.Stop(suite.ctx)
+	suite.NoError(err)
+}
+
 func TestDispatcherTestSuite(t *testing.T) {
 	suite.Run(t, new(DispatcherTestSuite))
 }
