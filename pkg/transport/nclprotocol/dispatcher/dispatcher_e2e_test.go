@@ -254,6 +254,44 @@ func (s *DispatcherE2ETestSuite) TestCheckpointOnStop() {
 	s.Equal(uint64(5), checkpoint)
 }
 
+func (s *DispatcherE2ETestSuite) TestRestartResetsState() {
+	config := dispatcher.Config{
+		CheckpointInterval: 100 * time.Millisecond,
+	}
+	d := s.startDispatcher(config)
+
+	// Store and process first batch of events (1-5)
+	s.storeEvents(5)
+	s.Eventually(func() bool {
+		return d.State().LastAckedSeqNum == 5
+	}, time.Second, 10*time.Millisecond)
+
+	// Stop dispatcher
+	err := d.Stop(s.ctx)
+	s.Require().NoError(err)
+
+	// Clear received messages
+	s.received = s.received[:0]
+
+	// Start new dispatcher - should start fresh but use checkpoint
+	d = s.startDispatcher(config)
+
+	// Store next batch of events (6-8)
+	s.storeEvent(6)
+	s.storeEvent(7)
+	s.storeEvent(8)
+
+	// Should only get new events since state was reset
+	s.Eventually(func() bool {
+		return d.State().LastAckedSeqNum == 8
+	}, time.Second, 10*time.Millisecond)
+
+	// Verify messages
+	for i, msg := range s.received {
+		s.verifyMsg(msg, i+6)
+	}
+}
+
 func (s *DispatcherE2ETestSuite) storeEvent(index int) {
 	err := s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,

@@ -92,6 +92,11 @@ func (d *Dispatcher) Start(ctx context.Context) error {
 		d.mu.Unlock()
 		return fmt.Errorf("dispatcher already running")
 	}
+
+	// Reset state before starting
+	d.state.reset()
+	d.recovery.reset()
+
 	d.running = true
 	d.mu.Unlock()
 
@@ -121,7 +126,13 @@ func (d *Dispatcher) Stop(ctx context.Context) error {
 	d.running = false
 	d.mu.Unlock()
 
+	// Signal recovery to stop
+	d.recovery.stop()
+
+	// Stop background goroutines
 	close(d.stopCh)
+
+	// Stop watcher after recovery to avoid new messages
 	d.watcher.Stop(ctx)
 
 	// Wait with timeout for all goroutines
@@ -212,7 +223,7 @@ func (d *Dispatcher) checkStalledMessages(ctx context.Context) {
 						Uint64("eventSeq", msg.eventSeqNum).
 						Time("publishTime", msg.publishTime).
 						Msg("Message publish stalled")
-					// Could implement recovery logic here
+					// TODO: Could implement recovery logic here
 				}
 			}
 		}
