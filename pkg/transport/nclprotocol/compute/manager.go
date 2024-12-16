@@ -313,6 +313,11 @@ func (cm *ConnectionManager) performHandshake(
 		return messages.HandshakeResponse{}, fmt.Errorf(
 			"handshake rejected by orchestrator due to %s", handshakeResponse.Reason)
 	}
+
+	// Always trust the orchestrator's starting sequence number as it may have been reset
+	// or decided to start from a different point
+	cm.incomingSeqTracker.UpdateLastSeqNum(handshakeResponse.StartingOrchestratorSeqNum)
+
 	return handshakeResponse, nil
 }
 

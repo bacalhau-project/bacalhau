@@ -422,7 +422,7 @@ func (n *nodesManager) Handshake(
 	var existing models.NodeState
 
 	// Check if node is already registered, and if so, if it was rejected
-	existing, err := n.store.Get(ctx, request.NodeInfo.ID())
+	existing, err := n.Get(ctx, request.NodeInfo.ID())
 	if err == nil {
 		if existing.Membership == models.NodeMembership.REJECTED {
 			return messages.HandshakeResponse{
@@ -459,23 +459,15 @@ func (n *nodesManager) Handshake(
 		},
 	}
 
-	// If a node is reconnecting, we trust and preserve the sequence numbers from its previous state,
-	// rather than using the sequence numbers from the handshake request. For new nodes,
-	// we assign them the latest event sequence number from the event store.
-	// This prevents several edge cases:
-	// - Compute node losing its state. The handshake will ask to start from 0.
-	// - Orchestrator losing their state and compute nodes asking to start from a later seqNum that no longer exist.
-	// - New compute nodes joining. The handshake will also ask to start from 0.
 	if isReconnect {
 		state.Membership = existing.Membership
 		state.ConnectionState.LastComputeSeqNum = existing.ConnectionState.LastComputeSeqNum
-		state.ConnectionState.LastOrchestratorSeqNum = existing.ConnectionState.LastOrchestratorSeqNum
-	} else {
-		// Assign the latest sequence number from the event store
-		state.ConnectionState.LastOrchestratorSeqNum, err = n.eventstore.GetLatestEventNum(ctx)
-		if err != nil {
-			return messages.HandshakeResponse{}, fmt.Errorf("failed to initialize node with latest event number: %w", err)
-		}
+	}
+
+	// Resolve where the node should start receiving messages from
+	state.ConnectionState.LastOrchestratorSeqNum, err = n.resolveStartingOrchestratorSeqNum(ctx, isReconnect, existing)
+	if err != nil {
+		return messages.HandshakeResponse{}, fmt.Errorf("failed to resolve starting sequence number: %w", err)
 	}
 
 	if err = n.store.Put(ctx, state); err != nil {
@@ -572,12 +564,7 @@ func (n *nodesManager) Heartbeat(
 		// updated connection state
 		updated := existing.connectionState
 		updated.LastHeartbeat = n.clock.Now().UTC()
-		if request.LastOrchestratorSeqNum > 0 {
-			updated.LastOrchestratorSeqNum = request.LastOrchestratorSeqNum
-		}
-		if request.LastComputeSeqNum > 0 {
-			updated.LastComputeSeqNum = request.LastComputeSeqNum
-		}
+		n.updateSequenceNumbers(&updated, request.LastOrchestratorSeqNum, request.LastComputeSeqNum)
 
 		// Store updated state back if no concurrent modification
 		if !n.liveState.CompareAndSwap(request.NodeID, existing, &trackedLiveState{
@@ -764,6 +751,52 @@ func (n *nodesManager) List(ctx context.Context, filters ...NodeStateFilter) ([]
 	return states, nil
 }
 
+// resolveStartingOrchestratorSeqNum determines where a node should start receiving messages from.
+//
+// For reconnecting nodes, we trust the sequence numbers from our store rather than what the
+// compute node reports. This prevents issues with compute nodes restarting with same ID but
+// fresh state, where they would ask to start from 0.
+//
+// For new nodes, we start them from the latest sequence number to avoid overwhelming them
+// with historical events.
+//
+// TODO: Add support for snapshots to allow nodes to catch up on missed state without
+// replaying all historical events. For now, we always start from latest to avoid
+// overwhelming nodes that have been down for a long time.
+func (n *nodesManager) resolveStartingOrchestratorSeqNum(
+	ctx context.Context, isReconnect bool, existing models.NodeState) (uint64, error) {
+	if isReconnect {
+		// For reconnecting nodes, trust our stored sequence number
+		return existing.ConnectionState.LastOrchestratorSeqNum, nil
+	}
+
+	// For new nodes or nodes that have been gone too long,
+	// start from latest to avoid overwhelming them
+	latestSeq, err := n.eventstore.GetLatestEventNum(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get latest event number: %w", err)
+	}
+
+	return latestSeq, nil
+}
+
+// updateSequenceNumbers updates the last known sequence numbers for message tracking.
+//   - LastOrchestratorSeqNum tracks what messages the compute node has processed
+//   - LastComputeSeqNum tracks what messages the orchestrator has processed from this node. This is
+//     populated locally by the orchestrator's data plane.
+//
+// TODO: Add smarter logic when updating sequence numbers by comparing current state versus observed states.
+// Currently we trust what each node reports about their message processing:
+//   - We trust what compute node says it has received from orchestrator (orchestratorSeqNum)
+//   - We trust what orchestrator data plane says it processed from compute node (computeSeqNum)
+//
+// This simple approach could allow sequence numbers to move backwards in certain failure scenarios.
+// We should implement proper comparison logic to ensure sequence numbers only advance forward.
+func (n *nodesManager) updateSequenceNumbers(state *models.ConnectionState, orchestratorSeq, computeSeq uint64) {
+	state.LastOrchestratorSeqNum = orchestratorSeq
+	state.LastComputeSeqNum = computeSeq
+}
+
 // enrichState adds live tracking data to a node state.
 // For connected nodes, it adds:
 //   - Current connection state
@@ -800,7 +833,7 @@ func (n *nodesManager) selfRegister(ctx context.Context) error {
 	nodeInfo := n.nodeInfoProvider.GetNodeInfo(ctx)
 
 	// get node info from the store if it exists
-	state, err := n.store.Get(ctx, nodeInfo.ID())
+	state, err := n.Get(ctx, nodeInfo.ID())
 	if err != nil {
 		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
 			return bacerrors.New("failed to self-register node: %v", err).

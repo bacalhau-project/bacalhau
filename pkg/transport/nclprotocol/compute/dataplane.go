@@ -121,7 +121,7 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 	var dispatcherWatcher watcher.Watcher
 	dispatcherWatcher, err = watcher.New(ctx, watcherID, dp.config.EventStore,
 		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
-		watcher.WithInitialEventIterator(watcher.AfterSequenceNumberIterator(dp.lastReceivedSeqNum)),
+		watcher.WithInitialEventIterator(dp.resolveStartingIterator(dp.lastReceivedSeqNum)),
 		watcher.WithFilter(watcher.EventFilter{
 			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
 		}),
@@ -172,6 +172,25 @@ func (dp *DataPlane) IsRunning() bool {
 	dp.mu.RLock()
 	defer dp.mu.RUnlock()
 	return dp.running
+}
+
+// resolveStartingIterator determines where message publishing should start from
+// when beginning with no checkpoint.
+//
+// Currently returns TrimHorizonIterator (start from beginning) even if the
+// orchestrator provides lastReceivedSeqNum. This ensures no messages are lost
+// when a compute node restarts with the same ID but fresh state.
+//
+// Note that this is only used when starting fresh - if there is an existing
+// checkpoint, the watcher will automatically resume from the last checkpointed
+// position instead.
+//
+// The lastReceivedSeqNum parameter from the orchestrator is currently ignored
+// but preserved for future use cases where we may want to optimize message
+// replay by allowing the orchestrator to indicate its last known position
+// when starting fresh.
+func (dp *DataPlane) resolveStartingIterator(lastReceivedSeqNum uint64) watcher.EventIterator {
+	return watcher.TrimHorizonIterator()
 }
 
 // cleanup handles the orderly shutdown of data plane components.

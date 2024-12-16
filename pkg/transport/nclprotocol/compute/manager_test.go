@@ -111,9 +111,16 @@ func (s *ConnectionManagerTestSuite) TearDownTest() {
 }
 
 func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
-	// Setup initial checkpoint
-	lastOrchestratorSeqNum := uint64(124)
-	s.checkpointer.SetCheckpoint("incoming-test-node", lastOrchestratorSeqNum)
+	// Setup initial checkpoint with one sequence number
+	initialSeqNum := uint64(124)
+	s.checkpointer.SetCheckpoint("incoming-test-node", initialSeqNum)
+
+	// Configure handshake response to return a different sequence number
+	handshakeSeqNum := uint64(100)
+	s.mockResponder.Behaviour().HandshakeResponse.Response = messages.HandshakeResponse{
+		Accepted:                   true,
+		StartingOrchestratorSeqNum: handshakeSeqNum,
+	}
 
 	err := s.manager.Start(s.ctx)
 	s.Require().NoError(err)
@@ -122,13 +129,12 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 		return len(s.mockResponder.GetHandshakes()) > 0
 	}, time.Second, 10*time.Millisecond, "handshake not received")
 
-	// Verify handshake request
+	// verify only one handshake, and verify the request
 	handshakes := s.mockResponder.GetHandshakes()
 	s.Require().Len(handshakes, 1)
 	s.Require().Equal(s.config.NodeID, handshakes[0].NodeInfo.ID())
-	s.Require().Equal(lastOrchestratorSeqNum, handshakes[0].LastOrchestratorSeqNum)
+	s.Require().Equal(initialSeqNum, handshakes[0].LastOrchestratorSeqNum)
 
-	// Verify connection established
 	s.Require().Eventually(func() bool {
 		health := s.manager.GetHealth()
 		return health.CurrentState == nclprotocol.Connected
@@ -146,7 +152,7 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 		return len(s.mockResponder.GetHeartbeats()) > 0
 	}, time.Second, 10*time.Millisecond, "manager did not send heartbeats")
 
-	// Verify heartbeat content
+	// verify heartbeat content
 	nodeInfo := s.nodeInfoProvider.GetNodeInfo(s.ctx)
 	heartbeats := s.mockResponder.GetHeartbeats()
 	s.Require().Len(heartbeats, 1)
@@ -154,7 +160,7 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 		NodeID:                 nodeInfo.NodeID,
 		AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 		QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
-		LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+		LastOrchestratorSeqNum: handshakeSeqNum, // Should use sequence number from handshake response
 	}, heartbeats[0])
 
 	// verify state
@@ -173,10 +179,9 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 			NodeID:                 nodeInfo.NodeID,
 			AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 			QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
-			LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+			LastOrchestratorSeqNum: handshakeSeqNum, // Should continue using sequence number from handshake
 		})
 	}, time.Second, 10*time.Millisecond, "manager did not send heartbeats")
-
 }
 
 func (s *ConnectionManagerTestSuite) TestRejectedHandshake() {
