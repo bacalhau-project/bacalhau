@@ -92,11 +92,27 @@ func (w *watcher) determineStartingIterator(ctx context.Context, initial EventIt
 	}
 
 	// No checkpoint found, handle initial iterator
+	if initial.Type == EventIteratorTrimHorizon {
+		return initial, nil
+	}
+
+	latestSeqNum, err := w.store.GetLatestEventNum(ctx)
+	if err != nil {
+		return EventIterator{}, err
+	}
+
+	// If the requested sequence number is the latest, start from the current latest seqNum
 	if initial.Type == EventIteratorLatest {
-		latestSeqNum, err := w.store.GetLatestEventNum(ctx)
-		if err != nil {
-			return EventIterator{}, err
-		}
+		return AfterSequenceNumberIterator(latestSeqNum), nil
+	}
+
+	// If the requested sequence number is higher than the latest, start from the latest
+	if initial.SequenceNumber > latestSeqNum {
+		log.Ctx(ctx).Warn().
+			Str("watcher_id", w.id).
+			Uint64("requested_seq", initial.SequenceNumber).
+			Uint64("latest_seq", latestSeqNum).
+			Msg("requested sequence number is higher than latest, starting from latest instead")
 		return AfterSequenceNumberIterator(latestSeqNum), nil
 	}
 
