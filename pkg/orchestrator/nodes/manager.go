@@ -582,6 +582,62 @@ func (n *nodesManager) Heartbeat(
 	return messages.HeartbeatResponse{}, NewErrConcurrentModification()
 }
 
+// ShutdownNotice processes a shutdown notification from a node and updates its state.
+// It updates:
+//   - Final sequence numbers
+//   - Connection state to disconnected
+//   - Preserves the sequence numbers in persistent storage
+//
+// Returns ShutdownNoticeResponse with the last sequence number processed from that node.
+func (n *nodesManager) ShutdownNotice(
+	ctx context.Context, request ExtendedShutdownNoticeRequest) (messages.ShutdownNoticeResponse, error) {
+	// Get existing live state
+	existingEntry, ok := n.liveState.Load(request.NodeID)
+	if !ok {
+		return messages.ShutdownNoticeResponse{}, NewErrHandshakeRequired(request.NodeID)
+	}
+
+	existing := existingEntry.(*trackedLiveState)
+	if existing.connectionState.Status != models.NodeStates.CONNECTED {
+		return messages.ShutdownNoticeResponse{}, NewErrHandshakeRequired(request.NodeID)
+	}
+
+	// Update connection state with final sequence numbers
+	updated := existing.connectionState
+	updated.Status = models.NodeStates.DISCONNECTED
+	updated.DisconnectedSince = n.clock.Now().UTC()
+	n.updateSequenceNumbers(&updated, request.LastOrchestratorSeqNum, request.LastComputeSeqNum)
+	updated.LastError = "graceful shutdown"
+
+	// Attempt atomic update
+	if !n.liveState.CompareAndSwap(request.NodeID, existingEntry, &trackedLiveState{
+		connectionState:   updated,
+		availableCapacity: models.Resources{}, // Clear capacity since node is shutting down
+		queueUsedCapacity: models.Resources{},
+	}) {
+		return messages.ShutdownNoticeResponse{}, NewErrConcurrentModification()
+	}
+
+	log.Info().
+		Str("node", request.NodeID).
+		Str("reason", request.Reason).
+		Uint64("lastOrchestratorSeq", updated.LastOrchestratorSeqNum).
+		Uint64("lastComputeSeq", updated.LastComputeSeqNum).
+		Msg("Node shutdown notice received")
+
+	// Notify about state change
+	n.notifyConnectionStateChange(NodeConnectionEvent{
+		NodeID:    request.NodeID,
+		Previous:  models.NodeStates.CONNECTED,
+		Current:   models.NodeStates.DISCONNECTED,
+		Timestamp: updated.DisconnectedSince,
+	})
+
+	return messages.ShutdownNoticeResponse{
+		LastComputeSeqNum: updated.LastComputeSeqNum,
+	}, nil
+}
+
 // ApproveNode approves a node for cluster participation.
 // The node must be in PENDING state. The operation updates
 // both persistent and live state.

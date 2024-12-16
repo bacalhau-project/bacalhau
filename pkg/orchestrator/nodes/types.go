@@ -64,6 +64,10 @@ type Manager interface {
 	// The node must be registered and not rejected.
 	UpdateNodeInfo(ctx context.Context, request messages.UpdateNodeInfoRequest) (messages.UpdateNodeInfoResponse, error)
 
+	// ShutdownNotice handles a node's graceful shutdown notification.
+	// It updates sequence numbers and marks the node as cleanly disconnected.
+	ShutdownNotice(ctx context.Context, request ExtendedShutdownNoticeRequest) (messages.ShutdownNoticeResponse, error)
+
 	// Heartbeat processes a node's heartbeat message and updates its state.
 	// It returns the last known sequence numbers for synchronization.
 	Heartbeat(ctx context.Context, request ExtendedHeartbeatRequest) (messages.HeartbeatResponse, error)
@@ -132,6 +136,14 @@ type ConnectionStateChangeHandler func(NodeConnectionEvent)
 // ExtendedHeartbeatRequest represents a heartbeat message with additional metadata.
 type ExtendedHeartbeatRequest struct {
 	messages.HeartbeatRequest
+
+	// LastComputeSeqNum is the last processed compute message sequence
+	LastComputeSeqNum uint64
+}
+
+// ExtendedShutdownNoticeRequest represents a shutdown message with additional metadata.
+type ExtendedShutdownNoticeRequest struct {
+	messages.ShutdownNoticeRequest
 
 	// LastComputeSeqNum is the last processed compute message sequence
 	LastComputeSeqNum uint64

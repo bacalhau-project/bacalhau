@@ -34,10 +34,17 @@ type MockResponderBehavior struct {
 		Response messages.UpdateNodeInfoResponse // Response to return if no error
 	}
 
+	// ShutdownResponse controls behavior for shutdown notifications
+	ShutdownResponse struct {
+		Error    error                           // Error to return, if any
+		Response messages.ShutdownNoticeResponse // Response to return if no error
+	}
+
 	// Callbacks for request inspection
 	OnHandshake func(messages.HandshakeRequest)      // Called when handshake received
 	OnHeartbeat func(messages.HeartbeatRequest)      // Called when heartbeat received
 	OnNodeInfo  func(messages.UpdateNodeInfoRequest) // Called when node info update received
+	OnShutdown  func(messages.ShutdownNoticeRequest)
 }
 
 // MockResponder provides a configurable mock implementation of the control plane responder.
@@ -51,6 +58,7 @@ type MockResponder struct {
 	handshakes []messages.HandshakeRequest
 	heartbeats []messages.HeartbeatRequest
 	nodeInfos  []messages.UpdateNodeInfoRequest
+	shutdowns  []messages.ShutdownNoticeRequest
 }
 
 // NewMockResponder creates a new mock responder with the given behavior.
@@ -75,6 +83,12 @@ func NewMockResponder(ctx context.Context, conn *nats.Conn, behavior *MockRespon
 				Response messages.UpdateNodeInfoResponse
 			}{
 				Response: messages.UpdateNodeInfoResponse{Accepted: true},
+			},
+			ShutdownResponse: struct {
+				Error    error
+				Response messages.ShutdownNoticeResponse
+			}{
+				Response: messages.ShutdownNoticeResponse{}, // Empty response for success
 			},
 		}
 	}
@@ -148,6 +162,21 @@ func (m *MockResponder) setupHandlers(ctx context.Context) error {
 		return err
 	}
 
+	// Shutdown notification handler
+	if err := m.responder.Listen(ctx, messages.ShutdownNoticeRequestMessageType,
+		ncl.RequestHandlerFunc(func(ctx context.Context, msg *envelope.Message) (*envelope.Message, error) {
+			req := *msg.Payload.(*messages.ShutdownNoticeRequest)
+			m.recordShutdown(req)
+
+			if m.behavior.ShutdownResponse.Error != nil {
+				return nil, m.behavior.ShutdownResponse.Error
+			}
+			return envelope.NewMessage(m.behavior.ShutdownResponse.Response).
+				WithMetadataValue(envelope.KeyMessageType, messages.ShutdownNoticeResponseType), nil
+		})); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -179,6 +208,15 @@ func (m *MockResponder) recordNodeInfo(req messages.UpdateNodeInfoRequest) {
 	}
 }
 
+func (m *MockResponder) recordShutdown(req messages.ShutdownNoticeRequest) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.shutdowns = append(m.shutdowns, req)
+	if m.behavior.OnShutdown != nil {
+		m.behavior.OnShutdown(req)
+	}
+}
+
 // GetHandshakes returns a copy of all handshake requests received
 func (m *MockResponder) GetHandshakes() []messages.HandshakeRequest {
 	m.mu.RLock()
@@ -203,6 +241,14 @@ func (m *MockResponder) GetNodeInfos() []messages.UpdateNodeInfoRequest {
 	defer m.mu.RUnlock()
 	result := make([]messages.UpdateNodeInfoRequest, len(m.nodeInfos))
 	copy(result, m.nodeInfos)
+	return result
+}
+
+func (m *MockResponder) GetShutdowns() []messages.ShutdownNoticeRequest {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]messages.ShutdownNoticeRequest, len(m.shutdowns))
+	copy(result, m.shutdowns)
 	return result
 }
 

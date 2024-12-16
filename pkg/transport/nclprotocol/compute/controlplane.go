@@ -186,6 +186,25 @@ func (cp *ControlPlane) updateNodeInfo(ctx context.Context) error {
 	return nil
 }
 
+// sendShutdownNotification informs the orchestrator that this node is gracefully shutting down.
+// It includes the last message sequence numbers to help prevent message duplication on reconnect.
+// The notification is best-effort - we don't wait for or retry the response since we're shutting down.
+func (cp *ControlPlane) sendShutdownNotification(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, cp.cfg.RequestTimeout)
+	defer cancel()
+
+	msg := envelope.NewMessage(messages.ShutdownNoticeRequest{
+		NodeID:                 cp.cfg.NodeID,
+		LastOrchestratorSeqNum: cp.incomingSeqTracker.GetLastSeqNum(),
+	}).WithMetadataValue(envelope.KeyMessageType, messages.ShutdownNoticeRequestMessageType)
+
+	_, err := cp.requester.Request(ctx, ncl.NewPublishRequest(msg))
+	if err != nil {
+		return fmt.Errorf("shutdown notification failed: %w", err)
+	}
+	return nil
+}
+
 // checkpointProgress saves the latest processed message sequence number if it has
 // changed since the last checkpoint. This allows for resuming message processing
 // from the last known point after node restarts.
@@ -211,9 +230,17 @@ func (cp *ControlPlane) Stop(ctx context.Context) error {
 		return nil
 	}
 
+	// Prevent new operations
 	cp.running = false
 	close(cp.stopCh)
 	cp.mu.Unlock()
+
+	// Send shutdown notification before closing
+	if cp.healthTracker.GetHealth().CurrentState == nclprotocol.Connected && ctx.Err() == nil {
+		if err := cp.sendShutdownNotification(ctx); err != nil {
+			log.Error().Err(err).Msg("Failed to send shutdown notification")
+		}
+	}
 
 	// Wait for graceful shutdown
 	done := make(chan struct{})
