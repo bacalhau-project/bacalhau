@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
 	ncltest "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/test"
@@ -177,6 +178,72 @@ func (s *ControlPlaneTestSuite) TestHeartbeat() {
 		health := s.healthTracker.GetHealth()
 		return !health.LastSuccessfulHeartbeat.IsZero()
 	}, 100*time.Millisecond, 10*time.Millisecond, "Heartbeat did not succeed")
+}
+
+func (s *ControlPlaneTestSuite) TestHeartbeatFailFastOnHandshakeRequired() {
+	// Create control plane with only heartbeat enabled and short intervals
+	controlPlane := s.createControlPlane(
+		50*time.Millisecond, // heartbeat
+		1*time.Hour,         // node info - disabled
+		1*time.Hour,         // checkpoint - disabled
+	)
+	defer s.Require().NoError(controlPlane.Stop(s.ctx))
+
+	// Setup handshake required error response
+	s.requester.EXPECT().
+		Request(gomock.Any(), gomock.Any()).
+		Return(nil, nodes.NewErrHandshakeRequired("test-node")).
+		Times(1) // Should only try once
+
+	// Start control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+
+	// Wait a bit to allow for heartbeat attempt
+	time.Sleep(50 * time.Millisecond)
+
+	// wait health tracker state
+	s.Require().Eventually(func() bool {
+		return s.healthTracker.GetHealth().HandshakeRequired
+	}, 100*time.Millisecond, 10*time.Millisecond, "Heartbeat did not succeed")
+
+	// Verify health tracker state
+	health := s.healthTracker.GetHealth()
+	s.True(health.HandshakeRequired, "handshake should be marked as required")
+	s.Zero(health.LastSuccessfulHeartbeat, "no successful heartbeat should be recorded")
+
+	// Wait for another heartbeat interval to verify the loop has stopped
+	time.Sleep(70 * time.Millisecond)
+
+	s.Require().Eventually(func() bool {
+		return s.healthTracker.GetHealth().CurrentState == nclprotocol.Disconnected
+	}, 100*time.Millisecond, 10*time.Millisecond, "connection not marked as disconnected")
+}
+
+func (s *ControlPlaneTestSuite) TestHeartbeatContinuesOnOtherErrors() {
+	// Create control plane with only heartbeat enabled
+	controlPlane := s.createControlPlane(
+		50*time.Millisecond, // heartbeat
+		1*time.Hour,         // node info - disabled
+		1*time.Hour,         // checkpoint - disabled
+	)
+	defer s.Require().NoError(controlPlane.Stop(s.ctx))
+
+	// Setup regular error response that should not cause fail-fast
+	s.requester.EXPECT().
+		Request(gomock.Any(), gomock.Any()).
+		Return(nil, fmt.Errorf("network error")).
+		Times(2) // Should keep trying
+
+	// Start control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+
+	// Wait for two heartbeat attempts
+	time.Sleep(120 * time.Millisecond)
+
+	// Verify health tracker state
+	health := s.healthTracker.GetHealth()
+	s.False(health.HandshakeRequired, "handshake should not be marked as required")
+	s.Zero(health.LastSuccessfulHeartbeat, "no successful heartbeat should be recorded")
 }
 
 func (s *ControlPlaneTestSuite) TestNodeInfoUpdate() {
