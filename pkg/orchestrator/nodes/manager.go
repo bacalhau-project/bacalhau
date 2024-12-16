@@ -591,7 +591,6 @@ func (n *nodesManager) Heartbeat(
 // Returns ShutdownNoticeResponse with the last sequence number processed from that node.
 func (n *nodesManager) ShutdownNotice(
 	ctx context.Context, request ExtendedShutdownNoticeRequest) (messages.ShutdownNoticeResponse, error) {
-
 	// Get existing live state
 	existingEntry, ok := n.liveState.Load(request.NodeID)
 	if !ok {
