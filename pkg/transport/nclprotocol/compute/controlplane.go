@@ -3,16 +3,17 @@ package compute
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 )
 
@@ -105,7 +106,7 @@ func (cp *ControlPlane) run(ctx context.Context) {
 
 		case <-heartbeat.C:
 			if err := cp.heartbeat(ctx); err != nil {
-				if strings.Contains(err.Error(), "handshake required") {
+				if bacerrors.IsErrorWithCode(err, nodes.HandshakeRequired) {
 					cp.healthTracker.HandshakeRequired()
 					return
 				}

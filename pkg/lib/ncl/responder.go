@@ -9,6 +9,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
@@ -142,8 +143,7 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 	// Deserialize request envelope
 	request, err := r.encoder.decode(requestMsg.Data)
 	if err != nil {
-		errorResponse := NewErrorResponse(StatusBadRequest, err.Error())
-		r.sendErrorResponse(requestMsg, errorResponse)
+		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to deserialize request"))
 		return
 	}
 
@@ -158,18 +158,15 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 			Str("messageType", messageType).
 			Str("subject", requestMsg.Subject).
 			Msg("No handler registered for message type")
-		errorResponse := NewErrorResponse(
-			StatusNotFound, fmt.Errorf("no handler found for message type: %s", messageType).Error())
-		r.sendErrorResponse(requestMsg, errorResponse)
+		r.sendErrorResponse(requestMsg, bacerrors.New("no handler found for message type: %s", messageType).
+			WithCode(bacerrors.NotFoundError))
 		return
 	}
 
 	// Process request with the appropriate handler
 	response, err := handler.HandleRequest(ctx, request)
 	if err != nil {
-		errorResponse := NewErrorResponse(
-			StatusServerError, fmt.Errorf("failed to process request: %w", err).Error())
-		r.sendErrorResponse(requestMsg, errorResponse)
+		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to process request"))
 		return
 	}
 
@@ -187,8 +184,16 @@ func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Messag
 	// Serialize response
 	data, err := r.encoder.encode(response)
 	if err != nil {
-		errorResponse := NewErrorResponse(StatusServerError, err.Error())
-		r.sendOrLogError(requestMsg, response, errorResponse)
+		// If we failed to encode an error response, just log it
+		if response.Metadata.Get(envelope.KeyMessageType) == BacErrorMessageType {
+			log.Error().Err(err).
+				Str("subject", requestMsg.Subject).
+				Msg("Failed to encode error response")
+			return
+		}
+
+		// For normal responses that fail to encode, send a new error response
+		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to encode response"))
 		return
 	}
 
@@ -205,19 +210,8 @@ func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Messag
 
 // sendErrorResponse is a convenience method to send an error response.
 // It converts the ErrorResponse to an envelope before sending.
-func (r *responder) sendErrorResponse(requestMsg *nats.Msg, response ErrorResponse) {
-	r.sendResponse(requestMsg, response.ToEnvelope())
-}
-
-// sendOrLogError handles errors that occur while sending error responses.
-// If we fail to send an error response, we log it instead of trying again
-// to avoid potential infinite loops.
-func (r *responder) sendOrLogError(requestMsg *nats.Msg, originalResponse *envelope.Message, errorResponse ErrorResponse) {
-	if originalResponse.Metadata.Get(envelope.KeyMessageType) == ErrorMessageType {
-		log.Error().Msgf("failed to send error response to %s: %s", requestMsg.Subject, originalResponse.Payload)
-	} else {
-		r.sendResponse(requestMsg, originalResponse)
-	}
+func (r *responder) sendErrorResponse(requestMsg *nats.Msg, err bacerrors.Error) {
+	r.sendResponse(requestMsg, BacErrorToEnvelope(err))
 }
 
 // compile-time check for interface conformance

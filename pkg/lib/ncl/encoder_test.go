@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
@@ -177,18 +178,18 @@ func (suite *EncoderTestSuite) TestErrorResponseRegistration() {
 	suite.NotNil(encoder2)
 
 	// Verify we can encode/decode error responses with both encoders
-	errorResp := NewErrorResponse(StatusServerError, "test error")
-	data, err := encoder1.encode(errorResp.ToEnvelope())
+	errorResp := bacerrors.New("test error").WithCode(bacerrors.IOError)
+	data, err := encoder1.encode(BacErrorToEnvelope(errorResp))
 	suite.Require().NoError(err)
 
 	decoded, err := encoder2.decode(data)
 	suite.Require().NoError(err)
 
-	payload, ok := decoded.GetPayload(&ErrorResponse{})
+	payload, ok := decoded.GetPayload(bacerrors.New(""))
 	suite.True(ok)
-	errResp := payload.(*ErrorResponse)
-	suite.Equal(StatusServerError, errResp.StatusCode)
-	suite.Equal("test error", errResp.Message)
+	errResp := payload.(bacerrors.Error)
+	suite.Equal(bacerrors.IOError, errResp.Code())
+	suite.Equal("test error", errResp.Error())
 }
 
 func TestEncoderTestSuite(t *testing.T) {

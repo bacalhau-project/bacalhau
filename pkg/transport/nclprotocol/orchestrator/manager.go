@@ -248,7 +248,7 @@ func (cm *ComputeManager) handleHeartbeatRequest(ctx context.Context, msg *envel
 	// Verify data plane exists
 	dataPlane, exists := cm.getDataPlane(request.NodeID)
 	if !exists {
-		return nil, fmt.Errorf("no active data plane for node %s - handshake required", request.NodeID)
+		return nil, NewErrHandshakeRequired(request.NodeID)
 	}
 
 	// Process through node manager with sequence info
@@ -271,7 +271,7 @@ func (cm *ComputeManager) handleNodeInfoUpdateRequest(ctx context.Context, msg *
 	// Verify data plane exists
 	if _, ok := cm.dataPlanes.Load(request.NodeInfo.ID()); !ok {
 		// Return error asking node to reconnect since it has no active data plane
-		return nil, fmt.Errorf("no active data plane - handshake required")
+		return nil, NewErrHandshakeRequired(request.NodeInfo.ID())
 	}
 
 	// Process through node manager
@@ -293,7 +293,7 @@ func (cm *ComputeManager) handleShutdownRequest(ctx context.Context, msg *envelo
 	// Get data plane to access sequence numbers
 	dataPlane, exists := cm.getDataPlane(notification.NodeID)
 	if !exists {
-		return nil, fmt.Errorf("no active data plane for node %s", notification.NodeID)
+		return nil, NewErrHandshakeRequired(notification.NodeID)
 	}
 
 	response, err := cm.nodeManager.ShutdownNotice(ctx, nodes.ExtendedShutdownNoticeRequest{
