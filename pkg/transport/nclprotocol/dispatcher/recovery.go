@@ -26,6 +26,8 @@ type recovery struct {
 	isRecovering bool      // true while in recovery process
 	lastFailure  time.Time // time of most recent failure
 	failures     int       // failure count for backoff
+	stopCh       chan struct{}
+	wg           sync.WaitGroup
 }
 
 func newRecovery(
@@ -35,6 +37,7 @@ func newRecovery(
 		watcher:   watcher,
 		state:     state,
 		backoff:   backoff.NewExponential(config.BaseRetryInterval, config.MaxRetryInterval),
+		stopCh:    make(chan struct{}),
 	}
 }
 
@@ -80,11 +83,13 @@ func (r *recovery) handleError(ctx context.Context, msg *pendingMessage, err err
 	log.Ctx(ctx).Debug().Msg("Reset dispatcher state state after publish failure")
 
 	// Launch recovery goroutine
+	r.wg.Add(1)
 	go r.recoveryLoop(ctx, r.failures)
 }
 
 // recoveryLoop handles the recovery process with backoff
 func (r *recovery) recoveryLoop(ctx context.Context, failures int) {
+	defer r.wg.Done()
 	defer func() {
 		r.mu.Lock()
 		r.isRecovering = false
@@ -95,7 +100,18 @@ func (r *recovery) recoveryLoop(ctx context.Context, failures int) {
 		// Perform backoff
 		backoffDuration := r.backoff.BackoffDuration(failures)
 		log.Debug().Int("failures", failures).Dur("backoff", backoffDuration).Msg("Performing backoff")
-		r.backoff.Backoff(ctx, failures)
+
+		// Perform backoff with interruptibility
+		timer := time.NewTimer(backoffDuration)
+		select {
+		case <-timer.C:
+		case <-r.stopCh:
+			timer.Stop()
+			return
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		}
 
 		// Just restart the watcher - it will resume from last checkpoint
 		if err := r.watcher.Start(ctx); err != nil {
@@ -103,13 +119,17 @@ func (r *recovery) recoveryLoop(ctx context.Context, failures int) {
 				log.Debug().Msg("Watcher already after recovery. Exiting recovery loop.")
 				return
 			}
-			if ctx.Err() != nil {
+			select {
+			case <-r.stopCh:
 				return
+			case <-ctx.Done():
+				return
+			default:
+				log.Error().Err(err).Msg("Failed to restart watcher after backoff. Retrying...")
+				failures++
 			}
-			log.Error().Err(err).Msg("Failed to restart watcher after backoff. Retrying...")
-			failures++
 		} else {
-			log.Info().Msg("Successfully restarted watcher after backoff")
+			log.Debug().Msg("Successfully restarted watcher after backoff")
 			return
 		}
 	}
@@ -117,11 +137,14 @@ func (r *recovery) recoveryLoop(ctx context.Context, failures int) {
 
 // reset resets the recovery state
 func (r *recovery) reset() {
+	r.stop() // Stop any existing recovery first
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.isRecovering = false
 	r.lastFailure = time.Time{}
 	r.failures = 0
+	r.stopCh = make(chan struct{})
 }
 
 // getState returns current recovery state
@@ -131,4 +154,18 @@ func (r *recovery) getState() (bool, time.Time, int) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.isRecovering, r.lastFailure, r.failures
+}
+
+func (r *recovery) stop() {
+	r.mu.Lock()
+	// Try to close the channel only if it's not already closed
+	select {
+	case <-r.stopCh:
+	default:
+		close(r.stopCh)
+	}
+	r.mu.Unlock()
+
+	// Wait for recovery loop to exit, if running
+	r.wg.Wait()
 }
