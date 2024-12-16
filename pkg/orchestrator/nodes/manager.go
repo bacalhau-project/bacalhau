@@ -850,7 +850,13 @@ func (n *nodesManager) resolveStartingOrchestratorSeqNum(
 // We should implement proper comparison logic to ensure sequence numbers only advance forward.
 func (n *nodesManager) updateSequenceNumbers(state *models.ConnectionState, orchestratorSeq, computeSeq uint64) {
 	state.LastOrchestratorSeqNum = orchestratorSeq
-	state.LastComputeSeqNum = computeSeq
+
+	// Only update LastComputeSeqNum if greater than 0, as zero can indicate
+	// either no messages processed yet or a connection that has just been
+	// established. This preserves the existing sequence number in those cases.
+	if computeSeq > 0 {
+		state.LastComputeSeqNum = computeSeq
+	}
 }
 
 // enrichState adds live tracking data to a node state.
