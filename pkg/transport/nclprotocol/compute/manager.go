@@ -421,6 +421,7 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 	// Consider connection unhealthy if:
 	// 1. No heartbeat succeeded within HeartbeatMissFactor intervals
 	// 2. NATS connection is closed/draining
+	// 3. Health tracker reports a handshake required
 	now := cm.config.Clock.Now()
 	heartbeatDeadline := now.Add(-time.Duration(cm.config.HeartbeatMissFactor) * cm.config.HeartbeatInterval)
 
@@ -432,6 +433,9 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 		unhealthy = true
 	} else if cm.natsConn.IsClosed() {
 		reason = "NATS connection closed"
+		unhealthy = true
+	} else if cm.healthTracker.IsHandshakeRequired() {
+		reason = "handshake required"
 		unhealthy = true
 	}
 

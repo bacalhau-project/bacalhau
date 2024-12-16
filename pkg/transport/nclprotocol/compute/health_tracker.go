@@ -36,6 +36,7 @@ func (ht *HealthTracker) MarkConnected() {
 	ht.health.LastSuccessfulHeartbeat = ht.clock.Now()
 	ht.health.ConsecutiveFailures = 0
 	ht.health.LastError = nil
+	ht.health.HandshakeRequired = false
 }
 
 // MarkDisconnected updates status when connection is lost
@@ -46,6 +47,7 @@ func (ht *HealthTracker) MarkDisconnected(err error) {
 	ht.health.CurrentState = nclprotocol.Disconnected
 	ht.health.LastError = err
 	ht.health.ConsecutiveFailures++
+	ht.health.HandshakeRequired = false
 }
 
 // MarkConnecting update status when connection is in progress
@@ -54,6 +56,7 @@ func (ht *HealthTracker) MarkConnecting() {
 	defer ht.mu.Unlock()
 
 	ht.health.CurrentState = nclprotocol.Connecting
+	ht.health.HandshakeRequired = false
 }
 
 // HeartbeatSuccess records successful heartbeat
@@ -70,6 +73,13 @@ func (ht *HealthTracker) UpdateSuccess() {
 	ht.health.LastSuccessfulUpdate = ht.clock.Now()
 }
 
+// HandshakeRequired marks that a handshake is required
+func (ht *HealthTracker) HandshakeRequired() {
+	ht.mu.Lock()
+	defer ht.mu.Unlock()
+	ht.health.HandshakeRequired = true
+}
+
 // GetState returns current connection state
 func (ht *HealthTracker) GetState() nclprotocol.ConnectionState {
 	ht.mu.RLock()
@@ -82,4 +92,11 @@ func (ht *HealthTracker) GetHealth() nclprotocol.ConnectionHealth {
 	ht.mu.RLock()
 	defer ht.mu.RUnlock()
 	return ht.health
+}
+
+// IsHandshakeRequired returns true if a handshake is required
+func (ht *HealthTracker) IsHandshakeRequired() bool {
+	ht.mu.RLock()
+	defer ht.mu.RUnlock()
+	return ht.health.HandshakeRequired
 }

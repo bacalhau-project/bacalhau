@@ -3,6 +3,7 @@ package compute
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -104,6 +105,10 @@ func (cp *ControlPlane) run(ctx context.Context) {
 
 		case <-heartbeat.C:
 			if err := cp.heartbeat(ctx); err != nil {
+				if strings.Contains(err.Error(), "handshake required") {
+					cp.healthTracker.HandshakeRequired()
+					return
+				}
 				log.Error().Err(err).Msg("Failed to send heartbeat")
 			}
 		case <-nodeInfo.C:
