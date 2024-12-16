@@ -137,6 +137,8 @@ func (r *recovery) recoveryLoop(ctx context.Context, failures int) {
 
 // reset resets the recovery state
 func (r *recovery) reset() {
+	r.stop() // Stop any existing recovery first
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.isRecovering = false
