@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
 	ncltest "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/test"
@@ -179,6 +180,72 @@ func (s *ControlPlaneTestSuite) TestHeartbeat() {
 	}, 100*time.Millisecond, 10*time.Millisecond, "Heartbeat did not succeed")
 }
 
+func (s *ControlPlaneTestSuite) TestHeartbeatFailFastOnHandshakeRequired() {
+	// Create control plane with only heartbeat enabled and short intervals
+	controlPlane := s.createControlPlane(
+		50*time.Millisecond, // heartbeat
+		1*time.Hour,         // node info - disabled
+		1*time.Hour,         // checkpoint - disabled
+	)
+	defer s.Require().NoError(controlPlane.Stop(s.ctx))
+
+	// Setup handshake required error response
+	s.requester.EXPECT().
+		Request(gomock.Any(), gomock.Any()).
+		Return(nil, nodes.NewErrHandshakeRequired("test-node")).
+		Times(1) // Should only try once
+
+	// Start control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+
+	// Wait a bit to allow for heartbeat attempt
+	time.Sleep(50 * time.Millisecond)
+
+	// wait health tracker state
+	s.Require().Eventually(func() bool {
+		return s.healthTracker.GetHealth().HandshakeRequired
+	}, 100*time.Millisecond, 10*time.Millisecond, "Heartbeat did not succeed")
+
+	// Verify health tracker state
+	health := s.healthTracker.GetHealth()
+	s.True(health.HandshakeRequired, "handshake should be marked as required")
+	s.Zero(health.LastSuccessfulHeartbeat, "no successful heartbeat should be recorded")
+
+	// Wait for another heartbeat interval to verify the loop has stopped
+	time.Sleep(70 * time.Millisecond)
+
+	s.Require().Eventually(func() bool {
+		return s.healthTracker.GetHealth().CurrentState == nclprotocol.Disconnected
+	}, 100*time.Millisecond, 10*time.Millisecond, "connection not marked as disconnected")
+}
+
+func (s *ControlPlaneTestSuite) TestHeartbeatContinuesOnOtherErrors() {
+	// Create control plane with only heartbeat enabled
+	controlPlane := s.createControlPlane(
+		50*time.Millisecond, // heartbeat
+		1*time.Hour,         // node info - disabled
+		1*time.Hour,         // checkpoint - disabled
+	)
+	defer s.Require().NoError(controlPlane.Stop(s.ctx))
+
+	// Setup regular error response that should not cause fail-fast
+	s.requester.EXPECT().
+		Request(gomock.Any(), gomock.Any()).
+		Return(nil, fmt.Errorf("network error")).
+		Times(2) // Should keep trying
+
+	// Start control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+
+	// Wait for two heartbeat attempts
+	time.Sleep(120 * time.Millisecond)
+
+	// Verify health tracker state
+	health := s.healthTracker.GetHealth()
+	s.False(health.HandshakeRequired, "handshake should not be marked as required")
+	s.Zero(health.LastSuccessfulHeartbeat, "no successful heartbeat should be recorded")
+}
+
 func (s *ControlPlaneTestSuite) TestNodeInfoUpdate() {
 	// Create control plane with only checkpointing enabled
 	controlPlane := s.createControlPlane(
@@ -274,4 +341,155 @@ func (s *ControlPlaneTestSuite) TestErrorHandling() {
 	// Verify health tracker reflects failure
 	health := s.healthTracker.GetHealth()
 	s.Require().Zero(health.LastSuccessfulHeartbeat)
+}
+
+func (s *ControlPlaneTestSuite) TestShutdownBehavior() {
+	tests := []struct {
+		name            string
+		connectionState nclprotocol.ConnectionState
+		seqNum          uint64
+		mockRequester   bool
+		cancelContext   bool
+		expectError     bool
+	}{
+		{
+			name:            "sends notification when connected",
+			connectionState: nclprotocol.Connected,
+			seqNum:          42,
+			mockRequester:   true,
+		},
+		{
+			name:            "skips notification when disconnected",
+			connectionState: nclprotocol.Disconnected,
+			mockRequester:   false,
+		},
+		{
+			name:            "skips notification with cancelled context",
+			connectionState: nclprotocol.Connected,
+			cancelContext:   true,
+			expectError:     true,
+		},
+		{
+			name:            "handles notification failure",
+			connectionState: nclprotocol.Connected,
+			seqNum:          42,
+			mockRequester:   true,
+			expectError:     false, // notification failures are logged but don't fail shutdown
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			s.TearDownTest()
+			s.SetupTest()
+			controlPlane := s.createControlPlane(1*time.Hour, 1*time.Hour, 1*time.Hour)
+
+			// Setup initial state
+			if tc.connectionState == nclprotocol.Connected {
+				s.healthTracker.MarkConnected()
+			}
+			s.seqTracker.UpdateLastSeqNum(tc.seqNum)
+
+			// Setup mocks
+			if tc.mockRequester {
+				expectedMsg := envelope.NewMessage(messages.ShutdownNoticeRequest{
+					NodeID:                 s.config.NodeID,
+					LastOrchestratorSeqNum: tc.seqNum,
+				}).WithMetadataValue(envelope.KeyMessageType, messages.ShutdownNoticeRequestMessageType)
+
+				s.requester.EXPECT().
+					Request(gomock.Any(), ncl.NewPublishRequest(expectedMsg)).
+					Return(envelope.NewMessage(messages.ShutdownNoticeResponse{}), nil)
+			}
+
+			s.NoError(controlPlane.Start(s.ctx))
+
+			ctx := s.ctx
+			if tc.cancelContext {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithCancel(context.Background())
+				cancel()
+			}
+
+			err := controlPlane.Stop(ctx)
+			if tc.expectError {
+				s.Error(err)
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}
+
+func (s *ControlPlaneTestSuite) TestShutdownWithContextCancellation() {
+	controlPlane := s.createControlPlane(
+		1*time.Hour, // heartbeat - disabled
+		1*time.Hour, // node info - disabled
+		1*time.Hour, // checkpoint - disabled
+	)
+
+	// Setup connected state
+	s.healthTracker.MarkConnected()
+	s.seqTracker.UpdateLastSeqNum(42)
+
+	// No expectations for shutdown message - it shouldn't be called
+
+	// Start control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+
+	// Create cancelled context for stop
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Stop with cancelled context should error without sending notification
+	err := controlPlane.Stop(ctx)
+	s.Require().Error(err)
+	s.Require().Equal(context.Canceled, err)
+}
+
+func (s *ControlPlaneTestSuite) TestShutdownAfterCheckpoint() {
+	// Create control plane with checkpointing enabled
+	controlPlane := s.createControlPlane(
+		1*time.Hour,         // heartbeat - disabled
+		1*time.Hour,         // node info - disabled
+		50*time.Millisecond, // checkpoint enabled
+	)
+
+	// Setup connected state
+	s.healthTracker.MarkConnected()
+	s.seqTracker.UpdateLastSeqNum(42)
+
+	// Track checkpoint order
+	var checkpointCalled, shutdownCalled bool
+	orderCh := make(chan string, 2)
+
+	// Setup checkpoint expectation
+	s.checkpointer.OnCheckpointSet(func(name string, value uint64) {
+		orderCh <- "checkpoint"
+		checkpointCalled = true
+	})
+
+	// Setup shutdown expectation
+	s.requester.EXPECT().
+		Request(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, req ncl.PublishRequest) (*envelope.Message, error) {
+			orderCh <- "shutdown"
+			shutdownCalled = true
+			return envelope.NewMessage(messages.ShutdownNoticeResponse{}), nil
+		})
+
+	// Start and stop control plane
+	s.Require().NoError(controlPlane.Start(s.ctx))
+	s.Require().NoError(controlPlane.Stop(s.ctx))
+
+	// Verify both operations happened
+	s.True(checkpointCalled, "checkpoint should be called")
+	s.True(shutdownCalled, "shutdown should be called")
+
+	// Verify shutdown happens before final checkpoint
+	s.Eventually(func() bool {
+		first := <-orderCh
+		second := <-orderCh
+		return first == "shutdown" && second == "checkpoint"
+	}, time.Second, 10*time.Millisecond)
 }

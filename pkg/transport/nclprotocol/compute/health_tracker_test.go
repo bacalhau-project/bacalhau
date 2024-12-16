@@ -39,9 +39,13 @@ func (s *HealthTrackerTestSuite) TestInitialState() {
 	s.Require().Equal(0, health.ConsecutiveFailures)
 	s.Require().Nil(health.LastError)
 	s.Require().True(health.ConnectedSince.IsZero())
+	s.Require().False(health.HandshakeRequired) // Verify initial state of HandshakeRequired
 }
 
 func (s *HealthTrackerTestSuite) TestMarkConnected() {
+	// First mark handshake required
+	s.tracker.HandshakeRequired()
+
 	// Advance clock to have distinct timestamps
 	s.clock.Add(time.Second)
 	connectedTime := s.clock.Now()
@@ -54,6 +58,7 @@ func (s *HealthTrackerTestSuite) TestMarkConnected() {
 	s.Require().Equal(connectedTime, health.LastSuccessfulHeartbeat)
 	s.Require().Equal(0, health.ConsecutiveFailures)
 	s.Require().Nil(health.LastError)
+	s.Require().False(health.HandshakeRequired) // Should be reset when connected
 }
 
 func (s *HealthTrackerTestSuite) TestMarkDisconnected() {
@@ -68,11 +73,37 @@ func (s *HealthTrackerTestSuite) TestMarkDisconnected() {
 	s.Require().Equal(nclprotocol.Disconnected, health.CurrentState)
 	s.Require().Equal(expectedErr, health.LastError)
 	s.Require().Equal(1, health.ConsecutiveFailures)
+	s.Require().False(health.HandshakeRequired) // Should still be false after disconnect
 
 	// Multiple disconnections should increment failure count
 	s.tracker.MarkDisconnected(expectedErr)
 	health = s.tracker.GetHealth()
 	s.Require().Equal(2, health.ConsecutiveFailures)
+}
+
+func (s *HealthTrackerTestSuite) TestHandshakeRequired() {
+	// Initially handshake should not be required
+	s.Require().False(s.tracker.IsHandshakeRequired())
+
+	// Mark handshake as required
+	s.tracker.HandshakeRequired()
+	s.Require().True(s.tracker.IsHandshakeRequired())
+
+	// Verify it's cleared when connected
+	s.tracker.MarkConnected()
+	s.Require().False(s.tracker.IsHandshakeRequired())
+
+	// Verify it's cleared when disconnected
+	s.tracker.HandshakeRequired()
+	s.Require().True(s.tracker.IsHandshakeRequired())
+	s.tracker.MarkDisconnected(fmt.Errorf("error"))
+	s.Require().False(s.tracker.IsHandshakeRequired())
+
+	// Verify it's cleared when connecting
+	s.tracker.HandshakeRequired()
+	s.Require().True(s.tracker.IsHandshakeRequired())
+	s.tracker.MarkConnecting()
+	s.Require().False(s.tracker.IsHandshakeRequired())
 }
 
 func (s *HealthTrackerTestSuite) TestSuccessfulOperations() {

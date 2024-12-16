@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1070,6 +1071,184 @@ func (s *NodeManagerTestSuite) TestPersistenceWithContextCancellation() {
 	assert.Equal(s.T(), newResources, state.Info.ComputeNodeInfo.AvailableCapacity)
 	assert.Equal(s.T(), lastOrchestratorSeqNum, state.ConnectionState.LastOrchestratorSeqNum)
 	assert.Equal(s.T(), lastComputeSeqNum, state.ConnectionState.LastComputeSeqNum)
+}
+
+func (s *NodeManagerTestSuite) TestShutdownNotice() {
+	lastOrchestratorSeqNum := uint64(42)
+	lastComputeSeqNum := uint64(24)
+
+	// Test cases covering different shutdown scenarios
+	tests := []struct {
+		name           string
+		setupNode      bool // whether to setup node with handshake first
+		disconnect     bool // whether to disconnect node before shutdown
+		reason         string
+		expectedError  string
+		validateState  func(*testing.T, models.NodeState)
+		validateEvents func(*testing.T, []nodes.NodeConnectionEvent)
+	}{
+		{
+			name:      "successful shutdown",
+			setupNode: true,
+			reason:    "maintenance",
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, models.NodeStates.DISCONNECTED, state.ConnectionState.Status)
+				assert.Equal(t, "graceful shutdown", state.ConnectionState.LastError)
+				assert.False(t, state.ConnectionState.DisconnectedSince.IsZero())
+			},
+			validateEvents: func(t *testing.T, events []nodes.NodeConnectionEvent) {
+				require.Len(t, events, 2) // connect + disconnect
+				assert.Equal(t, models.NodeStates.CONNECTED, events[1].Previous)
+				assert.Equal(t, models.NodeStates.DISCONNECTED, events[1].Current)
+			},
+		},
+		{
+			name:          "shutdown without handshake",
+			setupNode:     false,
+			reason:        "testing",
+			expectedError: "handshake required",
+		},
+		{
+			name:          "shutdown already disconnected node",
+			setupNode:     true,
+			disconnect:    true,
+			reason:        "testing",
+			expectedError: "handshake required",
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, models.NodeStates.DISCONNECTED, state.ConnectionState.Status)
+			},
+		},
+		{
+			name:      "shutdown preserves sequence numbers",
+			setupNode: true,
+			reason:    "testing",
+			validateState: func(t *testing.T, state models.NodeState) {
+				assert.Equal(t, lastOrchestratorSeqNum, state.ConnectionState.LastOrchestratorSeqNum)
+				assert.Equal(t, lastComputeSeqNum, state.ConnectionState.LastComputeSeqNum)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Track connection events
+			var events []nodes.NodeConnectionEvent
+			eventsMu := sync.Mutex{}
+			s.manager.OnConnectionStateChange(func(event nodes.NodeConnectionEvent) {
+				eventsMu.Lock()
+				events = append(events, event)
+				eventsMu.Unlock()
+			})
+
+			nodeInfo := s.createNodeInfo("shutdown-test")
+
+			// Setup node if required
+			if tt.setupNode {
+				_, err := s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: nodeInfo})
+				s.Require().NoError(err)
+
+				// Update sequence numbers
+				_, err = s.manager.Heartbeat(s.ctx, nodes.ExtendedHeartbeatRequest{
+					HeartbeatRequest: messages.HeartbeatRequest{
+						NodeID:                 nodeInfo.ID(),
+						LastOrchestratorSeqNum: 42,
+					},
+					LastComputeSeqNum: 24,
+				})
+				s.Require().NoError(err)
+
+				if tt.disconnect {
+					s.clock.Add(s.disconnected + time.Second)
+					s.Eventually(func() bool {
+						state, err := s.manager.Get(s.ctx, nodeInfo.ID())
+						s.Require().NoError(err)
+						return state.ConnectionState.Status == models.NodeStates.DISCONNECTED
+					}, 500*time.Millisecond, 20*time.Millisecond)
+				}
+			}
+
+			// Send shutdown notice
+			req := nodes.ExtendedShutdownNoticeRequest{
+				ShutdownNoticeRequest: messages.ShutdownNoticeRequest{
+					NodeID:                 nodeInfo.ID(),
+					Reason:                 tt.reason,
+					LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+				},
+				LastComputeSeqNum: lastComputeSeqNum,
+			}
+
+			_, err := s.manager.ShutdownNotice(s.ctx, req)
+			if tt.expectedError != "" {
+				s.Assert().Error(err)
+				s.Assert().Contains(err.Error(), tt.expectedError)
+				return
+			}
+			s.Assert().NoError(err)
+
+			// Validate final state
+			state, err := s.manager.Get(s.ctx, nodeInfo.ID())
+			s.Require().NoError(err)
+
+			if tt.validateState != nil {
+				tt.validateState(s.T(), state)
+			}
+
+			if tt.validateEvents != nil {
+				eventsMu.Lock()
+				tt.validateEvents(s.T(), events)
+				eventsMu.Unlock()
+			}
+		})
+	}
+}
+
+func (s *NodeManagerTestSuite) TestConcurrentShutdown() {
+	nodeInfo := s.createNodeInfo("concurrent-shutdown")
+	lastOrchestratorSeqNum := uint64(42)
+	lastComputeSeqNum := uint64(24)
+
+	// Connect node
+	_, err := s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: nodeInfo})
+	s.Require().NoError(err)
+
+	// Track successful shutdowns
+	var wg sync.WaitGroup
+	successCount := int32(0)
+	const numConcurrent = 10
+
+	for i := 0; i < numConcurrent; i++ {
+		wg.Add(1)
+		go func(attempt int) {
+			defer wg.Done()
+
+			req := nodes.ExtendedShutdownNoticeRequest{
+				ShutdownNoticeRequest: messages.ShutdownNoticeRequest{
+					NodeID:                 nodeInfo.ID(),
+					Reason:                 fmt.Sprintf("concurrent shutdown %d", attempt),
+					LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+				},
+				LastComputeSeqNum: lastComputeSeqNum,
+			}
+
+			_, err := s.manager.ShutdownNotice(s.ctx, req)
+			if err == nil {
+				atomic.AddInt32(&successCount, 1)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Exactly one shutdown should succeed
+	s.Assert().Equal(int32(1), successCount)
+
+	// Verify final state
+	state, err := s.manager.Get(s.ctx, nodeInfo.ID())
+	s.Require().NoError(err)
+	s.Assert().Equal(models.NodeStates.DISCONNECTED, state.ConnectionState.Status)
+	s.Assert().Equal("graceful shutdown", state.ConnectionState.LastError)
+	s.Assert().Equal(lastOrchestratorSeqNum, state.ConnectionState.LastOrchestratorSeqNum)
+	s.Assert().Equal(lastComputeSeqNum, state.ConnectionState.LastComputeSeqNum)
 }
 
 type mockNodeInfoProvider struct {
