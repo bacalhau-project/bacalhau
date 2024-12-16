@@ -258,7 +258,7 @@ func (cm *ComputeManager) handleHeartbeatRequest(ctx context.Context, msg *envel
 		return nil, err
 	}
 
-	return envelope.NewMessage(response), nil
+	return envelope.NewMessage(response).WithMetadataValue(envelope.KeyMessageType, messages.HeartbeatResponseType), nil
 }
 
 // handleNodeInfoUpdateRequest processes node info updates from compute nodes.
@@ -278,7 +278,8 @@ func (cm *ComputeManager) handleNodeInfoUpdateRequest(ctx context.Context, msg *
 		return nil, err
 	}
 
-	return envelope.NewMessage(response), nil
+	return envelope.NewMessage(response).
+		WithMetadataValue(envelope.KeyMessageType, messages.NodeInfoUpdateResponseType), nil
 }
 
 // handleConnectionStateChange responds to node connection state changes
@@ -294,7 +295,7 @@ func (cm *ComputeManager) handleConnectionStateChange(event nodes.NodeConnection
 	if event.Current == models.NodeStates.DISCONNECTED {
 		if dataPlane, ok := cm.dataPlanes.LoadAndDelete(event.NodeID); ok {
 			if dp, ok := dataPlane.(*DataPlane); ok {
-				if err := dp.Stop(context.Background()); err != nil {
+				if err := dp.Stop(context.TODO()); err != nil {
 					log.Error().Err(err).
 						Str("nodeID", event.NodeID).
 						Msg("Failed to stop data plane for disconnected node")

@@ -228,6 +228,32 @@ func (s *DispatcherE2ETestSuite) TestCheckpointingAndRestart() {
 	}
 }
 
+func (s *DispatcherE2ETestSuite) TestCheckpointOnStop() {
+	config := dispatcher.Config{
+		CheckpointInterval: time.Hour, // Disable periodic checkpointing
+	}
+	d := s.startDispatcher(config)
+
+	// Store some events
+	s.storeEvents(5)
+
+	// Wait for processing
+	s.Eventually(func() bool {
+		return d.State().LastAckedSeqNum == 5
+	}, time.Second, 10*time.Millisecond)
+
+	// add additional time for ack to be sent back
+
+	// Stop dispatcher - should trigger final checkpoint
+	err := d.Stop(s.ctx)
+	s.Require().NoError(err)
+
+	// Verify checkpoint was saved
+	checkpoint, err := s.store.GetCheckpoint(s.ctx, "test-watcher")
+	s.Require().NoError(err)
+	s.Equal(uint64(5), checkpoint)
+}
+
 func (s *DispatcherE2ETestSuite) storeEvent(index int) {
 	err := s.store.StoreEvent(s.ctx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,

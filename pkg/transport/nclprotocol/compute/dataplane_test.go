@@ -170,9 +170,9 @@ func (s *DataPlaneTestSuite) TestStartupFailureCleanup() {
 				s.cancel()
 				select {
 				case <-s.ctx.Done():
-				    // Context cancellation has propagated
+					// Context cancellation has propagated
 				case <-time.After(100 * time.Millisecond):
-				    s.Require().Fail("Timeout waiting for context cancellation")
+					s.Require().Fail("Timeout waiting for context cancellation")
 				}
 			},
 			expectError: "context canceled",
@@ -243,5 +243,57 @@ func (s *DataPlaneTestSuite) TestMessageHandling() {
 				}
 			}
 		})
+	}
+}
+
+func (s *DataPlaneTestSuite) TestStartingPosition() {
+	// Store some initial events
+	initialEvents := []models.ExecutionUpsert{
+		{
+			Current: &models.Execution{
+				ID:     "test-job-1",
+				NodeID: "test-node",
+			},
+		},
+		{
+			Current: &models.Execution{
+				ID:     "test-job-2",
+				NodeID: "test-node",
+			},
+		},
+	}
+
+	for _, event := range initialEvents {
+		err := s.config.EventStore.StoreEvent(s.ctx, watcher.StoreEventRequest{
+			Operation:  watcher.OperationCreate,
+			ObjectType: compute.EventObjectExecutionUpsert,
+			Object:     event,
+		})
+		s.Require().NoError(err)
+	}
+
+	// Create data plane with a non-zero LastReceivedSeqNum
+	dp, err := nclprotocolcompute.NewDataPlane(nclprotocolcompute.DataPlaneParams{
+		Config:             s.config,
+		Client:             s.natsConn,
+		LastReceivedSeqNum: 100, // This should be ignored
+	})
+	s.Require().NoError(err)
+	s.Require().NoError(dp.Start(s.ctx))
+	defer dp.Stop(context.Background())
+
+	// We should still receive ALL messages from the beginning
+	receivedMessages := 0
+	timeout := time.After(time.Second)
+	for receivedMessages < len(initialEvents) {
+		select {
+		case msg := <-s.msgChan:
+			s.Require().Equal(messages.BidResultMessageType, msg.Metadata.Get(envelope.KeyMessageType))
+			receivedMessages++
+		case <-timeout:
+			s.Require().Failf("Timeout waiting for messages",
+				"Only received %d of %d expected messages",
+				receivedMessages, len(initialEvents))
+		}
 	}
 }

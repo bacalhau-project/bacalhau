@@ -224,6 +224,9 @@ func (cp *ControlPlane) Stop(ctx context.Context) error {
 
 	select {
 	case <-done:
+		if err := cp.checkpointProgress(ctx); err != nil {
+			log.Error().Err(err).Msg("Failed to checkpoint progress before stopping")
+		}
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

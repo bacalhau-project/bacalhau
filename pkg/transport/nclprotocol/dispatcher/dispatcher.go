@@ -77,6 +77,10 @@ func New(publisher ncl.OrderedPublisher,
 	return d, nil
 }
 
+func (d *Dispatcher) State() State {
+	return d.state.GetState()
+}
+
 // Start begins processing events and managing async publish results.
 // It launches background goroutines for processing publish results,
 // checking for stalled messages, and checkpointing progress.
@@ -226,19 +230,30 @@ func (d *Dispatcher) checkpointLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-d.stopCh:
+			d.doCheckpoint(ctx) // Final checkpoint on shutdown
 			return
 		case <-ticker.C:
-			checkpointTarget := d.state.getCheckpointSeqNum()
-			// Only checkpoint if we have something new to save
-			if checkpointTarget > 0 {
-				checkpointCtx, cancel := context.WithTimeout(ctx, d.config.CheckpointTimeout)
-				if err := d.watcher.Checkpoint(checkpointCtx, checkpointTarget); err != nil {
-					log.Error().Err(err).Msg("Failed to checkpoint watcher")
-				} else {
-					d.state.updateLastCheckpoint(checkpointTarget)
-				}
-				cancel()
-			}
+			d.doCheckpoint(ctx) // Periodic checkpoint
 		}
 	}
+}
+
+// doCheckpoint attempts to checkpoint the current sequence number if needed
+func (d *Dispatcher) doCheckpoint(ctx context.Context) {
+	checkpointTarget := d.state.getCheckpointSeqNum()
+	if checkpointTarget == 0 { // Nothing new to checkpoint
+		return
+	}
+
+	checkpointCtx, cancel := context.WithTimeout(ctx, d.config.CheckpointTimeout)
+	defer cancel()
+
+	if err := d.watcher.Checkpoint(checkpointCtx, checkpointTarget); err != nil {
+		log.Error().Err(err).
+			Uint64("target", checkpointTarget).
+			Msg("Failed to checkpoint watcher")
+		return
+	}
+
+	d.state.updateLastCheckpoint(checkpointTarget)
 }
