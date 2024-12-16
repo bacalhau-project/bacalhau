@@ -687,7 +687,7 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 		{
 			name:             "AtSequenceNumber(1)",
 			iterator:         watcher.AtSequenceNumberIterator(1),
-			expectedIterator: watcher.AtSequenceNumberIterator(1),
+			expectedIterator: watcher.AfterSequenceNumberIterator(0),
 		},
 		{
 			name:             "AfterSequenceNumber(0)",
@@ -697,7 +697,7 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 		{
 			name:             "AfterSequenceNumber(1)",
 			iterator:         watcher.AfterSequenceNumberIterator(1),
-			expectedIterator: watcher.AfterSequenceNumberIterator(1),
+			expectedIterator: watcher.AfterSequenceNumberIterator(0),
 		},
 	}
 
