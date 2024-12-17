@@ -85,6 +85,26 @@ Local Event Store          NCL Protocol              Remote Node
 └──────────────┘    └─────────────────────┘    └──────────────┘
 ```
 
+### Sequence Number Management
+
+Each side maintains its own view of message processing:
+
+1. **Orchestrator's View**
+   - Tracks which messages each compute node has processed
+   - Updates this view based on heartbeat reports
+   - Uses its stored view for reconnection decisions
+   - For new nodes, starts from latest sequence to avoid overwhelming them
+
+2. **Compute Node's View**
+   - Tracks which messages it has processed from orchestrator
+   - Reports progress through periodic heartbeats
+   - Maintains local checkpoints for recovery
+
+This independent tracking helps handle edge cases like:
+- Node restarts with fresh state
+- Orchestrator recovery from data loss
+- Network partitions
+
 ### Key Components
 
 1. **Event Store**
@@ -112,6 +132,9 @@ Local Event Store          NCL Protocol              Remote Node
     - Includes node info, start time, and last processed sequence number
     - Orchestrator validates request and accepts/rejects connection
     - On acceptance, orchestrator creates dedicated data plane for node
+    - Orchestrator determines starting sequence based on stored state:
+        - For reconnecting nodes: Uses last known processed sequence
+        - For new nodes: Starts from latest sequence number
 
 2. **Data Plane Setup**
     - Both sides establish message subscriptions
@@ -123,8 +146,8 @@ Local Event Store          NCL Protocol              Remote Node
 
 1. **Health Monitoring**
     - Compute nodes send periodic heartbeats
-    - Include current capacity and last processed sequence
-    - Orchestrator tracks node health and connection state
+    - Include current capacity and last processed sequence number
+    - Orchestrator updates its view of node progress
     - Missing heartbeats trigger disconnection
 
 2. **Node Info Updates**
@@ -135,7 +158,7 @@ Local Event Store          NCL Protocol              Remote Node
 3. **Message Flow**
     - Data flows through separate control/data subjects
     - Messages include sequence numbers for ordering
-    - Both sides track processed sequences
+    - Both sides track processed sequences independently
     - Failed deliveries trigger automatic recovery
 
 ## Message Contracts
@@ -147,7 +170,7 @@ Local Event Store          NCL Protocol              Remote Node
 HandshakeRequest {
     NodeInfo: models.NodeInfo
     StartTime: Time
-    LastOrchestratorSeqNum: uint64
+    LastOrchestratorSeqNum: uint64  // For reference only
 }
 
 // Response from orchestrator
@@ -155,6 +178,7 @@ HandshakeResponse {
     Accepted: boolean
     Reason: string          // Only set if not accepted
     LastComputeSeqNum: uint64
+    StartingOrchestratorSeqNum: uint64  // Determined by orchestrator
 }
 ```
 
@@ -166,7 +190,7 @@ HeartbeatRequest {
     NodeID: string
     AvailableCapacity: Resources
     QueueUsedCapacity: Resources
-    LastOrchestratorSeqNum: uint64
+    LastOrchestratorSeqNum: uint64  // Used to update orchestrator's view
 }
 
 // Acknowledgment from orchestrator
@@ -202,10 +226,11 @@ sequenceDiagram
     C->>O: HandshakeRequest(NodeInfo, StartTime, LastSeqNum)
     
     Note over O: Validate Node
+    Note over O: Determine starting sequence based on stored state
     alt Valid Node
         O->>O: Create Data Plane
         O->>O: Setup Message Handlers
-        O-->>C: HandshakeResponse(Accepted=true, LastSeqNum)
+        O-->>C: HandshakeResponse(Accepted=true, StartingSeqNum)
         
         Note over C: Setup Data Plane
         C->>C: Start Control Plane
@@ -232,6 +257,7 @@ sequenceDiagram
         Note over C,O: Periodic Health Monitoring
         loop Every HeartbeatInterval
             C->>O: HeartbeatRequest(NodeID, Capacity, LastSeqNum)
+            Note over O: Update sequence tracking
             O-->>C: HeartbeatResponse()
         end
     end
@@ -253,6 +279,7 @@ sequenceDiagram
 
 During regular operation:
 - Heartbeats occur every HeartbeatInterval (default 15s)
+- Heartbeats include last processed sequence number, allowing orchestrator to track progress
 - Configuration changes trigger immediate updates
 - Data plane messages flow continuously in both directions
 - Both sides maintain sequence tracking and acknowledgments
@@ -283,7 +310,8 @@ sequenceDiagram
         loop Until Connected
             Note over C: Exponential Backoff
             C->>O: HandshakeRequest(LastSeqNum)
-            O-->>C: HandshakeResponse(Accepted)
+            Note over O: Use stored sequence state
+            O-->>C: HandshakeResponse(StartingSeqNum)
         end
 
         Note over C,O: Resume from Last Checkpoint
@@ -309,10 +337,11 @@ sequenceDiagram
 5. Continue normal operation
 
 This process ensures:
-- No events are lost
+- No messages are lost
 - Messages remain ordered
 - Efficient recovery
 - At-least-once delivery
+- Proper handling of node restarts and state resets
 
 ## Component Dependencies
 
