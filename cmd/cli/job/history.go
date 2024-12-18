@@ -88,7 +88,7 @@ func NewHistoryCmd() *cobra.Command {
 }
 
 var historyColumns = []output.TableColumn[*models.JobHistory]{
-	cols.HistoryTime,
+	cols.HistoryDateTime,
 	cols.HistoryLevel,
 	cols.HistoryExecID,
 	cols.HistoryTopic,
