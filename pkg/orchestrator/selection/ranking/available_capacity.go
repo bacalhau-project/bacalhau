@@ -103,8 +103,8 @@ func (s *AvailableCapacityNodeRanker) calculateWeightedCapacities(nodes []models
 		weightedAvailableCapacity := weightedCapacity(node.ComputeNodeInfo.AvailableCapacity, weights)
 		weightedQueueUsedCapacity := weightedCapacity(node.ComputeNodeInfo.QueueUsedCapacity, weights)
 
-		weightedAvailableCapacities[node.NodeID] = weightedAvailableCapacity
-		weightedQueueCapacities[node.NodeID] = weightedQueueUsedCapacity
+		weightedAvailableCapacities[node.ID()] = weightedAvailableCapacity
+		weightedQueueCapacities[node.ID()] = weightedQueueUsedCapacity
 
 		if weightedAvailableCapacity > maxWeightedAvailableCapacity {
 			maxWeightedAvailableCapacity = weightedAvailableCapacity
@@ -124,8 +124,8 @@ func (s *AvailableCapacityNodeRanker) rankNodesBasedOnCapacities(ctx context.Con
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 
 	for i, node := range nodes {
-		weightedAvailableCapacity := wAvailableCapacities[node.NodeID]
-		weightedQueueUsedCapacity := wQueueCapacities[node.NodeID]
+		weightedAvailableCapacity := wAvailableCapacities[node.ID()]
+		weightedQueueUsedCapacity := wQueueCapacities[node.ID()]
 
 		// Calculate the ratios of available and queue capacities
 		availableRatio := 0.0

@@ -90,7 +90,6 @@ func (n NoopNodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo No
 // to further its view of the networks conditions. ComputeNodeInfo is non-nil iff the NodeType is NodeTypeCompute.
 // TODO(walid): add Validate() method to NodeInfo and make sure it is called in all the places where it is initialized
 type NodeInfo struct {
-	// TODO replace all access on this field with the `ID()` method
 	NodeID   string            `json:"NodeID"`
 	NodeType NodeType          `json:"NodeType"`
 	Labels   map[string]string `json:"Labels"`

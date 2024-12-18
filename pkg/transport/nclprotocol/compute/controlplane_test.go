@@ -158,7 +158,7 @@ func (s *ControlPlaneTestSuite) TestHeartbeat() {
 
 	nodeInfo := s.nodeInfoProvider.GetNodeInfo(s.ctx)
 	heartbeatMsg := envelope.NewMessage(messages.HeartbeatRequest{
-		NodeID:                 nodeInfo.NodeID,
+		NodeID:                 nodeInfo.ID(),
 		AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 		QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
 		LastOrchestratorSeqNum: s.seqTracker.GetLastSeqNum(),

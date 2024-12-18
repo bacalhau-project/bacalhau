@@ -17,8 +17,11 @@ import (
 
 var alwaysColumns = []output.TableColumn[*models.NodeState]{
 	{
-		ColumnConfig: table.ColumnConfig{Name: "id"},
-		Value:        func(node *models.NodeState) string { return idgen.ShortNodeID(node.Info.ID()) },
+		ColumnConfig: table.ColumnConfig{
+			Name:             "id",
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortNodeID(col) }},
+		Value: func(node *models.NodeState) string { return node.Info.ID() },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "type"},

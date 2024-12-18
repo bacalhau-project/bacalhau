@@ -159,7 +159,7 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 	heartbeats := s.mockResponder.GetHeartbeats()
 	s.Require().Len(heartbeats, 1)
 	s.Require().Equal(messages.HeartbeatRequest{
-		NodeID:                 nodeInfo.NodeID,
+		NodeID:                 nodeInfo.ID(),
 		AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 		QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
 		LastOrchestratorSeqNum: handshakeSeqNum, // Should use sequence number from handshake response
@@ -178,7 +178,7 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 	s.Require().Eventually(func() bool {
 		lastHeartbeat := s.mockResponder.GetHeartbeats()[len(s.mockResponder.GetHeartbeats())-1]
 		return reflect.DeepEqual(lastHeartbeat, messages.HeartbeatRequest{
-			NodeID:                 nodeInfo.NodeID,
+			NodeID:                 nodeInfo.ID(),
 			AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 			QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
 			LastOrchestratorSeqNum: handshakeSeqNum, // Should continue using sequence number from handshake
