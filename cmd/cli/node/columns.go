@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/c2h5oh/datasize"
+	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
@@ -97,13 +97,17 @@ var toggleColumns = map[string][]output.TableColumn[*models.NodeState]{
 		{
 			ColumnConfig: table.ColumnConfig{Name: "memory", WidthMax: len("10.0 GB / "), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
-				return fmt.Sprintf("%s / %s", datasize.ByteSize(cni.AvailableCapacity.Memory).HR(), datasize.ByteSize(cni.MaxCapacity.Memory).HR())
+				return fmt.Sprintf("%s / %s",
+					humanize.Bytes(cni.AvailableCapacity.Memory),
+					humanize.Bytes(cni.MaxCapacity.Memory))
 			}),
 		},
 		{
 			ColumnConfig: table.ColumnConfig{Name: "disk", WidthMax: len("100.0 GB / "), WidthMaxEnforcer: text.WrapSoft},
 			Value: ifComputeNode(func(cni models.ComputeNodeInfo) string {
-				return fmt.Sprintf("%s / %s", datasize.ByteSize(cni.AvailableCapacity.Disk).HR(), datasize.ByteSize(cni.MaxCapacity.Disk).HR())
+				return fmt.Sprintf("%s / %s",
+					humanize.Bytes(cni.AvailableCapacity.Disk),
+					humanize.Bytes(cni.MaxCapacity.Disk))
 			}),
 		},
 		{
