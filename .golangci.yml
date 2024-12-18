@@ -7,6 +7,9 @@ linters-settings:
             desc: "logging is allowed only by zerolog"
   dupl:
     threshold: 100
+  forbidigo:
+    forbid:
+      - 'fmt\.Print.*'  # This will catch Printf, Println, Print
   funlen:
     lines: 100
     statements: 100
@@ -70,6 +73,7 @@ linters:
   - dogsled
   - errcheck
   - copyloopvar
+  - forbidigo
   - funlen
   - gochecknoinits
   - goconst
