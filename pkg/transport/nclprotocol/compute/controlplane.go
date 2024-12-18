@@ -139,7 +139,7 @@ func (cp *ControlPlane) heartbeat(ctx context.Context) error {
 	cp.latestNodeInfo = nodeInfo
 
 	msg := envelope.NewMessage(messages.HeartbeatRequest{
-		NodeID:                 cp.latestNodeInfo.NodeID,
+		NodeID:                 cp.latestNodeInfo.ID(),
 		AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 		QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
 		LastOrchestratorSeqNum: cp.incomingSeqTracker.GetLastSeqNum(),

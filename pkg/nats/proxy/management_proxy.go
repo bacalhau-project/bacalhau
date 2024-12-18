@@ -52,7 +52,7 @@ func (p *ManagementProxy) Register(ctx context.Context,
 	var asyncRes *concurrency.AsyncResult[legacy.RegisterResponse]
 
 	asyncRes, err = send[legacy.RegisterRequest, legacy.RegisterResponse](
-		ctx, p.conn, request.Info.NodeID, request, RegisterNode)
+		ctx, p.conn, request.Info.ID(), request, RegisterNode)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send response to registration request")
