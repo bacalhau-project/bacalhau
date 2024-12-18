@@ -51,9 +51,9 @@ var Default = types.Bacalhau{
 			Interval:           15 * types.Second,
 		},
 		AllocatedCapacity: types.ResourceScaler{
-			CPU:    "70%",
-			Memory: "70%",
-			Disk:   "70%",
+			CPU:    "80%",
+			Memory: "80%",
+			Disk:   "80%",
 			GPU:    "100%",
 		},
 	},
@@ -63,7 +63,7 @@ var Default = types.Bacalhau{
 			Task: types.BatchTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -72,7 +72,7 @@ var Default = types.Bacalhau{
 			Task: types.BatchTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -81,7 +81,7 @@ var Default = types.Bacalhau{
 			Task: types.LongRunningTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -90,7 +90,7 @@ var Default = types.Bacalhau{
 			Task: types.LongRunningTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
