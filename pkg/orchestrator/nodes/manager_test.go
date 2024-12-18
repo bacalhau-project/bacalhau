@@ -485,7 +485,7 @@ func (s *NodeManagerTestSuite) TestConcurrentHealthCheckAndHeartbeat() {
 			})
 			// Either succeed or fail with concurrent update error
 			if err != nil {
-				assert.Contains(s.T(), err.Error(), "concurrent update conflict")
+				s.True(bacerrors.IsErrorWithCode(err, nodes.ConcurrentUpdate))
 			}
 		}()
 	}
