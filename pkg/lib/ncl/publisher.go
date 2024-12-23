@@ -7,6 +7,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
@@ -94,10 +95,9 @@ func (p *publisher) Request(ctx context.Context, request PublishRequest) (*envel
 	}
 
 	// Check if response is an error
-	if errorResponse, ok := message.GetPayload(&ErrorResponse{}); ok {
-		return nil, errorResponse.(*ErrorResponse)
+	if errorResponse, ok := message.GetPayload(bacerrors.New("")); ok {
+		return nil, errorResponse.(bacerrors.Error)
 	}
-
 	return message, nil
 }
 

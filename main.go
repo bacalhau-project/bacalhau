@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 
@@ -97,7 +96,4 @@ func main() {
 	// Wait for the context to be cancelled
 	// either by a signal or by the command completing
 	<-localCtx.Done()
-
-	// Print a newline to ensure the next prompt is on a new line
-	fmt.Println()
 }

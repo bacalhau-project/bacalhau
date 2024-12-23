@@ -15,9 +15,10 @@ type HandshakeRequest struct {
 
 // HandshakeResponse is sent in response to handshake requests
 type HandshakeResponse struct {
-	Accepted          bool   `json:"accepted"`
-	Reason            string `json:"reason,omitempty"`
-	LastComputeSeqNum uint64 `json:"LastComputeSeqNum"` // Last seq received from compute node
+	Accepted                   bool   `json:"accepted"`
+	Reason                     string `json:"reason,omitempty"`
+	LastComputeSeqNum          uint64 `json:"LastComputeSeqNum"`      // Last seq received from compute node
+	StartingOrchestratorSeqNum uint64 `json:"LastOrchestratorSeqNum"` // Seq to start sending to compute node
 }
 
 type HeartbeatRequest struct {
@@ -38,4 +39,16 @@ type UpdateNodeInfoRequest struct {
 type UpdateNodeInfoResponse struct {
 	Accepted bool   `json:"accepted"`
 	Reason   string `json:"reason,omitempty"`
+}
+
+// ShutdownNoticeRequest tells the orchestrator that this node is shutting down
+type ShutdownNoticeRequest struct {
+	NodeID                 string `json:"NodeID"`
+	Reason                 string `json:"Reason,omitempty"`
+	LastOrchestratorSeqNum uint64 `json:"LastOrchestratorSeqNum"` // Last seq received from orchestrator
+}
+
+// ShutdownNoticeResponse sends any final instructions back to the shutting-down node
+type ShutdownNoticeResponse struct {
+	LastComputeSeqNum uint64 `json:"LastComputeSeqNum"` // Last seq received from compute node
 }

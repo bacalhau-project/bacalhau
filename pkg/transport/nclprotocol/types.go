@@ -50,6 +50,7 @@ type ConnectionHealth struct {
 	ConsecutiveFailures     int
 	LastError               error
 	ConnectedSince          time.Time
+	HandshakeRequired       bool
 }
 
 const (

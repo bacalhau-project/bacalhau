@@ -14,10 +14,6 @@ import (
 )
 
 var (
-	HistoryTime = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(time.StampMilli), WidthMaxEnforcer: output.ShortenTime},
-		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(time.StampMilli) },
-	}
 	HistoryTimeOnly = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Time", WidthMax: len(TimeOnlyMilli), WidthMaxEnforcer: text.Trim},
 		Value:        func(j *models.JobHistory) string { return j.Occurred().Format(TimeOnlyMilli) },
@@ -31,12 +27,15 @@ var (
 		Value:        func(jwi *models.JobHistory) string { return jwi.Type.String() },
 	}
 	HistoryExecID = output.TableColumn[*models.JobHistory]{
-		ColumnConfig: table.ColumnConfig{Name: "Exec. ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
+		ColumnConfig: table.ColumnConfig{
+			Name:             "Exec. ID",
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(j *models.JobHistory) string {
 			if j.ExecutionID == "" {
 				return ""
 			}
-			return idgen.ShortUUID(j.ExecutionID)
+			return j.ExecutionID
 		},
 	}
 	HistoryTopic = output.TableColumn[*models.JobHistory]{

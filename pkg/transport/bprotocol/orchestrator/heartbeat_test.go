@@ -18,6 +18,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages/legacy"
@@ -41,6 +42,7 @@ type HeartbeatTestSuite struct {
 	messageSerDeRegistry *envelope.Registry
 	heartbeatServer      *orchestrator.Server
 	nodeManager          nodes.Manager
+	eventStore           watcher.EventStore
 }
 
 func TestHeartbeatTestSuite(t *testing.T) {
@@ -53,12 +55,16 @@ func (s *HeartbeatTestSuite) SetupTest() {
 
 	// Setup NATS server and client
 	s.natsServer, s.natsConn = testutils.StartNats(s.T())
+	s.eventStore, _ = testutils.CreateStringEventStore(s.T())
 
 	// Setup real node manager
 	s.nodeManager, err = nodes.NewManager(nodes.ManagerParams{
 		Clock:                 s.clock,
 		Store:                 inmemory.NewNodeStore(inmemory.NodeStoreParams{TTL: 1 * time.Hour}),
 		NodeDisconnectedAfter: 5 * time.Second,
+		EventStore:            s.eventStore,
+		NodeInfoProvider: &mockNodeInfoProvider{info: models.NodeInfo{
+			NodeID: "orchestrator-node", NodeType: models.NodeTypeRequester}},
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.nodeManager.Start(context.Background()))
@@ -99,6 +105,9 @@ func (s *HeartbeatTestSuite) TearDownTest() {
 	}
 	if s.nodeManager != nil {
 		s.nodeManager.Stop(context.Background())
+	}
+	if s.eventStore != nil {
+		s.eventStore.Close(context.Background())
 	}
 }
 
@@ -215,7 +224,7 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 			s.clock.Add(tc.waitUntil)
 
-			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.NodeID)
+			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.ID())
 			if tc.handshake {
 				s.Require().NoError(err)
 				s.Require().Equal(tc.expectedState, nodeState.ConnectionState.Status, fmt.Sprintf("incorrect state in %s", tc.name))
@@ -269,4 +278,12 @@ func (s *HeartbeatTestSuite) TestConcurrentHeartbeats() {
 		s.Require().NoError(err)
 		s.Require().Equal(models.NodeStates.CONNECTED, nodeState.ConnectionState.Status)
 	}
+}
+
+type mockNodeInfoProvider struct {
+	info models.NodeInfo
+}
+
+func (m *mockNodeInfoProvider) GetNodeInfo(context.Context) models.NodeInfo {
+	return m.info
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol"
 	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
@@ -111,9 +113,16 @@ func (s *ConnectionManagerTestSuite) TearDownTest() {
 }
 
 func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
-	// Setup initial checkpoint
-	lastOrchestratorSeqNum := uint64(124)
-	s.checkpointer.SetCheckpoint("incoming-test-node", lastOrchestratorSeqNum)
+	// Setup initial checkpoint with one sequence number
+	initialSeqNum := uint64(124)
+	s.checkpointer.SetCheckpoint("incoming-test-node", initialSeqNum)
+
+	// Configure handshake response to return a different sequence number
+	handshakeSeqNum := uint64(100)
+	s.mockResponder.Behaviour().HandshakeResponse.Response = messages.HandshakeResponse{
+		Accepted:                   true,
+		StartingOrchestratorSeqNum: handshakeSeqNum,
+	}
 
 	err := s.manager.Start(s.ctx)
 	s.Require().NoError(err)
@@ -122,13 +131,12 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 		return len(s.mockResponder.GetHandshakes()) > 0
 	}, time.Second, 10*time.Millisecond, "handshake not received")
 
-	// Verify handshake request
+	// verify only one handshake, and verify the request
 	handshakes := s.mockResponder.GetHandshakes()
 	s.Require().Len(handshakes, 1)
 	s.Require().Equal(s.config.NodeID, handshakes[0].NodeInfo.ID())
-	s.Require().Equal(lastOrchestratorSeqNum, handshakes[0].LastOrchestratorSeqNum)
+	s.Require().Equal(initialSeqNum, handshakes[0].LastOrchestratorSeqNum)
 
-	// Verify connection established
 	s.Require().Eventually(func() bool {
 		health := s.manager.GetHealth()
 		return health.CurrentState == nclprotocol.Connected
@@ -146,15 +154,15 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 		return len(s.mockResponder.GetHeartbeats()) > 0
 	}, time.Second, 10*time.Millisecond, "manager did not send heartbeats")
 
-	// Verify heartbeat content
+	// verify heartbeat content
 	nodeInfo := s.nodeInfoProvider.GetNodeInfo(s.ctx)
 	heartbeats := s.mockResponder.GetHeartbeats()
 	s.Require().Len(heartbeats, 1)
 	s.Require().Equal(messages.HeartbeatRequest{
-		NodeID:                 nodeInfo.NodeID,
+		NodeID:                 nodeInfo.ID(),
 		AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 		QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
-		LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+		LastOrchestratorSeqNum: handshakeSeqNum, // Should use sequence number from handshake response
 	}, heartbeats[0])
 
 	// verify state
@@ -170,13 +178,12 @@ func (s *ConnectionManagerTestSuite) TestSuccessfulConnection() {
 	s.Require().Eventually(func() bool {
 		lastHeartbeat := s.mockResponder.GetHeartbeats()[len(s.mockResponder.GetHeartbeats())-1]
 		return reflect.DeepEqual(lastHeartbeat, messages.HeartbeatRequest{
-			NodeID:                 nodeInfo.NodeID,
+			NodeID:                 nodeInfo.ID(),
 			AvailableCapacity:      nodeInfo.ComputeNodeInfo.AvailableCapacity,
 			QueueUsedCapacity:      nodeInfo.ComputeNodeInfo.QueueUsedCapacity,
-			LastOrchestratorSeqNum: lastOrchestratorSeqNum,
+			LastOrchestratorSeqNum: handshakeSeqNum, // Should continue using sequence number from handshake
 		})
 	}, time.Second, 10*time.Millisecond, "manager did not send heartbeats")
-
 }
 
 func (s *ConnectionManagerTestSuite) TestRejectedHandshake() {
@@ -231,6 +238,77 @@ func (s *ConnectionManagerTestSuite) TestHeartbeatFailure() {
 		health := s.manager.GetHealth()
 		return health.CurrentState == nclprotocol.Disconnected &&
 			health.LastError != nil
+	}, time.Second, 10*time.Millisecond)
+}
+
+func (s *ConnectionManagerTestSuite) TestHeartbeatHandshakeRequired() {
+	err := s.manager.Start(s.ctx)
+	s.Require().NoError(err)
+
+	// Wait for initial connection
+	s.Require().Eventually(func() bool {
+		health := s.manager.GetHealth()
+		return health.CurrentState == nclprotocol.Connected
+	}, time.Second, 10*time.Millisecond, "manager should connect initially")
+
+	// Configure heartbeat to require handshake
+	s.mockResponder.Behaviour().HeartbeatResponse.Error = nodes.NewErrHandshakeRequired("test-node")
+
+	// Should disconnect quickly after handshake required error
+	s.Require().Eventually(func() bool {
+		health := s.manager.GetHealth()
+		return health.CurrentState == nclprotocol.Disconnected &&
+			health.LastError != nil &&
+			strings.Contains(health.LastError.Error(), "handshake required")
+	}, 1*time.Second, 5*time.Millisecond, "should disconnect due to handshake required: %+v", s.manager.GetHealth())
+
+	// Reset heartbeat response to succeed
+	s.mockResponder.Behaviour().HeartbeatResponse.Error = nil
+
+	// Should automatically attempt reconnection
+	s.Require().Eventually(func() bool {
+		// Get new handshakes after disconnect
+		handshakes := s.mockResponder.GetHandshakes()
+		return len(handshakes) > 1 // More than initial handshake
+	}, time.Second, 10*time.Millisecond, "should attempt reconnection")
+
+	// Should successfully reconnect
+	s.Require().Eventually(func() bool {
+		health := s.manager.GetHealth()
+		return health.CurrentState == nclprotocol.Connected &&
+			!health.HandshakeRequired // Should be cleared after successful connection
+	}, time.Second, 10*time.Millisecond, "should reconnect successfully")
+
+	// Verify heartbeats resume
+	time.Sleep(s.config.HeartbeatInterval * 2)
+	heartbeats := s.mockResponder.GetHeartbeats()
+	s.Require().NotEmpty(heartbeats, "should resume heartbeats after reconnection")
+}
+
+func (s *ConnectionManagerTestSuite) TestHeartbeatHandshakeRequiredDifferentError() {
+	err := s.manager.Start(s.ctx)
+	s.Require().NoError(err)
+
+	// Wait for initial connection
+	s.Require().Eventually(func() bool {
+		health := s.manager.GetHealth()
+		return health.CurrentState == nclprotocol.Connected
+	}, time.Second, 10*time.Millisecond)
+
+	// Configure heartbeat with error that mentions handshake but isn't the specific error
+	s.mockResponder.Behaviour().HeartbeatResponse.Error = fmt.Errorf("failed to process handshake data")
+
+	// Wait some heartbeat intervals - should not immediately disconnect
+	time.Sleep(s.config.HeartbeatInterval * 2)
+	health := s.manager.GetHealth()
+	s.False(health.HandshakeRequired, "should not set handshake required for different errors")
+
+	// Should eventually disconnect due to missed heartbeats
+	time.Sleep(s.config.HeartbeatInterval * time.Duration(s.config.HeartbeatMissFactor+1))
+	s.Eventually(func() bool {
+		health := s.manager.GetHealth()
+		return health.CurrentState == nclprotocol.Disconnected &&
+			!health.HandshakeRequired // Should not be set
 	}, time.Second, 10*time.Millisecond)
 }
 

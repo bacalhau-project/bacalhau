@@ -23,11 +23,13 @@ func CreateMessageRegistry() (*envelope.Registry, error) {
 		reg.Register(messages.HandshakeRequestMessageType, messages.HandshakeRequest{}),
 		reg.Register(messages.HeartbeatRequestMessageType, messages.HeartbeatRequest{}),
 		reg.Register(messages.NodeInfoUpdateRequestMessageType, messages.UpdateNodeInfoRequest{}),
+		reg.Register(messages.ShutdownNoticeRequestMessageType, messages.ShutdownNoticeRequest{}),
 
 		// Control plane responses
 		reg.Register(messages.HandshakeResponseType, messages.HandshakeResponse{}),
 		reg.Register(messages.HeartbeatResponseType, messages.HeartbeatResponse{}),
 		reg.Register(messages.NodeInfoUpdateResponseType, messages.UpdateNodeInfoResponse{}),
+		reg.Register(messages.ShutdownNoticeResponseType, messages.ShutdownNoticeResponse{}),
 	)
 	return reg, err
 }
