@@ -87,10 +87,10 @@ function install-healthcheck() {
 
 function install-ipfs() {
   echo "Installing IPFS"
-  wget "https://dist.ipfs.tech/go-ipfs/${IPFS_VERSION}/go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
-  tar -xvzf "go-ipfs_${IPFS_VERSION}_linux-amd64.tar.gz"
+  wget "https://github.com/ipfs/kubo/releases/download/${IPFS_VERSION}/kubo_${IPFS_VERSION}_linux-amd64.tar.gz"
+  tar -xvzf "kubo_${IPFS_VERSION}_linux-amd64.tar.gz"
   # TODO should reset PWD to home dir after each function call
-  pushd go-ipfs
+  pushd kubo
   sudo bash install.sh
   ipfs --version
   popd

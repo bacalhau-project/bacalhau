@@ -4,53 +4,26 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 )
 
 const (
-	// ErrorMessageType is used when responding with an error
-	ErrorMessageType = "ncl.ErrorResponse"
+	BacErrorMessageType = "BacError"
 
 	// KeyStatusCode is the key for the status code
 	KeyStatusCode = "Bacalhau-StatusCode"
 
-	// StatusBadRequest is the status code for a bad request
-	StatusBadRequest = 400
-
-	// StatusNotFound is the status code for a not handler found
-	StatusNotFound = 404
-
-	// StatusServerError is the status code for a server error
-	StatusServerError = 500
+	// KeyErrorCode is the key for the error code
+	KeyErrorCode = "Bacalhau-ErrorCode"
 )
 
-// ErrorResponse is used to respond with an error
-type ErrorResponse struct {
-	StatusCode int    `json:"StatusCode"`
-	Message    string `json:"Message"`
-}
-
-// NewErrorResponse creates a new error response
-func NewErrorResponse(statusCode int, message string) ErrorResponse {
-	return ErrorResponse{
-		StatusCode: statusCode,
-		Message:    message,
-	}
-}
-
-// Error returns the error message
-func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("status code: %d, message: %s", e.StatusCode, e.Message)
-}
-
-// ToEnvelope converts the error to an envelope
-func (e *ErrorResponse) ToEnvelope() *envelope.Message {
-	errMsg := envelope.NewMessage(e)
-	errMsg.WithMetadataValue(envelope.KeyMessageType, ErrorMessageType)
-	errMsg.WithMetadataValue(KeyStatusCode, fmt.Sprintf("%d", e.StatusCode))
+// BacErrorToEnvelope converts the error to an envelope
+func BacErrorToEnvelope(err bacerrors.Error) *envelope.Message {
+	errMsg := envelope.NewMessage(err)
+	errMsg.WithMetadataValue(envelope.KeyMessageType, BacErrorMessageType)
+	errMsg.WithMetadataValue(KeyStatusCode, fmt.Sprintf("%d", err.HTTPStatusCode()))
+	errMsg.WithMetadataValue(KeyErrorCode, string(err.Code()))
 	errMsg.WithMetadataValue(KeyEventTime, time.Now().Format(time.RFC3339))
 	return errMsg
 }
-
-// compile-time check for interface conformance
-var _ error = &ErrorResponse{}

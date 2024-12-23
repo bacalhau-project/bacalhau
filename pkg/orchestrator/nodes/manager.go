@@ -46,9 +46,10 @@ const (
 // state persistence with configurable intervals.
 type nodesManager struct {
 	// Core dependencies
-	store      Store              // Persistent storage for node states
-	eventstore watcher.EventStore // Store for events
-	clock      clock.Clock        // Time source (can be mocked for testing)
+	store            Store                   // Persistent storage for node states
+	eventstore       watcher.EventStore      // Event store for sequence number tracking
+	nodeInfoProvider models.NodeInfoProvider // Provides node information for self registration
+	clock            clock.Clock             // Time source (can be mocked for testing)
 
 	// Configuration
 	defaultApprovalState    models.NodeMembershipState // Initial membership state for new nodes
@@ -81,6 +82,9 @@ type ManagerParams struct {
 
 	// Clock is the time source (defaults to real clock if nil)
 	Clock clock.Clock
+
+	// NodeInfoProvider provides node information for self registration
+	NodeInfoProvider models.NodeInfoProvider
 
 	// NodeDisconnectedAfter is how long to wait before marking nodes as disconnected
 	NodeDisconnectedAfter time.Duration
@@ -150,6 +154,7 @@ func NewManager(params ManagerParams) (Manager, error) {
 	if err := errors.Join(
 		validate.NotNil(params.Store, "store required"),
 		validate.NotNil(params.EventStore, "event store required"),
+		validate.NotNil(params.NodeInfoProvider, "node info provider required"),
 	); err != nil {
 		return nil, fmt.Errorf("node manager invalid params: %w", err)
 	}
@@ -157,6 +162,7 @@ func NewManager(params ManagerParams) (Manager, error) {
 	return &nodesManager{
 		store:                   params.Store,
 		eventstore:              params.EventStore,
+		nodeInfoProvider:        params.NodeInfoProvider,
 		clock:                   params.Clock,
 		liveState:               &sync.Map{},
 		defaultApprovalState:    defaultApprovalState,
@@ -188,6 +194,11 @@ func (n *nodesManager) Start(ctx context.Context) error {
 	// Initialize clean state
 	n.liveState = &sync.Map{}
 	n.stopCh = make(chan struct{})
+
+	// self register the node's info in the store
+	if err := n.selfRegister(ctx); err != nil {
+		return err
+	}
 
 	// Start background tasks
 	n.startBackgroundTask("health-check", n.healthCheckLoop)
@@ -313,7 +324,7 @@ func (n *nodesManager) checkNodeHealth() {
 		// Try to update live state only if it hasn't changed since we checked it
 		newConnectionState := node.state.connectionState
 		newConnectionState.Status = models.NodeStates.DISCONNECTED
-		newConnectionState.DisconnectedSince = n.clock.Now()
+		newConnectionState.DisconnectedSince = n.clock.Now().UTC()
 		newConnectionState.LastError = "heartbeat timeout"
 
 		newState := &trackedLiveState{
@@ -331,7 +342,7 @@ func (n *nodesManager) checkNodeHealth() {
 			NodeID:    node.id,
 			Previous:  models.NodeStates.CONNECTED,
 			Current:   models.NodeStates.DISCONNECTED,
-			Timestamp: n.clock.Now(),
+			Timestamp: n.clock.Now().UTC(),
 		})
 	}
 }
@@ -411,7 +422,7 @@ func (n *nodesManager) Handshake(
 	var existing models.NodeState
 
 	// Check if node is already registered, and if so, if it was rejected
-	existing, err := n.store.Get(ctx, request.NodeInfo.ID())
+	existing, err := n.Get(ctx, request.NodeInfo.ID())
 	if err == nil {
 		if existing.Membership == models.NodeMembership.REJECTED {
 			return messages.HandshakeResponse{
@@ -443,28 +454,20 @@ func (n *nodesManager) Handshake(
 		Membership: n.defaultApprovalState,
 		ConnectionState: models.ConnectionState{
 			Status:         models.NodeStates.CONNECTED,
-			ConnectedSince: n.clock.Now(),
-			LastHeartbeat:  n.clock.Now(),
+			ConnectedSince: n.clock.Now().UTC(),
+			LastHeartbeat:  n.clock.Now().UTC(),
 		},
 	}
 
-	// If a node is reconnecting, we trust and preserve the sequence numbers from its previous state,
-	// rather than using the sequence numbers from the handshake request. For new nodes,
-	// we assign them the latest event sequence number from the event store.
-	// This prevents several edge cases:
-	// - Compute node losing its state. The handshake will ask to start from 0.
-	// - Orchestrator losing their state and compute nodes asking to start from a later seqNum that no longer exist.
-	// - New compute nodes joining. The handshake will also ask to start from 0.
 	if isReconnect {
 		state.Membership = existing.Membership
 		state.ConnectionState.LastComputeSeqNum = existing.ConnectionState.LastComputeSeqNum
-		state.ConnectionState.LastOrchestratorSeqNum = existing.ConnectionState.LastOrchestratorSeqNum
-	} else {
-		// Assign the latest sequence number from the event store
-		state.ConnectionState.LastOrchestratorSeqNum, err = n.eventstore.GetLatestEventNum(ctx)
-		if err != nil {
-			return messages.HandshakeResponse{}, fmt.Errorf("failed to initialize node with latest event number: %w", err)
-		}
+	}
+
+	// Resolve where the node should start receiving messages from
+	state.ConnectionState.LastOrchestratorSeqNum, err = n.resolveStartingOrchestratorSeqNum(ctx, isReconnect, existing)
+	if err != nil {
+		return messages.HandshakeResponse{}, fmt.Errorf("failed to resolve starting sequence number: %w", err)
 	}
 
 	if err = n.store.Put(ctx, state); err != nil {
@@ -482,7 +485,7 @@ func (n *nodesManager) Handshake(
 		NodeID:    request.NodeInfo.ID(),
 		Previous:  existingConnectionState,
 		Current:   state.ConnectionState.Status,
-		Timestamp: n.clock.Now(),
+		Timestamp: n.clock.Now().UTC(),
 	})
 
 	log.Info().Msgf("handshake successful with node %s", request.NodeInfo.ID())
@@ -560,13 +563,8 @@ func (n *nodesManager) Heartbeat(
 
 		// updated connection state
 		updated := existing.connectionState
-		updated.LastHeartbeat = n.clock.Now()
-		if request.LastOrchestratorSeqNum > 0 {
-			updated.LastOrchestratorSeqNum = request.LastOrchestratorSeqNum
-		}
-		if request.LastComputeSeqNum > 0 {
-			updated.LastComputeSeqNum = request.LastComputeSeqNum
-		}
+		updated.LastHeartbeat = n.clock.Now().UTC()
+		n.updateSequenceNumbers(&updated, request.LastOrchestratorSeqNum, request.LastComputeSeqNum)
 
 		// Store updated state back if no concurrent modification
 		if !n.liveState.CompareAndSwap(request.NodeID, existing, &trackedLiveState{
@@ -582,6 +580,62 @@ func (n *nodesManager) Heartbeat(
 		}, nil
 	}
 	return messages.HeartbeatResponse{}, NewErrConcurrentModification()
+}
+
+// ShutdownNotice processes a shutdown notification from a node and updates its state.
+// It updates:
+//   - Final sequence numbers
+//   - Connection state to disconnected
+//   - Preserves the sequence numbers in persistent storage
+//
+// Returns ShutdownNoticeResponse with the last sequence number processed from that node.
+func (n *nodesManager) ShutdownNotice(
+	ctx context.Context, request ExtendedShutdownNoticeRequest) (messages.ShutdownNoticeResponse, error) {
+	// Get existing live state
+	existingEntry, ok := n.liveState.Load(request.NodeID)
+	if !ok {
+		return messages.ShutdownNoticeResponse{}, NewErrHandshakeRequired(request.NodeID)
+	}
+
+	existing := existingEntry.(*trackedLiveState)
+	if existing.connectionState.Status != models.NodeStates.CONNECTED {
+		return messages.ShutdownNoticeResponse{}, NewErrHandshakeRequired(request.NodeID)
+	}
+
+	// Update connection state with final sequence numbers
+	updated := existing.connectionState
+	updated.Status = models.NodeStates.DISCONNECTED
+	updated.DisconnectedSince = n.clock.Now().UTC()
+	n.updateSequenceNumbers(&updated, request.LastOrchestratorSeqNum, request.LastComputeSeqNum)
+	updated.LastError = "graceful shutdown"
+
+	// Attempt atomic update
+	if !n.liveState.CompareAndSwap(request.NodeID, existingEntry, &trackedLiveState{
+		connectionState:   updated,
+		availableCapacity: models.Resources{}, // Clear capacity since node is shutting down
+		queueUsedCapacity: models.Resources{},
+	}) {
+		return messages.ShutdownNoticeResponse{}, NewErrConcurrentModification()
+	}
+
+	log.Info().
+		Str("node", request.NodeID).
+		Str("reason", request.Reason).
+		Uint64("lastOrchestratorSeq", updated.LastOrchestratorSeqNum).
+		Uint64("lastComputeSeq", updated.LastComputeSeqNum).
+		Msg("Node shutdown notice received")
+
+	// Notify about state change
+	n.notifyConnectionStateChange(NodeConnectionEvent{
+		NodeID:    request.NodeID,
+		Previous:  models.NodeStates.CONNECTED,
+		Current:   models.NodeStates.DISCONNECTED,
+		Timestamp: updated.DisconnectedSince,
+	})
+
+	return messages.ShutdownNoticeResponse{
+		LastComputeSeqNum: updated.LastComputeSeqNum,
+	}, nil
 }
 
 // ApproveNode approves a node for cluster participation.
@@ -630,7 +684,7 @@ func (n *nodesManager) RejectNode(ctx context.Context, nodeID string) error {
 	// Update persistent state first
 	state.Membership = models.NodeMembership.REJECTED
 	state.ConnectionState.Status = models.NodeStates.DISCONNECTED
-	state.ConnectionState.DisconnectedSince = n.clock.Now()
+	state.ConnectionState.DisconnectedSince = n.clock.Now().UTC()
 	state.ConnectionState.LastError = "node rejected"
 
 	if err = n.store.Put(ctx, state); err != nil {
@@ -644,7 +698,7 @@ func (n *nodesManager) RejectNode(ctx context.Context, nodeID string) error {
 				NodeID:    state.Info.ID(),
 				Previous:  models.NodeStates.CONNECTED,
 				Current:   models.NodeStates.DISCONNECTED,
-				Timestamp: n.clock.Now(),
+				Timestamp: n.clock.Now().UTC(),
 			})
 		}
 	}
@@ -679,7 +733,7 @@ func (n *nodesManager) DeleteNode(ctx context.Context, nodeID string) error {
 				NodeID:    state.Info.ID(),
 				Previous:  models.NodeStates.CONNECTED,
 				Current:   models.NodeStates.DISCONNECTED,
-				Timestamp: n.clock.Now(),
+				Timestamp: n.clock.Now().UTC(),
 			})
 		}
 	}
@@ -753,6 +807,58 @@ func (n *nodesManager) List(ctx context.Context, filters ...NodeStateFilter) ([]
 	return states, nil
 }
 
+// resolveStartingOrchestratorSeqNum determines where a node should start receiving messages from.
+//
+// For reconnecting nodes, we trust the sequence numbers from our store rather than what the
+// compute node reports. This prevents issues with compute nodes restarting with same ID but
+// fresh state, where they would ask to start from 0.
+//
+// For new nodes, we start them from the latest sequence number to avoid overwhelming them
+// with historical events.
+//
+// TODO: Add support for snapshots to allow nodes to catch up on missed state without
+// replaying all historical events. For now, we always start from latest to avoid
+// overwhelming nodes that have been down for a long time.
+func (n *nodesManager) resolveStartingOrchestratorSeqNum(
+	ctx context.Context, isReconnect bool, existing models.NodeState) (uint64, error) {
+	if isReconnect {
+		// For reconnecting nodes, trust our stored sequence number
+		return existing.ConnectionState.LastOrchestratorSeqNum, nil
+	}
+
+	// For new nodes or nodes that have been gone too long,
+	// start from latest to avoid overwhelming them
+	latestSeq, err := n.eventstore.GetLatestEventNum(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get latest event number: %w", err)
+	}
+
+	return latestSeq, nil
+}
+
+// updateSequenceNumbers updates the last known sequence numbers for message tracking.
+//   - LastOrchestratorSeqNum tracks what messages the compute node has processed
+//   - LastComputeSeqNum tracks what messages the orchestrator has processed from this node. This is
+//     populated locally by the orchestrator's data plane.
+//
+// TODO: Add smarter logic when updating sequence numbers by comparing current state versus observed states.
+// Currently we trust what each node reports about their message processing:
+//   - We trust what compute node says it has received from orchestrator (orchestratorSeqNum)
+//   - We trust what orchestrator data plane says it processed from compute node (computeSeqNum)
+//
+// This simple approach could allow sequence numbers to move backwards in certain failure scenarios.
+// We should implement proper comparison logic to ensure sequence numbers only advance forward.
+func (n *nodesManager) updateSequenceNumbers(state *models.ConnectionState, orchestratorSeq, computeSeq uint64) {
+	state.LastOrchestratorSeqNum = orchestratorSeq
+
+	// Only update LastComputeSeqNum if greater than 0, as zero can indicate
+	// either no messages processed yet or a connection that has just been
+	// established. This preserves the existing sequence number in those cases.
+	if computeSeq > 0 {
+		state.LastComputeSeqNum = computeSeq
+	}
+}
+
 // enrichState adds live tracking data to a node state.
 // For connected nodes, it adds:
 //   - Current connection state
@@ -782,6 +888,44 @@ func (n *nodesManager) enrichState(state *models.NodeState) {
 	}
 	//nolint:staticcheck
 	state.Connection = state.ConnectionState.Status // for backward compatibility
+}
+
+func (n *nodesManager) selfRegister(ctx context.Context) error {
+	// get latest node info
+	nodeInfo := n.nodeInfoProvider.GetNodeInfo(ctx)
+
+	// get node info from the store if it exists
+	state, err := n.Get(ctx, nodeInfo.ID())
+	if err != nil {
+		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
+			return bacerrors.New("failed to self-register node: %v", err).
+				WithComponent(errComponent)
+		}
+		state = models.NodeState{
+			Info:       nodeInfo,
+			Membership: models.NodeMembership.APPROVED,
+			ConnectionState: models.ConnectionState{
+				ConnectedSince: n.clock.Now().UTC(),
+			},
+		}
+	}
+	// update the node info and make as connected
+	state.Info = nodeInfo
+	state.ConnectionState.Status = models.NodeStates.CONNECTED
+	state.ConnectionState.LastHeartbeat = n.clock.Now().UTC()
+
+	// for backward compatibility before connection state was introduced
+	if state.ConnectionState.ConnectedSince.IsZero() {
+		state.ConnectionState.ConnectedSince = n.clock.Now().UTC()
+	}
+
+	// store the updated state
+	if err = n.store.Put(ctx, state); err != nil {
+		return bacerrors.New("failed to self-register node: %v", err).
+			WithComponent(errComponent)
+	}
+
+	return nil
 }
 
 // compile-time check that nodesManager implements the Manager interface

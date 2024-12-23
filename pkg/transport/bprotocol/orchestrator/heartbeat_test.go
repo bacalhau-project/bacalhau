@@ -63,6 +63,8 @@ func (s *HeartbeatTestSuite) SetupTest() {
 		Store:                 inmemory.NewNodeStore(inmemory.NodeStoreParams{TTL: 1 * time.Hour}),
 		NodeDisconnectedAfter: 5 * time.Second,
 		EventStore:            s.eventStore,
+		NodeInfoProvider: &mockNodeInfoProvider{info: models.NodeInfo{
+			NodeID: "orchestrator-node", NodeType: models.NodeTypeRequester}},
 	})
 	s.Require().NoError(err)
 	s.Require().NoError(s.nodeManager.Start(context.Background()))
@@ -222,7 +224,7 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 			s.clock.Add(tc.waitUntil)
 
-			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.NodeID)
+			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.ID())
 			if tc.handshake {
 				s.Require().NoError(err)
 				s.Require().Equal(tc.expectedState, nodeState.ConnectionState.Status, fmt.Sprintf("incorrect state in %s", tc.name))
@@ -276,4 +278,12 @@ func (s *HeartbeatTestSuite) TestConcurrentHeartbeats() {
 		s.Require().NoError(err)
 		s.Require().Equal(models.NodeStates.CONNECTED, nodeState.ConnectionState.Status)
 	}
+}
+
+type mockNodeInfoProvider struct {
+	info models.NodeInfo
+}
+
+func (m *mockNodeInfoProvider) GetNodeInfo(context.Context) models.NodeInfo {
+	return m.info
 }

@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -144,8 +145,7 @@ func (cm *ConnectionManager) Close(ctx context.Context) error {
 
 	select {
 	case <-done:
-		cm.cleanup(ctx)
-		return nil
+		return cm.cleanup(ctx)
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -155,11 +155,12 @@ func (cm *ConnectionManager) Close(ctx context.Context) error {
 // 1. Stops the data plane
 // 2. Cleans up control plane
 // 3. Closes NATS connection
-func (cm *ConnectionManager) cleanup(ctx context.Context) {
+func (cm *ConnectionManager) cleanup(ctx context.Context) error {
+	var errs error
 	// Clean up data plane subscriber
 	if cm.subscriber != nil {
 		if err := cm.subscriber.Close(ctx); err != nil {
-			log.Error().Err(err).Msg("Failed to close subscriber")
+			errs = errors.Join(errs, fmt.Errorf("failed to close subscriber: %w", err))
 		}
 		cm.subscriber = nil
 	}
@@ -167,7 +168,7 @@ func (cm *ConnectionManager) cleanup(ctx context.Context) {
 	// Clean up data plane
 	if cm.dataPlane != nil {
 		if err := cm.dataPlane.Stop(ctx); err != nil {
-			log.Error().Err(err).Msg("Failed to stop data plane")
+			errs = errors.Join(errs, fmt.Errorf("failed to stop data plane: %w", err))
 		}
 		cm.dataPlane = nil
 	}
@@ -175,7 +176,7 @@ func (cm *ConnectionManager) cleanup(ctx context.Context) {
 	// Clean up control plane
 	if cm.controlPlane != nil {
 		if err := cm.controlPlane.Stop(ctx); err != nil {
-			log.Error().Err(err).Msg("Failed to stop control plane")
+			errs = errors.Join(errs, fmt.Errorf("failed to stop control plane: %w", err))
 		}
 		cm.controlPlane = nil
 	}
@@ -185,6 +186,8 @@ func (cm *ConnectionManager) cleanup(ctx context.Context) {
 		cm.natsConn.Close()
 		cm.natsConn = nil
 	}
+
+	return errs
 }
 
 // connect attempts to establish a connection to the orchestrator. It follows these steps:
@@ -202,10 +205,17 @@ func (cm *ConnectionManager) connect(ctx context.Context) error {
 	log.Info().Str("node_id", cm.config.NodeID).Msg("Attempting to establish connection")
 	cm.transitionState(nclprotocol.Connecting, nil)
 
+	// cleanup existing components before reconnecting
+	if err := cm.cleanup(ctx); err != nil {
+		return fmt.Errorf("failed to cleanup existing components: %w", err)
+	}
+
 	var err error
 	defer func() {
 		if err != nil {
-			cm.cleanup(ctx)
+			if cleanupErr := cm.cleanup(ctx); cleanupErr != nil {
+				log.Warn().Err(cleanupErr).Msg("failed to cleanup after connection error")
+			}
 			cm.transitionState(nclprotocol.Disconnected, err)
 		}
 	}()
@@ -313,6 +323,11 @@ func (cm *ConnectionManager) performHandshake(
 		return messages.HandshakeResponse{}, fmt.Errorf(
 			"handshake rejected by orchestrator due to %s", handshakeResponse.Reason)
 	}
+
+	// Always trust the orchestrator's starting sequence number as it may have been reset
+	// or decided to start from a different point
+	cm.incomingSeqTracker.UpdateLastSeqNum(handshakeResponse.StartingOrchestratorSeqNum)
+
 	return handshakeResponse, nil
 }
 
@@ -416,6 +431,7 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 	// Consider connection unhealthy if:
 	// 1. No heartbeat succeeded within HeartbeatMissFactor intervals
 	// 2. NATS connection is closed/draining
+	// 3. Health tracker reports a handshake required
 	now := cm.config.Clock.Now()
 	heartbeatDeadline := now.Add(-time.Duration(cm.config.HeartbeatMissFactor) * cm.config.HeartbeatInterval)
 
@@ -427,6 +443,9 @@ func (cm *ConnectionManager) checkConnectionHealth() {
 		unhealthy = true
 	} else if cm.natsConn.IsClosed() {
 		reason = "NATS connection closed"
+		unhealthy = true
+	} else if cm.healthTracker.IsHandshakeRequired() {
+		reason = "handshake required"
 		unhealthy = true
 	}
 

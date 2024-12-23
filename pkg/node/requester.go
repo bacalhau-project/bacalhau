@@ -52,7 +52,7 @@ type Requester struct {
 	Endpoint *orchestrator.BaseEndpoint
 	JobStore jobstore.Store
 	// We need a reference to the node info store until libp2p is removed
-	NodeInfoStore      nodes.Store
+	NodeInfoStore      nodes.Lookup
 	cleanupFunc        func(ctx context.Context)
 	debugInfoProviders []models.DebugInfoProvider
 }
@@ -64,6 +64,7 @@ func NewRequesterNode(
 	apiServer *publicapi.Server,
 	transportLayer *nats_transport.NATSTransport,
 	metadataStore MetadataStore,
+	nodeInfoProvider models.DecoratorNodeInfoProvider,
 ) (*Requester, error) {
 	jobStore, err := createJobStore(ctx, cfg)
 	if err != nil {
@@ -76,7 +77,7 @@ func NewRequesterNode(
 	}
 
 	nodeID := cfg.NodeID
-	nodesManager, nodeStore, err := createNodeManager(ctx, cfg, jobStore.GetEventStore(), natsConn)
+	nodesManager, _, err := createNodeManager(ctx, cfg, jobStore.GetEventStore(), nodeInfoProvider, natsConn)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +327,7 @@ func NewRequesterNode(
 
 	return &Requester{
 		Endpoint:           endpointV2,
-		NodeInfoStore:      nodeStore,
+		NodeInfoStore:      nodesManager,
 		JobStore:           jobStore,
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
@@ -371,8 +372,11 @@ func createJobStore(ct context.Context, cfg NodeConfig) (jobstore.Store, error) 
 	return jobStore, nil
 }
 
-func createNodeManager(ctx context.Context, cfg NodeConfig, eventStore watcher.EventStore, natsConn *nats.Conn) (
-	nodes.Manager, nodes.Store, error) {
+func createNodeManager(ctx context.Context,
+	cfg NodeConfig,
+	eventStore watcher.EventStore,
+	nodeInfoProvider models.DecoratorNodeInfoProvider,
+	natsConn *nats.Conn) (nodes.Manager, nodes.Store, error) {
 	nodeInfoStore, err := kvstore.NewNodeStore(ctx, kvstore.NodeStoreParams{
 		BucketName: kvstore.BucketNameCurrent,
 		Client:     natsConn,
@@ -386,6 +390,7 @@ func createNodeManager(ctx context.Context, cfg NodeConfig, eventStore watcher.E
 		NodeDisconnectedAfter: cfg.BacalhauConfig.Orchestrator.NodeManager.DisconnectTimeout.AsTimeDuration(),
 		ManualApproval:        cfg.BacalhauConfig.Orchestrator.NodeManager.ManualApproval,
 		EventStore:            eventStore,
+		NodeInfoProvider:      nodeInfoProvider,
 	})
 
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 )
@@ -40,7 +41,7 @@ func newEncoder(config encoderConfig) (*encoder, error) {
 	}
 
 	// Register error response type
-	if err := config.messageRegistry.Register(ErrorMessageType, ErrorResponse{}); err != nil {
+	if err := config.messageRegistry.Register(BacErrorMessageType, bacerrors.New("")); err != nil {
 		if errors.Is(err, envelope.ErrAlreadyRegistered{}) {
 			return nil, fmt.Errorf("failed to register error response type: %w", err)
 		}
