@@ -1821,7 +1821,6 @@ const docTemplate = `{
                     }
                 },
                 "NodeID": {
-                    "description": "TODO replace all access on this field with the ` + "`" + `ID()` + "`" + ` method",
                     "type": "string"
                 },
                 "NodeType": {

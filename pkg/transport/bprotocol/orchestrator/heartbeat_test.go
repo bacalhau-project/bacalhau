@@ -224,7 +224,7 @@ func (s *HeartbeatTestSuite) TestHeartbeatScenarios() {
 
 			s.clock.Add(tc.waitUntil)
 
-			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.NodeID)
+			nodeState, err := s.nodeManager.Get(ctx, nodeInfo.ID())
 			if tc.handshake {
 				s.Require().NoError(err)
 				s.Require().Equal(tc.expectedState, nodeState.ConnectionState.Status, fmt.Sprintf("incorrect state in %s", tc.name))

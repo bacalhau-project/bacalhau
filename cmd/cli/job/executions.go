@@ -106,12 +106,18 @@ var (
 		Value:        func(e *models.Execution) string { return output.Elapsed(e.GetModifyTime()) },
 	}
 	executionColumnID = output.TableColumn[*models.Execution]{
-		ColumnConfig: table.ColumnConfig{Name: "ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(e *models.Execution) string { return idgen.ShortUUID(e.ID) },
+		ColumnConfig: table.ColumnConfig{
+			Name:             "ID",
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
+		Value: func(e *models.Execution) string { return e.ID },
 	}
 	executionColumnNodeID = output.TableColumn[*models.Execution]{
-		ColumnConfig: table.ColumnConfig{Name: "Node ID", WidthMax: 10, WidthMaxEnforcer: text.WrapText},
-		Value:        func(e *models.Execution) string { return idgen.ShortNodeID(e.NodeID) },
+		ColumnConfig: table.ColumnConfig{
+			Name:             "Node ID",
+			WidthMax:         idgen.ShortIDLengthWithPrefix,
+			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
+		Value: func(e *models.Execution) string { return e.NodeID },
 	}
 	executionColumnRev = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{Name: "Rev.", WidthMax: 4, WidthMaxEnforcer: text.WrapText},
