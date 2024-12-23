@@ -16,8 +16,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Println("Please provide the path to the config directory.")
-		os.Exit(1)
+		log.Fatal("Please provide the path to the config directory")
 	}
 	pkgPath := os.Args[1]
 

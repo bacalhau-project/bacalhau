@@ -38,9 +38,8 @@ func MigrateV1(in v1types.BacalhauConfig) (types.Bacalhau, error) {
 			}),
 			Orchestrators: in.Node.Network.Orchestrators,
 			Heartbeat: types.Heartbeat{
-				Interval:               types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
-				ResourceUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.ResourceUpdateFrequency),
-				InfoUpdateInterval:     types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
+				Interval:           types.Duration(in.Node.Compute.ControlPlaneSettings.HeartbeatFrequency),
+				InfoUpdateInterval: types.Duration(in.Node.Compute.ControlPlaneSettings.InfoUpdateFrequency),
 			},
 			AllowListedLocalPaths: in.Node.AllowListedLocalPaths,
 			Auth:                  types.ComputeAuth{Token: in.Node.Network.AuthSecret},

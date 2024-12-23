@@ -1,0 +1,10 @@
+log:
+  level: DEBUG
+
+entryPoints:
+  nats:
+    address: ":4222"
+
+providers:
+  file:
+    filename: "/bacalhau_integration_tests/common_assets/nodes_configs/9_traefik_dynamic_config.yaml"

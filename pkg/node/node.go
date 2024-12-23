@@ -23,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -139,13 +138,17 @@ func NewNode(
 	var debugInfoProviders []models.DebugInfoProvider
 	debugInfoProviders = append(debugInfoProviders, transportLayer.DebugInfoProviders()...)
 
-	messageSerDeRegistry, err := CreateMessageSerDeRegistry()
-	if err != nil {
-		return nil, err
-	}
 	var requesterNode *Requester
 	var computeNode *Compute
-	var labelsProvider models.LabelsProvider
+
+	// Create a node info provider
+	nodeInfoProvider := models.NewBaseNodeInfoProvider(models.BaseNodeInfoProviderParams{
+		NodeID:             cfg.NodeID,
+		BacalhauVersion:    *version.Get(),
+		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
+	})
+	nodeInfoProvider.RegisterLabelProvider(&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels})
+	nodeInfoProvider.RegisterLabelProvider(&RuntimeLabelsProvider{})
 
 	// setup requester node
 	if cfg.BacalhauConfig.Orchestrator.Enabled {
@@ -154,19 +157,13 @@ func NewNode(
 			cfg,
 			apiServer,
 			transportLayer,
-			transportLayer.ComputeProxy(),
-			transportLayer.LogstreamServer(),
-			messageSerDeRegistry,
 			metadataStore,
+			nodeInfoProvider,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		labelsProvider = models.MergeLabelsInOrder(
-			&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels},
-			&RuntimeLabelsProvider{},
-		)
 		debugInfoProviders = append(debugInfoProviders, requesterNode.debugInfoProviders...)
 	}
 
@@ -176,67 +173,28 @@ func NewNode(
 			ctx,
 			cfg,
 			apiServer,
-			transportLayer.Client(),
-			transportLayer.CallbackProxy(),
-			transportLayer.ManagementProxy(),
-			messageSerDeRegistry,
+			transportLayer,
+			nodeInfoProvider,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		err = transportLayer.RegisterLogstreamServer(ctx, computeNode.LogstreamServer)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("Failed to register LogstreamServer")
-			return nil, fmt.Errorf("failed to register LogstreamServer: %w", err)
-		}
-		err = transportLayer.RegisterComputeEndpoint(ctx, computeNode.LocalEndpoint)
-		if err != nil {
-			return nil, err
-		}
-
-		labelsProvider = computeNode.labelsProvider
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
-	// Create a node info provider, and specify the default node approval state
-	// of Approved to avoid confusion as approval state is not used for this transport type.
-	nodeInfoProvider := routing.NewNodeStateProvider(routing.NodeStateProviderParams{
-		NodeID:              cfg.NodeID,
-		LabelsProvider:      labelsProvider,
-		BacalhauVersion:     *version.Get(),
-		DefaultNodeApproval: models.NodeMembership.APPROVED,
-		SupportedProtocols:  []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
-	})
-	nodeInfoProvider.RegisterNodeInfoDecorator(transportLayer.NodeInfoDecorator())
-	if computeNode != nil {
-		nodeInfoProvider.RegisterNodeInfoDecorator(computeNode.nodeInfoDecorator)
-	}
-
 	shared.NewEndpoint(shared.EndpointParams{
-		Router:            apiServer.Router,
-		NodeID:            cfg.NodeID,
-		NodeStateProvider: nodeInfoProvider,
+		Router:           apiServer.Router,
+		NodeID:           cfg.NodeID,
+		NodeInfoProvider: nodeInfoProvider,
 	})
 
 	agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
-		NodeStateProvider:  nodeInfoProvider,
+		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
 	})
-
-	// We want to register the current requester node to the node store
-	// TODO (walid): revisit self node registration of requester node
-	if cfg.BacalhauConfig.Orchestrator.Enabled {
-		nodeState := nodeInfoProvider.GetNodeState(ctx)
-		// TODO what is the liveness here? We are adding ourselves so I assume connected?
-		nodeState.Membership = models.NodeMembership.APPROVED
-		if err := requesterNode.NodeInfoStore.Add(ctx, nodeState); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to add requester node to the node store")
-			return nil, fmt.Errorf("registering node to the node store: %w", err)
-		}
-	}
 
 	// Start periodic software update checks.
 	version.RunUpdateChecker(
@@ -349,23 +307,25 @@ func createTransport(ctx context.Context, cfg NodeConfig) (*nats_transport.NATST
 
 	// TODO: revisit how we setup the transport layer for compute only, orchestrator only and hybrid nodes
 	config := &nats_transport.NATSTransportConfig{
-		NodeID:                   cfg.NodeID,
-		Host:                     cfg.BacalhauConfig.Orchestrator.Host,
-		Port:                     cfg.BacalhauConfig.Orchestrator.Port,
-		AdvertisedAddress:        cfg.BacalhauConfig.Orchestrator.Advertise,
-		AuthSecret:               cfg.BacalhauConfig.Orchestrator.Auth.Token,
-		Orchestrators:            cfg.BacalhauConfig.Compute.Orchestrators,
-		StoreDir:                 storeDir,
-		ClusterName:              cfg.BacalhauConfig.Orchestrator.Cluster.Name,
-		ClusterPort:              cfg.BacalhauConfig.Orchestrator.Cluster.Port,
-		ClusterPeers:             cfg.BacalhauConfig.Orchestrator.Cluster.Peers,
-		ClusterAdvertisedAddress: cfg.BacalhauConfig.Orchestrator.Cluster.Advertise,
-		IsRequesterNode:          cfg.BacalhauConfig.Orchestrator.Enabled,
-		ServerTLSCACert:          cfg.BacalhauConfig.Orchestrator.TLS.CACert,
-		ServerTLSCert:            cfg.BacalhauConfig.Orchestrator.TLS.ServerCert,
-		ServerTLSKey:             cfg.BacalhauConfig.Orchestrator.TLS.ServerKey,
-		ServerTLSTimeout:         cfg.BacalhauConfig.Orchestrator.TLS.ServerTimeout,
-		ClientTLSCACert:          cfg.BacalhauConfig.Compute.TLS.CACert,
+		NodeID:                    cfg.NodeID,
+		Host:                      cfg.BacalhauConfig.Orchestrator.Host,
+		Port:                      cfg.BacalhauConfig.Orchestrator.Port,
+		AdvertisedAddress:         cfg.BacalhauConfig.Orchestrator.Advertise,
+		AuthSecret:                cfg.BacalhauConfig.Orchestrator.Auth.Token,
+		Orchestrators:             cfg.BacalhauConfig.Compute.Orchestrators,
+		StoreDir:                  storeDir,
+		ClusterName:               cfg.BacalhauConfig.Orchestrator.Cluster.Name,
+		ClusterPort:               cfg.BacalhauConfig.Orchestrator.Cluster.Port,
+		ClusterPeers:              cfg.BacalhauConfig.Orchestrator.Cluster.Peers,
+		ClusterAdvertisedAddress:  cfg.BacalhauConfig.Orchestrator.Cluster.Advertise,
+		IsRequesterNode:           cfg.BacalhauConfig.Orchestrator.Enabled,
+		ServerTLSCACert:           cfg.BacalhauConfig.Orchestrator.TLS.CACert,
+		ServerTLSCert:             cfg.BacalhauConfig.Orchestrator.TLS.ServerCert,
+		ServerTLSKey:              cfg.BacalhauConfig.Orchestrator.TLS.ServerKey,
+		ServerTLSTimeout:          cfg.BacalhauConfig.Orchestrator.TLS.ServerTimeout,
+		ServerSupportReverseProxy: cfg.BacalhauConfig.Orchestrator.SupportReverseProxy,
+		ClientTLSCACert:           cfg.BacalhauConfig.Compute.TLS.CACert,
+		ComputeClientRequireTLS:   cfg.BacalhauConfig.Compute.TLS.RequireTLS,
 	}
 
 	if cfg.BacalhauConfig.Compute.Enabled && !cfg.BacalhauConfig.Orchestrator.Enabled {

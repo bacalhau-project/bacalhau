@@ -3,6 +3,7 @@
 package watchers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -13,7 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/routing"
+	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
@@ -21,7 +22,7 @@ type NCLMessageCreatorTestSuite struct {
 	suite.Suite
 	ctrl           *gomock.Controller
 	protocolRouter *ProtocolRouter
-	nodeStore      *routing.MockNodeInfoStore
+	nodeStore      *nodes.MockLookup
 	creator        *NCLMessageCreator
 	subjectFn      func(nodeID string) string
 }
@@ -32,7 +33,7 @@ func TestNCLMessageCreatorTestSuite(t *testing.T) {
 
 func (s *NCLMessageCreatorTestSuite) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.nodeStore = routing.NewMockNodeInfoStore(s.ctrl)
+	s.nodeStore = nodes.NewMockLookup(s.ctrl)
 	var err error
 	s.protocolRouter, err = NewProtocolRouter(ProtocolRouterParams{
 		NodeStore:          s.nodeStore,
@@ -44,14 +45,91 @@ func (s *NCLMessageCreatorTestSuite) SetupTest() {
 		return "test." + nodeID
 	}
 
-	s.creator = NewNCLMessageCreator(NCLMessageCreatorParams{
+	s.creator, err = NewNCLMessageCreator(NCLMessageCreatorParams{
+		NodeID:         "test-node",
 		ProtocolRouter: s.protocolRouter,
 		SubjectFn:      s.subjectFn,
 	})
+	s.Require().NoError(err)
 }
 
 func (s *NCLMessageCreatorTestSuite) TearDownTest() {
-    s.ctrl.Finish()
+	s.ctrl.Finish()
+}
+
+func (s *NCLMessageCreatorTestSuite) TestNewNCLMessageCreator() {
+	tests := []struct {
+		name        string
+		params      NCLMessageCreatorParams
+		expectError string
+	}{
+		{
+			name: "valid params",
+			params: NCLMessageCreatorParams{
+				NodeID:         "test-node",
+				ProtocolRouter: s.protocolRouter,
+				SubjectFn:      s.subjectFn,
+			},
+		},
+		{
+			name: "missing nodeID",
+			params: NCLMessageCreatorParams{
+				ProtocolRouter: s.protocolRouter,
+				SubjectFn:      s.subjectFn,
+			},
+			expectError: "nodeID cannot be blank",
+		},
+		{
+			name: "missing protocol router",
+			params: NCLMessageCreatorParams{
+				NodeID:    "test-node",
+				SubjectFn: s.subjectFn,
+			},
+			expectError: "protocol router cannot be nil",
+		},
+		{
+			name: "missing subject function",
+			params: NCLMessageCreatorParams{
+				NodeID:         "test-node",
+				ProtocolRouter: s.protocolRouter,
+			},
+			expectError: "subject function cannot be nil",
+		},
+		{
+			name: "blank subject function",
+			params: NCLMessageCreatorParams{
+				NodeID:         "test-node",
+				ProtocolRouter: s.protocolRouter,
+				SubjectFn:      func(nodeID string) string { return "" },
+			},
+			expectError: "subject function returned empty",
+		},
+	}
+
+	for _, tc := range tests {
+		s.Run(tc.name, func() {
+			creator, err := NewNCLMessageCreator(tc.params)
+			if tc.expectError != "" {
+				s.Error(err)
+				s.ErrorContains(err, tc.expectError)
+				s.Nil(creator)
+			} else {
+				s.NoError(err)
+				s.NotNil(creator)
+			}
+		})
+	}
+}
+
+func (s *NCLMessageCreatorTestSuite) TestMessageCreatorFactory() {
+	factory := NewNCLMessageCreatorFactory(NCLMessageCreatorFactoryParams{
+		ProtocolRouter: s.protocolRouter,
+		SubjectFn:      s.subjectFn,
+	})
+
+	creator, err := factory.CreateMessageCreator(context.Background(), "test-node")
+	s.Require().NoError(err)
+	s.NotNil(creator)
 }
 
 func (s *NCLMessageCreatorTestSuite) TestCreateMessage_InvalidObject() {
@@ -63,10 +141,24 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_InvalidObject() {
 }
 
 func (s *NCLMessageCreatorTestSuite) TestCreateMessage_NoStateChange() {
+	execution := mock.Execution()
+	execution.NodeID = "test-node"
 	upsert := models.ExecutionUpsert{
-		Previous: mock.Execution(),
-		Current:  mock.Execution(),
+		Previous: execution,
+		Current:  execution,
 	}
+
+	msg, err := s.creator.CreateMessage(createExecutionEvent(upsert))
+	s.NoError(err)
+	s.Nil(msg)
+}
+
+func (s *NCLMessageCreatorTestSuite) TestCreateMessage_WrongNode() {
+	upsert := setupNewExecution(
+		models.ExecutionDesiredStatePending,
+		models.ExecutionStateNew,
+	)
+	upsert.Current.NodeID = "different-node"
 
 	msg, err := s.creator.CreateMessage(createExecutionEvent(upsert))
 	s.NoError(err)
@@ -78,6 +170,7 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_UnsupportedProtocol() {
 		models.ExecutionDesiredStatePending,
 		models.ExecutionStateNew,
 	)
+	upsert.Current.NodeID = "test-node"
 
 	// Mock node only supporting BProtocol
 	s.nodeStore.EXPECT().Get(gomock.Any(), upsert.Current.NodeID).Return(
@@ -113,6 +206,7 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_AskForBid() {
 				tc.desiredState,
 				models.ExecutionStateNew,
 			)
+			upsert.Current.NodeID = "test-node"
 
 			// Mock node supporting NCL
 			s.nodeStore.EXPECT().Get(gomock.Any(), upsert.Current.NodeID).Return(
@@ -145,6 +239,7 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_BidAccepted() {
 		models.ExecutionDesiredStateRunning,
 		models.ExecutionStateAskForBidAccepted,
 	)
+	upsert.Current.NodeID = "test-node"
 
 	// Mock node supporting NCL
 	s.nodeStore.EXPECT().Get(gomock.Any(), upsert.Current.NodeID).Return(
@@ -176,6 +271,7 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_BidRejected() {
 		models.ExecutionDesiredStateStopped,
 		models.ExecutionStateAskForBidAccepted,
 	)
+	upsert.Current.NodeID = "test-node"
 
 	// Mock node supporting NCL
 	s.nodeStore.EXPECT().Get(gomock.Any(), upsert.Current.NodeID).Return(
@@ -206,6 +302,7 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_Cancel() {
 		models.ExecutionDesiredStateStopped,
 		models.ExecutionStateRunning,
 	)
+	upsert.Current.NodeID = "test-node"
 
 	// Mock node supporting NCL
 	s.nodeStore.EXPECT().Get(gomock.Any(), upsert.Current.NodeID).Return(

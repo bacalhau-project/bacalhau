@@ -7,9 +7,10 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type AvailableCapacityNodeRankerSuite struct {
@@ -255,7 +256,7 @@ func (suite *AvailableCapacityNodeRankerSuite) TestRankNodes() {
 			for i, ns := range tc.nodes {
 				nodes[i] = models.NodeInfo{
 					NodeID: ns.nodeID,
-					ComputeNodeInfo: &models.ComputeNodeInfo{
+					ComputeNodeInfo: models.ComputeNodeInfo{
 						AvailableCapacity: ns.availableCapacity,
 						QueueUsedCapacity: ns.queueUsedCapacity,
 					},

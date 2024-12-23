@@ -3,6 +3,7 @@
 package compute
 
 import (
+	"context"
 	"fmt"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -48,3 +49,18 @@ func getResourcesArray(data [][]string) []*models.ResourcesConfig {
 	}
 	return res
 }
+
+type mockInfoProvider struct {
+}
+
+func (m mockInfoProvider) GetNodeInfo(ctx context.Context) models.NodeInfo {
+	return models.NodeInfo{}
+}
+
+func (m mockInfoProvider) RegisterNodeInfoDecorator(decorator models.NodeInfoDecorator) {
+}
+
+func (m mockInfoProvider) RegisterLabelProvider(provider models.LabelsProvider) {
+}
+
+var _ models.DecoratorNodeInfoProvider = &mockInfoProvider{}

@@ -3,9 +3,8 @@ package node
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"strings"
 
-	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -22,23 +21,23 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute/watchers"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/node/heartbeat"
+	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/transport/dispatcher"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
+	bprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/compute"
+	nclprotocolcompute "github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/transport/nclprotocol/dispatcher"
 )
 
 type Compute struct {
 	// Visible for testing
 	ID                 string
 	LocalEndpoint      compute.Endpoint
-	LogstreamServer    logstream.Server
 	Capacity           capacity.Tracker
 	ExecutionStore     store.ExecutionStore
 	Executors          executor.ExecProvider
@@ -46,10 +45,7 @@ type Compute struct {
 	Publishers         publisher.PublisherProvider
 	Bidder             compute.Bidder
 	Watchers           watcher.Manager
-	ManagementClient   *compute.ManagementClient
 	cleanupFunc        func(ctx context.Context)
-	nodeInfoDecorator  models.NodeInfoDecorator
-	labelsProvider     models.LabelsProvider
 	debugInfoProviders []models.DebugInfoProvider
 }
 
@@ -58,10 +54,8 @@ func NewComputeNode(
 	ctx context.Context,
 	cfg NodeConfig,
 	apiServer *publicapi.Server,
-	natsConn *nats.Conn,
-	computeCallback compute.Callback,
-	managementProxy compute.ManagementEndpoint,
-	messageRegistry *envelope.Registry,
+	clientFactory nats.ClientFactory,
+	nodeInfoProvider models.DecoratorNodeInfoProvider,
 ) (*Compute, error) {
 	// Setup dependencies
 	publishers, err := cfg.DependencyInjector.PublishersFactory.Get(ctx, cfg)
@@ -146,23 +140,6 @@ func NewComputeNode(
 		},
 	})
 
-	// logging server
-	logserver := logstream.NewServer(logstream.ServerParams{
-		ExecutionStore: executionStore,
-		Executors:      executors,
-	})
-
-	// node info
-	nodeInfoDecorator := compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
-		Executors:              executors,
-		Publisher:              publishers,
-		Storages:               storages,
-		RunningCapacityTracker: runningCapacityTracker,
-		QueueCapacityTracker:   enqueuedUsageTracker,
-		ExecutorBuffer:         bufferRunner,
-		MaxJobRequirements:     allocatedResources,
-	})
-
 	bidder := NewBidder(cfg,
 		allocatedResources,
 		publishers,
@@ -193,98 +170,82 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
-	// Node labels
-	labelsProvider := models.MergeLabelsInOrder(
-		&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels},
-		&RuntimeLabelsProvider{},
-		capacity.NewGPULabelsProvider(allocatedResources),
-	)
+	// node info provider
+	nodeInfoProvider.RegisterNodeInfoDecorator(compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
+		Executors:              executors,
+		Publisher:              publishers,
+		Storages:               storages,
+		RunningCapacityTracker: runningCapacityTracker,
+		QueueCapacityTracker:   enqueuedUsageTracker,
+		ExecutorBuffer:         bufferRunner,
+		MaxJobRequirements:     allocatedResources,
+	}))
+	nodeInfoProvider.RegisterLabelProvider(capacity.NewGPULabelsProvider(allocatedResources))
 
-	// TODO: Make the registration lock folder a config option so that we have it
-	// available and don't have to depend on getting the repo folder.
-	computeDir, err := cfg.BacalhauConfig.ComputeDir()
-	if err != nil {
-		return nil, err
-	}
-	regFilename := fmt.Sprintf("%s.registration.lock", cfg.NodeID)
-	regFilename = filepath.Join(computeDir, regFilename)
-
-	// heartbeat client
-	heartbeatPublisher, err := ncl.NewPublisher(natsConn, ncl.PublisherConfig{
-		Name:            cfg.NodeID,
-		Destination:     computeHeartbeatTopic(cfg.NodeID),
-		MessageRegistry: messageRegistry,
-	})
-	if err != nil {
-		return nil, err
-	}
-	heartbeatClient, err := heartbeat.NewClient(natsConn, cfg.NodeID, heartbeatPublisher)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set up the management client which will attempt to register this node
-	// with the requester node, and then if successful will send regular node
-	// info updates.
-	managementClient := compute.NewManagementClient(&compute.ManagementClientParams{
-		NodeID:                   cfg.NodeID,
-		LabelsProvider:           labelsProvider,
-		ManagementProxy:          managementProxy,
-		NodeInfoDecorator:        nodeInfoDecorator,
-		RegistrationFilePath:     regFilename,
-		AvailableCapacityTracker: runningCapacityTracker,
-		QueueUsageTracker:        enqueuedUsageTracker,
-		HeartbeatClient:          heartbeatClient,
-		HeartbeatConfig:          cfg.BacalhauConfig.Compute.Heartbeat,
-	})
-	if err := managementClient.RegisterNode(ctx); err != nil {
-		return nil, fmt.Errorf("failed to register node with requester: %s", err)
-	}
-	go managementClient.Start(ctx)
-
-	// compute -> orchestrator ncl publisher
-	nclPublisher, err := ncl.NewOrderedPublisher(natsConn, ncl.OrderedPublisherConfig{
-		Name:            cfg.NodeID,
-		Destination:     computeOutSubject(cfg.NodeID),
-		MessageRegistry: messageRegistry,
+	// legacyConnectionManager
+	legacyConnectionManager, err := bprotocolcompute.NewConnectionManager(bprotocolcompute.Config{
+		NodeID:           cfg.NodeID,
+		ClientFactory:    clientFactory,
+		NodeInfoProvider: nodeInfoProvider,
+		HeartbeatConfig:  cfg.BacalhauConfig.Compute.Heartbeat,
+		ComputeEndpoint:  baseEndpoint,
+		EventStore:       executionStore.GetEventStore(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// orchestrator -> compute ncl subscriber
-	nclSubscriber, err := ncl.NewSubscriber(natsConn, ncl.SubscriberConfig{
-		Name:            cfg.NodeID,
-		MessageRegistry: messageRegistry,
-		MessageHandler:  compute.NewMessageHandler(executionStore),
+	// connection manager
+	connectionManager, err := nclprotocolcompute.NewConnectionManager(nclprotocolcompute.Config{
+		NodeID:                  cfg.NodeID,
+		ClientFactory:           clientFactory,
+		NodeInfoProvider:        nodeInfoProvider,
+		HeartbeatInterval:       cfg.BacalhauConfig.Compute.Heartbeat.Interval.AsTimeDuration(),
+		NodeInfoUpdateInterval:  cfg.BacalhauConfig.Compute.Heartbeat.InfoUpdateInterval.AsTimeDuration(),
+		DataPlaneMessageHandler: compute.NewMessageHandler(executionStore),
+		DataPlaneMessageCreator: watchers.NewNCLMessageCreator(),
+		EventStore:              executionStore.GetEventStore(),
+		Checkpointer:            executionStore,
+		DispatcherConfig:        dispatcher.DefaultConfig(),
+		LogStreamServer: logstream.NewServer(logstream.ServerParams{
+			ExecutionStore: executionStore,
+			Executors:      executors,
+		}),
 	})
 	if err != nil {
 		return nil, err
 	}
-	if err = nclSubscriber.Subscribe(ctx, computeInSubscription(cfg.NodeID)); err != nil {
-		return nil, err
+
+	// First we attempt to start the legacy connection manager to maintain backward compatibility
+	// with older orchestrator nodes. If it fails, or we receive an upgrade available message, we
+	// start the new connection manager.
+	if err = legacyConnectionManager.Start(ctx); err != nil {
+		if strings.Contains(err.Error(), bprotocol.ErrUpgradeAvailable.Error()) {
+			log.Debug().Msg("Disabling bprotocol management client due to upgrade available")
+		} else {
+			log.Warn().Err(err).Msg("failed to start legacy connection manager. falling back to ncl protocol")
+		}
+
+		if err = connectionManager.Start(ctx); err != nil {
+			return nil, fmt.Errorf("failed to start connection manager: %w", err)
+		}
 	}
 
-	watcherRegistry, nclDispatcher, err := setupComputeWatchers(
-		ctx, executionStore, nclPublisher, computeCallback, bufferRunner, bidder)
+	watcherRegistry, err := setupComputeWatchers(
+		ctx, executionStore, bufferRunner, bidder)
 	if err != nil {
 		return nil, err
 	}
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
-		if err = nclSubscriber.Close(ctx); err != nil {
-			log.Error().Err(err).Msg("failed to close ncl subscriber")
-		}
-		if nclDispatcher != nil {
-			if err = nclDispatcher.Stop(ctx); err != nil {
-				log.Error().Err(err).Msg("failed to stop dispatcher")
-			}
-		}
 		if err = watcherRegistry.Stop(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to stop watcher registry")
 		}
-		managementClient.Stop()
+		legacyConnectionManager.Stop(ctx)
+		if err = connectionManager.Close(ctx); err != nil {
+			log.Error().Err(err).Msg("failed to stop connection manager")
+		}
 		if err = executionStore.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close execution store")
 		}
@@ -296,7 +257,6 @@ func NewComputeNode(
 	return &Compute{
 		ID:                 cfg.NodeID,
 		LocalEndpoint:      baseEndpoint,
-		LogstreamServer:    logserver,
 		Capacity:           runningCapacityTracker,
 		ExecutionStore:     executionStore,
 		Executors:          executors,
@@ -305,10 +265,7 @@ func NewComputeNode(
 		Bidder:             bidder,
 		Watchers:           watcherRegistry,
 		cleanupFunc:        cleanupFunc,
-		nodeInfoDecorator:  nodeInfoDecorator,
-		labelsProvider:     labelsProvider,
 		debugInfoProviders: debugInfoProviders,
-		ManagementClient:   managementClient,
 	}, nil
 }
 
@@ -388,20 +345,19 @@ func NewBidder(
 func setupComputeWatchers(
 	ctx context.Context,
 	executionStore store.ExecutionStore,
-	nclPublisher ncl.OrderedPublisher,
-	computeCallback compute.Callback,
 	bufferRunner *compute.ExecutorBuffer,
 	bidder compute.Bidder,
-) (watcher.Manager, *dispatcher.Dispatcher, error) {
+) (watcher.Manager, error) {
 	watcherRegistry := watcher.NewManager(executionStore.GetEventStore())
 
 	// Set up execution logger watcher
 	_, err := watcherRegistry.Create(ctx, computeExecutionLoggerWatcherID,
 		watcher.WithHandler(watchers.NewExecutionLogger(log.Logger)),
+		watcher.WithEphemeral(),
 		watcher.WithAutoStart(),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
+		return nil, fmt.Errorf("failed to setup execution logger watcher: %w", err)
 	}
 
 	// Set up execution handler watcher
@@ -415,43 +371,8 @@ func setupComputeWatchers(
 		watcher.WithMaxRetries(3),
 		watcher.WithInitialEventIterator(watcher.LatestIterator()))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup execution handler watcher: %w", err)
+		return nil, fmt.Errorf("failed to setup execution handler watcher: %w", err)
 	}
 
-	// setup bprotocol dispatcher watcher
-	_, err = watcherRegistry.Create(ctx, computeBProtocolDispatcherWatcherID,
-		watcher.WithHandler(watchers.NewBProtocolDispatcher(computeCallback)),
-		watcher.WithAutoStart(),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup bprotocol dispatcher watcher: %w", err)
-	}
-
-	// setup ncl dispatcher
-	nclDispatcherWatcher, err := watcherRegistry.Create(ctx, computeNCLDispatcherWatcherID,
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{compute.EventObjectExecutionUpsert},
-		}),
-		watcher.WithRetryStrategy(watcher.RetryStrategyBlock),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup ncl dispatcher watcher: %w", err)
-	}
-
-	nclDispatcher, err := dispatcher.New(
-		nclPublisher, nclDispatcherWatcher, watchers.NewNCLMessageCreator(), dispatcher.DefaultConfig())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create dispatcher: %w", err)
-	}
-
-	if err = nclDispatcher.Start(ctx); err != nil {
-		return nil, nil, fmt.Errorf("failed to start dispatcher: %w", err)
-	}
-
-	return watcherRegistry, nclDispatcher, nil
+	return watcherRegistry, nil
 }

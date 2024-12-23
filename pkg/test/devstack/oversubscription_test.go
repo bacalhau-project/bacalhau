@@ -67,7 +67,7 @@ func (s *OverSubscriptionTestSuite) setupStack(overSubscriptionFactor float64) {
 			Compute: types.Compute{
 				AllocatedCapacity: types.ResourceScalerFromModelsResourceConfig(s.jobResources),
 				Heartbeat: types.Heartbeat{
-					ResourceUpdateInterval: types.Duration(s.resourceUpdateFrequency),
+					Interval: types.Duration(s.resourceUpdateFrequency),
 				},
 			},
 			JobDefaults: types.JobDefaults{

@@ -80,21 +80,39 @@ func New(ctx context.Context, id string, store EventStore, opts ...WatchOption) 
 }
 
 func (w *watcher) determineStartingIterator(ctx context.Context, initial EventIterator) (EventIterator, error) {
-	// First try to get checkpoint
-	checkpoint, err := w.store.GetCheckpoint(ctx, w.id)
-	if err == nil {
-		return AfterSequenceNumberIterator(checkpoint), nil
-	}
-	if !errors.Is(err, ErrCheckpointNotFound) {
-		return EventIterator{}, err
+	// First try to get checkpoint if not an ephemeral watcher
+	if !w.options.ephemeral {
+		checkpoint, err := w.store.GetCheckpoint(ctx, w.id)
+		if err == nil {
+			return AfterSequenceNumberIterator(checkpoint), nil
+		}
+		if !errors.Is(err, ErrCheckpointNotFound) {
+			return EventIterator{}, err
+		}
 	}
 
 	// No checkpoint found, handle initial iterator
+	if initial.Type == EventIteratorTrimHorizon {
+		return initial, nil
+	}
+
+	latestSeqNum, err := w.store.GetLatestEventNum(ctx)
+	if err != nil {
+		return EventIterator{}, err
+	}
+
+	// If the requested sequence number is the latest, start from the current latest seqNum
 	if initial.Type == EventIteratorLatest {
-		latestSeqNum, err := w.store.GetLatestEventNum(ctx)
-		if err != nil {
-			return EventIterator{}, err
-		}
+		return AfterSequenceNumberIterator(latestSeqNum), nil
+	}
+
+	// If the requested sequence number is higher than the latest, start from the latest
+	if initial.SequenceNumber > latestSeqNum {
+		log.Ctx(ctx).Warn().
+			Str("watcher_id", w.id).
+			Uint64("requested_seq", initial.SequenceNumber).
+			Uint64("latest_seq", latestSeqNum).
+			Msg("requested sequence number is higher than latest, starting from latest instead")
 		return AfterSequenceNumberIterator(latestSeqNum), nil
 	}
 
@@ -179,6 +197,7 @@ func (w *watcher) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Ctx(ctx).Debug().Str("watcher_id", w.id).Msg("context canceled. Stopping watcher")
 			return
 		default:
 			response, err := w.fetchWithBackoff(ctx)
@@ -303,11 +322,18 @@ func (w *watcher) Stop(ctx context.Context) {
 }
 
 // Checkpoint saves the current progress of the watcher
+// For ephemeral watchers, this returns an error
 func (w *watcher) Checkpoint(ctx context.Context, eventSeqNum uint64) error {
+	if w.options.ephemeral {
+		return NewCheckpointError(w.id, errors.New("cannot checkpoint ephemeral watcher"))
+	}
+
 	if err := w.store.StoreCheckpoint(ctx, w.id, eventSeqNum); err != nil {
 		return err
 	}
-	log.Ctx(ctx).Trace().Str("watcher_id", w.id).Uint64("event_seq", eventSeqNum).
+	log.Ctx(ctx).Trace().
+		Str("watcher_id", w.id).
+		Uint64("event_seq", eventSeqNum).
 		Msg("checkpoint saved")
 
 	// Update checkpoint iterator after successful store
@@ -319,15 +345,27 @@ func (w *watcher) Checkpoint(ctx context.Context, eventSeqNum uint64) error {
 }
 
 // SeekToOffset moves the watcher to a specific event sequence number
+// For ephemeral watchers, this only updates the iterator without persisting
 func (w *watcher) SeekToOffset(ctx context.Context, eventSeqNum uint64) error {
-	log.Ctx(ctx).Debug().Str("watcher_id", w.id).Uint64("event_seq", eventSeqNum).
+	log.Ctx(ctx).Debug().
+		Str("watcher_id", w.ID()).
+		Uint64("event_seq", eventSeqNum).
+		Bool("ephemeral", w.options.ephemeral).
 		Msg("seeking to event sequence number")
+
 	// stop the watcher so that it doesn't process events while we're updating the offset
 	w.Stop(ctx)
 
-	// persist the offset so that the watcher resumes at the correct position if started
-	if err := w.Checkpoint(ctx, eventSeqNum); err != nil {
-		return NewCheckpointError(w.id, fmt.Errorf("failed to persist seek offset: %w", err))
+	// For non-ephemeral watchers, persist the checkpoint
+	if !w.options.ephemeral {
+		if err := w.Checkpoint(ctx, eventSeqNum); err != nil {
+			return NewCheckpointError(w.id, fmt.Errorf("failed to persist seek offset: %w", err))
+		}
+	} else {
+		// For ephemeral watchers, just update the iterator
+		w.mu.Lock()
+		w.checkpointIterator = AfterSequenceNumberIterator(eventSeqNum)
+		w.mu.Unlock()
 	}
 
 	// Restart watcher

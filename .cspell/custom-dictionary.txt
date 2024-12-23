@@ -20,6 +20,7 @@ boltdb
 booga
 boxo
 bprotocol
+nclprotocol
 BRSNW
 BUCKETNAME
 buildx
@@ -439,3 +440,8 @@ Nilf
 IMDS
 tlsca
 Lenf
+traefik
+bprotocolcompute
+bprotocolorchestrator
+nclprotocolcompute
+ncltest

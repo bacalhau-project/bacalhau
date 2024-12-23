@@ -6,9 +6,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type MaxUsageNodeRankerSuite struct {
@@ -22,15 +23,15 @@ type MaxUsageNodeRankerSuite struct {
 func (s *MaxUsageNodeRankerSuite) SetupSuite() {
 	s.smallPeer = models.NodeInfo{
 		NodeID:          "small",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1, Memory: 1024}},
+		ComputeNodeInfo: models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 1, Memory: 1024}},
 	}
 	s.medPeer = models.NodeInfo{
 		NodeID:          "med",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2, Memory: 1024e3}},
+		ComputeNodeInfo: models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 2, Memory: 1024e3}},
 	}
 	s.largePeer = models.NodeInfo{
 		NodeID:          "large",
-		ComputeNodeInfo: &models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3, Memory: 1024e6}},
+		ComputeNodeInfo: models.ComputeNodeInfo{MaxJobRequirements: models.Resources{CPU: 3, Memory: 1024e6}},
 	}
 }
 

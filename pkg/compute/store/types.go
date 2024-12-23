@@ -34,6 +34,10 @@ type ExecutionStore interface {
 	GetExecutionCount(ctx context.Context, state models.ExecutionStateType) (uint64, error)
 	// GetEventStore returns the event store for the execution store
 	GetEventStore() watcher.EventStore
+	// Checkpoint saves the last sequence number processed
+	Checkpoint(ctx context.Context, name string, sequenceNumber uint64) error
+	// GetCheckpoint returns the last sequence number processed
+	GetCheckpoint(ctx context.Context, name string) (uint64, error)
 	// Close provides the opportunity for the underlying store to cleanup
 	// any resources as the compute node is shutting down
 	Close(ctx context.Context) error

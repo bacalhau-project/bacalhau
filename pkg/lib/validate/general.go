@@ -11,8 +11,12 @@ func NotNil(value any, msg string, args ...any) error {
 
 	// Use reflection to handle cases where value is a nil pointer wrapped in an interface
 	val := reflect.ValueOf(value)
-	if val.Kind() == reflect.Ptr && val.IsNil() {
-		return createError(msg, args...)
+	switch val.Kind() {
+	case reflect.Ptr, reflect.Interface, reflect.Map, reflect.Slice, reflect.Func:
+		if val.IsNil() {
+			return createError(msg, args...)
+		}
+	default:
 	}
 	return nil
 }

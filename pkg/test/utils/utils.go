@@ -2,20 +2,12 @@ package testutils
 
 import (
 	"context"
-	"net/url"
 	"regexp"
-	"strconv"
 	"testing"
-	"time"
 
-	natsserver "github.com/nats-io/nats-server/v2/server"
-	natstest "github.com/nats-io/nats-server/v2/test"
-
-	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -53,43 +45,4 @@ func MustHaveIPFS(t testing.TB, cfg types.Bacalhau) {
 // IsIPFSEnabled will return true if the test is running in an environment that can support IPFS.
 func IsIPFSEnabled(ipfsConnect string) bool {
 	return ipfsConnect != ""
-}
-
-// startNatsOnPort will start a NATS server on a specific port and return a server and client instances
-func startNatsOnPort(t *testing.T, port int) (*natsserver.Server, *nats.Conn) {
-	t.Helper()
-	opts := &natstest.DefaultTestOptions
-	opts.Port = port
-
-	natsServer := natstest.RunServer(opts)
-	nc, err := nats.Connect(natsServer.ClientURL(),
-		nats.ReconnectBufSize(-1),                 // disable reconnect buffer so client fails fast if disconnected
-		nats.ReconnectWait(200*time.Millisecond),  //nolint:mnd // reduce reconnect wait to fail fast in tests
-		nats.FlusherTimeout(100*time.Millisecond), //nolint:mnd // reduce flusher timeout to speed up tests
-	)
-	require.NoError(t, err)
-	return natsServer, nc
-}
-
-// StartNats will start a NATS server on a random port and return a server and client instances
-func StartNats(t *testing.T) (*natsserver.Server, *nats.Conn) {
-	t.Helper()
-	port, err := network.GetFreePort()
-	require.NoError(t, err)
-
-	return startNatsOnPort(t, port)
-}
-
-// RestartNatsServer will restart the NATS server and return a new server and client using the same port
-func RestartNatsServer(t *testing.T, natsServer *natsserver.Server) (*natsserver.Server, *nats.Conn) {
-	t.Helper()
-	natsServer.Shutdown()
-
-	u, err := url.Parse(natsServer.ClientURL())
-	require.NoError(t, err, "Failed to parse NATS server URL %s", natsServer.ClientURL())
-
-	port, err := strconv.Atoi(u.Port())
-	require.NoError(t, err, "Failed to convert port %s to int", u.Port())
-
-	return startNatsOnPort(t, port)
 }

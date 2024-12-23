@@ -47,14 +47,13 @@ var Default = types.Bacalhau{
 		Enabled:       false,
 		Orchestrators: []string{"nats://127.0.0.1:4222"},
 		Heartbeat: types.Heartbeat{
-			InfoUpdateInterval:     types.Minute,
-			ResourceUpdateInterval: 30 * types.Second,
-			Interval:               15 * types.Second,
+			InfoUpdateInterval: types.Minute,
+			Interval:           15 * types.Second,
 		},
 		AllocatedCapacity: types.ResourceScaler{
-			CPU:    "70%",
-			Memory: "70%",
-			Disk:   "70%",
+			CPU:    "80%",
+			Memory: "80%",
+			Disk:   "80%",
 			GPU:    "100%",
 		},
 	},
@@ -64,7 +63,7 @@ var Default = types.Bacalhau{
 			Task: types.BatchTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -73,7 +72,7 @@ var Default = types.Bacalhau{
 			Task: types.BatchTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -82,7 +81,7 @@ var Default = types.Bacalhau{
 			Task: types.LongRunningTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
@@ -91,7 +90,7 @@ var Default = types.Bacalhau{
 			Task: types.LongRunningTaskDefaultConfig{
 				Resources: types.ResourcesConfig{
 					CPU:    "500m",
-					Memory: "1Gb",
+					Memory: "512Mb",
 				},
 			},
 		},
