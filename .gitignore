@@ -68,3 +68,6 @@ dist/
 
 # Integration Tests
 test_integration/common_assets/bacalhau_bin
+
+.flox
+webui/compiled/*
