@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
+	github.com/MicahParks/keyfunc/v3 v3.3.5
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.17
@@ -21,6 +22,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -88,7 +90,6 @@ require (
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/jwkset v0.5.19 // indirect
-	github.com/MicahParks/keyfunc/v3 v3.3.5 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.6 // indirect
@@ -116,7 +117,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
