@@ -41,6 +41,16 @@ func WithExecution(nodeID string, state models.ExecutionStateType) ScenarioBuild
 	}
 }
 
+func WithPartitionedExecution(nodeID string, state models.ExecutionStateType, partitionIndex int) ScenarioBuilderOption {
+	return func(b *Scenario) {
+		execution := mock.ExecutionForJob(b.job)
+		execution.NodeID = nodeID
+		execution.ComputeState = models.NewExecutionState(state)
+		execution.PartitionIndex = partitionIndex
+		b.executions = append(b.executions, *execution)
+	}
+}
+
 func WithQueueTimeout(timeout time.Duration) ScenarioBuilderOption {
 	return func(b *Scenario) {
 		b.job.Task().Timeouts.QueueTimeout = int64(timeout.Seconds())
@@ -130,37 +140,34 @@ func (e ExpectedEvaluation) Match(t *testing.T, SourceEval, ObservedEval *models
 }
 
 type PlanMatcher struct {
-	t                         *testing.T
-	JobState                  models.JobStateType
-	Evaluation                *models.Evaluation
-	NewExecutionsNodes        []string
-	NewExecutionsDesiredState models.ExecutionDesiredStateType
-	StoppedExecutions         []string
-	ApprovedExecutions        []string
-	NewEvaluations            []ExpectedEvaluation
+	t                  *testing.T
+	JobState           models.JobStateType
+	Evaluation         *models.Evaluation
+	NewExecutions      []*models.Execution
+	StoppedExecutions  []string
+	ApprovedExecutions []string
+	NewEvaluations     []ExpectedEvaluation
 }
 
 type PlanMatcherParams struct {
-	JobState                 models.JobStateType
-	Evaluation               *models.Evaluation
-	NewExecutionsNodes       []string
-	NewExecutionDesiredState models.ExecutionDesiredStateType
-	StoppedExecutions        []string
-	ApprovedExecutions       []string
-	ExpectedNewEvaluations   []ExpectedEvaluation
+	JobState               models.JobStateType
+	Evaluation             *models.Evaluation
+	NewExecutions          []*models.Execution
+	StoppedExecutions      []string
+	ApprovedExecutions     []string
+	ExpectedNewEvaluations []ExpectedEvaluation
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
 func NewPlanMatcher(t *testing.T, params PlanMatcherParams) PlanMatcher {
 	return PlanMatcher{
-		t:                         t,
-		JobState:                  params.JobState,
-		Evaluation:                params.Evaluation,
-		NewExecutionsNodes:        params.NewExecutionsNodes,
-		NewExecutionsDesiredState: params.NewExecutionDesiredState,
-		StoppedExecutions:         params.StoppedExecutions,
-		ApprovedExecutions:        params.ApprovedExecutions,
-		NewEvaluations:            params.ExpectedNewEvaluations,
+		t:                  t,
+		JobState:           params.JobState,
+		Evaluation:         params.Evaluation,
+		NewExecutions:      params.NewExecutions,
+		StoppedExecutions:  params.StoppedExecutions,
+		ApprovedExecutions: params.ApprovedExecutions,
+		NewEvaluations:     params.ExpectedNewEvaluations,
 	}
 }
 
@@ -179,23 +186,34 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 		return false
 	}
 
-	// check new executions match the expected nodes
-	newExecutionNodes := make(map[string]models.ExecutionDesiredStateType)
-	for _, execution := range plan.NewExecutions {
-		newExecutionNodes[execution.NodeID] = execution.DesiredState.StateType
-	}
-	if len(newExecutionNodes) != len(m.NewExecutionsNodes) {
-		m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
+	// If NewExecutions are specified, verify each one
+	if len(plan.NewExecutions) != len(m.NewExecutions) {
+		m.t.Logf("NewExecutions length: got %d, want %d", len(plan.NewExecutions), len(m.NewExecutions))
 		return false
 	}
-	for _, node := range m.NewExecutionsNodes {
-		desiredState, ok := newExecutionNodes[node]
+
+	// group plan executions by node id
+	planNewExecutions := make(map[string]*models.Execution)
+	for _, execution := range plan.NewExecutions {
+		planNewExecutions[execution.NodeID] = execution
+	}
+
+	for _, expectedExec := range m.NewExecutions {
+		planExecution, ok := planNewExecutions[expectedExec.NodeID]
 		if !ok {
-			m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
+			m.t.Logf("No new execution for node %s", expectedExec.NodeID)
 			return false
 		}
-		if desiredState != m.NewExecutionsDesiredState {
-			m.t.Logf("NewExecutionsDesiredState: %v != %v", desiredState, m.NewExecutionsDesiredState)
+
+		// validate the desired state
+		if planExecution.DesiredState.StateType != expectedExec.DesiredState.StateType {
+			m.t.Logf("DesiredState: %s != %s for node %s", planExecution.DesiredState.StateType, expectedExec.DesiredState.StateType, expectedExec.NodeID)
+			return false
+		}
+
+		// validate the partition index
+		if planExecution.PartitionIndex != expectedExec.PartitionIndex {
+			m.t.Logf("PartitionIndex: %d != %d for node %s", planExecution.PartitionIndex, expectedExec.PartitionIndex, expectedExec.NodeID)
 			return false
 		}
 	}
@@ -257,8 +275,8 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 }
 
 func (m PlanMatcher) String() string {
-	return fmt.Sprintf("{JobState: %s, Evaluation: %s, NewExecutionsNodes: %s, StoppedExecutions: %s, ApprovedExecutions: %s}",
-		m.JobState, m.Evaluation, m.NewExecutionsNodes, m.StoppedExecutions, m.ApprovedExecutions)
+	return fmt.Sprintf("{JobState: %s, Evaluation: %s, NewExecutions: %s, StoppedExecutions: %s, ApprovedExecutions: %s}",
+		m.JobState, m.Evaluation, m.NewExecutions, m.StoppedExecutions, m.ApprovedExecutions)
 }
 
 func fakeNodeInfo(t *testing.T, nodeID string) models.NodeInfo {

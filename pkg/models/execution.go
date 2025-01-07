@@ -125,6 +125,10 @@ type Execution struct {
 	// that can be rescheduled in the future
 	FollowupEvalID string `json:"FollowupEvalID"`
 
+	// PartitionIndex is the index of this execution in the job's total partitions (0-based)
+	// Only relevant when Job.Count > 1
+	PartitionIndex int `json:"PartitionIndex,omitempty"`
+
 	// Revision is increment each time the execution is updated.
 	Revision uint64 `json:"Revision"`
 

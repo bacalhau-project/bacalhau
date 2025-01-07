@@ -30,9 +30,9 @@ func TestBatchJobSchedulerTestSuite(t *testing.T) {
 func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	scenario := NewScenario(
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 	s.mockJobStore(scenario)
 	s.mockAllNodes("node0", "node1")
@@ -48,15 +48,17 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	scenario := NewScenario(
 		WithCount(2),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 0), // Same partition as first one
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 1),   // Different partition
 	)
+
 	scenario.executions[1].Revision = scenario.executions[0].Revision + 1
 	s.mockJobStore(scenario)
 
 	// mock active executions' nodes to be healthy
 	s.mockAllNodes("node0", "node1")
+
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation:        scenario.evaluation,
 		StoppedExecutions: []string{scenario.executions[0].ID},
@@ -68,9 +70,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutionsOnUnhealthyNodesAsFailed() {
 	scenario := NewScenario(
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 	s.mockJobStore(scenario)
 
@@ -79,9 +81,11 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 	s.mockMatchingNodes(scenario, "node0")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		NewExecutionsNodes: []string{"node0"},
-		StoppedExecutions:  []string{scenario.executions[1].ID},
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 1},
+		},
+		StoppedExecutions: []string{scenario.executions[1].ID},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
@@ -90,9 +94,9 @@ func (s *BatchJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutions
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsCompleted() {
 	scenario := NewScenario(
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateCompleted),
-		WithExecution("node1", models.ExecutionStateCompleted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateCompleted, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateCompleted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 	s.mockJobStore(scenario)
 
@@ -107,9 +111,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsCompleted() {
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreNodes() {
 	scenario := NewScenario(
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 	s.mockJobStore(scenario)
 
@@ -132,9 +136,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreNod
 func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry() {
 	scenario := NewScenario(
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 	s.mockJobStore(scenario)
 	s.scheduler.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false})
@@ -158,9 +162,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_TotalTime
 	scenario := NewScenario(
 		WithCount(3),
 		WithTotalTimeout(60*time.Minute),
-		WithExecution("node0", models.ExecutionStateBidAccepted),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 2),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 3),
 	)
 
 	// Set the CreateTime to exceed timeout
@@ -186,9 +190,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
 	scenario := NewScenario(
 		WithCount(3),
 		WithExecutionTimeout(60*time.Minute),
-		WithExecution("node0", models.ExecutionStateBidAccepted),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateCompleted),
+		WithPartitionedExecution("node0", models.ExecutionStateBidAccepted, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 
 	// Set the start time of the executions to exceed the timeout
@@ -202,8 +206,11 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
 	s.mockMatchingNodes(scenario, "node0", "node1")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		NewExecutionsNodes: []string{"node0", "node1"},
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 0},
+			{NodeID: "node1", PartitionIndex: 1},
+		},
 		StoppedExecutions: []string{
 			scenario.executions[0].ID,
 			scenario.executions[1].ID,

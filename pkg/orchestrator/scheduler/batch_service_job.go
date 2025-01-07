@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
@@ -27,9 +26,29 @@ type BatchServiceJobSchedulerParams struct {
 	Clock clock.Clock
 }
 
-// BatchServiceJobScheduler is a scheduler for:
-// - batch jobs that run until completion on N number of nodes
-// - service jobs than run until stopped on N number of nodes
+// BatchServiceJobScheduler handles scheduling of batch and service jobs, with support for
+// partitioned execution. Each job can specify N parallel executions via its Count field,
+// where each execution is assigned a unique partition index from 0 to Count-1.
+//
+// Partitioning Logic:
+// - The job.Count field determines the number of partitions (N)
+// - Each execution is assigned a unique PartitionIndex (0 to Count-1)
+// - The scheduler ensures exactly one active execution per partition
+// - When an execution fails, its partition becomes available for retry
+//
+// Execution Lifecycle Per Partition:
+// 1. Initial scheduling: assign execution to an available node with PartitionIndex
+// 2. If execution fails: partition becomes available for retry on another node
+// 3. If execution succeeds:
+//   - Batch jobs: partition is marked complete, no more executions
+//   - Service jobs: partition must maintain one running execution
+//
+// Example with Count = 3:
+// - Creates three partitions (0, 1, 2)
+// - Each partition runs independently
+// - If partition 1 fails, it can be retried while 0 and 2 continue running
+// - Batch job completes when all three partitions have successful executions
+// - Service job runs continuously with one execution per partition
 type BatchServiceJobScheduler struct {
 	jobStore      jobstore.Store
 	planner       orchestrator.Planner
@@ -53,6 +72,12 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 	}
 }
 
+// Process handles the scheduling logic for partitioned jobs:
+// 1. Tracks existing executions per partition
+// 2. Handles failed executions and retries while maintaining partition assignment
+// 3. Ensures each partition (0 to job.Count-1) has exactly one active execution
+// 4. For batch jobs: monitors completion of all partitions
+// 5. For service jobs: maintains continuous execution per partition
 func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
@@ -87,7 +112,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 		return err
 	}
 
-	// keep track or existing failed executions, and those that will be marked as failed
+	// keep track of existing failed executions, and those that will be marked as failed
 	allFailedExecs := existingExecs.filterFailed()
 
 	// Mark executions that are running on nodes that are not healthy as failed
@@ -97,23 +122,19 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
 
-	// Calculate remaining job count
-	// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed. So the desired
-	// remaining count equals the count specified in the job spec.
-	// Batch jobs on the other hand run until completion and the desired remaining count excludes the completed executions
-	desiredRemainingCount := job.Count
-	if job.Type == models.JobTypeBatch {
-		desiredRemainingCount = math.Max(0, job.Count-existingExecs.countCompleted())
+	// nonDiscardedExec is the set of executions that are either active or successfully completed
+	nonDiscardedExecs := nonTerminalExecs.union(existingExecs.filterCompleted())
+	if job.Type == models.JobTypeService {
+		// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed.
+		nonDiscardedExecs = nonTerminalExecs
 	}
 
 	// Approve/Reject nodes
-	execsByApprovalStatus := nonTerminalExecs.filterByApprovalStatus(desiredRemainingCount)
-	execsByApprovalStatus.toApprove.markApproved(plan, orchestrator.ExecRunningEvent())
-	execsByApprovalStatus.toReject.markStopped(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
+	b.approveRejectExecs(nonDiscardedExecs, plan)
 
-	// create new executions if needed
-	remainingExecutionCount := desiredRemainingCount - execsByApprovalStatus.activeCount()
-	if remainingExecutionCount > 0 {
+	// Get remaining partition indices to assign to new executions for
+	remainingPartitions := nonDiscardedExecs.remainingPartitions(job.Count)
+	if len(remainingPartitions) > 0 {
 		// first, check if there were any failed executions and if we should retry
 		if len(allFailedExecs) > 0 && !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
 			plan.MarkJobFailed(orchestrator.JobExhaustedRetriesEvent())
@@ -121,7 +142,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 		if !plan.IsJobFailed() {
 			// find matching nodes for the remaining executions
-			err = b.createMissingExecs(ctx, remainingExecutionCount, &job, plan)
+			err = b.createMissingExecs(ctx, remainingPartitions, &job, plan)
 			if err != nil {
 				return err // internal error
 			}
@@ -132,13 +153,8 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	if plan.IsJobFailed() {
 		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
-		// stop executions if we over-subscribed and exceeded the desired number of executions
-		_, overSubscriptions := execsByApprovalStatus.running.filterByOverSubscriptions(desiredRemainingCount)
-		overSubscriptions.markStopped(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
-
-		// Check the job's state and update it accordingly.
-		if desiredRemainingCount <= 0 {
-			// If there are no remaining tasks to be done, mark the job as completed.
+		if b.isJobComplete(&job, existingExecs) {
+			// If there are no remaining partitions to be done, mark the job as completed.
 			plan.MarkJobCompleted(orchestrator.JobStateUpdateEvent(models.JobStateTypeCompleted))
 		}
 		plan.MarkJobRunningIfEligible(orchestrator.JobStateUpdateEvent(models.JobStateTypeRunning))
@@ -172,8 +188,35 @@ func (b *BatchServiceJobScheduler) handleTimeouts(
 	return nonTerminalExecs, allFailedExecs
 }
 
+// approveRejectExecs processes executions partition by partition (0 to job.Count-1).
+// For each partition:
+// - If partition has a completed execution: reject all other executions
+// - If partition has a running execution: keep oldest, reject others
+// - If partition has no running execution: approve oldest bid, reject others
+// This ensures exactly one active execution per partition at any time.
+func (b *BatchServiceJobScheduler) approveRejectExecs(nonDiscardedExecs execSet, plan *models.Plan) {
+	// Process each partition independently, ensuring only one execution
+	// can be active per partition at any time
+	for _, partitionExecs := range nonDiscardedExecs.groupByPartition() {
+		execsByApprovalStatus := partitionExecs.getApprovalStatuses()
+		execsByApprovalStatus.toApprove.markApproved(plan, orchestrator.ExecRunningEvent())
+		execsByApprovalStatus.toReject.markStopped(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
+		execsByApprovalStatus.toCancel.markStopped(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
+	}
+}
+
+// createMissingExecs creates new executions for partitions that need them.
+// The remainingPartitions parameter contains available partition indices (0 to job.Count-1)
+// that have no active or completed executions. This happens in two cases:
+// 1. Initial scheduling: all partitions need first execution
+// 2. Retry after failure: failed partitions need new execution
+//
+// For example, with job.Count = 3:
+// - Initial: remainingPartitions = [0,1,2]
+// - If partition 1 fails: remainingPartitions = [1]
+// - If all complete (batch): remainingPartitions = []
 func (b *BatchServiceJobScheduler) createMissingExecs(
-	ctx context.Context, remainingExecutionCount int, job *models.Job, plan *models.Plan) error {
+	ctx context.Context, remainingPartitions []int, job *models.Job, plan *models.Plan) error {
 	// find matching nodes for the job
 	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
@@ -181,7 +224,7 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	}
 
 	// fail fast if there are not enough nodes, and we've passed job queue timeout
-	if len(matching) < remainingExecutionCount {
+	if len(matching) < len(remainingPartitions) {
 		// check if we can retry scheduling the job at a later time if we don't have enough nodes
 		timeout := job.Task().Timeouts.GetQueueTimeout()
 		expirationTime := b.clock.Now().Add(-timeout)
@@ -192,32 +235,33 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		if job.GetCreateTime().Before(expirationTime) {
 			plan.MarkJobFailed(*models.EventFromError(
 				orchestrator.EventTopicJobScheduling,
-				orchestrator.NewErrNotEnoughNodes(remainingExecutionCount, append(matching, rejected...))))
+				orchestrator.NewErrNotEnoughNodes(len(remainingPartitions), append(matching, rejected...))))
 			return nil
 		}
 	}
 
 	// create new executions
-	for i := 0; i < min(len(matching), remainingExecutionCount); i++ {
+	for i := 0; i < min(len(matching), len(remainingPartitions)); i++ {
 		execution := &models.Execution{
-			NodeID:       matching[i].NodeInfo.ID(),
-			JobID:        job.ID,
-			Job:          job,
-			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
-			EvalID:       plan.EvalID,
-			Namespace:    job.Namespace,
-			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
-			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+			NodeID:         matching[i].NodeInfo.ID(),
+			JobID:          job.ID,
+			Job:            job,
+			ID:             idgen.ExecutionIDPrefix + uuid.NewString(),
+			EvalID:         plan.EvalID,
+			Namespace:      job.Namespace,
+			ComputeState:   models.NewExecutionState(models.ExecutionStateNew),
+			DesiredState:   models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+			PartitionIndex: remainingPartitions[i],
 		}
 		execution.Normalize()
 		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
 	}
 
-	if len(matching) < remainingExecutionCount {
+	if len(matching) < len(remainingPartitions) {
 		// create a delayed evaluation to retry scheduling the job if we don't have enough nodes,
 		// and we haven't passed the queue timeout
 		waitUntil := b.clock.Now().Add(b.queueBackoff)
-		comment := orchestrator.NewErrNotEnoughNodes(remainingExecutionCount, append(matching, rejected...)).Error()
+		comment := orchestrator.NewErrNotEnoughNodes(len(remainingPartitions), append(matching, rejected...)).Error()
 		delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
 			WithTriggeredBy(models.EvalTriggerJobQueue).
 			WithComment(comment)
@@ -236,6 +280,21 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		}
 	}
 	return nil
+}
+
+// isJobComplete determines if all partitions have completed successfully.
+// For a job with Count = N, this means:
+// - We have exactly N completed partitions (one per index 0 to N-1)
+// - Each partition has exactly one successful execution
+// Only applicable to batch jobs as service jobs run continuously.
+func (b *BatchServiceJobScheduler) isJobComplete(job *models.Job, existingExecs execSet) bool {
+	if job.Type != models.JobTypeBatch {
+		return false
+	}
+	if len(existingExecs.completedPartitions()) < job.Count {
+		return false
+	}
+	return true
 }
 
 // compile-time assertion that BatchServiceJobScheduler satisfies the Scheduler interface
