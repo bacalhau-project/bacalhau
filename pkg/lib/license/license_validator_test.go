@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Ignoring spell check for file due to the abundance of JWT slugs
+// cSpell:disable
 var testJWKS = json.RawMessage(`{
 	"keys": [
 		{

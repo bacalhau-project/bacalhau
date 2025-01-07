@@ -33,7 +33,6 @@ ignorePaths:
     - webui/build
     - webui/node_modules
     - webui/lib/api/generated/**
-    - pkg/lib/license/license_validator_test.go
 
 # Patterns to ignore
 ignoreRegExpList:
