@@ -24,8 +24,7 @@ type LicenseClaims struct {
 	LicenseType    string            `json:"license_type,omitempty"`
 	LicenseVersion string            `json:"license_version,omitempty"`
 	CustomerID     string            `json:"customer_id,omitempty"`
-	Features       []string          `json:"features,omitempty"`
-	Limitations    map[string]string `json:"limitations,omitempty"`
+	Capabilities   map[string]string `json:"capabilities,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
@@ -108,6 +107,37 @@ func (v *LicenseValidator) validateAdditionalConstraints(claims *LicenseClaims) 
 		return fmt.Errorf("license is not yet valid")
 	}
 
-	// Add any other custom validation logic here
+	// Only perform additional validations for v1 licenses
+	if claims.LicenseVersion == "v1" {
+		// Verify product name
+		if claims.Product != "Bacalhau" {
+			return fmt.Errorf("invalid product: expected 'Bacalhau', got '%s'", claims.Product)
+		}
+
+		// Verify required fields are not empty
+		if claims.LicenseID == "" {
+			return fmt.Errorf("license_id is required")
+		}
+		if claims.LicenseType == "" {
+			return fmt.Errorf("license_type is required")
+		}
+		if claims.CustomerID == "" {
+			return fmt.Errorf("customer_id is required")
+		}
+		if claims.Subject == "" {
+			return fmt.Errorf("subject is required")
+		}
+		if claims.ID == "" {
+			return fmt.Errorf("jti is required")
+		}
+
+		// Verify issuer
+		if claims.Issuer != "https://expanso.io/" {
+			return fmt.Errorf("invalid issuer: expected 'https://expanso.io/', got '%s'", claims.Issuer)
+		}
+	} else {
+		return fmt.Errorf("unsupported license version: %s", claims.LicenseVersion)
+	}
+
 	return nil
 }
