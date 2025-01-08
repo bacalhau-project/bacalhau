@@ -43,13 +43,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldCreateNewExecutions() {
 	s.mockMatchingNodes(scenario, "node0", "node1", "node2")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:               scenario.evaluation,
-		JobState:                 models.JobStateTypeRunning,
-		NewExecutionDesiredState: models.ExecutionDesiredStateRunning,
-		NewExecutionsNodes: []string{
-			"node0",
-			"node1",
-			"node2",
+		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeRunning,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node1", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node2", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -84,8 +83,7 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealt
 	s.mockAllNodes("node1")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		NewExecutionsNodes: []string{},
+		Evaluation: scenario.evaluation,
 		StoppedExecutions: []string{
 			scenario.executions[0].ID,
 		},

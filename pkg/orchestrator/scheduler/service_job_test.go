@@ -30,9 +30,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_AlreadyEnoughExecutions() {
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateBidAccepted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 2),
 	)
 	s.mockJobStore(scenario)
 	s.mockAllNodes("node0", "node1", "node2")
@@ -49,9 +49,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(2),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateBidAccepted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 0), // Same partition as first one
+		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 1), // Different partition
 	)
 	scenario.executions[1].Revision = scenario.executions[0].Revision + 1
 	scenario.executions[2].Revision = scenario.executions[0].Revision + 1
@@ -71,9 +71,9 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateBidAccepted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 2),
 	)
 	s.mockJobStore(scenario)
 
@@ -82,9 +82,12 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 	s.mockMatchingNodes(scenario, "node0", "node3")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		NewExecutionsNodes: []string{"node0", "node3"},
-		StoppedExecutions:  []string{scenario.executions[1].ID, scenario.executions[2].ID},
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 1},
+			{NodeID: "node3", PartitionIndex: 2},
+		},
+		StoppedExecutions: []string{scenario.executions[1].ID, scenario.executions[2].ID},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
@@ -96,9 +99,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TreatCompletedExecutionsAsFai
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateCompleted),
-		WithExecution("node1", models.ExecutionStateCompleted),
-		WithExecution("node2", models.ExecutionStateAskForBid),
+		WithPartitionedExecution("node0", models.ExecutionStateCompleted, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateCompleted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateAskForBid, 2),
 	)
 	s.mockJobStore(scenario)
 	s.mockAllNodes("node0", "node1", "node2")
@@ -106,9 +109,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TreatCompletedExecutionsAsFai
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		NewExecutionsNodes: []string{
-			"node0",
-			"node1",
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 0},
+			{NodeID: "node1", PartitionIndex: 1},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -119,9 +122,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreN
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateBidAccepted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 2),
 	)
 	s.mockJobStore(scenario)
 
@@ -146,9 +149,9 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 	scenario := NewScenario(
 		WithJobType(models.JobTypeService),
 		WithCount(3),
-		WithExecution("node0", models.ExecutionStateAskForBid),
-		WithExecution("node1", models.ExecutionStateBidAccepted),
-		WithExecution("node2", models.ExecutionStateBidAccepted),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 2),
 	)
 	s.mockJobStore(scenario)
 	s.scheduler.retryStrategy = retry.NewFixedStrategy(retry.FixedStrategyParams{ShouldRetry: false})

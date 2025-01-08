@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 func TestExecSet_FilterNonTerminal(t *testing.T) {
@@ -45,20 +46,6 @@ func TestExecSet_FilterByState(t *testing.T) {
 	assert.ElementsMatch(t, filtered3.keys(), []string{"exec4"})
 }
 
-func TestExecSet_FilterRunning(t *testing.T) {
-	executions := []*models.Execution{
-		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
-		{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted)},
-		{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
-	}
-
-	set := execSetFromSlice(executions)
-	filtered := set.filterRunning()
-
-	assert.Len(t, filtered, 1)
-	assert.ElementsMatch(t, filtered.keys(), []string{"exec1"})
-}
-
 func TestExecSet_FilterFailed(t *testing.T) {
 	executions := []*models.Execution{
 		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
@@ -93,36 +80,6 @@ func TestExecSet_Union(t *testing.T) {
 	assert.Equal(t, models.ExecutionStateCompleted, union["exec2"].ComputeState.StateType)
 }
 
-func TestExecSet_CountByState(t *testing.T) {
-	executions := []*models.Execution{
-		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
-		{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
-		{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
-		{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
-	}
-
-	set := execSetFromSlice(executions)
-	counts := set.countByState()
-
-	assert.Equal(t, 2, counts[models.ExecutionStateBidAccepted])
-	assert.Equal(t, 1, counts[models.ExecutionStateFailed])
-	assert.Equal(t, 1, counts[models.ExecutionStateCompleted])
-}
-
-func TestExecSet_CountCompleted(t *testing.T) {
-	executions := []*models.Execution{
-		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
-		{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
-		{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
-		{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
-	}
-
-	set := execSetFromSlice(executions)
-	count := set.countCompleted()
-
-	assert.Equal(t, 2, count)
-}
-
 func TestExecSet_String(t *testing.T) {
 	executions := []*models.Execution{
 		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
@@ -137,19 +94,6 @@ func TestExecSet_String(t *testing.T) {
 	assert.Contains(t, str, `"exec1":`)
 	assert.Contains(t, str, `"exec2":`)
 	assert.Contains(t, str, `"exec3":`)
-}
-
-func TestExecSet_has(t *testing.T) {
-	executions := []*models.Execution{
-		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
-		{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
-	}
-
-	set := execSetFromSlice(executions)
-
-	assert.True(t, set.has("exec1"))
-	assert.True(t, set.has("exec2"))
-	assert.False(t, set.has("exec3"))
 }
 
 func TestExecSet_FilterByNodeHealth(t *testing.T) {
@@ -173,45 +117,70 @@ func TestExecSet_FilterByNodeHealth(t *testing.T) {
 	assert.ElementsMatch(t, lost.keys(), []string{"exec3"})
 }
 
-func TestExecSet_FilterByOverSubscription(t *testing.T) {
-	desiredCount := 3
-	now := time.Now()
+func TestExecSet_GetApprovalStatuses(t *testing.T) {
+	t.Run("with completed execution", func(t *testing.T) {
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted)},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		}
 
-	executions := []*models.Execution{
-		{ID: "exec1", ModifyTime: now.UnixNano()},
-		{ID: "exec2", ModifyTime: now.Add(time.Second).UnixNano()},
-		{ID: "exec3", ModifyTime: now.Add(2 * time.Second).UnixNano()},
-		{ID: "exec4", ModifyTime: now.Add(3 * time.Second).UnixNano()},
-		{ID: "exec5", ModifyTime: now.Add(4 * time.Second).UnixNano()},
-	}
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
 
-	set := execSetFromSlice(executions)
-	remaining, overSubscriptions := set.filterByOverSubscriptions(desiredCount)
+		assert.Empty(t, status.toApprove)
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec2"})
+		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec3"})
+	})
 
-	assert.ElementsMatch(t, remaining.keys(), []string{"exec1", "exec2", "exec3"})
-	assert.ElementsMatch(t, overSubscriptions.keys(), []string{"exec4", "exec5"})
-}
+	t.Run("with running execution", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
+		}
 
-func TestExecSet_FilterByApprovalStatus(t *testing.T) {
-	desiredCount := 3
-	now := time.Now()
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
 
-	executions := []*models.Execution{
-		{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.UnixNano()},
-		{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
-		{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
-		{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(3 * time.Second).UnixNano()},
-		{ID: "exec5", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.Add(4 * time.Second).UnixNano()},
-	}
+		assert.Empty(t, status.toApprove)
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec3"})
+		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec2"})
+	})
 
-	set := execSetFromSlice(executions)
-	approvalStatus := set.filterByApprovalStatus(desiredCount)
+	t.Run("with only pending executions", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
+		}
 
-	assert.ElementsMatch(t, approvalStatus.running.keys(), []string{"exec3", "exec4"})
-	assert.ElementsMatch(t, approvalStatus.toApprove.keys(), []string{"exec1"})
-	assert.ElementsMatch(t, approvalStatus.toReject.keys(), []string{"exec2"})
-	assert.ElementsMatch(t, approvalStatus.pending.keys(), []string{})
-	assert.Equal(t, 3, approvalStatus.activeCount())
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
+
+		assert.ElementsMatch(t, status.toApprove.keys(), []string{"exec1"})
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec2"})
+		assert.Empty(t, status.toCancel)
+	})
+
+	t.Run("mix of all states", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBid), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
+			{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateFailed), ModifyTime: now.Add(3 * time.Second).UnixNano()},
+			{ID: "exec5", ComputeState: models.NewExecutionState(models.ExecutionStateCancelled), ModifyTime: now.Add(4 * time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
+
+		assert.Empty(t, status.toApprove)
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec2"})
+		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec1"})
+	})
 }
 
 func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
@@ -239,4 +208,80 @@ func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
 	assert.Len(t, timedOutExecs, 2)
 	assert.Contains(t, timedOutExecs, "exec2")
 	assert.Contains(t, timedOutExecs, "exec3")
+}
+
+func TestExecSet_GroupByPartition(t *testing.T) {
+	executions := []*models.Execution{
+		{ID: "exec1", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec2", PartitionIndex: 1, ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
+		{ID: "exec3", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		{ID: "exec4", PartitionIndex: 2, ComputeState: models.NewExecutionState(models.ExecutionStateRunning)},
+	}
+
+	set := execSetFromSlice(executions)
+	groups := set.groupByPartition()
+
+	assert.Len(t, groups, 3)    // Should have 3 partitions
+	assert.Len(t, groups[0], 2) // Partition 0 has 2 executions
+	assert.Len(t, groups[1], 1) // Partition 1 has 1 execution
+	assert.Len(t, groups[2], 1) // Partition 2 has 1 execution
+
+	// Verify executions in partition 0
+	assert.ElementsMatch(t, groups[0].keys(), []string{"exec1", "exec3"})
+}
+
+func TestExecSet_CompletedPartitions(t *testing.T) {
+	executions := []*models.Execution{
+		{ID: "exec1", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec2", PartitionIndex: 1, ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		{ID: "exec3", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		{ID: "exec4", PartitionIndex: 2, ComputeState: models.NewExecutionState(models.ExecutionStateRunning)},
+	}
+
+	set := execSetFromSlice(executions)
+	completed := set.completedPartitions()
+
+	assert.Len(t, completed, 2)   // Should have 2 completed partitions
+	assert.True(t, completed[0])  // Partition 0 is completed
+	assert.True(t, completed[1])  // Partition 1 is completed
+	assert.False(t, completed[2]) // Partition 2 is not completed
+}
+
+func TestExecSet_UsedPartitions(t *testing.T) {
+	executions := []*models.Execution{
+		{ID: "exec1", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec2", PartitionIndex: 1, ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
+		{ID: "exec3", PartitionIndex: 2, ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		{ID: "exec4", PartitionIndex: 3, ComputeState: models.NewExecutionState(models.ExecutionStateCancelled)},
+	}
+
+	set := execSetFromSlice(executions)
+	used := set.usedPartitions()
+
+	assert.Len(t, used, 2)   // Should have 2 used partitions (running and completed)
+	assert.True(t, used[0])  // Partition 0 is used (running)
+	assert.False(t, used[1]) // Partition 1 is not used (failed)
+	assert.True(t, used[2])  // Partition 2 is used (completed)
+	assert.False(t, used[3]) // Partition 3 is not used (cancelled)
+}
+
+func TestExecSet_RemainingPartitions(t *testing.T) {
+	executions := []*models.Execution{
+		{ID: "exec1", PartitionIndex: 0, ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+		{ID: "exec2", PartitionIndex: 1, ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
+		{ID: "exec3", PartitionIndex: 2, ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		{ID: "exec4", PartitionIndex: 3, ComputeState: models.NewExecutionState(models.ExecutionStateCancelled)},
+	}
+
+	set := execSetFromSlice(executions)
+
+	// Test with total partitions = 5
+	remaining := set.remainingPartitions(5)
+	assert.Len(t, remaining, 3) // Should have partitions 1, 3, and 4 remaining
+	assert.ElementsMatch(t, remaining, []int{1, 3, 4})
+
+	// Test with exact count
+	remaining = set.remainingPartitions(4)
+	assert.Len(t, remaining, 2) // Should have partitions 1 and 3 remaining
+	assert.ElementsMatch(t, remaining, []int{1, 3})
 }
