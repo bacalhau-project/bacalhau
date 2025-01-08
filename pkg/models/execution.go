@@ -4,6 +4,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -212,6 +213,11 @@ func (e *Execution) Validate() error {
 	)
 	if e.Job != nil {
 		err = errors.Join(err, e.Job.Validate())
+		if (e.Job.Type == JobTypeBatch || e.Job.Type == JobTypeService) && e.Job.Count > 1 {
+			if e.PartitionIndex < 0 || e.PartitionIndex >= e.Job.Count {
+				err = errors.Join(err, fmt.Errorf("partition index must be between 0 and %d", e.Job.Count-1))
+			}
+		}
 	}
 	return err
 }
