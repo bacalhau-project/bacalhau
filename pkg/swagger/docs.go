@@ -1412,6 +1412,10 @@ const docTemplate = `{
                     "description": "NodeID is the node this is being placed on",
                     "type": "string"
                 },
+                "PartitionIndex": {
+                    "description": "PartitionIndex is the index of this execution in the job's total partitions (0-based)\nOnly relevant when Job.Count \u003e 1",
+                    "type": "integer"
+                },
                 "PreviousExecution": {
                     "description": "PreviousExecution is the execution that this execution is replacing",
                     "type": "string"
