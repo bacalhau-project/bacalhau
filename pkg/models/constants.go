@@ -10,6 +10,9 @@ var NoTimeout = time.Duration(math.MaxInt64).Truncate(time.Second)
 const (
 	// DefaultNamespace is the default namespace.
 	DefaultNamespace = "default"
+
+	// EnvVarPrefix is the prefix used for all Bacalhau executions environment variables
+	EnvVarPrefix = "BACALHAU_"
 )
 
 const (

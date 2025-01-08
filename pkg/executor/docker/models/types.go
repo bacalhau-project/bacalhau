@@ -39,6 +39,16 @@ func (c EngineSpec) Validate() error {
 				"must contain absolute path", c.WorkingDirectory)
 		}
 	}
+	// Validate environment variables
+	for _, env := range c.EnvironmentVariables {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) > 0 {
+			if strings.HasPrefix(strings.ToUpper(parts[0]), models.EnvVarPrefix) {
+				return fmt.Errorf("invalid docker engine param: environment variable '%s' cannot start with %s",
+					parts[0], models.EnvVarPrefix)
+			}
+		}
+	}
 	return nil
 }
 

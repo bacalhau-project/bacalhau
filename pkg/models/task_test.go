@@ -189,6 +189,42 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 			validationMode: submissionError,
 			errMsg:         "task resources validation failed",
 		},
+		{
+			name: "Environment variable starting with BACALHAU_",
+			task: &Task{
+				Name:   "invalid-env",
+				Engine: &SpecConfig{Type: "docker"},
+				Env: map[string]string{
+					"BACALHAU_TEST": "value",
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "environment variable 'BACALHAU_TEST' cannot start with BACALHAU_",
+		},
+		{
+			name: "Environment variable starting with bacalhau_ (lowercase)",
+			task: &Task{
+				Name:   "invalid-env-lowercase",
+				Engine: &SpecConfig{Type: "docker"},
+				Env: map[string]string{
+					"bacalhau_test": "value",
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "environment variable 'bacalhau_test' cannot start with BACALHAU_",
+		},
+		{
+			name: "Valid environment variable",
+			task: &Task{
+				Name:   "valid-env",
+				Engine: &SpecConfig{Type: "docker"},
+				Env: map[string]string{
+					"VALID_VAR":   "value",
+					"MY_BACALHAU": "value", // Valid as it doesn't start with BACALHAU_
+				},
+			},
+			validationMode: noError,
+		},
 	}
 
 	for _, tt := range tests {

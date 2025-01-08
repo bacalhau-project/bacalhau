@@ -172,6 +172,7 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 			Inputs:       nil,
 			ResultsDir:   result,
 			EngineParams: spec.Engine,
+			Env:          spec.Env,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
 				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -576,4 +577,77 @@ func (s *ExecutorTestSuite) TestDockerOOM() {
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err)
 	require.Contains(s.T(), result.ErrorMsg, "memory limit exceeded")
+}
+
+func (s *ExecutorTestSuite) TestDockerEnvironmentVariables() {
+	tests := []struct {
+		name      string
+		taskEnv   map[string]string
+		engineEnv []string
+		checkVars []string // variables to check in order
+		want      string
+	}{
+		{
+			name: "task environment variables",
+			taskEnv: map[string]string{
+				"TEST_VAR":    "test_value",
+				"ANOTHER_VAR": "another_value",
+			},
+			checkVars: []string{"TEST_VAR", "ANOTHER_VAR"},
+			want:      "test_value\nanother_value",
+		},
+		{
+			name: "engine environment variables",
+			engineEnv: []string{
+				"TEST_VAR=engine_value",
+				"ENGINE_VAR=engine_only",
+			},
+			checkVars: []string{"TEST_VAR", "ENGINE_VAR"},
+			want:      "engine_value\nengine_only",
+		},
+		{
+			name: "merged environment variables with engine precedence",
+			taskEnv: map[string]string{
+				"TEST_VAR": "task_value",
+				"TASK_VAR": "task_only",
+			},
+			engineEnv: []string{
+				"TEST_VAR=engine_value",
+				"ENGINE_VAR=engine_only",
+			},
+			checkVars: []string{"TEST_VAR", "TASK_VAR", "ENGINE_VAR"},
+			want:      "engine_value\ntask_only\nengine_only",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Create simple script that prints vars in order
+			script := strings.Builder{}
+			for _, v := range tt.checkVars {
+				script.WriteString(fmt.Sprintf("echo $%s\n", v))
+			}
+
+			builder := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
+				WithEntrypoint("sh", "-c", script.String())
+
+			if len(tt.engineEnv) > 0 {
+				builder = builder.WithEnvironmentVariables(tt.engineEnv...)
+			}
+
+			es, err := builder.Build()
+			s.Require().NoError(err)
+
+			task := mock.Task()
+			task.Engine = es
+			task.Env = tt.taskEnv
+
+			result, err := s.runJob(task, uuid.New().String())
+			require.NoError(s.T(), err)
+			require.Zero(s.T(), result.ExitCode, result.STDERR)
+
+			output := strings.TrimSpace(result.STDOUT)
+			s.Equal(tt.want, output)
+		})
+	}
 }
