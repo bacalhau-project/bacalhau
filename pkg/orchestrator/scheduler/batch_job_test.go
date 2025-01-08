@@ -162,9 +162,9 @@ func (s *BatchJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_TotalTime
 	scenario := NewScenario(
 		WithCount(3),
 		WithTotalTimeout(60*time.Minute),
-		WithPartitionedExecution("node0", models.ExecutionStateBidAccepted, 1),
-		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 2),
-		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 3),
+		WithPartitionedExecution("node0", models.ExecutionStateBidAccepted, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+		WithPartitionedExecution("node2", models.ExecutionStateCompleted, 2),
 	)
 
 	// Set the CreateTime to exceed timeout
