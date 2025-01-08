@@ -155,6 +155,30 @@ func TestEngineSpec_Validate(t *testing.T) {
 			},
 			expectedErrorMsg: "invalid docker engine param: 'WorkingDirectory' (\"relative/path\") must contain absolute path",
 		},
+		{
+			name: "Invalid Environment Variable with BACALHAU_ prefix",
+			engineSpec: EngineSpec{
+				Image:                "valid-image",
+				EnvironmentVariables: []string{"BACALHAU_TEST=value"},
+			},
+			expectedErrorMsg: "invalid docker engine param: environment variable 'BACALHAU_TEST' cannot start with BACALHAU_",
+		},
+		{
+			name: "Invalid Environment Variable with bacalhau_ prefix (lowercase)",
+			engineSpec: EngineSpec{
+				Image:                "valid-image",
+				EnvironmentVariables: []string{"bacalhau_test=value"},
+			},
+			expectedErrorMsg: "invalid docker engine param: environment variable 'bacalhau_test' cannot start with BACALHAU_",
+		},
+		{
+			name: "Valid Environment Variables",
+			engineSpec: EngineSpec{
+				Image:                "valid-image",
+				EnvironmentVariables: []string{"VALID_VAR=value", "MY_BACALHAU=value"},
+			},
+			expectedErrorMsg: "",
+		},
 	}
 
 	for _, tt := range tests {

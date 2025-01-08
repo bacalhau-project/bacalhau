@@ -183,6 +183,7 @@ func PrepareRunArguments(
 			Inputs:       inputVolumes,
 			ResultsDir:   resultsDir,
 			EngineParams: engineArgs,
+			Env:          GetExecutionEnvVars(execution),
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
 				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
