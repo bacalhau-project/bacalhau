@@ -78,8 +78,9 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 func (s *StorageProvider) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
-	storageSpec models.InputSource) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(storageSpec.Source)
+	_ *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -93,9 +94,9 @@ func (s *StorageProvider) PrepareStorage(
 	}
 
 	var volume storage.StorageVolume
-	volume, err = s.getFileFromIPFS(ctx, source.CID, storageDirectory, storageSpec.Target)
+	volume, err = s.getFileFromIPFS(ctx, source.CID, storageDirectory, input.Target)
 	if err != nil {
-		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", storageSpec.Target, err)
+		return storage.StorageVolume{}, fmt.Errorf("failed to copy %s to volume: %w", input.Target, err)
 	}
 
 	return volume, nil

@@ -18,6 +18,7 @@ import (
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -320,7 +321,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				Target: "/inputs",
 			}
 
-			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), spec)
+			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), mock.Execution(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)

@@ -95,8 +95,11 @@ func (*InlineStorage) IsInstalled(context.Context) (bool, error) {
 // PrepareStorage extracts the data from the "data:" URL and writes it to a
 // temporary directory. If the data was a compressed tarball, it decompresses it
 // into a directory structure.
-func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory string, spec models.InputSource) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(spec.Source)
+func (i *InlineStorage) PrepareStorage(_ context.Context,
+	storageDirectory string,
+	_ *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -121,7 +124,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempdir,
-			Target: spec.Target,
+			Target: input.Target,
 		}, err
 	} else {
 		tempfile, err := os.CreateTemp(tempdir, "file")
@@ -134,7 +137,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
-			Target: spec.Target,
+			Target: input.Target,
 		}, errors.Join(wErr, cErr)
 	}
 }

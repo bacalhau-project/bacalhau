@@ -80,10 +80,11 @@ func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume models.InputSour
 func (s *NoopStorage) PrepareStorage(
 	ctx context.Context,
 	storageDir string,
-	storageSpec models.InputSource) (storage.StorageVolume, error) {
+	execution *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
 	if s.Config.ExternalHooks.PrepareStorage != nil {
 		handler := s.Config.ExternalHooks.PrepareStorage
-		return handler(ctx, storageDir, storageSpec)
+		return handler(ctx, storageDir, input)
 	}
 	return storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,

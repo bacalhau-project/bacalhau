@@ -107,8 +107,9 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 func (s *StorageProvider) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
-	storageSpec models.InputSource) (storage.StorageVolume, error) {
-	source, err := s3helper.DecodeSourceSpec(storageSpec.Source)
+	execution *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
+	source, err := s3helper.DecodeSourceSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -141,7 +142,7 @@ func (s *StorageProvider) PrepareStorage(
 	volume := storage.StorageVolume{
 		Type:   storage.StorageVolumeConnectorBind,
 		Source: outputDir,
-		Target: storageSpec.Target,
+		Target: input.Target,
 	}
 
 	return volume, nil

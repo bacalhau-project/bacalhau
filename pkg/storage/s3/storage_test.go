@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -235,7 +236,7 @@ func (s *StorageTestSuite) TestStorage() {
 			s.Require().NoError(err)
 			s.Equal(uint64(len(tc.expectedOutputs)*4), size) // each file is 4 bytes long
 
-			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
+			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), mock.Execution(), storageSpec)
 			s.Require().NoError(err)
 
 			// check that the files are there
@@ -273,7 +274,7 @@ func (s *StorageTestSuite) TestNotFound() {
 	_, err := s.Storage.GetVolumeSize(ctx, storageSpec)
 	s.Require().Error(err)
 
-	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
+	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), mock.Execution(), storageSpec)
 	s.Require().Error(err)
 }
 

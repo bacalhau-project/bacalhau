@@ -20,6 +20,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -61,7 +62,7 @@ func (s *ParallelStorageSuite) TestIPFSCleanup() {
 		},
 		Target: "/inputs/test.txt",
 	}
-	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), artifact)
+	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), mock.Execution(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
@@ -98,7 +99,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		Target: "/inputs/test.txt",
 	}
 
-	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), artifact)
+	volumes, err := storage.ParallelPrepareStorage(ctx, s.provider, s.T().TempDir(), mock.Execution(), artifact)
 	require.NoError(s.T(), err)
 
 	// Make a list of which files we expect to find written to local disk and check they are
