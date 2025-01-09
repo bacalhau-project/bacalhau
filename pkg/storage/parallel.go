@@ -45,9 +45,6 @@ func ParallelPrepareStorage(
 		return nil
 	}
 
-	if len(inputs) == 0 {
-		inputs = execution.Job.Task().InputSources
-	}
 	out := make([]PreparedStorage, len(inputs))
 	for i, spec := range inputs {
 		// NB: https://golang.org/doc/faq#closures_and_goroutines

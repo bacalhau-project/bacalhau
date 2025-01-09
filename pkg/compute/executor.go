@@ -67,7 +67,8 @@ func prepareInputVolumes(
 	execution *models.Execution) (
 	[]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, execution)
+	inputVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
