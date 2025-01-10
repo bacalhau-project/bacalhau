@@ -20,7 +20,10 @@ type Storage interface {
 
 	// PrepareStorage is provided an output directory, and an InputSource and
 	// is expected to retrieve the InputSource into the output directory.
-	PrepareStorage(context.Context, string, models.InputSource) (StorageVolume, error)
+	PrepareStorage(ctx context.Context,
+		storageDirectory string,
+		execution *models.Execution,
+		storageSpec models.InputSource) (StorageVolume, error)
 
 	CleanupStorage(context.Context, models.InputSource, StorageVolume) error
 

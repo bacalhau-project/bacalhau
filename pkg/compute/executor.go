@@ -63,10 +63,12 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 func prepareInputVolumes(
 	ctx context.Context,
 	storageProvider storage.StorageProvider,
-	storageDirectory string, inputSources ...*models.InputSource) (
+	storageDirectory string,
+	execution *models.Execution) (
 	[]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, inputSources...)
+	inputVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,15 +80,19 @@ func prepareInputVolumes(
 func prepareWasmVolumes(
 	ctx context.Context,
 	storageProvider storage.StorageProvider,
-	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
+	storageDirectory string,
+	execution *models.Execution,
+	wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.ImportModules...)
+	importModuleVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.EntryModule)
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -130,7 +136,7 @@ func PrepareRunArguments(
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution.Job.Task().InputSources...)
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -159,7 +165,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, wasmEngine)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, execution, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}

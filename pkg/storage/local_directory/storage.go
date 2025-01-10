@@ -68,9 +68,10 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.In
 func (driver *StorageProvider) PrepareStorage(
 	_ context.Context,
 	_ string,
-	storageSpec models.InputSource,
+	_ *models.Execution,
+	input models.InputSource,
 ) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(storageSpec.Source)
+	source, err := DecodeSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -81,7 +82,7 @@ func (driver *StorageProvider) PrepareStorage(
 		Type:     storage.StorageVolumeConnectorBind,
 		ReadOnly: !source.ReadWrite,
 		Source:   source.SourcePath,
-		Target:   storageSpec.Target,
+		Target:   input.Target,
 	}, nil
 }
 
