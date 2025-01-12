@@ -38,11 +38,11 @@ func (t *tracingStorage) HasStorageLocally(ctx context.Context, spec models.Inpu
 	return t.delegate.HasStorageLocally(ctx, spec)
 }
 
-func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.InputSource) (uint64, error) {
+func (t *tracingStorage) GetVolumeSize(ctx context.Context, execution *models.Execution, spec models.InputSource) (uint64, error) {
 	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.GetVolumeSize", t.name))
 	defer span.End()
 
-	return t.delegate.GetVolumeSize(ctx, spec)
+	return t.delegate.GetVolumeSize(ctx, execution, spec)
 }
 
 func (t *tracingStorage) PrepareStorage(

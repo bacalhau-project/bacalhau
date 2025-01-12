@@ -69,7 +69,7 @@ func (s *NoopStorage) HasStorageLocally(ctx context.Context, volume models.Input
 }
 
 // we wrap this in a timeout because if the CID is not present on the network this seems to hang
-func (s *NoopStorage) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
+func (s *NoopStorage) GetVolumeSize(ctx context.Context, _ *models.Execution, volume models.InputSource) (uint64, error) {
 	if s.Config.ExternalHooks.GetVolumeSize != nil {
 		handler := s.Config.ExternalHooks.GetVolumeSize
 		return handler(ctx, volume)

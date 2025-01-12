@@ -387,7 +387,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 		Target: "/inputs",
 	}
 
-	vs, err := subject.GetVolumeSize(context.Background(), spec)
+	vs, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().NoError(err)
 
 	s.Equal(uint64(500), vs, "content-length does not match")
@@ -428,7 +428,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 		Target: "/inputs",
 	}
 
-	_, err := subject.GetVolumeSize(context.Background(), spec)
+	_, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().ErrorIs(err, ErrNoContentLengthFound)
 
 }

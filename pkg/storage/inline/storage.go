@@ -64,7 +64,7 @@ func (i *InlineStorage) CleanupStorage(_ context.Context, _ models.InputSource, 
 
 // For an inline storage, we define the volume size as uncompressed data size,
 // as this is how much resource using the storage will take up.
-func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.InputSource) (uint64, error) {
+func (i *InlineStorage) GetVolumeSize(_ context.Context, _ *models.Execution, spec models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(spec.Source)
 	if err != nil {
 		return 0, err

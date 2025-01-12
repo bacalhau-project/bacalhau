@@ -48,7 +48,7 @@ func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model
 	return true, nil
 }
 
-func (driver *StorageProvider) GetVolumeSize(_ context.Context, volume models.InputSource) (uint64, error) {
+func (driver *StorageProvider) GetVolumeSize(_ context.Context, _ *models.Execution, volume models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(volume.Source)
 	if err != nil {
 		return 0, err

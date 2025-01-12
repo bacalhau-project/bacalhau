@@ -80,7 +80,7 @@ func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.InputSource) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ *models.Execution, storageSpec models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return 0, err

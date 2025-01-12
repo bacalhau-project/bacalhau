@@ -23,16 +23,17 @@ func NewDiskUsageCalculator(params DiskUsageCalculatorParams) *DiskUsageCalculat
 	}
 }
 
-func (c *DiskUsageCalculator) Calculate(ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+func (c *DiskUsageCalculator) Calculate(
+	ctx context.Context, execution *models.Execution, parsedUsage models.Resources) (*models.Resources, error) {
 	requirements := &models.Resources{}
 
 	var totalDiskRequirements uint64 = 0
-	for _, input := range job.Task().InputSources {
+	for _, input := range execution.Job.Task().InputSources {
 		strg, err := c.storages.Get(ctx, input.Source.Type)
 		if err != nil {
 			return nil, err
 		}
-		volumeSize, err := strg.GetVolumeSize(ctx, *input)
+		volumeSize, err := strg.GetVolumeSize(ctx, execution, *input)
 		if err != nil {
 			return nil, bacerrors.Wrap(err, "error getting job disk space requirements")
 		}
