@@ -39,7 +39,7 @@ type UsageTracker interface {
 // UsageCalculator calculates the resource usage of a job.
 // Can also be used to populate the resource usage of a job with default values if not defined
 type UsageCalculator interface {
-	Calculate(ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error)
+	Calculate(ctx context.Context, execution *models.Execution, parsedUsage models.Resources) (*models.Resources, error)
 }
 
 // Provider returns the available capacity of a compute node.

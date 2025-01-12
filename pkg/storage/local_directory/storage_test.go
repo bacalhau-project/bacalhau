@@ -206,7 +206,7 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
 			require.NoError(s.T(), err)
 
-			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), s.prepareStorageSpec(tc.sourcePath))
+			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), mock.Execution(), s.prepareStorageSpec(tc.sourcePath))
 			if tc.shouldFail {
 				require.Error(s.T(), err)
 				return

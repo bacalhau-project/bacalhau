@@ -46,7 +46,7 @@ func NewBidder(params BidderParams) Bidder {
 }
 
 func (b Bidder) RunBidding(ctx context.Context, execution *models.Execution) error {
-	bidResult, err := b.doBidding(ctx, execution.Job)
+	bidResult, err := b.doBidding(ctx, execution)
 	if err != nil {
 		return b.handleError(ctx, execution, err)
 	}
@@ -62,11 +62,11 @@ func (b Bidder) RunBidding(ctx context.Context, execution *models.Execution) err
 // |      true         |      true         |   true     |
 // |      true         |      false        |   false    |
 // |      false        |       N/A         |   false    |
-func (b Bidder) doBidding(ctx context.Context, job *models.Job) (*bidStrategyResponse, error) {
+func (b Bidder) doBidding(ctx context.Context, execution *models.Execution) (*bidStrategyResponse, error) {
 	// NB(forrest): always run semantic bidding before resource bidding since generally there isn't much point in
 	// calling resource strategies that require DiskUsageCalculator.Calculate (a precursor to checking bidding) if
 	// semantically the job cannot run.
-	semanticResponse, err := b.runSemanticBidding(ctx, job)
+	semanticResponse, err := b.runSemanticBidding(ctx, execution)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (b Bidder) doBidding(ctx context.Context, job *models.Job) (*bidStrategyRes
 	}
 
 	// else the request is semantically biddable, calculate resource usage and check resource-based bidding.
-	resourceResponse, err := b.runResourceBidding(ctx, job)
+	resourceResponse, err := b.runResourceBidding(ctx, execution)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +85,10 @@ func (b Bidder) doBidding(ctx context.Context, job *models.Job) (*bidStrategyRes
 	return resourceResponse, nil
 }
 
-func (b Bidder) runSemanticBidding(ctx context.Context, job *models.Job) (*bidStrategyResponse, error) {
+func (b Bidder) runSemanticBidding(ctx context.Context, execution *models.Execution) (*bidStrategyResponse, error) {
 	// ask the bidding strategy if we should bid on this job
 	request := bidstrategy.BidStrategyRequest{
-		Job: *job,
+		Job: *execution.Job,
 	}
 
 	// assume we are bidding unless a request is rejected
@@ -125,21 +125,21 @@ func (b Bidder) runSemanticBidding(ctx context.Context, job *models.Job) (*bidSt
 	}, nil
 }
 
-func (b Bidder) runResourceBidding(ctx context.Context, job *models.Job) (*bidStrategyResponse, error) {
+func (b Bidder) runResourceBidding(ctx context.Context, execution *models.Execution) (*bidStrategyResponse, error) {
 	// parse job resource config
-	parsedUsage, err := job.Task().ResourcesConfig.ToResources()
+	parsedUsage, err := execution.Job.Task().ResourcesConfig.ToResources()
 	if err != nil {
 		return nil, fmt.Errorf("parsing job resource config: %w", err)
 	}
 	// calculate resource usage of the job, failure here represents a compute failure.
-	resourceUsage, err := b.usageCalculator.Calculate(ctx, *job, *parsedUsage)
+	resourceUsage, err := b.usageCalculator.Calculate(ctx, execution, *parsedUsage)
 	if err != nil {
 		return nil, fmt.Errorf("calculating resource usage of job: %w", err)
 	}
 
 	// ask the bidding strategy if we should bid on this job
 	request := bidstrategy.BidStrategyRequest{
-		Job: *job,
+		Job: *execution.Job,
 	}
 
 	// assume we are bidding unless a request is rejected

@@ -31,14 +31,6 @@ The storage provider supports downloading:
 - a prefix and all objects matching the prefix: s3://myBucket/dir/file-*
 */
 
-type s3ObjectSummary struct {
-	key       *string
-	eTag      *string
-	versionID *string
-	size      int64
-	isDir     bool
-}
-
 type StorageProviderParams struct {
 	ClientProvider *s3helper.ClientProvider
 }
@@ -70,7 +62,7 @@ func (s *StorageProvider) HasStorageLocally(_ context.Context, _ models.InputSou
 	return false, nil
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, execution *models.Execution, volume models.InputSource) (uint64, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
@@ -84,22 +76,28 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 	if err != nil {
 		return 0, err
 	}
+
+	objects, err = s3helper.PartitionObjects(objects, execution.Job.Count, execution.PartitionIndex, source)
+	if err != nil {
+		return 0, err
+	}
+
 	var size uint64
 	for _, object := range objects {
 		// Check for negative size
-		if object.size < 0 {
-			return 0, fmt.Errorf("invalid negative size for object: %d", object.size)
+		if object.Size < 0 {
+			return 0, fmt.Errorf("invalid negative size for object: %d", object.Size)
 		}
 
 		// Check for overflow
 		// MaxUint64 - size = remaining space before overflow
 		//nolint:gosec // G115: negative values already checked
-		if object.size > 0 && uint64(object.size) > math.MaxUint64-size {
+		if object.Size > 0 && uint64(object.Size) > math.MaxUint64-size {
 			return 0, fmt.Errorf("total size exceeds uint64 maximum")
 		}
 
 		//nolint:gosec // G115: Already checked above
-		size += uint64(object.size)
+		size += uint64(object.Size)
 	}
 	return size, nil
 }
@@ -130,6 +128,11 @@ func (s *StorageProvider) PrepareStorage(
 		return storage.StorageVolume{}, err
 	}
 
+	objects, err = s3helper.PartitionObjects(objects, execution.Job.Count, execution.PartitionIndex, source)
+	if err != nil {
+		return storage.StorageVolume{}, err
+	}
+
 	prefixTokens := strings.Split(s.sanitizeKey(source.Key), "/")
 
 	for _, object := range objects {
@@ -152,11 +155,11 @@ func (s *StorageProvider) PrepareStorage(
 func (s *StorageProvider) downloadObject(ctx context.Context,
 	client *s3helper.ClientWrapper,
 	source s3helper.SourceSpec,
-	object s3ObjectSummary,
+	object s3helper.ObjectSummary,
 	parentDir string,
 	prefixTokens []string) error {
 	// trim the user supplied prefix from the object local path
-	objectTokens := strings.Split(*object.key, "/")
+	objectTokens := strings.Split(*object.Key, "/")
 	startingIndex := 0
 	for i := 0; i < len(prefixTokens)-1; i++ {
 		if prefixTokens[i] == objectTokens[i] {
@@ -168,10 +171,6 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 
 	// relative output path to the supplied prefix
 	outputPath := filepath.Join(parentDir, filepath.Join(objectTokens[startingIndex:]...))
-
-	if object.isDir {
-		return os.MkdirAll(outputPath, models.DownloadFolderPerm)
-	}
 
 	// create all parent directories if needed
 	err := os.MkdirAll(filepath.Dir(outputPath), models.DownloadFolderPerm)
@@ -187,12 +186,12 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	defer outputFile.Close() //nolint:errcheck
 
 	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
-		source.Bucket, aws.ToString(object.key), aws.ToString(object.versionID), aws.ToString(object.eTag), outputFile.Name())
+		source.Bucket, aws.ToString(object.Key), aws.ToString(object.VersionID), aws.ToString(object.ETag), outputFile.Name())
 	_, err = client.Downloader.Download(ctx, outputFile, &s3.GetObjectInput{
 		Bucket:    aws.String(source.Bucket),
-		Key:       object.key,
-		VersionId: object.versionID,
-		IfMatch:   object.eTag,
+		Key:       object.Key,
+		VersionId: object.VersionID,
+		IfMatch:   object.ETag,
 	})
 	if err != nil {
 		return s3helper.NewS3InputSourceServiceError(err)
@@ -219,7 +218,8 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 
 //nolint:gocyclo
 func (s *StorageProvider) explodeKey(
-	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) ([]s3ObjectSummary, error) {
+	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) (
+	[]s3helper.ObjectSummary, error) {
 	if storageSpec.Key != "" && !strings.HasSuffix(storageSpec.Key, "*") && !strings.HasSuffix(storageSpec.Key, "/") {
 		request := &s3.HeadObjectInput{
 			Bucket: aws.String(storageSpec.Bucket),
@@ -242,15 +242,15 @@ func (s *StorageProvider) explodeKey(
 				storageSpec.Bucket, storageSpec.Key, storageSpec.ChecksumSHA256, aws.ToString(headResp.ChecksumSHA256))
 		}
 		if headResp.ContentType != nil && !strings.HasPrefix(*headResp.ContentType, "application/x-directory") {
-			objectSummary := s3ObjectSummary{
-				key:  aws.String(storageSpec.Key),
-				size: *headResp.ContentLength,
-				eTag: headResp.ETag,
+			objectSummary := s3helper.ObjectSummary{
+				Key:  aws.String(storageSpec.Key),
+				Size: *headResp.ContentLength,
+				ETag: headResp.ETag,
 			}
 			if storageSpec.VersionID != "" {
-				objectSummary.versionID = aws.String(storageSpec.VersionID)
+				objectSummary.VersionID = aws.String(storageSpec.VersionID)
 			}
-			return []s3ObjectSummary{objectSummary}, nil
+			return []s3helper.ObjectSummary{objectSummary}, nil
 		}
 	}
 
@@ -262,7 +262,7 @@ func (s *StorageProvider) explodeKey(
 
 	// if the key is a directory, or ends with a wildcard, we need to list the objects starting with the key
 	sanitizedKey := s.sanitizeKey(storageSpec.Key)
-	res := make([]s3ObjectSummary, 0)
+	res := make([]s3helper.ObjectSummary, 0)
 	var continuationToken *string
 	for {
 		resp, err := client.S3.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
@@ -280,10 +280,10 @@ func (s *StorageProvider) explodeKey(
 					continue
 				}
 			}
-			res = append(res, s3ObjectSummary{
-				key:   object.Key,
-				size:  *object.Size,
-				isDir: strings.HasSuffix(*object.Key, "/"),
+			res = append(res, s3helper.ObjectSummary{
+				Key:   object.Key,
+				Size:  *object.Size,
+				IsDir: strings.HasSuffix(*object.Key, "/"),
 			})
 		}
 		if !*resp.IsTruncated {

@@ -28,7 +28,7 @@ func TestPlaintextInlineStorage(t *testing.T) {
 
 	inputSource := models.InputSource{Source: &spec, Target: "target"}
 
-	size, err := storage.GetVolumeSize(context.Background(), inputSource)
+	size, err := storage.GetVolumeSize(context.Background(), mock.Execution(), inputSource)
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")), size)
 
@@ -55,7 +55,7 @@ func TestDirectoryInlineStorage(t *testing.T) {
 
 	inputSource := models.InputSource{Source: &spec, Target: "target"}
 
-	size, err := storage.GetVolumeSize(context.Background(), inputSource)
+	size, err := storage.GetVolumeSize(context.Background(), mock.Execution(), inputSource)
 	require.NoError(t, err)
 	require.Equal(t, uint64(len("test")+len("more")), size)
 
