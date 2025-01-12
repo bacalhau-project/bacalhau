@@ -9,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -17,7 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/webui"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
@@ -27,12 +26,12 @@ import (
 )
 
 var (
-	devStackLong = templates.LongDesc(i18n.T(`
+	devStackLong = templates.LongDesc(`
 		Start a cluster of nodes and run a job on them.
-`))
+`)
 
 	//nolint:lll // Documentation
-	devstackExample = templates.Examples(i18n.T(`
+	devstackExample = templates.Examples(`
 		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
 		bacalhau devstack
 
@@ -44,7 +43,7 @@ var (
 
 		# Run a devstack and create (or use) the config repo in a specific folder
 		bacalhau devstack  --stack-repo ./my-devstack-configuration
-`))
+`)
 )
 
 type options struct {
