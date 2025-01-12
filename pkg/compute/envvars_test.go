@@ -29,7 +29,6 @@ func TestGetExecutionEnvVars(t *testing.T) {
 			},
 			want: map[string]string{
 				"BACALHAU_EXECUTION_ID": "exec-1",
-				"BACALHAU_NODE_ID":      "node-1",
 			},
 		},
 		{
@@ -53,10 +52,7 @@ func TestGetExecutionEnvVars(t *testing.T) {
 			},
 			want: map[string]string{
 				"BACALHAU_EXECUTION_ID":    "exec-1",
-				"BACALHAU_NODE_ID":         "node-1",
 				"BACALHAU_JOB_ID":          "job-1",
-				"BACALHAU_JOB_NAME":        "test-job",
-				"BACALHAU_JOB_NAMESPACE":   "default",
 				"BACALHAU_JOB_TYPE":        "batch",
 				"BACALHAU_PARTITION_INDEX": "0",
 				"BACALHAU_PARTITION_COUNT": "3",
@@ -77,9 +73,9 @@ func TestGetExecutionEnvVars(t *testing.T) {
 						{
 							Name: "task-1",
 							Env: map[string]string{
-								"MY_VAR":           "my-value",
-								"BACALHAU_NODE_ID": "should-not-override", // Should not override system env
-								"OTHER_VAR":        "other-value",
+								"MY_VAR":            "my-value",
+								"BACALHAU_JOB_TYPE": "should-not-override", // Should not override system env
+								"OTHER_VAR":         "other-value",
 							},
 						},
 					},
@@ -88,10 +84,7 @@ func TestGetExecutionEnvVars(t *testing.T) {
 			},
 			want: map[string]string{
 				"BACALHAU_EXECUTION_ID":    "exec-1",
-				"BACALHAU_NODE_ID":         "node-1", // System value takes precedence
 				"BACALHAU_JOB_ID":          "job-1",
-				"BACALHAU_JOB_NAME":        "test-job",
-				"BACALHAU_JOB_NAMESPACE":   "default",
 				"BACALHAU_JOB_TYPE":        "batch",
 				"BACALHAU_PARTITION_INDEX": "0",
 				"BACALHAU_PARTITION_COUNT": "3",
@@ -120,10 +113,7 @@ func TestGetExecutionEnvVars(t *testing.T) {
 			},
 			want: map[string]string{
 				"BACALHAU_EXECUTION_ID":    "exec-1",
-				"BACALHAU_NODE_ID":         "node-1",
 				"BACALHAU_JOB_ID":          "job-1",
-				"BACALHAU_JOB_NAME":        "test_job_with_spaces", // Sanitized
-				"BACALHAU_JOB_NAMESPACE":   "test_namespace",       // Sanitized
 				"BACALHAU_JOB_TYPE":        "batch",
 				"BACALHAU_PARTITION_INDEX": "0",
 				"BACALHAU_PARTITION_COUNT": "1",

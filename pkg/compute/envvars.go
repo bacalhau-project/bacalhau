@@ -25,13 +25,10 @@ func GetExecutionEnvVars(execution *models.Execution) map[string]string {
 	// Build system environment variables
 	sysEnv := make(map[string]string)
 	sysEnv[models.EnvVarPrefix+"EXECUTION_ID"] = execution.ID
-	sysEnv[models.EnvVarPrefix+"NODE_ID"] = envvar.Sanitize(execution.NodeID)
 
 	// Add job-related environment variables if job exists
 	if execution.Job != nil {
 		sysEnv[models.EnvVarPrefix+"JOB_ID"] = execution.JobID
-		sysEnv[models.EnvVarPrefix+"JOB_NAME"] = envvar.Sanitize(execution.Job.Name)
-		sysEnv[models.EnvVarPrefix+"JOB_NAMESPACE"] = envvar.Sanitize(execution.Job.Namespace)
 		sysEnv[models.EnvVarPrefix+"JOB_TYPE"] = execution.Job.Type
 
 		// Add partition-related environment variables
