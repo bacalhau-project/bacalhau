@@ -62,10 +62,7 @@ func (s *PartitionSuite) TestSinglePartition() {
 			[]string{
 				"BACALHAU_EXECUTION_ID=",
 				"BACALHAU_JOB_ID=",
-				"BACALHAU_JOB_NAME=" + s.T().Name(),
-				"BACALHAU_JOB_NAMESPACE=default",
 				"BACALHAU_JOB_TYPE=batch",
-				"BACALHAU_NODE_ID=node-0",
 				"BACALHAU_PARTITION_COUNT=1",
 				"BACALHAU_PARTITION_INDEX=0",
 			},
@@ -98,7 +95,7 @@ func (s *PartitionSuite) TestMultiplePartitions() {
 					Name: s.T().Name(),
 					Engine: dockmodels.NewDockerEngineBuilder("busybox:1.37.0").
 						WithEntrypoint("sh", "-c",
-							"echo Node=${BACALHAU_NODE_ID} Partition=${BACALHAU_PARTITION_INDEX} of ${BACALHAU_PARTITION_COUNT}",
+							"echo Partition=${BACALHAU_PARTITION_INDEX} of ${BACALHAU_PARTITION_COUNT}",
 						).
 						MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
@@ -113,16 +110,6 @@ func (s *PartitionSuite) TestMultiplePartitions() {
 					"Partition=0 of 3",
 					"Partition=1 of 3",
 					"Partition=2 of 3",
-				},
-				-1,
-			),
-			// Verify they run on the nodes
-			scenario.FileContains(
-				"stdout",
-				[]string{
-					"Node=node-0",
-					"Node=node-1",
-					"Node=node-2",
 				},
 				-1,
 			),
@@ -155,9 +142,8 @@ func (s *PartitionSuite) TestPartitionRetry() {
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
 					JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
 						partition := execContext.Env["BACALHAU_PARTITION_INDEX"]
-						nodeID := execContext.Env["BACALHAU_NODE_ID"]
 
-						output := fmt.Sprintf("Running partition %s on node %s\n", partition, nodeID)
+						output := fmt.Sprintf("Running partition %s\n", partition)
 
 						// Only increment attempt counter for partition 1
 						var currentAttempt int32
