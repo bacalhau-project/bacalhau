@@ -531,7 +531,7 @@ urllib3==2.2.1
     # via
     #   requests
     #   twine
-virtualenv==20.25.0
+virtualenv==20.26.6
     # via
     #   bacalhau-sdk
     #   pre-commit
