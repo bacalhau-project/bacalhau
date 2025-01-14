@@ -88,7 +88,7 @@ require (
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/MicahParks/jwkset v0.5.19 // indirect
+	github.com/MicahParks/jwkset v0.7.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.6 // indirect
@@ -261,7 +261,7 @@ require (
 	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/term v0.25.0
 	golang.org/x/text v0.20.0 // indirect
-	golang.org/x/time v0.7.0
+	golang.org/x/time v0.9.0
 	golang.org/x/tools v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/grpc v1.67.1 // indirect
