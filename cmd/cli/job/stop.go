@@ -5,12 +5,11 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
@@ -18,29 +17,30 @@ import (
 )
 
 var (
-	stopLong = templates.LongDesc(i18n.T(`
+	stopLong = templates.LongDesc(`
 		Stop a previously submitted job.
-`))
+`)
 
 	//nolint:lll // Documentation
-	stopExample = templates.Examples(i18n.T(`
+	stopExample = templates.Examples(`
 		# Stop a previously submitted job
 		bacalhau job stop j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Stop a job, with a short ID.
 		bacalhau job stop j-51225160
-`))
+`)
 )
 
 var (
-	checkingJobStatusMessage = i18n.T("Checking job status")
-	connectingMessage        = i18n.T("Connecting to network")
-	gettingJobMessage        = i18n.T("Verifying job state")
-	stoppingJobMessage       = i18n.T("Stopping job")
+	checkingJobStatusMessage = "Checking job status"
 
-	jobAlreadyCompleteMessage = i18n.T(`Job is already in a terminal state.
+	connectingMessage  = "Connecting to network"
+	gettingJobMessage  = "Verifying job state"
+	stoppingJobMessage = "Stopping job"
+
+	jobAlreadyCompleteMessage = `Job is already in a terminal state.
 The current state is: %s
-`)
+`
 )
 
 type StopOptions struct {

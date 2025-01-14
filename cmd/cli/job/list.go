@@ -9,9 +9,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -28,16 +27,16 @@ var orderByFields = []string{"id", "created_at"}
 var (
 	listShort = `List submitted jobs.`
 
-	listLong = templates.LongDesc(i18n.T(`
+	listLong = templates.LongDesc(`
 		List submitted jobs.
-`))
+`)
 
-	listExample = templates.Examples(i18n.T(`
+	listExample = templates.Examples(`
 		# List submitted jobs.
 		bacalhau job list
 
 		# List jobs and output as json
-		bacalhau job list --output json --pretty`))
+		bacalhau job list --output json --pretty`)
 
 	// defaultLabelFilter is the default label filter for the list command when
 	// no other labels are specified.
