@@ -5,6 +5,7 @@ package license
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"os"
@@ -35,23 +36,23 @@ func TestInspectMissingLicenseFlag(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Test with no flag
+	// Test with no arguments
 	cmd.SetArgs([]string{})
 	err := cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "required flag \"license-file\" not set")
+	assert.Contains(t, err.Error(), "accepts 1 arg(s), received 0")
 
 	// Test with empty value
-	cmd.SetArgs([]string{"--license-file", ""})
+	cmd.SetArgs([]string{""})
 	err = cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "required flag \"license-file\" not set")
+	assert.Contains(t, err.Error(), "license file path cannot be empty")
 
 	// Test with whitespace value
-	cmd.SetArgs([]string{"--license-file", "   "})
+	cmd.SetArgs([]string{"   "})
 	err = cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "required flag \"license-file\" not set")
+	assert.Contains(t, err.Error(), "license file path cannot be empty")
 }
 
 func TestInspectFileNotFound(t *testing.T) {
@@ -64,13 +65,13 @@ func TestInspectFileNotFound(t *testing.T) {
 	cmd.SetErr(buf)
 
 	// Test with non-existent file
-	cmd.SetArgs([]string{"--license-file", "non-existent-file.json"})
+	cmd.SetArgs([]string{"non-existent-file.json"})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "file not found: non-existent-file.json")
 
 	// Test with non-existent file in a non-existent directory
-	cmd.SetArgs([]string{"--license-file", "non/existent/path/file.json"})
+	cmd.SetArgs([]string{"non/existent/path/file.json"})
 	err = cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "file not found: non/existent/path/file.json")
@@ -97,26 +98,22 @@ func TestInspectCommandOutput(t *testing.T) {
 	cmd.SetErr(buf)
 
 	// Run command with the test file
-	cmd.SetArgs([]string{"--license-file", filePath})
+	cmd.SetArgs([]string{filePath})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	// Check the output contains expected headers
 	output := buf.String()
-	assert.Contains(t, output, "PRODUCT")
-	assert.Contains(t, output, "LICENSE ID")
-	assert.Contains(t, output, "CUSTOMER ID")
-	assert.Contains(t, output, "VALID UNTIL")
-	assert.Contains(t, output, "VERSION")
-	assert.Contains(t, output, "CAPABILITIES")
 
-	// Check the actual values from the valid license
-	assert.Contains(t, output, "Bacalhau")
-	assert.Contains(t, output, "e66d1f3a-a8d8-4d57-8f14-00722844afe2")
-	assert.Contains(t, output, "test-customer-id-123")
-	assert.Contains(t, output, "2045-07-28")
-	assert.Contains(t, output, "v1")
-	assert.Contains(t, output, "max_nodes=1")
+	expectedResult := `Product      = Bacalhau
+License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
+Customer ID  = test-customer-id-123
+Valid Until  = 2045-07-28
+Version      = v1
+Capabilities = max_nodes=1
+Metadata     = {}`
+
+	assert.Contains(t, output, expectedResult)
 }
 
 func TestInspectCommandYAMLOutput(t *testing.T) {
@@ -140,7 +137,7 @@ func TestInspectCommandYAMLOutput(t *testing.T) {
 	cmd.SetErr(buf)
 
 	// Run command with the test file and yaml output format
-	cmd.SetArgs([]string{"--license-file", filePath, "--output", "yaml"})
+	cmd.SetArgs([]string{filePath, "--output", "yaml"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
@@ -151,13 +148,17 @@ func TestInspectCommandYAMLOutput(t *testing.T) {
 
 	// Expected data
 	expectedData := map[string]interface{}{
-		"Product":        "Bacalhau",
-		"LicenseID":      "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
-		"CustomerID":     "test-customer-id-123",
-		"ValidUntil":     "2045-07-28",
-		"LicenseVersion": "v1",
-		"Capabilities":   map[string]interface{}{"max_nodes": "1"},
-		"Metadata":       map[string]interface{}{},
+		"product":         "Bacalhau",
+		"license_id":      "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"license_type":    "standard",
+		"customer_id":     "test-customer-id-123",
+		"exp":             2384881638,
+		"iat":             1736881638,
+		"iss":             "https://expanso.io/",
+		"jti":             "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"sub":             "test-customer-id-123",
+		"license_version": "v1",
+		"capabilities":    map[string]interface{}{"max_nodes": "1"},
 	}
 
 	// Compare the maps
@@ -185,7 +186,7 @@ func TestInspectCommandJSONOutput(t *testing.T) {
 	cmd.SetErr(buf)
 
 	// Run command with the test file and json output format
-	cmd.SetArgs([]string{"--license-file", filePath, "--output", "json"})
+	cmd.SetArgs([]string{filePath, "--output", "json"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
@@ -194,15 +195,27 @@ func TestInspectCommandJSONOutput(t *testing.T) {
 	err = json.Unmarshal(buf.Bytes(), &actualData)
 	require.NoError(t, err, "Failed to parse actual JSON output")
 
+	// Convert the exp and iat values to int64 for consistent comparison
+	if exp, ok := actualData["exp"].(float64); ok {
+		actualData["exp"] = int64(exp)
+	}
+	if iat, ok := actualData["iat"].(float64); ok {
+		actualData["iat"] = int64(iat)
+	}
+
 	// Expected data
 	expectedData := map[string]interface{}{
-		"Product":        "Bacalhau",
-		"LicenseID":      "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
-		"CustomerID":     "test-customer-id-123",
-		"ValidUntil":     "2045-07-28",
-		"LicenseVersion": "v1",
-		"Capabilities":   map[string]interface{}{"max_nodes": "1"},
-		"Metadata":       map[string]interface{}{},
+		"product":         "Bacalhau",
+		"license_id":      "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"license_type":    "standard",
+		"customer_id":     "test-customer-id-123",
+		"exp":             int64(2384881638),
+		"iat":             int64(1736881638),
+		"iss":             "https://expanso.io/",
+		"jti":             "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"sub":             "test-customer-id-123",
+		"license_version": "v1",
+		"capabilities":    map[string]interface{}{"max_nodes": "1"},
 	}
 
 	// Compare the maps
@@ -229,38 +242,55 @@ func TestInspectValidLicenseFile(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Test table output
-	cmd.SetArgs([]string{"--license-file", filePath})
+	// Test key-value output
+	cmd.SetArgs([]string{filePath})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	output := buf.String()
-	assert.Contains(t, output, "Bacalhau")
-	assert.Contains(t, output, "e66d1f3a-a8d8-4d57-8f14-00722844afe2")
-	assert.Contains(t, output, "test-customer-id-123")
-	assert.Contains(t, output, "2045-07-28")
-	assert.Contains(t, output, "v1")
-	assert.Contains(t, output, "max_nodes=1")
-	assert.NotContains(t, output, "METADATA") // Ensure metadata is not in table output
+	expectedOutput := `Product      = Bacalhau
+License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
+Customer ID  = test-customer-id-123
+Valid Until  = 2045-07-28
+Version      = v1
+Capabilities = max_nodes=1
+Metadata     = {}`
+
+	assert.Equal(t, expectedOutput, strings.TrimSpace(output))
 
 	// Test JSON output
 	buf.Reset()
-	cmd.SetArgs([]string{"--license-file", filePath, "--output", "json"})
+	cmd.SetArgs([]string{filePath, "--output", "json"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	var result map[string]interface{}
 	err = json.Unmarshal(buf.Bytes(), &result)
 	require.NoError(t, err)
-	assert.Equal(t, "Bacalhau", result["Product"])
-	assert.Equal(t, "e66d1f3a-a8d8-4d57-8f14-00722844afe2", result["LicenseID"])
-	assert.Equal(t, "test-customer-id-123", result["CustomerID"])
-	assert.Equal(t, "2045-07-28", result["ValidUntil"])
-	assert.Equal(t, "v1", result["LicenseVersion"])
-	capabilities := result["Capabilities"].(map[string]interface{})
-	assert.Equal(t, "1", capabilities["max_nodes"])
-	metadata := result["Metadata"].(map[string]interface{})
-	assert.Empty(t, metadata) // The test license has empty metadata
+
+	// Convert timestamp fields to int64 for comparison
+	if exp, ok := result["exp"].(float64); ok {
+		result["exp"] = int64(exp)
+	}
+	if iat, ok := result["iat"].(float64); ok {
+		result["iat"] = int64(iat)
+	}
+
+	expectedJSON := map[string]interface{}{
+		"product":         "Bacalhau",
+		"license_id":      "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"license_type":    "standard",
+		"customer_id":     "test-customer-id-123",
+		"exp":             int64(2384881638),
+		"iat":             int64(1736881638),
+		"iss":             "https://expanso.io/",
+		"jti":             "e66d1f3a-a8d8-4d57-8f14-00722844afe2",
+		"sub":             "test-customer-id-123",
+		"license_version": "v1",
+		"capabilities":    map[string]interface{}{"max_nodes": "1"},
+	}
+
+	assert.Equal(t, expectedJSON, result)
 }
 
 func TestInspectValidLicenseFileWithMetadata(t *testing.T) {
@@ -283,38 +313,56 @@ func TestInspectValidLicenseFileWithMetadata(t *testing.T) {
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Test table output
-	cmd.SetArgs([]string{"--license-file", filePath})
+	// Test key-value output
+	cmd.SetArgs([]string{filePath})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	output := buf.String()
-	assert.Contains(t, output, "Bacalhau")
-	assert.Contains(t, output, "2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678")
-	assert.Contains(t, output, "test-customer-id-123")
-	assert.Contains(t, output, "2045-07-28")
-	assert.Contains(t, output, "v1")
-	assert.Contains(t, output, "max_nodes=1")
-	assert.NotContains(t, output, "METADATA") // Ensure metadata is not in table output
+	expectedOutput := `Product      = Bacalhau
+License ID   = 2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678
+Customer ID  = test-customer-id-123
+Valid Until  = 2045-07-28
+Version      = v1
+Capabilities = max_nodes=1
+Metadata     = someMetadata=valueOfSomeMetadata`
+
+	assert.Equal(t, expectedOutput, strings.TrimSpace(output))
 
 	// Test JSON output
 	buf.Reset()
-	cmd.SetArgs([]string{"--license-file", filePath, "--output", "json"})
+	cmd.SetArgs([]string{filePath, "--output", "json"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	var result map[string]interface{}
 	err = json.Unmarshal(buf.Bytes(), &result)
 	require.NoError(t, err)
-	assert.Equal(t, "Bacalhau", result["Product"])
-	assert.Equal(t, "2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678", result["LicenseID"])
-	assert.Equal(t, "test-customer-id-123", result["CustomerID"])
-	assert.Equal(t, "2045-07-28", result["ValidUntil"])
-	assert.Equal(t, "v1", result["LicenseVersion"])
-	capabilities := result["Capabilities"].(map[string]interface{})
-	assert.Equal(t, "1", capabilities["max_nodes"])
-	metadata := result["Metadata"].(map[string]interface{})
-	assert.Equal(t, "valueOfSomeMetadata", metadata["someMetadata"])
+
+	// Convert timestamp fields to int64 for comparison
+	if exp, ok := result["exp"].(float64); ok {
+		result["exp"] = int64(exp)
+	}
+	if iat, ok := result["iat"].(float64); ok {
+		result["iat"] = int64(iat)
+	}
+
+	expectedJSON := map[string]interface{}{
+		"product":         "Bacalhau",
+		"license_id":      "2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678",
+		"license_type":    "standard",
+		"customer_id":     "test-customer-id-123",
+		"exp":             int64(2384889682),
+		"iat":             int64(1736889682),
+		"iss":             "https://expanso.io/",
+		"jti":             "2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678",
+		"sub":             "test-customer-id-123",
+		"license_version": "v1",
+		"capabilities":    map[string]interface{}{"max_nodes": "1"},
+		"metadata":        map[string]interface{}{"someMetadata": "valueOfSomeMetadata"},
+	}
+
+	assert.Equal(t, expectedJSON, result)
 }
 
 func TestInspectInvalidLicenseToken(t *testing.T) {
@@ -332,7 +380,7 @@ func TestInspectInvalidLicenseToken(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	cmd.SetArgs([]string{"--license-file", filePath})
+	cmd.SetArgs([]string{filePath})
 
 	err = cmd.Execute()
 	require.Error(t, err)
@@ -354,7 +402,7 @@ func TestInspectInvalidSignatureLicenseToken(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	cmd.SetArgs([]string{"--license-file", filePath})
+	cmd.SetArgs([]string{filePath})
 
 	err = cmd.Execute()
 	require.Error(t, err)
@@ -376,7 +424,7 @@ func TestInspectExpiredLicenseToken(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
-	cmd.SetArgs([]string{"--license-file", filePath})
+	cmd.SetArgs([]string{filePath})
 
 	err = cmd.Execute()
 	require.Error(t, err)
@@ -418,7 +466,7 @@ func TestInspectMalformedLicenseFile(t *testing.T) {
 			buf := new(bytes.Buffer)
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
-			cmd.SetArgs([]string{"--license-file", filePath})
+			cmd.SetArgs([]string{filePath})
 
 			err = cmd.Execute()
 			require.Error(t, err)

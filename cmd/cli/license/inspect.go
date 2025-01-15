@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
 	licensepkg "github.com/bacalhau-project/bacalhau/pkg/lib/license"
 )
 
@@ -28,127 +28,41 @@ func NewInspectOptions() *InspectOptions {
 	}
 }
 
+// Add this struct after the LicenseInfo struct
+type licenseFile struct {
+	License string `json:"license"`
+}
+
 func NewInspectCmd() *cobra.Command {
 	o := NewInspectOptions()
 	cmd := &cobra.Command{
-		Use:           "inspect",
+		Use:           "inspect [path]",
 		Short:         "Inspect license information",
-		Args:          cobra.NoArgs,
+		Args:          cobra.ExactArgs(1),
 		PreRun:        hook.ApplyPorcelainLogLevel,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Get the license file path from args
+			o.LicenseFile = args[0]
+
 			// Check if license file path is empty or just whitespace
-			if o.LicenseFile == "" || len(strings.TrimSpace(o.LicenseFile)) == 0 {
-				return fmt.Errorf("required flag \"license-file\" not set")
+			if len(strings.TrimSpace(o.LicenseFile)) == 0 {
+				return fmt.Errorf("license file path cannot be empty")
 			}
 
 			// Check if license file exists
 			if _, err := os.Stat(o.LicenseFile); os.IsNotExist(err) {
 				return fmt.Errorf("file not found: %s", o.LicenseFile)
 			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
 			return o.Run(cmd.Context(), cmd)
 		},
 	}
 
-	// Add flags
-	cmd.Flags().StringVar(&o.LicenseFile, "license-file", "", "Path to the license file")
+	// Add output format flags only
 	cmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOpts))
 
-	// Set required flag
-	_ = cmd.MarkFlagRequired("license-file")
-
 	return cmd
-}
-
-// LicenseInfo represents the structure of license information
-type LicenseInfo struct {
-	Product        string
-	LicenseID      string
-	CustomerID     string
-	ValidUntil     string
-	LicenseVersion string
-	Capabilities   map[string]string
-}
-
-// jsonOutput is used for JSON/YAML serialization to include metadata
-type jsonOutput struct {
-	LicenseInfo
-	Metadata map[string]string
-}
-
-// MarshalJSON implements custom JSON marshaling
-func (j jsonOutput) MarshalJSON() ([]byte, error) {
-	type Alias jsonOutput // prevent recursion
-	data := struct {
-		Alias
-		Metadata map[string]string `json:"Metadata"`
-	}{
-		Alias:    Alias(j),
-		Metadata: j.Metadata,
-	}
-	return json.Marshal(data)
-}
-
-// MarshalYAML implements custom YAML marshaling
-func (j jsonOutput) MarshalYAML() (interface{}, error) {
-	type Alias jsonOutput // prevent recursion
-	data := struct {
-		Alias
-		Metadata map[string]string `yaml:"Metadata"`
-	}{
-		Alias:    Alias(j),
-		Metadata: j.Metadata,
-	}
-	return data, nil
-}
-
-// Add this struct after the LicenseInfo struct
-type licenseFile struct {
-	License string `json:"license"`
-}
-
-// Update table columns
-var licenseProductColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "PRODUCT"},
-	Value:        func(l LicenseInfo) string { return l.Product },
-}
-
-var licenseLicenseIDColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "LICENSE ID"},
-	Value:        func(l LicenseInfo) string { return l.LicenseID },
-}
-
-var licenseCustomerIDColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "CUSTOMER ID"},
-	Value:        func(l LicenseInfo) string { return l.CustomerID },
-}
-
-var licenseValidUntilColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "VALID UNTIL"},
-	Value:        func(l LicenseInfo) string { return l.ValidUntil },
-}
-
-var licenseLicenseVersionColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "VERSION"},
-	Value:        func(l LicenseInfo) string { return l.LicenseVersion },
-}
-
-var licenseCapabilitiesColumn = output.TableColumn[LicenseInfo]{
-	ColumnConfig: table.ColumnConfig{Name: "CAPABILITIES"},
-	Value: func(l LicenseInfo) string {
-		if len(l.Capabilities) == 0 {
-			return "none"
-		}
-		var caps []string
-		for k, v := range l.Capabilities {
-			caps = append(caps, fmt.Sprintf("%s=%s", k, v))
-		}
-		return strings.Join(caps, ", ")
-	},
 }
 
 func (o *InspectOptions) Run(ctx context.Context, cmd *cobra.Command) error {
@@ -176,32 +90,48 @@ func (o *InspectOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		return fmt.Errorf("invalid license: %w", err)
 	}
 
-	// Create license info from the validated claims
-	licenseInfo := LicenseInfo{
-		Product:        claims.Product,
-		LicenseID:      claims.LicenseID,
-		CustomerID:     claims.CustomerID,
-		ValidUntil:     claims.ExpiresAt.Format(time.DateOnly),
-		LicenseVersion: claims.LicenseVersion,
-		Capabilities:   claims.Capabilities,
-	}
-
-	// For JSON/YAML output, wrap the license info with metadata
+	// For JSON/YAML output
 	if o.OutputOpts.Format == output.JSONFormat || o.OutputOpts.Format == output.YAMLFormat {
-		return output.OutputOne(cmd, nil, o.OutputOpts, jsonOutput{
-			LicenseInfo: licenseInfo,
-			Metadata:    claims.Metadata,
-		})
+		return output.OutputOne(cmd, nil, o.OutputOpts, claims)
 	}
 
-	columns := []output.TableColumn[LicenseInfo]{
-		licenseProductColumn,
-		licenseLicenseIDColumn,
-		licenseCustomerIDColumn,
-		licenseValidUntilColumn,
-		licenseLicenseVersionColumn,
-		licenseCapabilitiesColumn,
+	// Create header data pairs for key-value output
+	headerData := []collections.Pair[string, any]{
+		{Left: "Product", Right: claims.Product},
+		{Left: "License ID", Right: claims.LicenseID},
+		{Left: "Customer ID", Right: claims.CustomerID},
+		{Left: "Valid Until", Right: claims.ExpiresAt.Format(time.DateOnly)},
+		{Left: "Version", Right: claims.LicenseVersion},
 	}
 
-	return output.OutputOne(cmd, columns, o.OutputOpts, licenseInfo)
+	// Always show Capabilities
+	capabilitiesStr := "{}"
+	if len(claims.Capabilities) > 0 {
+		var caps []string
+		for k, v := range claims.Capabilities {
+			caps = append(caps, fmt.Sprintf("%s=%s", k, v))
+		}
+		capabilitiesStr = strings.Join(caps, ", ")
+	}
+	headerData = append(headerData, collections.Pair[string, any]{
+		Left:  "Capabilities",
+		Right: capabilitiesStr,
+	})
+
+	// Always show Metadata
+	metadataStr := "{}"
+	if len(claims.Metadata) > 0 {
+		var meta []string
+		for k, v := range claims.Metadata {
+			meta = append(meta, fmt.Sprintf("%s=%s", k, v))
+		}
+		metadataStr = strings.Join(meta, ", ")
+	}
+	headerData = append(headerData, collections.Pair[string, any]{
+		Left:  "Metadata",
+		Right: metadataStr,
+	})
+
+	output.KeyValue(cmd, headerData)
+	return nil
 }

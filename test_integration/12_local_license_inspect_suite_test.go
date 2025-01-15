@@ -43,17 +43,20 @@ func (s *LocalLicenseInspectSuite) TestValidateLocalLicense() {
 
 	licenseInspectionOutput, err := s.executeCommandInDefaultJumpbox(
 		[]string{
-			"bacalhau", "license", "inspect", fmt.Sprintf("--license-file=%s", licenseFile),
+			"bacalhau", "license", "inspect", licenseFile,
 		},
 	)
 	s.Require().NoErrorf(err, "Error inspecting license: %q", err)
 
-	s.Require().Contains(licenseInspectionOutput, "Bacalhau")
-	s.Require().Contains(licenseInspectionOutput, "e66d1f3a-a8d8-4d57-8f14-00722844afe2")
-	s.Require().Contains(licenseInspectionOutput, "test-customer-id-123")
-	s.Require().Contains(licenseInspectionOutput, "2045-07-28")
-	s.Require().Contains(licenseInspectionOutput, "v1")
-	s.Require().Contains(licenseInspectionOutput, "max_nodes=1")
+	expectedOutput := `Product      = Bacalhau
+License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
+Customer ID  = test-customer-id-123
+Valid Until  = 2045-07-28
+Version      = v1
+Capabilities = max_nodes=1
+Metadata     = {}`
+
+	s.Require().Contains(licenseInspectionOutput, expectedOutput)
 }
 
 func (s *LocalLicenseInspectSuite) TestValidateLocalLicenseJSONOutput() {
@@ -64,7 +67,7 @@ func (s *LocalLicenseInspectSuite) TestValidateLocalLicenseJSONOutput() {
 			"bacalhau",
 			"license",
 			"inspect",
-			fmt.Sprintf("--license-file=%s", licenseFile),
+			licenseFile,
 			"--output=json",
 		},
 	)
@@ -73,33 +76,25 @@ func (s *LocalLicenseInspectSuite) TestValidateLocalLicenseJSONOutput() {
 	output, err := s.convertStringToDynamicJSON(licenseInspectionOutput)
 	s.Require().NoError(err)
 
-	productName, err := output.Query("$.Product")
+	productName, err := output.Query("$.product")
 	s.Require().NoError(err)
 	s.Require().Equal("Bacalhau", productName.String())
 
-	licenseID, err := output.Query("$.LicenseID")
+	licenseID, err := output.Query("$.license_id")
 	s.Require().NoError(err)
 	s.Require().Equal("e66d1f3a-a8d8-4d57-8f14-00722844afe2", licenseID.String())
 
-	customerID, err := output.Query("$.CustomerID")
+	customerID, err := output.Query("$.customer_id")
 	s.Require().NoError(err)
 	s.Require().Equal("test-customer-id-123", customerID.String())
 
-	validUntil, err := output.Query("$.ValidUntil")
-	s.Require().NoError(err)
-	s.Require().Equal("2045-07-28", validUntil.String())
-
-	licenseVersion, err := output.Query("$.LicenseVersion")
+	licenseVersion, err := output.Query("$.license_version")
 	s.Require().NoError(err)
 	s.Require().Equal("v1", licenseVersion.String())
 
-	capabilitiesMaxNodes, err := output.Query("$.Capabilities.max_nodes")
+	capabilitiesMaxNodes, err := output.Query("$.capabilities.max_nodes")
 	s.Require().NoError(err)
 	s.Require().Equal("1", capabilitiesMaxNodes.String())
-
-	metadata, err := output.Query("$.Metadata")
-	s.Require().NoError(err)
-	s.Require().Empty(metadata.Map())
 }
 
 func (s *LocalLicenseInspectSuite) TestInValidateLocalLicense() {
@@ -107,7 +102,7 @@ func (s *LocalLicenseInspectSuite) TestInValidateLocalLicense() {
 
 	_, err := s.executeCommandInDefaultJumpbox(
 		[]string{
-			"bacalhau", "license", "inspect", fmt.Sprintf("--license-file=%s", licenseFile),
+			"bacalhau", "license", "inspect", licenseFile,
 		},
 	)
 
