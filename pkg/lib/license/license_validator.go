@@ -28,6 +28,31 @@ type LicenseClaims struct {
 	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
+// Ignoring spell check due to the abundance of JWT slugs
+// cSpell:disable
+//
+//nolint:lll // JWKS Format
+const defaultOfflineJWKSVerificationKeys = `{
+  "keys": [
+    {
+      "kty": "RSA",
+      "n": "5iBmcKBkKZTnFDGtLzj1jnKq8Hhbq-Gywu7J2vO-xQwVZUKg4kVkSbl2BoD4ba2Ppy7gymojPFPS2juP2FdirpK0SMN2fs7LPIxEQT_yrlYMaaR658YwG4Q_698XD6Dk5Z6qYmuUu71Y_QbZ-Lsmt3DfKGWJqYt-hElclJ8O757k-Z78bj364Fm_e1ETxMpCqzfqjAhQhdkBaR9Tcm4LDSn3_KvfGtIupnkHdaJMlFLs3hsHZ-CqSBRGzdp5DQCclxXK7K0Ilsmqpc2XBADWGlFehYrG40aM8mv99_Dm9fZWNqjg4h0Z7X1mTOpZgjxKUix9FF3YlcmhLEod2tdE7w",
+      "e": "AQAB",
+      "kid": "5nJnFCNSyAT1SQvtzl782YCeGkWqTCtv1fyHUQkxrNU",
+      "alg": "RS256"
+    },
+    {
+      "kty": "RSA",
+      "n": "n5fvf4lV6UnM2MmTCXCIvIC1lEDZdhz6HiUX7x_vWw5VT-RIcgGIMfiGx_A1N1HPUOFRY6C-vZjfroqfYe-rWKKH3_s8bKpgaemmlI0l5ZdA_K4-iZdRIAkHjrHLJbwxqjcSDztW6O8zQ42g9aNkDX6AknojqeJMBWTF0qfcFIvRk8YArqGEOd3XZbkCNvC2c1fejKZ9pTdxq9rsrs0SPXx89c145-GB4Wb7lBST-LLClO3J16My5CZG44DO7LH7neRTGPs5DGdefJHDtO0ixB5vtWwt7HdxPVM9EJWKes78H_KqAPC6my7oxa6hE4Sa4C0ASN21FADS-__a60LwVQ",
+      "e": "AQAB",
+      "kid": "CLo1sWpJA57y0L2SEJB6Pu_VJdGV6WbaaA_pbHao8qs",
+      "alg": "RS256"
+    }
+  ]
+}`
+
+// cSpell:enable
+
 // NewLicenseValidatorFromFile creates a new validator from a JWKS file
 func NewLicenseValidatorFromFile(jwksPath string) (*LicenseValidator, error) {
 	jwksData, err := os.ReadFile(jwksPath)
@@ -71,6 +96,11 @@ func NewLicenseValidatorFromJSON(jwksJSON json.RawMessage) (*LicenseValidator, e
 	}, nil
 }
 
+// NewOfflineLicenseValidator creates a new validator using hardcoded JWKS Public Keys
+func NewOfflineLicenseValidator() (*LicenseValidator, error) {
+	return NewLicenseValidatorFromJSON(json.RawMessage(defaultOfflineJWKSVerificationKeys))
+}
+
 // ValidateToken validates a license token and returns the claims
 func (v *LicenseValidator) ValidateToken(tokenString string) (*LicenseClaims, error) {
 	var claims LicenseClaims
@@ -78,11 +108,11 @@ func (v *LicenseValidator) ValidateToken(tokenString string) (*LicenseClaims, er
 	// Parse and validate the token
 	token, err := jwt.ParseWithClaims(tokenString, &claims, v.keyFunc)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse token: %w", err)
+		return nil, fmt.Errorf("failed to parse license: %w", err)
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("invalid token")
+		return nil, fmt.Errorf("invalid license")
 	}
 
 	// Additional validation can be added here
