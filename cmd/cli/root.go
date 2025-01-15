@@ -16,6 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/license"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
@@ -104,6 +105,7 @@ func NewRootCmd() *cobra.Command {
 		node.NewCmd(),
 		serve.NewCmd(),
 		version.NewCmd(),
+		license.NewCmd(),
 		wasm.NewCmd(),
 
 		// deprecated command
