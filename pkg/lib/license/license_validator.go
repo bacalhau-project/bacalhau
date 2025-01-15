@@ -28,6 +28,8 @@ type LicenseClaims struct {
 	Metadata       map[string]string `json:"metadata,omitempty"`
 }
 
+// Ignoring spell check due to the abundance of JWT slugs
+// cSpell:disable
 // Add this constant at the top of the file, after the imports
 const defaultOfflineJWKSVerificationKeys = `{
   "keys": [
@@ -47,6 +49,8 @@ const defaultOfflineJWKSVerificationKeys = `{
     }
   ]
 }`
+
+// cSpell:enable
 
 // NewLicenseValidatorFromFile creates a new validator from a JWKS file
 func NewLicenseValidatorFromFile(jwksPath string) (*LicenseValidator, error) {
