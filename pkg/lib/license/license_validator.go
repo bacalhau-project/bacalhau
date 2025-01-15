@@ -30,7 +30,8 @@ type LicenseClaims struct {
 
 // Ignoring spell check due to the abundance of JWT slugs
 // cSpell:disable
-// Add this constant at the top of the file, after the imports
+//
+//nolint:lll // JWKS Format
 const defaultOfflineJWKSVerificationKeys = `{
   "keys": [
     {
