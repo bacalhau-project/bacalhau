@@ -2,6 +2,7 @@ package apimodels
 
 import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/license"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
@@ -37,4 +38,9 @@ type GetAgentNodeResponse struct {
 type GetAgentConfigResponse struct {
 	BaseGetResponse
 	Config types.Bacalhau `json:"config"`
+}
+
+type GetAgentLicenseResponse struct {
+	BaseGetResponse
+	*license.LicenseClaims
 }
