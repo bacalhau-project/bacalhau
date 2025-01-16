@@ -1,13 +1,16 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/license"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -44,6 +47,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/node", e.node)
 	g.GET("/debug", e.debug)
 	g.GET("/config", e.config)
+	g.GET("/license", e.license)
 	return e
 }
 
@@ -136,5 +140,52 @@ func (e *Endpoint) config(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
 		Config: cfg,
+	})
+}
+
+// license godoc
+//
+//	@ID			agent/license
+//	@Summary	Returns the details of the current configured orchestrator license.
+//	@Tags		Ops
+//	@Produce	json
+//	@Success	200	{object}	license.LicenseClaims
+//	@Failure	404	{object}	string	"Node license not configured"
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/agent/license [get]
+func (e *Endpoint) license(c echo.Context) error {
+	// Get license path from config
+	licensePath := e.bacalhauConfig.Orchestrator.License.LocalPath
+	if licensePath == "" {
+		return echo.NewHTTPError(http.StatusNotFound, "Node license not configured")
+	}
+
+	// Read license file
+	licenseData, err := os.ReadFile(licensePath)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to read license file: %s", err))
+	}
+
+	// Parse license JSON
+	var licenseFile struct {
+		License string `json:"license"`
+	}
+	if err := json.Unmarshal(licenseData, &licenseFile); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to parse license file: %s", err))
+	}
+
+	// Create validator and validate license
+	validator, err := license.NewOfflineLicenseValidator()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to create license validator: %s", err))
+	}
+
+	claims, err := validator.ValidateToken(licenseFile.License)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to validate license: %s", err))
+	}
+
+	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{
+		LicenseClaims: claims,
 	})
 }
