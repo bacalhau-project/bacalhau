@@ -80,7 +80,7 @@ func ProcessBatch(ctx context.Context, items []Item) (err error) {
         }
         recorder.Latency(ctx, stepHist, "validation")
     
-        if err := unmarshall(item); err != nil {
+        if err := unmarshal(item); err != nil {
             return
         }
         recorder.Latency(ctx, stepHist, "unmarshalling")
