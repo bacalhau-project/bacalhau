@@ -15,6 +15,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
 
 // MockFloat64Histogram implements metric.Float64Histogram for testing
@@ -112,12 +114,21 @@ func (s *MetricRecorderTestSuite) TestErrorString() {
 }
 
 func (s *MetricRecorderTestSuite) TestError() {
+	err := bacerrors.New("test error").WithCode(bacerrors.IOError)
+	s.recorder.Error(err)
+
+	s.Len(s.recorder.attrs, 2)
+	s.Equal(semconv.ErrorTypeKey, s.recorder.attrs[1].Key)
+	s.Equal(string(bacerrors.IOError), s.recorder.attrs[1].Value.AsString())
+}
+
+func (s *MetricRecorderTestSuite) TestUnkownError() {
 	err := errors.New("test error")
 	s.recorder.Error(err)
 
 	s.Len(s.recorder.attrs, 2)
 	s.Equal(semconv.ErrorTypeKey, s.recorder.attrs[1].Key)
-	s.Equal("test error", s.recorder.attrs[1].Value.AsString())
+	s.Equal("unknown_error", s.recorder.attrs[1].Value.AsString())
 }
 
 func (s *MetricRecorderTestSuite) TestCount() {
