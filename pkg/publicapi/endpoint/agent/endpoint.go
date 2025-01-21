@@ -1,16 +1,14 @@
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/lib/license"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -22,6 +20,7 @@ type EndpointParams struct {
 	NodeInfoProvider   models.NodeInfoProvider
 	DebugInfoProviders []models.DebugInfoProvider
 	BacalhauConfig     types.Bacalhau
+	LicenseManager     *licensing.LicenseManager
 }
 
 type Endpoint struct {
@@ -29,6 +28,7 @@ type Endpoint struct {
 	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []models.DebugInfoProvider
 	bacalhauConfig     types.Bacalhau
+	licenseManager     *licensing.LicenseManager
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
@@ -37,6 +37,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 		nodeInfoProvider:   params.NodeInfoProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 		bacalhauConfig:     params.BacalhauConfig,
+		licenseManager:     params.LicenseManager,
 	}
 
 	// JSON group
@@ -149,40 +150,20 @@ func (e *Endpoint) config(c echo.Context) error {
 //	@Summary	Returns the details of the current configured orchestrator license.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	license.LicenseClaims
-//	@Failure	404	{object}	string	"Node license not configured"
+//	@Success	200	{object}	apimodels.GetAgentLicenseResponse
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/license [get]
 func (e *Endpoint) license(c echo.Context) error {
-	// Get license path from config
-	licensePath := e.bacalhauConfig.Orchestrator.License.LocalPath
-	if licensePath == "" {
-		return echo.NewHTTPError(http.StatusNotFound, "Node license not configured")
+	if e.licenseManager == nil {
+		return echo.NewHTTPError(
+			http.StatusInternalServerError,
+			"Error inspecting orchestrator license. Please check orchestrator configuration.",
+		)
 	}
 
-	// Read license file
-	licenseData, err := os.ReadFile(licensePath)
+	claims, err := e.licenseManager.ValidateLicense()
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to read license file: %s", err))
-	}
-
-	// Parse license JSON
-	var licenseFile struct {
-		License string `json:"license"`
-	}
-	if err := json.Unmarshal(licenseData, &licenseFile); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to parse license file: %s", err))
-	}
-
-	// Create validator and validate license
-	validator, err := license.NewOfflineLicenseValidator()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to create license validator: %s", err))
-	}
-
-	claims, err := validator.ValidateToken(licenseFile.License)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to validate license: %s", err))
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to get license: %s", err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{

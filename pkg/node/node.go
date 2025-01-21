@@ -16,6 +16,7 @@ import (
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -85,6 +86,7 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
+	LicenseManager *licensing.LicenseManager
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -112,6 +114,12 @@ func NewNode(
 	// apply default values to the system config
 	cfg.SystemConfig.applyDefaults()
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
+
+	// Initialize license manager
+	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create license manager: %w", err)
+	}
 
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
 	if err != nil {
@@ -194,6 +202,7 @@ func NewNode(
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
+		LicenseManager:     licenseManager,
 	})
 
 	// Start periodic software update checks.
@@ -237,6 +246,7 @@ func NewNode(
 		APIServer:      apiServer,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
+		LicenseManager: licenseManager,
 	}
 
 	return node, nil

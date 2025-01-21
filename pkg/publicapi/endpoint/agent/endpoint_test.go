@@ -16,11 +16,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
 
 // cSpell:disable
 const validOfficialTestLicense = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVuSm5GQ05TeUFUMVNRdnR6bDc4MllDZUdrV3FUQ3R2MWZ5SFVRa3hyTlUiLCJ0eXAiOiJKV1QifQ.eyJwcm9kdWN0IjoiQmFjYWxoYXUiLCJsaWNlbnNlX3ZlcnNpb24iOiJ2MSIsImxpY2Vuc2VfdHlwZSI6InN0YW5kYXJkIiwibGljZW5zZV9pZCI6ImU2NmQxZjNhLWE4ZDgtNGQ1Ny04ZjE0LTAwNzIyODQ0YWZlMiIsImN1c3RvbWVyX25hbWUiOiJiYWNhbGhhdS1pbnRlZ3JhdGlvbi10ZXN0cyIsImN1c3RvbWVyX2lkIjoidGVzdC1jdXN0b21lci1pZC0xMjMiLCJjYXBhYmlsaXRpZXMiOnsibWF4X25vZGVzIjoiMSJ9LCJtZXRhZGF0YSI6e30sImlhdCI6MTczNjg4MTYzOCwiaXNzIjoiaHR0cHM6Ly9leHBhbnNvLmlvLyIsInN1YiI6InRlc3QtY3VzdG9tZXItaWQtMTIzIiwiZXhwIjoyMzg0ODgxNjM4LCJqdGkiOiJlNjZkMWYzYS1hOGQ4LTRkNTctOGYxNC0wMDcyMjg0NGFmZTIifQ.U6qkWmki2wp3RbPdn8d0zzsy4FchZIyUDmJi2bJ4w4vhwJlJ0_F2_317v4iPzy9q69eJOKNaqj8P3xYaPbpiooFm15OdJ3ecbMy8bKvvWVj43stw6HNP_uoW-RlZnY2zTOQ9WhlOhjnUPPC-UXOcaMwxiLBwMo5n3Rs0W9uAQHGQIptGg0sKiZvIrMZZ3vww2PZ3wJDiDvznE2lPtI7jAbcFFKDlhY3UiXed2ihGTWvLW8Zwj4veCR4PAUoEDu-nfQDvlqNeAvABT-KrKY2M-d5T_WzK1WwXtHok9tG2OV5ybSZoxFDQW3iqiCg6TqMwCAa6C6MBXtLnv-NP1H9Ytg"
+const officialTokenButExpired = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVuSm5GQ05TeUFUMVNRdnR6bDc4MllDZUdrV3FUQ3R2MWZ5SFVRa3hyTlUiLCJ0eXAiOiJKV1QifQ.eyJwcm9kdWN0IjoiQmFjYWxoYXUiLCJsaWNlbnNlX3ZlcnNpb24iOiJ2MSIsImxpY2Vuc2VfdHlwZSI6InN0YW5kYXJkIiwibGljZW5zZV9pZCI6IjBkZDA0Yzg0LTA5YjgtNDE3OS04OGY3LWM3MmE5ZDU2YzBhMiIsImN1c3RvbWVyX25hbWUiOiJiYWNhbGhhdS1pbnRlZ3JhdGlvbi10ZXN0cyIsImN1c3RvbWVyX2lkIjoidGVzdC1jdXN0b21lci1pZC0xMjMiLCJjYXBhYmlsaXRpZXMiOnsibWF4X25vZGVzIjoiMSJ9LCJtZXRhZGF0YSI6eyJzb21lTWV0YWRhdGEiOiJ2YWx1ZU9mU29tZU1ldGFkYXRhIn0sImlhdCI6MTczNjg5MTEzMSwiaXNzIjoiaHR0cHM6Ly9leHBhbnNvLmlvLyIsInN1YiI6InRlc3QtY3VzdG9tZXItaWQtMTIzIiwiZXhwIjoxNzM2MjQxMDk4LCJqdGkiOiIwZGQwNGM4NC0wOWI4LTQxNzktODhmNy1jNzJhOWQ1NmMwYTIifQ.URD1ofoJwrleEkXWQ7vWVv_gCzwM-1cR6_6SOIf-d7Uuh3ttFJdNMDw_gbZp65sgLMycQKkm5ngooxK-FSwVj6jl2c70SvzuEHbdUsSZClLReOSbmY7CO6bOQYzQYVEeoWiykVMdgj2REgnrP3b2n4KGyTFKoqqXYpdjSJ9BXXgw-RfkXmyBV1h8imymcXCZcYxzcKPSDSoZLUrPSqD5ooM021VKaTd4J4jFql3BrLGrvaRgUtSgfQdJjo1alMUalZ7hAEWkmhBlQ_ocdlHeJOR3Rrlk5c-JANOJ4UslMLG465QJ8tmfxaUbbOPB2YPj0f9uEbGW5kGkHW3BKQZbDQ"
 
 // TestEndpointConfigRedactFields asserts that auth tokens in the config are redacted.
 func TestEndpointConfigRedactFields(t *testing.T) {
@@ -57,31 +59,37 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	assert.Equal(t, payload.Config.Compute.Auth.Token, "<redacted>")
 }
 
-// TestEndpointLicense tests the license endpoint
-func TestEndpointLicense(t *testing.T) {
-	// Create a temporary license file
+// TestEndpointLicenseValid tests the license endpoint when a valid license is configured
+func TestEndpointLicenseValid(t *testing.T) {
+	router := echo.New()
+
+	// Create a temporary directory for the test
 	tmpDir := t.TempDir()
 	licensePath := filepath.Join(tmpDir, "license.json")
 
-	// Create license file with proper JSON format
+	// Write valid license file
 	licenseContent := fmt.Sprintf(`{
 		"license": %q
 	}`, validOfficialTestLicense)
-
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	router := echo.New()
-
-	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					LocalPath: licensePath,
-				},
+	config := types.Bacalhau{
+		Orchestrator: types.Orchestrator{
+			License: types.License{
+				LocalPath: licensePath,
 			},
 		},
+	}
+
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&config)
+	require.NoError(t, err)
+
+	NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseManager: licenseManager,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
@@ -107,47 +115,26 @@ func TestEndpointLicense(t *testing.T) {
 	assert.Equal(t, int64(2384881638), response.ExpiresAt.Unix())
 }
 
-// TestEndpointLicenseNoLicense tests the license endpoint when no license is configured
-func TestEndpointLicenseNoLicense(t *testing.T) {
+// TestEndpointLicenseNotConfigured tests the license endpoint when no license is configured
+func TestEndpointLicenseNotConfigured(t *testing.T) {
 	router := echo.New()
 
-	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					// No license path configured
-				},
+	config := types.Bacalhau{
+		Orchestrator: types.Orchestrator{
+			License: types.License{
+				// No license path configured
 			},
 		},
-	})
+	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusNotFound, rr.Code)
-
-	// Also verify the error message
-	var errResp map[string]interface{}
-	err := json.NewDecoder(rr.Body).Decode(&errResp)
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&config)
 	require.NoError(t, err)
-	assert.Equal(t, "Node license not configured", errResp["message"])
-}
-
-// TestEndpointLicenseFileNotFound tests when the license file doesn't exist
-func TestEndpointLicenseFileNotFound(t *testing.T) {
-	router := echo.New()
 
 	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					LocalPath: "/non/existent/path/license.json",
-				},
-			},
-		},
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseManager: licenseManager,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
@@ -156,103 +143,43 @@ func TestEndpointLicenseFileNotFound(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, rr.Code)
 
-	var errResp map[string]interface{}
-	err := json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	assert.Contains(t, errResp["message"].(string), "failed to read license file")
-}
-
-// TestEndpointLicenseInvalidJSON tests when the license file contains invalid JSON
-func TestEndpointLicenseInvalidJSON(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Write invalid JSON to the license file
-	err := os.WriteFile(licensePath, []byte("invalid json content"), 0644)
-	require.NoError(t, err)
-
-	router := echo.New()
-
-	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					LocalPath: licensePath,
-				},
-			},
-		},
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-	var errResp map[string]interface{}
+	var errResp map[string]string
 	err = json.NewDecoder(rr.Body).Decode(&errResp)
 	require.NoError(t, err)
-	assert.Contains(t, errResp["message"].(string), "failed to parse license file")
-}
-
-// TestEndpointLicenseInvalidLicenseFormat tests when the license file is valid JSON but missing the license field
-func TestEndpointLicenseInvalidLicenseFormat(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Write JSON without the required "license" field
-	err := os.WriteFile(licensePath, []byte(`{"some_other_field": "value"}`), 0644)
-	require.NoError(t, err)
-
-	router := echo.New()
-
-	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					LocalPath: licensePath,
-				},
-			},
-		},
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-	var errResp map[string]interface{}
-	err = json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	assert.Contains(t, errResp["message"].(string), "failed to validate license")
+	require.Contains(t, errResp["message"], "no license configured for orchestrator")
 }
 
 // TestEndpointLicenseInvalidToken tests when the license token is invalid
 func TestEndpointLicenseInvalidToken(t *testing.T) {
+	router := echo.New()
+
+	// Create a temporary directory for the test
 	tmpDir := t.TempDir()
 	licensePath := filepath.Join(tmpDir, "license.json")
 
 	// Write JSON with an invalid JWT token
-	licenseContent := fmt.Sprintf(`{
+	licenseContent := `{
 		"license": "invalid.jwt.token"
-	}`)
+	}`
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	router := echo.New()
-
-	NewEndpoint(EndpointParams{
-		Router: router,
-		BacalhauConfig: types.Bacalhau{
-			Orchestrator: types.Orchestrator{
-				License: types.License{
-					LocalPath: licensePath,
-				},
+	config := types.Bacalhau{
+		Orchestrator: types.Orchestrator{
+			License: types.License{
+				LocalPath: licensePath,
 			},
 		},
+	}
+
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&config)
+	require.NoError(t, err)
+
+	NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseManager: licenseManager,
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
@@ -261,8 +188,123 @@ func TestEndpointLicenseInvalidToken(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, rr.Code)
 
-	var errResp map[string]interface{}
+	var errResp map[string]string
 	err = json.NewDecoder(rr.Body).Decode(&errResp)
 	require.NoError(t, err)
-	assert.Contains(t, errResp["message"].(string), "failed to validate license: failed to parse license: token is malformed")
+	require.Contains(t, errResp["message"], "invalid license: failed to parse license: token is malformed")
+}
+
+// TestEndpointLicenseManagerNotConfigured tests when the license manager is not configured
+func TestEndpointLicenseManagerNotConfigured(t *testing.T) {
+	router := echo.New()
+
+	NewEndpoint(EndpointParams{
+		Router: router,
+		// No license manager configured
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	var errResp map[string]string
+	err := json.NewDecoder(rr.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(t, errResp["message"], "Error inspecting orchestrator license. Please check orchestrator configuration.")
+}
+
+// TestEndpointLicenseValidationError tests when the license validation fails with a specific error
+func TestEndpointLicenseValidationError(t *testing.T) {
+	router := echo.New()
+
+	// Create a temporary directory for the test
+	tmpDir := t.TempDir()
+	licensePath := filepath.Join(tmpDir, "license.json")
+
+	// Write valid license file but with expired token
+	licenseContent := fmt.Sprintf(`{
+		"license": %q
+	}`, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9kdWN0IjoiQmFjYWxoYXUiLCJsaWNlbnNlX3ZlcnNpb24iOiJ2MSIsImxpY2Vuc2VfdHlwZSI6InN0YW5kYXJkIiwiZXhwIjoxNjgzODQ5NjAwfQ.invalid-signature")
+	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
+	require.NoError(t, err)
+
+	config := types.Bacalhau{
+		Orchestrator: types.Orchestrator{
+			License: types.License{
+				LocalPath: licensePath,
+			},
+		},
+	}
+
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&config)
+	require.NoError(t, err)
+
+	NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseManager: licenseManager,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	var errResp map[string]string
+	err = json.NewDecoder(rr.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(t, errResp["message"], "failed to get license: invalid license: failed to parse license")
+}
+
+// TestEndpointLicenseExpired tests when the license token is valid but expired
+func TestEndpointLicenseExpired(t *testing.T) {
+	router := echo.New()
+
+	// Create a temporary directory for the test
+	tmpDir := t.TempDir()
+	licensePath := filepath.Join(tmpDir, "license.json")
+
+	// Write valid but expired license file
+	licenseContent := fmt.Sprintf(`{
+		"license": %q
+	}`, officialTokenButExpired)
+	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
+	require.NoError(t, err)
+
+	config := types.Bacalhau{
+		Orchestrator: types.Orchestrator{
+			License: types.License{
+				LocalPath: licensePath,
+			},
+		},
+	}
+
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&config)
+	require.NoError(t, err)
+
+	NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseManager: licenseManager,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+
+	var errResp map[string]string
+	err = json.NewDecoder(rr.Body).Decode(&errResp)
+	require.NoError(t, err)
+	require.Contains(
+		t,
+		errResp["message"],
+		"failed to get license: invalid license: failed to parse license: token has invalid claims: token is expired",
+	)
 }
