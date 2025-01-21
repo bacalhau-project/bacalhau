@@ -122,7 +122,7 @@ func (s *MetricRecorderTestSuite) TestError() {
 	s.Equal(string(bacerrors.IOError), s.recorder.attrs[1].Value.AsString())
 }
 
-func (s *MetricRecorderTestSuite) TestUnkownError() {
+func (s *MetricRecorderTestSuite) TestUnknownError() {
 	err := errors.New("test error")
 	s.recorder.Error(err)
 
