@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/backoff"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 const (
@@ -129,16 +128,12 @@ func (w *Worker) run(ctx context.Context) {
 
 // dequeueEvaluation dequeues an evaluation.
 func (w *Worker) dequeueEvaluation(ctx context.Context) (*models.EvaluationReceipt, error) {
-	recorder := telemetry.NewMetricRecorder()
-	defer recorder.RecordFault(ctx, WorkerDequeueFaults)
-
 	evaluation, receiptHandle, err :=
 		w.evaluationBroker.Dequeue(w.schedulerProvider.EnabledSchedulers(), w.dequeueTimeout)
 
 	if err != nil {
 		return nil, err
 	}
-	recorder.Success()
 	if evaluation == nil {
 		return nil, nil
 	}
@@ -151,13 +146,9 @@ func (w *Worker) dequeueEvaluation(ctx context.Context) (*models.EvaluationRecei
 
 // processEvaluation processes an evaluation and returns true if it was processed successfully, false otherwise.
 func (w *Worker) processEvaluation(ctx context.Context, evaluation *models.Evaluation) (ack bool) {
-	tracker := telemetry.NewMetricRecorder()
-	defer tracker.RecordFault(ctx, WorkerProcessFaults, EvalTypeAttribute(evaluation.Type))
-
 	// Check if worker is shutting down while dequeueing
 	if w.isShuttingDown(ctx) {
 		log.Warn().Msgf("Worker is shutting down, not scheduling evaluation %s", evaluation.ID)
-		tracker.Success() // don't treat this as a failure
 		return
 	}
 
@@ -172,31 +163,20 @@ func (w *Worker) processEvaluation(ctx context.Context, evaluation *models.Evalu
 		return
 	}
 	ack = true
-	tracker.Success()
 	return
 }
 
 func (w *Worker) ackEvaluation(ctx context.Context, evalReceipt *models.EvaluationReceipt, ack bool) {
-	recorder := telemetry.NewMetricRecorder()
-	defer recorder.RecordFault(ctx, WorkerAckFaults)
-
 	err := w.evaluationBroker.Ack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to ack evaluation %s", evalReceipt.Evaluation.ID)
-	} else {
-		recorder.Success()
 	}
 }
 
 func (w *Worker) nackEvaluation(ctx context.Context, evalReceipt *models.EvaluationReceipt, ack bool) {
-	recorder := telemetry.NewMetricRecorder()
-	defer recorder.RecordFault(ctx, WorkerNackFaults)
-
 	err := w.evaluationBroker.Nack(evalReceipt.Evaluation.ID, evalReceipt.ReceiptHandle)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to nack evaluation %s", evalReceipt.Evaluation.ID)
-	} else {
-		recorder.Success()
 	}
 }
 
