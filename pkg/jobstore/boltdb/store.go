@@ -14,6 +14,8 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
@@ -25,6 +27,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	boltdb_watcher "github.com/bacalhau-project/bacalhau/pkg/lib/watcher/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
@@ -158,6 +161,21 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	return store, err
 }
 
+// metricRecorder returns a new metric recorder with the given attributes
+func (b *BoltJobStore) metricRecorder(
+	ctx context.Context, bucket, operation string, attrs ...attribute.KeyValue) *telemetry.MetricRecorder {
+	recorder := telemetry.NewMetricRecorder(
+		append(attrs,
+			semconv.DBSystemKey.String("boltdb"),
+			semconv.DBNamespaceKey.String("jobstore"),
+			semconv.DBOperationName(operation),
+			semconv.DBCollectionName(bucket),
+		)...,
+	)
+	recorder.Count(ctx, jobstore.OperationCount)
+	return recorder
+}
+
 // BeginTx starts a new writable transaction for the store
 func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) {
 	tx, err := b.database.Begin(true)
@@ -169,19 +187,23 @@ func (b *BoltJobStore) BeginTx(ctx context.Context) (jobstore.TxContext, error) 
 
 // GetJob retrieves the Job identified by the id string. If the job isn't found it will
 // return an indicating the error.
-func (b *BoltJobStore) GetJob(ctx context.Context, id string) (models.Job, error) {
-	var job models.Job
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		job, err = b.getJob(tx, id)
+func (b *BoltJobStore) GetJob(ctx context.Context, id string) (job models.Job, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationGet)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		job, err = b.getJob(ctx, tx, recorder, id)
 		return
 	})
 	return job, err
 }
 
-func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
+func (b *BoltJobStore) getJob(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) (models.Job, error) {
 	var job models.Job
 
-	jobID, err := b.reifyJobID(tx, jobID)
+	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
 	if err != nil {
 		return job, err
 	}
@@ -190,15 +212,22 @@ func (b *BoltJobStore) getJob(tx *bolt.Tx, jobID string) (models.Job, error) {
 	if data == nil {
 		return job, jobstore.NewErrJobNotFound(jobID)
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
 
 	err = b.marshaller.Unmarshal(data, &job)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
+	recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))
+	recorder.Count(ctx, jobstore.RowsRead)
 	return job, err
 }
 
 // reifyJobID ensures the provided job ID is a full-length ID. This is either through
 // returning the ID, or resolving the short ID to a single job id.
-func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
+func (b *BoltJobStore) reifyJobID(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) (string, error) {
 	if idgen.ShortUUID(jobID) == jobID {
+		defer recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartReifyID)
+
 		bktJobs, err := NewBucketPath(BucketJobs).Get(tx, false)
 		if err != nil {
 			return "", NewBoltDBError(err)
@@ -226,13 +255,15 @@ func (b *BoltJobStore) reifyJobID(tx *bolt.Tx, jobID string) (string, error) {
 	return jobID, nil
 }
 
-func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, error) {
+func (b *BoltJobStore) getExecution(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, id string) (models.Execution, error) {
 	var exec models.Execution
 
 	key, err := b.getExecutionJobID(tx, id)
 	if err != nil {
 		return exec, err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
 
 	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobExecutions).Get(tx, false); err != nil {
 		return exec, NewBoltDBError(err)
@@ -241,8 +272,12 @@ func (b *BoltJobStore) getExecution(tx *bolt.Tx, id string) (models.Execution, e
 		if data == nil {
 			return exec, jobstore.NewErrExecutionNotFound(id)
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))
+		recorder.Count(ctx, jobstore.RowsRead)
 
 		err = b.marshaller.Unmarshal(data, &exec)
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
 		if err != nil {
 			return exec, err
 		}
@@ -264,8 +299,9 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 	return string(keys[0]), nil
 }
 
-func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
-	jobID, err := b.reifyJobID(tx, options.JobID)
+func (b *BoltJobStore) getExecutions(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
+	jobID, err := b.reifyJobID(ctx, tx, recorder, options.JobID)
 	if err != nil {
 		return nil, err
 	}
@@ -273,11 +309,12 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 	// load latest job state if requested
 	var job *models.Job
 	if options.IncludeJob {
-		j, err := b.getJob(tx, options.JobID)
+		j, err := b.getJob(ctx, tx, recorder, options.JobID)
 		if err != nil {
 			return nil, err
 		}
 		job = &j
+		recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
 	}
 
 	// Sort By Given Order By
@@ -315,11 +352,16 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 	var execs []models.Execution
 
 	err = bkt.ForEach(func(_ []byte, v []byte) error {
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(v)))
+		recorder.Count(ctx, jobstore.RowsRead)
+
 		var es models.Execution
 		err = b.marshaller.Unmarshal(v, &es)
 		if err != nil {
 			return err
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
 
 		es.Job = job
 		execs = append(execs, es)
@@ -328,6 +370,7 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 
 	// sort executions
 	slices.SortFunc(execs, sortFnc)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
 
 	// apply limit
 	if options.Limit > 0 && len(execs) > options.Limit {
@@ -337,38 +380,61 @@ func (b *BoltJobStore) getExecutions(tx *bolt.Tx, options jobstore.GetExecutions
 	return execs, err
 }
 
-func (b *BoltJobStore) jobExists(tx *bolt.Tx, jobID string) bool {
-	_, err := b.getJob(tx, jobID)
+func (b *BoltJobStore) jobExists(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) bool {
+	_, err := b.getJob(ctx, tx, recorder, jobID)
 	return err == nil
 }
 
 // GetJobs returns all Jobs that match the provided query
-func (b *BoltJobStore) GetJobs(ctx context.Context, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
-	var response *jobstore.JobQueryResponse
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		response, err = b.getJobs(tx, query)
+func (b *BoltJobStore) GetJobs(
+	ctx context.Context, query jobstore.JobQuery) (response *jobstore.JobQueryResponse, err error) {
+	scope := jobstore.AttrScopeAll
+	if query.Namespace != "" && !query.ReturnAll {
+		scope = jobstore.AttrScopeNamespace
+	}
+	attrs := []attribute.KeyValue{
+		jobstore.AttrScopeKey.String(scope),
+		jobstore.AttrNamespaceKey.String(query.Namespace),
+	}
+	if len(query.IncludeTags) > 0 {
+		attrs = append(attrs, attribute.Bool("query.include_tags", true))
+	}
+	if len(query.ExcludeTags) > 0 {
+		attrs = append(attrs, attribute.Bool("query.exclude_tags", true))
+	}
+	if query.Selector != nil {
+		attrs = append(attrs, attribute.Bool("query.selector", true))
+	}
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationList, attrs...)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		response, err = b.getJobs(ctx, tx, recorder, query)
 		return
 	})
 	return response, err
 }
 
-func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
-	jobSet, err := b.getJobsInitialSet(tx, query)
+func (b *BoltJobStore) getJobs(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	query jobstore.JobQuery) (*jobstore.JobQueryResponse, error) {
+	jobSet, err := b.getJobsInitialSet(ctx, tx, recorder, query)
 	if err != nil {
 		return nil, err
 	}
 
-	jobSet, err = b.getJobsIncludeTags(tx, jobSet, query.IncludeTags)
+	jobSet, err = b.getJobsIncludeTags(ctx, tx, recorder, jobSet, query.IncludeTags)
 	if err != nil {
 		return nil, err
 	}
 
-	jobSet, err = b.getJobsExcludeTags(tx, jobSet, query.ExcludeTags)
+	jobSet, err = b.getJobsExcludeTags(ctx, tx, recorder, jobSet, query.ExcludeTags)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := b.getJobsBuildList(tx, jobSet, query)
+	result, err := b.getJobsBuildList(ctx, tx, recorder, jobSet, query)
 	if err != nil {
 		return nil, err
 	}
@@ -398,6 +464,7 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 	}
 
 	slices.SortFunc(result, sortFunc)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
 
 	// If we have a selector, filter the results to only those that match
 	if query.Selector != nil {
@@ -408,9 +475,11 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 			}
 		}
 		result = filtered
+		recorder.Latency(ctx, jobstore.OperationPartDuration, "filter_selector")
 	}
 
 	jobs, more := b.getJobsWithinLimit(result, query)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "filter_limit")
 
 	response := &jobstore.JobQueryResponse{
 		Jobs:   jobs,
@@ -427,8 +496,10 @@ func (b *BoltJobStore) getJobs(tx *bolt.Tx, query jobstore.JobQuery) (*jobstore.
 
 // getJobsInitialSet returns the initial set of jobs to be considered for GetJobs response.
 // It either returns all jobs, or jobs for a specific client if specified in the query.
-func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (map[string]struct{}, error) {
+func (b *BoltJobStore) getJobsInitialSet(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	query jobstore.JobQuery) (map[string]struct{}, error) {
 	jobSet := make(map[string]struct{})
+	defer recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
 
 	if query.ReturnAll || query.Namespace == "" {
 		bkt, err := NewBucketPath(BucketJobs).Get(tx, false)
@@ -458,10 +529,12 @@ func (b *BoltJobStore) getJobsInitialSet(tx *bolt.Tx, query jobstore.JobQuery) (
 }
 
 // getJobsIncludeTags filters out jobs that don't have ANY of the tags specified in the query.
-func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
+func (b *BoltJobStore) getJobsIncludeTags(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
 	if len(tags) == 0 {
 		return jobSet, nil
 	}
+	defer recorder.Latency(ctx, jobstore.OperationPartDuration, "filter_include_tags")
 	tagSet := make(map[string]struct{})
 	for _, tag := range tags {
 		tagLabel := []byte(strings.ToLower(tag))
@@ -486,11 +559,12 @@ func (b *BoltJobStore) getJobsIncludeTags(tx *bolt.Tx, jobSet map[string]struct{
 }
 
 // getJobsExcludeTags filters out jobs that have ANY of the tags specified in the query.
-func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
+func (b *BoltJobStore) getJobsExcludeTags(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	jobSet map[string]struct{}, tags []string) (map[string]struct{}, error) {
 	if len(tags) == 0 {
 		return jobSet, nil
 	}
-
+	defer recorder.Latency(ctx, jobstore.OperationPartDuration, "filter_exclude_tags")
 	for _, tag := range tags {
 		tagLabel := []byte(strings.ToLower(tag))
 		ids, err := b.tagsIndex.List(tx, tagLabel)
@@ -506,14 +580,21 @@ func (b *BoltJobStore) getJobsExcludeTags(tx *bolt.Tx, jobSet map[string]struct{
 	return jobSet, nil
 }
 
-func (b *BoltJobStore) getJobsBuildList(tx *bolt.Tx, jobSet map[string]struct{}, query jobstore.JobQuery) ([]models.Job, error) {
+func (b *BoltJobStore) getJobsBuildList(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	jobSet map[string]struct{}, query jobstore.JobQuery) ([]models.Job, error) {
 	var result []models.Job
+
+	defer recorder.Latency(ctx, jobstore.OperationPartDuration, "build_list")
 
 	for key := range jobSet {
 		var job models.Job
 
 		path := NewBucketPath(BucketJobs, key)
 		data := GetBucketData(tx, path, SpecKey)
+
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))
+		recorder.Count(ctx, jobstore.RowsRead)
+
 		err := b.marshaller.Unmarshal(data, &job)
 		if err != nil {
 			return nil, err
@@ -571,11 +652,18 @@ func (b *BoltJobStore) getListSorter(jobs []models.Job, query jobstore.JobQuery)
 }
 
 // GetExecutions returns the current job state for the provided job id
-func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
-	var state []models.Execution
+func (b *BoltJobStore) GetExecutions(
+	ctx context.Context, options jobstore.GetExecutionsOptions) (state []models.Execution, err error) {
+	var attrs []attribute.KeyValue
+	if options.IncludeJob {
+		attrs = append(attrs, attribute.Bool("query.include_job", true))
+	}
+	recorder := b.metricRecorder(ctx, BucketJobExecutions, jobstore.AttrOperationList, attrs...)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
 
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		state, err = b.getExecutions(tx, options)
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		state, err = b.getExecutions(ctx, tx, recorder, options)
 		return
 	})
 
@@ -584,16 +672,27 @@ func (b *BoltJobStore) GetExecutions(ctx context.Context, options jobstore.GetEx
 
 // GetInProgressJobs gets a list of the currently in-progress jobs, if a job type is supplied then
 // only jobs of that type will be retrieved
-func (b *BoltJobStore) GetInProgressJobs(ctx context.Context, jobType string) ([]models.Job, error) {
-	var infos []models.Job
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		infos, err = b.getInProgressJobs(tx, jobType)
+func (b *BoltJobStore) GetInProgressJobs(ctx context.Context, jobType string) (jobs []models.Job, err error) {
+	attrs := []attribute.KeyValue{
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeInProgress),
+	}
+	if jobType != "" {
+		attrs = append(attrs, attribute.String("query.job_type", jobType))
+	}
+
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationList, attrs...)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		jobs, err = b.getInProgressJobs(ctx, tx, recorder, jobType)
 		return
 	})
-	return infos, err
+	return jobs, err
 }
 
-func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.Job, error) {
+func (b *BoltJobStore) getInProgressJobs(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobType string) ([]models.Job, error) {
 	var infos []models.Job
 	var keys [][]byte
 
@@ -601,6 +700,7 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.
 	if err != nil {
 		return nil, NewBoltDBError(err)
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
 
 	for _, jobIDKey := range keys {
 		k, typ := splitInProgressIndexKey(string(jobIDKey))
@@ -610,13 +710,12 @@ func (b *BoltJobStore) getInProgressJobs(tx *bolt.Tx, jobType string) ([]models.
 			continue
 		}
 
-		job, err := b.getJob(tx, k)
+		job, err := b.getJob(ctx, tx, recorder, k)
 		if err != nil {
 			return nil, err
 		}
 		infos = append(infos, job)
 	}
-
 	return infos, nil
 }
 
@@ -655,17 +754,22 @@ func createInProgressIndexKey(job *models.Job) string {
 func (b *BoltJobStore) GetJobHistory(ctx context.Context,
 	jobID string,
 	query jobstore.JobHistoryQuery,
-) (*jobstore.JobHistoryQueryResponse, error) {
-	var response *jobstore.JobHistoryQueryResponse
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		response, err = b.getJobHistory(tx, jobID, query)
+) (response *jobstore.JobHistoryQueryResponse, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationList,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		response, err = b.getJobHistory(ctx, tx, recorder, jobID, query)
 		return
 	})
 	return response, err
 }
 
-func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.JobHistoryQuery) (*jobstore.JobHistoryQueryResponse, error) {
-	jobID, err := b.reifyJobID(tx, jobID)
+func (b *BoltJobStore) getJobHistory(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	jobID string, query jobstore.JobHistoryQuery) (*jobstore.JobHistoryQueryResponse, error) {
+	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -691,10 +795,15 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 
 	cursor := bkt.Cursor()
 	for k, v := cursor.Seek(uint64ToBytes(offset)); k != nil; k, v = cursor.Next() {
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+
 		var item models.JobHistory
 		if err := b.marshaller.Unmarshal(v, &item); err != nil {
 			return nil, err
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(v)))
+		recorder.Count(ctx, jobstore.RowsRead)
 
 		if b.filterHistoryItem(item, query) {
 			history = append(history, item)
@@ -712,10 +821,11 @@ func (b *BoltJobStore) getJobHistory(tx *bolt.Tx, jobID string, query jobstore.J
 	}
 
 	// Determine if we should continue pagination
-	shouldContinue, err := b.shouldContinueHistoryPagination(tx, jobID, cursor, query)
+	shouldContinue, err := b.shouldContinueHistoryPagination(ctx, tx, recorder, jobID, cursor, query)
 	if err != nil {
 		return nil, err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "determine_pagination")
 
 	if shouldContinue {
 		newOffset := lastSeq + 1
@@ -774,7 +884,9 @@ func (b *BoltJobStore) filterHistoryItem(item models.JobHistory, query jobstore.
 }
 
 func (b *BoltJobStore) shouldContinueHistoryPagination(
+	ctx context.Context,
 	tx *bolt.Tx,
+	recorder *telemetry.MetricRecorder,
 	jobID string,
 	cursor *bolt.Cursor,
 	query jobstore.JobHistoryQuery,
@@ -787,7 +899,7 @@ func (b *BoltJobStore) shouldContinueHistoryPagination(
 	// Otherwise, we need to check if the job or execution are in a terminal state
 	// For execution level events, stop if the execution in terminal state
 	if query.ExecutionID != "" {
-		execution, err := b.getExecution(tx, query.ExecutionID)
+		execution, err := b.getExecution(ctx, tx, recorder, query.ExecutionID)
 		if err != nil {
 			return false, err
 		}
@@ -795,7 +907,7 @@ func (b *BoltJobStore) shouldContinueHistoryPagination(
 	}
 
 	// If querying all executions or job level events, stop if the job is in terminal state
-	job, err := b.getJob(tx, jobID)
+	job, err := b.getJob(ctx, tx, recorder, jobID)
 	if err != nil {
 		return false, err
 	}
@@ -803,25 +915,31 @@ func (b *BoltJobStore) shouldContinueHistoryPagination(
 }
 
 // CreateJob creates a new record of a job in the data store
-func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) error {
+func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationCreate)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	job.State = models.NewJobState(models.JobStateTypePending)
 	job.Revision = 1
 	job.CreateTime = b.clock.Now().UTC().UnixNano()
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 	job.Normalize()
-	err := job.Validate()
+	err = job.Validate()
 	if err != nil {
 		return jobstore.NewJobStoreError(err.Error())
 	}
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.createJob(tx, job)
+		return b.createJob(ctx, tx, recorder, job)
 	})
 }
 
-func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
-	if b.jobExists(tx, job.ID) {
+func (b *BoltJobStore) createJob(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, job models.Job) error {
+	if b.jobExists(ctx, tx, recorder, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartValidate)
 
 	jobIDKey := []byte(job.ID)
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, true); err != nil {
@@ -838,12 +956,15 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 			return NewBoltDBError(err)
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartBucketWrite)
 
 	// Write the job to the Job bucket
 	jobData, err := b.marshaller.Marshal(job)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(jobData)))
 
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
 		return NewBoltDBError(err)
@@ -852,6 +973,7 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 			return err
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	// Create a composite key for the in progress index
 	jobkey := createInProgressIndexKey(&job)
@@ -870,21 +992,27 @@ func (b *BoltJobStore) createJob(tx *bolt.Tx, job models.Job) error {
 			return err
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
 	return nil
 }
 
 // DeleteJob removes the specified job from the system entirely
-func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) error {
+func (b *BoltJobStore) DeleteJob(ctx context.Context, jobID string) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationDelete)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.deleteJob(tx, jobID)
+		return b.deleteJob(ctx, tx, jobID, recorder)
 	})
 }
 
-func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
+func (b *BoltJobStore) deleteJob(
+	ctx context.Context, tx *bolt.Tx, jobID string, recorder *telemetry.MetricRecorder) error {
 	jobIDKey := []byte(jobID)
 
-	job, err := b.getJob(tx, jobID)
+	job, err := b.getJob(ctx, tx, recorder, jobID)
 	if err != nil {
 		if bacerrors.IsError(err) {
 			return err
@@ -900,6 +1028,7 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 			return err
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartBucketDelete)
 
 	// We'll remove the job from the in progress index using just it's ID in case
 	// it predates when we switched to composite keys.
@@ -921,31 +1050,37 @@ func (b *BoltJobStore) deleteJob(tx *bolt.Tx, jobID string) error {
 			return err
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexDelete)
 
 	return nil
 }
 
 // UpdateJobState updates the current state for a single Job, appending an entry to
 // the history at the same time
-func (b *BoltJobStore) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) error {
+func (b *BoltJobStore) UpdateJobState(ctx context.Context, request jobstore.UpdateJobStateRequest) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationUpdate,
+		jobstore.AttrToStateKey.String(request.NewState.String()))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.updateJobState(tx, request)
+		return b.updateJobState(ctx, tx, recorder, request)
 	})
 }
 
-func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobStateRequest) error {
-	bucket, err := NewBucketPath(BucketJobs, request.JobID).Get(tx, true)
+func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	request jobstore.UpdateJobStateRequest) error {
+	// Add current state to metrics
+	job, err := b.getJob(ctx, tx, recorder, request.JobID)
 	if err != nil {
 		return err
 	}
 
-	job, err := b.getJob(tx, request.JobID)
-	if err != nil {
-		return err
-	}
+	// Add current state to metrics
+	recorder.AddAttributes(jobstore.AttrFromStateKey.String(job.State.StateType.String()))
 
 	// check the expected state
-	if err := request.Condition.Validate(job); err != nil {
+	if err = request.Condition.Validate(job); err != nil {
 		return err
 	}
 
@@ -963,12 +1098,18 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(jobStateData)))
 
-	// Re-write the state
+	bucket, err := NewBucketPath(BucketJobs, request.JobID).Get(tx, true)
+	if err != nil {
+		return err
+	}
 	err = bucket.Put(SpecKey, jobStateData)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	if job.IsTerminal() {
 		tx.OnCommit(func() {
@@ -985,16 +1126,22 @@ func (b *BoltJobStore) updateJobState(tx *bolt.Tx, request jobstore.UpdateJobSta
 		if err != nil {
 			return err
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 	}
 
 	return nil
 }
 
 // AddJobHistory appends a new history entry to the job history
-func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events ...models.Event) error {
+func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events ...models.Event) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationCreate,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
 		for _, event := range events {
-			if err = b.addJobHistory(tx, jobID, event); err != nil {
+			if err = b.addJobHistory(ctx, tx, recorder, jobID, event); err != nil {
 				return err
 			}
 		}
@@ -1002,8 +1149,9 @@ func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events .
 	})
 }
 
-func (b *BoltJobStore) addJobHistory(tx *bolt.Tx, jobID string, event models.Event) error {
-	return b.addHistory(tx, jobID, models.JobHistory{
+func (b *BoltJobStore) addJobHistory(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string, event models.Event) error {
+	return b.addHistory(ctx, tx, recorder, jobID, models.JobHistory{
 		Type:  models.JobHistoryTypeJobLevel,
 		JobID: jobID,
 		Event: event,
@@ -1011,10 +1159,11 @@ func (b *BoltJobStore) addJobHistory(tx *bolt.Tx, jobID string, event models.Eve
 	})
 }
 
-func (b *BoltJobStore) addExecutionHistory(tx *bolt.Tx, jobID, executionID string, events ...*models.Event) error {
+func (b *BoltJobStore) addExecutionHistory(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	jobID, executionID string, events ...*models.Event) error {
 	now := b.clock.Now().UTC()
 	for _, event := range events {
-		if err := b.addHistory(tx, jobID, models.JobHistory{
+		if err := b.addHistory(ctx, tx, recorder, jobID, models.JobHistory{
 			Type:        models.JobHistoryTypeExecutionLevel,
 			JobID:       jobID,
 			ExecutionID: executionID,
@@ -1027,28 +1176,39 @@ func (b *BoltJobStore) addExecutionHistory(tx *bolt.Tx, jobID, executionID strin
 	return nil
 }
 
-func (b *BoltJobStore) addHistory(tx *bolt.Tx, jobID string, historyEntry models.JobHistory) error {
+func (b *BoltJobStore) addHistory(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string, historyEntry models.JobHistory) error {
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobHistory).Get(tx, false)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartBucketRead)
 
 	seq, err := bkt.NextSequence()
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartSequence)
 
 	historyEntry.SeqNum = seq
 	data, err := b.marshaller.Marshal(historyEntry)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(data)))
 
-	return bkt.Put(uint64ToBytes(seq), data)
+	err = bkt.Put(uint64ToBytes(seq), data)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+	return err
 }
 
 // CreateExecution creates a record of a new execution
-func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) error {
+func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Execution) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobExecutions, jobstore.AttrOperationCreate)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	if execution.CreateTime == 0 {
 		execution.CreateTime = b.clock.Now().UTC().UnixNano()
 	}
@@ -1059,57 +1219,65 @@ func (b *BoltJobStore) CreateExecution(ctx context.Context, execution models.Exe
 		execution.Revision = 1
 	}
 	execution.Normalize()
-	err := execution.Validate()
+	err = execution.Validate()
 	if err != nil {
 		return err
 	}
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.createExecution(tx, execution)
+		return b.createExecution(ctx, tx, recorder, execution)
 	})
 }
 
-func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) error {
-	if !b.jobExists(tx, execution.JobID) {
+func (b *BoltJobStore) createExecution(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, execution models.Execution) error {
+	if !b.jobExists(ctx, tx, recorder, execution.JobID) {
 		return jobstore.NewErrJobNotFound(execution.JobID)
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartValidate)
 
 	execID := []byte(execution.ID)
 
-	// Get the history bucket for this job ID, which involves potentially
-	// creating the bucket (jobs/JOBID/job_history)
-
-	// Check for the existence of this ID and if it doesn't already exist, then create
-	// it
-	if bucket, err := NewBucketPath(BucketJobs, execution.JobID, BucketJobExecutions).Get(tx, true); err != nil {
+	// Check for existing execution and create bucket if needed
+	bucket, err := NewBucketPath(BucketJobs, execution.JobID, BucketJobExecutions).Get(tx, true)
+	if err != nil {
 		return err
-	} else {
-		_, err = b.getExecution(tx, execution.ID)
-		if err == nil {
-			return jobstore.NewErrExecutionAlreadyExists(execution.ID)
-		}
-
-		if data, err := b.marshaller.Marshal(execution); err != nil {
-			return err
-		} else {
-			err = bucket.Put(execID, data)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Add an index for the execution ID to the job id
-		if err = b.executionsIndex.Add(tx, []byte(execution.JobID), []byte(execution.ID)); err != nil {
-			return err
-		}
-
-		if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
-			Operation:  watcher.OperationCreate,
-			ObjectType: jobstore.EventObjectExecutionUpsert,
-			Object:     models.ExecutionUpsert{Current: &execution},
-		}); err != nil {
-			return err
-		}
 	}
+
+	// Verify no duplicate execution
+	_, err = b.getExecution(ctx, tx, recorder, execution.ID)
+	if err == nil {
+		return jobstore.NewErrExecutionAlreadyExists(execution.ID)
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+
+	// Marshal and write execution
+	data, err := b.marshaller.Marshal(execution)
+	if err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(data)))
+
+	if err = bucket.Put(execID, data); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+
+	// Update index
+	if err = b.executionsIndex.Add(tx, []byte(execution.JobID), []byte(execution.ID)); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
+
+	// Record event
+	if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+		Operation:  watcher.OperationCreate,
+		ObjectType: jobstore.EventObjectExecutionUpsert,
+		Object:     models.ExecutionUpsert{Current: &execution},
+	}); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartEventWrite)
 
 	tx.OnCommit(func() {
 		analytics.EmitEvent(context.TODO(), analytics.NewCreatedExecutionEvent(execution))
@@ -1119,19 +1287,33 @@ func (b *BoltJobStore) createExecution(tx *bolt.Tx, execution models.Execution) 
 
 // UpdateExecution updates the state of a single execution by loading from storage,
 // updating and then writing back in a single transaction
-func (b *BoltJobStore) UpdateExecution(ctx context.Context, request jobstore.UpdateExecutionRequest) error {
+func (b *BoltJobStore) UpdateExecution(ctx context.Context, request jobstore.UpdateExecutionRequest) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobExecutions, jobstore.AttrOperationUpdate)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.updateExecution(tx, request)
+		return b.updateExecution(ctx, tx, recorder, request)
 	})
 }
 
-func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecutionRequest) error {
-	existingExecution, err := b.getExecution(tx, request.ExecutionID)
+func (b *BoltJobStore) updateExecution(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, request jobstore.UpdateExecutionRequest) error {
+	// Get current execution
+	existingExecution, err := b.getExecution(ctx, tx, recorder, request.ExecutionID)
 	if err != nil {
 		return jobstore.NewErrExecutionNotFound(request.ExecutionID)
 	}
 
-	// check the expected state
+	// Record state transitions in metrics
+	recorder.AddAttributes(
+		jobstore.FromDesiredStateKey.String(existingExecution.DesiredState.StateType.String()),
+		jobstore.ToDesiredStateKey.String(request.NewValues.DesiredState.StateType.String()),
+		jobstore.AttrFromStateKey.String(existingExecution.ComputeState.StateType.String()),
+		jobstore.AttrToStateKey.String(request.NewValues.ComputeState.StateType.String()),
+	)
+
+	// Validate state transition
 	if err := request.Condition.Validate(existingExecution); err != nil {
 		return err
 	}
@@ -1151,30 +1333,34 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	}
 	newExecution.Normalize()
 
-	err = mergo.Merge(&newExecution, existingExecution)
-	if err != nil {
+	if err = mergo.Merge(&newExecution, existingExecution); err != nil {
 		return err
 	}
 
+	// Marshal and write updated execution
 	data, err := b.marshaller.Marshal(newExecution)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(data)))
 
 	bucket, err := NewBucketPath(BucketJobs, newExecution.JobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return err
-	} else {
-		err = bucket.Put([]byte(newExecution.ID), data)
-		if err != nil {
-			return err
-		}
 	}
 
-	if err = b.addExecutionHistory(tx, newExecution.JobID, newExecution.ID, request.Events...); err != nil {
+	if err = bucket.Put([]byte(newExecution.ID), data); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+
+	// Add execution history
+	if err = b.addExecutionHistory(ctx, tx, recorder, newExecution.JobID, newExecution.ID, request.Events...); err != nil {
 		return err
 	}
 
+	// Store event
 	if err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationUpdate,
 		ObjectType: jobstore.EventObjectExecutionUpsert,
@@ -1184,6 +1370,7 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 	}); err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartEventWrite)
 
 	tx.OnCommit(func() {
 		if newExecution.IsTerminalState() {
@@ -1198,38 +1385,51 @@ func (b *BoltJobStore) updateExecution(tx *bolt.Tx, request jobstore.UpdateExecu
 }
 
 // AddExecutionHistory appends a new history entry to the execution history
-func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error {
+func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationCreate,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeExecution))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
 		eventsValues := make([]*models.Event, len(events))
 		for i := range events {
 			eventsValues[i] = &events[i]
 		}
-		return b.addExecutionHistory(tx, jobID, executionID, eventsValues...)
+		return b.addExecutionHistory(ctx, tx, recorder, jobID, executionID, eventsValues...)
 	})
 }
 
 // CreateEvaluation creates a new evaluation
-func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) error {
+func (b *BoltJobStore) CreateEvaluation(ctx context.Context, eval models.Evaluation) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobEvaluations, jobstore.AttrOperationCreate)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.createEvaluation(tx, eval)
+		return b.createEvaluation(ctx, tx, recorder, eval)
 	})
 }
 
-func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) error {
-	_, err := b.getJob(tx, eval.JobID)
+func (b *BoltJobStore) createEvaluation(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, eval models.Evaluation) error {
+	_, err := b.getJob(ctx, tx, recorder, eval.JobID)
 	if err != nil {
 		return err
 	}
 
 	// If there is no error getting an eval with this ID, then it already exists
-	if _, err = b.getEvaluation(tx, eval.ID); err == nil {
+	if _, err = b.getEvaluation(ctx, tx, recorder, eval.ID); err == nil {
 		return jobstore.NewErrEvaluationAlreadyExists(eval.ID)
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartValidate)
 
 	data, err := b.marshaller.Marshal(eval)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(data)))
 
 	if bkt, err := NewBucketPath(BucketJobs, eval.JobID, BucketJobEvaluations).Get(tx, false); err != nil {
 		return err
@@ -1238,38 +1438,47 @@ func (b *BoltJobStore) createEvaluation(tx *bolt.Tx, eval models.Evaluation) err
 			return err
 		}
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	// Add an index for the eval pointing to the job id
 	err = b.evaluationsIndex.Add(tx, []byte(eval.JobID), []byte(eval.ID))
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
-	return b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+	err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,
 		ObjectType: jobstore.EventObjectEvaluation,
 		Object:     eval,
 	})
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartEventWrite)
+	return err
 }
 
 // GetEvaluation retrieves the specified evaluation
-func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (models.Evaluation, error) {
-	var eval models.Evaluation
-	err := boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		eval, err = b.getEvaluation(tx, id)
+func (b *BoltJobStore) GetEvaluation(ctx context.Context, id string) (eval models.Evaluation, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobEvaluations, jobstore.AttrOperationGet)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		eval, err = b.getEvaluation(ctx, tx, recorder, id)
 		return
 	})
 
 	return eval, err
 }
 
-func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation, error) {
+func (b *BoltJobStore) getEvaluation(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, id string) (models.Evaluation, error) {
 	var eval models.Evaluation
 
-	key, err := b.getEvaluationJobID(tx, id)
+	key, err := b.getEvaluationJobID(ctx, tx, recorder, id)
 	if err != nil {
 		return eval, err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
 
 	if bkt, err := NewBucketPath(BucketJobs, key, BucketJobEvaluations).Get(tx, false); err != nil {
 		return eval, err
@@ -1278,17 +1487,21 @@ func (b *BoltJobStore) getEvaluation(tx *bolt.Tx, id string) (models.Evaluation,
 		if data == nil {
 			return eval, jobstore.NewErrEvaluationNotFound(id)
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
 
 		err = b.marshaller.Unmarshal(data, &eval)
 		if err != nil {
 			return eval, err
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))
+		recorder.Count(ctx, jobstore.RowsRead)
 	}
 
 	return eval, nil
 }
 
-func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error) {
+func (b *BoltJobStore) getEvaluationJobID(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, id string) (string, error) {
 	keys, err := b.evaluationsIndex.List(tx, []byte(id))
 	if err != nil {
 		return "", err
@@ -1302,22 +1515,27 @@ func (b *BoltJobStore) getEvaluationJobID(tx *bolt.Tx, id string) (string, error
 }
 
 // DeleteEvaluation deletes the specified evaluation
-func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) error {
+func (b *BoltJobStore) DeleteEvaluation(ctx context.Context, id string) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobEvaluations, jobstore.AttrOperationDelete)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
-		return b.deleteEvaluation(tx, id)
+		return b.deleteEvaluation(ctx, tx, recorder, id)
 	})
 }
 
-func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
-	eval, err := b.getEvaluation(tx, id)
+func (b *BoltJobStore) deleteEvaluation(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, id string) error {
+	eval, err := b.getEvaluation(ctx, tx, recorder, id)
 	if err != nil {
 		return err
 	}
 
-	jobID, err := b.getEvaluationJobID(tx, id)
+	jobID, err := b.getEvaluationJobID(ctx, tx, recorder, id)
 	if err != nil {
 		return err
 	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
 
 	if bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobEvaluations).Get(tx, false); err != nil {
 		return err
@@ -1326,13 +1544,22 @@ func (b *BoltJobStore) deleteEvaluation(tx *bolt.Tx, id string) error {
 		if err != nil {
 			return err
 		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartDelete)
 	}
 
-	return b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
+	// Remove from evaluation index
+	if err = b.evaluationsIndex.Remove(tx, []byte(jobID), []byte(id)); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexDelete)
+
+	err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationDelete,
 		ObjectType: jobstore.EventObjectEvaluation,
 		Object:     eval,
 	})
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartEventWrite)
+	return err
 }
 
 // GetEventStore returns the event store
