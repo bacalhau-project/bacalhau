@@ -106,7 +106,7 @@ func (r *MetricRecorder) Error(err error) {
 		r.ErrorString(string(bErr.Code()))
 		return
 	}
-	r.ErrorString(err.Error())
+	r.ErrorString("unknown_error")
 }
 
 // Count aggregates counter increments by 1.
