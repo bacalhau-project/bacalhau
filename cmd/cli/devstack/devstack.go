@@ -104,7 +104,10 @@ func NewCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// TODO: a hack to force debug logging for devstack
 			//  until I figure out why flags and env vars are not working
+			logger.ConfigureLogging(logger.LogModeDefault, zerolog.InfoLevel)
 			logger.ConfigureLogging(logger.LogModeDefault, zerolog.DebugLevel)
+			// TODO this should be a part of the config.
+			telemetry.SetupFromEnvs()
 			return runDevstack(cmd, ODs)
 		},
 	}
