@@ -7,10 +7,12 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 )
 
@@ -43,13 +45,30 @@ func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
 	}
 }
 
-func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) error {
+func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) (err error) {
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrSchedulerType, "ops"),
+		attribute.String(AttrEvalType, evaluation.Type),
+		AttrOutcomeKey.String(AttrOutcomeSuccess), // default outcome is success, unless changed
+	)
+	defer func() {
+		if err != nil {
+			metrics.Error(err)
+			metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeFailure))
+		}
+		metrics.Count(ctx, processCount)
+		metrics.Done(ctx, processDuration)
+	}()
+
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
 
 	job, err := b.jobStore.GetJob(ctx, evaluation.JobID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job %s: %w", evaluation.JobID, err)
 	}
+	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetJob)
+	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
+
 	// Retrieve the job state
 	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: evaluation.JobID,
@@ -58,6 +77,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
+	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
+	metrics.Histogram(ctx, executionsExisting, float64(len(jobExecutions)))
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
@@ -83,15 +104,16 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	// Mark executions that are running on nodes that are not healthy as failed
 	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
 	lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
+	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 	allFailedExecs = allFailedExecs.union(lost)
 
-	nonTerminalExecs, allFailedExecs = b.handleTimeouts(plan, nonTerminalExecs, allFailedExecs)
+	nonTerminalExecs, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalExecs, allFailedExecs)
 
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
 	var newExecs execSet
 	if len(existingExecs) == 0 {
-		if newExecs, err = b.createMissingExecs(ctx, &job, plan); err != nil {
+		if newExecs, err = b.createMissingExecs(ctx, metrics, &job, plan); err != nil {
 			return err // internal error
 		}
 	}
@@ -110,10 +132,13 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		}
 	}
 	plan.MarkJobRunningIfEligible(orchestrator.JobStateUpdateEvent(models.JobStateTypeRunning))
-	return b.planner.Process(ctx, plan)
+	err = b.planner.Process(ctx, plan)
+	metrics.Latency(ctx, processPartDuration, AttrOperationPartProcessPlan)
+	return err
 }
 
 func (b *OpsJobScheduler) handleTimeouts(
+	ctx context.Context, metrics *telemetry.MetricRecorder,
 	plan *models.Plan, nonTerminalExecs execSet, allFailedExecs execSet) (execSet, execSet) {
 	// Mark job/executions that have exceeded their total/execution timeout as failed
 	// check if job has exceeded total timeout
@@ -122,6 +147,7 @@ func (b *OpsJobScheduler) handleTimeouts(
 	jobExpirationTime := b.clock.Now().Add(-jobTimeout)
 	if job.IsExpired(jobExpirationTime) {
 		plan.MarkJobFailed(orchestrator.JobTimeoutEvent(jobTimeout))
+		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeTimeout))
 	}
 
 	// check if the executions have exceeded their execution timeout
@@ -131,17 +157,23 @@ func (b *OpsJobScheduler) handleTimeouts(
 		var timedOut execSet
 		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
 		timedOut.markStopped(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
+		metrics.CountN(ctx, executionsTimedOut, int64(len(timedOut)))
 		allFailedExecs = allFailedExecs.union(timedOut)
 	}
 	return nonTerminalExecs, allFailedExecs
 }
 
 func (b *OpsJobScheduler) createMissingExecs(
-	ctx context.Context, job *models.Job, plan *models.Plan) (execSet, error) {
+	ctx context.Context, metrics *telemetry.MetricRecorder,
+	job *models.Job, plan *models.Plan) (execSet, error) {
 	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
 		return nil, err
 	}
+	metrics.Latency(ctx, processPartDuration, AttrOperationPartMatchNodes)
+	metrics.Histogram(ctx, nodesMatched, float64(len(matching)))
+	metrics.Histogram(ctx, nodesRejected, float64(len(rejected)))
+
 	if len(matching) == 0 {
 		plan.MarkJobFailed(
 			*models.EventFromError(orchestrator.EventTopicJobScheduling, orchestrator.NewErrNoMatchingNodes(rejected)))
@@ -163,6 +195,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
 		newExecs[execution.ID] = execution
 	}
+	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(matching)))
 	return newExecs, nil
 }
 
