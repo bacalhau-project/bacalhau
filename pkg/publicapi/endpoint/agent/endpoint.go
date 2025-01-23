@@ -152,11 +152,11 @@ func (e *Endpoint) config(c echo.Context) error {
 // license godoc
 //
 //	@ID			agent/license
-//	@Summary	Returns the details of the current configured orchestrator license.
+//	@Summary	Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured
 //	@Tags		Ops
 //	@Produce	json
 //	@Success	200	{object}	apimodels.GetAgentLicenseResponse
-//	@Failure	500	{object}	string
+//	@Failure	404	{object}	string
 //	@Router		/api/v1/agent/license [get]
 func (e *Endpoint) license(c echo.Context) error {
 	licenseClaims := e.licenseManager.License()

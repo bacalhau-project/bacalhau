@@ -121,7 +121,7 @@ const docTemplate = `{
                 "tags": [
                     "Ops"
                 ],
-                "summary": "Returns the details of the current configured orchestrator license.",
+                "summary": "Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured",
                 "operationId": "agent/license",
                 "responses": {
                     "200": {
@@ -130,8 +130,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/apimodels.GetAgentLicenseResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "string"
                         }
