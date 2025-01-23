@@ -82,6 +82,30 @@ export SECRETS_DOCKER_PASSWORD="${var.docker_password}"
 EOI
 
 ##############################
+# Install and configure Ops Agent
+##############################
+
+# Install the Ops Agent
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+
+# Configure Ops Agent
+sudo tee /etc/google-cloud-ops-agent/config.yaml > /dev/null << EOA
+metrics:
+  receivers:
+    hostmetrics:
+      type: hostmetrics
+      collection_interval: 60s
+  service:
+    pipelines:
+      default_pipeline:
+        receivers: [hostmetrics]
+EOA
+
+# Restart Ops Agent to apply configuration
+sudo systemctl restart google-cloud-ops-agent"*"
+
+##############################
 # write the local files to the node filesystem
 ##############################
 
@@ -180,9 +204,12 @@ EOF
   lifecycle {
     ignore_changes = [attached_disk]
   }
-  #   service_account {
-  #     scopes = ["cloud-platform"]
-  #   }
+
+  # Add service account for Ops Agent
+  service_account {
+    scopes = ["cloud-platform"]
+  }
+
   allow_stopping_for_update = true
 
   scheduling {
@@ -195,6 +222,22 @@ EOF
     type  = count.index >= var.instance_count - var.num_gpu_machines ? var.gpu_type : ""
     count = count.index >= var.instance_count - var.num_gpu_machines ? var.num_gpus_per_machine : 0
   }
+
+  # Add labels for Ops Agent
+  labels = {
+    managed-by-ops-agent = "true"
+    environment          = terraform.workspace
+  }
+}
+
+# Add IAM role binding for Ops Agent
+resource "google_project_iam_binding" "ops_agent_iam" {
+  project = var.gcp_project
+  role    = "roles/monitoring.metricWriter"
+
+  members = [
+    "serviceAccount:${google_compute_instance.bacalhau_vm[0].service_account[0].email}",
+  ]
 }
 
 resource "google_compute_address" "ipv4_address" {
@@ -375,4 +418,22 @@ resource "google_compute_subnetwork" "bacalhau_subnetwork_manual" {
   region        = var.region
   network       = google_compute_network.bacalhau_network_manual[0].id
   count         = var.auto_subnets ? 0 : 1
+}
+
+# Add firewall rule for Ops Agent
+resource "google_compute_firewall" "ops_agent_firewall" {
+  name    = "ops-agent-firewall-${terraform.workspace}"
+  network = var.auto_subnets ? google_compute_network.bacalhau_network[0].name : google_compute_network.bacalhau_network_manual[0].name
+
+  allow {
+    protocol = "tcp"
+    ports = [
+      "8995", // Ops Agent health check
+      "8996", // Ops Agent metrics endpoint
+      "20201", // OpenTelemetry collector
+    ]
+  }
+
+  source_ranges = ["35.199.84.0/22"]  # GCP Health Checking Systems
+  target_tags = ["ops-agent"]
 }
