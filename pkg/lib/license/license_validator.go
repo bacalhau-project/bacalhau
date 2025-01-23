@@ -143,7 +143,6 @@ func (v *LicenseValidator) validateToken(tokenString string, verifyExpiry bool) 
 
 	// JWT token validation failed
 	if err != nil {
-
 		// Check if the error is due to expiration and if we are not verifying expiration
 		if errors.Is(err, jwt.ErrTokenExpired) && !verifyExpiry {
 			parsedUnverifiedToken, _, unverifiedErr := jwt.NewParser().ParseUnverified(tokenString, &LicenseClaims{})

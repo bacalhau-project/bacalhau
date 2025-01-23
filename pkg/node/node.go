@@ -196,13 +196,16 @@ func NewNode(
 		NodeInfoProvider: nodeInfoProvider,
 	})
 
-	agent.NewEndpoint(agent.EndpointParams{
+	_, err = agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
 		LicenseManager:     licenseManager,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Start periodic software update checks.
 	version.RunUpdateChecker(
