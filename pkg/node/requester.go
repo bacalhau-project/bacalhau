@@ -100,6 +100,9 @@ func NewRequesterNode(
 
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
+
+		// metrics planner
+		planner.NewMetricsPlanner(),
 	)
 
 	retryStrategy := cfg.SystemConfig.RetryStrategy

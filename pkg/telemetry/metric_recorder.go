@@ -163,6 +163,15 @@ func (r *MetricRecorder) Done(ctx context.Context, h metric.Float64Histogram, at
 	finalAttrs := append(r.attrs, attrs...)
 	h.Record(ctx, r.clock.Since(r.start).Seconds(), metric.WithAttributes(finalAttrs...))
 
+	r.DoneWithoutTotalDuration(ctx, attrs...)
+}
+
+// DoneWithoutTotalDuration publishes all aggregated metrics without recording total duration.
+// This should typically be deferred immediately after creating the recorder.
+// Additional attributes can be provided and will be merged with base attributes.
+func (r *MetricRecorder) DoneWithoutTotalDuration(ctx context.Context, attrs ...attribute.KeyValue) {
+	finalAttrs := append(r.attrs, attrs...)
+
 	// Publish all aggregated latencies to their respective histograms
 	for key, duration := range r.latencies {
 		opAttrs := append(finalAttrs, SubOperationKey.String(key.operation))
