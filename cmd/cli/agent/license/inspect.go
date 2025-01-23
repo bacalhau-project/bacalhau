@@ -53,7 +53,7 @@ func (o *AgentLicenseInspectOptions) runAgentLicense(cmd *cobra.Command, api cli
 	ctx := cmd.Context()
 	response, err := api.Agent().License(ctx)
 	if err != nil {
-		return fmt.Errorf("could not get agent license: %w", err)
+		return fmt.Errorf("error retrieving agent license: %w", err)
 	}
 
 	// For JSON/YAML output
@@ -68,6 +68,7 @@ func (o *AgentLicenseInspectOptions) runAgentLicense(cmd *cobra.Command, api cli
 		{Left: "Customer ID", Right: response.CustomerID},
 		{Left: "Valid Until", Right: response.ExpiresAt.Format(time.DateOnly)},
 		{Left: "Version", Right: response.LicenseVersion},
+		{Left: "Expired", Right: response.IsExpired()},
 	}
 
 	// Always show Capabilities

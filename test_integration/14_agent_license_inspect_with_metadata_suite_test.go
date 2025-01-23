@@ -51,6 +51,7 @@ License ID   = 2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678
 Customer ID  = test-customer-id-123
 Valid Until  = 2045-07-28
 Version      = v1
+Expired      = false
 Capabilities = max_nodes=1
 Metadata     = someMetadata=valueOfSomeMetadata`
 

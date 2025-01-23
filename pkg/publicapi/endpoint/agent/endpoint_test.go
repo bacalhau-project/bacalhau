@@ -28,9 +28,14 @@ const officialTokenButExpired = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVuSm5GQ05TeUFUMVN
 func TestEndpointConfigRedactFields(t *testing.T) {
 	router := echo.New()
 
+	// Create license manager
+	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	require.NoError(t, err)
+
 	// populate the fields that should be redacted with "secret" values.
-	NewEndpoint(EndpointParams{
-		Router: router,
+	_, err = NewEndpoint(EndpointParams{
+		Router:         router,
+		LicenseManager: licenseManager,
 		BacalhauConfig: types.Bacalhau{
 			Orchestrator: types.Orchestrator{
 				Auth: types.OrchestratorAuth{
@@ -45,6 +50,8 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 		},
 	})
 
+	require.NoError(t, err)
+
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/config", nil)
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
@@ -53,7 +60,7 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 
 	// assert the secret values are not present.
 	var payload apimodels.GetAgentConfigResponse
-	err := json.NewDecoder(rr.Body).Decode(&payload)
+	err = json.NewDecoder(rr.Body).Decode(&payload)
 	require.NoError(t, err)
 	assert.Equal(t, payload.Config.Orchestrator.Auth.Token, "<redacted>")
 	assert.Equal(t, payload.Config.Compute.Auth.Token, "<redacted>")
@@ -83,14 +90,15 @@ func TestEndpointLicenseValid(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config)
+	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
-	NewEndpoint(EndpointParams{
+	_, err = NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: config,
 		LicenseManager: licenseManager,
 	})
+	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
 	rr := httptest.NewRecorder()
@@ -113,6 +121,8 @@ func TestEndpointLicenseValid(t *testing.T) {
 	assert.Equal(t, "test-customer-id-123", response.Subject)
 	assert.Equal(t, "e66d1f3a-a8d8-4d57-8f14-00722844afe2", response.ID)
 	assert.Equal(t, int64(2384881638), response.ExpiresAt.Unix())
+	assert.False(t, response.IsExpired())
+	assert.Equal(t, 1, response.MaxNumberOfNodes())
 }
 
 // TestEndpointLicenseNotConfigured tests the license endpoint when no license is configured
@@ -128,136 +138,41 @@ func TestEndpointLicenseNotConfigured(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config)
+	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
-	NewEndpoint(EndpointParams{
+	_, err = NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: config,
 		LicenseManager: licenseManager,
 	})
+	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.Equal(t, http.StatusNotFound, rr.Code)
 
 	var errResp map[string]string
 	err = json.NewDecoder(rr.Body).Decode(&errResp)
 	require.NoError(t, err)
-	require.Contains(t, errResp["message"], "no license configured for orchestrator")
-}
-
-// TestEndpointLicenseInvalidToken tests when the license token is invalid
-func TestEndpointLicenseInvalidToken(t *testing.T) {
-	router := echo.New()
-
-	// Create a temporary directory for the test
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Write JSON with an invalid JWT token
-	licenseContent := `{
-		"license": "invalid.jwt.token"
-	}`
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config)
-	require.NoError(t, err)
-
-	NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-	var errResp map[string]string
-	err = json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	require.Contains(t, errResp["message"], "invalid license: failed to parse license: token is malformed")
+	require.Contains(t, errResp["message"], "Error inspecting orchestrator license: No license configured for orchestrator.")
 }
 
 // TestEndpointLicenseManagerNotConfigured tests when the license manager is not configured
 func TestEndpointLicenseManagerNotConfigured(t *testing.T) {
 	router := echo.New()
 
-	NewEndpoint(EndpointParams{
+	_, err := NewEndpoint(EndpointParams{
 		Router: router,
 		// No license manager configured
 	})
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-	var errResp map[string]string
-	err := json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	require.Contains(t, errResp["message"], "Error inspecting orchestrator license. Please check orchestrator configuration.")
-}
-
-// TestEndpointLicenseValidationError tests when the license validation fails with a specific error
-func TestEndpointLicenseValidationError(t *testing.T) {
-	router := echo.New()
-
-	// Create a temporary directory for the test
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Write valid license file but with expired token
-	licenseContent := fmt.Sprintf(`{
-		"license": %q
-	}`, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9kdWN0IjoiQmFjYWxoYXUiLCJsaWNlbnNlX3ZlcnNpb24iOiJ2MSIsImxpY2Vuc2VfdHlwZSI6InN0YW5kYXJkIiwiZXhwIjoxNjgzODQ5NjAwfQ.invalid-signature")
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config)
-	require.NoError(t, err)
-
-	NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
-	})
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
-
-	var errResp map[string]string
-	err = json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	require.Contains(t, errResp["message"], "failed to get license: invalid license: failed to parse license")
+	require.ErrorContains(
+		t,
+		err,
+		"license manager is required for agent endpoint",
+	)
 }
 
 // TestEndpointLicenseExpired tests when the license token is valid but expired
@@ -284,27 +199,37 @@ func TestEndpointLicenseExpired(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config)
+	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
-	NewEndpoint(EndpointParams{
+	_, err = NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: config,
 		LicenseManager: licenseManager,
 	})
+	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
-	require.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.Equal(t, http.StatusOK, rr.Code)
 
-	var errResp map[string]string
-	err = json.NewDecoder(rr.Body).Decode(&errResp)
+	var response apimodels.GetAgentLicenseResponse
+	err = json.NewDecoder(rr.Body).Decode(&response)
 	require.NoError(t, err)
-	require.Contains(
-		t,
-		errResp["message"],
-		"failed to get license: invalid license: failed to parse license: token has invalid claims: token is expired",
-	)
+
+	// Verify some basic claims
+	assert.Equal(t, "Bacalhau", response.Product)
+	assert.Equal(t, "0dd04c84-09b8-4179-88f7-c72a9d56c0a2", response.LicenseID)
+	assert.Equal(t, "standard", response.LicenseType)
+	assert.Equal(t, "test-customer-id-123", response.CustomerID)
+	assert.Equal(t, "v1", response.LicenseVersion)
+	assert.Equal(t, "1", response.Capabilities["max_nodes"])
+	assert.Equal(t, "https://expanso.io/", response.Issuer)
+	assert.Equal(t, "test-customer-id-123", response.Subject)
+	assert.Equal(t, "0dd04c84-09b8-4179-88f7-c72a9d56c0a2", response.ID)
+	assert.Equal(t, int64(1736241098), response.ExpiresAt.Unix())
+	assert.True(t, response.IsExpired())
+	assert.Equal(t, 1, response.MaxNumberOfNodes())
 }

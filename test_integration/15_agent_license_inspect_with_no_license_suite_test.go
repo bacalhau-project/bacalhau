@@ -45,7 +45,7 @@ func (s *AgentLicenseInspectWithNoLicenseSuite) TestValidateRemoteLicenseWithNoL
 		},
 	)
 
-	s.Require().ErrorContains(err, "failed to get license: no license configured for orchestrator")
+	s.Require().ErrorContains(err, "Error inspecting orchestrator license: No license configured for orchestrator.")
 }
 
 func TestAgentLicenseInspectWithNoLicenseSuite(t *testing.T) {

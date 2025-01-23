@@ -31,7 +31,11 @@ type Endpoint struct {
 	licenseManager     *licensing.LicenseManager
 }
 
-func NewEndpoint(params EndpointParams) *Endpoint {
+func NewEndpoint(params EndpointParams) (*Endpoint, error) {
+	if params.LicenseManager == nil {
+		return nil, fmt.Errorf("license manager is required for agent endpoint")
+	}
+
 	e := &Endpoint{
 		router:             params.Router,
 		nodeInfoProvider:   params.NodeInfoProvider,
@@ -49,7 +53,8 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/debug", e.debug)
 	g.GET("/config", e.config)
 	g.GET("/license", e.license)
-	return e
+
+	return e, nil
 }
 
 // alive godoc
@@ -154,19 +159,15 @@ func (e *Endpoint) config(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/license [get]
 func (e *Endpoint) license(c echo.Context) error {
-	if e.licenseManager == nil {
+	licenseClaims := e.licenseManager.License()
+	if licenseClaims == nil {
 		return echo.NewHTTPError(
-			http.StatusInternalServerError,
-			"Error inspecting orchestrator license. Please check orchestrator configuration.",
+			http.StatusNotFound,
+			"Error inspecting orchestrator license: No license configured for orchestrator.",
 		)
 	}
 
-	claims, err := e.licenseManager.ValidateLicense()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("failed to get license: %s", err.Error()))
-	}
-
 	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{
-		LicenseClaims: claims,
+		LicenseClaims: licenseClaims,
 	})
 }

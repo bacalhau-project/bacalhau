@@ -29,14 +29,9 @@ func TestLicenseManager_ValidateLicense_InvalidToken(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	claims, err := manager.ValidateLicense()
-	require.Error(t, err)
-	require.Nil(t, claims)
-	require.Contains(t, err.Error(), "invalid license: failed to parse license: token is malformed")
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
+	require.ErrorContains(t, err, "license validation error: token is malformed: token contains an invalid number of segments")
+	require.Nil(t, manager)
 }
 
 func TestLicenseManager_ValidateLicense_ValidToken(t *testing.T) {
@@ -55,11 +50,11 @@ func TestLicenseManager_ValidateLicense_ValidToken(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	claims, err := manager.ValidateLicense()
+	claims := manager.License()
 	require.NoError(t, err)
 	require.NotNil(t, claims)
 
@@ -81,14 +76,12 @@ func TestLicenseManager_ValidateLicense_NoLicenseConfigured(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	claims, err := manager.ValidateLicense()
-	require.Error(t, err)
+	claims := manager.License()
 	require.Nil(t, claims)
-	require.Contains(t, err.Error(), "no license configured for orchestrator")
 }
 
 func TestLicenseManager_NewLicenseManager_InvalidJSON(t *testing.T) {
@@ -106,7 +99,7 @@ func TestLicenseManager_NewLicenseManager_InvalidJSON(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
 	require.Error(t, err)
 	require.Nil(t, manager)
 	require.Contains(t, err.Error(), "failed to parse license file")
@@ -121,7 +114,7 @@ func TestLicenseManager_NewLicenseManager_FileNotFound(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
 	require.Error(t, err)
 	require.Nil(t, manager)
 	require.Contains(t, err.Error(), "failed to read license file")
@@ -150,121 +143,7 @@ func TestLicenseManager_NewLicenseManager_InvalidJSONStructure(t *testing.T) {
 		},
 	}
 
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	claims, err := manager.ValidateLicense()
-	require.Error(t, err)
-	require.Nil(t, claims)
-	require.Contains(t, err.Error(), "invalid license")
-}
-
-func TestLicenseManager_ValidateLicenseWithNodeCount_WithinLimit(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	licenseContent := fmt.Sprintf(`{"license": %q}`, validOfficialTestLicense)
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := &types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	// Test with node count equal to limit
-	claims, err := manager.ValidateLicenseWithNodeCount(1)
-	require.NoError(t, err)
-	require.NotNil(t, claims)
-	require.Equal(t, "1", claims.Capabilities["max_nodes"])
-}
-
-func TestLicenseManager_ValidateLicenseWithNodeCount_ExceedsLimit(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	licenseContent := fmt.Sprintf(`{"license": %q}`, validOfficialTestLicense)
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := &types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	// Test with node count exceeding limit
-	claims, err := manager.ValidateLicenseWithNodeCount(2)
-	require.Error(t, err)
-	require.Nil(t, claims)
-	require.Contains(t, err.Error(), "node count 2 exceeds licensed limit of 1 nodes")
-}
-
-func TestLicenseManager_ValidateLicenseWithNodeCount_NoMaxNodesCapability(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Create a license file with no max_nodes capability
-	licenseContent := `{"license": "invalid-token"}`
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := &types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	claims, err := manager.ValidateLicenseWithNodeCount(1)
-	require.Error(t, err)
-	require.Nil(t, claims)
-	// The error should be about invalid license first
-	require.Contains(t, err.Error(), "invalid license")
-}
-
-func TestLicenseManager_ValidateLicenseWithNodeCount_InvalidMaxNodesValue(t *testing.T) {
-	tmpDir := t.TempDir()
-	licensePath := filepath.Join(tmpDir, "license.json")
-
-	// Create a license with invalid max_nodes value
-	licenseContent := `{"license": "invalid-max-nodes-value"}`
-	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
-	require.NoError(t, err)
-
-	config := &types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
-	manager, err := NewLicenseManager(config)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	claims, err := manager.ValidateLicenseWithNodeCount(1)
-	require.Error(t, err)
-	require.Nil(t, claims)
-	require.Contains(t, err.Error(), "invalid license")
+	manager, err := NewLicenseManager(&config.Orchestrator.License)
+	require.ErrorContains(t, err, "license validation error: token is malformed: token contains an invalid number of segments")
+	require.Nil(t, manager)
 }

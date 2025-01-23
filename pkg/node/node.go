@@ -86,7 +86,6 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
-	LicenseManager *licensing.LicenseManager
 }
 
 func (n *Node) Start(ctx context.Context) error {
@@ -116,7 +115,7 @@ func NewNode(
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
 	// Initialize license manager
-	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig)
+	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig.Orchestrator.License)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create license manager: %w", err)
 	}
@@ -246,7 +245,6 @@ func NewNode(
 		APIServer:      apiServer,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
-		LicenseManager: licenseManager,
 	}
 
 	return node, nil
