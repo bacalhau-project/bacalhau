@@ -85,7 +85,7 @@ func (o *InspectOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 	}
 
 	// Validate the license token
-	claims, err := validator.ValidateToken(license.License)
+	claims, err := validator.Validate(license.License)
 	if err != nil {
 		return fmt.Errorf("invalid license: %w", err)
 	}
@@ -102,6 +102,7 @@ func (o *InspectOptions) Run(ctx context.Context, cmd *cobra.Command) error {
 		{Left: "Customer ID", Right: claims.CustomerID},
 		{Left: "Valid Until", Right: claims.ExpiresAt.Format(time.DateOnly)},
 		{Left: "Version", Right: claims.LicenseVersion},
+		{Left: "Expired", Right: claims.IsExpired()},
 	}
 
 	// Always show Capabilities

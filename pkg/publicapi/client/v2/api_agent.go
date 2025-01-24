@@ -36,3 +36,10 @@ func (c *Agent) Config(ctx context.Context) (*apimodels.GetAgentConfigResponse, 
 	err := c.client.Get(ctx, "/api/v1/agent/config", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }
+
+// License is used to get the agent (orchestrator) license info.
+func (c *Agent) License(ctx context.Context) (*apimodels.GetAgentLicenseResponse, error) {
+	var res apimodels.GetAgentLicenseResponse
+	err := c.client.Get(ctx, "/api/v1/agent/license", &apimodels.BaseGetRequest{}, &res)
+	return &res, err
+}

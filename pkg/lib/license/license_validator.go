@@ -2,8 +2,10 @@ package license
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -26,6 +28,27 @@ type LicenseClaims struct {
 	CustomerID     string            `json:"customer_id,omitempty"`
 	Capabilities   map[string]string `json:"capabilities,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
+}
+
+func (v *LicenseClaims) IsExpired() bool {
+	if v.ExpiresAt == nil {
+		return true
+	}
+	return v.ExpiresAt.Before(time.Now())
+}
+
+func (v *LicenseClaims) MaxNumberOfNodes() int {
+	maxNodesStr := v.Capabilities["max_nodes"]
+	if maxNodesStr == "" {
+		return 0
+	}
+
+	maxNodes, err := strconv.Atoi(maxNodesStr)
+	if err != nil {
+		return 0
+	}
+
+	return maxNodes
 }
 
 // Ignoring spell check due to the abundance of JWT slugs
@@ -101,42 +124,64 @@ func NewOfflineLicenseValidator() (*LicenseValidator, error) {
 	return NewLicenseValidatorFromJSON(json.RawMessage(defaultOfflineJWKSVerificationKeys))
 }
 
-// ValidateToken validates a license token and returns the claims
-func (v *LicenseValidator) ValidateToken(tokenString string) (*LicenseClaims, error) {
-	var claims LicenseClaims
+func (v *LicenseValidator) Validate(tokenString string) (*LicenseClaims, error) {
+	return v.validateToken(tokenString, false)
+}
 
-	// Parse and validate the token
-	token, err := jwt.ParseWithClaims(tokenString, &claims, v.keyFunc)
+func (v *LicenseValidator) ValidateStrict(tokenString string) (*LicenseClaims, error) {
+	return v.validateToken(tokenString, true)
+}
+
+func (v *LicenseValidator) validateToken(tokenString string, verifyExpiry bool) (*LicenseClaims, error) {
+	parsedToken, err := jwt.ParseWithClaims(
+		tokenString,
+		&LicenseClaims{},
+		v.keyFunc,
+		jwt.WithExpirationRequired(),
+		jwt.WithIssuedAt(),
+	)
+
+	// JWT token validation failed
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse license: %w", err)
+		// Check if the error is due to expiration and if we are not verifying expiration
+		if errors.Is(err, jwt.ErrTokenExpired) && !verifyExpiry {
+			parsedUnverifiedToken, _, unverifiedErr := jwt.NewParser().ParseUnverified(tokenString, &LicenseClaims{})
+
+			if unverifiedErr != nil {
+				return nil, fmt.Errorf("license validation error: %w", unverifiedErr)
+			}
+
+			licenseClaims, ok := parsedUnverifiedToken.Claims.(*LicenseClaims)
+			if !ok {
+				return nil, fmt.Errorf("license validation error: invalid claims")
+			}
+
+			// Validate License specific field values
+			if unverifiedErr = v.validateAdditionalConstraints(licenseClaims); unverifiedErr != nil {
+				return nil, fmt.Errorf("license validation error: %w", unverifiedErr)
+			}
+
+			return licenseClaims, nil
+		}
+
+		return nil, fmt.Errorf("license validation error: %w", err)
 	}
 
-	if !token.Valid {
-		return nil, fmt.Errorf("invalid license")
+	verifiedLicenseClaims, typeMatches := parsedToken.Claims.(*LicenseClaims)
+	if !typeMatches {
+		return nil, fmt.Errorf("license validation error: invalid claims")
 	}
 
-	// Additional validation can be added here
-	if err := v.validateAdditionalConstraints(&claims); err != nil {
-		return nil, err
+	// Validate License specific field values
+	if err = v.validateAdditionalConstraints(verifiedLicenseClaims); err != nil {
+		return nil, fmt.Errorf("license validation error: %w", err)
 	}
 
-	return &claims, nil
+	return verifiedLicenseClaims, nil
 }
 
 // validateAdditionalConstraints performs additional business logic validation
 func (v *LicenseValidator) validateAdditionalConstraints(claims *LicenseClaims) error {
-	now := time.Now()
-
-	// Check if token is expired
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Before(now) {
-		return fmt.Errorf("license has expired")
-	}
-
-	// Check if token is not yet valid
-	if claims.NotBefore != nil && claims.NotBefore.After(now) {
-		return fmt.Errorf("license is not yet valid")
-	}
-
 	// Only perform additional validations for v1 licenses
 	if claims.LicenseVersion == "v1" {
 		// Verify product name

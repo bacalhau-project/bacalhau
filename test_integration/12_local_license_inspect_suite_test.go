@@ -53,8 +53,31 @@ License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
 Customer ID  = test-customer-id-123
 Valid Until  = 2045-07-28
 Version      = v1
+Expired      = false
 Capabilities = max_nodes=1
 Metadata     = {}`
+
+	s.Require().Contains(licenseInspectionOutput, expectedOutput)
+}
+
+func (s *LocalLicenseInspectSuite) TestValidateLocalLicenseExpired() {
+	licenseFile := s.commonAssets("licenses/test-license-valid-but-expired.json")
+
+	licenseInspectionOutput, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau", "license", "inspect", licenseFile,
+		},
+	)
+	s.Require().NoErrorf(err, "Error inspecting license: %q", err)
+
+	expectedOutput := `Product      = Bacalhau
+License ID   = 2fa89cd0-2ce1-4963-bde9-77ad182713bf
+Customer ID  = test-customer-id-123
+Valid Until  = 2025-01-07
+Version      = v1
+Expired      = true
+Capabilities = max_nodes=1
+Metadata     = someMetadata=valueOfSomeMetadata`
 
 	s.Require().Contains(licenseInspectionOutput, expectedOutput)
 }
@@ -106,7 +129,7 @@ func (s *LocalLicenseInspectSuite) TestInValidateLocalLicense() {
 		},
 	)
 
-	s.Require().ErrorContains(err, "invalid license: failed to parse license: token signature is invalid")
+	s.Require().ErrorContains(err, "invalid license: license validation error: token signature is invalid")
 }
 
 func TestLocalLicenseInspectSuite(t *testing.T) {

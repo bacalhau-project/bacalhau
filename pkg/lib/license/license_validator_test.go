@@ -3,7 +3,9 @@ package license
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -192,50 +194,57 @@ func TestValidateToken(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		token     string
-		wantErr   bool
-		errString string
+		name        string
+		token       string
+		wantErr     bool
+		wantExpired bool
+		errString   string
 	}{
 		{
-			name:    "Valid RSA token",
-			token:   validRSASignedJWTToken1,
-			wantErr: false,
+			name:        "Valid RSA token",
+			token:       validRSASignedJWTToken1,
+			wantErr:     false,
+			wantExpired: false,
 		},
 		{
-			name:    "Valid RSA token 2",
-			token:   validRSASignedJWTToken2,
-			wantErr: false,
+			name:        "Valid RSA token 2",
+			token:       validRSASignedJWTToken2,
+			wantErr:     false,
+			wantExpired: false,
 		},
 		{
-			name:      "Empty token",
-			token:     "",
-			wantErr:   true,
-			errString: "token contains an invalid number of segments",
+			name:        "Empty token",
+			token:       "",
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "token contains an invalid number of segments",
 		},
 		{
-			name:      "Invalid format",
-			token:     "not.a.jwt",
-			wantErr:   true,
-			errString: "failed to parse license: token is malformed:",
+			name:        "Invalid format",
+			token:       "not.a.jwt",
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "license validation error: token is malformed:",
 		},
 		{
-			name:      "Unknown key ID",
-			token:     "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleV8zIiwidHlwIjoiSldUIn0.eyJjdXN0b21lcl9pZCI6ImN1c3RvbWVyXzMiLCJleHAiOjEwMzc2MjQwMTA3LCJmZWF0dXJlcyI6WyJmZWF0dXJlXzMiLCJmZWF0dXJlXzMzIl0sImlhdCI6MTczNjI0MzcwNywibGljZW5zZV9pZCI6ImxpY2Vuc2VfMyIsImxpY2Vuc2VfdHlwZSI6InByb2RfdGllcl8zIiwibGljZW5zZV92ZXJzaW9uIjoidl8zIiwibGltaXRhdGlvbnMiOnsidGllcl8zIjoibm8ifSwibWV0YWRhdGEiOnsic29tZXRoaW5nMyI6InNvbWV0aGluZzNfdmFsdWUifSwicHJvZHVjdCI6IkJhY2FsaGF1In0.dzWz7FHKWM0SuVDISzxJ7lfXpXOunrJ01PeRjufvhxGv4g6bGwfKFRjiQYEuwrzst_k1zw0d5XL2VWhhjTpETew7728cubugbiA7222FgLdDk-y2hitEsf_cn-Wd3-da56huBO4tuPZifrT_NEdhbnXzB90Xd6ga3xK-oTsjXniHIj6tdLn9rH4Exp44QYLSj_YTlOm5JMUSWdD70Fnwx5SlWSST1yx5eGTJ71rRTr-tN6Y5_1tywK6a1Tf3iBmW6y4-jA-94zIfvI2wHvmZXen3KRJKra31pKpjjlLPHpqZ3_tVVV7R1sz4PME4sSlh3yhj4oIO-Ixu-eSo1yDWHw",
-			wantErr:   true,
-			errString: "key not found: kid \"key_3\"",
+			name:        "Unknown key ID",
+			token:       "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleV8zIiwidHlwIjoiSldUIn0.eyJjdXN0b21lcl9pZCI6ImN1c3RvbWVyXzMiLCJleHAiOjEwMzc2MjQwMTA3LCJmZWF0dXJlcyI6WyJmZWF0dXJlXzMiLCJmZWF0dXJlXzMzIl0sImlhdCI6MTczNjI0MzcwNywibGljZW5zZV9pZCI6ImxpY2Vuc2VfMyIsImxpY2Vuc2VfdHlwZSI6InByb2RfdGllcl8zIiwibGljZW5zZV92ZXJzaW9uIjoidl8zIiwibGltaXRhdGlvbnMiOnsidGllcl8zIjoibm8ifSwibWV0YWRhdGEiOnsic29tZXRoaW5nMyI6InNvbWV0aGluZzNfdmFsdWUifSwicHJvZHVjdCI6IkJhY2FsaGF1In0.dzWz7FHKWM0SuVDISzxJ7lfXpXOunrJ01PeRjufvhxGv4g6bGwfKFRjiQYEuwrzst_k1zw0d5XL2VWhhjTpETew7728cubugbiA7222FgLdDk-y2hitEsf_cn-Wd3-da56huBO4tuPZifrT_NEdhbnXzB90Xd6ga3xK-oTsjXniHIj6tdLn9rH4Exp44QYLSj_YTlOm5JMUSWdD70Fnwx5SlWSST1yx5eGTJ71rRTr-tN6Y5_1tywK6a1Tf3iBmW6y4-jA-94zIfvI2wHvmZXen3KRJKra31pKpjjlLPHpqZ3_tVVV7R1sz4PME4sSlh3yhj4oIO-Ixu-eSo1yDWHw",
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "key not found: kid \"key_3\"",
 		},
 		{
-			name:      "Invalid signature",
-			token:     "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleV8xIiwidHlwIjoiSldUIn0.eyJjdXN0b21lcl9pZCI6ImN1c3RvbWVyXzEiLCJleHAiOjEwMzc2MjQwMTA3LCJmZWF0dXJlcyI6WyJmZWF0dXJlXzEiLCJmZWF0dXJlXzExIl0sImlhdCI6MTczNjI0MzcwNywibGljZW5zZV9pZCI6ImxpY2Vuc2VfMSIsImxpY2Vuc2VfdHlwZSI6InByb2RfdGllcl8xIiwibGljZW5zZV92ZXJzaW9uIjoidl8xIiwibGltaXRhdGlvbnMiOnsidGllcl8xIjoibm8ifSwibWV0YWRhdGEiOnsic29tZXRoaW5nMSI6InNvbWV0aGluZzFfdmFsdWUifSwicHJvZHVjdCI6IkJhY2FsaGF1In0.XyHdItfNma4zkwwwB_M_xgHGqRhTtNmsdPx491msaalfEKAKDYqCMsE6DhL6cKWRqKsXGx27kaBCun1chiYf_yz1rSfMZny-XdakqIg_ENburNFrNSePn-kGhUPmQLzK9JV4Iph2hTWB6dJ8rFqYewDiJ6yfX_AVymmst4OziPmBiPeDcEtjjSR8MEQynRiKUup76fKVgsgXvT-eUHURXOWBcADEw-UvbyKgEt7FB-baZSryReJTyStpA7E64OFB4fNwfk3h70",
-			wantErr:   true,
-			errString: "token signature is invalid",
+			name:        "Invalid signature",
+			token:       "eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleV8xIiwidHlwIjoiSldUIn0.eyJjdXN0b21lcl9pZCI6ImN1c3RvbWVyXzEiLCJleHAiOjEwMzc2MjQwMTA3LCJmZWF0dXJlcyI6WyJmZWF0dXJlXzEiLCJmZWF0dXJlXzExIl0sImlhdCI6MTczNjI0MzcwNywibGljZW5zZV9pZCI6ImxpY2Vuc2VfMSIsImxpY2Vuc2VfdHlwZSI6InByb2RfdGllcl8xIiwibGljZW5zZV92ZXJzaW9uIjoidl8xIiwibGltaXRhdGlvbnMiOnsidGllcl8xIjoibm8ifSwibWV0YWRhdGEiOnsic29tZXRoaW5nMSI6InNvbWV0aGluZzFfdmFsdWUifSwicHJvZHVjdCI6IkJhY2FsaGF1In0.XyHdItfNma4zkwwwB_M_xgHGqRhTtNmsdPx491msaalfEKAKDYqCMsE6DhL6cKWRqKsXGx27kaBCun1chiYf_yz1rSfMZny-XdakqIg_ENburNFrNSePn-kGhUPmQLzK9JV4Iph2hTWB6dJ8rFqYewDiJ6yfX_AVymmst4OziPmBiPeDcEtjjSR8MEQynRiKUup76fKVgsgXvT-eUHURXOWBcADEw-UvbyKgEt7FB-baZSryReJTyStpA7E64OFB4fNwfk3h70",
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "token signature is invalid",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := validator.ValidateToken(tt.token)
+			claims, err := validator.Validate(tt.token)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errString != "" {
@@ -245,6 +254,7 @@ func TestValidateToken(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, claims)
+				assert.Equal(t, tt.wantExpired, claims.IsExpired())
 			}
 		})
 	}
@@ -331,7 +341,7 @@ func TestValidTokenClaims(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := validator.ValidateToken(tt.token)
+			claims, err := validator.Validate(tt.token)
 			require.NoError(t, err)
 			require.NotNil(t, claims)
 			tt.validate(t, claims)
@@ -343,10 +353,10 @@ func TestExpiredTokenVerification(t *testing.T) {
 	validator, err := NewLicenseValidatorFromJSON(testJWKS)
 	assert.NoError(t, err)
 
-	claims, err := validator.ValidateToken(expiredRSASignedJWTToken3)
-	assert.Error(t, err)
-	assert.Nil(t, claims)
-	assert.Contains(t, err.Error(), "token is expired")
+	claims, err := validator.Validate(expiredRSASignedJWTToken3)
+	assert.NoError(t, err)
+	assert.NotNil(t, claims)
+	assert.True(t, claims.IsExpired())
 }
 
 func TestValidateAdditionalConstraints(t *testing.T) {
@@ -354,64 +364,73 @@ func TestValidateAdditionalConstraints(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name      string
-		token     string
-		wantErr   bool
-		errString string
+		name        string
+		token       string
+		wantErr     bool
+		wantExpired bool
+		errString   string
 	}{
 		{
-			name:      "Invalid version",
-			token:     invalidVersionToken,
-			wantErr:   true,
-			errString: "unsupported license version",
+			name:        "Invalid version",
+			token:       invalidVersionToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "unsupported license version",
 		},
 		{
-			name:      "Wrong product name",
-			token:     wrongProductNameToken,
-			wantErr:   true,
-			errString: "invalid product: expected 'Bacalhau'",
+			name:        "Wrong product name",
+			token:       wrongProductNameToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "invalid product: expected 'Bacalhau'",
 		},
 		{
-			name:      "Empty license_id",
-			token:     emptyLicenseIDToken,
-			wantErr:   true,
-			errString: "license_id is required",
+			name:        "Empty license_id",
+			token:       emptyLicenseIDToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "license_id is required",
 		},
 		{
-			name:      "Empty license_type",
-			token:     emptyLicenseTypeToken,
-			wantErr:   true,
-			errString: "license_type is required",
+			name:        "Empty license_type",
+			token:       emptyLicenseTypeToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "license_type is required",
 		},
 		{
-			name:      "Empty customer_id",
-			token:     emptyCustomerIDToken,
-			wantErr:   true,
-			errString: "customer_id is required",
+			name:        "Empty customer_id",
+			token:       emptyCustomerIDToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "customer_id is required",
 		},
 		{
-			name:      "Wrong issuer",
-			token:     wrongIssuerToken,
-			wantErr:   true,
-			errString: "invalid issuer: expected 'https://expanso.io/'",
+			name:        "Wrong issuer",
+			token:       wrongIssuerToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "invalid issuer: expected 'https://expanso.io/'",
 		},
 		{
-			name:      "Empty subject",
-			token:     emptySubjectKeyToken,
-			wantErr:   true,
-			errString: "subject is required",
+			name:        "Empty subject",
+			token:       emptySubjectKeyToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "subject is required",
 		},
 		{
-			name:      "Empty jti",
-			token:     emptyJtiToken,
-			wantErr:   true,
-			errString: "jti is required",
+			name:        "Empty jti",
+			token:       emptyJtiToken,
+			wantErr:     true,
+			wantExpired: false,
+			errString:   "jti is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := validator.ValidateToken(tt.token)
+			claims, err := validator.Validate(tt.token)
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errString != "" {
@@ -421,6 +440,7 @@ func TestValidateAdditionalConstraints(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, claims)
+				assert.Equal(t, tt.wantExpired, claims.IsExpired())
 			}
 		})
 	}
@@ -433,10 +453,10 @@ func TestNewOfflineLicenseValidator(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, validator)
 
-	// Test with a valid token signed by the offline key
-	claims, err := validator.ValidateToken(validOfficialTestToken)
+	claims, err := validator.Validate(validOfficialTestToken)
 	require.NoError(t, err)
 	require.NotNil(t, claims)
+	require.False(t, claims.IsExpired())
 
 	// Verify the claims
 	assert.Equal(t, "Bacalhau", claims.Product)
@@ -456,27 +476,225 @@ func TestNewOfflineLicenseValidator(t *testing.T) {
 }
 
 func TestOfflineLicenseValidatorWithInvalidKey(t *testing.T) {
-	// Create validator using offline public keys
 	validator, err := NewOfflineLicenseValidator()
 	require.NoError(t, err)
 	require.NotNil(t, validator)
 
-	// Test with a token signed by a different key
-	claims, err := validator.ValidateToken(validRSASignedJWTToken1)
+	claims, err := validator.Validate(validRSASignedJWTToken1)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "key not found")
 	require.Nil(t, claims)
 }
 
 func TestOfflineLicenseValidatorWithWrongSignature(t *testing.T) {
-	// Create validator using offline public keys
 	validator, err := NewOfflineLicenseValidator()
 	require.NoError(t, err)
 	require.NotNil(t, validator)
 
-	// Test with a token that has the correct key ID but wrong signature
-	claims, err := validator.ValidateToken(officialTestTokenWithWrongSignature)
+	claims, err := validator.Validate(officialTestTokenWithWrongSignature)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "token signature is invalid")
 	require.Nil(t, claims)
+}
+
+func TestExpiredButValidToken(t *testing.T) {
+	validator, err := NewLicenseValidatorFromJSON(testJWKS)
+	require.NoError(t, err)
+
+	claims, err := validator.Validate(expiredRSASignedJWTToken3)
+	require.NoError(t, err)
+	require.NotNil(t, claims)
+	require.True(t, claims.IsExpired())
+
+	// Verify that even though expired, we can still access the claims
+	assert.Equal(t, "Bacalhau", claims.Product)
+	assert.Equal(t, "v1", claims.LicenseVersion)
+	assert.Equal(t, "prod_tier_1", claims.LicenseType)
+	assert.Equal(t, "customer_1", claims.CustomerID)
+}
+
+func TestLicenseClaimsMaxNumberOfNodes(t *testing.T) {
+	tests := []struct {
+		name         string
+		capabilities map[string]string
+		want         int
+	}{
+		{
+			name: "Valid max_nodes",
+			capabilities: map[string]string{
+				"max_nodes": "10",
+			},
+			want: 10,
+		},
+		{
+			name: "Empty max_nodes",
+			capabilities: map[string]string{
+				"max_nodes": "",
+			},
+			want: 0,
+		},
+		{
+			name:         "No max_nodes capability",
+			capabilities: map[string]string{},
+			want:         0,
+		},
+		{
+			name: "Invalid max_nodes value",
+			capabilities: map[string]string{
+				"max_nodes": "not_a_number",
+			},
+			want: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := &LicenseClaims{
+				Capabilities: tt.capabilities,
+			}
+			got := claims.MaxNumberOfNodes()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLicenseClaimsIsExpired(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name      string
+		expiresAt *jwt.NumericDate
+		want      bool
+	}{
+		{
+			name:      "Nil expiration",
+			expiresAt: nil,
+			want:      true,
+		},
+		{
+			name:      "Future expiration",
+			expiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+			want:      false,
+		},
+		{
+			name:      "Past expiration",
+			expiresAt: jwt.NewNumericDate(now.Add(-24 * time.Hour)),
+			want:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims := &LicenseClaims{
+				RegisteredClaims: jwt.RegisteredClaims{
+					ExpiresAt: tt.expiresAt,
+				},
+			}
+			got := claims.IsExpired()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestValidateStrict(t *testing.T) {
+	validator, err := NewLicenseValidatorFromJSON(testJWKS)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		token     string
+		wantErr   bool
+		errString string
+	}{
+		{
+			name:      "Valid token",
+			token:     validRSASignedJWTToken1,
+			wantErr:   false,
+			errString: "",
+		},
+		{
+			name:      "Expired token",
+			token:     expiredRSASignedJWTToken3,
+			wantErr:   true,
+			errString: "token is expired",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			claims, err := validator.ValidateStrict(tt.token)
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errString != "" {
+					assert.Contains(t, err.Error(), tt.errString)
+				}
+				assert.Nil(t, claims)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, claims)
+			}
+		})
+	}
+}
+
+func TestMalformedJWKS(t *testing.T) {
+	tests := []struct {
+		name      string
+		jwks      json.RawMessage
+		wantErr   bool
+		errString string
+	}{
+		{
+			name:      "JWKS without required fields",
+			jwks:      json.RawMessage(`{"keys": [{"kty": "RSA"}]}`),
+			wantErr:   true,
+			errString: "failed to create JWKS key function",
+		},
+		{
+			name:      "JWKS with invalid key type",
+			jwks:      json.RawMessage(`{"keys": [{"kty": "invalid"}]}`),
+			wantErr:   true,
+			errString: "failed to create JWKS key function",
+		},
+		{
+			name:      "JWKS with missing key type",
+			jwks:      json.RawMessage(`{"keys": [{"kid": "key1"}]}`),
+			wantErr:   true,
+			errString: "failed to create JWKS key function",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validator, err := NewLicenseValidatorFromJSON(tt.jwks)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errString)
+			assert.Nil(t, validator)
+		})
+	}
+}
+
+func TestInvalidCapabilitiesFormat(t *testing.T) {
+	validator, err := NewLicenseValidatorFromJSON(testJWKS)
+	require.NoError(t, err)
+
+	// Create a token with invalid capabilities format
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, &LicenseClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "https://expanso.io/",
+			Subject:   "customer_1",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        "license_1",
+		},
+		Product:        "Bacalhau",
+		LicenseVersion: "v1",
+		LicenseType:    "standard",
+		LicenseID:      "license_1",
+		CustomerID:     "customer_1",
+		Capabilities:   map[string]string{"max_nodes": "invalid"},
+	})
+
+	claims, err := validator.Validate(token.Raw)
+	require.ErrorContains(t, err, "license validation error: token is malformed: token contains an invalid number of segments")
+	assert.Nil(t, claims)
 }

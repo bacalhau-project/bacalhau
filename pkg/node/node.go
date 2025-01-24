@@ -16,6 +16,7 @@ import (
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -113,6 +114,12 @@ func NewNode(
 	cfg.SystemConfig.applyDefaults()
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
+	// Initialize license manager
+	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig.Orchestrator.License)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create license manager: %w", err)
+	}
+
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
 	if err != nil {
 		return nil, err
@@ -189,12 +196,16 @@ func NewNode(
 		NodeInfoProvider: nodeInfoProvider,
 	})
 
-	agent.NewEndpoint(agent.EndpointParams{
+	_, err = agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
+		LicenseManager:     licenseManager,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Start periodic software update checks.
 	version.RunUpdateChecker(

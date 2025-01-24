@@ -110,6 +110,7 @@ License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
 Customer ID  = test-customer-id-123
 Valid Until  = 2045-07-28
 Version      = v1
+Expired      = false
 Capabilities = max_nodes=1
 Metadata     = {}`
 
@@ -253,6 +254,7 @@ License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
 Customer ID  = test-customer-id-123
 Valid Until  = 2045-07-28
 Version      = v1
+Expired      = false
 Capabilities = max_nodes=1
 Metadata     = {}`
 
@@ -324,6 +326,7 @@ License ID   = 2d58c7c9-ec29-45a5-a5cd-cb8f7fee6678
 Customer ID  = test-customer-id-123
 Valid Until  = 2045-07-28
 Version      = v1
+Expired      = false
 Capabilities = max_nodes=1
 Metadata     = someMetadata=valueOfSomeMetadata`
 
@@ -406,7 +409,7 @@ func TestInspectInvalidSignatureLicenseToken(t *testing.T) {
 
 	err = cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to parse license: token signature is invalid")
+	assert.Contains(t, err.Error(), "invalid license: license validation error: token signature is invalid")
 }
 
 func TestInspectExpiredLicenseToken(t *testing.T) {
@@ -427,8 +430,19 @@ func TestInspectExpiredLicenseToken(t *testing.T) {
 	cmd.SetArgs([]string{filePath})
 
 	err = cmd.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid license: failed to parse license: token has invalid claims: token is expired")
+	require.NoError(t, err)
+
+	output := buf.String()
+	expectedOutput := `Product      = Bacalhau
+License ID   = 0dd04c84-09b8-4179-88f7-c72a9d56c0a2
+Customer ID  = test-customer-id-123
+Valid Until  = 2025-01-07
+Version      = v1
+Expired      = true
+Capabilities = max_nodes=1
+Metadata     = someMetadata=valueOfSomeMetadata`
+
+	assert.Equal(t, expectedOutput, strings.TrimSpace(output))
 }
 
 func TestInspectMalformedLicenseFile(t *testing.T) {
@@ -448,12 +462,12 @@ func TestInspectMalformedLicenseFile(t *testing.T) {
 		{
 			name:        "missing license key",
 			content:     `{"some_other_key": "value"}`,
-			expectedErr: "invalid license: failed to parse license: token is malformed",
+			expectedErr: "invalid license: license validation error: token is malformed",
 		},
 		{
 			name:        "random string as license",
 			content:     `{"license": "some random string"}`,
-			expectedErr: "invalid license: failed to parse license: token is malformed",
+			expectedErr: "invalid license: license validation error: token is malformed",
 		},
 	}
 
