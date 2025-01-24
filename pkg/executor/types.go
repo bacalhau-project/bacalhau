@@ -66,6 +66,7 @@ type RunCommandRequest struct {
 	Inputs       []storage.PreparedStorage // Prepared storage elements that are used as inputs.
 	ResultsDir   string                    // Directory where results should be stored.
 	EngineParams *models.SpecConfig        // Engine-specific configuration parameters.
+	Env          map[string]string         // System defined and task level environment variables.
 	OutputLimits OutputLimits              // Output size limits for the execution.
 }
 

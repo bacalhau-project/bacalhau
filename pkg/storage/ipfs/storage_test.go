@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -51,7 +52,7 @@ func (s *StorageSuite) TestGetVolumeSize() {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte(testString), *s.ipfsClient)
 			s.Require().NoError(err)
 
-			result, err := s.storage.GetVolumeSize(ctx, models.InputSource{
+			result, err := s.storage.GetVolumeSize(ctx, mock.Execution(), models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -79,7 +80,7 @@ func (s *StorageSuite) TestPrepareStorageRespectsTimeouts() {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), *s.ipfsClient)
 			s.Require().NoError(err)
 
-			_, err = s.storage.PrepareStorage(ctx, s.T().TempDir(), models.InputSource{
+			_, err = s.storage.PrepareStorage(ctx, s.T().TempDir(), mock.Execution(), models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{
@@ -104,7 +105,7 @@ func (s *StorageSuite) TestGetVolumeSizeRespectsTimeout() {
 			cid, err := ipfs.AddTextToNodes(ctx, []byte("testString"), *s.ipfsClient)
 			s.Require().NoError(err)
 
-			_, err = s.storage.GetVolumeSize(ctx, models.InputSource{
+			_, err = s.storage.GetVolumeSize(ctx, mock.Execution(), models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceIPFS,
 					Params: Source{

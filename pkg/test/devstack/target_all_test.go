@@ -126,11 +126,11 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 			},
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
+					JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
-							return executor.WriteJobResults(resultsDir, nil, nil, 0, nil, executor.OutputLimits{
+							return executor.WriteJobResults(execContext.ResultsDir, nil, nil, 0, nil, executor.OutputLimits{
 								MaxStdoutFileLength:   system.MaxStdoutFileLength,
 								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 								MaxStderrFileLength:   system.MaxStderrFileLength,

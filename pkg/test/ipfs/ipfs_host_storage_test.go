@@ -19,6 +19,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/setup"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
@@ -92,7 +93,7 @@ func (suite *IPFSHostStorageSuite) runFileTest(getStorageDriver getStorageFunc) 
 
 	suite.verifyHasCID(ctx, storageDriver, inputSource, fileCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
+	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), mock.Execution(), inputSource)
 	suite.Require().NoError(err)
 
 	// we should now be able to read our file content
@@ -133,7 +134,7 @@ func (suite *IPFSHostStorageSuite) runFolderTest(getStorageDriver getStorageFunc
 
 	suite.verifyHasCID(ctx, storageDriver, inputSource, folderCid)
 
-	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), inputSource)
+	volume, err := storageDriver.PrepareStorage(ctx, suite.T().TempDir(), mock.Execution(), inputSource)
 	suite.Require().NoError(err)
 
 	// we should now be able to read our file content

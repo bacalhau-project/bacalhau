@@ -19,16 +19,22 @@ type ExecutorHandlerIsInstalled func(ctx context.Context) (bool, error)
 type ExecutorHandlerHasStorageLocally func(ctx context.Context, volume models.InputSource) (bool, error)
 type ExecutorHandlerGetVolumeSize func(ctx context.Context, volume models.InputSource) (uint64, error)
 type ExecutorHandlerGetBidStrategy func(ctx context.Context) (bidstrategy.BidStrategy, error)
-type ExecutorHandlerJobHandler func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error)
+type ExecutorHandlerJobHandler func(ctx context.Context, execContext ExecutionContext) (*models.RunCommandResult, error)
+
+// ExecutionContext provides all the context needed for execution
+type ExecutionContext struct {
+	*executor.RunCommandRequest
+	ResultsDir string
+}
 
 func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
+	return func(ctx context.Context, _ ExecutionContext) (*models.RunCommandResult, error) {
 		return nil, err
 	}
 }
 
 func DelayedJobHandler(sleep time.Duration) ExecutorHandlerJobHandler {
-	return func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
+	return func(ctx context.Context, _ ExecutionContext) (*models.RunCommandResult, error) {
 		time.Sleep(sleep)
 		return nil, nil
 	}
@@ -54,13 +60,15 @@ type NoopExecutor struct {
 
 type executionHandler struct {
 	jobHandler ExecutorHandlerJobHandler
-	jobID      string
+	request    *executor.RunCommandRequest
 	resultsDir string
-	isEmpty    bool
+	done       chan bool
+	result     *handlerResult
+}
 
-	done chan bool
-
-	result *handlerResult
+// isEmpty is a flag to indicate if the handler is empty
+func (e *executionHandler) isEmpty() bool {
+	return e.jobHandler == nil
 }
 
 type handlerResult struct {
@@ -71,7 +79,7 @@ type handlerResult struct {
 func (e *executionHandler) run(ctx context.Context) {
 	defer close(e.done)
 
-	if e.isEmpty {
+	if e.isEmpty() {
 		e.result = &handlerResult{
 			err: nil,
 			result: &models.RunCommandResult{
@@ -85,7 +93,14 @@ func (e *executionHandler) run(ctx context.Context) {
 		}
 		return
 	}
-	result, err := e.jobHandler(ctx, e.jobID, e.resultsDir)
+
+	execContext := ExecutionContext{
+		RunCommandRequest: e.request,
+		ResultsDir:        e.resultsDir,
+	}
+
+	// Fall back to original handler
+	result, err := e.jobHandler(ctx, execContext)
 	e.result = &handlerResult{
 		err:    err,
 		result: result,
@@ -95,20 +110,13 @@ func (e *executionHandler) run(ctx context.Context) {
 func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
 	log.Info().Msg("starting execution")
 	e.Jobs = append(e.Jobs, request.JobID)
-	if e.Config.ExternalHooks.JobHandler != nil {
-		handler := e.Config.ExternalHooks.JobHandler
-		exeHandler := &executionHandler{
-			jobHandler: handler,
-			isEmpty:    false,
-			jobID:      request.JobID,
-			resultsDir: request.ResultsDir,
-			done:       make(chan bool),
-		}
-		e.handlers.Put(request.ExecutionID, exeHandler)
-		go exeHandler.run(ctx)
-		return nil
+
+	handler := &executionHandler{
+		jobHandler: e.Config.ExternalHooks.JobHandler,
+		request:    request,
+		resultsDir: request.ResultsDir,
+		done:       make(chan bool),
 	}
-	handler := &executionHandler{isEmpty: true, done: make(chan bool)}
 	e.handlers.Put(request.ExecutionID, handler)
 	go handler.run(ctx)
 	return nil
@@ -134,7 +142,7 @@ func (e *NoopExecutor) doWait(ctx context.Context, out chan *models.RunCommandRe
 	case <-ctx.Done():
 		out <- &models.RunCommandResult{ErrorMsg: ctx.Err().Error()}
 	case <-handler.done:
-		if handler.isEmpty {
+		if handler.isEmpty() {
 			out <- &models.RunCommandResult{}
 			return
 		}
@@ -213,21 +221,18 @@ func (e *NoopExecutor) Run(
 	args *executor.RunCommandRequest,
 ) (*models.RunCommandResult, error) {
 	e.Jobs = append(e.Jobs, args.JobID)
-	if e.Config.ExternalHooks.JobHandler != nil {
-		if err := e.Start(ctx, args); err != nil {
-			return nil, err
-		}
-		resultC, errC := e.Wait(ctx, args.ExecutionID)
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-errC:
-			return nil, err
-		case out := <-resultC:
-			return out, nil
-		}
+	if err := e.Start(ctx, args); err != nil {
+		return nil, err
 	}
-	return &models.RunCommandResult{}, nil
+	resultC, errC := e.Wait(ctx, args.ExecutionID)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case err := <-errC:
+		return nil, err
+	case out := <-resultC:
+		return out, nil
+	}
 }
 
 func (e *NoopExecutor) GetLogStream(ctx context.Context, request messages.ExecutionLogsRequest) (io.ReadCloser, error) {

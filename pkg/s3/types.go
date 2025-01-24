@@ -9,6 +9,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+type ObjectSummary struct {
+	Key       *string
+	ETag      *string
+	VersionID *string
+	Size      int64
+	IsDir     bool
+}
+
 type SourceSpec struct {
 	Bucket         string
 	Key            string
@@ -17,13 +25,14 @@ type SourceSpec struct {
 	Endpoint       string
 	VersionID      string
 	ChecksumSHA256 string
+	Partition      PartitionConfig
 }
 
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
 		return NewS3InputSourceError(BadRequestErrorCode, "invalid s3 storage params: bucket cannot be empty")
 	}
-	return nil
+	return c.Partition.Validate()
 }
 
 func (c SourceSpec) ToMap() map[string]interface{} {
@@ -50,8 +59,7 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, NewS3InputSourceError(
 			BadRequestErrorCode,
-			fmt.Sprintf("invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type),
-		)
+			"invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -69,7 +77,8 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
 		return PreSignedResultSpec{}, NewS3InputSourceError(BadRequestErrorCode,
-			"invalid storage source type. expected "+models.StorageSourceS3PreSigned+" but received: "+spec.Type)
+			"invalid storage source type. expected %s but received: %s",
+			models.StorageSourceS3PreSigned, spec.Type)
 	}
 
 	inputParams := spec.Params

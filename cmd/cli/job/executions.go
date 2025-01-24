@@ -9,9 +9,8 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -27,14 +26,14 @@ var executionsOrderByFields = []string{"modified_at", "created_at"}
 var (
 	executionShort = `List executions for a job by id.`
 
-	executionLong = templates.LongDesc(i18n.T(`
+	executionLong = templates.LongDesc(`
 		List executions for a job by id.
-`))
+`)
 
-	executionExample = templates.Examples(i18n.T(`
+	executionExample = templates.Examples(`
 		# All executions for a given job.
 		bacalhau job executions j-e3f8c209-d683-4a41-b840-f09b88d087b9
-`))
+`)
 )
 
 // ExecutionOptions is a struct to support node command

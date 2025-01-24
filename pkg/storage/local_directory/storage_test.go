@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 type LocalDirectorySuite struct {
@@ -205,7 +206,7 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
 			require.NoError(s.T(), err)
 
-			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), s.prepareStorageSpec(tc.sourcePath))
+			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), mock.Execution(), s.prepareStorageSpec(tc.sourcePath))
 			if tc.shouldFail {
 				require.Error(s.T(), err)
 				return
@@ -236,7 +237,7 @@ func (s *LocalDirectorySuite) TestPrepareStorage() {
 				path += ":rw"
 			}
 			spec := s.prepareStorageSpec(path)
-			volume, err := storageProvider.PrepareStorage(context.Background(), s.T().TempDir(), spec)
+			volume, err := storageProvider.PrepareStorage(context.Background(), s.T().TempDir(), mock.Execution(), spec)
 			require.NoError(s.T(), err)
 			require.Equal(s.T(), volume.Source, folderPath)
 			require.Equal(s.T(), volume.Target, spec.Target)

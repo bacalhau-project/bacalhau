@@ -33,6 +33,7 @@ ignorePaths:
     - webui/build
     - webui/node_modules
     - webui/lib/api/generated/**
+    - test_integration/common_assets/licenses/**
 
 # Patterns to ignore
 ignoreRegExpList:

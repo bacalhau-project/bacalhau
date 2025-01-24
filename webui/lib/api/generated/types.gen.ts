@@ -244,6 +244,11 @@ export type models_Execution = {
      */
     NodeID?: string;
     /**
+     * PartitionIndex is the index of this execution in the job's total partitions (0-based)
+     * Only relevant when Job.Count > 1
+     */
+    PartitionIndex?: number;
+    /**
      * PreviousExecution is the execution that this execution is replacing
      */
     PreviousExecution?: string;
@@ -484,9 +489,6 @@ export type models_NodeInfo = {
     Labels?: {
         [key: string]: (string);
     };
-    /**
-     * TODO replace all access on this field with the `ID()` method
-     */
     NodeID?: string;
     NodeType?: models_NodeType;
     /**

@@ -18,6 +18,7 @@ import (
 	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 )
 
 // Define the suite, and absorb the built-in basic suite
@@ -320,7 +321,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				Target: "/inputs",
 			}
 
-			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), spec)
+			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), mock.Execution(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)
@@ -386,7 +387,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 		Target: "/inputs",
 	}
 
-	vs, err := subject.GetVolumeSize(context.Background(), spec)
+	vs, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().NoError(err)
 
 	s.Equal(uint64(500), vs, "content-length does not match")
@@ -427,7 +428,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 		Target: "/inputs",
 	}
 
-	_, err := subject.GetVolumeSize(context.Background(), spec)
+	_, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().ErrorIs(err, ErrNoContentLengthFound)
 
 }

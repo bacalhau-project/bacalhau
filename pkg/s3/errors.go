@@ -28,8 +28,8 @@ func NewS3PublisherError(code bacerrors.ErrorCode, message string) bacerrors.Err
 		WithComponent(PublisherComponent)
 }
 
-func NewS3InputSourceError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+func NewS3InputSourceError(code bacerrors.ErrorCode, format string, a ...any) bacerrors.Error {
+	return bacerrors.New(format, a...).
 		WithCode(code).
 		WithComponent(InputSourceComponent)
 }

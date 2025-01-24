@@ -9,9 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
@@ -30,11 +29,11 @@ import (
 )
 
 var (
-	serveLong = templates.LongDesc(i18n.T(`
+	serveLong = templates.LongDesc(`
 		Start a bacalhau node.
-		`))
+		`)
 
-	serveExample = templates.Examples(i18n.T(`
+	serveExample = templates.Examples(`
 		# Start a private bacalhau requester node
 		bacalhau serve
 		# or
@@ -46,7 +45,7 @@ var (
 
 		# Start a public bacalhau node with the WebUI on port 3000 (default:0.0.0.0:8483)
 		bacalhau serve --config WebUI.Enabled --config WebUI.Listen=0.0.0.0:3000
-`))
+`)
 )
 
 const (

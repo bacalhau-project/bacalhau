@@ -21,7 +21,7 @@ func NewDefaultsUsageCalculator(params DefaultsUsageCalculatorParams) *DefaultsU
 }
 
 func (c *DefaultsUsageCalculator) Calculate(
-	ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+	ctx context.Context, execution *models.Execution, parsedUsage models.Resources) (*models.Resources, error) {
 	return parsedUsage.Merge(c.defaults), nil
 }
 
@@ -40,10 +40,10 @@ func NewChainedUsageCalculator(params ChainedUsageCalculatorParams) *ChainedUsag
 }
 
 func (c *ChainedUsageCalculator) Calculate(
-	ctx context.Context, job models.Job, parsedUsage models.Resources) (*models.Resources, error) {
+	ctx context.Context, execution *models.Execution, parsedUsage models.Resources) (*models.Resources, error) {
 	aggregatedUsage := &parsedUsage
 	for _, calculator := range c.calculators {
-		calculatedUsage, err := calculator.Calculate(ctx, job, parsedUsage)
+		calculatedUsage, err := calculator.Calculate(ctx, execution, parsedUsage)
 		if err != nil {
 			return nil, err
 		}

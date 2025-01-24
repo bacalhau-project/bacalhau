@@ -80,7 +80,7 @@ func (sp *StorageProvider) HasStorageLocally(context.Context, models.InputSource
 	return false, nil
 }
 
-func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models.InputSource) (uint64, error) {
+func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ *models.Execution, storageSpec models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {
 		return 0, err
@@ -120,8 +120,9 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, storageSpec models
 func (sp *StorageProvider) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
-	storageSpec models.InputSource) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(storageSpec.Source)
+	execution *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -197,7 +198,7 @@ func (sp *StorageProvider) PrepareStorage(
 		return storage.StorageVolume{}, fmt.Errorf("failed to sync file %s: %w", filePath, err)
 	}
 
-	targetPath := filepath.Join(storageSpec.Target, fileName)
+	targetPath := filepath.Join(input.Target, fileName)
 
 	log.Ctx(ctx).Debug().
 		Stringer("url", u).

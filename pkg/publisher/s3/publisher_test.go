@@ -199,7 +199,8 @@ func (s *PublisherTestSuite) TestPublish() {
 			}
 
 			resultPath := s.PrepareResultsPath()
-			storageSpec, err := s.PublishResult(params, resultPath)
+			execution := s.MockExecution(params)
+			storageSpec, err := s.PublishResult(execution, resultPath)
 
 			if err != nil {
 				var ae smithy.APIError
@@ -224,7 +225,7 @@ func (s *PublisherTestSuite) TestPublish() {
 			s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
 			s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
 
-			fetchedResults := s.GetResult(&storageSpec)
+			fetchedResults := s.GetResult(execution, &storageSpec)
 			uncompressedResults, err := os.MkdirTemp(s.TempDir, "")
 			s.Require().NoError(err)
 			s.Require().NoError(gzip.Decompress(fetchedResults, uncompressedResults))

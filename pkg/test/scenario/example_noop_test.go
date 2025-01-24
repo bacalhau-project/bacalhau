@@ -21,8 +21,8 @@ func noopScenario(t testing.TB) Scenario {
 		Stack: &StackConfig{
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
-					JobHandler: func(ctx context.Context, jobID string, resultsDir string) (*models.RunCommandResult, error) {
-						return executor.WriteJobResults(resultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
+					JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
+						return executor.WriteJobResults(execContext.ResultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
 							MaxStdoutFileLength:   system.MaxStdoutFileLength,
 							MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 							MaxStderrFileLength:   system.MaxStderrFileLength,

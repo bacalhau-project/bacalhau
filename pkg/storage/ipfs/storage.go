@@ -49,7 +49,7 @@ func (s *StorageProvider) HasStorageLocally(ctx context.Context, volume models.I
 	return s.ipfsClient.HasCID(ctx, source.CID)
 }
 
-func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.InputSource) (uint64, error) {
+func (s *StorageProvider) GetVolumeSize(ctx context.Context, _ *models.Execution, volume models.InputSource) (uint64, error) {
 	// we wrap this in a timeout because if the CID is not present on the network this seems to hang
 
 	// TODO(forrest) [correctness] this timeout should be passed in as a param or set on the context by the method caller.
@@ -78,6 +78,7 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, volume models.Input
 func (s *StorageProvider) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
+	_ *models.Execution,
 	storageSpec models.InputSource) (storage.StorageVolume, error) {
 	source, err := DecodeSpec(storageSpec.Source)
 	if err != nil {

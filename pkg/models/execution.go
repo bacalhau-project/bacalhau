@@ -4,6 +4,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
@@ -125,6 +126,10 @@ type Execution struct {
 	// that can be rescheduled in the future
 	FollowupEvalID string `json:"FollowupEvalID"`
 
+	// PartitionIndex is the index of this execution in the job's total partitions (0-based)
+	// Only relevant when Job.Count > 1
+	PartitionIndex int `json:"PartitionIndex,omitempty"`
+
 	// Revision is increment each time the execution is updated.
 	Revision uint64 `json:"Revision"`
 
@@ -208,6 +213,11 @@ func (e *Execution) Validate() error {
 	)
 	if e.Job != nil {
 		err = errors.Join(err, e.Job.Validate())
+		if (e.Job.Type == JobTypeBatch || e.Job.Type == JobTypeService) && e.Job.Count > 1 {
+			if e.PartitionIndex < 0 || e.PartitionIndex >= e.Job.Count {
+				err = errors.Join(err, fmt.Errorf("partition index must be between 0 and %d", e.Job.Count-1))
+			}
+		}
 	}
 	return err
 }

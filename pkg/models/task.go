@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
@@ -124,6 +125,13 @@ func (t *Task) ValidateSubmission() error {
 		validate.NoNullChars(t.Name, "task name cannot contain null characters"),
 	)
 
+	// env var validation
+	for envName := range t.Env {
+		if strings.HasPrefix(strings.ToUpper(envName), EnvVarPrefix) {
+			mErr = errors.Join(mErr, fmt.Errorf("environment variable '%s' cannot start with %s", envName, EnvVarPrefix))
+		}
+	}
+
 	if err := t.Engine.Validate(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("engine validation failed: %v", err))
 	}
@@ -143,43 +151,55 @@ func (t *Task) ValidateSubmission() error {
 		mErr = errors.Join(mErr, fmt.Errorf("output validation failed: %v", err))
 	}
 
-	// Check for collisions in input sources
+	if err := t.validateInputSources(); err != nil {
+		mErr = errors.Join(mErr, err)
+	}
+
+	if err := t.validateResultPaths(); err != nil {
+		mErr = errors.Join(mErr, err)
+	}
+
+	return mErr
+}
+
+func (t *Task) validateInputSources() error {
 	seenInputAliases := make(map[string]bool)
 	seenInputTargets := make(map[string]bool)
 	for _, input := range t.InputSources {
 		if input.Alias != "" {
 			if seenInputAliases[input.Alias] {
-				mErr = errors.Join(mErr, fmt.Errorf("input source with alias '%s' already exists", input.Alias))
+				return fmt.Errorf("input source with alias '%s' already exists", input.Alias)
 			}
 			seenInputAliases[input.Alias] = true
 		}
 		if input.Target != "" {
 			if seenInputTargets[input.Target] {
-				mErr = errors.Join(mErr, fmt.Errorf("input source with target '%s' already exists", input.Target))
+				return fmt.Errorf("input source with target '%s' already exists", input.Target)
 			}
 			seenInputTargets[input.Target] = true
 		}
 	}
+	return nil
+}
 
-	// Check for collisions in result paths
+func (t *Task) validateResultPaths() error {
 	seenResultNames := make(map[string]bool)
 	seenResultPaths := make(map[string]bool)
 	for _, result := range t.ResultPaths {
 		if result.Name != "" {
 			if seenResultNames[result.Name] {
-				mErr = errors.Join(mErr, fmt.Errorf("result path with name '%s' already exists", result.Name))
+				return fmt.Errorf("result path with name '%s' already exists", result.Name)
 			}
 			seenResultNames[result.Name] = true
 		}
 		if result.Path != "" {
 			if seenResultPaths[result.Path] {
-				mErr = errors.Join(mErr, fmt.Errorf("result path '%s' already exists", result.Path))
+				return fmt.Errorf("result path '%s' already exists", result.Path)
 			}
 			seenResultPaths[result.Path] = true
 		}
 	}
-
-	return mErr
+	return nil
 }
 
 func (t *Task) AllStorageTypes() []string {

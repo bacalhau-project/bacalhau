@@ -331,6 +331,9 @@ func (j *Job) Task() *Task {
 	if j == nil {
 		return nil
 	}
+	if len(j.Tasks) == 0 {
+		return nil
+	}
 	return j.Tasks[0]
 }
 
