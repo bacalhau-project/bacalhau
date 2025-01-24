@@ -49,8 +49,9 @@ type MetricRecorder struct {
 	attrs         []attribute.KeyValue
 
 	// Internal aggregation state - not thread safe
-	latencies map[histogramKey]time.Duration // Aggregated latencies by histogram+operation
-	counts    map[metric.Int64Counter]int64  // Aggregated counts by counter
+	latencies  map[histogramKey]time.Duration      // Aggregated latencies by histogram+operation
+	counts     map[metric.Int64Counter]int64       // Aggregated counts by counter
+	histograms map[metric.Float64Histogram]float64 // Aggregated histogram values by histogram
 
 	// Clock used for time operations - can be overridden for testing
 	clock clock.Clock
@@ -126,9 +127,15 @@ func (r *MetricRecorder) Gauge(ctx context.Context, g metric.Float64UpDownCounte
 	g.Add(ctx, val, metric.WithAttributes(r.attrs...))
 }
 
-// Duration records a duration for a histogram. Unlike Latency, durations are published immediately.
+// Histogram aggregates values for a histogram by adding them together.
+// The total aggregated value will be published with base attributes when Done() is called.
+func (r *MetricRecorder) Histogram(ctx context.Context, h metric.Float64Histogram, value float64) {
+	r.histograms[h] += value
+}
+
+// Duration records a duration for a histogram. The aggregated value will be published when Done() is called.
 func (r *MetricRecorder) Duration(ctx context.Context, h metric.Float64Histogram, duration time.Duration) {
-	h.Record(ctx, duration.Seconds(), metric.WithAttributes(r.attrs...))
+	r.Histogram(ctx, h, duration.Seconds())
 }
 
 // Latency aggregates the time since the last operation or start for a given sub-operation.
@@ -141,6 +148,13 @@ func (r *MetricRecorder) Latency(ctx context.Context, h metric.Float64Histogram,
 	r.latencies[key] += duration
 }
 
+// CountAndHistogram increments a counter and records a histogram value in one call
+func (r *MetricRecorder) CountAndHistogram(ctx context.Context,
+	counter metric.Int64Counter, histogram metric.Float64Histogram, value float64) {
+	r.CountN(ctx, counter, int64(value))
+	r.Histogram(ctx, histogram, value)
+}
+
 // Done records the total duration since recorder creation and publishes all aggregated metrics.
 // This should typically be deferred immediately after creating the recorder.
 // Additional attributes can be provided and will be merged with base attributes.
@@ -148,6 +162,15 @@ func (r *MetricRecorder) Done(ctx context.Context, h metric.Float64Histogram, at
 	// Record total duration
 	finalAttrs := append(r.attrs, attrs...)
 	h.Record(ctx, r.clock.Since(r.start).Seconds(), metric.WithAttributes(finalAttrs...))
+
+	r.DoneWithoutTotalDuration(ctx, attrs...)
+}
+
+// DoneWithoutTotalDuration publishes all aggregated metrics without recording total duration.
+// This should typically be deferred immediately after creating the recorder.
+// Additional attributes can be provided and will be merged with base attributes.
+func (r *MetricRecorder) DoneWithoutTotalDuration(ctx context.Context, attrs ...attribute.KeyValue) {
+	finalAttrs := append(r.attrs, attrs...)
 
 	// Publish all aggregated latencies to their respective histograms
 	for key, duration := range r.latencies {
@@ -160,6 +183,11 @@ func (r *MetricRecorder) Done(ctx context.Context, h metric.Float64Histogram, at
 		counter.Add(ctx, value, metric.WithAttributes(finalAttrs...))
 	}
 
+	// Publish all aggregated histogram values
+	for histogram, value := range r.histograms {
+		histogram.Record(ctx, value, metric.WithAttributes(finalAttrs...))
+	}
+
 	r.reset()
 }
 
@@ -169,4 +197,5 @@ func (r *MetricRecorder) reset() {
 	r.lastOperation = r.start
 	r.latencies = make(map[histogramKey]time.Duration)
 	r.counts = make(map[metric.Int64Counter]int64)
+	r.histograms = make(map[metric.Float64Histogram]float64)
 }

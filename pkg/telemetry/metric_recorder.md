@@ -74,26 +74,23 @@ func ProcessBatch(ctx context.Context, items []Item) (err error) {
     defer recorder.Error(err)
 
     for _, item := range items {
-        // These latencies are automatically summed by operation type
+        // These metrics are automatically aggregated
         if err := validate(item); err != nil {
-            return
+            return err
         }
         recorder.Latency(ctx, stepHist, "validation")
-    
-        if err := unmarshal(item); err != nil {
-            return
-        }
-        recorder.Latency(ctx, stepHist, "unmarshalling")
+        recorder.Histogram(ctx, sizeHist, float64(item.Size))
     
         if err := process(item); err != nil {
-            return
+            return err
         }
         recorder.Latency(ctx, stepHist, "processing")
+        recorder.Histogram(ctx, resourceHist, item.ResourceUsage)
     }
     // When Done() is called:
-    // - "validation" latency will be the total time spent in validation across all items
-    // - "unmarshalling" latency will be the total time spent in unmarshalling across all items
-    // - "processing" latency will be the total time spent in processing across all items
+    // - Latencies will be totaled by operation type
+    // - Histogram values will be summed
+    // - Counter increments will be totaled
     return nil
 }
 ```
@@ -127,6 +124,12 @@ recorder.AddAttributes(attribute.Int("retry_count", retryCount))
 // Record latency since last operation
 recorder.Latency(ctx, processHistogram, "process")
 
+// Record a value in a histogram
+recorder.Histogram(ctx, valueHistogram, 42.5)
+
+// Record a duration in a histogram
+recorder.Duration(ctx, customDurationHist, measureDuration)
+
 // Increment counter by 1
 recorder.Count(ctx, requestCounter)
 
@@ -136,8 +139,8 @@ recorder.CountN(ctx, bytesProcessedCounter, bytesProcessed)
 // Set gauge value
 recorder.Gauge(ctx, activeWorkersGauge, float64(workerCount))
 
-// Record specific duration
-recorder.Duration(ctx, customDurationHist, measureDuration)
+// Record both count and histogram
+recorder.CountAndHistogram(ctx, pointCounter, valueHistogram, 42.5)
 ```
 
 ## Important Notes
@@ -157,6 +160,6 @@ recorder.Duration(ctx, customDurationHist, measureDuration)
     - Final attributes can be added when calling `Done()`
 
 4. **Aggregation Behavior**:
-    - Latencies and counts are aggregated internally
-    - Gauges and direct durations are published immediately
+    - Latencies, counts, and histogram values are aggregated internally
+    - Gauges are published immediately
     - All aggregated metrics are published when `Done()` is called

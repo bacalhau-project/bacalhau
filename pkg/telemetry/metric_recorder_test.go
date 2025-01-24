@@ -166,14 +166,64 @@ func (s *MetricRecorderTestSuite) TestGauge() {
 	gauge.AssertExpectations(s.T())
 }
 
+func (s *MetricRecorderTestSuite) TestHistogram() {
+	hist := new(MockFloat64Histogram)
+
+	// Record multiple values
+	s.recorder.Histogram(s.ctx, hist, 10.5)
+	s.recorder.Histogram(s.ctx, hist, 20.3)
+	s.recorder.Histogram(s.ctx, hist, 5.7)
+
+	// Verify values are aggregated but not yet recorded
+	s.Len(s.recorder.histograms, 1)
+	s.Equal(36.5, s.recorder.histograms[hist]) // 10.5 + 20.3 + 5.7 = 36.5
+	hist.AssertNotCalled(s.T(), "Record")
+
+	// Different histogram should get separate aggregation
+	hist2 := new(MockFloat64Histogram)
+	s.recorder.Histogram(s.ctx, hist2, 15.0)
+	s.recorder.Histogram(s.ctx, hist2, 25.0)
+
+	s.Len(s.recorder.histograms, 2)
+	s.Equal(36.5, s.recorder.histograms[hist])
+	s.Equal(40.0, s.recorder.histograms[hist2])
+	hist2.AssertNotCalled(s.T(), "Record")
+}
+
+func (s *MetricRecorderTestSuite) TestCountAndHistogram() {
+	counter := new(MockInt64Counter)
+	hist := new(MockFloat64Histogram)
+
+	// Record multiple values
+	s.recorder.CountAndHistogram(s.ctx, counter, hist, 10.5)
+	s.recorder.CountAndHistogram(s.ctx, counter, hist, 20.3)
+
+	// Verify counter is incremented
+	s.Equal(int64(30), s.recorder.counts[counter]) // 10 + 20 = 30 (truncated to int64)
+
+	// Verify histogram values are aggregated
+	s.Equal(30.8, s.recorder.histograms[hist]) // 10.5 + 20.3 = 30.8
+
+	// Verify nothing recorded yet
+	counter.AssertNotCalled(s.T(), "Add")
+	hist.AssertNotCalled(s.T(), "Record")
+}
+
 func (s *MetricRecorderTestSuite) TestDuration() {
 	duration := time.Second
 	hist := new(MockFloat64Histogram)
-	hist.On("Record", s.ctx, duration.Seconds(), mock.Anything).Return()
 
 	s.recorder.Duration(s.ctx, hist, duration)
 
-	hist.AssertExpectations(s.T())
+	// Should be aggregated, not recorded immediately
+	s.Len(s.recorder.histograms, 1)
+	s.Equal(1.0, s.recorder.histograms[hist])
+	hist.AssertNotCalled(s.T(), "Record")
+
+	// Add another duration
+	s.recorder.Duration(s.ctx, hist, 2*time.Second)
+	s.Equal(3.0, s.recorder.histograms[hist]) // 1.0 + 2.0 = 3.0
+	hist.AssertNotCalled(s.T(), "Record")
 }
 
 func (s *MetricRecorderTestSuite) TestLatency() {
@@ -214,15 +264,19 @@ func (s *MetricRecorderTestSuite) TestLatency() {
 func (s *MetricRecorderTestSuite) TestDone() {
 	counter := new(MockInt64Counter)
 	opHist := new(MockFloat64Histogram)
+	valueHist := new(MockFloat64Histogram)
 	durationHist := new(MockFloat64Histogram)
 
 	// Record metrics
 	s.mockClock.Add(100 * time.Millisecond)
 	s.recorder.Count(s.ctx, counter)
 	s.recorder.Latency(s.ctx, opHist, "op1")
+	s.recorder.Histogram(s.ctx, valueHist, 42.5)
+	s.recorder.Histogram(s.ctx, valueHist, 17.5)
 
 	// Verify nothing published yet
 	opHist.AssertNotCalled(s.T(), "Record")
+	valueHist.AssertNotCalled(s.T(), "Record")
 	counter.AssertNotCalled(s.T(), "Add")
 
 	// Add some more timing
@@ -243,6 +297,12 @@ func (s *MetricRecorderTestSuite) TestDone() {
 			set.HasValue("sub_operation")
 	})).Return().Once() // op1 latency: 100ms
 
+	valueHist.On("Record", s.ctx, float64(60.0), mock.MatchedBy(func(opts []metric.RecordOption) bool {
+		cfg := metric.NewRecordConfig(opts)
+		set := cfg.Attributes()
+		return set.HasValue("test") && set.HasValue("final")
+	})).Return().Once() // histogram sum: 42.5 + 17.5 = 60.0
+
 	counter.On("Add", s.ctx, int64(1), mock.MatchedBy(func(opts []metric.AddOption) bool {
 		cfg := metric.NewAddConfig(opts)
 		set := cfg.Attributes()
@@ -254,12 +314,14 @@ func (s *MetricRecorderTestSuite) TestDone() {
 
 	// Verify expectations
 	opHist.AssertExpectations(s.T())
+	valueHist.AssertExpectations(s.T())
 	durationHist.AssertExpectations(s.T())
 	counter.AssertExpectations(s.T())
 
 	// Verify state was reset
 	s.Empty(s.recorder.latencies)
 	s.Empty(s.recorder.counts)
+	s.Empty(s.recorder.histograms)
 	s.Equal(s.mockClock.Now(), s.recorder.start)
 	s.Equal(s.mockClock.Now(), s.recorder.lastOperation)
 }
@@ -268,20 +330,24 @@ func (s *MetricRecorderTestSuite) TestDoneWithMultipleOperations() {
 	counter := new(MockInt64Counter)
 	hist1 := new(MockFloat64Histogram)
 	hist2 := new(MockFloat64Histogram)
+	valueHist := new(MockFloat64Histogram)
 	durationHist := new(MockFloat64Histogram)
 
 	// First round of operations
 	s.mockClock.Add(100 * time.Millisecond)
 	s.recorder.Count(s.ctx, counter)
 	s.recorder.Latency(s.ctx, hist1, "op1") // 100ms in hist1/op1
+	s.recorder.Histogram(s.ctx, valueHist, 42.5)
 	s.mockClock.Add(150 * time.Millisecond)
 	s.recorder.Latency(s.ctx, hist1, "op1") // +150ms in hist1/op1
+	s.recorder.Histogram(s.ctx, valueHist, 17.5)
 	s.mockClock.Add(200 * time.Millisecond)
 	s.recorder.Latency(s.ctx, hist2, "op1") // 200ms in hist2/op1
 
 	// Setup expectations for first Done
 	hist1.On("Record", s.ctx, float64(0.25), mock.Anything).Return().Once()        // hist1/op1 total: 250ms
 	hist2.On("Record", s.ctx, float64(0.2), mock.Anything).Return().Once()         // hist2/op1: 200ms
+	valueHist.On("Record", s.ctx, float64(60.0), mock.Anything).Return().Once()    // valueHist: 42.5 + 17.5 = 60.0
 	durationHist.On("Record", s.ctx, float64(0.45), mock.Anything).Return().Once() // Total: 450ms
 	counter.On("Add", s.ctx, int64(1), mock.Anything).Return().Once()
 
@@ -291,6 +357,7 @@ func (s *MetricRecorderTestSuite) TestDoneWithMultipleOperations() {
 	// Verify state was reset
 	s.Empty(s.recorder.latencies)
 	s.Empty(s.recorder.counts)
+	s.Empty(s.recorder.histograms)
 	s.Equal(s.mockClock.Now(), s.recorder.start)
 	s.Equal(s.mockClock.Now(), s.recorder.lastOperation)
 
@@ -298,9 +365,11 @@ func (s *MetricRecorderTestSuite) TestDoneWithMultipleOperations() {
 	s.mockClock.Add(100 * time.Millisecond)
 	s.recorder.Count(s.ctx, counter)
 	s.recorder.Latency(s.ctx, hist1, "op2") // 100ms in hist1/op2
+	s.recorder.Histogram(s.ctx, valueHist, 30.0)
 
 	// Setup expectations for second Done
 	hist1.On("Record", s.ctx, float64(0.1), mock.Anything).Return().Once()        // hist1/op2: 100ms
+	valueHist.On("Record", s.ctx, float64(30.0), mock.Anything).Return().Once()   // valueHist: 30.0
 	durationHist.On("Record", s.ctx, float64(0.1), mock.Anything).Return().Once() // Total: 100ms
 	counter.On("Add", s.ctx, int64(1), mock.Anything).Return().Once()
 
@@ -310,9 +379,11 @@ func (s *MetricRecorderTestSuite) TestDoneWithMultipleOperations() {
 	// Verify all expectations
 	hist1.AssertExpectations(s.T())
 	hist2.AssertExpectations(s.T())
+	valueHist.AssertExpectations(s.T())
 	durationHist.AssertExpectations(s.T())
 	counter.AssertExpectations(s.T())
 }
+
 func TestMetricRecorderSuite(t *testing.T) {
 	suite.Run(t, new(MetricRecorderTestSuite))
 }
