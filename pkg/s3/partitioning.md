@@ -4,7 +4,7 @@ This documentation describes the partitioning system for S3 objects, which enabl
 
 ## Overview
 
-The partitioning system allows you to split a collection of S3 objects across multiple processors using consistent hashing. This ensures:
+The partitioning system allows you to split a collection of S3 objects across multiple processors using deterministic hashing. This ensures:
 - Even distribution of objects
 - Deterministic assignment of objects to partitions
 - Support for various partitioning strategies
@@ -19,7 +19,7 @@ The partitioning system allows you to split a collection of S3 objects across mu
 
 ### 2. Object (`PartitionKeyTypeObject`)
 - Partitions based on the complete object key
-- Uses consistent hashing of the entire object path
+- Uses deterministic hashing of the entire object path
 - Best for random or unpredictable key patterns
 - Ensures even distribution across partitions
 
@@ -96,7 +96,7 @@ type PartitionConfig struct {
 3. Special handling for single partition case:
     - If total partitions = 1, returns all objects without processing
 
-### Consistent Hashing
+### deterministic Hashing
 - Uses FNV-1a hash algorithm
 - Ensures deterministic distribution
 - Formula: `partition_index = hash(key) % total_partitions`

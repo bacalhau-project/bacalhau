@@ -6,9 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -19,18 +18,18 @@ import (
 )
 
 var (
-	getLong = templates.LongDesc(i18n.T(`
+	getLong = templates.LongDesc(`
 		Get the results of the job, including stdout and stderr.
-`))
+`)
 
 	//nolint:lll // Documentation
-	getExample = templates.Examples(i18n.T(`
+	getExample = templates.Examples(`
 		# Get the results of a job.
 		bacalhau job get j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Get the results of a job, with a short ID.
 		bacalhau job get ebd9bf2f
-`))
+`)
 )
 
 type GetOptions struct {
