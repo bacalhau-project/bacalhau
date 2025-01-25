@@ -96,9 +96,7 @@ func (m *MessageHandler) OnBidComplete(ctx context.Context, message *envelope.Me
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	if err = m.store.UpdateExecution(txContext, updateRequest); err != nil {
 		return err
@@ -124,9 +122,7 @@ func (m *MessageHandler) OnRunComplete(ctx context.Context, message *envelope.Me
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	job, err := m.store.GetJob(txContext, result.JobID)
 	if err != nil {
@@ -182,9 +178,7 @@ func (m *MessageHandler) OnComputeFailure(ctx context.Context, message *envelope
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	// update execution state
 	if err = m.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
