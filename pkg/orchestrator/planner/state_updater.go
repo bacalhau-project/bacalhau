@@ -128,7 +128,7 @@ func (s *StateUpdater) processJobState(
 			NewState: plan.DesiredJobState,
 			Message:  plan.UpdateMessage,
 			Condition: jobstore.UpdateJobCondition{
-				ExpectedRevision: plan.Job.Revision,
+				ExpectedState: plan.Job.State.StateType,
 			},
 		}); err != nil {
 			return err

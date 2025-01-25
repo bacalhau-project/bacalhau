@@ -123,34 +123,34 @@ func (m *UpdateExecutionMatcher) String() string {
 
 // UpdateJobMatcher is a matcher for the UpdateJobState method of the JobStore interface.
 type UpdateJobMatcher struct {
-	t                *testing.T
-	job              *models.Job
-	newState         models.JobStateType
-	comment          string
-	expectedRevision uint64
+	t             *testing.T
+	job           *models.Job
+	newState      models.JobStateType
+	comment       string
+	expectedState models.JobStateType
 }
 
 type UpdateJobMatcherParams struct {
-	NewState         models.JobStateType
-	Comment          string
-	ExpectedRevision uint64
+	NewState      models.JobStateType
+	Comment       string
+	ExpectedState models.JobStateType
 }
 
 func NewUpdateJobMatcher(t *testing.T, job *models.Job, params UpdateJobMatcherParams) *UpdateJobMatcher {
 	return &UpdateJobMatcher{
-		t:                t,
-		job:              job,
-		newState:         params.NewState,
-		comment:          params.Comment,
-		expectedRevision: params.ExpectedRevision,
+		t:             t,
+		job:           job,
+		newState:      params.NewState,
+		comment:       params.Comment,
+		expectedState: params.ExpectedState,
 	}
 }
 
 func NewUpdateJobMatcherFromPlanUpdate(t *testing.T, plan *models.Plan) *UpdateJobMatcher {
 	return NewUpdateJobMatcher(t, plan.Job, UpdateJobMatcherParams{
-		NewState:         plan.DesiredJobState,
-		Comment:          plan.UpdateMessage,
-		ExpectedRevision: plan.Job.Revision,
+		NewState:      plan.DesiredJobState,
+		Comment:       plan.UpdateMessage,
+		ExpectedState: plan.Job.State.StateType,
 	})
 }
 
@@ -166,7 +166,7 @@ func (m *UpdateJobMatcher) Matches(x interface{}) bool {
 		NewState: m.newState,
 		Message:  m.comment,
 		Condition: jobstore.UpdateJobCondition{
-			ExpectedRevision: m.expectedRevision,
+			ExpectedState: m.expectedState,
 		},
 	}
 	return reflect.DeepEqual(expectedRequest, req)
