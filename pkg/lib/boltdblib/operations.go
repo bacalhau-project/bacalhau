@@ -64,7 +64,7 @@ func View(ctx context.Context, db *bolt.DB, view func(tx *bolt.Tx) error) error 
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	// Always rollback read-only transactions
-	defer tx.Rollback() // nolint: errcheck
+	defer tx.Rollback() //nolint:errcheck
 
 	return view(tx)
 }
