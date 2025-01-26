@@ -159,6 +159,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateBothStates_Succes
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext,
 		NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update)).Times(1)
 	suite.mockTxContext.EXPECT().Commit()
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
 }
@@ -193,6 +194,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultipleStateUpdates_Su
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext,
 		NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update2)).Times(1)
 	suite.mockTxContext.EXPECT().Commit()
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
 }
