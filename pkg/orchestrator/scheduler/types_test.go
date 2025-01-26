@@ -109,7 +109,7 @@ func TestExecSet_FilterByNodeHealth(t *testing.T) {
 	}
 
 	set := execSetFromSlice(executions)
-	healthy, lost := set.filterByNodeHealth(nodeInfos)
+	healthy, lost := set.groupByNodeHealth(nodeInfos)
 
 	assert.Len(t, healthy, 2)
 	assert.Len(t, lost, 1)
@@ -122,7 +122,9 @@ func TestExecSet_GetApprovalStatuses(t *testing.T) {
 		executions := []*models.Execution{
 			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
 			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted)},
-			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec3",
+				ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
 		}
 
 		set := execSetFromSlice(executions)
@@ -133,12 +135,63 @@ func TestExecSet_GetApprovalStatuses(t *testing.T) {
 		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec3"})
 	})
 
-	t.Run("with running execution", func(t *testing.T) {
+	t.Run("with single running execution", func(t *testing.T) {
 		now := time.Now()
 		executions := []*models.Execution{
-			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
-			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
-			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
+			{ID: "exec1",
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				ModifyTime:   now.UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
+
+		assert.Empty(t, status.toApprove)
+		assert.Empty(t, status.toReject)
+		assert.Empty(t, status.toCancel)
+	})
+
+	t.Run("with multiple executions and one running", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+				ModifyTime:   now.UnixNano()},
+			{ID: "exec2",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.Add(time.Second).UnixNano()},
+			{ID: "exec3",
+				ComputeState: models.NewExecutionState(models.ExecutionStateNew),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.Add(2 * time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		status := set.getApprovalStatuses()
+
+		assert.Empty(t, status.toApprove)
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec2"})
+		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec3"})
+	})
+
+	t.Run("with multiple running executions preserves oldest", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+				ModifyTime:   now.UnixNano()},
+			{ID: "exec2",
+				ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+				ModifyTime:   now.Add(time.Second).UnixNano()},
+			{ID: "exec3",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.Add(2 * time.Second).UnixNano()},
 		}
 
 		set := execSetFromSlice(executions)
@@ -152,8 +205,14 @@ func TestExecSet_GetApprovalStatuses(t *testing.T) {
 	t.Run("with only pending executions", func(t *testing.T) {
 		now := time.Now()
 		executions := []*models.Execution{
-			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.UnixNano()},
-			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
+			{ID: "exec1",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.UnixNano()},
+			{ID: "exec2",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.Add(time.Second).UnixNano()},
 		}
 
 		set := execSetFromSlice(executions)
@@ -164,25 +223,35 @@ func TestExecSet_GetApprovalStatuses(t *testing.T) {
 		assert.Empty(t, status.toCancel)
 	})
 
-	t.Run("mix of all states", func(t *testing.T) {
+	t.Run("with mix of states and desired states", func(t *testing.T) {
 		now := time.Now()
 		executions := []*models.Execution{
-			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBid), ModifyTime: now.UnixNano()},
-			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted), ModifyTime: now.Add(time.Second).UnixNano()},
-			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
-			{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateFailed), ModifyTime: now.Add(3 * time.Second).UnixNano()},
-			{ID: "exec5", ComputeState: models.NewExecutionState(models.ExecutionStateCancelled), ModifyTime: now.Add(4 * time.Second).UnixNano()},
+			{ID: "exec1",
+				ComputeState: models.NewExecutionState(models.ExecutionStateNew),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.UnixNano()},
+			{ID: "exec2",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+				ModifyTime:   now.Add(time.Second).UnixNano()},
+			{ID: "exec3",
+				ComputeState: models.NewExecutionState(models.ExecutionStateAskForBidAccepted),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
+				ModifyTime:   now.Add(2 * time.Second).UnixNano()},
+			{ID: "exec4",
+				ComputeState: models.NewExecutionState(models.ExecutionStateFailed),
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateStopped),
+				ModifyTime:   now.Add(3 * time.Second).UnixNano()},
 		}
 
 		set := execSetFromSlice(executions)
 		status := set.getApprovalStatuses()
 
 		assert.Empty(t, status.toApprove)
-		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec2"})
+		assert.ElementsMatch(t, status.toReject.keys(), []string{"exec3"})
 		assert.ElementsMatch(t, status.toCancel.keys(), []string{"exec1"})
 	})
 }
-
 func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
 	// Create a set of executions with varying execution times
 	now := time.Now()
@@ -198,7 +267,7 @@ func TestExecSet_FilterByExecutionTimeout(t *testing.T) {
 	expirationTime := now.Add(-60 * time.Minute)
 
 	// Filter executions by timeout
-	remainingExecs, timedOutExecs := execs.filterByExecutionTimeout(expirationTime)
+	remainingExecs, timedOutExecs := execs.groupByExecutionTimeout(expirationTime)
 
 	// Check that the executions that have not exceeded the timeout remain in the set
 	assert.Len(t, remainingExecs, 1)
