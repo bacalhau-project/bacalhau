@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/webui"
@@ -47,22 +47,24 @@ var (
 )
 
 type options struct {
-	NumberOfHybridNodes        int // Number of nodes to start in the cluster
-	NumberOfRequesterOnlyNodes int // Number of nodes to start in the cluster
-	NumberOfComputeOnlyNodes   int // Number of nodes to start in the cluster
-	NumberOfBadComputeActors   int // Number of compute nodes to be bad actors
-	CPUProfilingFile           string
-	MemoryProfilingFile        string
-	BasePath                   string
-	WebUIListen                string
+	// Node counts
+	ComputeNodes      int // Number of compute nodes to run
+	OrchestratorNodes int // Number of orchestrator nodes to run
+	HybridNodes       int // Number of hybrid nodes to run
+	BadComputeNodes   int // Number of bad compute nodes
+
+	// Other options
+	CPUProfilingFile    string
+	MemoryProfilingFile string
+	BasePath            string
 }
 
 func (o *options) devstackOptions() []devstack.ConfigOption {
 	opts := []devstack.ConfigOption{
-		devstack.WithNumberOfHybridNodes(o.NumberOfHybridNodes),
-		devstack.WithNumberOfRequesterOnlyNodes(o.NumberOfRequesterOnlyNodes),
-		devstack.WithNumberOfComputeOnlyNodes(o.NumberOfComputeOnlyNodes),
-		devstack.WithNumberOfBadComputeActors(o.NumberOfBadComputeActors),
+		devstack.WithNumberOfHybridNodes(o.HybridNodes),
+		devstack.WithNumberOfRequesterOnlyNodes(o.OrchestratorNodes),
+		devstack.WithNumberOfComputeOnlyNodes(o.ComputeNodes),
+		devstack.WithNumberOfBadComputeActors(o.BadComputeNodes),
 		devstack.WithCPUProfilingFile(o.CPUProfilingFile),
 		devstack.WithMemoryProfilingFile(o.MemoryProfilingFile),
 		devstack.WithBasePath(o.BasePath),
@@ -72,13 +74,11 @@ func (o *options) devstackOptions() []devstack.ConfigOption {
 
 func newOptions() *options {
 	return &options{
-		NumberOfRequesterOnlyNodes: 1,
-		NumberOfComputeOnlyNodes:   3,
-		NumberOfBadComputeActors:   0,
-		CPUProfilingFile:           "",
-		MemoryProfilingFile:        "",
-		BasePath:                   "",
-		WebUIListen:                config.Default.WebUI.Listen,
+		OrchestratorNodes:   1,
+		ComputeNodes:        3,
+		CPUProfilingFile:    "",
+		MemoryProfilingFile: "",
+		BasePath:            "",
 	}
 }
 
@@ -102,12 +102,23 @@ func NewCmd() *cobra.Command {
 			return configflags.BindFlags(viper.GetViper(), devstackFlags)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// TODO: a hack to force debug logging for devstack
-			//  until I figure out why flags and env vars are not working
-			logger.ConfigureLogging(logger.LogModeDefault, zerolog.DebugLevel)
+			defaultConfig, err := config.NewTestConfig()
+			if err != nil {
+				return fmt.Errorf("failed to create default config: %w", err)
+			}
+			cfg, err := util.SetupConfig(cmd, config.WithDefault(defaultConfig))
+			if err != nil {
+				return fmt.Errorf("failed to setup config: %w", err)
+			}
+
+			if err = logger.ParseAndConfigureLogging(cfg.Logging.Mode, cfg.Logging.Level); err != nil {
+				return fmt.Errorf("failed to configure logging: %w", err)
+			}
+
 			// TODO this should be a part of the config.
 			telemetry.SetupFromEnvs()
-			return runDevstack(cmd, ODs)
+
+			return runDevstack(cmd, ODs, cfg)
 		},
 	}
 
@@ -116,25 +127,48 @@ func NewCmd() *cobra.Command {
 	}
 
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfHybridNodes, "hybrid-nodes", ODs.NumberOfHybridNodes,
-		`How many hybrid (requester and compute) nodes should be started in the cluster`,
+		&ODs.ComputeNodes, "computes", ODs.ComputeNodes,
+		`Number of compute-only nodes to run`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfRequesterOnlyNodes, "requester-nodes", ODs.NumberOfRequesterOnlyNodes,
-		`How many requester only nodes should be started in the cluster`,
+		&ODs.OrchestratorNodes, "orchestrators", ODs.OrchestratorNodes,
+		`Number of orchestrator-only nodes to run`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfComputeOnlyNodes, "compute-nodes", ODs.NumberOfComputeOnlyNodes,
-		`How many compute only nodes should be started in the cluster`,
+		&ODs.HybridNodes, "hybrids", ODs.HybridNodes,
+		`Number of hybrid nodes (both compute and orchestrator) to run`,
 	)
 	devstackCmd.PersistentFlags().IntVar(
-		&ODs.NumberOfBadComputeActors, "bad-compute-actors", ODs.NumberOfBadComputeActors,
-		`How many compute nodes should be bad actors`,
+		&ODs.BadComputeNodes, "bad-computes", ODs.BadComputeNodes,
+		`Number of compute nodes that should be bad actors`,
 	)
-	devstackCmd.PersistentFlags().StringVar(
-		&ODs.WebUIListen, "webui-address", ODs.WebUIListen,
-		`Listen address for the web UI server`,
+
+	// Old style flags - hidden from help but still functional
+	oldFlags := devstackCmd.PersistentFlags()
+	oldFlags.IntVar(
+		&ODs.ComputeNodes, "compute-nodes", ODs.ComputeNodes,
+		`Number of compute-only nodes to run`,
 	)
+	_ = oldFlags.MarkHidden("compute-nodes")
+
+	oldFlags.IntVar(
+		&ODs.OrchestratorNodes, "requester-nodes", ODs.OrchestratorNodes,
+		`Number of orchestrator-only nodes to run`,
+	)
+	_ = oldFlags.MarkHidden("requester-nodes")
+
+	oldFlags.IntVar(
+		&ODs.HybridNodes, "hybrid-nodes", ODs.HybridNodes,
+		`Number of hybrid nodes (both compute and orchestrator) to run`,
+	)
+	_ = oldFlags.MarkHidden("hybrid-nodes")
+
+	oldFlags.IntVar(
+		&ODs.BadComputeNodes, "bad-compute-actors", ODs.BadComputeNodes,
+		`Number of compute nodes that should be bad actors`,
+	)
+	_ = oldFlags.MarkHidden("bad-compute-actors")
+
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.CPUProfilingFile, "cpu-profiling-file", ODs.CPUProfilingFile,
 		"File to save CPU profiling to",
@@ -147,15 +181,20 @@ func NewCmd() *cobra.Command {
 		&ODs.BasePath, "stack-repo", ODs.BasePath,
 		"Folder to act as the devstack configuration repo",
 	)
+
 	return devstackCmd
 }
 
 //nolint:gocyclo,funlen
-func runDevstack(cmd *cobra.Command, ODs *options) error {
+func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 	ctx := cmd.Context()
 
 	cm := util.GetCleanupManager(ctx)
 	cm.RegisterCallback(telemetry.Cleanup)
+
+	// Create devstack options and merge with base config
+	opts := ODs.devstackOptions()
+	opts = append(opts, devstack.WithBacalhauConfigOverride(cfg))
 
 	config_legacy.DevstackSetShouldPrintInfo()
 
@@ -184,7 +223,7 @@ func runDevstack(cmd *cobra.Command, ODs *options) error {
 		defer os.RemoveAll(baseRepoPath)
 	}
 
-	stack, err := devstack.Setup(ctx, cm, ODs.devstackOptions()...)
+	stack, err := devstack.Setup(ctx, cm, opts...)
 	if err != nil {
 		return err
 	}
@@ -195,7 +234,7 @@ func runDevstack(cmd *cobra.Command, ODs *options) error {
 		if n.IsRequesterNode() {
 			webuiConfig := webui.Config{
 				APIEndpoint: n.APIServer.GetURI().String(),
-				Listen:      ODs.WebUIListen,
+				Listen:      cfg.WebUI.Listen,
 			}
 			webuiServer, err := webui.NewServer(webuiConfig)
 			if err != nil {
