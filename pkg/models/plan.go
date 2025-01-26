@@ -1,9 +1,5 @@
 package models
 
-import (
-	"github.com/rs/zerolog/log"
-)
-
 type PlanExecutionUpdate struct {
 	Execution    *Execution                `json:"Execution"`
 	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
@@ -58,12 +54,6 @@ func (p *Plan) AppendExecution(execution *Execution, event Event) {
 
 // AppendStoppedExecution marks an execution to be stopped.
 func (p *Plan) AppendStoppedExecution(execution *Execution, event Event, computeState ExecutionStateType) {
-	log.Debug().
-		Str("OldDesiredState", execution.DesiredState.StateType.String()).
-		Str("NewDesiredState", ExecutionDesiredStateStopped.String()).
-		Str("ExecutionID", execution.ID).
-		Str("OldComputeState", execution.ComputeState.StateType.String()).
-		Msgf("Plan: AppendStoppedExecution: %s", execution.ID)
 	updateRequest := &PlanExecutionUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateStopped,
@@ -76,12 +66,6 @@ func (p *Plan) AppendStoppedExecution(execution *Execution, event Event, compute
 
 // AppendApprovedExecution marks an execution as accepted and ready to be started.
 func (p *Plan) AppendApprovedExecution(execution *Execution, event Event) {
-	log.Debug().
-		Str("OldDesiredState", execution.DesiredState.StateType.String()).
-		Str("NewDesiredState", ExecutionDesiredStateRunning.String()).
-		Str("ExecutionID", execution.ID).
-		Str("OldComputeState", execution.ComputeState.StateType.String()).
-		Msgf("Plan: AppendApprovedExecution: %s", execution.ID)
 	updateRequest := &PlanExecutionUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateRunning,

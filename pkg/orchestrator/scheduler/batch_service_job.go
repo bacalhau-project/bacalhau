@@ -186,12 +186,6 @@ func (b *BatchServiceJobScheduler) loadJobState(ctx context.Context, metrics *te
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
 	metrics.Histogram(ctx, executionsExisting, float64(len(jobExecutions)))
-
-	// loop and log execution id, desired state and compute state
-	for _, exec := range jobExecutions {
-		log.Ctx(ctx).Debug().Msgf("Found Execution %s: DesiredState=%s, ComputeState=%s", exec.ID, exec.DesiredState,
-			exec.ComputeState)
-	}
 	return job, jobExecutions, nil
 }
 
@@ -232,32 +226,8 @@ func (b *BatchServiceJobScheduler) handleTimeouts(ctx context.Context, metrics *
 func (b *BatchServiceJobScheduler) approveRejectExecs(nonDiscardedExecs execSet, plan *models.Plan) {
 	// Process each partition independently, ensuring only one execution
 	// can be active per partition at any time
-	for partitionIndex, partitionExecs := range nonDiscardedExecs.groupByPartition() {
+	for _, partitionExecs := range nonDiscardedExecs.groupByPartition() {
 		execsByApprovalStatus := partitionExecs.getApprovalStatuses()
-
-		// loop and log the partition index, and the number of executions in each state
-		log.Debug().Msgf("Partition %d: %d to approve, %d to reject, %d to cancel", partitionIndex,
-			len(execsByApprovalStatus.toApprove), len(execsByApprovalStatus.toReject), len(execsByApprovalStatus.toCancel))
-
-		for _, exec := range partitionExecs {
-			log.Debug().Msgf("approveRejectExecs Execution %s: DesiredState=%s, ComputeState=%s", exec.ID, exec.DesiredState,
-				exec.ComputeState)
-		}
-
-		// loop and log the execution id, desired state and compute state for each toApprove, toReject and toCancel
-		for _, exec := range execsByApprovalStatus.toApprove {
-			log.Debug().Msgf("ToApprove Execution %s: DesiredState=%s, ComputeState=%s", exec.ID, exec.DesiredState,
-				exec.ComputeState)
-		}
-		for _, exec := range execsByApprovalStatus.toReject {
-			log.Debug().Msgf("ToReject Execution %s: DesiredState=%s, ComputeState=%s", exec.ID, exec.DesiredState,
-				exec.ComputeState)
-		}
-		for _, exec := range execsByApprovalStatus.toCancel {
-			log.Debug().Msgf("ToCancel Execution %s: DesiredState=%s, ComputeState=%s", exec.ID, exec.DesiredState,
-				exec.ComputeState)
-		}
-
 		execsByApprovalStatus.toApprove.markApproved(plan, orchestrator.ExecRunningEvent())
 		execsByApprovalStatus.toReject.markRejected(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
 		execsByApprovalStatus.toCancel.markCancelled(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
