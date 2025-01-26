@@ -84,8 +84,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhealt
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -106,8 +110,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed() {
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
 		JobState:   models.JobStateTypeFailed,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -133,9 +141,17 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_TotalTimeou
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
 		JobState:   models.JobStateTypeFailed,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
-			scenario.executions[1].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -152,8 +168,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNonTer
 	s.mockJobStore(scenario)
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -194,8 +214,12 @@ func (s *OpsJobSchedulerTestSuite) TestProcess_ShouldStopExpiredExecutions() {
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
 		JobState:   models.JobStateTypeFailed,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)

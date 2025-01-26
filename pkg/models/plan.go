@@ -1,8 +1,13 @@
 package models
 
-type PlanExecutionDesiredUpdate struct {
+import (
+	"github.com/rs/zerolog/log"
+)
+
+type PlanExecutionUpdate struct {
 	Execution    *Execution                `json:"Execution"`
 	DesiredState ExecutionDesiredStateType `json:"DesiredState"`
+	ComputeState ExecutionStateType        `json:"ComputeState"`
 	Event        Event                     `json:"Event"`
 }
 
@@ -21,7 +26,7 @@ type Plan struct {
 	// NewExecutions holds the executions to be created.
 	NewExecutions []*Execution `json:"NewExecutions,omitempty"`
 
-	UpdatedExecutions map[string]*PlanExecutionDesiredUpdate `json:"UpdatedExecutions,omitempty"`
+	UpdatedExecutions map[string]*PlanExecutionUpdate `json:"UpdatedExecutions,omitempty"`
 
 	// NewEvaluations holds the evaluations to be created, such as delayed evaluations when no nodes are available.
 	NewEvaluations []*Evaluation `json:"NewEvaluations,omitempty"`
@@ -38,7 +43,7 @@ func NewPlan(eval *Evaluation, job *Job) *Plan {
 		Eval:              eval,
 		Job:               job,
 		NewExecutions:     []*Execution{},
-		UpdatedExecutions: make(map[string]*PlanExecutionDesiredUpdate),
+		UpdatedExecutions: make(map[string]*PlanExecutionUpdate),
 		NewEvaluations:    []*Evaluation{},
 		JobEvents:         []Event{},
 		ExecutionEvents:   make(map[string][]Event),
@@ -52,10 +57,17 @@ func (p *Plan) AppendExecution(execution *Execution, event Event) {
 }
 
 // AppendStoppedExecution marks an execution to be stopped.
-func (p *Plan) AppendStoppedExecution(execution *Execution, event Event) {
-	updateRequest := &PlanExecutionDesiredUpdate{
+func (p *Plan) AppendStoppedExecution(execution *Execution, event Event, computeState ExecutionStateType) {
+	log.Debug().
+		Str("OldDesiredState", execution.DesiredState.StateType.String()).
+		Str("NewDesiredState", ExecutionDesiredStateStopped.String()).
+		Str("ExecutionID", execution.ID).
+		Str("OldComputeState", execution.ComputeState.StateType.String()).
+		Msgf("Plan: AppendStoppedExecution: %s", execution.ID)
+	updateRequest := &PlanExecutionUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateStopped,
+		ComputeState: computeState,
 		Event:        event,
 	}
 	p.UpdatedExecutions[execution.ID] = updateRequest
@@ -64,9 +76,17 @@ func (p *Plan) AppendStoppedExecution(execution *Execution, event Event) {
 
 // AppendApprovedExecution marks an execution as accepted and ready to be started.
 func (p *Plan) AppendApprovedExecution(execution *Execution, event Event) {
-	updateRequest := &PlanExecutionDesiredUpdate{
+	log.Debug().
+		Str("OldDesiredState", execution.DesiredState.StateType.String()).
+		Str("NewDesiredState", ExecutionDesiredStateRunning.String()).
+		Str("ExecutionID", execution.ID).
+		Str("OldComputeState", execution.ComputeState.StateType.String()).
+		Msgf("Plan: AppendApprovedExecution: %s", execution.ID)
+	updateRequest := &PlanExecutionUpdate{
 		Execution:    execution,
 		DesiredState: ExecutionDesiredStateRunning,
+		ComputeState: ExecutionStateBidAccepted,
+		Event:        event,
 	}
 	p.UpdatedExecutions[execution.ID] = updateRequest
 	p.AppendExecutionEvent(execution.ID, event)

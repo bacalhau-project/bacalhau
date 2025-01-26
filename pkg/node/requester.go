@@ -95,14 +95,14 @@ func NewRequesterNode(
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
 	planners := planner.NewChain(
-		// planner that persist the desired state as defined by the scheduler
-		planner.NewStateUpdater(jobStore),
-
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
 
 		// metrics planner
 		planner.NewMetricsPlanner(),
+
+		// planner that persist the desired state as defined by the scheduler
+		planner.NewStateUpdater(jobStore),
 	)
 
 	retryStrategy := cfg.SystemConfig.RetryStrategy
@@ -442,21 +442,6 @@ func setupOrchestratorWatchers(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
-	}
-
-	// Set up execution canceller watcher
-	_, err = watcherRegistry.Create(ctx, orchestratorExecutionCancellerWatcherID,
-		watcher.WithHandler(watchers.NewExecutionCanceller(jobStore)),
-		watcher.WithAutoStart(),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
 	}
 
 	return watcherRegistry, nil

@@ -88,7 +88,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedByJobStopEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		return b.planner.Process(ctx, plan)
 	}
 
@@ -102,8 +102,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	allFailedExecs := existingExecs.filterFailed()
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
+	nonTerminalExecs, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
+	lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 	allFailedExecs = allFailedExecs.union(lost)
 
@@ -120,7 +120,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// if the plan's job state is failed, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// mark job as completed if there are no more active or new executions
 		if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
@@ -155,8 +155,8 @@ func (b *OpsJobScheduler) handleTimeouts(
 		timeout := job.Task().Timeouts.GetExecutionTimeout()
 		expirationTime := b.clock.Now().Add(-timeout)
 		var timedOut execSet
-		nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-		timedOut.markStopped(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
+		nonTerminalExecs, timedOut = nonTerminalExecs.groupByExecutionTimeout(expirationTime)
+		timedOut.markFailed(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
 		metrics.CountN(ctx, executionsTimedOut, int64(len(timedOut)))
 		allFailedExecs = allFailedExecs.union(timedOut)
 	}

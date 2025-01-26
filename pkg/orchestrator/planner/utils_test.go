@@ -19,19 +19,21 @@ func mockCreateExecutions(plan *models.Plan) (*models.Execution, *models.Executi
 	return execution1, execution2
 }
 
-func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionDesiredUpdate, *models.PlanExecutionDesiredUpdate) {
+func mockUpdateExecutions(plan *models.Plan) (*models.PlanExecutionUpdate, *models.PlanExecutionUpdate) {
 	execution1 := mock.ExecutionForJob(plan.Job)
 	execution2 := mock.ExecutionForJob(plan.Job)
 	execution1.ID = "UpdatedExec1"
 	execution2.ID = "UpdatedExec2"
-	update1 := &models.PlanExecutionDesiredUpdate{
+	update1 := &models.PlanExecutionUpdate{
 		Execution:    execution1,
 		DesiredState: models.ExecutionDesiredStateRunning,
+		ComputeState: models.ExecutionStateBidAccepted, // Add compute state
 		Event:        models.Event{Message: "update 1"},
 	}
-	update2 := &models.PlanExecutionDesiredUpdate{
+	update2 := &models.PlanExecutionUpdate{
 		Execution:    execution2,
 		DesiredState: models.ExecutionDesiredStateStopped,
+		ComputeState: models.ExecutionStateBidRejected, // Add compute state
 		Event:        models.Event{Message: "update 2"},
 	}
 	plan.UpdatedExecutions[execution1.ID] = update1
@@ -82,14 +84,15 @@ func NewUpdateExecutionMatcher(t *testing.T, execution *models.Execution, params
 	}
 }
 
-func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanExecutionDesiredUpdate) *UpdateExecutionMatcher {
+func NewUpdateExecutionMatcherFromPlanUpdate(t *testing.T, update *models.PlanExecutionUpdate) *UpdateExecutionMatcher {
 	return NewUpdateExecutionMatcher(t, update.Execution, UpdateExecutionMatcherParams{
+		NewState:            update.ComputeState, // Add compute state
+		NewStateComment:     update.Event.Message,
 		NewDesiredState:     update.DesiredState,
 		DesiredStateComment: update.Event.Message,
 		ExpectedRevision:    update.Execution.Revision,
 	})
 }
-
 func (m *UpdateExecutionMatcher) Matches(x interface{}) bool {
 	req, ok := x.(jobstore.UpdateExecutionRequest)
 	if !ok {
@@ -182,7 +185,7 @@ type ComputeRequestMatcher struct {
 	t         *testing.T
 	nodeID    string
 	execution *models.Execution
-	update    *models.PlanExecutionDesiredUpdate
+	update    *models.PlanExecutionUpdate
 }
 
 func NewComputeRequestMatcher(t *testing.T, nodeID string, execution *models.Execution) *ComputeRequestMatcher {
@@ -193,7 +196,7 @@ func NewComputeRequestMatcher(t *testing.T, nodeID string, execution *models.Exe
 	}
 }
 
-func NewComputeRequestMatcherFromPlanUpdate(t *testing.T, nodeID string, update *models.PlanExecutionDesiredUpdate) *ComputeRequestMatcher {
+func NewComputeRequestMatcherFromPlanUpdate(t *testing.T, nodeID string, update *models.PlanExecutionUpdate) *ComputeRequestMatcher {
 	return &ComputeRequestMatcher{
 		t:         t,
 		nodeID:    nodeID,

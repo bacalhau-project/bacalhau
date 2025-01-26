@@ -136,6 +136,62 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultiOp() {
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
 }
 
+func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateBothStates_Success() {
+	plan := mock.Plan()
+
+	// Create an execution update that modifies both states
+	exec := mock.ExecutionForJob(plan.Job)
+	exec.ID = "exec1"
+	update := &models.PlanExecutionUpdate{
+		Execution:    exec,
+		DesiredState: models.ExecutionDesiredStateRunning,
+		ComputeState: models.ExecutionStateBidAccepted, // Set compute state
+		Event:        models.Event{Message: "update both states"},
+	}
+	plan.UpdatedExecutions[exec.ID] = update
+
+	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
+	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext,
+		NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update)).Times(1)
+	suite.mockTxContext.EXPECT().Commit()
+
+	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
+}
+
+func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultipleStateUpdates_Success() {
+	plan := mock.Plan()
+
+	// Create multiple execution updates with different state combinations
+	exec1 := mock.ExecutionForJob(plan.Job)
+	exec1.ID = "exec1"
+	update1 := &models.PlanExecutionUpdate{
+		Execution:    exec1,
+		DesiredState: models.ExecutionDesiredStateRunning,
+		ComputeState: models.ExecutionStateBidAccepted,
+		Event:        models.Event{Message: "approve"},
+	}
+	plan.UpdatedExecutions[exec1.ID] = update1
+
+	exec2 := mock.ExecutionForJob(plan.Job)
+	exec2.ID = "exec2"
+	update2 := &models.PlanExecutionUpdate{
+		Execution:    exec2,
+		DesiredState: models.ExecutionDesiredStateStopped,
+		ComputeState: models.ExecutionStateBidRejected,
+		Event:        models.Event{Message: "reject"},
+	}
+	plan.UpdatedExecutions[exec2.ID] = update2
+
+	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
+	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext,
+		NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update1)).Times(1)
+	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext,
+		NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update2)).Times(1)
+	suite.mockTxContext.EXPECT().Commit()
+
+	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
+}
+
 func TestStateUpdaterSuite(t *testing.T) {
 	suite.Run(t, new(StateUpdaterSuite))
 }

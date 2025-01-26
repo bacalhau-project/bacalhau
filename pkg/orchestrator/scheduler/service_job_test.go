@@ -50,8 +50,11 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 		WithJobType(models.JobTypeService),
 		WithCount(2),
 		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithDesiredState(models.ExecutionDesiredStatePending),
 		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 0), // Same partition as first one
+		WithDesiredState(models.ExecutionDesiredStateRunning),
 		WithPartitionedExecution("node2", models.ExecutionStateBidAccepted, 1), // Different partition
+		WithDesiredState(models.ExecutionDesiredStateRunning),
 	)
 	scenario.executions[1].Revision = scenario.executions[0].Revision + 1
 	scenario.executions[2].Revision = scenario.executions[0].Revision + 1
@@ -60,8 +63,14 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_TooManyExecutions() {
 	// mock active executions' nodes to be healthy
 	s.mockAllNodes("node0", "node1", "node2")
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:        scenario.evaluation,
-		StoppedExecutions: []string{scenario.executions[0].ID},
+		Evaluation: scenario.evaluation,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
+		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
@@ -87,7 +96,18 @@ func (s *ServiceJobSchedulerTestSuite) TestFailUnhealthyExecs_ShouldMarkExecutio
 			{NodeID: "node0", PartitionIndex: 1},
 			{NodeID: "node3", PartitionIndex: 2},
 		},
-		StoppedExecutions: []string{scenario.executions[1].ID, scenario.executions[2].ID},
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+			{
+				ExecutionID:  scenario.executions[2].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
@@ -135,10 +155,22 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoMoreN
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
 		JobState:   models.JobStateTypeFailed,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
-			scenario.executions[1].ID,
-			scenario.executions[2].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+			{
+				ExecutionID:  scenario.executions[2].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -161,10 +193,22 @@ func (s *ServiceJobSchedulerTestSuite) TestProcess_ShouldMarkJobAsFailed_NoRetry
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
 		JobState:   models.JobStateTypeFailed,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
-			scenario.executions[1].ID,
-			scenario.executions[2].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
+			{
+				ExecutionID:  scenario.executions[2].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)

@@ -106,6 +106,11 @@ func (s *StateUpdater) processExecutions(
 						Message:   u.Event.Message,
 						Details:   u.Event.Details,
 					},
+					ComputeState: models.State[models.ExecutionStateType]{
+						StateType: u.ComputeState,
+						Message:   u.Event.Message,
+						Details:   u.Event.Details,
+					},
 				},
 				Condition: jobstore.UpdateExecutionCondition{
 					ExpectedRevision: u.Execution.Revision,
