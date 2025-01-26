@@ -56,12 +56,21 @@ func (suite *OperationsTestSuite) TestUpdate() {
 	suite.Error(err)
 	suite.Equal("test error", err.Error())
 
-	// Test update with external transaction
+	// Test update with cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err = Update(ctx, suite.db, func(tx *bolt.Tx) error {
+		return nil
+	})
+	suite.Error(err)
+	suite.True(errors.Is(err, context.Canceled))
+
+	// Test update with external transaction and cancelled context
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
 	defer tx.Rollback()
 
-	ctx := NewTxContext(context.Background(), tx)
+	ctx = NewTxContext(context.Background(), tx)
 	err = Update(ctx, suite.db, func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("testBucket"))
 		return b.Put([]byte("key2"), []byte("value2"))
@@ -108,12 +117,30 @@ func (suite *OperationsTestSuite) TestView() {
 	suite.Error(err)
 	suite.Equal("test error", err.Error())
 
+	// Test view with cancelled context
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err = View(ctx, suite.db, func(tx *bolt.Tx) error {
+		return nil
+	})
+	suite.Error(err)
+	suite.True(errors.Is(err, context.Canceled))
+
+	// Test view with timeout context
+	ctx, cancel = context.WithTimeout(context.Background(), 0)
+	defer cancel()
+	err = View(ctx, suite.db, func(tx *bolt.Tx) error {
+		return nil
+	})
+	suite.Error(err)
+	suite.True(errors.Is(err, context.DeadlineExceeded))
+
 	// Test view with external transaction
 	tx, err := suite.db.Begin(false)
 	suite.Require().NoError(err)
 	defer tx.Rollback()
 
-	ctx := NewTxContext(context.Background(), tx)
+	ctx = NewTxContext(context.Background(), tx)
 	err = View(ctx, suite.db, func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("testBucket"))
 		v := b.Get([]byte("key"))
@@ -121,6 +148,20 @@ func (suite *OperationsTestSuite) TestView() {
 		return nil
 	})
 	suite.NoError(err)
+
+	// Test view with external transaction and cancelled context
+	ctx, cancel = context.WithCancel(context.Background())
+	cancel()
+	tx, err = suite.db.Begin(false)
+	suite.Require().NoError(err)
+	defer tx.Rollback()
+
+	ctxWithTx := NewTxContext(ctx, tx)
+	err = View(ctxWithTx, suite.db, func(tx *bolt.Tx) error {
+		return nil
+	})
+	suite.Error(err)
+	suite.True(errors.Is(err, context.Canceled))
 }
 
 func TestOperationsTestSuite(t *testing.T) {

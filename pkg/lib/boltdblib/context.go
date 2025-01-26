@@ -3,9 +3,7 @@ package boltdblib
 import (
 	"context"
 	"errors"
-	"sync"
 
-	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -16,90 +14,41 @@ type TxContext interface {
 	Rollback() error
 }
 
-// contextKey is a custom type to avoid key collisions in context values.
+// contextKey is a custom type to avoid key collisions in context values
 type contextKey int
 
-// txContextKey is the key used to store the transaction context in the context.
+// txContextKey is the key used to store the transaction context in the context
 const txContextKey contextKey = 0
 
-// txContext extends context.Context with transaction specific functionality.
-// Note:
-// boltdb transactions are not thread-safe, and we have to synchronize access to the transaction
-// while trying to rollback the transaction on context cancellation.
-// This might add some overhead, and it might make sense to delegate the handling of context cancellation
-// to the caller, but this is a trade-off to ensure that the transaction is always rolled back on context cancellation.
-// TODO: Evaluate the trade-offs and consider delegating the handling of context cancellation to the caller.
+// txContext provides a simple wrapper around BoltDB transactions
 type txContext struct {
 	context.Context
-	tx      *bolt.Tx
-	closed  bool
-	closeCh chan struct{}
-	mu      sync.Mutex
+	tx *bolt.Tx
 }
 
-// NewTxContext creates a new transactional context for a BoltDB transaction.
-// It embeds a standard context and manages transaction commit/rollback based on the context's lifecycle.
+// NewTxContext creates a new transaction context
 func NewTxContext(ctx context.Context, tx *bolt.Tx) TxContext {
-	innerCtx := context.WithValue(ctx, txContextKey, tx)
-	txCtx := &txContext{
-		Context: innerCtx,
+	return &txContext{
+		Context: context.WithValue(ctx, txContextKey, tx),
 		tx:      tx,
-		closeCh: make(chan struct{}),
 	}
-	// Start a goroutine that listens for the context's Done channel.
-	go func() {
-		defer func() {
-			// Attempt to rollback the transaction, which is a no-op if already committed or rolled back.
-			if err := txCtx.doRollback(); err != nil {
-				log.Ctx(txCtx).Error().Err(err).Msg("failed to rollback transaction on tx cleanup")
-			}
-		}()
-		select {
-		case <-innerCtx.Done():
-		case <-txCtx.closeCh:
-		}
-	}()
-
-	return txCtx
 }
 
-// TxFromContext retrieves the transaction from the context, if available.
+// TxFromContext retrieves the transaction from the context, if available
 func TxFromContext(ctx context.Context) (*bolt.Tx, bool) {
 	tx, ok := ctx.Value(txContextKey).(*bolt.Tx)
 	return tx, ok
 }
 
-// Commit commits the transaction and cancels the context.
-// Commit will return an error if the transaction is already committed or rolled back.
-func (b *txContext) Commit() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	defer b.close()
-	return b.tx.Commit()
+// Commit commits the transaction
+func (t *txContext) Commit() error {
+	return t.tx.Commit()
 }
 
-// Rollback rolls back the transaction and cancels the context.
-// Rollback is a no-op if the transaction is already committed or rolled back.
-func (b *txContext) Rollback() error {
-	return b.doRollback()
-}
-
-// doRollback is a helper function to rollback the transaction without cancelling the context.
-func (b *txContext) doRollback() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	defer b.close()
-	if err := b.tx.Rollback(); err != nil && !errors.Is(err, bolt.ErrTxClosed) {
+// Rollback rolls back the transaction
+func (t *txContext) Rollback() error {
+	if err := t.tx.Rollback(); err != nil && !errors.Is(err, bolt.ErrTxClosed) {
 		return err
 	}
 	return nil
-}
-
-// close closes the transactional context.
-// already called with the mutex held.
-func (b *txContext) close() {
-	if !b.closed {
-		close(b.closeCh)
-		b.closed = true
-	}
 }

@@ -51,11 +51,7 @@ func (s *StateUpdater) Process(ctx context.Context, plan *models.Plan) (err erro
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		if err != nil {
-			_ = txContext.Rollback()
-		}
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	if err = s.processExecutions(ctx, txContext, plan, metrics); err != nil {
 		return err

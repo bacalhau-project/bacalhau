@@ -71,11 +71,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		if err != nil {
-			_ = txContext.Rollback()
-		}
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	if err = e.store.CreateJob(txContext, *job); err != nil {
 		return nil, err
@@ -114,12 +110,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	if err != nil {
 		return StopJobResponse{}, jobstore.NewJobStoreError(err.Error())
 	}
-
-	defer func() {
-		if err != nil {
-			_ = txContext.Rollback()
-		}
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	job, err := e.store.GetJob(txContext, request.JobID)
 	if err != nil {

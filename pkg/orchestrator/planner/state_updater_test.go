@@ -39,6 +39,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_CreateExecutions_Succes
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
 	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution1).Times(1)
 	suite.mockStore.EXPECT().CreateExecution(suite.mockTxContext, *execution2).Times(1)
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 	suite.mockTxContext.EXPECT().Commit()
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
@@ -63,6 +64,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateExecutions_Succes
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext, NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update1)).Times(1)
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTxContext, NewUpdateExecutionMatcherFromPlanUpdate(suite.T(), update2)).Times(1)
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 	suite.mockTxContext.EXPECT().Commit()
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
 }
@@ -73,6 +75,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_UpdateJobState_Success(
 
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
 	suite.mockStore.EXPECT().UpdateJobState(suite.mockTxContext, NewUpdateJobMatcherFromPlanUpdate(suite.T(), plan)).Times(1)
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 	suite.mockTxContext.EXPECT().Commit()
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
 }
@@ -94,6 +97,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_CreateEvaluations_Succe
 	suite.mockStore.EXPECT().BeginTx(suite.ctx).Return(suite.mockTxContext, nil).Times(1)
 	suite.mockStore.EXPECT().CreateEvaluation(suite.mockTxContext, *evaluation1).Times(1)
 	suite.mockStore.EXPECT().CreateEvaluation(suite.mockTxContext, *evaluation2).Times(1)
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 	suite.mockTxContext.EXPECT().Commit()
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
@@ -131,6 +135,7 @@ func (suite *StateUpdaterSuite) TestStateUpdater_Process_MultiOp() {
 	suite.mockStore.EXPECT().UpdateJobState(suite.mockTxContext, NewUpdateJobMatcherFromPlanUpdate(suite.T(), plan)).Times(1)
 	suite.mockStore.EXPECT().CreateEvaluation(suite.mockTxContext, *evaluation1).Times(1)
 	suite.mockStore.EXPECT().CreateEvaluation(suite.mockTxContext, *evaluation2).Times(1)
+	suite.mockTxContext.EXPECT().Rollback() // always rollback in defer
 	suite.mockTxContext.EXPECT().Commit()
 
 	suite.NoError(suite.stateUpdater.Process(suite.ctx, plan))
