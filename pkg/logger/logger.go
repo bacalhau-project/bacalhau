@@ -117,7 +117,7 @@ func ParseAndConfigureLogging(modeStr, levelStr string) error {
 }
 
 func ConfigureLogging(mode LogMode, level zerolog.Level) {
-	// set global log leve before configuring logging as it is used in the configuration
+	// set global log level before configuring logging as it is used in the configuration
 	ConfigureLoggingLevel(level)
 
 	var logWriter io.Writer
