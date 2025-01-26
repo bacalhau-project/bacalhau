@@ -53,12 +53,17 @@ func Setup(
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
 
-	cfg := stackConfig.BacalhauConfig
-
 	var nodes []*node.Node
 	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
 	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
 	computeNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfComputeOnlyNodes
+
+	cfg := stackConfig.BacalhauConfig
+
+	// if running with local orchestrator, we clear the orchestrator list from the config
+	if requesterNodeCount > 0 {
+		cfg.Compute.Orchestrators = []string{}
+	}
 
 	for i := 0; i < totalNodeCount; i++ {
 		nodeID := fmt.Sprintf("node-%d", i)
