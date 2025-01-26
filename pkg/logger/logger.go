@@ -117,6 +117,9 @@ func ParseAndConfigureLogging(modeStr, levelStr string) error {
 }
 
 func ConfigureLogging(mode LogMode, level zerolog.Level) {
+	// set global log leve before configuring logging as it is used in the configuration
+	ConfigureLoggingLevel(level)
+
 	var logWriter io.Writer
 	switch mode {
 	case LogModeDefault:
@@ -129,7 +132,6 @@ func ConfigureLogging(mode LogMode, level zerolog.Level) {
 		logWriter = defaultLogging()
 	}
 
-	ConfigureLoggingLevel(level)
 	configureLogging(logWriter)
 	LogBufferedLogs(logWriter)
 }
