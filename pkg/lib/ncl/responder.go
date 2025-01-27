@@ -8,10 +8,12 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 var (
@@ -128,6 +130,25 @@ func (r *responder) Close(ctx context.Context) error {
 // 4. Processes the request and sends back a response
 // Any errors during processing result in an error response being sent back.
 func (r *responder) handleRequest(requestMsg *nats.Msg) {
+	// Create processing context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), r.config.ProcessingTimeout)
+	defer cancel()
+
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, r.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	var err error
+	defer func() {
+		if err != nil {
+			metrics.Error(err)
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Histogram(ctx, responderRequestBytes, float64(len(requestMsg.Data)))
+		metrics.Count(ctx, responderCount)
+		metrics.Done(ctx, responderDuration)
+	}()
+
 	// Check for reply subject
 	if requestMsg.Reply == "" {
 		log.Warn().
@@ -136,19 +157,18 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 		return
 	}
 
-	// Create processing context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), r.config.ProcessingTimeout)
-	defer cancel()
-
 	// Deserialize request envelope
 	request, err := r.encoder.decode(requestMsg.Data)
 	if err != nil {
-		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to deserialize request"))
+		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.Wrap(err, "failed to deserialize request"))
 		return
 	}
+	metrics.Latency(ctx, responderPartDuration, "decode")
 
 	// Get message type and find handler
 	messageType := request.Metadata.Get(envelope.KeyMessageType)
+	metrics.WithAttributes(attribute.String(AttrMessageType, messageType))
+
 	r.mu.RLock()
 	handler, exists := r.handlers[messageType]
 	r.mu.RUnlock()
@@ -158,7 +178,7 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 			Str("messageType", messageType).
 			Str("subject", requestMsg.Subject).
 			Msg("No handler registered for message type")
-		r.sendErrorResponse(requestMsg, bacerrors.New("no handler found for message type: %s", messageType).
+		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.New("no handler found for message type: %s", messageType).
 			WithCode(bacerrors.NotFoundError))
 		return
 	}
@@ -166,16 +186,17 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 	// Process request with the appropriate handler
 	response, err := handler.HandleRequest(ctx, request)
 	if err != nil {
-		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to process request"))
+		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.Wrap(err, "failed to process request"))
 		return
 	}
+	metrics.Latency(ctx, responderPartDuration, "handle")
 
-	r.sendResponse(requestMsg, response)
+	r.sendResponse(ctx, metrics, requestMsg, response)
 }
 
 // sendResponse sends a response message back through NATS.
 // It preserves correlation IDs and handles serialization of the response envelope.
-func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Message) {
+func (r *responder) sendResponse(ctx context.Context, metrics *telemetry.MetricRecorder, requestMsg *nats.Msg, response *envelope.Message) {
 	// Preserve request correlation ID if present
 	if reqID := requestMsg.Header.Get(KeyMessageID); reqID != "" {
 		response.WithMetadataValue(KeyMessageID, reqID)
@@ -193,9 +214,11 @@ func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Messag
 		}
 
 		// For normal responses that fail to encode, send a new error response
-		r.sendErrorResponse(requestMsg, bacerrors.Wrap(err, "failed to encode response"))
+		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.Wrap(err, "failed to encode response"))
 		return
 	}
+	metrics.Latency(ctx, responderPartDuration, "encode")
+	metrics.Histogram(ctx, responderResponseBytes, float64(len(data)))
 
 	// Send response
 	if err = requestMsg.RespondMsg(&nats.Msg{
@@ -206,12 +229,15 @@ func (r *responder) sendResponse(requestMsg *nats.Msg, response *envelope.Messag
 			Str("subject", requestMsg.Subject).
 			Msg("Failed to send response")
 	}
+	metrics.Latency(ctx, responderPartDuration, "send")
 }
 
 // sendErrorResponse is a convenience method to send an error response.
 // It converts the ErrorResponse to an envelope before sending.
-func (r *responder) sendErrorResponse(requestMsg *nats.Msg, err bacerrors.Error) {
-	r.sendResponse(requestMsg, BacErrorToEnvelope(err))
+func (r *responder) sendErrorResponse(ctx context.Context, metrics *telemetry.MetricRecorder, requestMsg *nats.Msg, err bacerrors.Error) {
+	r.sendResponse(ctx, metrics, requestMsg, BacErrorToEnvelope(err))
+	metrics.Error(err)
+	metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
 }
 
 // compile-time check for interface conformance
