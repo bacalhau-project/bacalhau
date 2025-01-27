@@ -42,7 +42,7 @@ type SubscriberConfig struct {
 }
 
 const (
-	DefaultProcessingTimeout   = 5 * time.Second
+	DefaultProcessingTimeout   = 30 * time.Second
 	DefaultBackoffInitialDelay = 100 * time.Millisecond
 	DefaultBackoffMaximumDelay = 5 * time.Second
 )
