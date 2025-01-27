@@ -7,7 +7,6 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/suite"
 	bolt "go.etcd.io/bbolt"
@@ -100,38 +99,6 @@ func (suite *TxContextTestSuite) Test_Rollback() {
 	suite.Require().NoError(err, "bucket should not exist after rollback")
 }
 
-// Test_AutomaticRollback tests automatic rollback on context cancellation.
-func (suite *TxContextTestSuite) Test_AutomaticRollback() {
-	testBucket := []byte("test")
-
-	// Start a transaction that will be cancelled
-	tx, err := suite.db.Begin(true)
-	suite.Require().NoError(err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	NewTxContext(ctx, tx)
-
-	_, err = tx.CreateBucket(testBucket)
-	suite.Require().NoError(err)
-
-	// Cancel the context and wait for rollback
-	cancel()
-	suite.Eventually(func() bool {
-		return suite.verifyTransactionClosed(tx)
-	}, 500*time.Millisecond, 10*time.Millisecond)
-
-	// Verify the bucket was not created (automatic rollback worked)
-	err = suite.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(testBucket)
-		if b != nil {
-			return errors.New("bucket should not exist")
-		}
-		return nil
-	})
-	suite.Require().NoError(err, "bucket should not exist after context cancellation")
-}
-
-// Test_CommitAfterRollbackFails tests that commit after rollback fails.
 func (suite *TxContextTestSuite) Test_CommitAfterRollbackFails() {
 	tx, err := suite.db.Begin(true)
 	suite.Require().NoError(err)
@@ -140,21 +107,6 @@ func (suite *TxContextTestSuite) Test_CommitAfterRollbackFails() {
 	suite.Require().NoError(txCtx.Rollback())
 	suite.True(suite.verifyTransactionClosed(tx))
 	suite.Error(txCtx.Commit(), "expected error when committing after rollback")
-}
-
-// Test_CommitAfterCancelFails tests that commit after context cancellation fails.
-func (suite *TxContextTestSuite) Test_CommitAfterCancelFails() {
-	tx, err := suite.db.Begin(true)
-	suite.Require().NoError(err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := NewTxContext(ctx, tx)
-
-	cancel() // Trigger the cancellation.
-	suite.Eventually(func() bool {
-		return suite.verifyTransactionClosed(tx)
-	}, 500*time.Millisecond, 10*time.Millisecond)
-	suite.Error(txCtx.Commit(), "expected error when committing after context cancellation")
 }
 
 // Test_RollbackAfterCommitIsGraceful tests that rollback after commit is graceful.
@@ -180,45 +132,6 @@ func (suite *TxContextTestSuite) Test_RollbackMultipleTimesIsGraceful() {
 	// Try to rollback multiple times.
 	suite.Require().NoError(txCtx.Rollback())
 	suite.Require().NoError(txCtx.Rollback())
-}
-
-// Test_RollbackAfterCancelIsGraceful tests that rollback after context cancellation is graceful.
-func (suite *TxContextTestSuite) Test_RollbackAfterCancelIsGraceful() {
-	tx, err := suite.db.Begin(true)
-	suite.Require().NoError(err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := NewTxContext(ctx, tx)
-
-	cancel() // Trigger the cancellation.
-	suite.Eventually(func() bool {
-		return suite.verifyTransactionClosed(tx)
-	}, 500*time.Millisecond, 10*time.Millisecond)
-	suite.Require().NoError(txCtx.Rollback(), "expected no error when rolling back after context cancellation")
-}
-
-func (suite *TxContextTestSuite) Test_CancelAfterCommitIsGraceful() {
-	tx, err := suite.db.Begin(true)
-	suite.Require().NoError(err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := NewTxContext(ctx, tx)
-	suite.Require().NoError(txCtx.Commit())
-	suite.True(suite.verifyTransactionClosed(tx))
-	cancel()                          // Trigger the cancellation.
-	time.Sleep(50 * time.Millisecond) // Wait for the goroutine to handle the cancellation.
-}
-
-func (suite *TxContextTestSuite) Test_CancelAfterRollbackIsGraceful() {
-	tx, err := suite.db.Begin(true)
-	suite.Require().NoError(err)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	txCtx := NewTxContext(ctx, tx)
-	suite.Require().NoError(txCtx.Rollback())
-	suite.True(suite.verifyTransactionClosed(tx))
-	cancel()                          // Trigger the cancellation.
-	time.Sleep(50 * time.Millisecond) // Wait for the goroutine to handle the cancellation.
 }
 
 // Test suite runner.

@@ -69,11 +69,7 @@ func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult)
 		return
 	}
 
-	defer func() {
-		if err != nil {
-			_ = txContext.Rollback()
-		}
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	if err = e.store.UpdateExecution(txContext, updateRequest); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to update execution")
@@ -104,9 +100,7 @@ func (e *Callback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 		return
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	job, err := e.store.GetJob(txContext, result.JobID)
 	if err != nil {
@@ -173,9 +167,7 @@ func (e *Callback) OnComputeFailure(ctx context.Context, result legacy.ComputeEr
 		return
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	// update execution state
 	if err = e.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{

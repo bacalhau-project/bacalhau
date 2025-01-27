@@ -9,10 +9,6 @@ const (
 	// and logs them.
 	computeExecutionLoggerWatcherID = "compute-logger"
 
-	// orchestratorExecutionCancellerWatcherID is the ID of the watcher that listens for execution events
-	// and cancels them the execution's observed state
-	orchestratorExecutionCancellerWatcherID = "execution-canceller"
-
 	// orchestratorEvaluationWatcherID is the ID of the watcher that listens for evaluation events
 	// and enqueues them into the evaluation broker.
 	orchestratorEvaluationWatcherID = "evaluation-watcher"

@@ -1166,30 +1166,21 @@ func (s *BoltJobstoreTestSuite) TestTransactionsWithTxContextCancellation() {
 	s.Require().NoError(err)
 	s.Require().NotNil(txCtx)
 
+	defer txCtx.Rollback()
+
 	job := mock.Job()
 	execution := mock.ExecutionForJob(job)
 	evaluation := mock.EvalForJob(job)
 	s.Require().NoError(s.store.CreateJob(txCtx, *job))
 	s.Require().NoError(s.store.CreateExecution(txCtx, *execution))
-	s.Require().NoError(s.store.CreateEvaluation(txCtx, *evaluation))
 
 	// cancel the context
 	cancel()
-	<-txCtx.Done()
 
-	// Ensure that no jobs are returned as the tx is not committed
-	_, err = s.store.GetJob(s.ctx, job.ID)
+	// Ensure operation fails with context canceled
+	err = s.store.CreateEvaluation(txCtx, *evaluation)
 	s.Require().Error(err)
-
-	// Ensure that no executions are returned as the tx is not committed
-	_, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID: job.ID,
-	})
-	s.Require().Error(err)
-
-	// Ensure no evaluation is returned as the tx is not committed
-	_, err = s.store.GetEvaluation(s.ctx, evaluation.ID)
-	s.Require().Error(err)
+	s.Require().ErrorIs(err, context.Canceled)
 }
 
 // TestTransactionsReadDuringWrite tests we can read data that was written in the same transaction

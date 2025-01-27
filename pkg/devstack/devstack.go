@@ -53,18 +53,16 @@ func Setup(
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
 
-	cfg := stackConfig.BacalhauConfig
-
 	var nodes []*node.Node
-	orchestratorAddrs := make([]string, 0)
-	clusterPeersAddrs := make([]string, 0)
-
 	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
 	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
 	computeNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfComputeOnlyNodes
 
-	if requesterNodeCount == 0 {
-		return nil, fmt.Errorf("at least one requester node is required")
+	cfg := stackConfig.BacalhauConfig
+
+	// if running with local orchestrator, we clear the orchestrator list from the config
+	if requesterNodeCount > 0 {
+		cfg.Compute.Orchestrators = []string{}
 	}
 
 	for i := 0; i < totalNodeCount; i++ {
@@ -75,34 +73,27 @@ func Setup(
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
 		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
 
-		// ////////////////////////////////////
-		// Transport layer
-		// ////////////////////////////////////
-		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			cfg.Orchestrator.Port = 4222 + i
-		} else {
-			if cfg.Orchestrator.Port, err = network.GetFreePort(); err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for nats server")
-			}
-		}
-
-		if os.Getenv("PREDICTABLE_API_PORT") != "" {
-			cfg.Orchestrator.Cluster.Port = 6222 + i
-		} else {
-			if cfg.Orchestrator.Cluster.Port, err = network.GetFreePort(); err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for nats cluster")
-			}
-		}
-
-		// always override the default orchestrator address
-		// for the first orchestrator, this will be empty as it should be
-		// for the rest, it will be the address of the previous orchestrators
-		cfg.Compute.Orchestrators = orchestratorAddrs
-
 		if isRequesterNode {
-			cfg.Orchestrator.Cluster.Peers = clusterPeersAddrs
-			cfg.Orchestrator.Cluster.Name = "devstack"
-			orchestratorAddrs = append(orchestratorAddrs, fmt.Sprintf("127.0.0.1:%d", cfg.Orchestrator.Port))
+			if os.Getenv("PREDICTABLE_API_PORT") != "" {
+				cfg.Orchestrator.Port = 4222 + i
+			} else {
+				if cfg.Orchestrator.Port, err = network.GetFreePort(); err != nil {
+					return nil, errors.Wrap(err, "failed to get free port for nats server")
+				}
+			}
+
+			if os.Getenv("PREDICTABLE_API_PORT") != "" {
+				cfg.Orchestrator.Cluster.Port = 6222 + i
+			} else {
+				if cfg.Orchestrator.Cluster.Port, err = network.GetFreePort(); err != nil {
+					return nil, errors.Wrap(err, "failed to get free port for nats cluster")
+				}
+			}
+
+			if cfg.Orchestrator.Cluster.Name == "" {
+				cfg.Orchestrator.Cluster.Name = "devstack"
+			}
+			cfg.Compute.Orchestrators = append(cfg.Compute.Orchestrators, fmt.Sprintf("127.0.0.1:%d", cfg.Orchestrator.Port))
 		}
 
 		// ////////////////////////////////////
@@ -110,6 +101,10 @@ func Setup(
 		// ////////////////////////////////////
 		if os.Getenv("PREDICTABLE_API_PORT") != "" {
 			cfg.API.Port = 1234 + i
+			// add one more if using an external orchestrator to avoid port conflict
+			if requesterNodeCount == 0 {
+				cfg.API.Port += 1
+			}
 		} else {
 			if cfg.API.Port, err = network.GetFreePort(); err != nil {
 				return nil, errors.Wrap(err, "failed to get free port for API server")

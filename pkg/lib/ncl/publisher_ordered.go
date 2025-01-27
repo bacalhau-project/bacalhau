@@ -11,6 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 const (
@@ -35,10 +39,11 @@ type orderedPublisher struct {
 }
 
 type pendingMsg struct {
-	msg     *nats.Msg
-	future  *pubFuture
-	ctx     context.Context
-	timeout time.Time
+	msg      *nats.Msg
+	future   *pubFuture
+	ctx      context.Context
+	timeout  time.Time
+	enqueued time.Time
 }
 
 func NewOrderedPublisher(nc *nats.Conn, config OrderedPublisherConfig) (OrderedPublisher, error) {
@@ -81,6 +86,19 @@ func NewOrderedPublisher(nc *nats.Conn, config OrderedPublisherConfig) (OrderedP
 		p.wg.Add(1)
 		go p.timeoutLoop()
 	}
+
+	// Register meter callbacks
+	_, err = Meter.RegisterCallback(
+		func(_ context.Context, o metric.Observer) error {
+			opts := metric.WithAttributes(attribute.String(AttrInstance, p.config.Name))
+			o.ObserveInt64(asyncPublishInflightGauge, int64(p.inflightCount.Load()), opts)
+			o.ObserveInt64(asyncPublishQueueGauge, int64(len(p.queue)), opts)
+			return nil
+		}, asyncPublishInflightGauge, asyncPublishQueueGauge)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register metric callback: %w", err)
+	}
+
 	return p, nil
 }
 
@@ -107,30 +125,50 @@ func (p *orderedPublisher) Publish(ctx context.Context, request PublishRequest) 
 }
 
 // PublishAsync queues message for publishing and returns a future
-func (p *orderedPublisher) PublishAsync(ctx context.Context, request PublishRequest) (PubFuture, error) {
+func (p *orderedPublisher) PublishAsync(ctx context.Context, request PublishRequest) (_ PubFuture, err error) {
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, p.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	defer func() {
+		if err != nil {
+			metrics.Error(err)
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Count(ctx, publishCount)
+		metrics.Count(ctx, asyncPublishEnqueueCount)
+		metrics.Done(ctx, asyncPublishEnqueueDuration)
+	}()
+
 	if p.pendingCount() >= p.config.MaxPending {
 		return nil, fmt.Errorf("publisher max pending messages reached")
 	}
-	if err := p.validateRequest(request); err != nil {
+	if err = p.validateRequest(request); err != nil {
 		return nil, err
 	}
 
-	msg, err := p.createMsg(request)
+	msg, err := p.encodeMsg(request)
 	if err != nil {
 		return nil, err
 	}
+	metrics.Latency(ctx, asyncPublishEnqueuePartDuration, "encode")
+	metrics.Histogram(ctx, publishBytes, float64(len(msg.Data)))
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	metrics.Latency(ctx, asyncPublishEnqueuePartDuration, "lock")
 
 	future := newPubFuture(msg)
+	now := time.Now()
 	pMsg := &pendingMsg{
-		msg:     msg,
-		future:  future,
-		ctx:     ctx,
-		timeout: time.Now().Add(p.config.AckWait),
+		msg:      msg,
+		future:   future,
+		ctx:      ctx,
+		enqueued: now,
+		timeout:  now.Add(p.config.AckWait),
 	}
 
+	defer metrics.Latency(ctx, asyncPublishEnqueuePartDuration, "enqueue")
 	select {
 	case p.queue <- pMsg:
 		return future, nil
@@ -221,10 +259,16 @@ func (p *orderedPublisher) timeoutLoop() {
 	for {
 		select {
 		case <-ticker.C:
+			ctx := context.Background()
+			metrics := telemetry.NewMetricRecorder(
+				attribute.String(AttrInstance, p.config.Name),
+			)
+			timeoutCount := 0
 			now := time.Now()
 			p.inflight.Range(func(key, value interface{}) bool {
 				pMsg := value.(*pendingMsg)
 				if now.After(pMsg.timeout) {
+					timeoutCount++
 					pMsg.future.setError(errors.New("publish ack timeout"))
 					p.inflight.Delete(key)
 					p.inflightCount.Add(-1)
@@ -232,15 +276,19 @@ func (p *orderedPublisher) timeoutLoop() {
 				// TODO: Could implement retry logic here
 				return true
 			})
+			if timeoutCount > 0 {
+				metrics.CountN(ctx, asyncPublishTimeoutCount, int64(timeoutCount))
+			}
+			metrics.Done(ctx, asyncPublishTimeoutLoopDuration)
 		case <-p.shutdown:
 			return
 		}
 	}
 }
 
-// createMsg to override the publisher's create message and add reply subject
-func (p *orderedPublisher) createMsg(request PublishRequest) (*nats.Msg, error) {
-	msg, err := p.publisher.createMsg(request)
+// encodeMsg to override the publisher's create message and add reply subject
+func (p *orderedPublisher) encodeMsg(request PublishRequest) (*nats.Msg, error) {
+	msg, err := p.publisher.encodeMsg(request)
 	if err != nil {
 		return nil, err
 	}
@@ -253,6 +301,20 @@ func (p *orderedPublisher) createMsg(request PublishRequest) (*nats.Msg, error) 
 }
 
 func (p *orderedPublisher) processMessage(pubMsg *pendingMsg) {
+	ctx := pubMsg.ctx
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, p.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	defer func() {
+		if pubMsg.future.Err() != nil {
+			metrics.Error(pubMsg.future.Err())
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Count(ctx, asyncPublishProcessCount)
+		metrics.Done(ctx, asyncPublishProcessDuration)
+	}()
+
 	// Check if the publish context is still valid
 	if err := pubMsg.ctx.Err(); err != nil {
 		pubMsg.future.setError(err)
@@ -261,6 +323,7 @@ func (p *orderedPublisher) processMessage(pubMsg *pendingMsg) {
 
 	// check if the msg hasn't been cancelled
 	if pubMsg.future.Err() != nil {
+		metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeCancelled))
 		return
 	}
 
@@ -269,10 +332,12 @@ func (p *orderedPublisher) processMessage(pubMsg *pendingMsg) {
 		pubMsg.future.setError(err)
 		return
 	}
+	metrics.Latency(ctx, asyncPublishProcessPartDuration, "publish")
 
 	// If no ack mode, set result
 	if p.config.AckMode == NoAck {
 		pubMsg.future.setResult(&Result{})
+		publishDuration.Record(ctx, time.Since(pubMsg.enqueued).Seconds(), metrics.AttributesOpt())
 	} else {
 		p.inflight.Store(pubMsg.msg.Reply, pubMsg)
 		p.inflightCount.Add(1)
@@ -280,25 +345,46 @@ func (p *orderedPublisher) processMessage(pubMsg *pendingMsg) {
 }
 
 func (p *orderedPublisher) handleResponse(msg *nats.Msg) {
+	ctx := context.Background()
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, p.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	var future *pubFuture
+	defer func() {
+		if future != nil && future.Err() != nil {
+			metrics.Error(future.Err())
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Count(ctx, asyncPublishCallbackCount)
+		metrics.Done(ctx, asyncPublishCallbackDuration)
+	}()
+
 	// Look up pending future
-	pMsg, ok := p.inflight.Load(msg.Subject)
+	val, ok := p.inflight.Load(msg.Subject)
 	if !ok {
 		// Response for unknown request - ignore after logging
 		log.Debug().Str("subject", msg.Subject).Msg("received response for unknown request")
+		metrics.ErrorString("unknown_response")
+		metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
 		return
 	}
+	metrics.Latency(ctx, asyncPublishCallbackPartDuration, "lookup")
+
 	defer func() {
 		p.inflight.Delete(msg.Subject)
 		p.inflightCount.Add(-1)
 	}()
 
-	future := pMsg.(*pendingMsg).future
+	pMsg := val.(*pendingMsg)
+	future = pMsg.future
 
 	res, err := ParseResult(msg)
 	if err != nil {
 		future.setError(err)
 		return
 	}
+	metrics.Latency(ctx, asyncPublishCallbackPartDuration, "decode")
 
 	if res.Error != "" {
 		// TODO: requeue with backoff, but keep track of retries
@@ -306,6 +392,7 @@ func (p *orderedPublisher) handleResponse(msg *nats.Msg) {
 	} else {
 		future.setResult(res)
 	}
+	publishDuration.Record(ctx, time.Since(pMsg.enqueued).Seconds(), metrics.AttributesOpt())
 }
 
 func (p *orderedPublisher) drain(err error) {

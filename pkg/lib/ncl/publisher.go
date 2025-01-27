@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"github.com/nats-io/nats.go"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 // publisher handles message publishing
@@ -56,48 +58,89 @@ func (p *publisher) validate() error {
 
 // Publish sends a message without expecting a response
 func (p *publisher) Publish(ctx context.Context, request PublishRequest) error {
-	if err := p.validateRequest(request); err != nil {
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, p.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	var err error
+	defer func() {
+		if err != nil {
+			metrics.Error(err)
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Count(ctx, publishCount)
+		metrics.Done(ctx, publishDuration)
+	}()
+
+	if err = p.validateRequest(request); err != nil {
 		return err
 	}
 
-	msg, err := p.createMsg(request)
+	msg, err := p.encodeMsg(request)
 	if err != nil {
 		return err
 	}
+	metrics.Latency(ctx, publishPartDuration, "encode")
+	metrics.Histogram(ctx, publishBytes, float64(len(msg.Data)))
+	p.addMessageMetrics(ctx, metrics, msg, request.Message)
 
 	if err = p.nc.PublishMsg(msg); err != nil {
 		return fmt.Errorf("failed to publish message: %w", err)
 	}
+	metrics.Latency(ctx, publishPartDuration, "publish")
+
 	return nil
 }
 
 // Request sends a message and waits for a response
 func (p *publisher) Request(ctx context.Context, request PublishRequest) (*envelope.Message, error) {
-	if err := p.validateRequest(request); err != nil {
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrInstance, p.config.Name),
+		attribute.String(AttrOutcome, OutcomeSuccess),
+	)
+	var err error
+	defer func() {
+		if err != nil {
+			metrics.Error(err)
+			metrics.WithAttributes(attribute.String(AttrOutcome, OutcomeFailure))
+		}
+		metrics.Count(ctx, requesterCount)
+		metrics.Done(ctx, requesterDuration)
+	}()
+
+	if err = p.validateRequest(request); err != nil {
 		return nil, err
 	}
 
-	msg, err := p.createMsg(request)
+	msg, err := p.encodeMsg(request)
 	if err != nil {
 		return nil, err
 	}
+	metrics.Latency(ctx, requesterPartDuration, "encode")
+	metrics.Histogram(ctx, requesterBytes, float64(len(msg.Data)))
+	p.addMessageMetrics(ctx, metrics, msg, request.Message)
 
 	// Use context for timeout
 	resp, err := p.nc.RequestMsgWithContext(ctx, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request message: %w", err)
 	}
+	metrics.Latency(ctx, requesterPartDuration, "request")
+	metrics.Histogram(ctx, requesterResponseBytes, float64(len(resp.Data)))
 
 	// Deserialize response
 	message, err := p.encoder.decode(resp.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deserialize response: %w", err)
 	}
+	metrics.Latency(ctx, requesterPartDuration, "decode")
 
 	// Check if response is an error
 	if errorResponse, ok := message.GetPayload(bacerrors.New("")); ok {
-		return nil, errorResponse.(bacerrors.Error)
+		err = errorResponse.(bacerrors.Error)
+		return nil, err
 	}
+
 	return message, nil
 }
 
@@ -135,8 +178,8 @@ func (p *publisher) getSubject(request PublishRequest) string {
 		request.Message.Metadata.Get(envelope.KeyMessageType))
 }
 
-// createMsg creates a NATS message from the request
-func (p *publisher) createMsg(request PublishRequest) (*nats.Msg, error) {
+// encodeMsg creates a NATS message from the request
+func (p *publisher) encodeMsg(request PublishRequest) (*nats.Msg, error) {
 	data, err := p.encoder.encode(request.Message)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize message: %w", err)
@@ -150,6 +193,13 @@ func (p *publisher) createMsg(request PublishRequest) (*nats.Msg, error) {
 		Data:    data,
 		Header:  request.Message.Metadata.ToHeaders(),
 	}, nil
+}
+
+func (p *publisher) addMessageMetrics(ctx context.Context, metrics *telemetry.MetricRecorder, msg *nats.Msg, message *envelope.Message) {
+	metrics.WithAttributes(
+		attribute.String(AttrMessageType, message.Metadata.Get(envelope.KeyMessageType)),
+		attribute.String(AttrSource, message.Metadata.Get(KeySource)),
+	)
 }
 
 // compile-time check for interface conformance

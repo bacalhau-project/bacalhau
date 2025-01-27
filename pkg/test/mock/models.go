@@ -123,6 +123,6 @@ func Plan() *models.Plan {
 		Priority:          50,
 		Job:               job,
 		NewExecutions:     []*models.Execution{},
-		UpdatedExecutions: make(map[string]*models.PlanExecutionDesiredUpdate),
+		UpdatedExecutions: make(map[string]*models.PlanExecutionUpdate),
 	}
 }

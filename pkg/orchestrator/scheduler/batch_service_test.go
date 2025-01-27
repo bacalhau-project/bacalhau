@@ -83,10 +83,20 @@ func (s *BatchServiceJobSchedulerTestSuite) TestProcess_RejectExtraExecutions() 
 	s.mockAllNodes("node0", "node1", "node2")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		JobState:           models.JobStateTypeRunning,
-		ApprovedExecutions: []string{scenario.executions[0].ID},
-		StoppedExecutions:  []string{scenario.executions[1].ID},
+		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeRunning,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateRunning,
+				ComputeState: models.ExecutionStateBidAccepted,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateBidRejected,
+			},
+		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
@@ -165,9 +175,15 @@ func (s *BatchServiceJobSchedulerTestSuite) TestProcess_NotEnoughNodes_QueueWith
 	s.mockMatchingNodes(scenario, "node1")
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
-		Evaluation:         scenario.evaluation,
-		JobState:           models.JobStateTypeRunning,
-		ApprovedExecutions: []string{scenario.executions[0].ID},
+		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeRunning,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateRunning,
+				ComputeState: models.ExecutionStateBidAccepted,
+			},
+		},
 		NewExecutions: []*models.Execution{
 			{NodeID: "node1", PartitionIndex: 1},
 		},
@@ -203,9 +219,18 @@ func (s *BatchServiceJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldM
 
 			matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 				Evaluation: scenario.evaluation,
-				StoppedExecutions: []string{
-					scenario.executions[0].ID,
-					scenario.executions[1].ID},
+				UpdatedExecutions: []ExecutionStateUpdate{
+					{
+						ExecutionID:  scenario.executions[0].ID,
+						DesiredState: models.ExecutionDesiredStateStopped,
+						ComputeState: models.ExecutionStateCancelled,
+					},
+					{
+						ExecutionID:  scenario.executions[1].ID,
+						DesiredState: models.ExecutionDesiredStateStopped,
+						ComputeState: models.ExecutionStateCancelled,
+					},
+				},
 			})
 			s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 			s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
