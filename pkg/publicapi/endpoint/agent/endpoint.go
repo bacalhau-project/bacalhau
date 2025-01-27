@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -19,6 +20,7 @@ type EndpointParams struct {
 	NodeInfoProvider   models.NodeInfoProvider
 	DebugInfoProviders []models.DebugInfoProvider
 	BacalhauConfig     types.Bacalhau
+	LicenseManager     *licensing.LicenseManager
 }
 
 type Endpoint struct {
@@ -26,14 +28,20 @@ type Endpoint struct {
 	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []models.DebugInfoProvider
 	bacalhauConfig     types.Bacalhau
+	licenseManager     *licensing.LicenseManager
 }
 
-func NewEndpoint(params EndpointParams) *Endpoint {
+func NewEndpoint(params EndpointParams) (*Endpoint, error) {
+	if params.LicenseManager == nil {
+		return nil, fmt.Errorf("license manager is required for agent endpoint")
+	}
+
 	e := &Endpoint{
 		router:             params.Router,
 		nodeInfoProvider:   params.NodeInfoProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 		bacalhauConfig:     params.BacalhauConfig,
+		licenseManager:     params.LicenseManager,
 	}
 
 	// JSON group
@@ -44,7 +52,9 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/node", e.node)
 	g.GET("/debug", e.debug)
 	g.GET("/config", e.config)
-	return e
+	g.GET("/license", e.license)
+
+	return e, nil
 }
 
 // alive godoc
@@ -136,5 +146,28 @@ func (e *Endpoint) config(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
 		Config: cfg,
+	})
+}
+
+// license godoc
+//
+//	@ID			agent/license
+//	@Summary	Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured
+//	@Tags		Ops
+//	@Produce	json
+//	@Success	200	{object}	apimodels.GetAgentLicenseResponse
+//	@Failure	404	{object}	string
+//	@Router		/api/v1/agent/license [get]
+func (e *Endpoint) license(c echo.Context) error {
+	licenseClaims := e.licenseManager.License()
+	if licenseClaims == nil {
+		return echo.NewHTTPError(
+			http.StatusNotFound,
+			"Error inspecting orchestrator license: No license configured for orchestrator.",
+		)
+	}
+
+	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{
+		LicenseClaims: licenseClaims,
 	})
 }
