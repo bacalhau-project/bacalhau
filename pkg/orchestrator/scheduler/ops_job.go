@@ -17,31 +17,39 @@ import (
 )
 
 // OpsJobScheduler is a scheduler for batch jobs that run until completion
-type OpsJobScheduler struct {
-	jobStore jobstore.Store
-	planner  orchestrator.Planner
-	selector orchestrator.NodeSelector
-	clock    clock.Clock
-}
-
 type OpsJobSchedulerParams struct {
 	JobStore     jobstore.Store
 	Planner      orchestrator.Planner
 	NodeSelector orchestrator.NodeSelector
+	// RateLimiter controls the rate at which new executions are created
+	// If not provided, a NoopRateLimiter is used
+	RateLimiter ExecutionRateLimiter
 	// Clock is the clock used for time-based operations.
 	// If not provided, the system clock is used.
 	Clock clock.Clock
+}
+
+type OpsJobScheduler struct {
+	jobStore    jobstore.Store
+	planner     orchestrator.Planner
+	selector    orchestrator.NodeSelector
+	rateLimiter ExecutionRateLimiter
+	clock       clock.Clock
 }
 
 func NewOpsJobScheduler(params OpsJobSchedulerParams) *OpsJobScheduler {
 	if params.Clock == nil {
 		params.Clock = clock.New()
 	}
+	if params.RateLimiter == nil {
+		params.RateLimiter = NewNoopRateLimiter()
+	}
 	return &OpsJobScheduler{
-		jobStore: params.JobStore,
-		planner:  params.Planner,
-		selector: params.NodeSelector,
-		clock:    params.Clock,
+		jobStore:    params.JobStore,
+		planner:     params.Planner,
+		selector:    params.NodeSelector,
+		rateLimiter: params.RateLimiter,
+		clock:       params.Clock,
 	}
 }
 
@@ -111,11 +119,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
-	var newExecs execSet
-	if len(existingExecs) == 0 {
-		if newExecs, err = b.createMissingExecs(ctx, metrics, &job, plan); err != nil {
-			return err // internal error
-		}
+	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, existingExecs); err != nil {
+		return err // internal error
 	}
 
 	// if the plan's job state is failed, stop all active executions
@@ -123,7 +128,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// mark job as completed if there are no more active or new executions
-		if len(nonTerminalExecs) == 0 && len(newExecs) == 0 {
+		if len(nonTerminalExecs) == 0 && plan.HasPendingWork() {
 			if len(allFailedExecs) > 0 {
 				plan.MarkJobFailed(orchestrator.JobExecutionsFailedEvent())
 			} else {
@@ -165,7 +170,8 @@ func (b *OpsJobScheduler) handleTimeouts(
 
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder,
-	job *models.Job, plan *models.Plan) (execSet, error) {
+	job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
+
 	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
 		return nil, err
@@ -174,13 +180,43 @@ func (b *OpsJobScheduler) createMissingExecs(
 	metrics.Histogram(ctx, nodesMatched, float64(len(matching)))
 	metrics.Histogram(ctx, nodesRejected, float64(len(rejected)))
 
-	if len(matching) == 0 {
+	// Only fail if we have no matching nodes AND no existing executions
+	if len(matching) == 0 && len(existingExecs) == 0 {
 		plan.MarkJobFailed(
 			*models.EventFromError(orchestrator.EventTopicJobScheduling, orchestrator.NewErrNoMatchingNodes(rejected)))
 		return nil, nil
 	}
-	newExecs := execSet{}
+
+	// If no matching nodes but we have existing executions, just return empty set
+	if len(matching) == 0 {
+		return execSet{}, nil
+	}
+
+	// Filter out nodes that we've already tried to schedule on
+	existingNodes := make(map[string]struct{})
+	for _, exec := range existingExecs {
+		existingNodes[exec.NodeID] = struct{}{}
+	}
+
+	var nodesToSchedule []orchestrator.NodeRank
 	for _, node := range matching {
+		if _, exists := existingNodes[node.NodeInfo.ID()]; !exists {
+			nodesToSchedule = append(nodesToSchedule, node)
+		}
+	}
+
+	// If no new nodes to schedule on, return early
+	if len(nodesToSchedule) == 0 {
+		return execSet{}, nil
+	}
+
+	// Apply rate limiting to new nodes
+	execsToCreate := b.rateLimiter.Apply(ctx, plan, len(nodesToSchedule))
+	newExecs := execSet{}
+
+	// Create executions up to the limit
+	for i := 0; i < execsToCreate; i++ {
+		node := nodesToSchedule[i]
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
@@ -195,7 +231,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
 		newExecs[execution.ID] = execution
 	}
-	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(matching)))
+	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(newExecs)))
 	return newExecs, nil
 }
 

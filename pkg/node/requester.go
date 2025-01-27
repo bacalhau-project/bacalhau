@@ -139,6 +139,11 @@ func NewRequesterNode(
 		},
 	)
 
+	executionRateLimiter := scheduler.NewBatchRateLimiter(scheduler.BatchRateLimiterParams{
+		MaxExecutionsPerEval:  cfg.SystemConfig.MaxExecutionsPerEval,
+		ExecutionLimitBackoff: cfg.SystemConfig.ExecutionLimitBackoff,
+	})
+
 	// scheduler provider
 	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
 		JobStore:      jobStore,
@@ -146,6 +151,7 @@ func NewRequesterNode(
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
 		QueueBackoff:  cfg.BacalhauConfig.Orchestrator.Scheduler.QueueBackoff.AsTimeDuration(),
+		RateLimiter:   executionRateLimiter,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -154,11 +160,13 @@ func NewRequesterNode(
 			JobStore:     jobStore,
 			Planner:      planners,
 			NodeSelector: nodeSelector,
+			RateLimiter:  executionRateLimiter,
 		}),
 		models.JobTypeDaemon: scheduler.NewDaemonJobScheduler(scheduler.DaemonJobSchedulerParams{
 			JobStore:     jobStore,
 			Planner:      planners,
 			NodeSelector: nodeSelector,
+			RateLimiter:  executionRateLimiter,
 		}),
 	})
 

@@ -23,6 +23,9 @@ type BatchServiceJobSchedulerParams struct {
 	NodeSelector  orchestrator.NodeSelector
 	RetryStrategy orchestrator.RetryStrategy
 	QueueBackoff  time.Duration
+	// RateLimiter controls the rate at which new executions are created
+	// If not provided, a NoopRateLimiter is used
+	RateLimiter ExecutionRateLimiter
 	// Clock is the clock used for time-based operations.
 	// If not provided, the system clock is used.
 	Clock clock.Clock
@@ -57,6 +60,7 @@ type BatchServiceJobScheduler struct {
 	selector      orchestrator.NodeSelector
 	retryStrategy orchestrator.RetryStrategy
 	queueBackoff  time.Duration
+	rateLimiter   ExecutionRateLimiter
 	clock         clock.Clock
 }
 
@@ -64,12 +68,16 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 	if params.Clock == nil {
 		params.Clock = clock.New()
 	}
+	if params.RateLimiter == nil {
+		params.RateLimiter = NewNoopRateLimiter()
+	}
 	return &BatchServiceJobScheduler{
 		jobStore:      params.JobStore,
 		planner:       params.Planner,
 		selector:      params.NodeSelector,
 		retryStrategy: params.RetryStrategy,
 		queueBackoff:  params.QueueBackoff,
+		rateLimiter:   params.RateLimiter,
 		clock:         params.Clock,
 	}
 }
@@ -295,17 +303,10 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 			return nil
 		}
 
-		// create a delayed evaluation to retry scheduling the job if we don't have enough nodes,
-		// and we haven't passed the queue timeout
-		waitUntil := b.clock.Now().Add(b.queueBackoff)
+		// create a delayed evaluation to retry scheduling the job
 		comment := orchestrator.NewErrNotEnoughNodes(len(remainingPartitions), append(matching, rejected...)).Error()
-		delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
-			WithTriggeredBy(models.EvalTriggerJobQueue).
-			WithComment(comment)
-		plan.AppendEvaluation(delayedEvaluation)
+		b.createDelayedEvaluation(ctx, plan, comment)
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeQueueing))
-		log.Ctx(ctx).Debug().Msgf("Creating delayed evaluation %s to retry scheduling job %s in %s due to: %s",
-			delayedEvaluation.ID, plan.Job.ID, waitUntil.Sub(b.clock.Now()), comment)
 
 		// if not a single node was matched, then the job if fully queued and we should reflect that
 		// in the job state and events
@@ -318,9 +319,13 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		}
 	}
 
-	// create new executions
+	// Apply rate limiting
+	execsToCreate := min(len(matching), len(remainingPartitions))
+	execsToCreate = b.rateLimiter.Apply(ctx, plan, execsToCreate)
+
+	// Create executions
 	var count float64
-	for i := 0; i < min(len(matching), len(remainingPartitions)); i++ {
+	for i := 0; i < execsToCreate; i++ {
 		execution := &models.Execution{
 			NodeID:         matching[i].NodeInfo.ID(),
 			JobID:          plan.Job.ID,
@@ -339,6 +344,16 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, count)
 
 	return nil
+}
+
+// createDelayedEvaluation creates a delayed evaluation with the queue backoff
+func (b *BatchServiceJobScheduler) createDelayedEvaluation(ctx context.Context, plan *models.Plan, comment string) {
+	waitUntil := b.clock.Now().Add(b.queueBackoff)
+	delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
+		WithTriggeredBy(models.EvalTriggerJobQueue).
+		WithComment(comment)
+	plan.AppendEvaluation(delayedEvaluation)
+	log.Ctx(ctx).Debug().Msg(comment)
 }
 
 // isJobComplete determines if all partitions have completed successfully.

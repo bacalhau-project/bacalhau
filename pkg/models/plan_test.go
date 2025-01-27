@@ -96,6 +96,48 @@ func (s *PlanTestSuite) TestMarkJobCompleted() {
 	s.Equal("job completed", s.plan.JobEvents[0].Message)
 }
 
+func (s *PlanTestSuite) TestHasPendingWork() {
+	// Test completely empty plan
+	emptyPlan := models.NewPlan(s.eval, s.job)
+	s.True(emptyPlan.HasPendingWork(), "New plan should be empty")
+
+	// Test plan with new executions
+	planWithNewExec := models.NewPlan(s.eval, s.job)
+	planWithNewExec.AppendExecution(mock.ExecutionForJob(s.job), models.Event{})
+	s.False(planWithNewExec.HasPendingWork(), "Plan with new executions should not be empty")
+
+	// Test plan with updated executions
+	planWithUpdatedExec := models.NewPlan(s.eval, s.job)
+	planWithUpdatedExec.AppendStoppedExecution(
+		mock.ExecutionForJob(s.job),
+		models.Event{},
+		models.ExecutionStateCancelled,
+	)
+	s.False(planWithUpdatedExec.HasPendingWork(), "Plan with updated executions should not be empty")
+
+	// Test plan with new evaluations
+	planWithNewEval := models.NewPlan(s.eval, s.job)
+	planWithNewEval.AppendEvaluation(mock.Eval())
+	s.False(planWithNewEval.HasPendingWork(), "Plan with new evaluations should not be empty")
+
+	// Verify that events don't affect emptiness
+	planWithEvents := models.NewPlan(s.eval, s.job)
+	planWithEvents.AppendJobEvent(models.Event{Message: "test event"})
+	planWithEvents.AppendExecutionEvent("exec-1", models.Event{Message: "test event"})
+	s.True(planWithEvents.HasPendingWork(), "Plan with only events should be empty")
+
+	// Verify that desired state doesn't affect emptiness
+	planWithState := models.NewPlan(s.eval, s.job)
+	planWithState.MarkJobCompleted(models.Event{})
+	s.True(planWithState.HasPendingWork(), "Plan with only state changes should be empty")
+
+	// Test plan with mixed content
+	mixedPlan := models.NewPlan(s.eval, s.job)
+	mixedPlan.AppendExecution(mock.ExecutionForJob(s.job), models.Event{})
+	mixedPlan.AppendJobEvent(models.Event{})
+	s.False(mixedPlan.HasPendingWork(), "Plan with executions should not be empty regardless of other content")
+}
+
 func TestRunPlanTestSuite(t *testing.T) {
 	suite.Run(t, new(PlanTestSuite))
 }

@@ -163,3 +163,10 @@ func (p *Plan) hasRunningExecutions() bool {
 	}
 	return false
 }
+
+// HasPendingWork returns true if the plan has no pending work (executions or evaluations)
+// We don't check execution updates or job state updates as they don't reflect more work,
+// and can be just updates to mark existing executions as failed for example.
+func (p *Plan) HasPendingWork() bool {
+	return len(p.NewExecutions) == 0 && len(p.NewEvaluations) == 0
+}
