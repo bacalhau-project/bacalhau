@@ -110,7 +110,7 @@ type OrderedPublisherConfig struct {
 func DefaultOrderedPublisherConfig() OrderedPublisherConfig {
 	return OrderedPublisherConfig{
 		MessageSerializer: envelope.NewSerializer(),
-		AckWait:           5 * time.Second,
+		AckWait:           30 * time.Second,
 		MaxPending:        1000,
 		RetryAttempts:     3,
 		RetryWait:         time.Second,
