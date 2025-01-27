@@ -171,7 +171,6 @@ func (b *OpsJobScheduler) handleTimeouts(
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder,
 	job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
-
 	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
 		return nil, err
