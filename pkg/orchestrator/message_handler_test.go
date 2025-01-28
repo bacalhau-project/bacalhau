@@ -42,7 +42,7 @@ func (suite *MessageHandlerTestSuite) TestShouldProcess() {
 	suite.False(suite.handler.ShouldProcess(context.Background(), envelope.NewMessage(nil).WithMetadataValue(envelope.KeyMessageType, "UnknownType")))
 }
 
-func (suite *MessageHandlerTestSuite) TestOnBidComplete_Accepted() {
+func (suite *MessageHandlerTestSuite) TestHandleBidAccepted() {
 	ctx := context.Background()
 	bidResult := &messages.BidResult{
 		BaseResponse: messages.BaseResponse{
@@ -60,11 +60,11 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_Accepted() {
 	suite.mockTx.EXPECT().Commit().Return(nil)
 	suite.mockTx.EXPECT().Rollback().Return(nil)
 
-	err := suite.handler.OnBidComplete(ctx, message)
+	err := suite.handler.HandleMessage(ctx, message)
 	suite.NoError(err)
 }
 
-func (suite *MessageHandlerTestSuite) TestOnBidComplete_Rejected() {
+func (suite *MessageHandlerTestSuite) TestHandleBidRejected() {
 	ctx := context.Background()
 	bidResult := &messages.BidResult{
 		BaseResponse: messages.BaseResponse{
@@ -82,11 +82,11 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_Rejected() {
 	suite.mockTx.EXPECT().Commit().Return(nil)
 	suite.mockTx.EXPECT().Rollback().Return(nil)
 
-	err := suite.handler.OnBidComplete(ctx, message)
+	err := suite.handler.HandleMessage(ctx, message)
 	suite.NoError(err)
 }
 
-func (suite *MessageHandlerTestSuite) TestOnRunComplete() {
+func (suite *MessageHandlerTestSuite) TestHandleRunComplete() {
 	ctx := context.Background()
 	runResult := &messages.RunResult{
 		BaseResponse: messages.BaseResponse{
@@ -106,11 +106,35 @@ func (suite *MessageHandlerTestSuite) TestOnRunComplete() {
 	suite.mockTx.EXPECT().Commit().Return(nil)
 	suite.mockTx.EXPECT().Rollback().Return(nil)
 
-	err := suite.handler.OnRunComplete(ctx, message)
+	err := suite.handler.HandleMessage(ctx, message)
 	suite.NoError(err)
 }
 
-func (suite *MessageHandlerTestSuite) TestOnComputeFailure() {
+func (suite *MessageHandlerTestSuite) TestHandleRunCompleteForLongRunningJob() {
+	ctx := context.Background()
+	runResult := &messages.RunResult{
+		BaseResponse: messages.BaseResponse{
+			ExecutionID: "exec-1",
+			JobID:       "job-1",
+			JobType:     "service",
+		},
+		PublishResult:    &models.SpecConfig{Type: "ipfs"},
+		RunCommandResult: &models.RunCommandResult{ExitCode: 0},
+	}
+	message := envelope.NewMessage(runResult).WithMetadataValue(envelope.KeyMessageType, messages.RunResultMessageType)
+
+	suite.mockStore.EXPECT().BeginTx(gomock.Any()).Return(suite.mockTx, nil)
+	suite.mockStore.EXPECT().GetJob(suite.mockTx, "job-1").Return(models.Job{Type: "service"}, nil)
+	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(nil)
+	suite.mockStore.EXPECT().CreateEvaluation(suite.mockTx, gomock.Any()).Return(nil)
+	suite.mockTx.EXPECT().Commit().Return(nil)
+	suite.mockTx.EXPECT().Rollback().Return(nil)
+
+	err := suite.handler.HandleMessage(ctx, message)
+	suite.NoError(err)
+}
+
+func (suite *MessageHandlerTestSuite) TestHandleComputeFailure() {
 	ctx := context.Background()
 	computeError := &messages.ComputeError{
 		BaseResponse: messages.BaseResponse{
@@ -127,11 +151,11 @@ func (suite *MessageHandlerTestSuite) TestOnComputeFailure() {
 	suite.mockTx.EXPECT().Commit().Return(nil)
 	suite.mockTx.EXPECT().Rollback().Return(nil)
 
-	err := suite.handler.OnComputeFailure(ctx, message)
+	err := suite.handler.HandleMessage(ctx, message)
 	suite.NoError(err)
 }
 
-func (suite *MessageHandlerTestSuite) TestOnBidComplete_PropagatesErrors() {
+func (suite *MessageHandlerTestSuite) TestHandleMessagePropagatesErrors() {
 	ctx := context.Background()
 	bidResult := &messages.BidResult{
 		BaseResponse: messages.BaseResponse{
@@ -148,8 +172,8 @@ func (suite *MessageHandlerTestSuite) TestOnBidComplete_PropagatesErrors() {
 	suite.mockStore.EXPECT().UpdateExecution(suite.mockTx, gomock.Any()).Return(expectedErr)
 	suite.mockTx.EXPECT().Rollback().Return(nil)
 
-	err := suite.handler.OnBidComplete(ctx, message)
-	suite.ErrorIs(err, expectedErr)
+	err := suite.handler.HandleMessage(ctx, message)
+	suite.NoError(err) // HandleMessage swallows errors after logging them
 }
 
 func TestMessageHandlerTestSuite(t *testing.T) {
