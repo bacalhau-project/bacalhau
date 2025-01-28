@@ -19,6 +19,8 @@ type Orchestrator struct {
 	EvaluationBroker EvaluationBroker `yaml:"EvaluationBroker,omitempty" json:"EvaluationBroker,omitempty"`
 	// SupportReverseProxy configures the orchestrator node to run behind a reverse proxy
 	SupportReverseProxy bool `yaml:"SupportReverseProxy,omitempty" json:"SupportReverseProxy,omitempty"`
+	// License specifies license configuration for orchestrator node
+	License License `yaml:"License,omitempty" json:"License,omitempty"`
 }
 
 type OrchestratorAuth struct {
@@ -75,4 +77,9 @@ type EvaluationBroker struct {
 	VisibilityTimeout Duration `yaml:"VisibilityTimeout,omitempty" json:"VisibilityTimeout,omitempty"`
 	// MaxRetryCount specifies the maximum number of times an evaluation can be retried before being marked as failed.
 	MaxRetryCount int `yaml:"MaxRetryCount,omitempty" json:"MaxRetryCount,omitempty"`
+}
+
+type License struct {
+	// LocalPath specifies the local license file path
+	LocalPath string `yaml:"LocalPath,omitempty" json:"LocalPath,omitempty"`
 }

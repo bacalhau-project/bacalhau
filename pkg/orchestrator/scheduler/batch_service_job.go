@@ -23,6 +23,9 @@ type BatchServiceJobSchedulerParams struct {
 	NodeSelector  orchestrator.NodeSelector
 	RetryStrategy orchestrator.RetryStrategy
 	QueueBackoff  time.Duration
+	// RateLimiter controls the rate at which new executions are created
+	// If not provided, a NoopRateLimiter is used
+	RateLimiter ExecutionRateLimiter
 	// Clock is the clock used for time-based operations.
 	// If not provided, the system clock is used.
 	Clock clock.Clock
@@ -57,6 +60,7 @@ type BatchServiceJobScheduler struct {
 	selector      orchestrator.NodeSelector
 	retryStrategy orchestrator.RetryStrategy
 	queueBackoff  time.Duration
+	rateLimiter   ExecutionRateLimiter
 	clock         clock.Clock
 }
 
@@ -64,12 +68,16 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 	if params.Clock == nil {
 		params.Clock = clock.New()
 	}
+	if params.RateLimiter == nil {
+		params.RateLimiter = NewNoopRateLimiter()
+	}
 	return &BatchServiceJobScheduler{
 		jobStore:      params.JobStore,
 		planner:       params.Planner,
 		selector:      params.NodeSelector,
 		retryStrategy: params.RetryStrategy,
 		queueBackoff:  params.QueueBackoff,
+		rateLimiter:   params.RateLimiter,
 		clock:         params.Clock,
 	}
 }
@@ -81,6 +89,7 @@ func NewBatchServiceJobScheduler(params BatchServiceJobSchedulerParams) *BatchSe
 // 4. For batch jobs: monitors completion of all partitions
 // 5. For service jobs: maintains continuous execution per partition
 func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *models.Evaluation) (err error) {
+	log.Debug().Msgf("Processing evaluation %s for job %s", evaluation.ID, evaluation.JobID)
 	metrics := telemetry.NewMetricRecorder(
 		attribute.String(AttrSchedulerType, "batch_service"),
 		attribute.String(AttrEvalType, evaluation.Type),
@@ -109,7 +118,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedByJobStopEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeAlreadyTerminal))
 		return b.planner.Process(ctx, plan)
 	}
@@ -125,9 +134,9 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	allFailedExecs := existingExecs.filterFailed()
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	nonTerminalExecs, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
+	nonTerminalExecs, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
 	if len(lost) > 0 {
-		lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
+		lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 		metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 		allFailedExecs = allFailedExecs.union(lost)
 	}
@@ -144,32 +153,15 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	// Approve/Reject nodes
 	b.approveRejectExecs(nonDiscardedExecs, plan)
 
-	// Get remaining partition indices to assign to new executions for
-	remainingPartitions := nonDiscardedExecs.remainingPartitions(job.Count)
-	if len(remainingPartitions) > 0 {
-		// first, check if there were any failed executions and if we should retry
-		if len(allFailedExecs) > 0 {
-			if !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: job.ID}) {
-				plan.MarkJobFailed(orchestrator.JobExhaustedRetriesEvent())
-				metrics.Count(ctx, retriesExhausted)
-				metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeExhaustedRetries))
-			} else {
-				metrics.Count(ctx, retriesAttempted)
-			}
-		}
-
-		if !plan.IsJobFailed() {
-			// find matching nodes for the remaining executions
-			err = b.createMissingExecs(ctx, metrics, remainingPartitions, &job, plan)
-			if err != nil {
-				return err // internal error
-			}
-		}
+	// schedule remaining partitions and assign to new executions
+	err = b.scheduleRemainingPartitions(ctx, metrics, plan, nonDiscardedExecs, allFailedExecs)
+	if err != nil {
+		return err
 	}
 
 	// if the plan's job state if terminal, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		if b.isJobComplete(&job, existingExecs) {
 			// If there are no remaining partitions to be done, mark the job as completed.
@@ -224,8 +216,8 @@ func (b *BatchServiceJobScheduler) handleTimeouts(ctx context.Context, metrics *
 			timeout := job.Task().Timeouts.GetExecutionTimeout()
 			expirationTime := b.clock.Now().Add(-timeout)
 			var timedOut execSet
-			nonTerminalExecs, timedOut = nonTerminalExecs.filterByExecutionTimeout(expirationTime)
-			timedOut.markStopped(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
+			nonTerminalExecs, timedOut = nonTerminalExecs.groupByExecutionTimeout(expirationTime)
+			timedOut.markFailed(plan, orchestrator.ExecStoppedByExecutionTimeoutEvent(timeout))
 			metrics.CountN(ctx, executionsTimedOut, int64(len(timedOut)))
 			allFailedExecs = allFailedExecs.union(timedOut)
 		}
@@ -245,9 +237,32 @@ func (b *BatchServiceJobScheduler) approveRejectExecs(nonDiscardedExecs execSet,
 	for _, partitionExecs := range nonDiscardedExecs.groupByPartition() {
 		execsByApprovalStatus := partitionExecs.getApprovalStatuses()
 		execsByApprovalStatus.toApprove.markApproved(plan, orchestrator.ExecRunningEvent())
-		execsByApprovalStatus.toReject.markStopped(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
-		execsByApprovalStatus.toCancel.markStopped(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
+		execsByApprovalStatus.toReject.markRejected(plan, orchestrator.ExecStoppedByNodeRejectedEvent())
+		execsByApprovalStatus.toCancel.markCancelled(plan, orchestrator.ExecStoppedByOversubscriptionEvent())
 	}
+}
+
+func (b *BatchServiceJobScheduler) scheduleRemainingPartitions(ctx context.Context, metrics *telemetry.MetricRecorder, plan *models.Plan,
+	nonDiscardedExecs execSet, allFailedExecs execSet) error {
+	remainingPartitions := nonDiscardedExecs.remainingPartitions(plan.Job.Count)
+	if len(remainingPartitions) == 0 {
+		return nil
+	}
+
+	// first, check if there were any failed executions and if we should retry
+	if len(allFailedExecs) > 0 {
+		if !b.retryStrategy.ShouldRetry(ctx, orchestrator.RetryRequest{JobID: plan.Job.ID}) {
+			plan.MarkJobFailed(orchestrator.JobExhaustedRetriesEvent())
+			metrics.Count(ctx, retriesExhausted)
+			metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeExhaustedRetries))
+			return nil
+		} else {
+			metrics.Count(ctx, retriesAttempted)
+		}
+	}
+
+	// find matching nodes for the remaining executions
+	return b.createMissingExecs(ctx, metrics, plan, remainingPartitions)
 }
 
 // createMissingExecs creates new executions for partitions that need them.
@@ -261,9 +276,9 @@ func (b *BatchServiceJobScheduler) approveRejectExecs(nonDiscardedExecs execSet,
 // - If partition 1 fails: remainingPartitions = [1]
 // - If all complete (batch): remainingPartitions = []
 func (b *BatchServiceJobScheduler) createMissingExecs(
-	ctx context.Context, metrics *telemetry.MetricRecorder, remainingPartitions []int, job *models.Job, plan *models.Plan) error {
+	ctx context.Context, metrics *telemetry.MetricRecorder, plan *models.Plan, remainingPartitions []int) error {
 	// find matching nodes for the job
-	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
+	matching, rejected, err := b.selector.MatchingNodes(ctx, plan.Job)
 	if err != nil {
 		return err
 	}
@@ -274,13 +289,13 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	// fail fast if there are not enough nodes, and we've passed job queue timeout
 	if len(matching) < len(remainingPartitions) {
 		// check if we can retry scheduling the job at a later time if we don't have enough nodes
-		timeout := job.Task().Timeouts.GetQueueTimeout()
+		timeout := plan.Job.Task().Timeouts.GetQueueTimeout()
 		expirationTime := b.clock.Now().Add(-timeout)
 
 		// TODO: we are calculating queue timeout based on job creation time, but we should probably
 		//  calculate it based on the time the job stayed in the queue so that rescheduling the job
 		//  would reset the queue timeout.
-		if job.GetCreateTime().Before(expirationTime) {
+		if plan.Job.GetCreateTime().Before(expirationTime) {
 			plan.MarkJobFailed(*models.EventFromError(
 				orchestrator.EventTopicJobScheduling,
 				orchestrator.NewErrNotEnoughNodes(len(remainingPartitions), append(matching, rejected...))))
@@ -288,39 +303,36 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 			return nil
 		}
 
-		// create a delayed evaluation to retry scheduling the job if we don't have enough nodes,
-		// and we haven't passed the queue timeout
-		waitUntil := b.clock.Now().Add(b.queueBackoff)
+		// create a delayed evaluation to retry scheduling the job
 		comment := orchestrator.NewErrNotEnoughNodes(len(remainingPartitions), append(matching, rejected...)).Error()
-		delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
-			WithTriggeredBy(models.EvalTriggerJobQueue).
-			WithComment(comment)
-		plan.AppendEvaluation(delayedEvaluation)
+		b.createDelayedEvaluation(ctx, plan, comment)
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeQueueing))
-		log.Ctx(ctx).Debug().Msgf("Creating delayed evaluation %s to retry scheduling job %s in %s due to: %s",
-			delayedEvaluation.ID, job.ID, waitUntil.Sub(b.clock.Now()), comment)
 
 		// if not a single node was matched, then the job if fully queued and we should reflect that
 		// in the job state and events
 		if len(matching) == 0 {
 			// only update the state if the is running, or pending and triggered by job registration
-			if job.State.StateType == models.JobStateTypeRunning ||
+			if plan.Job.State.StateType == models.JobStateTypeRunning ||
 				plan.Eval.TriggeredBy == models.EvalTriggerJobRegister {
 				plan.MarkJobQueued(orchestrator.JobQueueingEvent(comment))
 			}
 		}
 	}
 
-	// create new executions
+	// Apply rate limiting
+	execsToCreate := min(len(matching), len(remainingPartitions))
+	execsToCreate = b.rateLimiter.Apply(ctx, plan, execsToCreate)
+
+	// Create executions
 	var count float64
-	for i := 0; i < min(len(matching), len(remainingPartitions)); i++ {
+	for i := 0; i < execsToCreate; i++ {
 		execution := &models.Execution{
 			NodeID:         matching[i].NodeInfo.ID(),
-			JobID:          job.ID,
-			Job:            job,
+			JobID:          plan.Job.ID,
+			Job:            plan.Job,
 			ID:             idgen.ExecutionIDPrefix + uuid.NewString(),
 			EvalID:         plan.EvalID,
-			Namespace:      job.Namespace,
+			Namespace:      plan.Job.Namespace,
 			ComputeState:   models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState:   models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
 			PartitionIndex: remainingPartitions[i],
@@ -332,6 +344,16 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, count)
 
 	return nil
+}
+
+// createDelayedEvaluation creates a delayed evaluation with the queue backoff
+func (b *BatchServiceJobScheduler) createDelayedEvaluation(ctx context.Context, plan *models.Plan, comment string) {
+	waitUntil := b.clock.Now().Add(b.queueBackoff)
+	delayedEvaluation := plan.Eval.NewDelayedEvaluation(waitUntil).
+		WithTriggeredBy(models.EvalTriggerJobQueue).
+		WithComment(comment)
+	plan.AppendEvaluation(delayedEvaluation)
+	log.Ctx(ctx).Debug().Msg(comment)
 }
 
 // isJobComplete determines if all partitions have completed successfully.

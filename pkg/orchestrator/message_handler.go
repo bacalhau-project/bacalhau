@@ -8,11 +8,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 // MessageHandler base implementation of requester Endpoint
@@ -35,26 +37,37 @@ func (m *MessageHandler) ShouldProcess(ctx context.Context, message *envelope.Me
 
 // HandleMessage handles incoming messages
 // TODO: handle messages arriving out of order gracefully
-func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) error {
-	var err error
+func (m *MessageHandler) HandleMessage(ctx context.Context, message *envelope.Message) (err error) {
+	metrics := telemetry.NewMetricRecorder(
+		attribute.String(AttrMessageType, message.Metadata.Get(envelope.KeyMessageType)),
+		attribute.String(AttrOutcomeKey, AttrOutcomeSuccess),
+	)
+	defer func() {
+		metrics.Count(ctx, messageHandlerProcessCount)
+		metrics.Done(ctx, messageHandlerProcessDuration)
+	}()
+
 	switch message.Metadata.Get(envelope.KeyMessageType) {
 	case messages.BidResultMessageType:
-		err = m.OnBidComplete(ctx, message)
+		err = m.OnBidComplete(ctx, metrics, message)
 	case messages.RunResultMessageType:
-		err = m.OnRunComplete(ctx, message)
+		err = m.OnRunComplete(ctx, metrics, message)
 	case messages.ComputeErrorMessageType:
-		err = m.OnComputeFailure(ctx, message)
+		err = m.OnComputeFailure(ctx, metrics, message)
 	}
 
-	return m.handleError(ctx, message, err)
+	return m.handleError(ctx, metrics, message, err)
 }
 
 // handleError logs the error with context and returns nil.
 // In the future, this can be extended to handle different error types differently.
-func (m *MessageHandler) handleError(ctx context.Context, message *envelope.Message, err error) error {
+func (m *MessageHandler) handleError(ctx context.Context, metrics *telemetry.MetricRecorder, message *envelope.Message, err error) error {
 	if err == nil {
 		return nil
 	}
+
+	metrics.Error(err)
+	metrics.AddAttributes(attribute.String(AttrOutcomeKey, AttrOutcomeFailure))
 
 	// For now, just log the error and return nil
 	logger := log.Ctx(ctx).Error()
@@ -66,7 +79,7 @@ func (m *MessageHandler) handleError(ctx context.Context, message *envelope.Mess
 }
 
 // OnBidComplete handles the completion of a bid request
-func (m *MessageHandler) OnBidComplete(ctx context.Context, message *envelope.Message) error {
+func (m *MessageHandler) OnBidComplete(ctx context.Context, metrics *telemetry.MetricRecorder, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.BidResult)
 	if !ok {
 		return envelope.NewErrUnexpectedPayloadType("BidResult", reflect.TypeOf(message.Payload).String())
@@ -92,43 +105,46 @@ func (m *MessageHandler) OnBidComplete(ctx context.Context, message *envelope.Me
 	}
 
 	txContext, err := m.store.BeginTx(ctx)
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartBeginTx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	if err = m.store.UpdateExecution(txContext, updateRequest); err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler to either accept the bid, or find a new node
 	err = m.enqueueEvaluation(txContext, result.JobID, result.JobType)
 	if err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCreateEval)
 
-	return txContext.Commit()
+	err = txContext.Commit()
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCommitTx)
+	return err
 }
 
-func (m *MessageHandler) OnRunComplete(ctx context.Context, message *envelope.Message) error {
+func (m *MessageHandler) OnRunComplete(ctx context.Context, metrics *telemetry.MetricRecorder, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.RunResult)
 	if !ok {
 		return envelope.NewErrUnexpectedPayloadType("RunResult", reflect.TypeOf(message.Payload).String())
 	}
 
 	txContext, err := m.store.BeginTx(ctx)
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartBeginTx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	job, err := m.store.GetJob(txContext, result.JobID)
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartGetJob)
 	if err != nil {
 		return err
 	}
@@ -162,29 +178,32 @@ func (m *MessageHandler) OnRunComplete(ctx context.Context, message *envelope.Me
 	if err = m.store.UpdateExecution(txContext, updateRequest); err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler to mark the job as completed if all executions are completed
 	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType); err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCreateEval)
 
-	return txContext.Commit()
+	err = txContext.Commit()
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCommitTx)
+	return err
 }
 
-func (m *MessageHandler) OnComputeFailure(ctx context.Context, message *envelope.Message) error {
+func (m *MessageHandler) OnComputeFailure(ctx context.Context, metrics *telemetry.MetricRecorder, message *envelope.Message) error {
 	result, ok := message.Payload.(*messages.ComputeError)
 	if !ok {
 		return envelope.NewErrUnexpectedPayloadType("ComputeError", reflect.TypeOf(message.Payload).String())
 	}
 
 	txContext, err := m.store.BeginTx(ctx)
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartBeginTx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	defer func() {
-		_ = txContext.Rollback()
-	}()
+	defer txContext.Rollback() //nolint:errcheck
 
 	// update execution state
 	if err = m.store.UpdateExecution(txContext, jobstore.UpdateExecutionRequest{
@@ -203,13 +222,17 @@ func (m *MessageHandler) OnComputeFailure(ctx context.Context, message *envelope
 	}); err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler find other nodes, or mark the job as failed
 	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType); err != nil {
 		return err
 	}
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCreateEval)
 
-	return txContext.Commit()
+	err = txContext.Commit()
+	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCommitTx)
+	return err
 }
 
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node

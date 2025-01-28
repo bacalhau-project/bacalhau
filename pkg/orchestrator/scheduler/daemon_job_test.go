@@ -5,6 +5,7 @@ package scheduler
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
@@ -83,8 +84,12 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldMarkLostExecutionsOnUnhe
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -108,8 +113,12 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsFailed() {
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -127,9 +136,17 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_WhenJobIsStopped_ShouldMarkNon
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
-		StoppedExecutions: []string{
-			scenario.executions[0].ID,
-			scenario.executions[1].ID,
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateCancelled,
+			},
 		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
@@ -146,6 +163,155 @@ func (s *DaemonJobSchedulerTestSuite) TestProcessFail_NoMatchingNodes() {
 	// Noop plan
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *DaemonJobSchedulerTestSuite) TestProcess_RateLimit_InitialScheduling() {
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(models.JobTypeDaemon),
+	)
+	s.mockJobStore(scenario)
+
+	// Mock that we have 4 matching nodes
+	s.mockMatchingNodes(scenario, "node0", "node1", "node2", "node3")
+
+	// Should only create 2 executions and schedule a delayed evaluation for the rest
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeRunning,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node1", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+		},
+		ExpectedNewEvaluations: []ExpectedEvaluation{
+			{
+				TriggeredBy: models.EvalTriggerExecutionLimit,
+				WaitUntil:   s.clock.Now().Add(5 * time.Second),
+			},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *DaemonJobSchedulerTestSuite) TestProcess_RateLimit_WithExistingExecutions() {
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(models.JobTypeDaemon),
+		WithJobState(models.JobStateTypeRunning),
+		// Already have executions on two nodes
+		WithExecution("node0", models.ExecutionStateBidAccepted),
+		WithExecution("node1", models.ExecutionStateBidAccepted),
+	)
+	s.mockJobStore(scenario)
+
+	// Mock that we have 4 matching nodes, 2 existing and 2 new
+	s.mockAllNodes("node0", "node1", "node2", "node3")
+	s.mockMatchingNodes(scenario, "node0", "node1", "node2", "node3")
+
+	// Should only create executions for the 2 new nodes within rate limit
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node2", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node3", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *DaemonJobSchedulerTestSuite) TestProcess_RateLimit_WithSomeUnhealthyNodes() {
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(models.JobTypeDaemon),
+		WithJobState(models.JobStateTypeRunning),
+		// Have existing executions on three nodes
+		WithExecution("node0", models.ExecutionStateBidAccepted),
+		WithExecution("node1", models.ExecutionStateBidAccepted),
+		WithExecution("node2", models.ExecutionStateBidAccepted),
+	)
+	s.mockJobStore(scenario)
+
+	// node0 and node1 became unhealthy, but we have 3 new healthy nodes
+	s.mockAllNodes("node2", "node3", "node4", "node5")
+	s.mockMatchingNodes(scenario, "node2", "node3", "node4", "node5")
+
+	// Should:
+	// 1. Mark node0 and node1's executions as failed
+	// 2. Create 2 new executions (limited by rate limiter)
+	// 3. Schedule delayed evaluation for the remaining new node
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node3", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node4", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+		},
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+			{
+				ExecutionID:  scenario.executions[1].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+		},
+		ExpectedNewEvaluations: []ExpectedEvaluation{
+			{
+				TriggeredBy: models.EvalTriggerExecutionLimit,
+				WaitUntil:   s.clock.Now().Add(5 * time.Second),
+			},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *DaemonJobSchedulerTestSuite) TestProcess_NoRateLimit() {
+	// Use NoopRateLimiter
+	s.scheduler.rateLimiter = NewNoopRateLimiter()
+
+	scenario := NewScenario(
+		WithJobType(models.JobTypeDaemon),
+		WithJobState(models.JobStateTypeRunning),
+		// Have one existing execution
+		WithExecution("node0", models.ExecutionStateBidAccepted),
+	)
+	s.mockJobStore(scenario)
+
+	// Mock that we have 4 total matching nodes
+	s.mockAllNodes("node0", "node1", "node2", "node3")
+	s.mockMatchingNodes(scenario, "node0", "node1", "node2", "node3")
+
+	// Should create executions for all new nodes at once
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node1", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node2", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+			{NodeID: "node3", DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning)},
+		},
 	})
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))

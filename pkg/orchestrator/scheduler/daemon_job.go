@@ -16,23 +16,31 @@ import (
 )
 
 // DaemonJobScheduler is a scheduler for batch jobs that run until completion
-type DaemonJobScheduler struct {
-	jobStore     jobstore.Store
-	planner      orchestrator.Planner
-	nodeSelector orchestrator.NodeSelector
-}
-
 type DaemonJobSchedulerParams struct {
 	JobStore     jobstore.Store
 	Planner      orchestrator.Planner
 	NodeSelector orchestrator.NodeSelector
+	// RateLimiter controls the rate at which new executions are created
+	// If not provided, a NoopRateLimiter is used
+	RateLimiter ExecutionRateLimiter
+}
+
+type DaemonJobScheduler struct {
+	jobStore     jobstore.Store
+	planner      orchestrator.Planner
+	nodeSelector orchestrator.NodeSelector
+	rateLimiter  ExecutionRateLimiter
 }
 
 func NewDaemonJobScheduler(params DaemonJobSchedulerParams) *DaemonJobScheduler {
+	if params.RateLimiter == nil {
+		params.RateLimiter = NewNoopRateLimiter()
+	}
 	return &DaemonJobScheduler{
 		jobStore:     params.JobStore,
 		planner:      params.Planner,
 		nodeSelector: params.NodeSelector,
+		rateLimiter:  params.RateLimiter,
 	}
 }
 
@@ -79,7 +87,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markStopped(plan, orchestrator.ExecStoppedByJobStopEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeAlreadyTerminal))
 		return b.planner.Process(ctx, plan)
 	}
@@ -92,8 +100,8 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetNodes)
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	_, lost := nonTerminalExecs.filterByNodeHealth(nodeInfos)
-	lost.markStopped(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
+	_, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
+	lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 
 	// Look for new matching nodes and create new executions every time we evaluate the job
@@ -127,11 +135,20 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		existingNodes[exec.NodeID] = struct{}{}
 	}
 
+	// Find nodes that need new executions
+	var nodesToSchedule []orchestrator.NodeRank
 	for _, node := range nodes {
-		if _, ok := existingNodes[node.NodeInfo.ID()]; ok {
-			// there is already a healthy execution on this node
-			continue
+		if _, ok := existingNodes[node.NodeInfo.ID()]; !ok {
+			nodesToSchedule = append(nodesToSchedule, node)
 		}
+	}
+
+	// Apply rate limiting
+	execsToCreate := b.rateLimiter.Apply(ctx, plan, len(nodesToSchedule))
+
+	// Create executions up to the limit
+	for i := 0; i < execsToCreate; i++ {
+		node := nodesToSchedule[i]
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
@@ -145,6 +162,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		execution.Normalize()
 		newExecs[execution.ID] = execution
 	}
+
 	for _, exec := range newExecs {
 		plan.AppendExecution(exec, orchestrator.ExecCreatedEvent(exec))
 	}

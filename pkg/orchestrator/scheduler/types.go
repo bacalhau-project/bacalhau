@@ -71,36 +71,34 @@ func (set execSet) ordered() []*models.Execution {
 
 // filterNonTerminal filters out terminal execs
 func (set execSet) filterNonTerminal() execSet {
-	filtered := execSet{}
-	for _, exec := range set {
-		if !exec.IsTerminalComputeState() {
-			filtered[exec.ID] = exec
-		}
-	}
-	return filtered
+	return set.filterBy(func(execution *models.Execution) bool {
+		return !execution.IsTerminalState()
+	})
 }
 
 // filterByState filters out execs that are not in the given state
 func (set execSet) filterByState(state models.ExecutionStateType) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.ComputeState.StateType == state
+	})
+}
+
+// filterByDesiredState filters out execs that are not in the given desired state
+func (set execSet) filterByDesiredState(state models.ExecutionDesiredStateType) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.DesiredState.StateType == state
+	})
+}
+
+// filterBy compute state filters out execs that don't match the given predicate
+func (set execSet) filterBy(predicate func(execution *models.Execution) bool) execSet {
 	filtered := execSet{}
 	for _, exec := range set {
-		if exec.ComputeState.StateType == state {
+		if predicate(exec) {
 			filtered[exec.ID] = exec
 		}
 	}
 	return filtered
-}
-
-// groupByState groups executions by their state
-func (set execSet) groupByState() map[models.ExecutionStateType]execSet {
-	grouped := make(map[models.ExecutionStateType]execSet)
-	for _, exec := range set {
-		if _, ok := grouped[exec.ComputeState.StateType]; !ok {
-			grouped[exec.ComputeState.StateType] = make(execSet)
-		}
-		grouped[exec.ComputeState.StateType][exec.ID] = exec
-	}
-	return grouped
 }
 
 // filterFailed filters out non-failed executions.
@@ -113,8 +111,8 @@ func (set execSet) filterCompleted() execSet {
 	return set.filterByState(models.ExecutionStateCompleted)
 }
 
-// filterByNodeHealth partitions executions based on their node's health status.
-func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (healthy execSet, lost execSet) {
+// groupByNodeHealth partitions executions based on their node's health status.
+func (set execSet) groupByNodeHealth(nodeInfos map[string]*models.NodeInfo) (healthy execSet, lost execSet) {
 	healthy = make(execSet)
 	lost = make(execSet)
 	for _, exec := range set {
@@ -128,8 +126,8 @@ func (set execSet) filterByNodeHealth(nodeInfos map[string]*models.NodeInfo) (he
 	return healthy, lost
 }
 
-// filterByExecutionTimeout partitions executions based on their timeout status.
-func (set execSet) filterByExecutionTimeout(expirationTime time.Time) (remaining, timedOut execSet) {
+// groupByExecutionTimeout partitions executions based on their timeout status.
+func (set execSet) groupByExecutionTimeout(expirationTime time.Time) (remaining, timedOut execSet) {
 	remaining = make(execSet)
 	timedOut = make(execSet)
 	for _, exec := range set {
@@ -234,26 +232,21 @@ func (set execSet) getApprovalStatuses() executionsByApprovalStatus {
 
 	//TODO: we are approving the oldest executions first, we should probably
 	// approve the ones with highest rank first
-	states := set.groupByState()
-	orderedExecs := set.ordered()
+	nonTerminalExecs := set.filterNonTerminal()
+	runningExecs := nonTerminalExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
+	orderedExecs := nonTerminalExecs.ordered()
 
 	// If we have running executions, keep oldest and cancel/reject others
-	if len(states[models.ExecutionStateBidAccepted]) > 0 {
+	if len(runningExecs) > 0 {
 		var foundFirst bool
 		for _, exec := range orderedExecs {
-			switch exec.ComputeState.StateType {
-			case models.ExecutionStateBidAccepted:
-				if !foundFirst {
-					foundFirst = true // keep oldest running
-				} else {
-					result.toCancel[exec.ID] = exec
-				}
-			case models.ExecutionStateAskForBidAccepted:
+			// if the execution is running, keep the first one and cancel the rest
+			if exec.DesiredState.StateType == models.ExecutionDesiredStateRunning && !foundFirst {
+				foundFirst = true
+			} else if exec.ComputeState.StateType == models.ExecutionStateAskForBidAccepted {
 				result.toReject[exec.ID] = exec
-			default:
-				if !exec.IsTerminalState() {
-					result.toCancel[exec.ID] = exec
-				}
+			} else {
+				result.toCancel[exec.ID] = exec
 			}
 		}
 		return result
@@ -279,13 +272,28 @@ func (set execSet) getApprovalStatuses() executionsByApprovalStatus {
 }
 
 // markStopped
-func (set execSet) markStopped(plan *models.Plan, event models.Event) {
+func (set execSet) markStopped(plan *models.Plan, event models.Event, computeState models.ExecutionStateType) {
 	for _, exec := range set {
-		plan.AppendStoppedExecution(exec, event)
+		plan.AppendStoppedExecution(exec, event, computeState)
 	}
 }
 
-// markStopped
+// markFailed
+func (set execSet) markFailed(plan *models.Plan, event models.Event) {
+	set.markStopped(plan, event, models.ExecutionStateFailed)
+}
+
+// markCancelled
+func (set execSet) markCancelled(plan *models.Plan, event models.Event) {
+	set.markStopped(plan, event, models.ExecutionStateCancelled)
+}
+
+// markRejected
+func (set execSet) markRejected(plan *models.Plan, event models.Event) {
+	set.markStopped(plan, event, models.ExecutionStateBidRejected)
+}
+
+// markApproved
 func (set execSet) markApproved(plan *models.Plan, event models.Event) {
 	for _, exec := range set {
 		plan.AppendApprovedExecution(exec, event)
