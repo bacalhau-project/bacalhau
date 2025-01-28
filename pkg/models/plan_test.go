@@ -99,43 +99,43 @@ func (s *PlanTestSuite) TestMarkJobCompleted() {
 func (s *PlanTestSuite) TestHasPendingWork() {
 	// Test completely empty plan
 	emptyPlan := models.NewPlan(s.eval, s.job)
-	s.True(emptyPlan.HasPendingWork(), "New plan should be empty")
+	s.False(emptyPlan.HasPendingWork(), "New plan should have no pending work")
 
 	// Test plan with new executions
 	planWithNewExec := models.NewPlan(s.eval, s.job)
 	planWithNewExec.AppendExecution(mock.ExecutionForJob(s.job), models.Event{})
-	s.False(planWithNewExec.HasPendingWork(), "Plan with new executions should not be empty")
+	s.True(planWithNewExec.HasPendingWork(), "Plan with new executions should have pending work")
 
-	// Test plan with updated executions
+	// Test plan with updated executions only (no new work)
 	planWithUpdatedExec := models.NewPlan(s.eval, s.job)
 	planWithUpdatedExec.AppendStoppedExecution(
 		mock.ExecutionForJob(s.job),
 		models.Event{},
 		models.ExecutionStateCancelled,
 	)
-	s.False(planWithUpdatedExec.HasPendingWork(), "Plan with updated executions should not be empty")
+	s.False(planWithUpdatedExec.HasPendingWork(), "Plan with only updated executions should have no pending work")
 
 	// Test plan with new evaluations
 	planWithNewEval := models.NewPlan(s.eval, s.job)
 	planWithNewEval.AppendEvaluation(mock.Eval())
-	s.False(planWithNewEval.HasPendingWork(), "Plan with new evaluations should not be empty")
+	s.True(planWithNewEval.HasPendingWork(), "Plan with new evaluations should have pending work")
 
-	// Verify that events don't affect emptiness
+	// Verify that events don't affect pending work status
 	planWithEvents := models.NewPlan(s.eval, s.job)
 	planWithEvents.AppendJobEvent(models.Event{Message: "test event"})
 	planWithEvents.AppendExecutionEvent("exec-1", models.Event{Message: "test event"})
-	s.True(planWithEvents.HasPendingWork(), "Plan with only events should be empty")
+	s.False(planWithEvents.HasPendingWork(), "Plan with only events should have no pending work")
 
-	// Verify that desired state doesn't affect emptiness
+	// Verify that desired state changes don't affect pending work status
 	planWithState := models.NewPlan(s.eval, s.job)
 	planWithState.MarkJobCompleted(models.Event{})
-	s.True(planWithState.HasPendingWork(), "Plan with only state changes should be empty")
+	s.False(planWithState.HasPendingWork(), "Plan with only state changes should have no pending work")
 
 	// Test plan with mixed content
 	mixedPlan := models.NewPlan(s.eval, s.job)
 	mixedPlan.AppendExecution(mock.ExecutionForJob(s.job), models.Event{})
 	mixedPlan.AppendJobEvent(models.Event{})
-	s.False(mixedPlan.HasPendingWork(), "Plan with executions should not be empty regardless of other content")
+	s.True(mixedPlan.HasPendingWork(), "Plan with executions should have pending work regardless of other content")
 }
 
 func TestRunPlanTestSuite(t *testing.T) {

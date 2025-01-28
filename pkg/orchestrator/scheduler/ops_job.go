@@ -128,7 +128,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// mark job as completed if there are no more active or new executions
-		if len(nonTerminalExecs) == 0 && plan.HasPendingWork() {
+		if len(nonTerminalExecs) == 0 && !plan.HasPendingWork() {
 			if len(allFailedExecs) > 0 {
 				plan.MarkJobFailed(orchestrator.JobExecutionsFailedEvent())
 			} else {
