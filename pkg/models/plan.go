@@ -163,3 +163,8 @@ func (p *Plan) hasRunningExecutions() bool {
 	}
 	return false
 }
+
+// HasPendingWork returns true if the plan has pending work (executions or evaluations)
+func (p *Plan) HasPendingWork() bool {
+	return len(p.NewExecutions) > 0 || len(p.NewEvaluations) > 0
+}

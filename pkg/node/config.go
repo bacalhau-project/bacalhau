@@ -1,6 +1,8 @@
 package node
 
 import (
+	"time"
+
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
@@ -22,6 +24,11 @@ type SystemConfig struct {
 	// NodeRankRandomnessRange overrides the node's rank randomness range for testing purposes
 	NodeRankRandomnessRange int
 
+	// MaxExecutionsPerEval limits the number of new executions that can be created in a single evaluation
+	MaxExecutionsPerEval int
+	// ExecutionLimitBackoff is the duration to wait before creating a new evaluation when hitting execution limits
+	ExecutionLimitBackoff time.Duration
+
 	///////////////////////////////
 	// Compute Specific Config
 	///////////////////////////////
@@ -40,6 +47,8 @@ func DefaultSystemConfig() SystemConfig {
 	return SystemConfig{
 		OverSubscriptionFactor:  1.5,
 		NodeRankRandomnessRange: 5,
+		MaxExecutionsPerEval:    20,
+		ExecutionLimitBackoff:   100 * time.Millisecond,
 		DefaultComputeJobResourceLimits: models.Resources{
 			CPU:    0.1,               // 100m
 			Memory: 100 * 1024 * 1024, // 100Mi
@@ -56,6 +65,13 @@ func (c *SystemConfig) applyDefaults() {
 	if c.NodeRankRandomnessRange == 0 {
 		c.NodeRankRandomnessRange = defaults.NodeRankRandomnessRange
 	}
+	if c.MaxExecutionsPerEval == 0 {
+		c.MaxExecutionsPerEval = defaults.MaxExecutionsPerEval
+	}
+	if c.ExecutionLimitBackoff == 0 {
+		c.ExecutionLimitBackoff = defaults.ExecutionLimitBackoff
+	}
+
 	if c.DefaultComputeJobResourceLimits.IsZero() {
 		c.DefaultComputeJobResourceLimits = defaults.DefaultComputeJobResourceLimits
 	}

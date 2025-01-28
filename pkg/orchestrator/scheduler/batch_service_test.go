@@ -261,3 +261,141 @@ func (s *BatchServiceJobSchedulerTestSuite) TestProcess_ShouldPreservePartitionO
 	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
 	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
 }
+
+func (s *BatchServiceJobSchedulerTestSuite) TestProcess_RateLimit_ShouldLimitInitialExecutions() {
+	// Configure rate limiter in scheduler
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(s.jobType),
+		WithCount(4), // Need 4 executions total
+	)
+	s.mockJobStore(scenario)
+
+	// Mock that we have 4 available nodes
+	s.mockMatchingNodes(scenario, "node0", "node1", "node2", "node3")
+
+	// Should only create 2 executions and schedule a delayed evaluation for the rest
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 0},
+			{NodeID: "node1", PartitionIndex: 1},
+		},
+		ExpectedNewEvaluations: []ExpectedEvaluation{
+			{
+				TriggeredBy: models.EvalTriggerExecutionLimit,
+				WaitUntil:   s.clock.Now().Add(5 * time.Second),
+			},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *BatchServiceJobSchedulerTestSuite) TestProcess_RateLimit_ShouldHandleFollowupEvaluations() {
+	// Configure rate limiter in scheduler
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(s.jobType),
+		WithCount(4),
+		// Already have 2 executions from first evaluation
+		WithPartitionedExecution("node0", models.ExecutionStateBidAccepted, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+	)
+	s.mockJobStore(scenario)
+	s.mockAllNodes("node0", "node1", "node2", "node3")
+	s.mockMatchingNodes(scenario, "node2", "node3")
+
+	// Should create remaining 2 executions for partitions 2 and 3
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node2", PartitionIndex: 2},
+			{NodeID: "node3", PartitionIndex: 3},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *BatchServiceJobSchedulerTestSuite) TestProcess_RateLimit_WithUnhealthyNodes() {
+	s.scheduler.rateLimiter = NewBatchRateLimiter(BatchRateLimiterParams{
+		MaxExecutionsPerEval:  2,
+		ExecutionLimitBackoff: 5 * time.Second,
+		Clock:                 s.clock,
+	})
+
+	scenario := NewScenario(
+		WithJobType(s.jobType),
+		WithCount(4),
+		WithPartitionedExecution("node0", models.ExecutionStateAskForBid, 0),
+		WithPartitionedExecution("node1", models.ExecutionStateBidAccepted, 1),
+	)
+	s.mockJobStore(scenario)
+
+	// node0 becomes unhealthy, and we have 3 new nodes available
+	s.mockAllNodes("node1", "node2", "node3", "node4")
+	s.mockMatchingNodes(scenario, "node2", "node3", "node4")
+
+	// Should:
+	// 1. Mark node0's execution as failed
+	// 2. Create 2 new executions (due to rate limit)
+	// 3. Schedule delayed evaluation for the remaining execution
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node2", PartitionIndex: 0}, // Retrying failed partition
+			{NodeID: "node3", PartitionIndex: 2}, // New partition
+		},
+		UpdatedExecutions: []ExecutionStateUpdate{
+			{
+				ExecutionID:  scenario.executions[0].ID,
+				DesiredState: models.ExecutionDesiredStateStopped,
+				ComputeState: models.ExecutionStateFailed,
+			},
+		},
+		ExpectedNewEvaluations: []ExpectedEvaluation{
+			{
+				TriggeredBy: models.EvalTriggerExecutionLimit,
+				WaitUntil:   s.clock.Now().Add(5 * time.Second),
+			},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
+
+func (s *BatchServiceJobSchedulerTestSuite) TestProcess_NoRateLimit_ShouldCreateAllExecutions() {
+	// Use NoopRateLimiter (default)
+	s.scheduler.rateLimiter = NewNoopRateLimiter()
+
+	scenario := NewScenario(
+		WithJobType(s.jobType),
+		WithCount(4),
+	)
+	s.mockJobStore(scenario)
+	s.mockMatchingNodes(scenario, "node0", "node1", "node2", "node3")
+
+	// Should create all 4 executions at once
+	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
+		Evaluation: scenario.evaluation,
+		NewExecutions: []*models.Execution{
+			{NodeID: "node0", PartitionIndex: 0},
+			{NodeID: "node1", PartitionIndex: 1},
+			{NodeID: "node2", PartitionIndex: 2},
+			{NodeID: "node3", PartitionIndex: 3},
+		},
+	})
+	s.planner.EXPECT().Process(gomock.Any(), matcher).Times(1)
+	s.Require().NoError(s.scheduler.Process(context.Background(), scenario.evaluation))
+}
