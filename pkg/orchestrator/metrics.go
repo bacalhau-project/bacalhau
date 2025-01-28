@@ -1,37 +1,15 @@
 package orchestrator
 
 import (
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
 var (
 	Meter = otel.GetMeterProvider().Meter("orchestrator")
-)
-
-// Metrics for monitoring worker
-var (
-	WorkerDequeueFaults = telemetry.Must(Meter.Int64Counter(
-		"worker_dequeue_faults",
-		metric.WithDescription("Number of times a worker failed to dequeue an evaluation"),
-	))
-
-	WorkerProcessFaults = telemetry.Must(Meter.Int64Counter(
-		"worker_process_faults",
-		metric.WithDescription("Number of times a worker failed to process an evaluation"),
-	))
-
-	WorkerAckFaults = telemetry.Must(Meter.Int64Counter(
-		"worker_ack_faults",
-		metric.WithDescription("Number of times a worker failed to ack an evaluation back to the broker"),
-	))
-
-	WorkerNackFaults = telemetry.Must(Meter.Int64Counter(
-		"worker_nack_faults",
-		metric.WithDescription("Number of times a worker failed to nack an evaluation back to the broker"),
-	))
 )
 
 // Metrics for monitoring evaluation broker
@@ -62,6 +40,45 @@ var (
 	))
 )
 
+// Message handler metrics
+var (
+	// Message processing metrics
+	messageHandlerProcessDuration = telemetry.Must(Meter.Float64Histogram(
+		"message.handler.process.duration",
+		metric.WithDescription("Time taken to process a single message"),
+		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(telemetry.DurationMsBuckets...),
+	))
+
+	messageHandlerProcessPartDuration = telemetry.Must(Meter.Float64Histogram(
+		"message.handler.process.part.duration",
+		metric.WithDescription("Time taken for sub-operations within message handling"),
+		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(telemetry.DurationMsBuckets...),
+	))
+
+	messageHandlerProcessCount = telemetry.Must(Meter.Int64Counter(
+		"message.handler.process.count",
+		metric.WithDescription("Number of messages processed"),
+		metric.WithUnit("1"),
+	))
+)
+
+const (
+	AttrEvalType    = "eval_type"
+	AttrMessageType = "message_type"
+
+	AttrPartBeginTx    = "begin_transaction"
+	AttrPartGetJob     = "get_job"
+	AttrPartCommitTx   = "commit_transaction"
+	AttrPartUpdateExec = "update_execution"
+	AttrPartCreateEval = "create_evaluation"
+
+	AttrOutcomeKey     = "outcome"
+	AttrOutcomeSuccess = "success"
+	AttrOutcomeFailure = "failure"
+)
+
 func EvalTypeAttribute(evaluationType string) metric.MeasurementOption {
-	return metric.WithAttributes(attribute.String("eval_type", evaluationType))
+	return metric.WithAttributes(attribute.String(AttrEvalType, evaluationType))
 }
