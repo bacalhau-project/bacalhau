@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"github.com/bacalhau-project/bacalhau/cmd/cli/agent/license"
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
@@ -17,5 +18,6 @@ func NewCmd() *cobra.Command {
 	cmd.AddCommand(NewNodeCmd())
 	cmd.AddCommand(NewVersionCmd())
 	cmd.AddCommand(NewConfigCmd())
+	cmd.AddCommand(license.NewAgentLicenseRootCmd())
 	return cmd
 }

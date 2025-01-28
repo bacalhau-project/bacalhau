@@ -83,6 +83,16 @@ func (r *MetricRecorder) withClock(clock clock.Clock) *MetricRecorder {
 	return r
 }
 
+// Attributes returns the current attributes.
+func (r *MetricRecorder) Attributes() []attribute.KeyValue {
+	return r.attrs
+}
+
+// AttributesOpt returns the current attributes as a slice of options.
+func (r *MetricRecorder) AttributesOpt() metric.MeasurementOption {
+	return metric.WithAttributes(r.attrs...)
+}
+
 // AddAttributes adds attributes for all future measurements.
 func (r *MetricRecorder) AddAttributes(attrs ...attribute.KeyValue) {
 	r.attrs = append(r.attrs, attrs...)
