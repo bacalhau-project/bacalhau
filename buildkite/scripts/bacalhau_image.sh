@@ -11,7 +11,7 @@ docker_login() {
     echo $GHCR_PAT | docker login ghcr.io -u bacalhau-infra-bot --password-stdin
 }
 
-docker_context_create() {
+setup_buildx() {
     docker context create buildx-build
     docker buildx create --use buildx-build
 }
@@ -30,11 +30,11 @@ download_and_extract_artifact() {
 }
 
 download_artifacts() {
+    echo "--- Downloading build artifacts"
     if ! buildkite-agent artifact download "*.*" . --build "$BUILDKITE_BUILD_ID"; then
         echo "Error: Failed to download artifacts from build pipeline" >&2
         exit 1
     fi
-    echo "Downloaded artifacts from build pipeline"
 
     download_and_extract_artifact "amd64"
     download_and_extract_artifact "arm64"
@@ -42,14 +42,14 @@ download_artifacts() {
 
 main() {
     if [ -n "${BUILDKITE_TAG:-}" ]; then
+        echo "=== Building and pushing images for tag: ${BUILDKITE_TAG}"
         set_environment_variables
-        docker_context_create
+        setup_buildx
         download_artifacts
-        make build-bacalhau-image
         docker_login
-        make push-bacalhau-image
+        make push-bacalhau-images
     else
-        echo "Skipping artifact download: BUILDKITE_TAG is not present"
+        echo "Skipping image build: BUILDKITE_TAG is not present"
     fi
 }
 
