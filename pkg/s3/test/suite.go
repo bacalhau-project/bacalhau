@@ -146,16 +146,17 @@ func (s *HelperSuite) GetClient() *s3helper.ClientWrapper {
 }
 
 // PreparePublisherSpec returns a publisher spec with the bucket, prefix, and endpoint.
-func (s *HelperSuite) PreparePublisherSpec(compressed bool) s3helper.PublisherSpec {
+func (s *HelperSuite) PreparePublisherSpec(encoding s3helper.Encoding) s3helper.PublisherSpec {
 	prefix := s.Prefix + uuid.NewString() + "_"
-	if compressed {
-		prefix += "compressed.tar.gz"
+	if encoding == s3helper.EncodingPlain {
+		prefix += "plain/"
 	} else {
-		prefix += "uncompressed/"
+		prefix += "compressed.tar.gz"
 	}
 	return s3helper.PublisherSpec{
 		Bucket:   s.Bucket,
 		Key:      prefix,
+		Encoding: encoding,
 		Region:   s.Region,
 		Endpoint: s.Endpoint,
 	}
@@ -228,8 +229,8 @@ func (s *HelperSuite) PublishResultSilently(execution *models.Execution, resultP
 }
 
 // PrepareAndPublish publishes the resultPath to S3 and returns the published key.
-func (s *HelperSuite) PrepareAndPublish(compressed bool) (models.SpecConfig, string) {
-	publisherConfig := s.PreparePublisherSpec(compressed)
+func (s *HelperSuite) PrepareAndPublish(encoding s3helper.Encoding) (models.SpecConfig, string) {
+	publisherConfig := s.PreparePublisherSpec(encoding)
 	resultPath := s.PrepareResultsPath()
 	execution := s.MockExecution(publisherConfig)
 	storageSpec := s.PublishResultSilently(execution, resultPath)
