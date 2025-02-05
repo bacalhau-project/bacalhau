@@ -32,10 +32,8 @@ func TestParsePublisherSpecConfig(t *testing.T) {
 			expected: &models.SpecConfig{
 				Type: models.PublisherS3,
 				Params: map[string]interface{}{
-					"Bucket":   "myBucket",
-					"Key":      "dir/file-001.txt",
-					"Endpoint": "",
-					"Region":   "",
+					"bucket": "myBucket",
+					"key":    "dir/file-001.txt",
 				},
 			},
 		},
@@ -45,10 +43,22 @@ func TestParsePublisherSpecConfig(t *testing.T) {
 			expected: &models.SpecConfig{
 				Type: models.PublisherS3,
 				Params: map[string]interface{}{
-					"Bucket":   "myBucket",
-					"Key":      "dir/file-001.txt",
-					"Endpoint": "http://127.0.0.1:9000",
-					"Region":   "us-east-1",
+					"bucket":   "myBucket",
+					"key":      "dir/file-001.txt",
+					"endpoint": "http://127.0.0.1:9000",
+					"region":   "us-east-1",
+				},
+			},
+		},
+		{
+			name:  "s3 with encoding",
+			input: "s3://myBucket/dir/file-001.txt,opt=encoding=plain",
+			expected: &models.SpecConfig{
+				Type: models.PublisherS3,
+				Params: map[string]interface{}{
+					"bucket":   "myBucket",
+					"key":      "dir/file-001.txt",
+					"encoding": "plain",
 				},
 			},
 		},
@@ -58,10 +68,9 @@ func TestParsePublisherSpecConfig(t *testing.T) {
 			expected: &models.SpecConfig{
 				Type: models.PublisherS3,
 				Params: map[string]interface{}{
-					"Bucket":   "myBucket",
-					"Key":      "dir/file-001.txt",
-					"Region":   "us-east-1",
-					"Endpoint": "",
+					"bucket": "myBucket",
+					"key":    "dir/file-001.txt",
+					"region": "us-east-1",
 				},
 			},
 		},

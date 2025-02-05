@@ -11,7 +11,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_ipfs "github.com/bacalhau-project/bacalhau/pkg/publisher/ipfs"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
-	publisher_s3 "github.com/bacalhau-project/bacalhau/pkg/s3"
 )
 
 // compile-time check to ensure type implements the flag.Value interface
@@ -101,30 +100,23 @@ func publisherStringToSpecConfig(destinationURI string, options map[string]strin
 	case "ipfs":
 		res = publisher_ipfs.NewSpecConfig()
 	case "s3":
-		var bucket, key string
-		var opts []publisher_s3.PublisherOption
-		if _, ok := options["bucket"]; !ok {
-			bucket = parsedURI.Host
-		} else {
-			bucket = options["bucket"]
+		// copy all options to params
+		params := map[string]interface{}{}
+		for k, v := range options {
+			params[k] = v
 		}
-		if _, ok := options["key"]; !ok {
-			key = strings.TrimLeft(parsedURI.Path, "/")
-		} else {
-			key = options["key"]
+
+		// parse bucket and key from URI if not provided in options
+		if _, ok := params["bucket"]; !ok {
+			params["bucket"] = parsedURI.Host
 		}
-		region, ok := options["region"]
-		if ok {
-			opts = append(opts, publisher_s3.WithPublisherRegion(region))
+		if _, ok := params["key"]; !ok {
+			params["key"] = strings.TrimLeft(parsedURI.Path, "/")
 		}
-		endpoint, ok := options["endpoint"]
-		if ok {
-			opts = append(opts, publisher_s3.WithPublisherEndpoint(endpoint))
-		}
-		res, err = publisher_s3.NewPublisherSpec(bucket, key, opts...)
-		if err != nil {
-			return nil, err
-		}
+		return &models.SpecConfig{
+			Type:   models.PublisherS3,
+			Params: params,
+		}, nil
 	case "local":
 		res = publisher_local.NewSpecConfig()
 	default:
