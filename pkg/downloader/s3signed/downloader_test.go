@@ -54,7 +54,7 @@ func (s *DownloaderTestSuite) TestIsInstalled() {
 }
 
 func (s *DownloaderTestSuite) TestDownloadCompressed() {
-	storageSpec, resultPath := s.PrepareAndPublish(true)
+	storageSpec, resultPath := s.PrepareAndPublish(s3helper.EncodingGzip)
 	s.T().Log(resultPath)
 
 	// get pre-signed url
@@ -77,4 +77,23 @@ func (s *DownloaderTestSuite) TestDownloadCompressed() {
 	s.Require().NoError(gzip.Decompress(downloadedFile, decompressedPath))
 
 	s3test.AssertEqualDirectories(s.T(), resultPath, decompressedPath)
+}
+
+func (s *DownloaderTestSuite) TestDownloadUncompressed() {
+	storageSpec, resultPath := s.PrepareAndPublish(s3helper.EncodingPlain)
+	s.T().Log(resultPath)
+
+	// get a non-signed url
+	s.Require().NoError(s.signer.Transform(s.Ctx, &storageSpec))
+	s.Require().Equal(models.StorageSourceS3, storageSpec.Type)
+
+	// download signed url
+	downloadParentPath, err := os.MkdirTemp(s.TempDir, "")
+	s.Require().NoError(err)
+
+	_, err = s.downloader.FetchResult(s.Ctx, downloader.DownloadItem{
+		Result:     &storageSpec,
+		ParentPath: downloadParentPath,
+	})
+	s.Require().Error(err)
 }
