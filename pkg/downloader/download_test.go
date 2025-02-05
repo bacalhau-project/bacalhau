@@ -138,7 +138,7 @@ func publishToIPFS(ds *DownloaderSuite, dir string) *models.SpecConfig {
 
 // Publish to S3
 func publishToS3(ds *DownloaderSuite, dir string) *models.SpecConfig {
-	publisherSpec := ds.PreparePublisherSpec(true)
+	publisherSpec := ds.PreparePublisherSpec(s3helper.EncodingGzip)
 	execution := ds.MockExecution(publisherSpec)
 	storageSpec := ds.PublishResultSilently(execution, dir)
 	ds.Require().NoError(ds.s3Signer.Transform(ds.Ctx, &storageSpec))
@@ -146,7 +146,7 @@ func publishToS3(ds *DownloaderSuite, dir string) *models.SpecConfig {
 }
 
 func publishToS3Unsigned(ds *DownloaderSuite, dir string) *models.SpecConfig {
-	publisherSpec := ds.PreparePublisherSpec(false)
+	publisherSpec := ds.PreparePublisherSpec(s3helper.EncodingGzip)
 	execution := ds.MockExecution(publisherSpec)
 	storageSpec := ds.PublishResultSilently(execution, dir)
 	return &storageSpec
