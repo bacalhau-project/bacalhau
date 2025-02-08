@@ -33,24 +33,23 @@ start_docker_daemon() {
     DOCKERD_PID=$!
     
     # Wait for initialization
-    ELAPSED=0
-    while [ $ELAPSED -lt $TIMEOUT ]; do
+    start_time=$(date +%s)
+    while [ $(( $(date +%s) - start_time )) -lt $TIMEOUT ]; do
         if docker info >/dev/null 2>&1; then
             echo "Docker daemon is ready"
             return 0
         fi
-        
-        # Check if dockerd is still running
+
         if ! kill -0 $DOCKERD_PID 2>/dev/null; then
             echo "Docker daemon process died during attempt $ATTEMPT"
             echo "Docker daemon logs:"
             cat /var/log/dockerd.log
             return 1
         fi
-        
-        echo "Waiting for Docker daemon... ($ELAPSED/$TIMEOUT seconds)"
+
+        elapsed_time=$(( $(date +%s) - start_time ))
+        echo "Waiting for Docker daemon... (${elapsed_time}/${TIMEOUT} seconds)"
         sleep 0.5
-        ELAPSED=$((ELAPSED + 1))
     done
     
     echo "Docker daemon failed to start within timeout"
