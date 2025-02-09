@@ -158,6 +158,9 @@ var testOverrides = types.Bacalhau{
 		Heartbeat: types.Heartbeat{
 			Interval: 5 * types.Second,
 		},
+		Env: types.EnvConfig{
+			AllowList: []string{"TEST_*"}, // Allow only TEST_* environment variables to be forwarded
+		},
 	},
 	Publishers: types.PublishersConfig{
 		Types: types.PublisherTypes{

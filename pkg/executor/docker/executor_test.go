@@ -172,7 +172,7 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 			Inputs:       nil,
 			ResultsDir:   result,
 			EngineParams: spec.Engine,
-			Env:          spec.Env,
+			Env:          models.EnvVarsToStringMap(spec.Env),
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
 				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -582,14 +582,14 @@ func (s *ExecutorTestSuite) TestDockerOOM() {
 func (s *ExecutorTestSuite) TestDockerEnvironmentVariables() {
 	tests := []struct {
 		name      string
-		taskEnv   map[string]string
+		taskEnv   map[string]models.EnvVarValue
 		engineEnv []string
 		checkVars []string // variables to check in order
 		want      string
 	}{
 		{
 			name: "task environment variables",
-			taskEnv: map[string]string{
+			taskEnv: map[string]models.EnvVarValue{
 				"TEST_VAR":    "test_value",
 				"ANOTHER_VAR": "another_value",
 			},
@@ -607,7 +607,7 @@ func (s *ExecutorTestSuite) TestDockerEnvironmentVariables() {
 		},
 		{
 			name: "merged environment variables with engine precedence",
-			taskEnv: map[string]string{
+			taskEnv: map[string]models.EnvVarValue{
 				"TEST_VAR": "task_value",
 				"TASK_VAR": "task_only",
 			},
