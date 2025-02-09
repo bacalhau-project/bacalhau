@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity/disk"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/env"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/sensors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -99,6 +100,11 @@ func NewComputeNode(
 		return nil, err
 	}
 
+	// Create environment variable resolver to be used by both bidder and executor
+	envResolver := env.NewResolver(env.ResolverParams{
+		AllowList: cfg.BacalhauConfig.Compute.Env.AllowList,
+	})
+
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     cfg.NodeID,
 		Store:                  executionStore,
@@ -108,6 +114,7 @@ func NewComputeNode(
 		Publishers:             publishers,
 		FailureInjectionConfig: cfg.FailureInjectionConfig,
 		ResultsPath:            *resultsPath,
+		EnvResolver:            envResolver,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -147,6 +154,7 @@ func NewComputeNode(
 		executors,
 		executionStore,
 		capacityCalculator,
+		envResolver,
 	)
 	baseEndpoint := compute.NewBaseEndpoint(compute.BaseEndpointParams{
 		ExecutionStore: executionStore,
@@ -293,6 +301,7 @@ func NewBidder(
 	executors executor.ExecProvider,
 	executionStore store.ExecutionStore,
 	calculator capacity.UsageCalculator,
+	envResolver compute.EnvVarResolver,
 ) compute.Bidder {
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if cfg.SystemConfig.BidSemanticStrategy == nil {
@@ -317,6 +326,9 @@ func NewBidder(
 				URL: cfg.BacalhauConfig.JobAdmissionControl.ProbeHTTP,
 			}),
 			executor_util.NewExecutorSpecificBidStrategy(executors),
+			semantic.NewEnvResolverStrategy(semantic.EnvResolverStrategyParams{
+				Resolver: envResolver,
+			}),
 		}
 	} else {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{cfg.SystemConfig.BidSemanticStrategy}

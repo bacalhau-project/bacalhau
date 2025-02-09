@@ -2226,7 +2226,7 @@
                     "$ref": "#/definitions/models.SpecConfig"
                 },
                 "Env": {
-                    "description": "Map of environment variables to be used by the driver",
+                    "description": "Map of environment variables to be used by the driver.\nValues can be:\n- Direct value: \"debug-mode\"\n- Host env var: \"env:HOST_VAR\"",
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
@@ -2527,6 +2527,14 @@
                     "description": "Enabled indicates whether the compute node is active and available for job execution.",
                     "type": "boolean"
                 },
+                "Env": {
+                    "description": "Env specifies environment variable configuration for the compute node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.EnvConfig"
+                        }
+                    ]
+                },
                 "Heartbeat": {
                     "$ref": "#/definitions/types.Heartbeat"
                 },
@@ -2638,6 +2646,18 @@
                 },
                 "WASM": {
                     "$ref": "#/definitions/types.WASM"
+                }
+            }
+        },
+        "types.EnvConfig": {
+            "type": "object",
+            "properties": {
+                "AllowList": {
+                    "description": "AllowList specifies which host environment variables can be forwarded to jobs.\nSupports glob patterns (e.g., \"AWS_*\", \"API_*\")",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

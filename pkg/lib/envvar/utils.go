@@ -6,7 +6,17 @@ import (
 	"unicode"
 
 	"golang.org/x/exp/maps"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
+
+func FromEnvVarValues(env map[string]models.EnvVarValue) map[string]string {
+	envMap := make(map[string]string)
+	for k, v := range env {
+		envMap[k] = string(v)
+	}
+	return envMap
+}
 
 // ToSlice converts a map of environment variables to a slice of KEY=VALUE strings
 func ToSlice(env map[string]string) []string {

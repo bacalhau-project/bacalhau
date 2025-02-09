@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
+	"github.com/bacalhau-project/bacalhau/pkg/compute/env"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
@@ -88,7 +89,19 @@ func RunTestCase(
 	resultsDirectory := t.TempDir()
 	storageProvider := stack.Nodes[0].ComputeNode.Storages
 
-	runCommandArguments, cleanup, err := compute.PrepareRunArguments(ctx, storageProvider, t.TempDir(), execution, resultsDirectory)
+	// Create a permissive env resolver for testing
+	envResolver := env.NewResolver(env.ResolverParams{
+		AllowList: []string{"TEST_*"}, // Allow only TEST_* environment variables to be forwarded
+	})
+
+	runCommandArguments, cleanup, err := compute.PrepareRunArguments(
+		ctx,
+		storageProvider,
+		t.TempDir(),
+		execution,
+		resultsDirectory,
+		envResolver,
+	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := cleanup(ctx); err != nil {
