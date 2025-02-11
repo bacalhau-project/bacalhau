@@ -40,6 +40,7 @@
 - [Table of Contents](#table-of-contents)
 - [Why Bacalhau?](#why-bacalhau)
 - [Getting started - Bacalhau in 1 minute](#getting-started---bacalhau-in-1-minute)
+- [Getting Started with Bacalhau in 1 minute With Containers](#getting-started-with-bacalhau-in-1-minute-with-containers)
   - [Learn more](#learn-more)
 - [Documentation](#documentation)
 - [Developers guide](#developers-guide)
@@ -82,6 +83,55 @@ bacalhau get 63d08ff0..... # make sure to use the right job id from the docker r
 ![](docs/static/img/terminal.gif)
 
 For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
+
+## Getting Started with Bacalhau in 1 minute With Containers
+
+The Bacalhau team manages and maintains containers for making it easier to get started with Bacalhau.
+
+You can find all the containers we support [here](https://github.com/bacalhau-project/bacalhau/pkgs/container/bacalhau).
+
+To use a container, you can use the following command with Docker:
+
+```bash
+docker run ghcr.io/bacalhau-project/bacalhau:latest
+```
+
+This will start a container with Bacalhau already installed.
+
+If you would like to enable these containers to use docker workloads, use the Docker-in-Docker (DinD) container.
+
+```bash
+docker run ghcr.io/bacalhau-project/bacalhau:latest-dind:latest
+```
+
+Additionally, if you would like to use a specific configuration file, you can use the following command:
+
+```bash
+docker run -v $(pwd)/config.yaml:/etc/bacalhau/config.yaml ghcr.io/bacalhau-project/bacalhau:latest-dind:latest
+```
+
+Your config file can contain any configuration options that you would normally pass to the `bacalhau` command line tool. For example:
+
+```yaml
+# config.yaml
+NameProvider: puuid
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://EXAMPLE-7a02-4083-bf08-bcc2f5fbc025.us1.dev-cloud.expanso.dev:4222
+  Auth:
+    Token: "EXAMPLEaEEFukWVffnf5jb9QkpNnwfiBWEk3475csM7ysudpbFTzYBap5c7sWr6"
+  TLS:
+    RequireTLS: true
+  AllowListedLocalPaths:
+    - /my_data:rw
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
+```
+
+You can find more information about the different configuration options in the [Bacalhau docs](https://docs.bacalhau.org/guides/write-a-config.yaml).
 
 ### Learn more
 - Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
