@@ -98,13 +98,13 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 		// our function that will "execute the job"
 		// record time stamps of start and end
 		// sleep for a bit to simulate real work happening
-		jobHandler := func(_ context.Context, jobID string, _ string) (*models.RunCommandResult, error) {
+		jobHandler := func(_ context.Context, execContext noop_executor.ExecutionContext) (*models.RunCommandResult, error) {
 			currentJobCount++
 			if currentJobCount > maxJobCount {
 				maxJobCount = currentJobCount
 			}
 			seenJob := SeenJobRecord{
-				Id:          jobID,
+				Id:          execContext.JobID,
 				Start:       time.Now().Unix() - epochSeconds,
 				CurrentJobs: currentJobCount,
 				MaxJobs:     maxJobCount,
@@ -290,7 +290,7 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	// the job needs to hang for a period of time so the other job will
 	// run on another node
-	jobHandler := func(_ context.Context, _ string, _ string) (*models.RunCommandResult, error) {
+	jobHandler := func(_ context.Context, _ noop_executor.ExecutionContext) (*models.RunCommandResult, error) {
 		time.Sleep(time.Millisecond * 1000)
 		seenJobs++
 		return &models.RunCommandResult{}, nil

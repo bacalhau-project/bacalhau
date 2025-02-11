@@ -8,7 +8,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/cols"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/collections"
@@ -16,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/util/idgen"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -25,11 +24,11 @@ import (
 )
 
 var (
-	describeLong = templates.LongDesc(i18n.T(`
+	describeLong = templates.LongDesc(`
 		Full description of a job, in yaml format.
 		Use 'bacalhau job list' to get a list of jobs.
-`))
-	describeExample = templates.Examples(i18n.T(`
+`)
+	describeExample = templates.Examples(`
 		# Describe a job with the full ID
 		bacalhau job describe j-e3f8c209-d683-4a41-b840-f09b88d087b9
 
@@ -38,7 +37,7 @@ var (
 
 		# Describe a job with json output
 		bacalhau job describe --output json --pretty j-b6ad164a
-`))
+`)
 )
 
 // DescribeOptions is a struct to support job command

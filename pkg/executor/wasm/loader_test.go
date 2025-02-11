@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/easter"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
@@ -23,7 +24,7 @@ func prepareModule(t *testing.T, alias string, program []byte) storage.PreparedS
 	store := inline.NewStorage()
 	spec := store.StoreBytes(program)
 	inputSource := models.InputSource{Source: &spec, Alias: alias, Target: "/" + uuid.NewString()}
-	preparedVolume, err := store.PrepareStorage(context.Background(), t.TempDir(), inputSource)
+	preparedVolume, err := store.PrepareStorage(context.Background(), t.TempDir(), mock.Execution(), inputSource)
 	require.NoError(t, err)
 
 	return storage.PreparedStorage{

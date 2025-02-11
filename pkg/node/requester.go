@@ -95,11 +95,14 @@ func NewRequesterNode(
 	// planners that execute the proposed plan by the scheduler
 	// order of the planners is important as they are executed in order
 	planners := planner.NewChain(
-		// planner that persist the desired state as defined by the scheduler
-		planner.NewStateUpdater(jobStore),
-
 		// logs job completion or failure
 		planner.NewLoggingPlanner(),
+
+		// metrics planner
+		planner.NewMetricsPlanner(),
+
+		// planner that persist the desired state as defined by the scheduler
+		planner.NewStateUpdater(jobStore),
 	)
 
 	retryStrategy := cfg.SystemConfig.RetryStrategy
@@ -136,6 +139,11 @@ func NewRequesterNode(
 		},
 	)
 
+	executionRateLimiter := scheduler.NewBatchRateLimiter(scheduler.BatchRateLimiterParams{
+		MaxExecutionsPerEval:  cfg.SystemConfig.MaxExecutionsPerEval,
+		ExecutionLimitBackoff: cfg.SystemConfig.ExecutionLimitBackoff,
+	})
+
 	// scheduler provider
 	batchServiceJobScheduler := scheduler.NewBatchServiceJobScheduler(scheduler.BatchServiceJobSchedulerParams{
 		JobStore:      jobStore,
@@ -143,6 +151,7 @@ func NewRequesterNode(
 		NodeSelector:  nodeSelector,
 		RetryStrategy: retryStrategy,
 		QueueBackoff:  cfg.BacalhauConfig.Orchestrator.Scheduler.QueueBackoff.AsTimeDuration(),
+		RateLimiter:   executionRateLimiter,
 	})
 	schedulerProvider := orchestrator.NewMappedSchedulerProvider(map[string]orchestrator.Scheduler{
 		models.JobTypeBatch:   batchServiceJobScheduler,
@@ -151,11 +160,13 @@ func NewRequesterNode(
 			JobStore:     jobStore,
 			Planner:      planners,
 			NodeSelector: nodeSelector,
+			RateLimiter:  executionRateLimiter,
 		}),
 		models.JobTypeDaemon: scheduler.NewDaemonJobScheduler(scheduler.DaemonJobSchedulerParams{
 			JobStore:     jobStore,
 			Planner:      planners,
 			NodeSelector: nodeSelector,
+			RateLimiter:  executionRateLimiter,
 		}),
 	})
 
@@ -439,21 +450,6 @@ func setupOrchestratorWatchers(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup orchestrator logger watcher: %w", err)
-	}
-
-	// Set up execution canceller watcher
-	_, err = watcherRegistry.Create(ctx, orchestratorExecutionCancellerWatcherID,
-		watcher.WithHandler(watchers.NewExecutionCanceller(jobStore)),
-		watcher.WithAutoStart(),
-		watcher.WithInitialEventIterator(watcher.LatestIterator()),
-		watcher.WithRetryStrategy(watcher.RetryStrategySkip),
-		watcher.WithMaxRetries(3),
-		watcher.WithFilter(watcher.EventFilter{
-			ObjectTypes: []string{jobstore.EventObjectExecutionUpsert},
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup orchestrator canceller watcher: %w", err)
 	}
 
 	return watcherRegistry, nil

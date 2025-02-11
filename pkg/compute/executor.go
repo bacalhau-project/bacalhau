@@ -32,6 +32,7 @@ type BaseExecutorParams struct {
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
 	FailureInjectionConfig models.FailureInjectionConfig
+	EnvResolver            EnvVarResolver
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -45,6 +46,7 @@ type BaseExecutor struct {
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
 	failureInjection models.FailureInjectionConfig
+	envResolver      EnvVarResolver
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -57,16 +59,19 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		publishers:       params.Publishers,
 		failureInjection: params.FailureInjectionConfig,
 		resultsPath:      params.ResultsPath,
+		envResolver:      params.EnvResolver,
 	}
 }
 
 func prepareInputVolumes(
 	ctx context.Context,
 	storageProvider storage.StorageProvider,
-	storageDirectory string, inputSources ...*models.InputSource) (
+	storageDirectory string,
+	execution *models.Execution) (
 	[]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	inputVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, inputSources...)
+	inputVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,15 +83,19 @@ func prepareInputVolumes(
 func prepareWasmVolumes(
 	ctx context.Context,
 	storageProvider storage.StorageProvider,
-	storageDirectory string, wasmEngine wasmmodels.EngineSpec) (
+	storageDirectory string,
+	execution *models.Execution,
+	wasmEngine wasmmodels.EngineSpec) (
 	map[string][]storage.PreparedStorage, func(context.Context) error, error,
 ) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.ImportModules...)
+	importModuleVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(ctx, storageProvider, storageDirectory, wasmEngine.EntryModule)
+	entryModuleVolumes, err := storage.ParallelPrepareStorage(
+		ctx, storageProvider, storageDirectory, execution, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -127,10 +136,11 @@ func PrepareRunArguments(
 	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
+	envResolver EnvVarResolver,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution.Job.Task().InputSources...)
+	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -159,7 +169,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, wasmEngine)
+		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, execution, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -174,6 +184,11 @@ func PrepareRunArguments(
 		engineArgs = execution.Job.Task().Engine
 	}
 
+	env, err := GetExecutionEnvVars(execution, envResolver)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
+	}
+
 	return &executor.RunCommandRequest{
 			JobID:        execution.Job.ID,
 			ExecutionID:  execution.ID,
@@ -183,6 +198,7 @@ func PrepareRunArguments(
 			Inputs:       inputVolumes,
 			ResultsDir:   resultsDir,
 			EngineParams: engineArgs,
+			Env:          env,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
 				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -234,7 +250,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder, e.envResolver)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)

@@ -21,6 +21,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/envvar"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	pkgUtil "github.com/bacalhau-project/bacalhau/pkg/util"
@@ -137,16 +138,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 			}
 		}
 
-		jobContainer, err := e.newDockerJobContainer(ctx, &dockerJobContainerParams{
-			ExecutionID:   request.ExecutionID,
-			JobID:         request.JobID,
-			EngineSpec:    request.EngineParams,
-			NetworkConfig: request.Network,
-			Resources:     request.Resources,
-			Inputs:        request.Inputs,
-			Outputs:       request.Outputs,
-			ResultsDir:    request.ResultsDir,
-		})
+		jobContainer, err := e.newDockerJobContainer(ctx, request)
 		if err != nil {
 			return err
 		}
@@ -309,32 +301,28 @@ func (e *Executor) Run(
 	}
 }
 
-type dockerJobContainerParams struct {
-	ExecutionID   string
-	JobID         string
-	EngineSpec    *models.SpecConfig
-	NetworkConfig *models.NetworkConfig
-	Resources     *models.Resources
-	Inputs        []storage.PreparedStorage
-	Outputs       []*models.ResultPath
-	ResultsDir    string
-}
-
 // newDockerJobContainer is an internal method called by Start to set up a new Docker container
 // for the job execution. It configures the container based on the provided dockerJobContainerParams.
 // This includes decoding engine specifications, setting up environment variables, mounts, resource
 // constraints, and network configurations. It then creates the container but does not start it.
 // The method returns a container.CreateResponse and an error if any part of the setup fails.
-func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobContainerParams) (container.CreateResponse, error) {
+func (e *Executor) newDockerJobContainer(ctx context.Context, params *executor.RunCommandRequest) (container.CreateResponse, error) {
 	// decode the request arguments, bail if they are invalid.
-	dockerArgs, err := dockermodels.DecodeSpec(params.EngineSpec)
+	dockerArgs, err := dockermodels.DecodeSpec(params.EngineParams)
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("decoding engine spec: %w", err)
 	}
+
+	// merge both the job level and engine level environment variables
+	envVars := envvar.MergeSlices(
+		envvar.ToSlice(params.Env),
+		dockerArgs.EnvironmentVariables,
+	)
+
 	containerConfig := &container.Config{
 		Image:      dockerArgs.Image,
 		Tty:        false,
-		Env:        dockerArgs.EnvironmentVariables,
+		Env:        envVars,
 		Entrypoint: dockerArgs.Entrypoint,
 		Cmd:        dockerArgs.Parameters,
 		Labels:     e.containerLabels(params.ExecutionID, params.JobID),
@@ -379,7 +367,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *dockerJobC
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 	// Create a network if the job requests it, modifying the containerConfig and hostConfig.
-	err = e.setupNetworkForJob(ctx, params.JobID, params.ExecutionID, params.NetworkConfig, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, params.JobID, params.ExecutionID, params.Network, containerConfig, hostConfig)
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("setting up network: %w", err)
 	}

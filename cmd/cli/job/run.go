@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -12,7 +11,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -21,13 +20,14 @@ import (
 )
 
 var (
-	runLong = templates.LongDesc(i18n.T(`
+	runLong = templates.LongDesc(`
 		Run a job from a file or from stdin.
 
 		JSON and YAML formats are accepted.
-	`))
+	`)
+
 	//nolint:lll // Documentation
-	runExample = templates.Examples(i18n.T(`
+	runExample = templates.Examples(`
 		# Run a job using the data in job.yaml
 		bacalhau job run ./job.yaml
 
@@ -35,7 +35,7 @@ var (
 		bacalhau job describe 6e51df50 | bacalhau job run
 
 		# Download the 
-		`))
+		`)
 )
 
 type RunOptions struct {

@@ -13,9 +13,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -36,17 +35,17 @@ import (
 )
 
 var (
-	wasmRunLong = templates.LongDesc(i18n.T(`
+	wasmRunLong = templates.LongDesc(`
 		Runs a job that was compiled to WASM
-		`))
+		`)
 
-	wasmRunExample = templates.Examples(i18n.T(`
+	wasmRunExample = templates.Examples(`
 		# Runs the <localfile.wasm> module in bacalhau
 		bacalhau wasm run <localfile.wasm>
 
 		# Fetches the wasm module from <cid> and executes it.
 		bacalhau wasm run <cid>
-		`))
+		`)
 )
 
 type WasmRunOptions struct {

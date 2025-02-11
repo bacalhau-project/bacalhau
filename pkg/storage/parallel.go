@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type PreparedStorage struct {
@@ -21,7 +22,8 @@ func ParallelPrepareStorage(
 	ctx context.Context,
 	provider StorageProvider,
 	storageDirectory string,
-	specs ...*models.InputSource,
+	execution *models.Execution,
+	inputs ...*models.InputSource,
 ) ([]PreparedStorage, error) {
 	waitgroup := multierrgroup.Group{}
 
@@ -31,7 +33,7 @@ func ParallelPrepareStorage(
 			return err
 		}
 
-		volumeMount, err := storageProvider.PrepareStorage(ctx, storageDirectory, input)
+		volumeMount, err := storageProvider.PrepareStorage(ctx, storageDirectory, execution, input)
 		if err != nil {
 			return err
 		}
@@ -43,8 +45,8 @@ func ParallelPrepareStorage(
 		return nil
 	}
 
-	out := make([]PreparedStorage, len(specs))
-	for i, spec := range specs {
+	out := make([]PreparedStorage, len(inputs))
+	for i, spec := range inputs {
 		// NB: https://golang.org/doc/faq#closures_and_goroutines
 		index := i
 		input := spec

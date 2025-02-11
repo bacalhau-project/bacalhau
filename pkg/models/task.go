@@ -18,8 +18,11 @@ type Task struct {
 
 	Publisher *SpecConfig `json:"Publisher"`
 
-	// Map of environment variables to be used by the driver
-	Env map[string]string `json:"Env,omitempty"`
+	// Map of environment variables to be used by the driver.
+	// Values can be:
+	// - Direct value: "debug-mode"
+	// - Host env var: "env:HOST_VAR"
+	Env map[string]EnvVarValue `json:"Env,omitempty"`
 
 	// Meta is used to associate arbitrary metadata with this task.
 	Meta map[string]string `json:"Meta,omitempty"`
@@ -53,7 +56,7 @@ func (t *Task) Normalize() {
 		t.Meta = make(map[string]string)
 	}
 	if t.Env == nil {
-		t.Env = make(map[string]string)
+		t.Env = make(map[string]EnvVarValue)
 	}
 	if t.InputSources == nil {
 		t.InputSources = make([]*InputSource, 0)
@@ -122,6 +125,7 @@ func (t *Task) ValidateSubmission() error {
 	mErr := errors.Join(
 		validate.NotBlank(t.Name, "missing task name"),
 		validate.NoNullChars(t.Name, "task name cannot contain null characters"),
+		ValidateEnvVars(t.Env),
 	)
 
 	if err := t.Engine.Validate(); err != nil {
@@ -143,43 +147,55 @@ func (t *Task) ValidateSubmission() error {
 		mErr = errors.Join(mErr, fmt.Errorf("output validation failed: %v", err))
 	}
 
-	// Check for collisions in input sources
+	if err := t.validateInputSources(); err != nil {
+		mErr = errors.Join(mErr, err)
+	}
+
+	if err := t.validateResultPaths(); err != nil {
+		mErr = errors.Join(mErr, err)
+	}
+
+	return mErr
+}
+
+func (t *Task) validateInputSources() error {
 	seenInputAliases := make(map[string]bool)
 	seenInputTargets := make(map[string]bool)
 	for _, input := range t.InputSources {
 		if input.Alias != "" {
 			if seenInputAliases[input.Alias] {
-				mErr = errors.Join(mErr, fmt.Errorf("input source with alias '%s' already exists", input.Alias))
+				return fmt.Errorf("input source with alias '%s' already exists", input.Alias)
 			}
 			seenInputAliases[input.Alias] = true
 		}
 		if input.Target != "" {
 			if seenInputTargets[input.Target] {
-				mErr = errors.Join(mErr, fmt.Errorf("input source with target '%s' already exists", input.Target))
+				return fmt.Errorf("input source with target '%s' already exists", input.Target)
 			}
 			seenInputTargets[input.Target] = true
 		}
 	}
+	return nil
+}
 
-	// Check for collisions in result paths
+func (t *Task) validateResultPaths() error {
 	seenResultNames := make(map[string]bool)
 	seenResultPaths := make(map[string]bool)
 	for _, result := range t.ResultPaths {
 		if result.Name != "" {
 			if seenResultNames[result.Name] {
-				mErr = errors.Join(mErr, fmt.Errorf("result path with name '%s' already exists", result.Name))
+				return fmt.Errorf("result path with name '%s' already exists", result.Name)
 			}
 			seenResultNames[result.Name] = true
 		}
 		if result.Path != "" {
 			if seenResultPaths[result.Path] {
-				mErr = errors.Join(mErr, fmt.Errorf("result path '%s' already exists", result.Path))
+				return fmt.Errorf("result path '%s' already exists", result.Path)
 			}
 			seenResultPaths[result.Path] = true
 		}
 	}
-
-	return mErr
+	return nil
 }
 
 func (t *Task) AllStorageTypes() []string {

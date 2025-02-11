@@ -2,9 +2,8 @@ package job
 
 import (
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/marshaller"
@@ -12,17 +11,17 @@ import (
 )
 
 var (
-	validateLong = templates.LongDesc(i18n.T(`
+	validateLong = templates.LongDesc(`
 		Validate a job from a file
 		JSON and YAML formats are accepted.
 		Job Specification: https://docs.bacalhau.org/setting-up/jobs/job
-`))
+`)
 
 	//nolint:lll // Documentation
-	validateExample = templates.Examples(i18n.T(`
+	validateExample = templates.Examples(`
 		# Validate a job using the data in job.yaml
 		bacalhau job validate ./job.yaml
-`))
+`)
 )
 
 const JobSpecLink = "https://docs.bacalhau.org/setting-up/jobs/job"

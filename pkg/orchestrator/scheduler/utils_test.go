@@ -41,6 +41,26 @@ func WithExecution(nodeID string, state models.ExecutionStateType) ScenarioBuild
 	}
 }
 
+func WithPartitionedExecution(nodeID string, state models.ExecutionStateType, partitionIndex int) ScenarioBuilderOption {
+	return func(b *Scenario) {
+		execution := mock.ExecutionForJob(b.job)
+		execution.NodeID = nodeID
+		execution.ComputeState = models.NewExecutionState(state)
+		execution.PartitionIndex = partitionIndex
+		b.executions = append(b.executions, *execution)
+	}
+}
+
+// WithDesiredState sets the desired state of the latest execution added to the scenario.
+func WithDesiredState(state models.ExecutionDesiredStateType) ScenarioBuilderOption {
+	return func(b *Scenario) {
+		if len(b.executions) == 0 {
+			panic("no executions to set desired state")
+		}
+		b.executions[len(b.executions)-1].DesiredState = models.NewExecutionDesiredState(state)
+	}
+}
+
 func WithQueueTimeout(timeout time.Duration) ScenarioBuilderOption {
 	return func(b *Scenario) {
 		b.job.Task().Timeouts.QueueTimeout = int64(timeout.Seconds())
@@ -129,38 +149,38 @@ func (e ExpectedEvaluation) Match(t *testing.T, SourceEval, ObservedEval *models
 	return true
 }
 
+type ExecutionStateUpdate struct {
+	ExecutionID  string
+	DesiredState models.ExecutionDesiredStateType
+	ComputeState models.ExecutionStateType
+}
+
 type PlanMatcher struct {
-	t                         *testing.T
-	JobState                  models.JobStateType
-	Evaluation                *models.Evaluation
-	NewExecutionsNodes        []string
-	NewExecutionsDesiredState models.ExecutionDesiredStateType
-	StoppedExecutions         []string
-	ApprovedExecutions        []string
-	NewEvaluations            []ExpectedEvaluation
+	t                 *testing.T
+	JobState          models.JobStateType
+	Evaluation        *models.Evaluation
+	NewExecutions     []*models.Execution
+	UpdatedExecutions []ExecutionStateUpdate
+	NewEvaluations    []ExpectedEvaluation
 }
 
 type PlanMatcherParams struct {
-	JobState                 models.JobStateType
-	Evaluation               *models.Evaluation
-	NewExecutionsNodes       []string
-	NewExecutionDesiredState models.ExecutionDesiredStateType
-	StoppedExecutions        []string
-	ApprovedExecutions       []string
-	ExpectedNewEvaluations   []ExpectedEvaluation
+	JobState               models.JobStateType
+	Evaluation             *models.Evaluation
+	NewExecutions          []*models.Execution
+	UpdatedExecutions      []ExecutionStateUpdate
+	ExpectedNewEvaluations []ExpectedEvaluation
 }
 
 // NewPlanMatcher returns a PlanMatcher with the given parameters.
 func NewPlanMatcher(t *testing.T, params PlanMatcherParams) PlanMatcher {
 	return PlanMatcher{
-		t:                         t,
-		JobState:                  params.JobState,
-		Evaluation:                params.Evaluation,
-		NewExecutionsNodes:        params.NewExecutionsNodes,
-		NewExecutionsDesiredState: params.NewExecutionDesiredState,
-		StoppedExecutions:         params.StoppedExecutions,
-		ApprovedExecutions:        params.ApprovedExecutions,
-		NewEvaluations:            params.ExpectedNewEvaluations,
+		t:                 t,
+		JobState:          params.JobState,
+		Evaluation:        params.Evaluation,
+		NewExecutions:     params.NewExecutions,
+		UpdatedExecutions: params.UpdatedExecutions,
+		NewEvaluations:    params.ExpectedNewEvaluations,
 	}
 }
 
@@ -179,58 +199,69 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 		return false
 	}
 
-	// check new executions match the expected nodes
-	newExecutionNodes := make(map[string]models.ExecutionDesiredStateType)
+	// If NewExecutions are specified, verify each one
+	if len(plan.NewExecutions) != len(m.NewExecutions) {
+		m.t.Logf("NewExecutions length: got %d, want %d", len(plan.NewExecutions), len(m.NewExecutions))
+		return false
+	}
+
+	// group plan executions by node id
+	planNewExecutions := make(map[string]*models.Execution)
 	for _, execution := range plan.NewExecutions {
-		newExecutionNodes[execution.NodeID] = execution.DesiredState.StateType
+		planNewExecutions[execution.NodeID] = execution
 	}
-	if len(newExecutionNodes) != len(m.NewExecutionsNodes) {
-		m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
-		return false
-	}
-	for _, node := range m.NewExecutionsNodes {
-		desiredState, ok := newExecutionNodes[node]
+
+	for _, expectedExec := range m.NewExecutions {
+		planExecution, ok := planNewExecutions[expectedExec.NodeID]
 		if !ok {
-			m.t.Logf("NewExecutionsNodes: %v != %s", newExecutionNodes, m.NewExecutionsNodes)
+			m.t.Logf("No new execution for node %s", expectedExec.NodeID)
 			return false
 		}
-		if desiredState != m.NewExecutionsDesiredState {
-			m.t.Logf("NewExecutionsDesiredState: %v != %v", desiredState, m.NewExecutionsDesiredState)
+
+		// validate the desired state
+		if planExecution.DesiredState.StateType != expectedExec.DesiredState.StateType {
+			m.t.Logf("DesiredState: %s != %s for node %s", planExecution.DesiredState.StateType, expectedExec.DesiredState.StateType, expectedExec.NodeID)
+			return false
+		}
+
+		// validate the partition index
+		if planExecution.PartitionIndex != expectedExec.PartitionIndex {
+			m.t.Logf("PartitionIndex: %d != %d for node %s", planExecution.PartitionIndex, expectedExec.PartitionIndex, expectedExec.NodeID)
 			return false
 		}
 	}
 
-	stoppedExecutions := make(map[string]struct{})
-	approvedExecutions := make(map[string]struct{})
+	// Check updated executions
+	if len(plan.UpdatedExecutions) != len(m.UpdatedExecutions) {
+		m.t.Logf("UpdatedExecutions length: got %d, want %d",
+			len(plan.UpdatedExecutions), len(m.UpdatedExecutions))
+		return false
+	}
+
+	// Build map of expected updates for easier lookup
+	expectedUpdates := make(map[string]ExecutionStateUpdate)
+	for _, update := range m.UpdatedExecutions {
+		expectedUpdates[update.ExecutionID] = update
+	}
+
+	// Verify each plan update matches expectations
 	for _, update := range plan.UpdatedExecutions {
-		if update.DesiredState == models.ExecutionDesiredStateStopped {
-			stoppedExecutions[update.Execution.ID] = struct{}{}
-		}
-		if update.DesiredState == models.ExecutionDesiredStateRunning {
-			approvedExecutions[update.Execution.ID] = struct{}{}
-		}
-	}
-
-	// check stopped executions match the expected executions
-	if len(stoppedExecutions) != len(m.StoppedExecutions) {
-		m.t.Logf("StoppedExecutions: %s != %s", stoppedExecutions, m.StoppedExecutions)
-		return false
-	}
-	for _, execution := range m.StoppedExecutions {
-		if _, ok := stoppedExecutions[execution]; !ok {
-			m.t.Logf("StoppedExecutions: %s != %s", stoppedExecutions, m.StoppedExecutions)
+		execID := update.Execution.ID
+		expected, ok := expectedUpdates[execID]
+		if !ok {
+			m.t.Logf("Unexpected execution update for %s", execID)
 			return false
 		}
-	}
 
-	// check approved executions match the expected executions
-	if len(approvedExecutions) != len(m.ApprovedExecutions) {
-		m.t.Logf("ApprovedExecutions: %s != %s", approvedExecutions, m.ApprovedExecutions)
-		return false
-	}
-	for _, execution := range m.ApprovedExecutions {
-		if _, ok := approvedExecutions[execution]; !ok {
-			m.t.Logf("ApprovedExecutions: %s != %s", approvedExecutions, m.ApprovedExecutions)
+		if update.DesiredState != expected.DesiredState {
+			m.t.Logf("Execution %s DesiredState: got %s, want %s",
+				execID, update.DesiredState, expected.DesiredState)
+			return false
+		}
+
+		if update.ComputeState != expected.ComputeState {
+			m.t.Logf("Execution %s ComputeState: got %s, want %s",
+				execID, update.ComputeState, expected.ComputeState)
 			return false
 		}
 	}
@@ -257,8 +288,8 @@ func (m PlanMatcher) Matches(x interface{}) bool {
 }
 
 func (m PlanMatcher) String() string {
-	return fmt.Sprintf("{JobState: %s, Evaluation: %s, NewExecutionsNodes: %s, StoppedExecutions: %s, ApprovedExecutions: %s}",
-		m.JobState, m.Evaluation, m.NewExecutionsNodes, m.StoppedExecutions, m.ApprovedExecutions)
+	return fmt.Sprintf("{JobState: %s, Evaluation: %s, NewExecutions: %s, UpdatedExecutions: %s}",
+		m.JobState, m.Evaluation, m.NewExecutions, m.UpdatedExecutions)
 }
 
 func fakeNodeInfo(t *testing.T, nodeID string) models.NodeInfo {

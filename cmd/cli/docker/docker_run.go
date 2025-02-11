@@ -6,9 +6,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
@@ -24,12 +23,12 @@ import (
 )
 
 var (
-	runLong = templates.LongDesc(i18n.T(`
+	runLong = templates.LongDesc(`
 		Runs a job using the Docker executor on the node.
-		`))
+		`)
 
 	//nolint:lll // Documentation
-	runExample = templates.Examples(i18n.T(`
+	runExample = templates.Examples(`
 		# Run a Docker job, using the image 'dpokidov/imagemagick', with a CID mounted at /input_images and an output volume mounted at /outputs in the container. All flags after the '--' are passed directly into the container for execution.
 		bacalhau docker run \
 			-i src=ipfs://QmeZRGhe4PmjctYVSVHuEiA9oSXnqmYa4kQubSHgWbjv72,dst=/input_images \
@@ -47,7 +46,7 @@ var (
 
 		# Specify an image digest
 		bacalhau docker run ubuntu@sha256:35b4f89ec2ee42e7e12db3d107fe6a487137650a2af379bbd49165a1494246ea echo hello
-		`))
+		`)
 )
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command

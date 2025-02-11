@@ -113,6 +113,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/agent/license": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured",
+                "operationId": "agent/license",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetAgentLicenseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/agent/node": {
             "get": {
                 "produces": [
@@ -955,6 +981,82 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "apimodels.GetAgentLicenseResponse": {
+            "type": "object",
+            "properties": {
+                "aud": {
+                    "description": "the ` + "`" + `aud` + "`" + ` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "capabilities": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "customer_id": {
+                    "type": "string"
+                },
+                "exp": {
+                    "description": "the ` + "`" + `exp` + "`" + ` (Expiration Time) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "iat": {
+                    "description": "the ` + "`" + `iat` + "`" + ` (Issued At) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.6",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "iss": {
+                    "description": "the ` + "`" + `iss` + "`" + ` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1",
+                    "type": "string"
+                },
+                "jti": {
+                    "description": "the ` + "`" + `jti` + "`" + ` (JWT ID) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7",
+                    "type": "string"
+                },
+                "license_id": {
+                    "type": "string"
+                },
+                "license_type": {
+                    "type": "string"
+                },
+                "license_version": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "nbf": {
+                    "description": "the ` + "`" + `nbf` + "`" + ` (Not Before) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/jwt.NumericDate"
+                        }
+                    ]
+                },
+                "product": {
+                    "description": "Add your custom license claims here",
+                    "type": "string"
+                },
+                "sub": {
+                    "description": "the ` + "`" + `sub` + "`" + ` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
+                    "type": "string"
+                }
+            }
+        },
         "apimodels.GetJobResponse": {
             "type": "object",
             "properties": {
@@ -1180,6 +1282,14 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "EvaluationID": {
+                    "type": "string"
+                }
+            }
+        },
+        "jwt.NumericDate": {
+            "type": "object",
+            "properties": {
+                "time.Time": {
                     "type": "string"
                 }
             }
@@ -1411,6 +1521,10 @@ const docTemplate = `{
                 "NodeID": {
                     "description": "NodeID is the node this is being placed on",
                     "type": "string"
+                },
+                "PartitionIndex": {
+                    "description": "PartitionIndex is the index of this execution in the job's total partitions (0-based)\nOnly relevant when Job.Count \u003e 1",
+                    "type": "integer"
                 },
                 "PreviousExecution": {
                     "description": "PreviousExecution is the execution that this execution is replacing",
@@ -2116,7 +2230,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.SpecConfig"
                 },
                 "Env": {
-                    "description": "Map of environment variables to be used by the driver",
+                    "description": "Map of environment variables to be used by the driver.\nValues can be:\n- Direct value: \"debug-mode\"\n- Host env var: \"env:HOST_VAR\"",
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
@@ -2417,6 +2531,14 @@ const docTemplate = `{
                     "description": "Enabled indicates whether the compute node is active and available for job execution.",
                     "type": "boolean"
                 },
+                "Env": {
+                    "description": "Env specifies environment variable configuration for the compute node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.EnvConfig"
+                        }
+                    ]
+                },
                 "Heartbeat": {
                     "$ref": "#/definitions/types.Heartbeat"
                 },
@@ -2528,6 +2650,18 @@ const docTemplate = `{
                 },
                 "WASM": {
                     "$ref": "#/definitions/types.WASM"
+                }
+            }
+        },
+        "types.EnvConfig": {
+            "type": "object",
+            "properties": {
+                "AllowList": {
+                    "description": "AllowList specifies which host environment variables can be forwarded to jobs.\nSupports glob patterns (e.g., \"AWS_*\", \"API_*\")",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2668,6 +2802,15 @@ const docTemplate = `{
                 }
             }
         },
+        "types.License": {
+            "type": "object",
+            "properties": {
+                "LocalPath": {
+                    "description": "LocalPath specifies the local license file path",
+                    "type": "string"
+                }
+            }
+        },
         "types.LocalPublisher": {
             "type": "object",
             "properties": {
@@ -2759,6 +2902,14 @@ const docTemplate = `{
                 "Host": {
                     "description": "Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.",
                     "type": "string"
+                },
+                "License": {
+                    "description": "License specifies license configuration for orchestrator node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.License"
+                        }
+                    ]
                 },
                 "NodeManager": {
                     "$ref": "#/definitions/types.NodeManager"

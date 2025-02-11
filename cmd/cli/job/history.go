@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/cols"
@@ -21,11 +20,11 @@ import (
 var (
 	historyShort = `List history events for a job by id.`
 
-	historyLong = templates.LongDesc(i18n.T(`
+	historyLong = templates.LongDesc(`
 		List job history events for a job by id.
-`))
+`)
 
-	historyExample = templates.Examples(i18n.T(`
+	historyExample = templates.Examples(`
 		# All events for a given job.
 		bacalhau job history e3f8c209-d683-4a41-b840-f09b88d087b9
 
@@ -34,7 +33,7 @@ var (
 
 		# Execution level events
 		bacalhau job history --type execution e3f8c209
-`))
+`)
 )
 
 // HistoryOptions is a struct to support node command

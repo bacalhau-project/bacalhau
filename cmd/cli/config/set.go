@@ -8,9 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -19,11 +18,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-var setExample = templates.Examples(i18n.T(`
+var setExample = templates.Examples(`
 bacalhau config set api.host=127.0.0.1
 bacalhau config set compute.orchestrators=http://127.0.0.1:1234,http://1.1.1.1:1234
 bacalhau config set labels=foo=bar,baz=buz
-`))
+`)
 
 func newSetCmd() *cobra.Command {
 	setCmd := &cobra.Command{

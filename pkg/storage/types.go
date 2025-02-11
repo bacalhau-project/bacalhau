@@ -16,11 +16,14 @@ type Storage interface {
 	HasStorageLocally(context.Context, models.InputSource) (bool, error)
 
 	// how big is the given volume in terms of resource consumption?
-	GetVolumeSize(context.Context, models.InputSource) (uint64, error)
+	GetVolumeSize(context.Context, *models.Execution, models.InputSource) (uint64, error)
 
 	// PrepareStorage is provided an output directory, and an InputSource and
 	// is expected to retrieve the InputSource into the output directory.
-	PrepareStorage(context.Context, string, models.InputSource) (StorageVolume, error)
+	PrepareStorage(ctx context.Context,
+		storageDirectory string,
+		execution *models.Execution,
+		storageSpec models.InputSource) (StorageVolume, error)
 
 	CleanupStorage(context.Context, models.InputSource, StorageVolume) error
 

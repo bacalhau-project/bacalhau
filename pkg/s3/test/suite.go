@@ -146,16 +146,17 @@ func (s *HelperSuite) GetClient() *s3helper.ClientWrapper {
 }
 
 // PreparePublisherSpec returns a publisher spec with the bucket, prefix, and endpoint.
-func (s *HelperSuite) PreparePublisherSpec(compressed bool) s3helper.PublisherSpec {
+func (s *HelperSuite) PreparePublisherSpec(encoding s3helper.Encoding) s3helper.PublisherSpec {
 	prefix := s.Prefix + uuid.NewString() + "_"
-	if compressed {
-		prefix += "compressed.tar.gz"
+	if encoding == s3helper.EncodingPlain {
+		prefix += "plain/"
 	} else {
-		prefix += "uncompressed/"
+		prefix += "compressed.tar.gz"
 	}
 	return s3helper.PublisherSpec{
 		Bucket:   s.Bucket,
 		Key:      prefix,
+		Encoding: encoding,
 		Region:   s.Region,
 		Endpoint: s.Endpoint,
 	}
@@ -195,8 +196,8 @@ func (s *HelperSuite) PrepareResultsPath() string {
 	return resultPath
 }
 
-// PublishResult publishes the resultPath to S3 and returns the published key.
-func (s *HelperSuite) PublishResult(publisherConfig s3helper.PublisherSpec, resultPath string) (models.SpecConfig, error) {
+// MockExecution creates a mock execution for the test suite.
+func (s *HelperSuite) MockExecution(publisherConfig s3helper.PublisherSpec) *models.Execution {
 	job := mock.Job()
 	job.ID = s.JobID // to get predictable published key
 	job.Task().Publisher = &models.SpecConfig{
@@ -205,14 +206,18 @@ func (s *HelperSuite) PublishResult(publisherConfig s3helper.PublisherSpec, resu
 	}
 	execution := mock.ExecutionForJob(job)
 	execution.ID = s.ExecutionID // to get predictable published key
+	return execution
+}
 
+// PublishResult publishes the resultPath to S3 and returns the published key.
+func (s *HelperSuite) PublishResult(execution *models.Execution, resultPath string) (models.SpecConfig, error) {
 	return s.Publisher.PublishResult(s.Ctx, execution, resultPath)
 }
 
 // PublishResultSilently publishes the resultPath to S3 and skip if no access.
-func (s *HelperSuite) PublishResultSilently(publisherConfig s3helper.PublisherSpec, resultPath string) models.SpecConfig {
+func (s *HelperSuite) PublishResultSilently(execution *models.Execution, resultPath string) models.SpecConfig {
 	// publish result to S3
-	storageSpec, err := s.PublishResult(publisherConfig, resultPath)
+	storageSpec, err := s.PublishResult(execution, resultPath)
 	if err != nil {
 		var ae smithy.APIError
 		if errors.As(err, &ae) && ae.ErrorCode() == "AccessDenied" {
@@ -224,18 +229,20 @@ func (s *HelperSuite) PublishResultSilently(publisherConfig s3helper.PublisherSp
 }
 
 // PrepareAndPublish publishes the resultPath to S3 and returns the published key.
-func (s *HelperSuite) PrepareAndPublish(compressed bool) (models.SpecConfig, string) {
-	publisherConfig := s.PreparePublisherSpec(compressed)
+func (s *HelperSuite) PrepareAndPublish(encoding s3helper.Encoding) (models.SpecConfig, string) {
+	publisherConfig := s.PreparePublisherSpec(encoding)
 	resultPath := s.PrepareResultsPath()
-	storageSpec := s.PublishResultSilently(publisherConfig, resultPath)
+	execution := s.MockExecution(publisherConfig)
+	storageSpec := s.PublishResultSilently(execution, resultPath)
 	return storageSpec, resultPath
 }
 
 // GetResult fetches the result from S3 and returns the local path.
-func (s *HelperSuite) GetResult(published *models.SpecConfig) string {
+func (s *HelperSuite) GetResult(execution *models.Execution, published *models.SpecConfig) string {
 	volume, err := s.Storage.PrepareStorage(
 		s.Ctx,
 		s.T().TempDir(),
+		execution,
 		models.InputSource{
 			Source: published,
 			Target: "/", // ignored as it is the mount point within the job

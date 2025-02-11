@@ -9,6 +9,14 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+type ObjectSummary struct {
+	Key       *string
+	ETag      *string
+	VersionID *string
+	Size      int64
+	IsDir     bool
+}
+
 type SourceSpec struct {
 	Bucket         string
 	Key            string
@@ -17,13 +25,14 @@ type SourceSpec struct {
 	Endpoint       string
 	VersionID      string
 	ChecksumSHA256 string
+	Partition      PartitionConfig
 }
 
 func (c SourceSpec) Validate() error {
 	if c.Bucket == "" {
 		return NewS3InputSourceError(BadRequestErrorCode, "invalid s3 storage params: bucket cannot be empty")
 	}
-	return nil
+	return c.Partition.Validate()
 }
 
 func (c SourceSpec) ToMap() map[string]interface{} {
@@ -50,8 +59,7 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, NewS3InputSourceError(
 			BadRequestErrorCode,
-			fmt.Sprintf("invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type),
-		)
+			"invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -69,7 +77,8 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
 		return PreSignedResultSpec{}, NewS3InputSourceError(BadRequestErrorCode,
-			"invalid storage source type. expected "+models.StorageSourceS3PreSigned+" but received: "+spec.Type)
+			"invalid storage source type. expected %s but received: %s",
+			models.StorageSourceS3PreSigned, spec.Type)
 	}
 
 	inputParams := spec.Params
@@ -85,11 +94,23 @@ func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, er
 	return c, c.Validate()
 }
 
+type Encoding string
+
+const (
+	EncodingGzip  Encoding = "gzip"
+	EncodingPlain Encoding = "plain"
+)
+
+func (e Encoding) IsValid() bool {
+	return e == EncodingGzip || e == EncodingPlain
+}
+
 type PublisherSpec struct {
-	Bucket   string `json:"Bucket"`
-	Key      string `json:"Key"`
-	Endpoint string `json:"Endpoint"`
-	Region   string `json:"Region"`
+	Bucket   string   `json:"Bucket"`
+	Key      string   `json:"Key"`
+	Endpoint string   `json:"Endpoint"`
+	Region   string   `json:"Region"`
+	Encoding Encoding `json:"Encoding"`
 }
 
 func (c PublisherSpec) Validate() error {
@@ -98,6 +119,9 @@ func (c PublisherSpec) Validate() error {
 	}
 	if c.Key == "" {
 		return NewS3PublisherError(BadRequestErrorCode, "invalid s3 params. key cannot be empty")
+	}
+	if c.Encoding != "" && !c.Encoding.IsValid() {
+		return NewS3PublisherError(BadRequestErrorCode, "invalid s3 params. encoding must be either 'plain' or 'gzip'")
 	}
 	return nil
 }
@@ -123,38 +147,4 @@ func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	}
 
 	return c, c.Validate()
-}
-
-type PublisherOption func(p *PublisherSpec)
-
-func WithPublisherEndpoint(e string) PublisherOption {
-	return func(p *PublisherSpec) {
-		p.Endpoint = e
-	}
-}
-
-func WithPublisherRegion(r string) PublisherOption {
-	return func(p *PublisherSpec) {
-		p.Region = r
-	}
-}
-
-func NewPublisherSpec(bucket string, key string, opts ...PublisherOption) (*models.SpecConfig, error) {
-	spec := &PublisherSpec{
-		Bucket: bucket,
-		Key:    key,
-	}
-
-	for _, opt := range opts {
-		opt(spec)
-	}
-
-	if err := spec.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &models.SpecConfig{
-		Type:   models.PublisherS3,
-		Params: spec.ToMap(),
-	}, nil
 }

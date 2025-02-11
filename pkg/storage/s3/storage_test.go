@@ -14,6 +14,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	s3test "github.com/bacalhau-project/bacalhau/pkg/s3/test"
+	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -59,6 +60,9 @@ func (s *StorageTestSuite) TestStorage() {
 		checksum        string
 		versionID       string
 		shouldFail      bool
+		partitionConfig s3helper.PartitionConfig
+		jobCount        int
+		partitionIndex  int
 	}{
 		{
 			name: "single object",
@@ -66,6 +70,28 @@ func (s *StorageTestSuite) TestStorage() {
 			expectedOutputs: []expectedOutput{
 				{"001", "001.txt"},
 			},
+		},
+		{
+			name:            "single object - part 0",
+			key:             prefix1 + "001.txt",
+			expectedOutputs: []expectedOutput{},
+			partitionConfig: s3helper.PartitionConfig{
+				Type: s3helper.PartitionKeyTypeObject,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "single object - part 1",
+			key:  prefix1 + "001.txt",
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type: s3helper.PartitionKeyTypeObject,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
 		},
 		{
 			name: "single directory",
@@ -78,6 +104,90 @@ func (s *StorageTestSuite) TestStorage() {
 			},
 		},
 		{
+			name: "single directory with object partitioning - part 0",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"002", "002.txt"},
+				{"101", "101.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type: s3helper.PartitionKeyTypeObject,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "single directory with object partitioning - part 1",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+				{"102", "102.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type: s3helper.PartitionKeyTypeObject,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
+		},
+		{
+			name: "single directory with regex partitioning - part 0",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"101", "101.txt"},
+				{"102", "102.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:    s3helper.PartitionKeyTypeRegex,
+				Pattern: `\d0`,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "single directory with regex partitioning - part 1",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+				{"002", "002.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:    s3helper.PartitionKeyTypeRegex,
+				Pattern: `\d0`,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
+		},
+		{
+			name: "single directory with substring partitioning - part 0",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+				{"101", "101.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:       s3helper.PartitionKeyTypeSubstring,
+				StartIndex: 2,
+				EndIndex:   3,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "single directory with substring partitioning - part 1",
+			key:  prefix1,
+			expectedOutputs: []expectedOutput{
+				{"002", "002.txt"},
+				{"102", "102.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:       s3helper.PartitionKeyTypeSubstring,
+				StartIndex: 2,
+				EndIndex:   3,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
+		},
+		{
 			name: "single directory trailing asterisk",
 			key:  prefix1 + "*",
 			expectedOutputs: []expectedOutput{
@@ -86,6 +196,19 @@ func (s *StorageTestSuite) TestStorage() {
 				{"101", "101.txt"},
 				{"102", "102.txt"},
 			},
+		},
+		{
+			name: "single directory trailing asterisk partitioning",
+			key:  prefix1 + "*",
+			expectedOutputs: []expectedOutput{
+				{"002", "002.txt"},
+				{"101", "101.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type: s3helper.PartitionKeyTypeObject,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
 		},
 		{
 			name: "nested directory",
@@ -98,12 +221,54 @@ func (s *StorageTestSuite) TestStorage() {
 			},
 		},
 		{
+			name: "nested directory with regex partitioning",
+			key:  prefix2,
+			expectedOutputs: []expectedOutput{
+				{"301", "nested/301.txt"},
+				{"302", "nested/302.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:    s3helper.PartitionKeyTypeRegex,
+				Pattern: `nested/\d0`,
+			},
+			jobCount:       3,
+			partitionIndex: 2,
+		},
+		{
 			name: "file pattern",
 			key:  prefix1 + "00*",
 			expectedOutputs: []expectedOutput{
 				{"001", "001.txt"},
 				{"002", "002.txt"},
 			},
+		},
+		{
+			name: "file pattern - part 0",
+			key:  prefix1 + "00*",
+			expectedOutputs: []expectedOutput{
+				{"001", "001.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:       s3helper.PartitionKeyTypeSubstring,
+				StartIndex: 0,
+				EndIndex:   1,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "file pattern - part 1",
+			key:  prefix1 + "00*",
+			expectedOutputs: []expectedOutput{
+				{"002", "002.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:       s3helper.PartitionKeyTypeSubstring,
+				StartIndex: 0,
+				EndIndex:   1,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
 		},
 		{
 			name: "directory pattern",
@@ -118,6 +283,38 @@ func (s *StorageTestSuite) TestStorage() {
 				{"301", "set2/nested/301.txt"},
 				{"302", "set2/nested/302.txt"},
 			},
+		},
+		{
+			name: "directory pattern - part 0",
+			key:  root + "set*",
+			expectedOutputs: []expectedOutput{
+				{"001", "set1/001.txt"},
+				{"101", "set1/101.txt"},
+				{"201", "set2/201.txt"},
+				{"301", "set2/nested/301.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:    s3helper.PartitionKeyTypeRegex,
+				Pattern: `\d\.txt`,
+			},
+			jobCount:       2,
+			partitionIndex: 0,
+		},
+		{
+			name: "directory pattern - part 1",
+			key:  root + "set*",
+			expectedOutputs: []expectedOutput{
+				{"002", "set1/002.txt"},
+				{"102", "set1/102.txt"},
+				{"202", "set2/202.txt"},
+				{"302", "set2/nested/302.txt"},
+			},
+			partitionConfig: s3helper.PartitionConfig{
+				Type:    s3helper.PartitionKeyTypeRegex,
+				Pattern: `\d\.txt`,
+			},
+			jobCount:       2,
+			partitionIndex: 1,
 		},
 		{
 			name:    "single directory filter",
@@ -214,6 +411,12 @@ func (s *StorageTestSuite) TestStorage() {
 	} {
 		s.Run(tc.name, func() {
 			ctx := context.Background()
+
+			// Set default job count and partition index if not specified
+			if tc.jobCount == 0 {
+				tc.jobCount = 1
+			}
+
 			storageSpec := models.InputSource{
 				Source: &models.SpecConfig{
 					Type: models.StorageSourceS3,
@@ -224,10 +427,16 @@ func (s *StorageTestSuite) TestStorage() {
 						Region:         s.Region,
 						ChecksumSHA256: tc.checksum,
 						VersionID:      tc.versionID,
+						Partition:      tc.partitionConfig,
 					}.ToMap(),
 				},
 			}
-			size, err := s.Storage.GetVolumeSize(ctx, storageSpec)
+
+			execution := mock.Execution()
+			execution.Job.Count = tc.jobCount
+			execution.PartitionIndex = tc.partitionIndex
+
+			size, err := s.Storage.GetVolumeSize(ctx, execution, storageSpec)
 			if tc.shouldFail {
 				s.Error(err)
 				return
@@ -235,7 +444,7 @@ func (s *StorageTestSuite) TestStorage() {
 			s.Require().NoError(err)
 			s.Equal(uint64(len(tc.expectedOutputs)*4), size) // each file is 4 bytes long
 
-			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
+			volume, err := s.Storage.PrepareStorage(ctx, s.T().TempDir(), execution, storageSpec)
 			s.Require().NoError(err)
 
 			// check that the files are there
@@ -270,10 +479,10 @@ func (s *StorageTestSuite) TestNotFound() {
 		},
 	}
 
-	_, err := s.Storage.GetVolumeSize(ctx, storageSpec)
+	_, err := s.Storage.GetVolumeSize(ctx, mock.Execution(), storageSpec)
 	s.Require().Error(err)
 
-	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), storageSpec)
+	_, err = s.Storage.PrepareStorage(ctx, s.T().TempDir(), mock.Execution(), storageSpec)
 	s.Require().Error(err)
 }
 

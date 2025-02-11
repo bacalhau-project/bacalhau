@@ -68,9 +68,9 @@ func (suite *DevstackTimeoutSuite) TestRunningTimeout() {
 				},
 				ExecutorConfig: noop.ExecutorConfig{
 					ExternalHooks: noop.ExecutorConfigExternalHooks{
-						JobHandler: func(ctx context.Context, _ string, resultsDir string) (*models.RunCommandResult, error) {
+						JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
 							time.Sleep(testCase.sleepTime)
-							return executor.WriteJobResults(resultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil, executor.OutputLimits{
+							return executor.WriteJobResults(execContext.ResultsDir, strings.NewReader(""), strings.NewReader(""), 0, nil, executor.OutputLimits{
 								MaxStdoutFileLength:   system.MaxStdoutFileLength,
 								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 								MaxStderrFileLength:   system.MaxStderrFileLength,

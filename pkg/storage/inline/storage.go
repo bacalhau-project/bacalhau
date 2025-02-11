@@ -64,7 +64,7 @@ func (i *InlineStorage) CleanupStorage(_ context.Context, _ models.InputSource, 
 
 // For an inline storage, we define the volume size as uncompressed data size,
 // as this is how much resource using the storage will take up.
-func (i *InlineStorage) GetVolumeSize(_ context.Context, spec models.InputSource) (uint64, error) {
+func (i *InlineStorage) GetVolumeSize(_ context.Context, _ *models.Execution, spec models.InputSource) (uint64, error) {
 	source, err := DecodeSpec(spec.Source)
 	if err != nil {
 		return 0, err
@@ -95,8 +95,11 @@ func (*InlineStorage) IsInstalled(context.Context) (bool, error) {
 // PrepareStorage extracts the data from the "data:" URL and writes it to a
 // temporary directory. If the data was a compressed tarball, it decompresses it
 // into a directory structure.
-func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory string, spec models.InputSource) (storage.StorageVolume, error) {
-	source, err := DecodeSpec(spec.Source)
+func (i *InlineStorage) PrepareStorage(_ context.Context,
+	storageDirectory string,
+	_ *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
+	source, err := DecodeSpec(input.Source)
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
@@ -121,7 +124,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempdir,
-			Target: spec.Target,
+			Target: input.Target,
 		}, err
 	} else {
 		tempfile, err := os.CreateTemp(tempdir, "file")
@@ -134,7 +137,7 @@ func (i *InlineStorage) PrepareStorage(_ context.Context, storageDirectory strin
 		return storage.StorageVolume{
 			Type:   storage.StorageVolumeConnectorBind,
 			Source: tempfile.Name(),
-			Target: spec.Target,
+			Target: input.Target,
 		}, errors.Join(wErr, cErr)
 	}
 }

@@ -43,8 +43,7 @@ func SetupRepo(cfg types.Bacalhau) (*repo.FsRepo, error) {
 	return r, nil
 }
 
-func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
-	var opts []config.Option
+func SetupConfigType(cmd *cobra.Command, opts ...config.Option) (*config.Config, error) {
 	v := viper.GetViper()
 	// check if the user specified config files via the --config flag
 	configFiles := getConfigFiles(v)
@@ -85,16 +84,16 @@ func SetupConfigType(cmd *cobra.Command) (*config.Config, error) {
 	return cfg, nil
 }
 
-func SetupConfig(cmd *cobra.Command) (types.Bacalhau, error) {
-	cfg, err := SetupConfigType(cmd)
+func SetupConfig(cmd *cobra.Command, opts ...config.Option) (types.Bacalhau, error) {
+	cfg, err := SetupConfigType(cmd, opts...)
 	if err != nil {
 		return types.Bacalhau{}, err
 	}
 	return UnmarshalBacalhauConfig(cfg)
 }
 
-func SetupConfigs(cmd *cobra.Command) (types.Bacalhau, *config.Config, error) {
-	cfg, err := SetupConfigType(cmd)
+func SetupConfigs(cmd *cobra.Command, opts ...config.Option) (types.Bacalhau, *config.Config, error) {
+	cfg, err := SetupConfigType(cmd, opts...)
 	if err != nil {
 		return types.Bacalhau{}, nil, err
 	}

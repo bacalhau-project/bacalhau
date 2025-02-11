@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type ParamsTestSuite struct {
@@ -25,6 +26,7 @@ func (s *ParamsTestSuite) TestDecodeMap() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
+		Encoding: EncodingPlain,
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -40,12 +42,14 @@ func (s *ParamsTestSuite) TestDecodeInterface() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
+		Encoding: EncodingPlain,
 	}
 	params := map[string]interface{}{
 		"Bucket":   expected.Bucket,
 		"Key":      expected.Key,
 		"Endpoint": expected.Endpoint,
 		"Region":   expected.Region,
+		"Encoding": string(EncodingPlain),
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -61,12 +65,14 @@ func (s *ParamsTestSuite) TestDecodeInterfaceLowerCase() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
+		Encoding: EncodingGzip,
 	}
 	params := map[string]interface{}{
 		"bucket":   expected.Bucket,
 		"key":      expected.Key,
 		"endpoint": expected.Endpoint,
 		"region":   expected.Region,
+		"encoding": string(EncodingGzip),
 	}
 	decoded, err := DecodePublisherSpec(&models.SpecConfig{
 		Type:   models.PublisherS3,
@@ -82,6 +88,7 @@ func (s *ParamsTestSuite) TestDecodeJson() {
 		Key:      uuid.NewString(),
 		Endpoint: "localhost:9000",
 		Region:   "us-east-1",
+		Encoding: EncodingPlain,
 	}
 	bytes, err := json.Marshal(expected)
 	s.Require().NoError(err)
@@ -130,6 +137,17 @@ func (s *ParamsTestSuite) TestDecodeInvalidParams() {
 				Params: map[string]interface{}{
 					"Bucket": "bucket",
 					"Key":    "",
+				},
+			},
+		},
+		{
+			name: "invalid encoding",
+			spec: &models.SpecConfig{
+				Type: models.PublisherS3,
+				Params: map[string]interface{}{
+					"Bucket":   "bucket",
+					"Key":      uuid.NewString(),
+					"Encoding": "invalid",
 				},
 			},
 		},

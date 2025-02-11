@@ -4,19 +4,18 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"k8s.io/kubectl/pkg/util/i18n"
 
-	"k8s.io/kubectl/pkg/util/templates"
+	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 )
 
 var (
-	logsShortDesc = templates.LongDesc(i18n.T(`
+	logsShortDesc = templates.LongDesc(`
 		Follow logs from a currently executing job
-`))
+`)
 
-	logsExample = templates.Examples(i18n.T(`
+	logsExample = templates.Examples(`
 		# Read logs for a previously submitted job
 		bacalhau job logs j-51225160-807e-48b8-88c9-28311c7899e1
 
@@ -25,7 +24,7 @@ var (
 
 		# Tail logs for a previously submitted job
 		bacalhau job logs j-51225160-807e-48b8-88c9-28311c7899e1 --tail
-`))
+`)
 )
 
 type LogCommandOptions struct {

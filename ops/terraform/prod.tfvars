@@ -1,4 +1,4 @@
-bacalhau_version            = "v1.6.0"
+bacalhau_version            = "v1.6.2"
 bacalhau_port               = "1235"
 bacalhau_environment        = "production"
 ipfs_version                = "v0.18.1"
@@ -17,8 +17,8 @@ zone                        = "us-east4-c"
 # on the virtual machine. If `df -h` shows only 1000, then `sudo resize2fs /dev/sdb`
 # will resize the /data (/dev/sdb) drive to use all of the space. Do not use for
 # boot disk.
-volume_size_gb              = 2000 # when increasing this value you need to claim the new space manually
-boot_disk_size_gb           = 1000
+volume_size_gb              = 200 # when increasing this value you need to claim the new space manually
+boot_disk_size_gb           = 100
 machine_type                = "e2-standard-2"
 protect_resources           = true
 auto_subnets                = true

@@ -38,31 +38,32 @@ func (t *tracingStorage) HasStorageLocally(ctx context.Context, spec models.Inpu
 	return t.delegate.HasStorageLocally(ctx, spec)
 }
 
-func (t *tracingStorage) GetVolumeSize(ctx context.Context, spec models.InputSource) (uint64, error) {
+func (t *tracingStorage) GetVolumeSize(ctx context.Context, execution *models.Execution, spec models.InputSource) (uint64, error) {
 	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.GetVolumeSize", t.name))
 	defer span.End()
 
-	return t.delegate.GetVolumeSize(ctx, spec)
+	return t.delegate.GetVolumeSize(ctx, execution, spec)
 }
 
 func (t *tracingStorage) PrepareStorage(
 	ctx context.Context,
 	storageDirectory string,
-	spec models.InputSource) (storage.StorageVolume, error) {
+	execution *models.Execution,
+	input models.InputSource) (storage.StorageVolume, error) {
 	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), fmt.Sprintf("%s.PrepareStorage", t.name))
 	defer span.End()
 
-	stopwatch := telemetry.Timer(ctx, jobStoragePrepareDurationMilliseconds, spec.Source.MetricAttributes()...)
+	stopwatch := telemetry.Timer(ctx, jobStoragePrepareDurationMilliseconds, input.Source.MetricAttributes()...)
 	defer func() {
 		dur := stopwatch()
 		log.Ctx(ctx).Debug().
 			Dur("Duration", dur).
-			Str("Alias", spec.Alias).
+			Str("Alias", input.Alias).
 			Str("Dir", storageDirectory).
 			Msg("storage prepared")
 	}()
 
-	return t.delegate.PrepareStorage(ctx, storageDirectory, spec)
+	return t.delegate.PrepareStorage(ctx, storageDirectory, execution, input)
 }
 
 func (t *tracingStorage) CleanupStorage(ctx context.Context, spec models.InputSource, volume storage.StorageVolume) error {
