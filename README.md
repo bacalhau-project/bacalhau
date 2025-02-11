@@ -39,7 +39,7 @@
 ## Table of Contents
 - [Table of Contents](#table-of-contents)
 - [Why Bacalhau?](#why-bacalhau)
-- [Getting started - Bacalhau in 1 minute](#getting-started---bacalhau-in-1-minute)
+- [Getting Started with Bacalhau in 1 minute](#getting-started-with-bacalhau-in-1-minute)
 - [Getting Started with Bacalhau in 1 minute With Containers](#getting-started-with-bacalhau-in-1-minute-with-containers)
   - [Learn more](#learn-more)
 - [Documentation](#documentation)
@@ -58,7 +58,7 @@
 - :lock: **Secure**: Data scrubbing and security can happen before migration to reduce the chance of leaking private information, and with a far more granular, code-based permission model.
 - 🚛 **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau, you can batch process petabytes (quadrillion bytes) of data.
 
-## Getting started - Bacalhau in 1 minute
+## Getting Started with Bacalhau in 1 minute
 
 Go to the folder directory that you want to store your job results
 
