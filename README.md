@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/bacalhau-project/bacalhau">
-    <img src="./docs/logo/Bacalhau-horizontal.svg" alt="Bacalhau" width="300"/>
+    <img src="./docs/logo/Bacalhau-horizontal-white.svg" alt="Bacalhau" width="300"/>
   </a>
 </p>
 
@@ -112,6 +112,23 @@ docker run -v $(pwd)/config.yaml:/etc/bacalhau/config.yaml ghcr.io/bacalhau-proj
 
 Your config file can contain any configuration options that you would normally pass to the `bacalhau` command line tool. For example:
 
+```yaml
+NameProvider: puuid
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://EXAMPLE-7a02-4083-bf08-bcc2f5fbc025.us1.dev-cloud.expanso.dev:4222
+  Auth:
+    Token: "EXAMPLEaEEFukWVffnf5jb9QkpNnwfiBWEk3475csM7ysudpbFTzYBap5c7sWr6"
+  TLS:
+    RequireTLS: true
+  AllowListedLocalPaths:
+    - /my_data:rw
+JobAdmissionControl:
+  AcceptNetworkedJobs: true
+```
 
 You can find more information about the different configuration options in the [Bacalhau docs](https://docs.bacalhau.org/guides/write-a-config.yaml).
 
