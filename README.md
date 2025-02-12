@@ -101,7 +101,7 @@ This will start a container with Bacalhau already installed.
 If you would like to enable these containers to use docker workloads, use the Docker-in-Docker (DinD) container.
 
 ```bash
-docker run ghcr.io/bacalhau-project/bacalhau:latest-dind:latest
+docker run ghcr.io/bacalhau-project/bacalhau:latest-dind
 ```
 
 Additionally, if you would like to use a specific configuration file, you can use the following command:
