@@ -38,3 +38,12 @@ type Callback interface {
 	OnRunComplete(ctx context.Context, result legacy.RunResult)
 	OnComputeFailure(ctx context.Context, err legacy.ComputeError)
 }
+
+// EnvVarResolver is the interface for resolving environment variable references
+type EnvVarResolver interface {
+	// Validate checks if the value has valid syntax for this resolver
+	Validate(name string, value string) error
+
+	// Value returns the resolved value from the source
+	Value(value string) (string, error)
+}

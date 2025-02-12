@@ -233,7 +233,14 @@ HTTP_GATEWAY_IMAGE ?= "ghcr.io/bacalhau-project/http-gateway"
 HTTP_GATEWAY_TAG ?= ${TAG}
 .PHONY: build-http-gateway-image
 build-http-gateway-image:
-	docker buildx build \
+	docker buildx build --load \
+		--platform linux/amd64,linux/arm64 \
+		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
+		pkg/executor/docker/gateway
+
+.PHONY: push-http-gateway-image
+push-http-gateway-image:
+	docker buildx build --push \
 		--platform linux/amd64,linux/arm64 \
 		-t ${HTTP_GATEWAY_IMAGE}:${HTTP_GATEWAY_TAG} \
 		pkg/executor/docker/gateway
@@ -241,37 +248,70 @@ build-http-gateway-image:
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
 
-# Only tag images with :latest if the release tag is a semver tag (e.g. v0.3.12)
+# Only add latest tags if the release tag is a semver tag (e.g. v0.3.12)
 # and not a commit hash or a release candidate (e.g. v0.3.12-rc1)
-LATEST_TAG :=
 ifeq ($(shell echo ${BACALHAU_TAG} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$$'), ${BACALHAU_TAG})
-	LATEST_TAG := --tag ${BACALHAU_IMAGE}:latest
+	BASE_TAGS := --tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
+		--tag ${BACALHAU_IMAGE}:latest
+	DIND_TAGS := --tag ${BACALHAU_IMAGE}:${BACALHAU_TAG}-dind \
+		--tag ${BACALHAU_IMAGE}:latest-dind
+else
+	BASE_TAGS := --tag ${BACALHAU_IMAGE}:${BACALHAU_TAG}
+	DIND_TAGS := --tag ${BACALHAU_IMAGE}:${BACALHAU_TAG}-dind
 endif
 
 BACALHAU_IMAGE_FLAGS := \
 	--progress=plain \
-	--platform linux/amd64,linux/arm64 \
-	--tag ${BACALHAU_IMAGE}:${BACALHAU_TAG} \
-	${LATEST_TAG} \
 	--label org.opencontainers.artifact.created=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
-	--label org.opencontainers.image.version=${BACALHAU_TAG} \
-	--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
-	--file docker/bacalhau-image/Dockerfile \
-	.
+	--label org.opencontainers.image.version=${BACALHAU_TAG}
 
-.PHONY: build-bacalhau-image
-build-bacalhau-image:
-	docker buildx build ${BACALHAU_IMAGE_FLAGS}
+.PHONY: build-bacalhau-base-image
+build-bacalhau-base-image:
+	docker buildx build --load ${BACALHAU_IMAGE_FLAGS} \
+		${BASE_TAGS} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-base/Dockerfile \
+		.
 
-.PHONY: push-bacalhau-image
-push-bacalhau-image:
-	docker buildx build --push ${BACALHAU_IMAGE_FLAGS}
+.PHONY: build-bacalhau-dind-image
+build-bacalhau-dind-image:
+	docker buildx build --load ${BACALHAU_IMAGE_FLAGS} \
+		${DIND_TAGS} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest-dind \
+		--file docker/bacalhau-dind/Dockerfile \
+		.
+
+# Push targets (multi-platform)
+.PHONY: push-bacalhau-base-image
+push-bacalhau-base-image:
+	docker buildx build --push ${BACALHAU_IMAGE_FLAGS} \
+		--platform linux/amd64,linux/arm64 \
+		${BASE_TAGS} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest \
+		--file docker/bacalhau-base/Dockerfile \
+		.
+
+.PHONY: push-bacalhau-dind-image
+push-bacalhau-dind-image:
+	docker buildx build --push ${BACALHAU_IMAGE_FLAGS} \
+		--platform linux/amd64,linux/arm64 \
+		${DIND_TAGS} \
+		--cache-from=type=registry,ref=${BACALHAU_IMAGE}:latest-dind \
+		--file docker/bacalhau-dind/Dockerfile \
+		.
+
+# Combined targets for building and pushing all images
+.PHONY: build-bacalhau-images
+build-bacalhau-images: build-bacalhau-base-image build-bacalhau-dind-image
+
+.PHONY: push-bacalhau-images
+push-bacalhau-images: push-bacalhau-base-image push-bacalhau-dind-image
 
 .PHONY: build-docker-images
 build-docker-images: build-http-gateway-image
 
 .PHONY: push-docker-images
-push-docker-images: build-http-gateway-image
+push-docker-images: push-http-gateway-image
 
 # Release tarballs suitable for upload to GitHub release pages
 ################################################################################

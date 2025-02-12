@@ -32,6 +32,7 @@ type BaseExecutorParams struct {
 	ResultsPath            ResultsPath
 	Publishers             publisher.PublisherProvider
 	FailureInjectionConfig models.FailureInjectionConfig
+	EnvResolver            EnvVarResolver
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -45,6 +46,7 @@ type BaseExecutor struct {
 	publishers       publisher.PublisherProvider
 	resultsPath      ResultsPath
 	failureInjection models.FailureInjectionConfig
+	envResolver      EnvVarResolver
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -57,6 +59,7 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		publishers:       params.Publishers,
 		failureInjection: params.FailureInjectionConfig,
 		resultsPath:      params.ResultsPath,
+		envResolver:      params.EnvResolver,
 	}
 }
 
@@ -133,6 +136,7 @@ func PrepareRunArguments(
 	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
+	envResolver EnvVarResolver,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
@@ -180,6 +184,11 @@ func PrepareRunArguments(
 		engineArgs = execution.Job.Task().Engine
 	}
 
+	env, err := GetExecutionEnvVars(execution, envResolver)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
+	}
+
 	return &executor.RunCommandRequest{
 			JobID:        execution.Job.ID,
 			ExecutionID:  execution.ID,
@@ -189,7 +198,7 @@ func PrepareRunArguments(
 			Inputs:       inputVolumes,
 			ResultsDir:   resultsDir,
 			EngineParams: engineArgs,
-			Env:          GetExecutionEnvVars(execution),
+			Env:          env,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
 				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
@@ -241,7 +250,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder)
+	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder, e.envResolver)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)

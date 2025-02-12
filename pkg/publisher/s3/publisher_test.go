@@ -145,42 +145,76 @@ func (s *PublisherTestSuite) TestPublish() {
 		name        string
 		key         string
 		expectedKey string
+		encoding    s3helper.Encoding
 		region      string
 		endpoint    string
 		shouldFail  bool
 	}{
 		{
-			name:        "compressed",
-			key:         s.Prefix + "simple_compressed",
-			expectedKey: s.Prefix + "simple_compressed.tar.gz",
+			name:        "plain encoding",
+			key:         s.Prefix + "simple_plain",
+			expectedKey: s.Prefix + "simple_plain/",
+			encoding:    s3helper.EncodingPlain,
 		},
 		{
-			name:        "compressed with extension",
-			key:         s.Prefix + "simple_compressed.tar.gz",
-			expectedKey: s.Prefix + "simple_compressed.tar.gz",
+			name:        "plain encoding with trailing slash",
+			key:         s.Prefix + "simple_plain-with-trailing-slash/",
+			expectedKey: s.Prefix + "simple_plain-with-trailing-slash/",
+			encoding:    s3helper.EncodingPlain,
 		},
 		{
-			name:        "compressed with nested path",
-			key:         s.Prefix + "nested_compressed/with/nested/path",
-			expectedKey: s.Prefix + "nested_compressed/with/nested/path.tar.gz",
+			name:        "plain encoding with nested path",
+			key:         s.Prefix + "nested_plain/with/nested/path/",
+			expectedKey: s.Prefix + "nested_plain/with/nested/path/",
+			encoding:    s3helper.EncodingPlain,
 		},
 		{
-			name:        "compressed with naming pattern",
-			key:         s.Prefix + "pattern_compressed/{jobID}/{executionID}",
-			expectedKey: s.Prefix + "pattern_compressed/" + s.JobID + "/" + s.ExecutionID + ".tar.gz",
+			name:        "plain encoding with naming pattern",
+			key:         s.Prefix + "pattern_plain/{jobID}/{executionID}/",
+			expectedKey: s.Prefix + "pattern_plain/" + s.JobID + "/" + s.ExecutionID + "/",
+			encoding:    s3helper.EncodingPlain,
+		},
+		{
+			name:        "gzip encoding",
+			key:         s.Prefix + "simple_gzip",
+			expectedKey: s.Prefix + "simple_gzip.tar.gz",
+			encoding:    s3helper.EncodingGzip,
+		},
+		{
+			name:        "gzip encoding with extension",
+			key:         s.Prefix + "simple_gzip.tar.gz",
+			expectedKey: s.Prefix + "simple_gzip.tar.gz",
+			encoding:    s3helper.EncodingGzip,
+		},
+		{
+			name:        "gzip encoding with nested path",
+			key:         s.Prefix + "nested_gzip/with/nested/path",
+			expectedKey: s.Prefix + "nested_gzip/with/nested/path.tar.gz",
+			encoding:    s3helper.EncodingGzip,
+		},
+		{
+			name:        "gzip encoding with naming pattern",
+			key:         s.Prefix + "pattern_gzip/{jobID}/{executionID}",
+			expectedKey: s.Prefix + "pattern_gzip/" + s.JobID + "/" + s.ExecutionID + ".tar.gz",
+			encoding:    s3helper.EncodingGzip,
 		},
 		{
 			name:        "explicit endpoint and region",
-			key:         s.Prefix + "simple_compressed_endpoint_and_region.tar.gz",
-			expectedKey: s.Prefix + "simple_compressed_endpoint_and_region.tar.gz",
+			key:         s.Prefix + "simple_gzip_endpoint_and_region.tar.gz",
+			expectedKey: s.Prefix + "simple_gzip_endpoint_and_region.tar.gz",
 			endpoint:    s.Endpoint,
 			region:      s.Region,
 		},
 		{
 			name:       "explicit wrong region",
-			key:        s.Prefix + "simple_compressed_wrong_region.tar.gz",
+			key:        s.Prefix + "simple_gzip_wrong_region.tar.gz",
 			region:     "us-east-1",
 			shouldFail: true,
+		},
+		{
+			name:        "default encoding to gzip",
+			key:         s.Prefix + "simple_gzip_default",
+			expectedKey: s.Prefix + "simple_gzip_default.tar.gz",
 		},
 	} {
 		s.Run(tc.name, func() {
@@ -188,8 +222,9 @@ func (s *PublisherTestSuite) TestPublish() {
 				s.T().Skip(skipMessage)
 			}
 			params := s3helper.PublisherSpec{
-				Bucket: s.Bucket,
-				Key:    tc.key,
+				Bucket:   s.Bucket,
+				Key:      tc.key,
+				Encoding: tc.encoding,
 			}
 			if tc.region == "" && tc.endpoint == "" {
 				params.Region = s.Region
@@ -222,14 +257,21 @@ func (s *PublisherTestSuite) TestPublish() {
 			s.Equal(params.Region, sourceSpec.Region)
 			s.Equal(params.Endpoint, sourceSpec.Endpoint)
 
-			s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
-			s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
+			if tc.encoding != s3helper.EncodingPlain {
+				s.NotEmptyf(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should not be empty")
+				s.NotEmptyf(sourceSpec.VersionID, "VersionID should not be empty")
+			} else {
+				s.Empty(sourceSpec.ChecksumSHA256, "ChecksumSHA256 should be empty")
+				s.Empty(sourceSpec.VersionID, "VersionID should be empty")
+			}
 
 			fetchedResults := s.GetResult(execution, &storageSpec)
-			uncompressedResults, err := os.MkdirTemp(s.TempDir, "")
-			s.Require().NoError(err)
-			s.Require().NoError(gzip.Decompress(fetchedResults, uncompressedResults))
-			fetchedResults = uncompressedResults
+			if tc.encoding == s3helper.EncodingGzip || tc.encoding == "" {
+				uncompressedResults, err := os.MkdirTemp(s.TempDir, "")
+				s.Require().NoError(err)
+				s.Require().NoError(gzip.Decompress(fetchedResults, uncompressedResults))
+				fetchedResults = uncompressedResults
+			}
 
 			s3test.AssertEqualDirectories(s.T(), resultPath, fetchedResults)
 		})

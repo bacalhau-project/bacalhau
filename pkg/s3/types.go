@@ -94,11 +94,23 @@ func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, er
 	return c, c.Validate()
 }
 
+type Encoding string
+
+const (
+	EncodingGzip  Encoding = "gzip"
+	EncodingPlain Encoding = "plain"
+)
+
+func (e Encoding) IsValid() bool {
+	return e == EncodingGzip || e == EncodingPlain
+}
+
 type PublisherSpec struct {
-	Bucket   string `json:"Bucket"`
-	Key      string `json:"Key"`
-	Endpoint string `json:"Endpoint"`
-	Region   string `json:"Region"`
+	Bucket   string   `json:"Bucket"`
+	Key      string   `json:"Key"`
+	Endpoint string   `json:"Endpoint"`
+	Region   string   `json:"Region"`
+	Encoding Encoding `json:"Encoding"`
 }
 
 func (c PublisherSpec) Validate() error {
@@ -107,6 +119,9 @@ func (c PublisherSpec) Validate() error {
 	}
 	if c.Key == "" {
 		return NewS3PublisherError(BadRequestErrorCode, "invalid s3 params. key cannot be empty")
+	}
+	if c.Encoding != "" && !c.Encoding.IsValid() {
+		return NewS3PublisherError(BadRequestErrorCode, "invalid s3 params. encoding must be either 'plain' or 'gzip'")
 	}
 	return nil
 }
@@ -132,38 +147,4 @@ func DecodePublisherSpec(spec *models.SpecConfig) (PublisherSpec, error) {
 	}
 
 	return c, c.Validate()
-}
-
-type PublisherOption func(p *PublisherSpec)
-
-func WithPublisherEndpoint(e string) PublisherOption {
-	return func(p *PublisherSpec) {
-		p.Endpoint = e
-	}
-}
-
-func WithPublisherRegion(r string) PublisherOption {
-	return func(p *PublisherSpec) {
-		p.Region = r
-	}
-}
-
-func NewPublisherSpec(bucket string, key string, opts ...PublisherOption) (*models.SpecConfig, error) {
-	spec := &PublisherSpec{
-		Bucket: bucket,
-		Key:    key,
-	}
-
-	for _, opt := range opts {
-		opt(spec)
-	}
-
-	if err := spec.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &models.SpecConfig{
-		Type:   models.PublisherS3,
-		Params: spec.ToMap(),
-	}, nil
 }

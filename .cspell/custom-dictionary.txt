@@ -445,3 +445,4 @@ bprotocolcompute
 bprotocolorchestrator
 nclprotocolcompute
 ncltest
+dind

@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/maps"
@@ -19,8 +18,11 @@ type Task struct {
 
 	Publisher *SpecConfig `json:"Publisher"`
 
-	// Map of environment variables to be used by the driver
-	Env map[string]string `json:"Env,omitempty"`
+	// Map of environment variables to be used by the driver.
+	// Values can be:
+	// - Direct value: "debug-mode"
+	// - Host env var: "env:HOST_VAR"
+	Env map[string]EnvVarValue `json:"Env,omitempty"`
 
 	// Meta is used to associate arbitrary metadata with this task.
 	Meta map[string]string `json:"Meta,omitempty"`
@@ -54,7 +56,7 @@ func (t *Task) Normalize() {
 		t.Meta = make(map[string]string)
 	}
 	if t.Env == nil {
-		t.Env = make(map[string]string)
+		t.Env = make(map[string]EnvVarValue)
 	}
 	if t.InputSources == nil {
 		t.InputSources = make([]*InputSource, 0)
@@ -123,14 +125,8 @@ func (t *Task) ValidateSubmission() error {
 	mErr := errors.Join(
 		validate.NotBlank(t.Name, "missing task name"),
 		validate.NoNullChars(t.Name, "task name cannot contain null characters"),
+		ValidateEnvVars(t.Env),
 	)
-
-	// env var validation
-	for envName := range t.Env {
-		if strings.HasPrefix(strings.ToUpper(envName), EnvVarPrefix) {
-			mErr = errors.Join(mErr, fmt.Errorf("environment variable '%s' cannot start with %s", envName, EnvVarPrefix))
-		}
-	}
 
 	if err := t.Engine.Validate(); err != nil {
 		mErr = errors.Join(mErr, fmt.Errorf("engine validation failed: %v", err))

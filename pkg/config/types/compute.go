@@ -13,6 +13,8 @@ type Compute struct {
 	AllowListedLocalPaths []string `yaml:"AllowListedLocalPaths" json:"AllowListedLocalPaths,omitempty"`
 	// TLS specifies the TLS related configuration on the compute node when connecting with the orchestrator.
 	TLS ComputeTLS `yaml:"TLS,omitempty" json:"TLS,omitempty"`
+	// Env specifies environment variable configuration for the compute node
+	Env EnvConfig `yaml:"Env,omitempty" json:"Env,omitempty"`
 }
 
 type ComputeAuth struct {
@@ -35,4 +37,11 @@ type Heartbeat struct {
 	ResourceUpdateInterval Duration `yaml:"ResourceUpdateInterval,omitempty" json:"ResourceUpdateInterval,omitempty"`
 	// Interval specifies the time between heartbeat signals sent to the orchestrator.
 	Interval Duration `yaml:"Interval,omitempty" json:"Interval,omitempty"`
+}
+
+// EnvConfig specifies environment variable configuration for the compute node
+type EnvConfig struct {
+	// AllowList specifies which host environment variables can be forwarded to jobs.
+	// Supports glob patterns (e.g., "AWS_*", "API_*")
+	AllowList []string `yaml:"AllowList,omitempty" json:"AllowList,omitempty"`
 }

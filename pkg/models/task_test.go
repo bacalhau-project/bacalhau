@@ -194,7 +194,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 			task: &Task{
 				Name:   "invalid-env",
 				Engine: &SpecConfig{Type: "docker"},
-				Env: map[string]string{
+				Env: map[string]EnvVarValue{
 					"BACALHAU_TEST": "value",
 				},
 			},
@@ -202,23 +202,11 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 			errMsg:         "environment variable 'BACALHAU_TEST' cannot start with BACALHAU_",
 		},
 		{
-			name: "Environment variable starting with bacalhau_ (lowercase)",
-			task: &Task{
-				Name:   "invalid-env-lowercase",
-				Engine: &SpecConfig{Type: "docker"},
-				Env: map[string]string{
-					"bacalhau_test": "value",
-				},
-			},
-			validationMode: submissionError,
-			errMsg:         "environment variable 'bacalhau_test' cannot start with BACALHAU_",
-		},
-		{
 			name: "Valid environment variable",
 			task: &Task{
 				Name:   "valid-env",
 				Engine: &SpecConfig{Type: "docker"},
-				Env: map[string]string{
+				Env: map[string]EnvVarValue{
 					"VALID_VAR":   "value",
 					"MY_BACALHAU": "value", // Valid as it doesn't start with BACALHAU_
 				},
@@ -265,7 +253,7 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 			{Name: "output1", Path: "/output1"},
 		},
 		Meta: map[string]string{"key": "value"},
-		Env:  map[string]string{"ENV_VAR": "value"},
+		Env:  map[string]EnvVarValue{"ENV_VAR": "value"},
 	}
 
 	cpy := original.Copy()
