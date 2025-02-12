@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/bacalhau-project/bacalhau">
-    <img src="./docs/static/img/logo/Bacalhau-horizontal.svg" alt="Bacalhau" width="300"/>
+    <img src="./docs/logo/Bacalhau-horizontal.svg" alt="Bacalhau" width="300"/>
   </a>
 </p>
 
