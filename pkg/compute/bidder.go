@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -217,10 +218,27 @@ func (b Bidder) handleBidResult(
 			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 		},
 	})
-	// TODO: handle error by either gracefully skipping if the execution is no longer in the created state
-	//  or by failing the execution
+
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to update execution state")
+		var invalidStateErr store.ErrInvalidExecutionState
+		if errors.As(err, &invalidStateErr) {
+			log.Ctx(ctx).Debug().
+				Err(err).
+				Str("executionID", execution.ID).
+				Str("expectedState", models.ExecutionStateNew.String()).
+				Str("actualState", invalidStateErr.Actual.String()).
+				Msg("skipping execution state update - execution no longer in expected state")
+			return
+		}
+
+		failErr := b.handleError(ctx, execution, fmt.Errorf("failed to update execution state: %w", err))
+		if failErr != nil {
+			log.Ctx(ctx).Error().
+				Err(failErr).
+				Str("executionID", execution.ID).
+				Str("originalError", err.Error()).
+				Msg("failed to update execution to failed state after update error")
+		}
 		return
 	}
 }
