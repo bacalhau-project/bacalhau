@@ -231,8 +231,7 @@ func (b Bidder) handleBidResult(
 			return
 		}
 
-		failErr := b.handleError(ctx, execution, fmt.Errorf("failed to update execution state: %w", err))
-		if failErr != nil {
+		if failErr := b.handleError(ctx, execution, fmt.Errorf("failed to update execution state: %w", err)); failErr != nil {
 			log.Ctx(ctx).Error().
 				Err(failErr).
 				Str("executionID", execution.ID).
