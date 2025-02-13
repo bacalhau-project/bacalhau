@@ -34,6 +34,7 @@ var (
 	ExecutionBiddingErrors = lo.Must(meter.Int64Counter(
 		"execution_bidding_errors",
 		metric.WithDescription("Number of errors encountered during execution bidding."),
+		metric.WithUnit("1"),
 	))
 
 	ExecutionRunErrors = lo.Must(meter.Int64Counter(
