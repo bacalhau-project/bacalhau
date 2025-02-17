@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -40,11 +41,7 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 	case models.ExecutionStateNew:
 		if err := h.bidder.RunBidding(ctx, execution); err != nil {
 			compute.ExecutionBiddingErrors.Add(ctx, 1)
-			logger.Error().
-				Err(err).
-				Msg("failed to run bidding")
-			return fmt.Errorf("failed to handle execution state %s: %w",
-				execution.ComputeState.StateType, err)
+			return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
 		}
 		return nil
 	case models.ExecutionStateBidAccepted:
@@ -55,23 +52,16 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 				Err(err).
 				Msg("failed to run execution")
 		}
+		return err
 	case models.ExecutionStateCancelled:
 		err = h.executor.Cancel(ctx, execution)
 		if err != nil {
 			compute.ExecutionCancelErrors.Add(ctx, 1)
-			logger.Error().
-				Err(err).
-				Msg("failed to cancel execution")
+			return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
 		}
+		return nil
 	default:
 		// No action needed for other states
 		return nil
 	}
-
-	if err != nil {
-		return fmt.Errorf("failed to handle execution state %s: %w",
-			execution.ComputeState.StateType, err)
-	}
-
-	return nil
 }

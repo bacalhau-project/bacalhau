@@ -231,13 +231,11 @@ func (b Bidder) handleBidResult(
 			return
 		}
 
-		if failErr := b.handleError(ctx, execution, fmt.Errorf("failed to update execution state: %w", err)); failErr != nil {
-			log.Ctx(ctx).Error().
-				Err(failErr).
-				Str("executionID", execution.ID).
-				Str("originalError", err.Error()).
-				Msg("failed to update execution to failed state after update error")
-		}
+		// Propagate the error to be handled by the execution watcher
+		log.Ctx(ctx).Debug().
+			Err(err).
+			Str("executionID", execution.ID).
+			Msg("failed to update execution state")
 		return
 	}
 }
