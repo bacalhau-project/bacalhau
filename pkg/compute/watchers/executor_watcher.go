@@ -41,6 +41,9 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 	case models.ExecutionStateNew:
 		if err := h.bidder.RunBidding(ctx, execution); err != nil {
 			compute.ExecutionBiddingErrors.Add(ctx, 1)
+			logger.Error().
+				Err(err).
+				Msg("failed to run bidding")
 			return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
 		}
 		return nil
