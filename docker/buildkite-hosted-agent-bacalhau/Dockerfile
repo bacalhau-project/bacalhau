@@ -2,7 +2,7 @@ FROM docker.io/buildkite/hosted-agent-base:ubuntu-v1.0.0@sha256:af0d05215252cc0d
 
 # When updatin the golang version golangci-lint may also need its version updated for compatibility.
 ENV GOLANG_VERSION 1.23.0
-ENV GOLANGCI_LINT_VERSION v1.60.1
+ENV GOLANGCI_LINT_VERSION v1.64.2
 
 RUN apt-get update && apt-get install -y wget make iproute2 gh
 

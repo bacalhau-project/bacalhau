@@ -11,7 +11,7 @@ jobs:
   go-lint:
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           skip-cache: true
+          version: v1.64.2
 
   # TODO: Decouple Each Component Linting
   lint:
