@@ -39,14 +39,12 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 	var err error
 	switch execution.ComputeState.StateType {
 	case models.ExecutionStateNew:
-		if err := h.bidder.RunBidding(ctx, execution); err != nil {
+		if err = h.bidder.RunBidding(ctx, execution); err != nil {
 			compute.ExecutionBiddingErrors.Add(ctx, 1)
 			logger.Error().
 				Err(err).
 				Msg("failed to run bidding")
-			return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
 		}
-		return nil
 	case models.ExecutionStateBidAccepted:
 		err = h.executor.Run(ctx, execution)
 		if err != nil {
@@ -55,16 +53,18 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 				Err(err).
 				Msg("failed to run execution")
 		}
-		return err
 	case models.ExecutionStateCancelled:
 		err = h.executor.Cancel(ctx, execution)
 		if err != nil {
 			compute.ExecutionCancelErrors.Add(ctx, 1)
-			return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
 		}
-		return nil
 	default:
 		// No action needed for other states
 		return nil
 	}
+
+	if err != nil {
+		return bacerrors.Wrap(err, "failed to handle execution state %s", execution.ComputeState.StateType)
+	}
+	return nil
 }
