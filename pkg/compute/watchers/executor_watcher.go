@@ -54,10 +54,12 @@ func (h *ExecutionUpsertHandler) HandleEvent(ctx context.Context, event watcher.
 				Msg("failed to run execution")
 		}
 	case models.ExecutionStateCancelled:
-		err = h.executor.Cancel(ctx, execution)
-		if err != nil {
-			compute.ExecutionCancelErrors.Add(ctx, 1)
-		}
+ case models.ExecutionStateCancelled:
+   err = h.executor.Cancel(ctx, execution)
+   if err != nil {
++    logger.Error().Err(err).Msg("failed to cancel execution")
+     compute.ExecutionCancelErrors.Add(ctx, 1)
+   }
 	default:
 		// No action needed for other states
 		return nil
