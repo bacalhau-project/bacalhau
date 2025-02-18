@@ -2,7 +2,7 @@ FROM docker:dind
 
 # Install necessary packages
 RUN apk update && apk add --no-cache \
-    ca-certificates
+    ca-certificates=20241121-r1
 
 # Automatically set by Docker to be the --platform flag
 ARG TARGETPLATFORM
