@@ -22,10 +22,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           mkdir -p webui/build && touch webui/build/index.html
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v6.5.0
         with:
           skip-cache: true
-          version: v1.64.2
+          version: v1.64.5
 
   # TODO: Decouple Each Component Linting
   lint:
