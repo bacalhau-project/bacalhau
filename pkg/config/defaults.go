@@ -47,6 +47,8 @@ var Default = types.Bacalhau{
 		Enabled:       false,
 		Orchestrators: []string{"nats://127.0.0.1:4222"},
 		Network: types.NetworkConfig{
+			// Port range is chosen to avoid conflicts with well-known services
+			// and provide sufficient ports for concurrent job allocations
 			PortRangeStart: 20000,
 			PortRangeEnd:   32000,
 		},

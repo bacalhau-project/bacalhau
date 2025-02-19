@@ -3,9 +3,9 @@ package compute
 import (
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 
-	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
@@ -18,7 +18,7 @@ type portAllocator struct {
 	usedPorts          map[int]bool            // Tracks all allocated ports
 	usedExecutionPorts map[string]map[int]bool // Maps execution ID to its allocated ports
 	lastAllocated      int                     // Last successfully allocated port
-	mu                 sync.Mutex
+	mu                 sync.Mutex              // Mutex to prevent concurrent allocation of ports
 }
 
 // NewPortAllocator creates a new port allocator with the specified port range.
@@ -29,7 +29,8 @@ func NewPortAllocator(start, end int) (PortAllocator, error) {
 		validate.IsGreaterThanZero(start, "start port must be positive"),
 		validate.IsGreaterThanZero(end, "end port must be positive"),
 		validate.True(start < end, "start port must be less than end port"),
-		validate.True(end <= 65535, "end port cannot exceed 65535"), //nolint: mnd
+		validate.True(end <= 65535, "end port cannot exceed 65535"),     //nolint: mnd
+		validate.True(start <= 65535, "start port cannot exceed 65535"), //nolint: mnd
 	)
 	if err != nil {
 		return nil, err
@@ -111,15 +112,17 @@ func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.Po
 // allocateStaticPortLocked checks and allocates a static port
 // Caller must hold the mutex
 func (pa *portAllocator) allocateStaticPortLocked(port int) error {
-	// Check if port is already in use
+	// Check if port is already in use by our allocator
 	if pa.usedPorts[port] {
 		return fmt.Errorf("port %d is already in use", port)
 	}
 
-	// Check if port is actually available on host
-	if !network.IsPortOpen(port) {
+	// Try to actually bind to the port to ensure it's available
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
 		return fmt.Errorf("port %d is in use", port)
 	}
+	defer listener.Close()
 
 	pa.usedPorts[port] = true
 	return nil
@@ -152,11 +155,20 @@ func (pa *portAllocator) allocateDynamicPortLocked() (int, error) {
 	// The modulo operation ensures we wrap around to the start when we reach the end
 	for i := 0; i < rangeSize; i++ {
 		port := pa.start + ((offset + i) % rangeSize)
-		if !pa.usedPorts[port] && network.IsPortOpen(port) {
-			pa.usedPorts[port] = true
-			pa.lastAllocated = port
-			return port, nil
+		if pa.usedPorts[port] {
+			continue
 		}
+
+		// Try to actually bind to the port
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err != nil {
+			continue
+		}
+		listener.Close()
+
+		pa.usedPorts[port] = true
+		pa.lastAllocated = port
+		return port, nil
 	}
 
 	return 0, fmt.Errorf("no available ports in range %d-%d", pa.start, pa.end)

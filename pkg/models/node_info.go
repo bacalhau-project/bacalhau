@@ -179,5 +179,6 @@ func (c *ComputeNodeInfo) Copy() *ComputeNodeInfo {
 	cpy.QueueUsedCapacity = copyOrZero(c.QueueUsedCapacity.Copy())
 	cpy.AvailableCapacity = copyOrZero(c.AvailableCapacity.Copy())
 	cpy.MaxJobRequirements = copyOrZero(c.MaxJobRequirements.Copy())
+	cpy.Address = c.Address
 	return cpy
 }

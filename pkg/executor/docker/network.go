@@ -95,8 +95,15 @@ func (e *Executor) setupNetworkForJob(
 			for _, mapping := range params.Network.Ports {
 				// In bridge mode, we use the Target port as the container port
 				containerPort := nat.Port(fmt.Sprintf("%d/tcp", mapping.Target))
+
+				// Use the host network from the mapping if specified, otherwise use all interfaces
+				hostIP := "0.0.0.0"
+				if mapping.HostNetwork != "" {
+					hostIP = mapping.HostNetwork
+				}
+
 				hostBinding := nat.PortBinding{
-					HostIP:   "0.0.0.0",
+					HostIP:   hostIP,
 					HostPort: fmt.Sprintf("%d", mapping.Static),
 				}
 

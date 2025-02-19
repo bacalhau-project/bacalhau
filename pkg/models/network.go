@@ -307,6 +307,11 @@ type PortMapping struct {
 	// Only valid for Bridge network mode. If not specified in Bridge mode,
 	// it will default to the same value as the host port.
 	Target int `json:"Target,omitempty"`
+
+	// HostNetwork specifies which network interface to bind to.
+	// If empty, defaults to "0.0.0.0" (all interfaces).
+	// Can be set to "127.0.0.1" to only allow local connections.
+	HostNetwork string `json:"HostNetwork,omitempty"`
 }
 
 // Copy returns a deep copy of the PortMapping.
@@ -324,9 +329,16 @@ func (p *PortMapping) Validate() error {
 		return fmt.Errorf("port mapping name is required")
 	}
 
-	// Validate name format (optional, but recommended)
-	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*$`).MatchString(p.Name) {
-		return fmt.Errorf("port name must start with a letter and contain only letters, numbers, and underscores")
+	// Validate name can be used as an environment variable
+	// Environment variables must be ASCII, start with a letter/underscore,
+	// and contain only letters, numbers, and underscores
+	if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(p.Name) {
+		return fmt.Errorf("port name must be a valid environment variable name: start with letter/underscore and contain only letters, numbers, and underscores")
+	}
+
+	// Check length - most shells have limits around 256-1024 chars
+	if len(p.Name) > 256 {
+		return fmt.Errorf("port name too long (max 256 characters)")
 	}
 
 	if p.Static < 0 || p.Static > 65535 {
@@ -335,6 +347,13 @@ func (p *PortMapping) Validate() error {
 
 	if p.Target < 0 || p.Target > 65535 {
 		return fmt.Errorf("invalid target port %d", p.Target)
+	}
+
+	// Validate HostNetwork if specified
+	if p.HostNetwork != "" {
+		if ip := net.ParseIP(p.HostNetwork); ip == nil {
+			return fmt.Errorf("invalid host network IP address: %s", p.HostNetwork)
+		}
 	}
 
 	return nil
