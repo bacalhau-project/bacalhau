@@ -46,6 +46,10 @@ var Default = types.Bacalhau{
 	Compute: types.Compute{
 		Enabled:       false,
 		Orchestrators: []string{"nats://127.0.0.1:4222"},
+		Network: types.NetworkConfig{
+			PortRangeStart: 20000,
+			PortRangeEnd:   32000,
+		},
 		Heartbeat: types.Heartbeat{
 			InfoUpdateInterval: types.Minute,
 			Interval:           15 * types.Second,

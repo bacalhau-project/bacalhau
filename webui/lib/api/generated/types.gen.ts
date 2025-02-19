@@ -175,6 +175,11 @@ export type models_ComputeNodeInfo = {
     QueueCapacity?: models_Resources;
     RunningExecutions?: number;
     StorageSources?: Array<(string)>;
+    /**
+     * Address is the network location where this compute node can be reached
+     * Format: IPv4 or hostname (e.g., "192.168.1.100" or "node1.example.com")
+     */
+    address?: string;
 };
 
 export type models_ConnectionState = {
@@ -519,12 +524,17 @@ export type models_LabelSelectorRequirement = {
 
 export enum models_Network {
     NetworkNone = 0,
-    NetworkFull = 1,
-    NetworkHTTP = 2
+    NetworkHost = 1,
+    NetworkHTTP = 2,
+    NetworkBridge = 3
 }
 
 export type models_NetworkConfig = {
     Domains?: Array<(string)>;
+    /**
+     * Ports specifies the port mappings required by the task
+     */
+    Ports?: Array<models_PortMapping>;
     Type?: models_Network;
 };
 
@@ -571,6 +581,26 @@ export enum models_NodeType {
     NodeTypeRequester = 1,
     NodeTypeCompute = 2
 }
+
+export type models_PortMapping = {
+    /**
+     * Name is a required identifier for this port mapping.
+     * It will be used to create environment variables to inform the task
+     * about its allocated ports.
+     */
+    Name?: string;
+    /**
+     * Static is the host port to use. If not specified, a port will be
+     * auto-allocated from the compute node's port range
+     */
+    Static?: number;
+    /**
+     * Target is the port inside the task/container that should be exposed.
+     * Only valid for Bridge network mode. If not specified in Bridge mode,
+     * it will default to the same value as the host port.
+     */
+    Target?: number;
+};
 
 export enum models_Protocol {
     ProtocolNCLV1 = 'ncl/v1',
@@ -947,6 +977,10 @@ export type types_Compute = {
     Env?: (types_EnvConfig);
     Heartbeat?: types_Heartbeat;
     /**
+     * Network specifies the networking configuration for this compute node
+     */
+    Network?: (types_NetworkConfig);
+    /**
      * Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
      */
     Orchestrators?: Array<(string)>;
@@ -1173,6 +1207,22 @@ export type types_LongRunningJobDefaultsConfig = {
 
 export type types_LongRunningTaskDefaultConfig = {
     Resources?: types_ResourcesConfig;
+};
+
+export type types_NetworkConfig = {
+    /**
+     * AdvertisedAddress is the address that this compute node advertises to other nodes.
+     * If empty, a default address will be auto-discovered.
+     */
+    AdvertisedAddress?: string;
+    /**
+     * PortRangeEnd is the last port in the range (inclusive) that can be allocated to jobs
+     */
+    PortRangeEnd?: number;
+    /**
+     * PortRangeStart is the first port in the range (inclusive) that can be allocated to jobs
+     */
+    PortRangeStart?: number;
 };
 
 export type types_NodeManager = {

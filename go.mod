@@ -17,6 +17,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v27.1.1+incompatible
+	github.com/docker/go-connections v0.4.0
 	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
@@ -105,7 +106,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.2 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect

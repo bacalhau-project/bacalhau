@@ -18,6 +18,7 @@ type NodeInfoDecoratorParams struct {
 	QueueCapacityTracker   capacity.UsageTracker
 	ExecutorBuffer         *ExecutorBuffer
 	MaxJobRequirements     models.Resources
+	AdvertisedAddress      string
 }
 
 type NodeInfoDecorator struct {
@@ -28,6 +29,7 @@ type NodeInfoDecorator struct {
 	queueCapacityTracker   capacity.UsageTracker
 	executorBuffer         *ExecutorBuffer
 	maxJobRequirements     models.Resources
+	advertisedAddress      string
 }
 
 func NewNodeInfoDecorator(params NodeInfoDecoratorParams) *NodeInfoDecorator {
@@ -39,6 +41,7 @@ func NewNodeInfoDecorator(params NodeInfoDecoratorParams) *NodeInfoDecorator {
 		queueCapacityTracker:   params.QueueCapacityTracker,
 		executorBuffer:         params.ExecutorBuffer,
 		maxJobRequirements:     params.MaxJobRequirements,
+		advertisedAddress:      params.AdvertisedAddress,
 	}
 }
 
@@ -56,6 +59,7 @@ func (n *NodeInfoDecorator) DecorateNodeInfo(ctx context.Context, nodeInfo model
 		MaxJobRequirements: n.maxJobRequirements,
 		RunningExecutions:  len(n.executorBuffer.RunningExecutions()),
 		EnqueuedExecutions: n.executorBuffer.EnqueuedExecutionsCount(),
+		Address:            n.advertisedAddress,
 	}
 	return nodeInfo
 }

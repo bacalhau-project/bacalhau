@@ -402,7 +402,7 @@ func TestJobFlagParsing(t *testing.T) {
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.Equal(t, models.NetworkFull, task.Network.Type)
+				assert.Equal(t, models.NetworkHost, task.Network.Type)
 			},
 			expectedError: false,
 		},

@@ -262,6 +262,27 @@ func (e *Execution) AllocateResources(taskID string, resources Resources) {
 	e.AllocatedResources.Tasks[taskID] = resources.Copy()
 }
 
+// AllocatePorts updates the execution's network configuration with the allocated port mappings.
+func (e *Execution) AllocatePorts(portMappings []PortMapping) {
+	if e.Job == nil || e.Job.Task().Network == nil {
+		return
+	}
+
+	// Create a map of port names to allocated mappings
+	allocatedPorts := make(map[string]PortMapping)
+	for _, mapping := range portMappings {
+		allocatedPorts[mapping.Name] = mapping
+	}
+
+	// Update each port in the network config with its allocated values
+	for i, port := range e.Job.Task().Network.Ports {
+		if allocated, exists := allocatedPorts[port.Name]; exists {
+			e.Job.Task().Network.Ports[i].Static = allocated.Static
+			e.Job.Task().Network.Ports[i].Target = allocated.Target
+		}
+	}
+}
+
 // OrchestrationProtocol is the protocol used to orchestrate the execution
 func (e *Execution) OrchestrationProtocol() Protocol {
 	return e.Job.OrchestrationProtocol()

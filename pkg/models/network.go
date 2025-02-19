@@ -18,8 +18,9 @@ const (
 	// NetworkNone specifies that the job does not require networking.
 	NetworkNone Network = iota
 
-	// NetworkFull specifies that the job requires unfiltered raw IP networking.
-	NetworkFull
+	// NetworkHost (previously NetworkFull) specifies that the job requires unfiltered raw IP networking.
+	// This gives the container direct access to the host's network interfaces.
+	NetworkHost
 
 	// NetworkHTTP specifies that the job requires HTTP networking to certain domains.
 	//
@@ -32,7 +33,7 @@ const (
 	//
 	//  bacalhau docker run —network=http —domain=crates.io —domain=github.com -i ipfs://Qmy1234myd4t4,dst=/code rust/compile
 	//
-	// The “risk” for the compute provider is that the job does something that
+	// The "risk" for the compute provider is that the job does something that
 	// violates its terms, the terms of its hosting provider or ISP, or even the
 	// law in its jurisdiction (e.g. accessing and spreading illegal content,
 	// performing cyberattacks). So the same sort of risk as operating a Tor
@@ -51,13 +52,25 @@ const (
 	// job specifiers who can have their job picked up only by someone who will
 	// run it successfully.
 	NetworkHTTP
+
+	// NetworkBridge specifies that the job runs in an isolated network namespace
+	// connected to a bridge network. This is the default networking mode for containers
+	// and provides isolation while still allowing outbound connectivity.
+	NetworkBridge
 )
 
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	for typ := NetworkNone; typ <= NetworkHTTP; typ++ {
-		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
+	s = strings.TrimSpace(strings.ToLower(s))
+
+	// Handle legacy "full" value
+	if s == "full" {
+		return NetworkHost, nil
+	}
+
+	for typ := NetworkNone; typ <= NetworkBridge; typ++ {
+		if strings.EqualFold(typ.String(), s) {
 			return typ, nil
 		}
 	}
@@ -78,6 +91,8 @@ func (n *Network) UnmarshalText(text []byte) (err error) {
 type NetworkConfig struct {
 	Type    Network  `json:"Type"`
 	Domains []string `json:"Domains,omitempty"`
+	// Ports specifies the port mappings required by the task
+	Ports []*PortMapping `json:"Ports,omitempty"`
 }
 
 // Disabled returns whether network connections should be completely disabled according
@@ -95,6 +110,9 @@ func (n *NetworkConfig) Normalize() {
 	if len(n.Domains) == 0 {
 		n.Domains = make([]string, 0)
 	}
+	if n.Ports == nil {
+		n.Ports = make([]*PortMapping, 0)
+	}
 	// Ensure that domains are lowercased, and trimmed of whitespace
 	for i, domain := range n.Domains {
 		n.Domains[i] = strings.TrimSpace(strings.ToLower(domain))
@@ -108,17 +126,23 @@ func (n *NetworkConfig) Copy() *NetworkConfig {
 	return &NetworkConfig{
 		Type:    n.Type,
 		Domains: slices.Clone(n.Domains),
+		Ports:   CopySlice(n.Ports),
 	}
 }
 
 // Validate returns an error if any of the fields do not pass validation, or nil
 // otherwise.
 func (n *NetworkConfig) Validate() (err error) {
-	if n.Type < NetworkNone || n.Type > NetworkHTTP {
+	if n.Type < NetworkNone || n.Type > NetworkBridge {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
-	// TODO(forrest): should return an error if the network type is not HTTP and domains are set.
+	// Validate domains are only set for HTTP mode
+	if len(n.Domains) > 0 && n.Type != NetworkHTTP {
+		err = errors.Join(err, fmt.Errorf("domains can only be set for HTTP network mode, got %q", n.Type))
+	}
+
+	// Validate domains format when present
 	for _, domain := range n.Domains {
 		if domainRegex.MatchString(domain) {
 			continue
@@ -129,7 +153,35 @@ func (n *NetworkConfig) Validate() (err error) {
 		err = errors.Join(err, fmt.Errorf("invalid domain %q", domain))
 	}
 
-	return
+	// Validate port mappings
+	if len(n.Ports) > 0 {
+		// Check network mode
+		if n.Type != NetworkHost && n.Type != NetworkBridge {
+			err = errors.Join(err, fmt.Errorf("port mappings can only be set for Host or Bridge network modes, got %q", n.Type))
+		}
+
+		// Validate each port mapping
+		seenNames := make(map[string]bool)
+		for _, port := range n.Ports {
+			if perr := port.Validate(); perr != nil {
+				err = errors.Join(err, perr)
+				continue
+			}
+
+			// Check for duplicate names
+			if seenNames[port.Name] {
+				err = errors.Join(err, fmt.Errorf("duplicate port mapping name %q", port.Name))
+			}
+			seenNames[port.Name] = true
+
+			// Validate target ports are only set for Bridge mode
+			if port.Target != 0 && n.Type != NetworkBridge {
+				err = errors.Join(err, fmt.Errorf("target ports can only be set for Bridge network mode, got %q", n.Type))
+			}
+		}
+	}
+
+	return err
 }
 
 // DomainSet returns the "unique set" of domains from the network config.
@@ -238,4 +290,52 @@ func matchDomain(left, right string) (diff int) {
 	// If we are here, we have run out of components; either the domains match
 	// in all components or one of them is a wildcard.
 	return 0
+}
+
+// PortMapping defines how ports should be mapped for a task
+type PortMapping struct {
+	// Name is a required identifier for this port mapping.
+	// It will be used to create environment variables to inform the task
+	// about its allocated ports.
+	Name string `json:"Name"`
+
+	// Static is the host port to use. If not specified, a port will be
+	// auto-allocated from the compute node's port range
+	Static int `json:"Static,omitempty"`
+
+	// Target is the port inside the task/container that should be exposed.
+	// Only valid for Bridge network mode. If not specified in Bridge mode,
+	// it will default to the same value as the host port.
+	Target int `json:"Target,omitempty"`
+}
+
+// Copy returns a deep copy of the PortMapping.
+func (p *PortMapping) Copy() *PortMapping {
+	if p == nil {
+		return nil
+	}
+	pm := new(PortMapping)
+	*pm = *p
+	return pm
+}
+
+func (p *PortMapping) Validate() error {
+	if p.Name == "" {
+		return fmt.Errorf("port mapping name is required")
+	}
+
+	// Validate name format (optional, but recommended)
+	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*$`).MatchString(p.Name) {
+		return fmt.Errorf("port name must start with a letter and contain only letters, numbers, and underscores")
+	}
+
+	if p.Static < 0 || p.Static > 65535 {
+		return fmt.Errorf("invalid static port %d", p.Static)
+	}
+
+	if p.Target < 0 || p.Target > 65535 {
+		return fmt.Errorf("invalid target port %d", p.Target)
+	}
+
+	return nil
 }
