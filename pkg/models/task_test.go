@@ -30,7 +30,6 @@ func (suite *TaskTestSuite) TestTaskNormalization() {
 		Meta:            nil,
 		Env:             nil,
 		ResourcesConfig: nil,
-		Network:         nil,
 		Timeouts:        nil,
 	}
 
@@ -40,6 +39,7 @@ func (suite *TaskTestSuite) TestTaskNormalization() {
 	suite.NotNil(task.Env)
 	suite.NotNil(task.ResourcesConfig)
 	suite.NotNil(task.Network)
+	suite.NotNil(task.Network.Ports)
 	suite.NotNil(task.Timeouts)
 	suite.NotEmpty(task.InputSources)
 	suite.NotEmpty(task.ResultPaths)
@@ -213,6 +213,71 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 			},
 			validationMode: noError,
 		},
+		{
+			name: "Invalid network type",
+			task: &Task{
+				Name:    "invalid-network",
+				Engine:  &SpecConfig{Type: "docker"},
+				Network: &NetworkConfig{Type: Network(999)},
+			},
+			validationMode: submissionError,
+			errMsg:         "invalid networking type",
+		},
+		{
+			name: "Invalid port mapping name",
+			task: &Task{
+				Name:   "invalid-port-name",
+				Engine: &SpecConfig{Type: "docker"},
+				Network: &NetworkConfig{
+					Type: NetworkHost,
+					Ports: []*PortMapping{
+						{Name: "invalid-name", Static: 8080},
+					},
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "port name must be a valid environment variable name",
+		},
+		{
+			name: "Privileged port in host mode",
+			task: &Task{
+				Name:   "privileged-port",
+				Engine: &SpecConfig{Type: "docker"},
+				Network: &NetworkConfig{
+					Type: NetworkHost,
+					Ports: []*PortMapping{
+						{Name: "HTTP", Static: 80},
+					},
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "privileged port range",
+		},
+		{
+			name: "Domains with non-http network",
+			task: &Task{
+				Name:   "wrong-network-domains",
+				Engine: &SpecConfig{Type: "docker"},
+				Network: &NetworkConfig{
+					Type:    NetworkBridge,
+					Domains: []string{"example.com"},
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "domains can only be set for HTTP network mode",
+		},
+		{
+			name: "Valid network configurations",
+			task: &Task{
+				Name:   "valid-network",
+				Engine: &SpecConfig{Type: "docker"},
+				Network: &NetworkConfig{
+					Type:    NetworkHTTP,
+					Domains: []string{"example.com"},
+				},
+			},
+			validationMode: noError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -252,6 +317,13 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 		ResultPaths: []*ResultPath{
 			{Name: "output1", Path: "/output1"},
 		},
+		Network: &NetworkConfig{
+			Type: NetworkBridge,
+			Ports: []*PortMapping{
+				{Name: "HTTP", Static: 8080, Target: 80},
+				{Name: "HTTPS", Static: 443},
+			},
+		},
 		Meta: map[string]string{"key": "value"},
 		Env:  map[string]EnvVarValue{"ENV_VAR": "value"},
 	}
@@ -264,6 +336,9 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 	// Ensure nested objects are deeply copied
 	suite.NotSame(original.Engine, cpy.Engine, "The Engine in the task and its copy should not be the same instance")
 	suite.NotSame(original.Publisher, cpy.Publisher, "The Publisher in the task and its copy should not be the same instance")
+	suite.NotSame(original.Network, cpy.Network, "The Network in the task and its copy should not be the same instance")
+	suite.NotSame(original.Network.Ports[0], cpy.Network.Ports[0], "The PortMapping in the task and its copy should not be the same instance")
+	suite.NotSame(original.Network.Ports[1], cpy.Network.Ports[1], "The PortMapping in the task and its copy should not be the same instance")
 	for i := range original.InputSources {
 		suite.NotSame(original.InputSources[i], cpy.InputSources[i], "The InputSources in the task and its copy should not be the same instance")
 	}
@@ -275,6 +350,10 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 	cpy.Name = "modified-task"
 	cpy.Meta["new_key"] = "new_value"
 	cpy.Env["NEW_ENV_VAR"] = "new_value"
+	cpy.Network.Ports[0].Static = 8080
+	cpy.Network.Ports[0].Target = 80
+	cpy.Network.Ports[1].Static = 443
+	cpy.Network.Ports[1].Target = 0
 
 	suite.NotEqual(original.Name, cpy.Name)
 	suite.NotEqual(original.Meta, cpy.Meta)

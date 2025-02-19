@@ -341,10 +341,17 @@ func (p *PortMapping) Validate() error {
 		return fmt.Errorf("port name too long (max 256 characters)")
 	}
 
-	if p.Static < 0 || p.Static > 65535 {
-		return fmt.Errorf("invalid static port %d", p.Static)
+	// Validate static port if specified
+	if p.Static != 0 {
+		if p.Static < 1024 {
+			return fmt.Errorf("static port %d is in privileged port range (1-1023)", p.Static)
+		}
+		if p.Static > 65535 {
+			return fmt.Errorf("static port %d is above maximum valid port 65535", p.Static)
+		}
 	}
 
+	// Validate target port if specified
 	if p.Target < 0 || p.Target > 65535 {
 		return fmt.Errorf("invalid target port %d", p.Target)
 	}

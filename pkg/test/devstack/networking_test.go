@@ -240,12 +240,12 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			Ports: []*models.PortMapping{
 				{
 					Name:   "http",
-					Static: 80, // Privileged port, should fail
+					Static: 999, // Privileged port, should fail
 					Target: 80,
 				},
 			},
 		},
 	})
-	testCase.JobCheckers = []scenario.StateChecks{scenario.WaitForUnsuccessfulCompletion()}
+	testCase.SubmitChecker = scenario.SubmitJobFail()
 	s.RunScenario(testCase)
 }

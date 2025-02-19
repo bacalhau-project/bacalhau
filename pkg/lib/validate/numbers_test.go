@@ -115,3 +115,59 @@ func TestIsGreaterOrEqual(t *testing.T) {
 		t.Errorf("IsGreaterOrEqual failed: unexpected error for float values %v, %v", floatValue, otherFloatValue)
 	}
 }
+
+func TestIsLessThan(t *testing.T) {
+	// Test with value greater than other
+	err := IsLessThan(2, 1, "value should be less than other")
+	if err == nil || err.Error() != "value should be less than other" {
+		t.Errorf("IsLessThan failed: expected error for values 2, 1")
+	}
+
+	// Test with value equal to other
+	err = IsLessThan(2, 2, "value should be less than other")
+	if err == nil || err.Error() != "value should be less than other" {
+		t.Errorf("IsLessThan failed: expected error for values 2, 2")
+	}
+
+	// Test with value less than other
+	err = IsLessThan(1, 2, "value should be less than other")
+	if err != nil {
+		t.Errorf("IsLessThan failed: unexpected error for values 1, 2")
+	}
+
+	// Test with different numeric types
+	var floatValue float64 = 1.5
+	var otherFloatValue float64 = 2.5
+	err = IsLessThan(floatValue, otherFloatValue, "value should be less than other")
+	if err != nil {
+		t.Errorf("IsLessThan failed: unexpected error for float values %v, %v", floatValue, otherFloatValue)
+	}
+}
+
+func TestIsLessOrEqual(t *testing.T) {
+	// Test with value greater than other
+	err := IsLessOrEqual(2, 1, "value should be less or equal to other")
+	if err == nil || err.Error() != "value should be less or equal to other" {
+		t.Errorf("IsLessOrEqual failed: expected error for values 2, 1")
+	}
+
+	// Test with value equal to other
+	err = IsLessOrEqual(2, 2, "value should be less or equal to other")
+	if err != nil {
+		t.Errorf("IsLessOrEqual failed: unexpected error for values 2, 2")
+	}
+
+	// Test with value less than other
+	err = IsLessOrEqual(1, 2, "value should be less or equal to other")
+	if err != nil {
+		t.Errorf("IsLessOrEqual failed: unexpected error for values 1, 2")
+	}
+
+	// Test with different numeric types
+	var floatValue float64 = 1.5
+	var otherFloatValue float64 = 1.5
+	err = IsLessOrEqual(floatValue, otherFloatValue, "value should be less or equal to other")
+	if err != nil {
+		t.Errorf("IsLessOrEqual failed: unexpected error for float values %v, %v", floatValue, otherFloatValue)
+	}
+}

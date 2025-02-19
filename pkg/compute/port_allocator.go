@@ -10,6 +10,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+const (
+	// MinimumPort is the lowest port number that can be allocated
+	// We don't allow privileged ports (0-1023) for security
+	MinimumPort = 1024
+
+	// MaximumPort is the highest port number that can be allocated
+	MaximumPort = 65535
+)
+
 // portAllocator implements the PortAllocator interface
 type portAllocator struct {
 	start int // First port in the dynamic allocation range
@@ -26,11 +35,9 @@ type portAllocator struct {
 // can use any valid port number.
 func NewPortAllocator(start, end int) (PortAllocator, error) {
 	err := errors.Join(
-		validate.IsGreaterThanZero(start, "start port must be positive"),
-		validate.IsGreaterThanZero(end, "end port must be positive"),
-		validate.True(start < end, "start port must be less than end port"),
-		validate.True(end <= 65535, "end port cannot exceed 65535"),     //nolint: mnd
-		validate.True(start <= 65535, "start port cannot exceed 65535"), //nolint: mnd
+		validate.IsGreaterOrEqual(start, MinimumPort, "start port must be >= %d", MinimumPort),
+		validate.IsLessOrEqual(end, MaximumPort, "end port must be <= %d", MaximumPort),
+		validate.IsLessThan(start, end, "start port must be less than end port"),
 	)
 	if err != nil {
 		return nil, err
