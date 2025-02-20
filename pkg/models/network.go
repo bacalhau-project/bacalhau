@@ -27,7 +27,7 @@ const (
 type Network int
 
 const (
-	// NetworkNone specifies that the job does not require networking.
+	// NetworkNone specifies@ that the job does not require networking.
 	NetworkNone Network = iota
 
 	// NetworkHost (previously NetworkFull) specifies that the job requires unfiltered raw IP networking.
@@ -174,6 +174,8 @@ func (n *NetworkConfig) Validate() (err error) {
 
 		// Validate each port mapping
 		seenNames := make(map[string]bool)
+		seenHostPorts := make(map[int]bool)
+		seenTargetPorts := make(map[int]bool)
 		for _, port := range n.Ports {
 			if perr := port.Validate(); perr != nil {
 				err = errors.Join(err, perr)
@@ -185,6 +187,18 @@ func (n *NetworkConfig) Validate() (err error) {
 				err = errors.Join(err, fmt.Errorf("duplicate port mapping name %q", port.Name))
 			}
 			seenNames[port.Name] = true
+
+			// Check for duplicate host ports
+			if seenHostPorts[port.Static] {
+				err = errors.Join(err, fmt.Errorf("duplicate host port %d", port.Static))
+			}
+			seenHostPorts[port.Static] = true
+
+			// Check for duplicate target ports
+			if seenTargetPorts[port.Target] {
+				err = errors.Join(err, fmt.Errorf("duplicate target port %d", port.Target))
+			}
+			seenTargetPorts[port.Target] = true
 
 			// Validate target ports are only set for Bridge mode
 			if port.Target != 0 && n.Type != NetworkBridge {

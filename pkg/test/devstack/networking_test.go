@@ -228,24 +228,117 @@ func (s *NetworkingSuite) TestPortMappingInHostMode() {
 }
 
 func (s *NetworkingSuite) TestInvalidPortMapping() {
-	// Try to map to a privileged port
-	testCase := s.networkScenario(&models.Task{
-		Name: s.T().Name(),
-		Engine: dockmodels.NewDockerEngineBuilder("busybox:1.37.0").
-			WithEntrypoint("sh", "-c", "nc -l -p 80").
-			MustBuild(),
-		Publisher: publisher_local.NewSpecConfig(),
-		Network: &models.NetworkConfig{
-			Type: models.NetworkBridge,
-			Ports: []*models.PortMapping{
-				{
-					Name:   "http",
-					Static: 999, // Privileged port, should fail
-					Target: 80,
+	testCases := []struct {
+		name    string
+		network *models.NetworkConfig
+	}{
+		{
+			name: "privileged port",
+			network: &models.NetworkConfig{
+				Type: models.NetworkBridge,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "http",
+						Static: 999, // Privileged port, should fail
+						Target: 80,
+					},
 				},
 			},
 		},
-	})
-	testCase.SubmitChecker = scenario.SubmitJobFail()
-	s.RunScenario(testCase)
+		{
+			name: "port out of range",
+			network: &models.NetworkConfig{
+				Type: models.NetworkBridge,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "invalid",
+						Static: 65536, // Port > 65535, should fail
+						Target: 8080,
+					},
+				},
+			},
+		},
+		{
+			name: "target port without bridge mode",
+			network: &models.NetworkConfig{
+				Type: models.NetworkHost,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+						Target: 80, // Target port not valid in host mode
+					},
+				},
+			},
+		},
+		{
+			name: "duplicate port names",
+			network: &models.NetworkConfig{
+				Type: models.NetworkBridge,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http", // Same name, should fail
+						Static: 8081,
+						Target: 81,
+					},
+				},
+			},
+		},
+		{
+			name: "duplicate static ports",
+			network: &models.NetworkConfig{
+				Type: models.NetworkBridge,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "http1",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http2",
+						Static: 8080, // Same static port, should fail
+						Target: 81,
+					},
+				},
+			},
+		},
+		{
+			name: "duplicate target ports",
+			network: &models.NetworkConfig{
+				Type: models.NetworkBridge,
+				Ports: []*models.PortMapping{
+					{
+						Name:   "http1",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http2",
+						Static: 8081,
+						Target: 80, // Same target port, should fail
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			testCase := s.networkScenario(&models.Task{
+				Name: s.T().Name(),
+				Engine: dockmodels.NewDockerEngineBuilder("busybox:1.37.0").
+					WithEntrypoint("sh", "-c", "nc -l -p 80").
+					MustBuild(),
+				Publisher: publisher_local.NewSpecConfig(),
+				Network:   tc.network,
+			})
+			testCase.SubmitChecker = scenario.SubmitJobFail()
+			s.RunScenario(testCase)
+		})
+	}
 }
