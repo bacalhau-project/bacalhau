@@ -388,7 +388,8 @@ func (p *Port) Validate() error {
 
 	// Check length - most shells have limits around 256-1024 chars
 	if len(p.Name) > maxPortName {
-		return fmt.Errorf("port name too long (max 256 characters)")
+		return fmt.Errorf("port name too long (max %d characters)", maxPortName)
+	}
 	}
 
 	// Validate static port if specified
