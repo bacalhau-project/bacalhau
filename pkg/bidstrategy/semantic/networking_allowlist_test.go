@@ -9,9 +9,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -34,12 +35,12 @@ func (tc networkAllowlistTestCase) String() string {
 
 var networkAllowlistTestCases []networkAllowlistTestCase = []networkAllowlistTestCase{
 	{models.NetworkNone, []string{}, true},
-	{models.NetworkFull, []string{}, false},
+	{models.NetworkHost, []string{}, false},
 	{models.NetworkHTTP, []string{}, true},
 	{models.NetworkHTTP, []string{"example.com"}, true},
-	{models.NetworkFull, []string{"example.com"}, false},
+	{models.NetworkHost, []string{"example.com"}, false},
 	{models.NetworkHTTP, []string{"malware.com"}, false},
-	{models.NetworkFull, []string{"malware.com"}, false},
+	{models.NetworkHost, []string{"malware.com"}, false},
 	{models.NetworkHTTP, []string{"example.com", "proxy.golang.org"}, true},
 	{models.NetworkHTTP, []string{"malware.com", "proxy.golang.org"}, false},
 }

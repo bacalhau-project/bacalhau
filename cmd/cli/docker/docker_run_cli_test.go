@@ -402,7 +402,7 @@ func TestJobFlagParsing(t *testing.T) {
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.Equal(t, models.NetworkFull, task.Network.Type)
+				assert.Equal(t, models.NetworkHost, task.Network.Type)
 			},
 			expectedError: false,
 		},
@@ -435,15 +435,9 @@ func TestJobFlagParsing(t *testing.T) {
 		},
 		// TODO(forrest): if/when validation on the network config is adjusted expect this test to fail.
 		{
-			name:  "with none network and domains",
-			flags: []string{"--network=none", "--domain=example.com", "--domain=example.io", "image:tag"},
-			assertJob: func(t *testing.T, j *models.Job) {
-				defaultJobAssertions(t, j)
-				task := j.Task()
-				assert.Equal(t, models.NetworkNone, task.Network.Type)
-				assert.Equal(t, []string{"example.com", "example.io"}, task.Network.Domains)
-			},
-			expectedError: false,
+			name:          "with none network and domains",
+			flags:         []string{"--network=none", "--domain=example.com", "--domain=example.io", "image:tag"},
+			expectedError: true,
 		},
 		{
 			name:  "with timeout",

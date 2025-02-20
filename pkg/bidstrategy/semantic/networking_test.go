@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy/semantic"
@@ -32,9 +33,9 @@ func (test networkingStrategyTestCase) String() string {
 
 var networkingStrategyTestCases = []networkingStrategyTestCase{
 	{false, models.NetworkConfig{Type: models.NetworkNone}, true},
-	{false, models.NetworkConfig{Type: models.NetworkFull}, false},
+	{false, models.NetworkConfig{Type: models.NetworkHost}, false},
 	{true, models.NetworkConfig{Type: models.NetworkNone}, true},
-	{true, models.NetworkConfig{Type: models.NetworkFull}, true},
+	{true, models.NetworkConfig{Type: models.NetworkHost}, true},
 }
 
 func TestNetworkingStrategy(t *testing.T) {

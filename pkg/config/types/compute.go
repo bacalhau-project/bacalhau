@@ -5,6 +5,8 @@ type Compute struct {
 	Enabled bool `yaml:"Enabled,omitempty" json:"Enabled,omitempty"`
 	// Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.
 	Orchestrators []string `yaml:"Orchestrators,omitempty" json:"Orchestrators,omitempty"`
+	// Network specifies the networking configuration for this compute node
+	Network NetworkConfig `yaml:"Network,omitempty" json:"Network,omitempty"`
 	// Auth specifies the authentication configuration for compute nodes to connect to the orchestrator.
 	Auth              ComputeAuth    `yaml:"Auth,omitempty" json:"Auth,omitempty"`
 	Heartbeat         Heartbeat      `yaml:"Heartbeat,omitempty" json:"Heartbeat,omitempty"`
@@ -44,4 +46,15 @@ type EnvConfig struct {
 	// AllowList specifies which host environment variables can be forwarded to jobs.
 	// Supports glob patterns (e.g., "AWS_*", "API_*")
 	AllowList []string `yaml:"AllowList,omitempty" json:"AllowList,omitempty"`
+}
+
+// NetworkConfig specifies networking configuration for the compute node
+type NetworkConfig struct {
+	// AdvertisedAddress is the address that this compute node advertises to other nodes.
+	// If empty, a default address will be auto-discovered.
+	AdvertisedAddress string `yaml:"AdvertisedAddress,omitempty" json:"AdvertisedAddress,omitempty"`
+	// PortRangeStart is the first port in the range (inclusive) that can be allocated to jobs
+	PortRangeStart int `yaml:"PortRangeStart,omitempty" json:"PortRangeStart,omitempty"`
+	// PortRangeEnd is the last port in the range (inclusive) that can be allocated to jobs
+	PortRangeEnd int `yaml:"PortRangeEnd,omitempty" json:"PortRangeEnd,omitempty"`
 }

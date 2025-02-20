@@ -367,7 +367,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *executor.R
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 	// Create a network if the job requests it, modifying the containerConfig and hostConfig.
-	err = e.setupNetworkForJob(ctx, params.JobID, params.ExecutionID, params.Network, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, params, containerConfig, hostConfig)
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("setting up network: %w", err)
 	}

@@ -47,3 +47,18 @@ type EnvVarResolver interface {
 	// Value returns the resolved value from the source
 	Value(value string) (string, error)
 }
+
+// PortAllocator manages network port allocation for container executions, ensuring safe
+// concurrent allocation and preventing port conflicts between different jobs.
+type PortAllocator interface {
+	// AllocatePorts handles port allocation for a job execution's network configuration.
+	// For each port mapping:
+	// - Static ports (explicitly specified) are validated for availability
+	// - Dynamic ports are automatically allocated from a configured range
+	// - Target ports default to the host port if unspecified
+	// Returns the complete list of port mappings or an error if allocation fails.
+	AllocatePorts(execution *models.Execution) (models.PortMap, error)
+
+	// ReleasePorts releases all allocated ports for a given execution.
+	ReleasePorts(execution *models.Execution)
+}
