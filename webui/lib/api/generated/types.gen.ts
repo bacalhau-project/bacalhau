@@ -584,6 +584,12 @@ export enum models_NodeType {
 
 export type models_PortMapping = {
     /**
+     * HostNetwork specifies which network interface to bind to.
+     * If empty, defaults to "0.0.0.0" (all interfaces).
+     * Can be set to "127.0.0.1" to only allow local connections.
+     */
+    HostNetwork?: string;
+    /**
      * Name is a required identifier for this port mapping.
      * It will be used to create environment variables to inform the task
      * about its allocated ports.

@@ -2030,6 +2030,10 @@ const docTemplate = `{
         "models.PortMapping": {
             "type": "object",
             "properties": {
+                "HostNetwork": {
+                    "description": "HostNetwork specifies which network interface to bind to.\nIf empty, defaults to \"0.0.0.0\" (all interfaces).\nCan be set to \"127.0.0.1\" to only allow local connections.",
+                    "type": "string"
+                },
                 "Name": {
                     "description": "Name is a required identifier for this port mapping.\nIt will be used to create environment variables to inform the task\nabout its allocated ports.",
                     "type": "string"

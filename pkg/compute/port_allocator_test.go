@@ -21,7 +21,7 @@ func TestPortAllocatorTestSuite(t *testing.T) {
 }
 
 func (s *PortAllocatorTestSuite) TestNoNetworkConfigReturnsEmptyMappings() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	execution := mock.Execution()
@@ -31,7 +31,7 @@ func (s *PortAllocatorTestSuite) TestNoNetworkConfigReturnsEmptyMappings() {
 }
 
 func (s *PortAllocatorTestSuite) TestNetworkTypeNoneReturnsEmptyMappings() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	execution := mock.Execution()
@@ -45,7 +45,7 @@ func (s *PortAllocatorTestSuite) TestNetworkTypeNoneReturnsEmptyMappings() {
 }
 
 func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	execution := mock.Execution()
@@ -53,7 +53,7 @@ func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
 		Type: models.NetworkHost,
 		Ports: []*models.PortMapping{
 			{Target: 80},                 // Dynamic host port, container port 80
-			{Static: 3000, Target: 8080}, // Static host port outside range, container port 8080
+			{Static: 6000, Target: 8080}, // Static host port outside range, container port 8080
 			{Static: 1500, Target: 9090}, // Static host port inside range, container port 9090
 			{Target: 5000},               // Dynamic host port, container port 5000
 		},
@@ -64,12 +64,12 @@ func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
 	s.Len(mappings, 4)
 
 	// First port should be auto-allocated in range
-	s.GreaterOrEqual(int(mappings[0].Static), 1000)
-	s.LessOrEqual(int(mappings[0].Static), 2000)
+	s.GreaterOrEqual(int(mappings[0].Static), 3000)
+	s.LessOrEqual(int(mappings[0].Static), 4000)
 	s.Equal(80, mappings[0].Target)
 
 	// Second port should keep static port even though outside range
-	s.Equal(3000, mappings[1].Static)
+	s.Equal(6000, mappings[1].Static)
 	s.Equal(8080, mappings[1].Target)
 
 	// Third port should keep static port inside range
@@ -77,19 +77,19 @@ func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
 	s.Equal(9090, mappings[2].Target)
 
 	// Fourth port should be auto-allocated in range
-	s.GreaterOrEqual(int(mappings[3].Static), 1000)
-	s.LessOrEqual(int(mappings[3].Static), 2000)
+	s.GreaterOrEqual(int(mappings[3].Static), 3000)
+	s.LessOrEqual(int(mappings[3].Static), 4000)
 	s.Equal(5000, mappings[3].Target)
 }
 
 func (s *PortAllocatorTestSuite) TestValidatesPortAllocatorRange() {
-	_, err := compute.NewPortAllocator(2000, 1000) // Invalid range
+	_, err := compute.NewPortAllocator(4000, 3000) // Invalid range
 	s.Error(err)
 	s.Contains(err.Error(), "start port must be less than end port")
 }
 
 func (s *PortAllocatorTestSuite) TestFailsOnPortReuse() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	// First execution requests port 1500
@@ -121,7 +121,7 @@ func (s *PortAllocatorTestSuite) TestFailsOnPortReuse() {
 }
 
 func (s *PortAllocatorTestSuite) TestPortRelease() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	// Allocate ports for an execution
@@ -163,7 +163,7 @@ func (s *PortAllocatorTestSuite) TestPortRelease() {
 
 func (s *PortAllocatorTestSuite) TestExhaustedPortRange() {
 	// Create allocator with very small range
-	pa, err := compute.NewPortAllocator(1000, 1001) // Only 2 ports available
+	pa, err := compute.NewPortAllocator(3000, 3001) // Only 2 ports available
 	s.Require().NoError(err)
 
 	execution := mock.Execution()
@@ -182,7 +182,7 @@ func (s *PortAllocatorTestSuite) TestExhaustedPortRange() {
 }
 
 func (s *PortAllocatorTestSuite) TestTargetPortDefaultsToStatic() {
-	pa, err := compute.NewPortAllocator(1000, 2000)
+	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	execution := mock.Execution()

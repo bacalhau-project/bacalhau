@@ -58,10 +58,10 @@ func GetExecutionEnvVars(execution *models.Execution, resolver EnvVarResolver) (
 		if execution.Job.Task().Network != nil {
 			for _, port := range execution.Job.Task().Network.Ports {
 				if port.Static > 0 {
-					sysEnv[models.EnvVarPrefix+"HOST_PORT_"+port.Name] = fmt.Sprintf("%d", port.Static)
+					sysEnv[models.EnvVarHostPortPrefix+port.Name] = fmt.Sprintf("%d", port.Static)
 				}
 				if port.Target > 0 {
-					sysEnv[models.EnvVarPrefix+"PORT_"+port.Name] = fmt.Sprintf("%d", port.Target)
+					sysEnv[models.EnvVarPortPrefix+port.Name] = fmt.Sprintf("%d", port.Target)
 				}
 			}
 		}

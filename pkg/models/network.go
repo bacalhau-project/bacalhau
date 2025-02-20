@@ -12,6 +12,18 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+const (
+	// MinimumPort is the lowest port number that can be allocated
+	// We don't allow privileged ports (0-1023) for security
+	MinimumPort = 1024
+
+	// MaximumPort is the highest port number that can be allocated
+	MaximumPort = 65535
+
+	// maxPortName is the maximum length of a port mapping name (environment variable)
+	maxPortName = 256 - len(EnvVarHostPortPrefix)
+)
+
 type Network int
 
 const (
@@ -333,26 +345,27 @@ func (p *PortMapping) Validate() error {
 	// Environment variables must be ASCII, start with a letter/underscore,
 	// and contain only letters, numbers, and underscores
 	if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(p.Name) {
-		return fmt.Errorf("port name must be a valid environment variable name: start with letter/underscore and contain only letters, numbers, and underscores")
+		return fmt.Errorf("port name must be a valid environment variable name: " +
+			"start with letter/underscore and contain only letters, numbers, and underscores")
 	}
 
 	// Check length - most shells have limits around 256-1024 chars
-	if len(p.Name) > 256 {
+	if len(p.Name) > maxPortName {
 		return fmt.Errorf("port name too long (max 256 characters)")
 	}
 
 	// Validate static port if specified
 	if p.Static != 0 {
-		if p.Static < 1024 {
+		if p.Static < MinimumPort {
 			return fmt.Errorf("static port %d is in privileged port range (1-1023)", p.Static)
 		}
-		if p.Static > 65535 {
+		if p.Static > MaximumPort {
 			return fmt.Errorf("static port %d is above maximum valid port 65535", p.Static)
 		}
 	}
 
 	// Validate target port if specified
-	if p.Target < 0 || p.Target > 65535 {
+	if p.Target < 0 || p.Target > MaximumPort {
 		return fmt.Errorf("invalid target port %d", p.Target)
 	}
 

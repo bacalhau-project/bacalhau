@@ -143,7 +143,7 @@ func (s *NetworkingSuite) TestNetworkingNone() {
 	})
 	testCase.ResultsChecker = scenario.ManyChecks(
 		scenario.FileEquals("stdout", ""),
-		scenario.FileEquals("exitcode", "7"),
+		scenario.FileEquals("exitCode", "7"),
 	)
 	testCase.JobCheckers = []scenario.StateChecks{scenario.WaitForSuccessfulCompletion()}
 
