@@ -57,7 +57,7 @@ type PortAllocator interface {
 	// - Dynamic ports are automatically allocated from a configured range
 	// - Target ports default to the host port if unspecified
 	// Returns the complete list of port mappings or an error if allocation fails.
-	AllocatePorts(execution *models.Execution) ([]models.PortMapping, error)
+	AllocatePorts(execution *models.Execution) (models.PortMap, error)
 
 	// ReleasePorts releases all allocated ports for a given execution.
 	ReleasePorts(execution *models.Execution)

@@ -531,10 +531,7 @@ export enum models_Network {
 
 export type models_NetworkConfig = {
     Domains?: Array<(string)>;
-    /**
-     * Ports specifies the port mappings required by the task
-     */
-    Ports?: Array<models_PortMapping>;
+    Ports?: Array<models_Port>;
     Type?: models_Network;
 };
 
@@ -582,7 +579,7 @@ export enum models_NodeType {
     NodeTypeCompute = 2
 }
 
-export type models_PortMapping = {
+export type models_Port = {
     /**
      * HostNetwork specifies which network interface to bind to.
      * If empty, defaults to "0.0.0.0" (all interfaces).

@@ -230,7 +230,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				Engine: &SpecConfig{Type: "docker"},
 				Network: &NetworkConfig{
 					Type: NetworkHost,
-					Ports: []*PortMapping{
+					Ports: []*Port{
 						{Name: "invalid-name", Static: 8080},
 					},
 				},
@@ -245,7 +245,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				Engine: &SpecConfig{Type: "docker"},
 				Network: &NetworkConfig{
 					Type: NetworkHost,
-					Ports: []*PortMapping{
+					Ports: []*Port{
 						{Name: "HTTP", Static: 80},
 					},
 				},
@@ -319,7 +319,7 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 		},
 		Network: &NetworkConfig{
 			Type: NetworkBridge,
-			Ports: []*PortMapping{
+			Ports: []*Port{
 				{Name: "HTTP", Static: 8080, Target: 80},
 				{Name: "HTTPS", Static: 443},
 			},
@@ -337,8 +337,8 @@ func (suite *TaskTestSuite) TestTaskCopy() {
 	suite.NotSame(original.Engine, cpy.Engine, "The Engine in the task and its copy should not be the same instance")
 	suite.NotSame(original.Publisher, cpy.Publisher, "The Publisher in the task and its copy should not be the same instance")
 	suite.NotSame(original.Network, cpy.Network, "The Network in the task and its copy should not be the same instance")
-	suite.NotSame(original.Network.Ports[0], cpy.Network.Ports[0], "The PortMapping in the task and its copy should not be the same instance")
-	suite.NotSame(original.Network.Ports[1], cpy.Network.Ports[1], "The PortMapping in the task and its copy should not be the same instance")
+	suite.NotSame(original.Network.Ports[0], cpy.Network.Ports[0], "The Port in the task and its copy should not be the same instance")
+	suite.NotSame(original.Network.Ports[1], cpy.Network.Ports[1], "The Port in the task and its copy should not be the same instance")
 	for i := range original.InputSources {
 		suite.NotSame(original.InputSources[i], cpy.InputSources[i], "The InputSources in the task and its copy should not be the same instance")
 	}

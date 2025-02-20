@@ -165,7 +165,7 @@ func (s *NetworkingSuite) TestPortMappingInBridgeMode() {
 		Publisher: publisher_local.NewSpecConfig(),
 		Network: &models.NetworkConfig{
 			Type: models.NetworkBridge,
-			Ports: []*models.PortMapping{
+			Ports: models.PortMap{
 				{
 					Name:   "http",
 					Static: hostPort,
@@ -204,7 +204,7 @@ func (s *NetworkingSuite) TestPortMappingInHostMode() {
 		Publisher: publisher_local.NewSpecConfig(),
 		Network: &models.NetworkConfig{
 			Type: models.NetworkHost,
-			Ports: []*models.PortMapping{
+			Ports: models.PortMap{
 				{
 					Name:   "http",
 					Static: hostPort,
@@ -236,7 +236,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "privileged port",
 			network: &models.NetworkConfig{
 				Type: models.NetworkBridge,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "http",
 						Static: 999, // Privileged port, should fail
@@ -249,7 +249,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "port out of range",
 			network: &models.NetworkConfig{
 				Type: models.NetworkBridge,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "invalid",
 						Static: 65536, // Port > 65535, should fail
@@ -262,7 +262,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "target port without bridge mode",
 			network: &models.NetworkConfig{
 				Type: models.NetworkHost,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -275,7 +275,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "duplicate port names",
 			network: &models.NetworkConfig{
 				Type: models.NetworkBridge,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -293,7 +293,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "duplicate static ports",
 			network: &models.NetworkConfig{
 				Type: models.NetworkBridge,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "http1",
 						Static: 8080,
@@ -311,7 +311,7 @@ func (s *NetworkingSuite) TestInvalidPortMapping() {
 			name: "duplicate target ports",
 			network: &models.NetworkConfig{
 				Type: models.NetworkBridge,
-				Ports: []*models.PortMapping{
+				Ports: models.PortMap{
 					{
 						Name:   "http1",
 						Static: 8080,

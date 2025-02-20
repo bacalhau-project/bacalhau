@@ -18,26 +18,26 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 	tests := []struct {
 		name         string
 		networkType  Network
-		initialPorts []*PortMapping
-		allocated    []PortMapping
-		want         []*PortMapping
+		initialPorts PortMap
+		allocated    PortMap
+		want         PortMap
 	}{
 		{
 			name:        "allocate host mode ports",
 			networkType: NetworkHost,
-			initialPorts: []*PortMapping{
+			initialPorts: PortMap{
 				{
 					Name: "http",
 					// No static port - should be allocated
 				},
 			},
-			allocated: []PortMapping{
+			allocated: PortMap{
 				{
 					Name:   "http",
 					Static: 8080, // Allocated port
 				},
 			},
-			want: []*PortMapping{
+			want: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
@@ -47,21 +47,21 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 		{
 			name:        "allocate bridge mode ports",
 			networkType: NetworkBridge,
-			initialPorts: []*PortMapping{
+			initialPorts: PortMap{
 				{
 					Name:   "http",
 					Target: 80,
 					// No static port - should be allocated
 				},
 			},
-			allocated: []PortMapping{
+			allocated: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
 					Target: 80,
 				},
 			},
-			want: []*PortMapping{
+			want: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
@@ -72,7 +72,7 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 		{
 			name:        "multiple port allocations",
 			networkType: NetworkBridge,
-			initialPorts: []*PortMapping{
+			initialPorts: PortMap{
 				{
 					Name:   "http",
 					Target: 80,
@@ -82,7 +82,7 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 					Target: 443,
 				},
 			},
-			allocated: []PortMapping{
+			allocated: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
@@ -94,7 +94,7 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 					Target: 443,
 				},
 			},
-			want: []*PortMapping{
+			want: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
@@ -110,14 +110,14 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 		{
 			name:        "preserve host network binding",
 			networkType: NetworkBridge,
-			initialPorts: []*PortMapping{
+			initialPorts: PortMap{
 				{
 					Name:        "http",
 					Target:      80,
 					HostNetwork: "127.0.0.1",
 				},
 			},
-			allocated: []PortMapping{
+			allocated: PortMap{
 				{
 					Name:        "http",
 					Static:      8080,
@@ -125,7 +125,7 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 					HostNetwork: "127.0.0.1",
 				},
 			},
-			want: []*PortMapping{
+			want: PortMap{
 				{
 					Name:        "http",
 					Static:      8080,
@@ -139,33 +139,33 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 			networkType:  NetworkNone,
 			initialPorts: nil,
 			allocated:    nil,
-			want:         []*PortMapping{},
+			want:         PortMap{},
 		},
 		{
 			name:         "empty port list",
 			networkType:  NetworkBridge,
-			initialPorts: []*PortMapping{},
-			allocated:    []PortMapping{},
-			want:         []*PortMapping{},
+			initialPorts: PortMap{},
+			allocated:    PortMap{},
+			want:         PortMap{},
 		},
 		{
 			name:        "replace existing static ports",
 			networkType: NetworkBridge,
-			initialPorts: []*PortMapping{
+			initialPorts: PortMap{
 				{
 					Name:   "http",
 					Static: 9090,
 					Target: 80,
 				},
 			},
-			allocated: []PortMapping{
+			allocated: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,
 					Target: 80,
 				},
 			},
-			want: []*PortMapping{
+			want: PortMap{
 				{
 					Name:   "http",
 					Static: 8080,

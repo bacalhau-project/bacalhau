@@ -103,8 +103,7 @@ func (n *Network) UnmarshalText(text []byte) (err error) {
 type NetworkConfig struct {
 	Type    Network  `json:"Type"`
 	Domains []string `json:"Domains,omitempty"`
-	// Ports specifies the port mappings required by the task
-	Ports []*PortMapping `json:"Ports,omitempty"`
+	Ports   PortMap  `json:"Ports,omitempty"`
 }
 
 // Disabled returns whether network connections should be completely disabled according
@@ -123,7 +122,7 @@ func (n *NetworkConfig) Normalize() {
 		n.Domains = make([]string, 0)
 	}
 	if n.Ports == nil {
-		n.Ports = make([]*PortMapping, 0)
+		n.Ports = make(PortMap, 0)
 	}
 	// Ensure that domains are lowercased, and trimmed of whitespace
 	for i, domain := range n.Domains {
@@ -138,20 +137,23 @@ func (n *NetworkConfig) Copy() *NetworkConfig {
 	return &NetworkConfig{
 		Type:    n.Type,
 		Domains: slices.Clone(n.Domains),
-		Ports:   CopySlice(n.Ports),
+		Ports:   n.Ports.Copy(),
 	}
 }
 
 // Validate returns an error if any of the fields do not pass validation, or nil
 // otherwise.
-func (n *NetworkConfig) Validate() (err error) {
+func (n *NetworkConfig) Validate() error {
+	var err error
+
+	// Validate network type
 	if n.Type < NetworkNone || n.Type > NetworkBridge {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
-	// Validate domains are only set for HTTP mode
+	// Validate domains
 	if len(n.Domains) > 0 && n.Type != NetworkHTTP {
-		err = errors.Join(err, fmt.Errorf("domains can only be set for HTTP network mode, got %q", n.Type))
+		err = errors.Join(err, fmt.Errorf("domains can only be set for HTTP network mode"))
 	}
 
 	// Validate domains format when present
@@ -165,55 +167,14 @@ func (n *NetworkConfig) Validate() (err error) {
 		err = errors.Join(err, fmt.Errorf("invalid domain %q", domain))
 	}
 
-	// Validate port mappings
+	// Validate ports
 	if len(n.Ports) > 0 {
-		// Check network mode
 		if n.Type != NetworkHost && n.Type != NetworkBridge {
-			err = errors.Join(err, fmt.Errorf("port mappings can only be set for Host or Bridge network modes, got %q", n.Type))
+			err = errors.Join(err, fmt.Errorf("ports can only be set for Host or Bridge network modes"))
+			return err
 		}
-
-		seenNames := make(map[string]bool)
-		seenStaticPorts := make(map[int]bool)
-		seenTargetPorts := make(map[int]bool)
-
-		for _, port := range n.Ports {
-			if perr := port.Validate(); perr != nil {
-				err = errors.Join(err, perr)
-				continue
-			}
-
-			// Check for duplicate names (needed for env vars)
-			if seenNames[port.Name] {
-				err = errors.Join(err, fmt.Errorf("duplicate port mapping name %q", port.Name))
-			}
-			seenNames[port.Name] = true
-
-			// Check for duplicate static ports (only if specified)
-			if port.Static != 0 {
-				if seenStaticPorts[port.Static] {
-					err = errors.Join(err, fmt.Errorf("duplicate port mapping static port %d", port.Static))
-				}
-				seenStaticPorts[port.Static] = true
-			}
-
-			// In host mode:
-			// - Target ports should not be set
-			// - Static ports can be 0 (auto-allocated by port_allocator)
-			if n.Type == NetworkHost && port.Target != 0 {
-				err = errors.Join(err, fmt.Errorf("target ports cannot be set for Host network mode"))
-			}
-
-			// In bridge mode:
-			// - Target ports can be specified
-			// - Check for duplicate target ports
-			if n.Type == NetworkBridge {
-				if port.Target != 0 {
-					if seenTargetPorts[port.Target] {
-						err = errors.Join(err, fmt.Errorf("duplicate port mapping target port %d", port.Target))
-					}
-					seenTargetPorts[port.Target] = true
-				}
-			}
+		if perr := n.Ports.Validate(n.Type); perr != nil {
+			err = errors.Join(err, perr)
 		}
 	}
 
@@ -328,8 +289,60 @@ func matchDomain(left, right string) (diff int) {
 	return 0
 }
 
-// PortMapping defines how ports should be mapped for a task
-type PortMapping struct {
+// PortMap represents a collection of port mappings with validation logic
+type PortMap []*Port
+
+func (pm PortMap) Validate(networkType Network) error {
+	seenNames := make(map[string]bool)
+	seenStaticPorts := make(map[int]bool)
+	seenTargetPorts := make(map[int]bool)
+
+	var err error
+	for _, port := range pm {
+		if perr := port.Validate(); perr != nil {
+			err = errors.Join(err, perr)
+			continue
+		}
+
+		// Check for duplicate names
+		if seenNames[port.Name] {
+			err = errors.Join(err, fmt.Errorf("duplicate port mapping name %q", port.Name))
+		}
+		seenNames[port.Name] = true
+
+		// Check for duplicate static ports
+		if port.Static != 0 {
+			if seenStaticPorts[port.Static] {
+				err = errors.Join(err, fmt.Errorf("duplicate port mapping static port %d", port.Static))
+			}
+			seenStaticPorts[port.Static] = true
+		}
+
+		// Host mode validation
+		if networkType == NetworkHost && port.Target != 0 {
+			err = errors.Join(err, fmt.Errorf("target ports cannot be set for Host network mode"))
+		}
+
+		// Bridge mode validation
+		if networkType == NetworkBridge && port.Target != 0 {
+			if seenTargetPorts[port.Target] {
+				err = errors.Join(err, fmt.Errorf("duplicate port mapping target port %d", port.Target))
+			}
+			seenTargetPorts[port.Target] = true
+		}
+	}
+	return err
+}
+
+func (pm PortMap) Copy() PortMap {
+	if pm == nil {
+		return nil
+	}
+	return CopySlice(pm)
+}
+
+// Port defines how ports should be mapped for a task
+type Port struct {
 	// Name is a required identifier for this port mapping.
 	// It will be used to create environment variables to inform the task
 	// about its allocated ports.
@@ -350,17 +363,17 @@ type PortMapping struct {
 	HostNetwork string `json:"HostNetwork,omitempty"`
 }
 
-// Copy returns a deep copy of the PortMapping.
-func (p *PortMapping) Copy() *PortMapping {
+// Copy returns a deep copy of the Port.
+func (p *Port) Copy() *Port {
 	if p == nil {
 		return nil
 	}
-	pm := new(PortMapping)
+	pm := new(Port)
 	*pm = *p
 	return pm
 }
 
-func (p *PortMapping) Validate() error {
+func (p *Port) Validate() error {
 	if p.Name == "" {
 		return fmt.Errorf("port mapping name is required")
 	}

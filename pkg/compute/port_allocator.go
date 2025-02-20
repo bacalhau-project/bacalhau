@@ -51,17 +51,17 @@ func NewPortAllocator(start, end int) (PortAllocator, error) {
 // Returns an error if:
 // - Unable to allocate a port from the configured range
 // - The execution has invalid network configuration
-func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.PortMapping, error) {
+func (pa *portAllocator) AllocatePorts(execution *models.Execution) (models.PortMap, error) {
 	networkCfg := execution.Job.Task().Network
 	if networkCfg == nil || (networkCfg.Type != models.NetworkHost && networkCfg.Type != models.NetworkBridge) {
-		return []models.PortMapping{}, nil
+		return models.PortMap{}, nil
 	}
 
 	pa.mu.Lock()
 	defer pa.mu.Unlock()
 
 	allocatedPorts := make(map[int]bool)
-	var mappings []models.PortMapping
+	var portMap models.PortMap
 
 	// Helper to cleanup on failure
 	cleanup := func() {
@@ -94,7 +94,7 @@ func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.Po
 			mapping.Target = mapping.Static
 		}
 
-		mappings = append(mappings, *mapping)
+		portMap = append(portMap, mapping)
 	}
 
 	// Track ports for this execution
@@ -105,7 +105,7 @@ func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.Po
 		pa.usedExecutionPorts[execution.ID][port] = true
 	}
 
-	return mappings, nil
+	return portMap, nil
 }
 
 // allocateStaticPortLocked checks and allocates a static port

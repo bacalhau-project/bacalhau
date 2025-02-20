@@ -65,7 +65,7 @@ func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
 	execution := mock.Execution()
 	execution.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Target: 80},                 // Dynamic host port, container port 80
 			{Static: 6000, Target: 8080}, // Static host port outside range, container port 8080
 			{Static: 1500, Target: 9090}, // Static host port inside range, container port 9090
@@ -110,7 +110,7 @@ func (s *PortAllocatorTestSuite) TestFailsOnPortReuse() {
 	execution1 := mock.Execution()
 	execution1.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Static: 1500, Target: 80},
 		},
 	}
@@ -124,7 +124,7 @@ func (s *PortAllocatorTestSuite) TestFailsOnPortReuse() {
 	execution2 := mock.Execution()
 	execution2.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Static: 1500, Target: 80},
 		},
 	}
@@ -142,7 +142,7 @@ func (s *PortAllocatorTestSuite) TestPortRelease() {
 	execution := mock.Execution()
 	execution.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Static: 1500, Target: 80},
 			{Target: 8080}, // Dynamic port
 		},
@@ -162,7 +162,7 @@ func (s *PortAllocatorTestSuite) TestPortRelease() {
 	execution2 := mock.Execution()
 	execution2.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Static: 1500, Target: 80},
 			{Static: dynamicPort, Target: 8080},
 		},
@@ -183,7 +183,7 @@ func (s *PortAllocatorTestSuite) TestExhaustedPortRange() {
 	execution := mock.Execution()
 	execution.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Target: 80},   // Will take first port
 			{Target: 8080}, // Will take second port
 			{Target: 9090}, // Should fail - no ports left
@@ -199,19 +199,19 @@ func (s *PortAllocatorTestSuite) TestTargetPortDefaultsToStatic() {
 	tests := []struct {
 		name        string
 		networkType models.Network
-		ports       []*models.PortMapping
+		ports       models.PortMap
 	}{
 		{
 			name:        "host mode no target",
 			networkType: models.NetworkHost,
-			ports: []*models.PortMapping{
+			ports: models.PortMap{
 				{Static: 1500}, // No target port specified
 			},
 		},
 		{
 			name:        "bridge mode no target",
 			networkType: models.NetworkBridge,
-			ports: []*models.PortMapping{
+			ports: models.PortMap{
 				{Static: 1500}, // No target port specified
 			},
 		},
@@ -251,7 +251,7 @@ func (s *PortAllocatorTestSuite) TestBridgeModePortAllocation() {
 	execution := mock.Execution()
 	execution.Job.Task().Network = &models.NetworkConfig{
 		Type: models.NetworkBridge,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{Target: 80},                 // Dynamic host port, container port 80
 			{Static: 6000, Target: 8080}, // Static host port outside range, container port 8080
 			{Static: 1500},               // Static host port, no target (should default to 1500)

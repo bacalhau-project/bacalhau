@@ -1905,10 +1905,9 @@ const docTemplate = `{
                     }
                 },
                 "Ports": {
-                    "description": "Ports specifies the port mappings required by the task",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.PortMapping"
+                        "$ref": "#/definitions/models.Port"
                     }
                 },
                 "Type": {
@@ -2027,7 +2026,7 @@ const docTemplate = `{
                 "NodeTypeCompute"
             ]
         },
-        "models.PortMapping": {
+        "models.Port": {
             "type": "object",
             "properties": {
                 "HostNetwork": {

@@ -263,17 +263,16 @@ func (e *Execution) AllocateResources(taskID string, resources Resources) {
 }
 
 // AllocatePorts updates the execution's network configuration with the allocated port mappings.
-func (e *Execution) AllocatePorts(portMappings []PortMapping) {
+func (e *Execution) AllocatePorts(portMap PortMap) {
 	if e.Job == nil || e.Job.Task().Network == nil {
 		return
 	}
 
 	// Replace the existing port mappings with the allocated ones
-	e.Job.Task().Network.Ports = make([]*PortMapping, len(portMappings))
-	for i := range portMappings {
-		// Create a copy of the port mapping to avoid sharing memory
-		pm := portMappings[i].Copy()
-		e.Job.Task().Network.Ports[i] = pm
+	if portMap == nil {
+		e.Job.Task().Network.Ports = make(PortMap, 0)
+	} else {
+		e.Job.Task().Network.Ports = portMap.Copy()
 	}
 }
 

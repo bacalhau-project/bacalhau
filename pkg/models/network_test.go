@@ -4,11 +4,20 @@ package models
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
+
+type NetworkTestSuite struct {
+	suite.Suite
+}
+
+func TestNetworkSuite(t *testing.T) {
+	suite.Run(t, new(NetworkTestSuite))
+}
 
 func TestNetworkConfig_IsValid(t *testing.T) {
 	tests := []struct {
@@ -62,65 +71,7 @@ func TestNetworkConfig_IsValid(t *testing.T) {
 	}
 }
 
-func TestDomainSet(t *testing.T) {
-	tests := []struct {
-		input, output []string
-	}{
-		{
-			[]string{"foo.com", "bar.com"},
-			[]string{"foo.com", "bar.com"},
-		},
-		{
-			[]string{"y.foo.com", ".foo.com", "x.foo.com"},
-			[]string{".foo.com"},
-		},
-		{
-			[]string{"y.foo.com", "foo.com", "x.foo.com"},
-			[]string{"y.foo.com", "foo.com", "x.foo.com"},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%v->%v", test.input, test.output), func(t *testing.T) {
-			set := NetworkConfig{Domains: test.input}
-			require.ElementsMatch(t, test.output, set.DomainSet())
-		})
-	}
-}
-
-func TestDomainMatching(t *testing.T) {
-	tests := []struct {
-		require     func(require.TestingT, interface{}, interface{}, ...interface{})
-		left, right string
-	}{
-		{require.Equal, "foo.com", "foo.com"},
-		{require.Equal, ".foo.com", "foo.com"},
-		{require.Equal, "foo.com", ".foo.com"},
-		{require.Equal, " .foo.com", ".foo.com"},
-		{require.Equal, "x.foo.com", ".foo.com"},
-		{require.Equal, "y.x.foo.com", ".foo.com"},
-		{require.NotEqual, "x.foo.com", "foo.com"},
-		{require.NotEqual, "foo.com", "x.foo.com"},
-		{require.NotEqual, "bar.com", "foo.com"},
-		{require.NotEqual, ".bar.com", "foo.com"},
-		{require.NotEqual, ".bar.com", ".foo.com"},
-		{require.NotEqual, "bar.com", ".foo.com"},
-		{require.Less, "zzz.com", "foo.com"},
-		{require.Greater, "aaa.com", "foo.com"},
-		{require.Equal, "FOO.com", "foo.COM"},
-		{require.Less, "bFoo.com", "aFoo.com"},
-		{require.Greater, "aFoo.com", "bFoo.com"},
-		{require.Less, "x-foo.com", ".foo.com"},
-	}
-
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s<=>%s", test.left, test.right), func(t *testing.T) {
-			test.require(t, 0, matchDomain(test.left, test.right))
-		})
-	}
-}
-
-func TestNetworkConfig_Validate(t *testing.T) {
+func (s *NetworkTestSuite) TestNetworkConfigValidation() {
 	tests := []struct {
 		name    string
 		config  NetworkConfig
@@ -182,10 +133,10 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "port mappings with none network",
+			name: "ports with none network",
 			config: NetworkConfig{
 				Type: NetworkNone,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -193,13 +144,13 @@ func TestNetworkConfig_Validate(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "port mappings can only be set for Host or Bridge network modes",
+			errMsg:  "ports can only be set for Host or Bridge network modes",
 		},
 		{
-			name: "port mappings with http network",
+			name: "ports with http network",
 			config: NetworkConfig{
 				Type: NetworkHTTP,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -207,13 +158,13 @@ func TestNetworkConfig_Validate(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errMsg:  "port mappings can only be set for Host or Bridge network modes",
+			errMsg:  "ports can only be set for Host or Bridge network modes",
 		},
 		{
 			name: "duplicate static ports when specified",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http1",
 						Static: 8080,
@@ -233,7 +184,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "no duplicate check for unspecified static ports",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http1",
 						Target: 80,
@@ -250,7 +201,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "duplicate target ports in bridge mode",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http1",
 						Static: 8080,
@@ -270,7 +221,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "no duplicate check for target ports in host mode",
 			config: NetworkConfig{
 				Type: NetworkHost,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http1",
 						Static: 8080,
@@ -287,7 +238,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "duplicate port names",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -307,7 +258,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "auto-allocated ports in bridge mode",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Target: 80,
@@ -320,7 +271,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "valid host network binding",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:        "http",
 						Static:      8080,
@@ -335,7 +286,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "missing port name",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Static: 8080,
 						Target: 80,
@@ -349,7 +300,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "empty port name",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "",
 						Static: 8080,
@@ -364,7 +315,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "invalid port name characters",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "invalid-name",
 						Static: 8080,
@@ -376,25 +327,10 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			errMsg:  "port name must be a valid environment variable name",
 		},
 		{
-			name: "port name too long",
-			config: NetworkConfig{
-				Type: NetworkBridge,
-				Ports: []*PortMapping{
-					{
-						Name:   string(make([]byte, 257)),
-						Static: 8080,
-						Target: 80,
-					},
-				},
-			},
-			wantErr: true,
-			errMsg:  "port name too long",
-		},
-		{
 			name: "target port in host mode",
 			config: NetworkConfig{
 				Type: NetworkHost,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Static: 8080,
@@ -409,7 +345,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "auto allocated port in host mode",
 			config: NetworkConfig{
 				Type: NetworkHost,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name: "http",
 					},
@@ -421,7 +357,7 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			name: "auto allocated port in bridge mode",
 			config: NetworkConfig{
 				Type: NetworkBridge,
-				Ports: []*PortMapping{
+				Ports: []*Port{
 					{
 						Name:   "http",
 						Target: 80,
@@ -430,19 +366,117 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "port name at max length",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*Port{
+					{
+						Name:   "p" + strings.Repeat("o", maxPortName-1),
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "port name too long",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*Port{
+					{
+						Name:   "p" + strings.Repeat("o", maxPortName),
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "port name too long",
+		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		s.Run(tt.name, func() {
 			err := tt.config.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NetworkConfig.Validate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if tt.wantErr && err != nil && tt.errMsg != "" {
-				if !contains(err.Error(), tt.errMsg) {
-					t.Errorf("NetworkConfig.Validate() error message = %v, want to contain %v", err, tt.errMsg)
+			if tt.wantErr {
+				s.Error(err)
+				if tt.errMsg != "" {
+					s.Contains(err.Error(), tt.errMsg)
 				}
+			} else {
+				s.NoError(err)
+			}
+		})
+	}
+}
+
+func (s *NetworkTestSuite) TestDomainSet() {
+	tests := []struct {
+		input, output []string
+	}{
+		{
+			[]string{"foo.com", "bar.com"},
+			[]string{"foo.com", "bar.com"},
+		},
+		{
+			[]string{"y.foo.com", ".foo.com", "x.foo.com"},
+			[]string{".foo.com"},
+		},
+		{
+			[]string{"y.foo.com", "foo.com", "x.foo.com"},
+			[]string{"y.foo.com", "foo.com", "x.foo.com"},
+		},
+	}
+
+	for _, test := range tests {
+		s.Run(fmt.Sprintf("%v->%v", test.input, test.output), func() {
+			set := NetworkConfig{Domains: test.input}
+			s.ElementsMatch(test.output, set.DomainSet())
+		})
+	}
+}
+
+func (s *NetworkTestSuite) TestDomainMatching() {
+	tests := []struct {
+		assertion string
+		left      string
+		right     string
+		wantEqual bool
+	}{
+		// Equal cases
+		{assertion: "equal", left: "foo.com", right: "foo.com", wantEqual: true},
+		{assertion: "equal", left: ".foo.com", right: "foo.com", wantEqual: true},
+		{assertion: "equal", left: "foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: " .foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "x.foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "y.x.foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "FOO.com", right: "foo.COM", wantEqual: true},
+
+		// Not equal cases
+		{assertion: "notEqual", left: "x.foo.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "foo.com", right: "x.foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "bar.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: ".bar.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: ".bar.com", right: ".foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "bar.com", right: ".foo.com", wantEqual: false},
+
+		// Ordering cases
+		{assertion: "less", left: "zzz.com", right: "foo.com", wantEqual: false},
+		{assertion: "greater", left: "aaa.com", right: "foo.com", wantEqual: false},
+		{assertion: "less", left: "bFoo.com", right: "aFoo.com", wantEqual: false},
+		{assertion: "greater", left: "aFoo.com", right: "bFoo.com", wantEqual: false},
+		{assertion: "less", left: "x-foo.com", right: ".foo.com", wantEqual: false},
+	}
+
+	for _, tt := range tests {
+		s.Run(fmt.Sprintf("%s:%s<=>%s", tt.assertion, tt.left, tt.right), func() {
+			result := matchDomain(tt.left, tt.right)
+			if tt.wantEqual {
+				s.Zero(result)
+			} else {
+				s.NotZero(result)
 			}
 		})
 	}
@@ -451,13 +485,13 @@ func TestNetworkConfig_Validate(t *testing.T) {
 func TestPortMapping_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		port    PortMapping
+		port    Port
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid port mapping",
-			port: PortMapping{
+			port: Port{
 				Name:   "HTTP",
 				Static: 8080,
 				Target: 80,
@@ -466,7 +500,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "missing name",
-			port: PortMapping{
+			port: Port{
 				Static: 8080,
 				Target: 80,
 			},
@@ -475,7 +509,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid name characters",
-			port: PortMapping{
+			port: Port{
 				Name:   "invalid-name",
 				Static: 8080,
 			},
@@ -484,7 +518,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "name too long",
-			port: PortMapping{
+			port: Port{
 				Name:   string(make([]byte, 257)),
 				Static: 8080,
 			},
@@ -493,7 +527,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "privileged static port",
-			port: PortMapping{
+			port: Port{
 				Name:   "HTTP",
 				Static: 80,
 			},
@@ -502,7 +536,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "static port too high",
-			port: PortMapping{
+			port: Port{
 				Name:   "HTTP",
 				Static: 65536,
 			},
@@ -511,7 +545,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid target port",
-			port: PortMapping{
+			port: Port{
 				Name:   "HTTP",
 				Static: 8080,
 				Target: 65536,
@@ -521,7 +555,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "invalid host network",
-			port: PortMapping{
+			port: Port{
 				Name:        "HTTP",
 				Static:      8080,
 				HostNetwork: "not.an.ip",
@@ -531,7 +565,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "valid host network",
-			port: PortMapping{
+			port: Port{
 				Name:        "HTTP",
 				Static:      8080,
 				HostNetwork: "127.0.0.1",
@@ -540,7 +574,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "name starting with number",
-			port: PortMapping{
+			port: Port{
 				Name:   "1http",
 				Static: 8080,
 			},
@@ -549,7 +583,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "name with special characters",
-			port: PortMapping{
+			port: Port{
 				Name:   "http$port",
 				Static: 8080,
 			},
@@ -558,7 +592,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "negative target port",
-			port: PortMapping{
+			port: Port{
 				Name:   "http",
 				Static: 8080,
 				Target: -80,
@@ -568,7 +602,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "zero static port",
-			port: PortMapping{
+			port: Port{
 				Name:   "http",
 				Static: 0,
 				Target: 80,
@@ -577,7 +611,7 @@ func TestPortMapping_Validate(t *testing.T) {
 		},
 		{
 			name: "ipv6 host network",
-			port: PortMapping{
+			port: Port{
 				Name:        "http",
 				Static:      8080,
 				HostNetwork: "::1",
@@ -590,12 +624,12 @@ func TestPortMapping_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.port.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("PortMapping.Validate() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Port.Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.wantErr && err != nil && tt.errMsg != "" {
 				if !contains(err.Error(), tt.errMsg) {
-					t.Errorf("PortMapping.Validate() error message = %v, want to contain %v", err, tt.errMsg)
+					t.Errorf("Port.Validate() error message = %v, want to contain %v", err, tt.errMsg)
 				}
 			}
 		})
@@ -657,11 +691,11 @@ func equalStringSlices(a, b []string) bool {
 }
 
 // Add test for NetworkConfig.Copy()
-func TestNetworkConfig_Copy(t *testing.T) {
+func (s *NetworkTestSuite) TestNetworkConfigCopy() {
 	original := &NetworkConfig{
 		Type:    NetworkBridge,
 		Domains: []string{"example.com"},
-		Ports: []*PortMapping{
+		Ports: []*Port{
 			{
 				Name:        "http",
 				Static:      8080,
@@ -674,9 +708,9 @@ func TestNetworkConfig_Copy(t *testing.T) {
 	copied := original.Copy()
 
 	// Test that it's a deep copy
-	assert.Equal(t, original.Type, copied.Type)
-	assert.Equal(t, original.Domains, copied.Domains)
-	assert.Equal(t, len(original.Ports), len(copied.Ports))
+	s.Equal(original.Type, copied.Type)
+	s.Equal(original.Domains, copied.Domains)
+	s.Equal(len(original.Ports), len(copied.Ports))
 
 	// Modify original to ensure deep copy
 	original.Type = NetworkHost
@@ -684,13 +718,13 @@ func TestNetworkConfig_Copy(t *testing.T) {
 	original.Ports[0].Static = 9090
 
 	// Verify copied version remains unchanged
-	assert.Equal(t, NetworkBridge, copied.Type)
-	assert.Equal(t, "example.com", copied.Domains[0])
-	assert.Equal(t, 8080, copied.Ports[0].Static)
+	s.Equal(NetworkBridge, copied.Type)
+	s.Equal("example.com", copied.Domains[0])
+	s.Equal(8080, copied.Ports[0].Static)
 }
 
 // Add test for NetworkConfig.Normalize()
-func TestNetworkConfig_Normalize(t *testing.T) {
+func (s *NetworkTestSuite) TestNetworkConfigNormalize() {
 	tests := []struct {
 		name     string
 		input    *NetworkConfig
@@ -709,7 +743,7 @@ func TestNetworkConfig_Normalize(t *testing.T) {
 			expected: &NetworkConfig{
 				Type:    NetworkBridge,
 				Domains: []string{},
-				Ports:   []*PortMapping{},
+				Ports:   PortMap{},
 			},
 		},
 		{
@@ -721,21 +755,21 @@ func TestNetworkConfig_Normalize(t *testing.T) {
 			expected: &NetworkConfig{
 				Type:    NetworkHTTP,
 				Domains: []string{"example.com", "test.com"},
-				Ports:   []*PortMapping{},
+				Ports:   PortMap{},
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		s.Run(tt.name, func() {
 			tt.input.Normalize()
 			if tt.input == nil {
-				assert.Nil(t, tt.expected)
+				s.Nil(tt.expected)
 				return
 			}
-			assert.Equal(t, tt.expected.Type, tt.input.Type)
-			assert.Equal(t, tt.expected.Domains, tt.input.Domains)
-			assert.Equal(t, tt.expected.Ports, tt.input.Ports)
+			s.Equal(tt.expected.Type, tt.input.Type)
+			s.Equal(tt.expected.Domains, tt.input.Domains)
+			s.Equal(tt.expected.Ports, tt.input.Ports)
 		})
 	}
 }

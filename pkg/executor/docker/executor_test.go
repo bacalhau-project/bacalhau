@@ -669,7 +669,7 @@ func (s *ExecutorTestSuite) TestPortMappingInHostMode() {
 	task.Engine = es
 	task.Network = &models.NetworkConfig{
 		Type: models.NetworkHost,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{
 				Name:   "http",
 				Static: port,
@@ -705,7 +705,7 @@ func (s *ExecutorTestSuite) TestPortMappingInBridgeMode() {
 	task.Engine = es
 	task.Network = &models.NetworkConfig{
 		Type: models.NetworkBridge,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{
 				Name:   "http",
 				Static: port, // Host port
@@ -748,7 +748,7 @@ func (s *ExecutorTestSuite) TestMultiplePortMappingsInBridgeMode() {
 	task.Engine = es
 	task.Network = &models.NetworkConfig{
 		Type: models.NetworkBridge,
-		Ports: []*models.PortMapping{
+		Ports: models.PortMap{
 			{
 				Name:   "http1",
 				Static: port1,

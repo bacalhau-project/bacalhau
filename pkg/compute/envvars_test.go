@@ -160,7 +160,7 @@ func TestGetExecutionEnvVars(t *testing.T) {
 							Name: "task-1",
 							Network: &models.NetworkConfig{
 								Type: models.NetworkHost,
-								Ports: []*models.PortMapping{
+								Ports: models.PortMap{
 									{Name: "http", Static: 8080, Target: 80},      // Named port mapping
 									{Name: "metrics", Static: 9090, Target: 9090}, // Named port with same target
 									{Name: "debug", Static: 3000, Target: 8000},   // Another named port
