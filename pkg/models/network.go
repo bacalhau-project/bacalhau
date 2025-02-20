@@ -390,7 +390,6 @@ func (p *Port) Validate() error {
 	if len(p.Name) > maxPortName {
 		return fmt.Errorf("port name too long (max %d characters)", maxPortName)
 	}
-	}
 
 	// Validate static port if specified
 	if p.Static != 0 {
