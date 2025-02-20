@@ -172,37 +172,47 @@ func (n *NetworkConfig) Validate() (err error) {
 			err = errors.Join(err, fmt.Errorf("port mappings can only be set for Host or Bridge network modes, got %q", n.Type))
 		}
 
-		// Validate each port mapping
 		seenNames := make(map[string]bool)
-		seenHostPorts := make(map[int]bool)
+		seenStaticPorts := make(map[int]bool)
 		seenTargetPorts := make(map[int]bool)
+
 		for _, port := range n.Ports {
 			if perr := port.Validate(); perr != nil {
 				err = errors.Join(err, perr)
 				continue
 			}
 
-			// Check for duplicate names
+			// Check for duplicate names (needed for env vars)
 			if seenNames[port.Name] {
 				err = errors.Join(err, fmt.Errorf("duplicate port mapping name %q", port.Name))
 			}
 			seenNames[port.Name] = true
 
-			// Check for duplicate host ports
-			if seenHostPorts[port.Static] {
-				err = errors.Join(err, fmt.Errorf("duplicate host port %d", port.Static))
+			// Check for duplicate static ports (only if specified)
+			if port.Static != 0 {
+				if seenStaticPorts[port.Static] {
+					err = errors.Join(err, fmt.Errorf("duplicate port mapping static port %d", port.Static))
+				}
+				seenStaticPorts[port.Static] = true
 			}
-			seenHostPorts[port.Static] = true
 
-			// Check for duplicate target ports
-			if seenTargetPorts[port.Target] {
-				err = errors.Join(err, fmt.Errorf("duplicate target port %d", port.Target))
+			// In host mode:
+			// - Target ports should not be set
+			// - Static ports can be 0 (auto-allocated by port_allocator)
+			if n.Type == NetworkHost && port.Target != 0 {
+				err = errors.Join(err, fmt.Errorf("target ports cannot be set for Host network mode"))
 			}
-			seenTargetPorts[port.Target] = true
 
-			// Validate target ports are only set for Bridge mode
-			if port.Target != 0 && n.Type != NetworkBridge {
-				err = errors.Join(err, fmt.Errorf("target ports can only be set for Bridge network mode, got %q", n.Type))
+			// In bridge mode:
+			// - Target ports can be specified
+			// - Check for duplicate target ports
+			if n.Type == NetworkBridge {
+				if port.Target != 0 {
+					if seenTargetPorts[port.Target] {
+						err = errors.Join(err, fmt.Errorf("duplicate port mapping target port %d", port.Target))
+					}
+					seenTargetPorts[port.Target] = true
+				}
 			}
 		}
 	}

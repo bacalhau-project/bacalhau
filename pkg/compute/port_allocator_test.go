@@ -30,18 +30,32 @@ func (s *PortAllocatorTestSuite) TestNoNetworkConfigReturnsEmptyMappings() {
 	s.Empty(mappings)
 }
 
-func (s *PortAllocatorTestSuite) TestNetworkTypeNoneReturnsEmptyMappings() {
+func (s *PortAllocatorTestSuite) TestNetworkTypeReturnsEmptyMappings() {
 	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
-	execution := mock.Execution()
-	execution.Job.Task().Network = &models.NetworkConfig{
-		Type: models.NetworkNone,
+	tests := []struct {
+		name        string
+		networkType models.Network
+	}{
+		{name: "no network config", networkType: models.NetworkNone},
+		{name: "http network", networkType: models.NetworkHTTP},
 	}
 
-	mappings, err := pa.AllocatePorts(execution)
-	s.Require().NoError(err)
-	s.Empty(mappings)
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			execution := mock.Execution()
+			if tt.networkType != models.NetworkNone {
+				execution.Job.Task().Network = &models.NetworkConfig{
+					Type: tt.networkType,
+				}
+			}
+
+			mappings, err := pa.AllocatePorts(execution)
+			s.Require().NoError(err)
+			s.Empty(mappings)
+		})
+	}
 }
 
 func (s *PortAllocatorTestSuite) TestAllocatesPortsWithStaticAndTarget() {
@@ -182,20 +196,88 @@ func (s *PortAllocatorTestSuite) TestExhaustedPortRange() {
 }
 
 func (s *PortAllocatorTestSuite) TestTargetPortDefaultsToStatic() {
+	tests := []struct {
+		name        string
+		networkType models.Network
+		ports       []*models.PortMapping
+	}{
+		{
+			name:        "host mode no target",
+			networkType: models.NetworkHost,
+			ports: []*models.PortMapping{
+				{Static: 1500}, // No target port specified
+			},
+		},
+		{
+			name:        "bridge mode no target",
+			networkType: models.NetworkBridge,
+			ports: []*models.PortMapping{
+				{Static: 1500}, // No target port specified
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			pa, err := compute.NewPortAllocator(3000, 4000)
+			s.Require().NoError(err)
+
+			execution := mock.Execution()
+			execution.Job.Task().Network = &models.NetworkConfig{
+				Type:  tt.networkType,
+				Ports: tt.ports,
+			}
+
+			mappings, err := pa.AllocatePorts(execution)
+			s.Require().NoError(err)
+			s.Len(mappings, 1)
+			s.Equal(1500, mappings[0].Static)
+
+			if tt.networkType == models.NetworkBridge {
+				// In bridge mode, target should default to static
+				s.Equal(mappings[0].Static, mappings[0].Target)
+			} else {
+				// In host mode, target should not be set
+				s.Zero(mappings[0].Target)
+			}
+		})
+	}
+}
+
+func (s *PortAllocatorTestSuite) TestBridgeModePortAllocation() {
 	pa, err := compute.NewPortAllocator(3000, 4000)
 	s.Require().NoError(err)
 
 	execution := mock.Execution()
 	execution.Job.Task().Network = &models.NetworkConfig{
-		Type: models.NetworkHost,
+		Type: models.NetworkBridge,
 		Ports: []*models.PortMapping{
-			{Static: 1500}, // No target port specified
+			{Target: 80},                 // Dynamic host port, container port 80
+			{Static: 6000, Target: 8080}, // Static host port outside range, container port 8080
+			{Static: 1500},               // Static host port, no target (should default to 1500)
+			{Target: 5000},               // Dynamic host port, container port 5000
 		},
 	}
 
 	mappings, err := pa.AllocatePorts(execution)
 	s.Require().NoError(err)
-	s.Len(mappings, 1)
-	s.Equal(1500, mappings[0].Static)
-	s.Equal(mappings[0].Static, mappings[0].Target) // Target should match static
+	s.Len(mappings, 4)
+
+	// First port should be auto-allocated in range
+	s.GreaterOrEqual(mappings[0].Static, 3000)
+	s.LessOrEqual(mappings[0].Static, 4000)
+	s.Equal(80, mappings[0].Target)
+
+	// Second port should keep static port even though outside range
+	s.Equal(6000, mappings[1].Static)
+	s.Equal(8080, mappings[1].Target)
+
+	// Third port should keep static port and use it as target
+	s.Equal(1500, mappings[2].Static)
+	s.Equal(1500, mappings[2].Target)
+
+	// Fourth port should be auto-allocated in range
+	s.GreaterOrEqual(mappings[3].Static, 3000)
+	s.LessOrEqual(mappings[3].Static, 4000)
+	s.Equal(5000, mappings[3].Target)
 }

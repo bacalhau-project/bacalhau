@@ -53,7 +53,7 @@ func NewPortAllocator(start, end int) (PortAllocator, error) {
 // - The execution has invalid network configuration
 func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.PortMapping, error) {
 	networkCfg := execution.Job.Task().Network
-	if networkCfg == nil || networkCfg.Type != models.NetworkHost {
+	if networkCfg == nil || (networkCfg.Type != models.NetworkHost && networkCfg.Type != models.NetworkBridge) {
 		return []models.PortMapping{}, nil
 	}
 
@@ -89,7 +89,8 @@ func (pa *portAllocator) AllocatePorts(execution *models.Execution) ([]models.Po
 			allocatedPorts[mapping.Static] = true
 		}
 
-		if mapping.Target == 0 {
+		// For bridge mode, if no target port is specified, use the same as static port
+		if networkCfg.Type == models.NetworkBridge && mapping.Target == 0 {
 			mapping.Target = mapping.Static
 		}
 

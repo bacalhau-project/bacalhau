@@ -268,18 +268,12 @@ func (e *Execution) AllocatePorts(portMappings []PortMapping) {
 		return
 	}
 
-	// Create a map of port names to allocated mappings
-	allocatedPorts := make(map[string]PortMapping)
-	for _, mapping := range portMappings {
-		allocatedPorts[mapping.Name] = mapping
-	}
-
-	// Update each port in the network config with its allocated values
-	for i, port := range e.Job.Task().Network.Ports {
-		if allocated, exists := allocatedPorts[port.Name]; exists {
-			e.Job.Task().Network.Ports[i].Static = allocated.Static
-			e.Job.Task().Network.Ports[i].Target = allocated.Target
-		}
+	// Replace the existing port mappings with the allocated ones
+	e.Job.Task().Network.Ports = make([]*PortMapping, len(portMappings))
+	for i := range portMappings {
+		// Create a copy of the port mapping to avoid sharing memory
+		pm := portMappings[i].Copy()
+		e.Job.Task().Network.Ports[i] = pm
 	}
 }
 

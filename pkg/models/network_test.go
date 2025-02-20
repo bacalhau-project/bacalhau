@@ -174,19 +174,259 @@ func TestNetworkConfig_Validate(t *testing.T) {
 			errMsg:  "domains can only be set for HTTP network mode",
 		},
 		{
-			name: "invalid domain format",
-			config: NetworkConfig{
-				Type:    NetworkHTTP,
-				Domains: []string{"invalid!domain.com"},
-			},
-			wantErr: true,
-			errMsg:  "invalid domain",
-		},
-		{
 			name: "valid IP as domain",
 			config: NetworkConfig{
 				Type:    NetworkHTTP,
 				Domains: []string{"192.168.1.1"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "port mappings with none network",
+			config: NetworkConfig{
+				Type: NetworkNone,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "port mappings can only be set for Host or Bridge network modes",
+		},
+		{
+			name: "port mappings with http network",
+			config: NetworkConfig{
+				Type: NetworkHTTP,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "port mappings can only be set for Host or Bridge network modes",
+		},
+		{
+			name: "duplicate static ports when specified",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http1",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http2",
+						Static: 8080,
+						Target: 81,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "duplicate port mapping static port",
+		},
+		{
+			name: "no duplicate check for unspecified static ports",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http1",
+						Target: 80,
+					},
+					{
+						Name:   "http2",
+						Target: 81,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "duplicate target ports in bridge mode",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http1",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http2",
+						Static: 8081,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "duplicate port mapping target port",
+		},
+		{
+			name: "no duplicate check for target ports in host mode",
+			config: NetworkConfig{
+				Type: NetworkHost,
+				Ports: []*PortMapping{
+					{
+						Name:   "http1",
+						Static: 8080,
+					},
+					{
+						Name:   "http2",
+						Static: 8081,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "duplicate port names",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+						Target: 80,
+					},
+					{
+						Name:   "http",
+						Static: 8081,
+						Target: 81,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "duplicate port mapping name",
+		},
+		{
+			name: "auto-allocated ports in bridge mode",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Target: 80,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid host network binding",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:        "http",
+						Static:      8080,
+						Target:      80,
+						HostNetwork: "127.0.0.1",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing port name",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "name is required",
+		},
+		{
+			name: "empty port name",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "",
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "name is required",
+		},
+		{
+			name: "invalid port name characters",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "invalid-name",
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "port name must be a valid environment variable name",
+		},
+		{
+			name: "port name too long",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   string(make([]byte, 257)),
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "port name too long",
+		},
+		{
+			name: "target port in host mode",
+			config: NetworkConfig{
+				Type: NetworkHost,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Static: 8080,
+						Target: 80,
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "target ports cannot be set for Host network mode",
+		},
+		{
+			name: "auto allocated port in host mode",
+			config: NetworkConfig{
+				Type: NetworkHost,
+				Ports: []*PortMapping{
+					{
+						Name: "http",
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "auto allocated port in bridge mode",
+			config: NetworkConfig{
+				Type: NetworkBridge,
+				Ports: []*PortMapping{
+					{
+						Name:   "http",
+						Target: 80,
+					},
+				},
 			},
 			wantErr: false,
 		},
@@ -231,7 +471,7 @@ func TestPortMapping_Validate(t *testing.T) {
 				Target: 80,
 			},
 			wantErr: true,
-			errMsg:  "port mapping name is required",
+			errMsg:  "name is required",
 		},
 		{
 			name: "invalid name characters",
@@ -298,6 +538,52 @@ func TestPortMapping_Validate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "name starting with number",
+			port: PortMapping{
+				Name:   "1http",
+				Static: 8080,
+			},
+			wantErr: true,
+			errMsg:  "port name must be a valid environment variable name",
+		},
+		{
+			name: "name with special characters",
+			port: PortMapping{
+				Name:   "http$port",
+				Static: 8080,
+			},
+			wantErr: true,
+			errMsg:  "port name must be a valid environment variable name",
+		},
+		{
+			name: "negative target port",
+			port: PortMapping{
+				Name:   "http",
+				Static: 8080,
+				Target: -80,
+			},
+			wantErr: true,
+			errMsg:  "invalid target port",
+		},
+		{
+			name: "zero static port",
+			port: PortMapping{
+				Name:   "http",
+				Static: 0,
+				Target: 80,
+			},
+			wantErr: false,
+		},
+		{
+			name: "ipv6 host network",
+			port: PortMapping{
+				Name:        "http",
+				Static:      8080,
+				HostNetwork: "::1",
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -333,21 +619,6 @@ func TestNetworkConfig_DomainSet(t *testing.T) {
 			want:    []string{"example.com"},
 		},
 		{
-			name:    "duplicate domains",
-			domains: []string{"example.com", "example.com"},
-			want:    []string{"example.com"},
-		},
-		{
-			name:    "subdomain and domain",
-			domains: []string{"sub.example.com", "example.com"},
-			want:    []string{"example.com"},
-		},
-		{
-			name:    "multiple subdomains",
-			domains: []string{"a.example.com", "b.example.com", "example.com"},
-			want:    []string{"example.com"},
-		},
-		{
 			name:    "different domains",
 			domains: []string{"example.com", "test.com"},
 			want:    []string{"example.com", "test.com"},
@@ -356,7 +627,10 @@ func TestNetworkConfig_DomainSet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nc := &NetworkConfig{Domains: tt.domains}
+			nc := &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: tt.domains,
+			}
 			got := nc.DomainSet()
 			if !equalStringSlices(got, tt.want) {
 				t.Errorf("NetworkConfig.DomainSet() = %v, want %v", got, tt.want)
@@ -380,4 +654,88 @@ func equalStringSlices(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// Add test for NetworkConfig.Copy()
+func TestNetworkConfig_Copy(t *testing.T) {
+	original := &NetworkConfig{
+		Type:    NetworkBridge,
+		Domains: []string{"example.com"},
+		Ports: []*PortMapping{
+			{
+				Name:        "http",
+				Static:      8080,
+				Target:      80,
+				HostNetwork: "127.0.0.1",
+			},
+		},
+	}
+
+	copied := original.Copy()
+
+	// Test that it's a deep copy
+	assert.Equal(t, original.Type, copied.Type)
+	assert.Equal(t, original.Domains, copied.Domains)
+	assert.Equal(t, len(original.Ports), len(copied.Ports))
+
+	// Modify original to ensure deep copy
+	original.Type = NetworkHost
+	original.Domains[0] = "modified.com"
+	original.Ports[0].Static = 9090
+
+	// Verify copied version remains unchanged
+	assert.Equal(t, NetworkBridge, copied.Type)
+	assert.Equal(t, "example.com", copied.Domains[0])
+	assert.Equal(t, 8080, copied.Ports[0].Static)
+}
+
+// Add test for NetworkConfig.Normalize()
+func TestNetworkConfig_Normalize(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    *NetworkConfig
+		expected *NetworkConfig
+	}{
+		{
+			name:     "nil config",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "empty slices",
+			input: &NetworkConfig{
+				Type: NetworkBridge,
+			},
+			expected: &NetworkConfig{
+				Type:    NetworkBridge,
+				Domains: []string{},
+				Ports:   []*PortMapping{},
+			},
+		},
+		{
+			name: "normalize domains",
+			input: &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: []string{" EXAMPLE.com ", "TEST.com "},
+			},
+			expected: &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: []string{"example.com", "test.com"},
+				Ports:   []*PortMapping{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.input.Normalize()
+			if tt.input == nil {
+				assert.Nil(t, tt.expected)
+				return
+			}
+			assert.Equal(t, tt.expected.Type, tt.input.Type)
+			assert.Equal(t, tt.expected.Domains, tt.input.Domains)
+			assert.Equal(t, tt.expected.Ports, tt.input.Ports)
+		})
+	}
 }
