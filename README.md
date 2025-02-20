@@ -70,7 +70,11 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 Submit a "Hello World" job
 
 ```bash
-bacalhau docker run ubuntu echo Hello World
+bacalhau docker run \
+                -c API.Host=bootstrap.production.bacalhau.org \
+                --wait \
+                docker run \
+                docker.io/bacalhauproject/hello-world:latest
 ```
 
 Download your result
