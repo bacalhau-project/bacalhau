@@ -17,6 +17,9 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
+	"github.com/docker/go-connections/nat"
+
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 )
 
@@ -65,23 +68,57 @@ var (
 //nolint:nakedret
 func (e *Executor) setupNetworkForJob(
 	ctx context.Context,
-	job string,
-	executionID string,
-	networkConfig *models.NetworkConfig,
+	params *executor.RunCommandRequest,
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
-	containerConfig.NetworkDisabled = networkConfig.Disabled()
-	switch networkConfig.Type {
+	containerConfig.NetworkDisabled = params.Network.Disabled()
+	switch params.Network.Type {
 	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
-	case models.NetworkFull:
+
+	case models.NetworkHost:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
+		// In host mode, ports are directly accessible on the host network
+		// No port bindings needed as container shares host's network namespace
+
+	case models.NetworkBridge:
+		hostConfig.NetworkMode = dockerNetworkBridge
+		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
+
+		// Add port bindings for bridge mode
+		if len(params.Network.Ports) > 0 {
+			portBindings := make(nat.PortMap)
+			exposedPorts := make(nat.PortSet)
+
+			for _, mapping := range params.Network.Ports {
+				// In bridge mode, we use the Target port as the container port
+				containerPort := nat.Port(fmt.Sprintf("%d/tcp", mapping.Target))
+
+				// Use the host network from the mapping if specified, otherwise use all interfaces
+				hostIP := "0.0.0.0"
+				if mapping.HostNetwork != "" {
+					hostIP = mapping.HostNetwork
+				}
+
+				hostBinding := nat.PortBinding{
+					HostIP:   hostIP,
+					HostPort: fmt.Sprintf("%d", mapping.Static),
+				}
+
+				portBindings[containerPort] = []nat.PortBinding{hostBinding}
+				exposedPorts[containerPort] = struct{}{}
+			}
+
+			containerConfig.ExposedPorts = exposedPorts
+			hostConfig.PortBindings = portBindings
+		}
+
 	case models.NetworkHTTP:
 		var internalNetwork *network.Inspect
 		var proxyAddr *net.TCPAddr
-		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, job, executionID, networkConfig)
+		internalNetwork, proxyAddr, err = e.createHTTPGateway(ctx, params.JobID, params.ExecutionID, params.Network)
 		if err != nil {
 			return
 		}
@@ -90,8 +127,9 @@ func (e *Executor) setupNetworkForJob(
 			fmt.Sprintf("http_proxy=%s", proxyAddr.String()),
 			fmt.Sprintf("https_proxy=%s", proxyAddr.String()),
 		)
+
 	default:
-		err = fmt.Errorf("unsupported network type %q", networkConfig.Type.String())
+		err = fmt.Errorf("unsupported network type %q", params.Network.Type.String())
 	}
 	return
 }

@@ -1376,6 +1376,10 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "address": {
+                    "description": "Address is the network location where this compute node can be reached\nFormat: IPv4 or hostname (e.g., \"192.168.1.100\" or \"node1.example.com\")",
+                    "type": "string"
                 }
             }
         },
@@ -1881,12 +1885,14 @@ const docTemplate = `{
             "enum": [
                 0,
                 1,
-                2
+                2,
+                3
             ],
             "x-enum-varnames": [
                 "NetworkNone",
-                "NetworkFull",
-                "NetworkHTTP"
+                "NetworkHost",
+                "NetworkHTTP",
+                "NetworkBridge"
             ]
         },
         "models.NetworkConfig": {
@@ -1896,6 +1902,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "Ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Port"
                     }
                 },
                 "Type": {
@@ -2013,6 +2025,27 @@ const docTemplate = `{
                 "NodeTypeRequester",
                 "NodeTypeCompute"
             ]
+        },
+        "models.Port": {
+            "type": "object",
+            "properties": {
+                "HostNetwork": {
+                    "description": "HostNetwork specifies which network interface to bind to.\nIf empty, defaults to \"0.0.0.0\" (all interfaces).\nCan be set to \"127.0.0.1\" to only allow local connections.",
+                    "type": "string"
+                },
+                "Name": {
+                    "description": "Name is a required identifier for this port mapping.\nIt will be used to create environment variables to inform the task\nabout its allocated ports.",
+                    "type": "string"
+                },
+                "Static": {
+                    "description": "Static is the host port to use. If not specified, a port will be\nauto-allocated from the compute node's port range",
+                    "type": "integer"
+                },
+                "Target": {
+                    "description": "Target is the port inside the task/container that should be exposed.\nOnly valid for Bridge network mode. If not specified in Bridge mode,\nit will default to the same value as the host port.",
+                    "type": "integer"
+                }
+            }
         },
         "models.Protocol": {
             "type": "string",
@@ -2542,6 +2575,14 @@ const docTemplate = `{
                 "Heartbeat": {
                     "$ref": "#/definitions/types.Heartbeat"
                 },
+                "Network": {
+                    "description": "Network specifies the networking configuration for this compute node",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.NetworkConfig"
+                        }
+                    ]
+                },
                 "Orchestrators": {
                     "description": "Orchestrators specifies a list of orchestrator endpoints that this compute node connects to.",
                     "type": "array",
@@ -2858,6 +2899,23 @@ const docTemplate = `{
             "properties": {
                 "Resources": {
                     "$ref": "#/definitions/types.ResourcesConfig"
+                }
+            }
+        },
+        "types.NetworkConfig": {
+            "type": "object",
+            "properties": {
+                "AdvertisedAddress": {
+                    "description": "AdvertisedAddress is the address that this compute node advertises to other nodes.\nIf empty, a default address will be auto-discovered.",
+                    "type": "string"
+                },
+                "PortRangeEnd": {
+                    "description": "PortRangeEnd is the last port in the range (inclusive) that can be allocated to jobs",
+                    "type": "integer"
+                },
+                "PortRangeStart": {
+                    "description": "PortRangeStart is the first port in the range (inclusive) that can be allocated to jobs",
+                    "type": "integer"
                 }
             }
         },

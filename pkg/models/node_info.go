@@ -158,6 +158,9 @@ type ComputeNodeInfo struct {
 	MaxJobRequirements Resources `json:"MaxJobRequirements"`
 	RunningExecutions  int       `json:"RunningExecutions"`
 	EnqueuedExecutions int       `json:"EnqueuedExecutions"`
+	// Address is the network location where this compute node can be reached
+	// Format: IPv4 or hostname (e.g., "192.168.1.100" or "node1.example.com")
+	Address string `json:"address"`
 }
 
 // Copy provides a copy of the allocation and deep copies the job
@@ -176,5 +179,6 @@ func (c *ComputeNodeInfo) Copy() *ComputeNodeInfo {
 	cpy.QueueUsedCapacity = copyOrZero(c.QueueUsedCapacity.Copy())
 	cpy.AvailableCapacity = copyOrZero(c.AvailableCapacity.Copy())
 	cpy.MaxJobRequirements = copyOrZero(c.MaxJobRequirements.Copy())
+	cpy.Address = c.Address
 	return cpy
 }

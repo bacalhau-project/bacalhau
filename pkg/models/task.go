@@ -155,6 +155,10 @@ func (t *Task) ValidateSubmission() error {
 		mErr = errors.Join(mErr, err)
 	}
 
+	if err := t.Network.Validate(); err != nil {
+		mErr = errors.Join(mErr, fmt.Errorf("network validation failed: %v", err))
+	}
+
 	return mErr
 }
 

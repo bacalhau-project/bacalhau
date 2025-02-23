@@ -146,6 +146,71 @@ func TestGetExecutionEnvVars(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "execution with network ports",
+			execution: &models.Execution{
+				ID:     "exec-1",
+				JobID:  "job-1",
+				NodeID: "node-1",
+				Job: &models.Job{
+					Type:  "batch",
+					Count: 1,
+					Tasks: []*models.Task{
+						{
+							Name: "task-1",
+							Network: &models.NetworkConfig{
+								Type: models.NetworkHost,
+								Ports: models.PortMap{
+									{Name: "http", Static: 8080, Target: 80},      // Named port mapping
+									{Name: "metrics", Static: 9090, Target: 9090}, // Named port with same target
+									{Name: "debug", Static: 3000, Target: 8000},   // Another named port
+								},
+							},
+						},
+					},
+				},
+			},
+			want: map[string]string{
+				"BACALHAU_EXECUTION_ID":      "exec-1",
+				"BACALHAU_JOB_ID":            "job-1",
+				"BACALHAU_JOB_TYPE":          "batch",
+				"BACALHAU_PARTITION_INDEX":   "0",
+				"BACALHAU_PARTITION_COUNT":   "1",
+				"BACALHAU_HOST_PORT_http":    "8080",
+				"BACALHAU_PORT_http":         "80",
+				"BACALHAU_HOST_PORT_metrics": "9090",
+				"BACALHAU_PORT_metrics":      "9090",
+				"BACALHAU_HOST_PORT_debug":   "3000",
+				"BACALHAU_PORT_debug":        "8000",
+			},
+		},
+		{
+			name: "execution with network but no ports",
+			execution: &models.Execution{
+				ID:     "exec-1",
+				JobID:  "job-1",
+				NodeID: "node-1",
+				Job: &models.Job{
+					Type:  "batch",
+					Count: 1,
+					Tasks: []*models.Task{
+						{
+							Name: "task-1",
+							Network: &models.NetworkConfig{
+								Type: models.NetworkHost,
+							},
+						},
+					},
+				},
+			},
+			want: map[string]string{
+				"BACALHAU_EXECUTION_ID":    "exec-1",
+				"BACALHAU_JOB_ID":          "job-1",
+				"BACALHAU_JOB_TYPE":        "batch",
+				"BACALHAU_PARTITION_INDEX": "0",
+				"BACALHAU_PARTITION_COUNT": "1",
+			},
+		},
 	}
 
 	for _, tt := range tests {
