@@ -33,6 +33,7 @@ type BaseExecutorParams struct {
 	Publishers             publisher.PublisherProvider
 	FailureInjectionConfig models.FailureInjectionConfig
 	EnvResolver            EnvVarResolver
+	PortAllocator          PortAllocator
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -47,6 +48,7 @@ type BaseExecutor struct {
 	resultsPath      ResultsPath
 	failureInjection models.FailureInjectionConfig
 	envResolver      EnvVarResolver
+	portAllocator    PortAllocator
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -60,42 +62,37 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		failureInjection: params.FailureInjectionConfig,
 		resultsPath:      params.ResultsPath,
 		envResolver:      params.EnvResolver,
+		portAllocator:    params.PortAllocator,
 	}
 }
 
-func prepareInputVolumes(
+func (e *BaseExecutor) prepareInputVolumes(
 	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
-	execution *models.Execution) (
-	[]storage.PreparedStorage, func(context.Context) error, error,
-) {
+	execution *models.Execution,
+) ([]storage.PreparedStorage, func(context.Context) error, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, execution.Job.Task().InputSources...)
+		ctx, e.Storages, e.storageDirectory, execution, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputVolumes, func(ctx context.Context) error {
-		return storage.ParallelCleanStorage(ctx, storageProvider, inputVolumes)
+		return storage.ParallelCleanStorage(ctx, e.Storages, inputVolumes)
 	}, nil
 }
 
-func prepareWasmVolumes(
+func (e *BaseExecutor) prepareWasmVolumes(
 	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
 	execution *models.Execution,
-	wasmEngine wasmmodels.EngineSpec) (
-	map[string][]storage.PreparedStorage, func(context.Context) error, error,
-) {
+	wasmEngine wasmmodels.EngineSpec,
+) (map[string][]storage.PreparedStorage, func(context.Context) error, error) {
 	importModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, wasmEngine.ImportModules...)
+		ctx, e.Storages, e.storageDirectory, execution, wasmEngine.ImportModules...)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	entryModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, wasmEngine.EntryModule)
+		ctx, e.Storages, e.storageDirectory, execution, wasmEngine.EntryModule)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -106,8 +103,8 @@ func prepareWasmVolumes(
 	}
 
 	cleanup := func(ctx context.Context) error {
-		err1 := storage.ParallelCleanStorage(ctx, storageProvider, importModuleVolumes)
-		err2 := storage.ParallelCleanStorage(ctx, storageProvider, entryModuleVolumes)
+		err1 := storage.ParallelCleanStorage(ctx, e.Storages, importModuleVolumes)
+		err2 := storage.ParallelCleanStorage(ctx, e.Storages, entryModuleVolumes)
 		if err1 != nil || err2 != nil {
 			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
 		}
@@ -130,17 +127,14 @@ func prepareWasmVolumes(
 // should be removed via the method after the jobs execution reaches a terminal state.
 type InputCleanupFn = func(context.Context) error
 
-func PrepareRunArguments(
+func (e *BaseExecutor) PrepareRunArguments(
 	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
-	envResolver EnvVarResolver,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution)
+	inputVolumes, inputCleanup, err := e.prepareInputVolumes(ctx, execution)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,7 +163,7 @@ func PrepareRunArguments(
 			return nil, nil, err
 		}
 
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, execution, wasmEngine)
+		volumes, wasmCleanup, err := e.prepareWasmVolumes(ctx, execution, wasmEngine)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -184,7 +178,20 @@ func PrepareRunArguments(
 		engineArgs = execution.Job.Task().Engine
 	}
 
-	env, err := GetExecutionEnvVars(execution, envResolver)
+	// Allocate ports
+	portMappings, err := e.portAllocator.AllocatePorts(execution)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanupFuncs = append(cleanupFuncs, func(ctx context.Context) error {
+		e.portAllocator.ReleasePorts(execution)
+		return nil
+	})
+
+	// Update execution with allocated ports
+	execution.AllocatePorts(portMappings)
+
+	env, err := GetExecutionEnvVars(execution, e.envResolver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
@@ -206,11 +213,9 @@ func PrepareRunArguments(
 				MaxStderrReturnLength: system.MaxStderrReturnLength,
 			},
 		}, func(ctx context.Context) error {
-			log.Ctx(ctx).Info().Str("execution", execution.ID).Msg("cleaning up execution")
 			var cleanupErr error
 			for _, cleanupFunc := range cleanupFuncs {
 				if err := cleanupFunc(ctx); err != nil {
-					log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).Msg("cleaning up execution")
 					cleanupErr = errors.Join(cleanupErr, err)
 				}
 			}
@@ -250,7 +255,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder, e.envResolver)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultFolder)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)

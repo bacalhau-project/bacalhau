@@ -23,6 +23,7 @@ import (
 
 const testNodeCount = 1
 
+//nolint:funlen,mnd
 func RunTestCase(
 	t *testing.T,
 	testCase scenario.Scenario,
@@ -93,14 +94,22 @@ func RunTestCase(
 	envResolver := env.NewResolver(env.ResolverParams{
 		AllowList: []string{"TEST_*"}, // Allow only TEST_* environment variables to be forwarded
 	})
+	portAllocator, err := compute.NewPortAllocator(10000, 20000)
+	require.NoError(t, err)
 
-	runCommandArguments, cleanup, err := compute.PrepareRunArguments(
+	// TODO: use base executor instead of directly using the executor
+	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
+		ID:               "test-executor",
+		Storages:         storageProvider,
+		StorageDirectory: t.TempDir(),
+		EnvResolver:      envResolver,
+		PortAllocator:    portAllocator,
+	})
+
+	runCommandArguments, cleanup, err := baseExecutor.PrepareRunArguments(
 		ctx,
-		storageProvider,
-		t.TempDir(),
 		execution,
 		resultsDirectory,
-		envResolver,
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
