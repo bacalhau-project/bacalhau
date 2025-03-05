@@ -132,7 +132,7 @@ func TestUnmarshalJob(t *testing.T) {
 		j, err := UnmarshalJob([]byte(jobWithUnknownFields))
 		assert.Nil(t, j)
 		assert.Error(t, err)
-		assert.ErrorContains(t, err, "field: 'Count' in 'Job' is invalid type: 'string' expected: 'int'")
+		assert.ErrorContains(t, err, "field: 'Count' in 'job' is invalid type: 'string' expected: 'int'")
 	})
 
 }
