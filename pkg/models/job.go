@@ -415,12 +415,13 @@ func (j *Job) OrchestrationProtocol() Protocol {
 // 1. Set default Count=1 for batch and service jobs when omitted in JSON
 // 2. Preserve explicit Count=0 when specified (used to stop all executions)
 func (j *Job) UnmarshalJSON(data []byte) error {
-	type Alias Job // Create alias to avoid recursion
-	aux := &struct {
-		*Alias
+	type alias Job // Create alias to avoid recursion
+	type job struct {
+		*alias
 		Count *int `json:"Count,omitempty"`
-	}{
-		Alias: (*Alias)(j),
+	}
+	aux := &job{
+		alias: (*alias)(j),
 	}
 	if err := json.Unmarshal(data, aux); err != nil {
 		return err
