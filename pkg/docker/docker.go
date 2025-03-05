@@ -36,6 +36,8 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
+const unknownPlatform = "unknown"
+
 type Client struct {
 	tracing.TracedClient
 	hostPlatform v1.Platform
@@ -255,7 +257,7 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 
 func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool {
 	// If any fields are "unknown", the platform info is not reliable
-	if info.Os == "unknown" || info.Architecture == "unknown" {
+	if info.Os == unknownPlatform || info.Architecture == unknownPlatform {
 		log.Debug().
 			Str("image_os", info.Os).
 			Str("image_arch", info.Architecture).
@@ -354,7 +356,6 @@ func (c *Client) ImageDistribution(
 				}, nil
 			}
 		} else {
-
 			log.Ctx(ctx).Debug().
 				Str("image", image).
 				Str("local_platform", fmt.Sprintf("%s/%s", info.Os, info.Architecture)).
@@ -362,7 +363,7 @@ func (c *Client) ImageDistribution(
 				Msg("Local image platform mismatch, checking registry")
 		}
 	} else if !dockerclient.IsErrNotFound(err) {
-		return nil, NewDockerError(err)
+		return nil, NewDockerImageError(err, image)
 	}
 
 	// Try registry
@@ -375,7 +376,7 @@ func (c *Client) ImageDistribution(
 	// Filter out unknown platforms
 	var platforms []v1.Platform
 	for _, p := range dist.Platforms {
-		if p.OS != "unknown" && p.Architecture != "unknown" {
+		if p.OS != unknownPlatform && p.Architecture != unknownPlatform {
 			platforms = append(platforms, p)
 		}
 	}
@@ -399,7 +400,7 @@ func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_l
 			return nil
 		}
 	} else if !dockerclient.IsErrNotFound(err) {
-		return NewDockerError(err)
+		return NewDockerImageError(err, img)
 	} else {
 		log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")
 	}
