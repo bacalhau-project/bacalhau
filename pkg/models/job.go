@@ -2,6 +2,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -100,6 +101,13 @@ type Job struct {
 	Priority int `json:"Priority"`
 
 	// Count is the number of replicas that should be scheduled.
+	// For batch and service jobs:
+	// - If not present in JSON, defaults to 1
+	// - If explicitly set to 0, means stop all executions
+	// - If > 0, specifies exact number of replicas
+	// For daemon and ops jobs:
+	// - Values of 0 or 1 are ignored (job runs on all matching nodes)
+	// - Values > 1 are invalid and will cause validation to fail
 	Count int `json:"Count"`
 
 	// Constraints is a selector which must be true for the compute node to run this job.
@@ -181,8 +189,10 @@ func (j *Job) Normalize() {
 		j.Name = j.ID
 	}
 
-	if (j.Type == JobTypeDaemon || j.Type == JobTypeOps) && j.Count == 0 {
-		j.Count = 1
+	// Handle count based on job type
+	switch j.Type {
+	case JobTypeDaemon, JobTypeOps:
+		j.Count = 0 // Always 0 for daemon and ops jobs
 	}
 
 	for _, task := range j.Tasks {
@@ -256,6 +266,9 @@ func (j *Job) ValidateSubmission() error {
 
 	if j.Count < 0 {
 		mErr = errors.Join(mErr, errors.New("job count must be >= 0"))
+	}
+	if j.Count > 1 && (j.Type == JobTypeDaemon || j.Type == JobTypeOps) {
+		mErr = errors.Join(mErr, fmt.Errorf("%s jobs cannot specify count > 1 as they run on all matching nodes", j.Type))
 	}
 	if len(j.Tasks) == 0 {
 		mErr = errors.Join(mErr, errors.New("missing job tasks"))
@@ -394,4 +407,37 @@ func (j *Job) OrchestrationProtocol() Protocol {
 		return defaultProtocol
 	}
 	return Protocol(protocol)
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling to handle
+// the Count field differently based on job type
+// This allows us to:
+// 1. Set default Count=1 for batch and service jobs when omitted in JSON
+// 2. Preserve explicit Count=0 when specified (used to stop all executions)
+func (j *Job) UnmarshalJSON(data []byte) error {
+	type Alias Job // Create alias to avoid recursion
+	aux := &struct {
+		*Alias
+		Count *int `json:"Count,omitempty"`
+	}{
+		Alias: (*Alias)(j),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	// Handle Count field based on job type
+	switch j.Type {
+	case JobTypeBatch, JobTypeService:
+		if aux.Count == nil {
+			j.Count = 1 // Default to 1 if not present in JSON
+		} else {
+			j.Count = *aux.Count // Use explicitly set value
+		}
+	default:
+		if aux.Count != nil {
+			j.Count = *aux.Count
+		}
+	}
+	return nil
 }
