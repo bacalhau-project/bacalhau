@@ -1697,7 +1697,7 @@
                     }
                 },
                 "Count": {
-                    "description": "Count is the number of replicas that should be scheduled.",
+                    "description": "Count is the number of replicas that should be scheduled.\nFor batch and service jobs:\n- If not present in JSON, defaults to 1\n- If explicitly set to 0, means stop all executions\n- If \u003e 0, specifies exact number of replicas\nFor daemon and ops jobs:\n- Values of 0 or 1 are ignored (job runs on all matching nodes)\n- Values \u003e 1 are invalid and will cause validation to fail",
                     "type": "integer"
                 },
                 "CreateTime": {
