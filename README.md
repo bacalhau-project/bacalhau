@@ -8,7 +8,7 @@
 <br>
 
 <p align="center">
-    <a href="https://github.com/bacalhau-project/bacalhau/blob/dev/LICENSE" alt="License">
+    <a href="https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE" alt="License">
         <img src="https://img.shields.io/badge/license-Apache-green" />
     </a>
     <a href="https://github.com/bacalhau-project/bacalhau/releases/" alt="Release">
