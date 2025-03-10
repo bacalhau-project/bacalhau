@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
@@ -89,17 +87,12 @@ func NewCmd() *cobra.Command {
 func newRunCmd() *cobra.Command {
 	opts := NewWasmOptions()
 
-	wasmRunFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	wasmRunCmd := &cobra.Command{
 		Use:      "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
 		Short:    "Run a WASM job on the network",
 		Long:     wasmRunLong,
 		Example:  wasmRunExample,
 		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(viper.GetViper(), wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
@@ -122,10 +115,6 @@ func newRunCmd() *cobra.Command {
 	cliflags.RegisterJobFlags(wasmRunCmd, opts.JobSettings)
 	cliflags.RegisterTaskFlags(wasmRunCmd, opts.TaskSettings)
 	wasmRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
-
-	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
-		util.Fatal(wasmRunCmd, err, 1)
-	}
 
 	wasmFlags := pflag.NewFlagSet("wasm", pflag.ContinueOnError)
 	wasmFlags.VarP(

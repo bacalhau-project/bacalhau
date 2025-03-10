@@ -5,14 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -84,18 +82,12 @@ func NewCmd() *cobra.Command {
 func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
-	dockerRunFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	dockerRunCmd := &cobra.Command{
-		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
-		Short:   "Run a docker job on the network",
-		Long:    runLong,
-		Example: runExample,
-		Args:    cobra.MinimumNArgs(1),
-		// bind flags for this command to the config.
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), dockerRunFlags)),
+		Use:      "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
+		Short:    "Run a docker job on the network",
+		Long:     runLong,
+		Example:  runExample,
+		Args:     cobra.MinimumNArgs(1),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
@@ -115,9 +107,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	cliflags.RegisterTaskFlags(dockerRunCmd, opts.TaskSettings)
 	dockerRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
-	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
-		util.Fatal(dockerRunCmd, err, 1)
-	}
 	// register flags unique to docker.
 	dockerFlags := pflag.NewFlagSet("docker", pflag.ContinueOnError)
 	dockerFlags.StringVarP(&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,

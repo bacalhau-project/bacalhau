@@ -2801,7 +2801,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "AcceptNetworkedJobs": {
-                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.",
+                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.\nWill be deprecated in v1.7 in favor of RejectNetworkedJobs.",
                     "type": "boolean"
                 },
                 "Locality": {
@@ -2819,6 +2819,10 @@ const docTemplate = `{
                 "ProbeHTTP": {
                     "description": "ProbeHTTP specifies the HTTP endpoint for probing job submission.",
                     "type": "string"
+                },
+                "RejectNetworkedJobs": {
+                    "description": "RejectNetworkedJobs indicates whether to reject jobs that require network access.",
+                    "type": "boolean"
                 },
                 "RejectStatelessJobs": {
                     "description": "RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.",

@@ -320,7 +320,8 @@ func NewBidder(
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if cfg.SystemConfig.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
-			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs ||
+				!cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
 			}),

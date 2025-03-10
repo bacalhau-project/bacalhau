@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -31,7 +31,7 @@ func RunAuthenticationFlow(
 	auth *client.Auth,
 	clientKeyPath string,
 ) (*apimodels.HTTPCredential, error) {
-	sk, err := config_legacy.GetClientPrivateKey(clientKeyPath)
+	sk, err := baccrypto.LoadPKCS1KeyFile(clientKeyPath)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
-var ComputeFlags = []Definition{
+var ServeFlags = []Definition{
+	{
+		FlagName:     "orchestrator",
+		ConfigPath:   types.OrchestratorEnabledKey,
+		DefaultValue: config.Default.Orchestrator.Enabled,
+		Description:  "When true the orchestrator service will be enabled.",
+	},
 	{
 		FlagName:     "compute",
 		ConfigPath:   types.ComputeEnabledKey,

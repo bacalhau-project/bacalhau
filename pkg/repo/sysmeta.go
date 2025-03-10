@@ -15,19 +15,13 @@ import (
 const UnknownVersion = -1
 
 const (
-	// Version1 is the repo versioning for v1-v1.1.4
-	Version1 = iota + 1
-	// Version2 is the repo versioning up to v1.2.1
-	Version2
-	// Version3 is the repo version to (including) v1.4.0
-	Version3
-	// Version4 is the latest version
-	Version4
+	// Version4 is the latest version starting from v1.5.0
+	Version4 = 4
 )
 
 // IsValidVersion returns true if the version is valid.
 func IsValidVersion(version int) bool {
-	return version >= Version1 && version <= Version4
+	return version >= Version4 && version <= Version4
 }
 
 // SystemMetadataFile is the name of the file containing the SystemMetadata.
@@ -70,24 +64,16 @@ func (fsr *FsRepo) SystemMetadata() (*SystemMetadata, error) {
 // WriteVersion updates the RepoVersion in the SystemMetadataFile.
 // If the metadata file doesn't exist, it creates a new one.
 func (fsr *FsRepo) WriteVersion(version int) error {
-	if version < Version4 {
-		return fsr.WriteLegacyVersion(version)
-	}
 	return fsr.updateOrCreateMetadata(func(m *SystemMetadata) {
 		m.RepoVersion = version
 	})
 }
 
 // readVersion reads the RepoVersion in the SystemMetadataFile.
-// For repos w/ version <= Version3, the version in repo.version is read.
-// If SystemMetadataFile or repo.version doesn't exist, or if their content is invalid, an error is returned.
+// If SystemMetadataFile doesn't exist, or if their content is invalid, an error is returned.
 func (fsr *FsRepo) readVersion() (int, error) {
 	sysmeta, err := fsr.readMetadata()
 	if err != nil {
-		// if the system metadata file does not exist attempt to read the legacy version
-		if os.IsNotExist(err) {
-			return fsr.ReadLegacyVersion()
-		}
 		return UnknownVersion, err
 	}
 	return sysmeta.RepoVersion, nil

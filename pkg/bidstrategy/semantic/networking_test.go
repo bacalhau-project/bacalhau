@@ -17,32 +17,32 @@ import (
 )
 
 type networkingStrategyTestCase struct {
-	accept         bool
+	reject         bool
 	job_networking models.NetworkConfig
 	should_bid     bool
 }
 
 func (test networkingStrategyTestCase) String() string {
 	return fmt.Sprintf(
-		"should bid is %t when job requires %s and strategy accepts networking is %t",
+		"should bid is %t when job requires %s and strategy rejects networking is %t",
 		test.should_bid,
 		test.job_networking.Type,
-		test.accept,
+		test.reject,
 	)
 }
 
 var networkingStrategyTestCases = []networkingStrategyTestCase{
-	{false, models.NetworkConfig{Type: models.NetworkNone}, true},
-	{false, models.NetworkConfig{Type: models.NetworkHost}, false},
-	{true, models.NetworkConfig{Type: models.NetworkNone}, true},
-	{true, models.NetworkConfig{Type: models.NetworkHost}, true},
+	{false, models.NetworkConfig{Type: models.NetworkNone}, true}, // Local job, not rejecting -> should bid
+	{false, models.NetworkConfig{Type: models.NetworkHost}, true}, // Network job, not rejecting -> should bid
+	{true, models.NetworkConfig{Type: models.NetworkNone}, true},  // Local job, rejecting -> should bid
+	{true, models.NetworkConfig{Type: models.NetworkHost}, false}, // Network job, rejecting -> should not bid
 }
 
 func TestNetworkingStrategy(t *testing.T) {
 	for _, test := range networkingStrategyTestCases {
 		job := mock.Job()
 		job.Task().Network = &test.job_networking
-		strategy := semantic.NewNetworkingStrategy(test.accept)
+		strategy := semantic.NewNetworkingStrategy(test.reject)
 		request := bidstrategy.BidStrategyRequest{Job: *job}
 
 		t.Run("ShouldBid/"+test.String(), func(t *testing.T) {
@@ -50,6 +50,5 @@ func TestNetworkingStrategy(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, test.should_bid, response.ShouldBid)
 		})
-
 	}
 }
