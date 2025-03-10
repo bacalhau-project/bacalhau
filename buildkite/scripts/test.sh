@@ -24,7 +24,7 @@ initialize_ipfs() {
     ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
     ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
     ipfs daemon --offline &
-    export BACALHAU_NODE_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
+    export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 }
 
 # Function to build web UI

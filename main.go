@@ -10,7 +10,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	_ "github.com/bacalhau-project/bacalhau/pkg/version"
 
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
@@ -77,7 +77,7 @@ func main() {
 
 	_ = godotenv.Load()
 
-	devstackEnvFile := config_legacy.DevstackEnvFile()
+	devstackEnvFile := devstack.DevstackEnvFile()
 	if _, err := os.Stat(devstackEnvFile); err == nil {
 		log.Debug().Msgf("Loading environment from %s", devstackEnvFile)
 		_ = godotenv.Overload(devstackEnvFile)

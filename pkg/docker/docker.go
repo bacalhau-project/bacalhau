@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -31,7 +32,6 @@ import (
 	"go.ptx.dk/multierrgroup"
 	"golang.org/x/exp/slices"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
@@ -43,6 +43,7 @@ type Client struct {
 	hostPlatform v1.Platform
 	platformSet  bool
 	platformMu   sync.Mutex
+	credentials  Credentials
 }
 
 func NewDockerClient() (*Client, error) {
@@ -52,6 +53,7 @@ func NewDockerClient() (*Client, error) {
 	}
 	return &Client{
 		TracedClient: client,
+		credentials:  GetDockerCredentials(),
 	}, nil
 }
 
@@ -321,8 +323,7 @@ func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.P
 //
 // This is the image that will finally be installed.
 func (c *Client) ImageDistribution(
-	ctx context.Context, image string, creds config_legacy.DockerCredentials,
-) (*ImageManifest, error) {
+	ctx context.Context, image string) (*ImageManifest, error) {
 	hostPlatform, err := c.getHostPlatform(ctx)
 	if err != nil {
 		return nil, err
@@ -367,7 +368,7 @@ func (c *Client) ImageDistribution(
 	}
 
 	// Try registry
-	authToken := getAuthToken(ctx, image, creds)
+	authToken := getAuthToken(ctx, image, c.credentials)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
 		return nil, NewDockerImageError(err, image)
@@ -387,7 +388,7 @@ func (c *Client) ImageDistribution(
 	}, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_legacy.DockerCredentials) error {
+func (c *Client) PullImage(ctx context.Context, img string) error {
 	hostPlatform, err := c.getHostPlatform(ctx)
 	if err != nil {
 		return err
@@ -407,7 +408,7 @@ func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_l
 
 	// Set platform in pull options
 	pullOptions := image.PullOptions{
-		RegistryAuth: getAuthToken(ctx, img, dockerCreds),
+		RegistryAuth: getAuthToken(ctx, img, c.credentials),
 		Platform:     platformString(hostPlatform),
 	}
 
@@ -493,7 +494,7 @@ func logImagePullStatus(ctx context.Context, m *sync.Map) {
 	e.Msg("Pulling layers")
 }
 
-func getAuthToken(ctx context.Context, image string, dockerCreds config_legacy.DockerCredentials) string {
+func getAuthToken(ctx context.Context, image string, dockerCreds Credentials) string {
 	if dockerCreds.IsValid() {
 		// We only currently support auth for the default registry, so any
 		// pulls for `image` or `user/image` should be okay, anything trying
@@ -524,4 +525,25 @@ func getAuthToken(ctx context.Context, image string, dockerCreds config_legacy.D
 
 func platformString(platform v1.Platform) string {
 	return fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+}
+
+const (
+	UsernameEnvVar = "DOCKER_USERNAME"
+	PasswordEnvVar = "DOCKER_PASSWORD"
+)
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (d *Credentials) IsValid() bool {
+	return d.Username != "" && d.Password != ""
+}
+
+func GetDockerCredentials() Credentials {
+	return Credentials{
+		Username: os.Getenv(UsernameEnvVar),
+		Password: os.Getenv(PasswordEnvVar),
+	}
 }

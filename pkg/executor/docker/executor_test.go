@@ -63,7 +63,10 @@ func (s *ExecutorTestSuite) SetupTest() {
 	cfg, err := config.NewTestConfig()
 	require.NoError(s.T(), err)
 
-	s.executor, err = NewExecutor("bacalhau-executor-unit-test", cfg.Engines.Types.Docker)
+	s.executor, err = NewExecutor(ExecutorParams{
+		ID:     "bacalhau-executor-unit-test",
+		Config: cfg.Engines.Types.Docker,
+	})
 	require.NoError(s.T(), err)
 	s.T().Cleanup(func() {
 		if err := s.executor.Shutdown(context.Background()); err != nil {

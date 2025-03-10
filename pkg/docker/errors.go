@@ -8,7 +8,6 @@ import (
 	"github.com/docker/docker/errdefs"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 )
 
 const Component = "Docker"
@@ -63,7 +62,7 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 			WithHTTPStatusCode(http.StatusForbidden).
 			WithHint(fmt.Sprintf("You don't have permission to perform this action. "+
 				"Supply the node with valid Docker login credentials using the %s and %s environment variables",
-				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar))
+				UsernameEnvVar, PasswordEnvVar))
 	case errdefs.IsDataLoss(err):
 		return bacerrors.New("%s", err).
 			WithCode(DataLoss).
@@ -124,7 +123,7 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 			WithHint(fmt.Sprintf(`To resolve this, either:
 1. Check if the image exists in the registry and the name is correct
 2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
-				config_legacy.DockerUsernameEnvVar, config_legacy.DockerPasswordEnvVar)).
+				UsernameEnvVar, PasswordEnvVar)).
 			WithCode(ImageNotFound)
 	case errdefs.IsInvalidParameter(err):
 		return bacerrors.New("invalid image format: %q", image).
