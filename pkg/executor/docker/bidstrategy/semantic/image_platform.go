@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -65,8 +64,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
 		// Get manifest from Docker
-		creds := config_legacy.GetDockerCredentials()
-		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image, creds)
+		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, err
 		}

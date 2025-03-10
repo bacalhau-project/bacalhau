@@ -200,7 +200,7 @@ func (s *ServeSuite) TestCanSubmitJob() {
 
 func (s *ServeSuite) TestSelfSignedRequester() {
 	s.protocol = "https"
-	_, err := s.serve("--orchestrator", "--self-signed")
+	_, err := s.serve("--orchestrator", "-c", "API.TLS.SelfSigned")
 	s.Require().NoError(err)
 }
 
