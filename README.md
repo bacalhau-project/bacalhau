@@ -36,7 +36,7 @@
 
 [Bacalhau](https://www.bacalhau.org/) is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau you can streamline your existing workflows without the need of extensive rewriting by running arbitrary Docker containers, WebAssembly (wasm) images, or arbitrary binaries as tasks.
 
-## Table of Contents
+## Table of contents
 - [Table of Contents](#table-of-contents)
 - [Why Bacalhau?](#why-bacalhau)
 - [Getting started - Bacalhau in 1 minute](#getting-started---bacalhau-in-1-minute)
@@ -98,33 +98,15 @@ For a more detailed tutorial, check out our [Getting Started tutorial](https://d
 
 The Bacalhau docs is the best starting point as it contains all the information to ensure that everyone who uses Bacalhau is doing so efficiently.
 
-## Developers guide
+## Contributing
+If you are interested in contributing to the Bacalhau project:
+* Learn the [Ways To Contribute](#ways-to-contribute)
+* Set up your [local environment](docs/dev/local-env.md)
+* Submit an [issue](#issues-feature-requests-and-questions)
 
 ### Running Bacalhau locally
 
-Developers can spin up bacalhau and run a local demo using the `devstack` command.
-
-Please see [running_locally.md](docs/docs/dev/running-locally.md) for instructions. Also, see [debugging_locally.md](docs/docs/dev/debugging_locally.md) for some useful tricks for debugging.
-
-### Notes for Dev contributors
-
-Bacalhau's CI pipeline performs a variety of linting and formatting checks on new pull requests.
-To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
-
-```bash
-make install-pre-commit
-
-# check if pre-commit works
-make precommit
-```
-If you want to run the linter manually:
-
-```bash
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin
-golangci-lint --version
-make lint
-```
-The config lives in `.golangci.yml`
+Learn how to set up your local environment in the [Developer guide](docs/dev/local-env.md)
 
 ### OpenAPI
 
@@ -138,7 +120,7 @@ The build parses the OpenAPI annotations as well as the markdown files in `docs/
 * `docs/swagger.json`
 * `docs/swagger.yaml`
 
-### Python Libraries
+### Python libraries
 
 We ship two Python Bacalhau libraries:
 
@@ -157,7 +139,7 @@ We are excited to hear your feedback!
 
 We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions, development, and more.
 
-## Open Source
+## Open source
 This repository contains the Bacalhau software, covered under the [Apache-2.0](./LICENSE), except where noted (any Bacalhau logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
 
 Bacalhau is a product produced from this open source software, exclusively by Expanso, Inc. It is distributed under our commercial terms.
