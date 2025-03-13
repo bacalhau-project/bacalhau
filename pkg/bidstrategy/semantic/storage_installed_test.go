@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -41,10 +40,6 @@ func init() {
 
 	SpecWithInputs = mock.Task()
 	SpecWithInputs.InputSources = OneStorageSpec
-
-	SpecWithWasm = mock.Task()
-	SpecWithWasm.InputSources = make([]*models.InputSource, 0)
-	SpecWithWasm.Engine = wasmmodels.NewWasmEngineBuilder(OneStorageSpec[0]).MustBuild()
 }
 
 func TestStorageBidStrategy(t *testing.T) {

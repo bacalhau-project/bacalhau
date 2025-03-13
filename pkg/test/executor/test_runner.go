@@ -66,8 +66,8 @@ func RunTestCase(
 		return storageList
 	}
 
-	job.Task().InputSources = prepareStorage(testCase.Inputs)
-	job.Task().ResultPaths = testCase.Outputs
+	job.Task().InputSources = append(job.Task().InputSources, prepareStorage(testCase.Inputs)...)
+	job.Task().ResultPaths = append(job.Task().ResultPaths, testCase.Outputs...)
 	job.Task().Publisher = publisher_local.NewSpecConfig()
 	job.Count = testNodeCount
 

@@ -53,7 +53,10 @@ func CatFileToStdout(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(cat.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(cat.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(simpleMountPath).MustBuild(),
 				},
@@ -224,7 +227,10 @@ func WasmHelloWorld(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(noop.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(noop.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
@@ -247,9 +253,12 @@ func WasmExitCode(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(exit_code.Program())).
+					Env:  map[string]models.EnvVarValue{"EXIT_CODE": "5"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(exit_code.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
-						WithEnvironmentVariables(map[string]string{"EXIT_CODE": "5"}).
 						MustBuild(),
 				},
 			},
@@ -261,8 +270,8 @@ func WasmEnvVars(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileContains(
 			"stdout",
-			[]string{"AWESOME=definitely", "TEST=yes"},
-			3, //nolint:mnd // magic number appropriate for test
+			[]string{"AWESOME=definitely", "TEST=yes", "BACALHAU_PARTITION_INDEX=0"},
+			-1, //nolint:mnd // magic number appropriate for test
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -271,14 +280,12 @@ func WasmEnvVars(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(env.Program())).
+					Env:  map[string]models.EnvVarValue{"TEST": "yes", "AWESOME": "definitely"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(env.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
-						WithEnvironmentVariables(
-							map[string]string{
-								"TEST":    "yes",
-								"AWESOME": "definitely",
-							},
-						).
 						MustBuild(),
 				},
 			},
@@ -318,7 +325,10 @@ func WasmCsvTransform(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(csv.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(csv.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							"inputs/horses.csv",
@@ -360,7 +370,10 @@ func WasmDynamicLink(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(dynamic.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(dynamic.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						MustBuild(),
 				},
@@ -394,7 +407,10 @@ func WasmLogTest(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(logtest.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(logtest.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							"inputs/cosmic_computer.txt",

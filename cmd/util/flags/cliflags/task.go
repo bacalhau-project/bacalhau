@@ -87,6 +87,9 @@ func RegisterTaskFlags(cmd *cobra.Command, s *TaskSettings) {
 	fs := pflag.NewFlagSet("task", pflag.ContinueOnError)
 
 	fs.StringVar(&s.Name, "task-name", s.Name, NameUsageMsg)
+	fs.StringToStringVarP(&s.EnvironmentVariables, "env", "e", s.EnvironmentVariables,
+		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
+
 	fs.VarP(&s.InputSources, "input", "i", PublisherInputUsageMsg)
 	fs.VarP(flags.ResultPathFlag(&s.ResultPaths), "output", "o", ResultPathUsageMsg)
 	fs.VarP(&s.Publisher, "publisher", "p", PublisherUsageMsg)
