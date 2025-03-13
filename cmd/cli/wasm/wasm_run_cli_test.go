@@ -333,8 +333,8 @@ func TestJobFlagParsing(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:  "with network full",
-			flags: []string{"--network=full", "./main.wasm"},
+			name:  "with network host",
+			flags: []string{"--network=host", "./main.wasm"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
