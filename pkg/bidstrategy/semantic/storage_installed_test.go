@@ -31,7 +31,6 @@ var (
 var (
 	EmptySpec      *models.Task
 	SpecWithInputs *models.Task
-	SpecWithWasm   *models.Task
 )
 
 func init() {
@@ -53,8 +52,6 @@ func TestStorageBidStrategy(t *testing.T) {
 		{"no storage with nothing installed", EmptySpec, false, require.True},
 		{"uninstalled storage/Inputs", SpecWithInputs, false, require.False},
 		{"installed storage/Inputs", SpecWithInputs, true, require.True},
-		{"uninstalled storage/Wasm", SpecWithWasm, false, require.False},
-		{"installed storage/Wasm", SpecWithWasm, true, require.True},
 	}
 
 	for _, testCase := range testCases {

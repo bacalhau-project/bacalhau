@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -170,11 +169,11 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 	return nil
 }
 
-// parseWasmEntryModule handles the entry module path and returns an InputSource if it's a local file or storage spec.
+// parseWasmModule handles the entry module path and returns an InputSource if it's a local file or storage spec.
 // If it's a target path, it returns nil and the path should be treated as-is.
-func parseWasmEntryModule(ctx context.Context, in string) (*models.InputSource, error) {
+func parseWasmModule(ctx context.Context, in string, defaultTarget string) (*models.InputSource, error) {
 	// Try interpreting this as a storage spec (http://, s3://, etc.)
-	spec, err := opts.ParseStorageSpec(in, "main.wasm")
+	spec, err := opts.ParseStorageSpec(in, defaultTarget)
 	if err == nil {
 		return spec, nil
 	}
@@ -186,7 +185,7 @@ func parseWasmEntryModule(ctx context.Context, in string) (*models.InputSource, 
 		targetPath = parts[1]
 	} else {
 		filePath = in
-		targetPath = filepath.Base(in)
+		targetPath = defaultTarget
 	}
 
 	// Check if it's a local file
@@ -219,7 +218,7 @@ func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Jo
 	entryModule := args[0]
 
 	// Try to handle the entry module as a local file or storage spec
-	inputSource, err := parseWasmEntryModule(ctx, entryModule)
+	inputSource, err := parseWasmModule(ctx, entryModule, "main.wasm")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse entry module: %w", err)
 	}
@@ -235,16 +234,19 @@ func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Jo
 	var importModulePaths []string
 	for _, importModule := range opts.ImportModules {
 		// Try to handle the import module as a local file or storage spec
-		inputSource, err := parseWasmEntryModule(ctx, importModule)
+		moduleInputSource, err := parseWasmModule(ctx, importModule, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse import module %q: %w", importModule, err)
 		}
 
 		// If it's a local file or storage spec, add it to the inputs
-		if inputSource != nil {
-			opts.TaskSettings.InputSources.AddValue(inputSource)
+		if moduleInputSource != nil {
+			if moduleInputSource.Target == "" {
+				return nil, fmt.Errorf("import module %q must specify a target path using the format 'path:target'", importModule)
+			}
+			opts.TaskSettings.InputSources.AddValue(moduleInputSource)
 			// Use the target path as the import module path
-			importModulePaths = append(importModulePaths, inputSource.Target)
+			importModulePaths = append(importModulePaths, moduleInputSource.Target)
 		} else {
 			// If it's just a target path, use it as-is
 			importModulePaths = append(importModulePaths, importModule)

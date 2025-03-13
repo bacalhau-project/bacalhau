@@ -51,6 +51,7 @@ func BuildJobFromFlags(
 			TotalTimeout: taskSettings.Timeout,
 			QueueTimeout: taskSettings.QueueTimeout,
 		},
+		Env: models.EnvVarsFromStringsMap(taskSettings.EnvironmentVariables),
 	}
 	constraints, err := jobSettings.Constraints()
 	if err != nil {

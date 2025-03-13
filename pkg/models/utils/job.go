@@ -8,9 +8,11 @@ import (
 
 // AllInputSources returns all storage types used by the job spec.
 func AllInputSources(job *models.Job) []*models.InputSource {
-	inputSources := make([]*models.InputSource, 0, len(job.Tasks))
+	var inputSources []*models.InputSource
 	for _, task := range job.Tasks {
-		inputSources = append(inputSources, task.InputSources...)
+		if task != nil && task.InputSources != nil {
+			inputSources = append(inputSources, task.InputSources...)
+		}
 	}
 	return inputSources
 }
