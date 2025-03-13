@@ -76,7 +76,7 @@ func (e *Executor) setupNetworkForJob(
 	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
 
-	case models.NetworkHost:
+	case models.NetworkHost, models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
 		// In host mode, ports are directly accessible on the host network
