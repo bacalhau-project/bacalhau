@@ -34,8 +34,10 @@ func (test networkingStrategyTestCase) String() string {
 var networkingStrategyTestCases = []networkingStrategyTestCase{
 	{false, models.NetworkConfig{Type: models.NetworkNone}, true}, // Local job, not rejecting -> should bid
 	{false, models.NetworkConfig{Type: models.NetworkHost}, true}, // Network job, not rejecting -> should bid
+	{false, models.NetworkConfig{Type: models.NetworkFull}, true}, // Network job, not rejecting -> should bid
 	{true, models.NetworkConfig{Type: models.NetworkNone}, true},  // Local job, rejecting -> should bid
 	{true, models.NetworkConfig{Type: models.NetworkHost}, false}, // Network job, rejecting -> should not bid
+	{true, models.NetworkConfig{Type: models.NetworkFull}, false}, // Network job, rejecting -> should not bid
 }
 
 func TestNetworkingStrategy(t *testing.T) {
