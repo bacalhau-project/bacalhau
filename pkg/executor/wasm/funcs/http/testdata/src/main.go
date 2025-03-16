@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"http-test/client"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/client"
 )
 
 // main is the entry point for the WebAssembly application

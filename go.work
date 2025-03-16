@@ -4,4 +4,5 @@ use (
 	.
 	test_integration
 	pkg/executor/wasm/funcs/http/client
+	pkg/executor/wasm/funcs/http/testdata/src
 )

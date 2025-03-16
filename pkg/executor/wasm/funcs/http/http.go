@@ -55,11 +55,8 @@ const (
 )
 
 type Params struct {
-	// NetworkType defines the networking mode: "none", "http", "host", "full"
-	NetworkType models.Network
-
-	// AllowedHosts is a list of allowed hostnames when NetworkType is "http"
-	AllowedHosts []string
+	// Network defines the networking configuration including type and allowed domains
+	Network *models.NetworkConfig
 
 	// Timeout specifies the maximum duration for HTTP requests
 	Timeout time.Duration
@@ -75,7 +72,7 @@ type Params struct {
 
 // InstantiateModule instantiates the HTTP host functions
 func InstantiateModule(ctx context.Context, r wazero.Runtime, params Params) error {
-	if params.NetworkType == models.NetworkNone {
+	if params.Network == nil || params.Network.Disabled() {
 		return nil // Don't register any network functions
 	}
 
@@ -118,25 +115,31 @@ func newHTTPModule(params Params) *module {
 	if params.MemoryUsagePercent == 0 {
 		params.MemoryUsagePercent = DefaultMemoryUsagePercent
 	}
-	if params.AllowedHosts == nil {
-		params.AllowedHosts = []string{}
+
+	// Ensure network config is normalized
+	if params.Network != nil {
+		params.Network.Normalize()
 	}
+
 	return &module{
 		params: params,
-		client: &http.Client{
-			Timeout: params.Timeout,
-		},
+		client: &http.Client{Timeout: params.Timeout},
 	}
 }
 
 // isHostAllowed checks if the given host is allowed according to the configuration
 func (m *module) isHostAllowed(host string) bool {
-	if m.params.NetworkType == models.NetworkFull || m.params.NetworkType == models.NetworkHost {
+	if m.params.Network == nil {
+		return false
+	}
+
+	if m.params.Network.Type == models.NetworkFull || m.params.Network.Type == models.NetworkHost {
 		return true
 	}
 
-	if m.params.NetworkType == models.NetworkHTTP {
-		for _, allowed := range m.params.AllowedHosts {
+	if m.params.Network.Type == models.NetworkHTTP {
+		allowedDomains := m.params.Network.DomainSet()
+		for _, allowed := range allowedDomains {
 			if matched, _ := matchWildcard(allowed, host); matched {
 				return true
 			}
@@ -170,7 +173,16 @@ func (m *module) calculateMaxResponseSize(mod api.Module) uint64 {
 
 // matchWildcard checks if a hostname matches a pattern with wildcards
 // Supports simple glob patterns like "*.example.com" or "api.*.org"
+// Ports are stripped from both pattern and host before matching
 func matchWildcard(pattern, host string) (bool, error) {
+	// Strip port number from both pattern and host if present
+	if colonIndex := strings.LastIndex(pattern, ":"); colonIndex != -1 {
+		pattern = pattern[:colonIndex]
+	}
+	if colonIndex := strings.LastIndex(host, ":"); colonIndex != -1 {
+		host = host[:colonIndex]
+	}
+
 	if pattern == "*" {
 		return true, nil
 	}

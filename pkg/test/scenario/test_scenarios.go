@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	http "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/testdata"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
@@ -16,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/dynamic"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/env"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/exit_code"
-	"github.com/bacalhau-project/bacalhau/testdata/wasm/http"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/logtest"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/noop"
 )

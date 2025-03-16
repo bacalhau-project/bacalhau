@@ -201,8 +201,7 @@ func (h *executionHandler) loadModules(ctx context.Context, engine tracedRuntime
 	if h.request.Network != nil && h.request.Network.Type != models.NetworkNone {
 		// Configure HTTP module parameters
 		httpParams := http.Params{
-			NetworkType:  h.request.Network.Type,
-			AllowedHosts: h.request.Network.Domains,
+			Network: h.request.Network,
 		}
 
 		// Instantiate HTTP module
