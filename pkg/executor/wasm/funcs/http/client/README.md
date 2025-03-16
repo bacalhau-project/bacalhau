@@ -21,7 +21,7 @@ Then import it in your code:
 import "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/client"
 ```
 
-## Usage
+## Basic Usage
 
 ```go
 package main
@@ -59,9 +59,17 @@ tinygo build -o main.wasm -target wasi ./main.go
 
 This will compile your code along with the HTTP client into a WASM module that can be executed by the Bacalhau WASM executor.
 
-## API
+## Running Your Module
 
-### Client
+Once you've built your module, you can run it with the Bacalhau CLI:
+
+```bash
+bacalhau wasm run main.wasm
+```
+
+## API Reference
+
+### Client Methods
 
 ```go
 // Create a new HTTP client
@@ -83,7 +91,7 @@ response, err := client.Delete(url, headers)
 response, err := client.Request(method, url, headers, body)
 ```
 
-### Response
+### Response Object
 
 The client returns a `Response` object that contains the HTTP response:
 
@@ -117,6 +125,42 @@ client.StatusTooLarge
 client.StatusBadInput
 client.StatusMemoryError
 ```
+
+## Advanced Usage
+
+### Error Handling
+
+The client returns an error if the request fails:
+
+```go
+response, err := httpClient.Get(url, headers)
+if err != nil {
+	// Handle error
+	fmt.Printf("Error: %v\n", err)
+	return
+}
+```
+
+The error will be of type `*HTTPError` if it's a specific HTTP error:
+
+```go
+if httpErr, ok := err.(*client.HTTPError); ok {
+	fmt.Printf("HTTP Error: %s (Code: %d)\n", httpErr.Message, httpErr.Code)
+}
+```
+
+## Development
+
+### Building the Client Module
+
+The HTTP client module is designed to be imported as a Go package, not compiled as a standalone WASM module. However, you can verify that it compiles correctly with TinyGo:
+
+```bash
+# From the client directory
+make check
+```
+
+This will compile the client module with TinyGo and output a WASM file in the `build` directory to verify compilation.
 
 ## Limitations
 

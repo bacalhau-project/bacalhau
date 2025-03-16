@@ -1,7 +1,9 @@
 package http
 
-import "embed"
-import "io/fs"
+import (
+	"embed"
+	"io/fs"
+)
 
 //go:embed main.wasm
 var file embed.FS

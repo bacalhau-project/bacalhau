@@ -1,21 +1,15 @@
-.PHONY: all check fmt lint clean help
+.PHONY: all check clean help
 
 # Default target
-all: check fmt lint
+all: check
 
-# Check if the code compiles with TinyGo
+# Check if the code compiles with TinyGo and format/lint the code
 check:
 	@echo "Checking if the client compiles with TinyGo..."
 	@mkdir -p build
 	@tinygo build -o build/client.wasm -target wasi -no-debug .
-
-# Format the code
-fmt:
 	@echo "Formatting code..."
 	@gofmt -w *.go
-
-# Lint the code
-lint:
 	@echo "Linting code..."
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run; \
@@ -31,9 +25,7 @@ clean:
 # Help target
 help:
 	@echo "Available targets:"
-	@echo "  all     - Default target, runs check, fmt, and lint"
-	@echo "  check   - Check if the client compiles with TinyGo"
-	@echo "  fmt     - Format the code"
-	@echo "  lint    - Lint the code"
+	@echo "  all     - Default target, runs check"
+	@echo "  check   - Check if the client compiles with TinyGo, format and lint code"
 	@echo "  clean   - Clean build artifacts"
 	@echo "  help    - Show this help message" 

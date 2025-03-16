@@ -19,6 +19,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
+	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -195,6 +196,21 @@ func (h *executionHandler) createModuleConfig(stdout, stderr io.Writer) wazero.M
 func (h *executionHandler) loadModules(ctx context.Context, engine tracedRuntime, config wazero.ModuleConfig) (api.Module, error) {
 	h.logger.Info().Msg("instantiating wasm modules")
 	loader := NewModuleLoader(engine, config, h.fs)
+
+	// Load HTTP module if networking is enabled
+	if h.request.Network != nil && h.request.Network.Type != models.NetworkNone {
+		// Configure HTTP module parameters
+		httpParams := http.Params{
+			NetworkType:  h.request.Network.Type,
+			AllowedHosts: h.request.Network.Domains,
+		}
+
+		// Instantiate HTTP module
+		if err := http.InstantiateModule(ctx, engine.Runtime, httpParams); err != nil {
+			h.result = executor.NewFailedResult(fmt.Sprintf("failed to load HTTP module: %s", err))
+			return nil, err
+		}
+	}
 
 	// Load import modules first
 	for _, importModule := range h.spec.ImportModules {

@@ -118,7 +118,7 @@ func RunTestCase(
 		}
 	})
 
-	_, err = executor.Run(ctx, runCommandArguments)
+	result, err := executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		// TODO not sure how this behavior should be replicated.
 		err = testCase.SubmitChecker(&apimodels.PutJobResponse{
@@ -126,6 +126,11 @@ func RunTestCase(
 			EvaluationID: "TODO",
 			Warnings:     nil,
 		}, err)
+		require.NoError(t, err)
+	}
+
+	if testCase.CommandResultsChecker != nil {
+		err = testCase.CommandResultsChecker(result)
 		require.NoError(t, err)
 	}
 

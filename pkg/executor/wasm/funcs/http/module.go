@@ -47,6 +47,9 @@ const (
 	// DefaultMaxResponseSize is the default maximum response size
 	DefaultMaxResponseSize = 100 * 1024 * 1024 // 100MB
 
+	// MinResponseSize is the minimum response size allowed, in case the job didn't specify memory allocation
+	MinResponseSize = 64 * 1024 // 64Kb
+
 	// DefaultMemoryUsagePercent is the default percentage of memory that can be used for HTTP responses
 	DefaultMemoryUsagePercent = 0.8 // 80%
 )
@@ -92,14 +95,6 @@ func InstantiateModule(ctx context.Context, r wazero.Runtime, params Params) err
 		).
 		WithResultNames("status_code"). // This is the function's success/error code
 		Export("http_request")
-
-	// Register function to get response size before making full request
-	moduleBuilder.NewFunctionBuilder().
-		WithFunc(httpModule.httpGetResponseSize).
-		WithName("http_get_response_size").
-		WithParameterNames("method", "url_ptr", "url_len", "headers_ptr", "headers_len").
-		WithResultNames("content_length", "status").
-		Export("http_get_response_size")
 
 	// Instantiate the module
 	_, err := moduleBuilder.Instantiate(ctx)
@@ -165,6 +160,11 @@ func (m *module) calculateMaxResponseSize(mod api.Module) uint64 {
 		maxAllowableSize = m.params.MaxResponseSize
 	}
 
+	// Enforce minimum size
+	if maxAllowableSize < MinResponseSize {
+		maxAllowableSize = MinResponseSize
+	}
+
 	return maxAllowableSize
 }
 
@@ -191,87 +191,6 @@ func matchWildcard(pattern, host string) (bool, error) {
 	}
 
 	return strings.HasPrefix(hostLower, parts[0]) && strings.HasSuffix(hostLower, parts[1]), nil
-}
-
-// httpGetResponseSize lets the module check response size before allocating memory
-func (m *module) httpGetResponseSize(
-	ctx context.Context,
-	mod api.Module,
-	method uint32,
-	urlPtr, urlLen uint32,
-	headersPtr, headersLen uint32,
-) (uint32, uint32) {
-	memory := mod.Memory()
-
-	// Read URL from WebAssembly memory
-	urlBytes, ok := memory.Read(urlPtr, urlLen)
-	if !ok {
-		return 0, StatusInvalidURL
-	}
-
-	urlStr := string(urlBytes)
-	parsedURL, err := url.Parse(urlStr)
-	if err != nil {
-		return 0, StatusInvalidURL
-	}
-
-	// Check if the host is allowed
-	if !m.isHostAllowed(parsedURL.Host) {
-		return 0, StatusNotAllowed
-	}
-
-	// Always use HEAD to check size
-	methodStr := "HEAD"
-
-	// Read headers if provided
-	headers := make(http.Header)
-	if headersPtr != 0 && headersLen > 0 {
-		headersBytes, ok := memory.Read(headersPtr, headersLen)
-		if ok {
-			parseHeaders(headersBytes, headers)
-		}
-	}
-
-	// Create the request
-	req, err := http.NewRequestWithContext(ctx, methodStr, urlStr, nil)
-	if err != nil {
-		return 0, StatusInvalidURL
-	}
-
-	// Set headers
-	for k, v := range headers {
-		for _, hv := range v {
-			req.Header.Add(k, hv)
-		}
-	}
-
-	// Execute HEAD request
-	resp, err := m.client.Do(req)
-	if err != nil {
-		// Check for timeout
-		if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
-			return 0, StatusTimeout
-		}
-		return 0, StatusNetworkError
-	}
-	defer resp.Body.Close()
-
-	// Get content length from header
-	contentLength := resp.ContentLength
-	if contentLength <= 0 {
-		// If unknown, return a default estimate
-		return 65536, StatusSuccess // 64KB estimate
-	}
-
-	// Calculate maximum allowed response size for this module
-	maxSize := m.calculateMaxResponseSize(mod)
-
-	// Check against max size
-	if uint64(contentLength) > maxSize {
-		return uint32(maxSize), StatusTooLarge
-	}
-
-	return uint32(contentLength), StatusSuccess
 }
 
 // prepareRequest creates and prepares an HTTP request
@@ -362,25 +281,6 @@ func (m *module) httpRequest(
 	// Calculate maximum allowed response size for this module
 	maxSize := m.calculateMaxResponseSize(mod)
 
-	// Get content length before making the full request if this is a GET request
-	// HEAD pre-check only makes sense for GET operations
-	if method == MethodGet {
-		// Try a HEAD request first to check the size
-		headReq, err := m.prepareRequest(ctx, MethodHead, urlStr, headers, nil)
-		if err == nil {
-			headResp, err := m.client.Do(headReq)
-			if err == nil {
-				defer headResp.Body.Close()
-
-				// Check content length from header
-				if headResp.ContentLength > 0 && uint64(headResp.ContentLength) > maxSize {
-					return StatusTooLarge
-				}
-			}
-			// If HEAD fails, we'll still try the actual request (some servers don't support HEAD)
-		}
-	}
-
 	// Prepare and execute the actual request
 	req, err := m.prepareRequest(ctx, method, urlStr, headers, bodyBytes)
 	if err != nil {
@@ -425,13 +325,19 @@ func (m *module) httpRequest(
 		return StatusMemoryError
 	}
 
-	// Check if buffers are large enough
-	if uint32(len(headersStr)) > headersBufSize {
-		return StatusTooLarge
+	// Get actual sizes
+	actualHeadersLen := uint32(len(headersStr))
+	actualBodyLen := uint32(len(respBody))
+
+	// Truncate if necessary and update the actual lengths
+	if actualHeadersLen > headersBufSize {
+		headersStr = headersStr[:headersBufSize]
+		actualHeadersLen = headersBufSize
 	}
 
-	if uint32(len(respBody)) > bodyBufSize {
-		return StatusTooLarge
+	if actualBodyLen > bodyBufSize {
+		respBody = respBody[:bodyBufSize]
+		actualBodyLen = bodyBufSize
 	}
 
 	// Write response status code if pointer provided
@@ -443,13 +349,13 @@ func (m *module) httpRequest(
 	}
 
 	// Write actual response header length
-	ok = memory.WriteUint32Le(responseHeadersLenPtr, uint32(len(headersStr)))
+	ok = memory.WriteUint32Le(responseHeadersLenPtr, actualHeadersLen)
 	if !ok {
 		return StatusMemoryError
 	}
 
 	// Write actual response body length
-	ok = memory.WriteUint32Le(responseBodyLenPtr, uint32(len(respBody)))
+	ok = memory.WriteUint32Le(responseBodyLenPtr, actualBodyLen)
 	if !ok {
 		return StatusMemoryError
 	}

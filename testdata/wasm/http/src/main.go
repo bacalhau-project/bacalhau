@@ -6,9 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/client"
+	"http-test/client"
 )
 
+// main is the entry point for the WebAssembly application
 func main() {
 	// Get method and URL from environment variables
 	method := os.Getenv("HTTP_METHOD")
