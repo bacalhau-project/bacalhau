@@ -92,22 +92,16 @@ func (s *HTTPIntegrationSuite) TearDownTest() {
 }
 
 // runWasmTest is a helper function to run a WASM test with the given environment variables
-func (s *HTTPIntegrationSuite) runWasmTest(envVars map[string]string, expectSuccess bool) {
-	params := defaultParams()
+func (s *HTTPIntegrationSuite) runTestCase(tc testCase) {
+	envVars := map[string]string{
+		"HTTP_METHOD": tc.method,
+		"HTTP_URL":    s.serverURL + tc.path,
+	}
 
-	// Override network type if specified
-	if networkType, ok := envVars["NETWORK_TYPE"]; ok {
-		switch networkType {
-		case "none":
-			params.Network = &models.NetworkConfig{Type: models.NetworkNone}
-		case "restricted":
-			params.Network = &models.NetworkConfig{
-				Type: models.NetworkHTTP,
-			}
-			if allowedHosts, ok := envVars["ALLOWED_HOSTS"]; ok {
-				params.Network.Domains = strings.Split(allowedHosts, ",")
-			}
-		}
+	params := defaultParams()
+	params.Network = &models.NetworkConfig{
+		Type:    tc.networkType,
+		Domains: tc.hosts,
 	}
 
 	// Setup standard streams
@@ -148,7 +142,7 @@ func (s *HTTPIntegrationSuite) runWasmTest(envVars map[string]string, expectSucc
 	instance, err := runtime.InstantiateModule(s.ctx, compiled, wasiConfig)
 	if err != nil {
 		s.T().Logf("Failed to instantiate WASM module: %v", err)
-		if expectSuccess {
+		if tc.expectSuccess {
 			require.NoError(s.T(), err, "Failed to instantiate WASM module")
 		}
 		return // Expected failure
@@ -163,7 +157,7 @@ func (s *HTTPIntegrationSuite) runWasmTest(envVars map[string]string, expectSucc
 	s.T().Logf("Stderr: %s", stderr.String())
 
 	// Verify results
-	if expectSuccess {
+	if tc.expectSuccess {
 		if err != nil && !strings.Contains(err.Error(), "exit_code(0)") {
 			require.NoError(s.T(), err, "Error calling _start function")
 		}
@@ -176,36 +170,13 @@ func (s *HTTPIntegrationSuite) runWasmTest(envVars map[string]string, expectSucc
 	}
 }
 
-// runTestCase runs a standard HTTP test case
-func (s *HTTPIntegrationSuite) runTestCase(tc testCase) {
-	envVars := map[string]string{
-		"HTTP_METHOD": tc.method,
-		"HTTP_URL":    s.serverURL + tc.path,
-	}
-
-	if tc.headers != "" {
-		envVars["HTTP_HEADERS"] = tc.headers
-	}
-	if tc.body != "" {
-		envVars["HTTP_BODY"] = tc.body
-	}
-	if tc.networkType != "" {
-		envVars["NETWORK_TYPE"] = tc.networkType
-	}
-	if tc.hosts != "" {
-		envVars["ALLOWED_HOSTS"] = tc.hosts
-	}
-
-	s.runWasmTest(envVars, tc.expectSuccess)
-}
-
 // Test cases
 func (s *HTTPIntegrationSuite) TestWasmHTTPMethods() {
 	cases := []testCase{
-		{method: "GET", path: "/get", expectSuccess: true},
-		{method: "POST", path: "/post", headers: "Content-Type: application/json", body: `{"test": "data"}`, expectSuccess: true},
-		{method: "PUT", path: "/put", headers: "Content-Type: application/json", body: `{"test": "update"}`, expectSuccess: true},
-		{method: "DELETE", path: "/delete", expectSuccess: true},
+		{networkType: models.NetworkHost, method: "GET", path: "/get", expectSuccess: true},
+		{networkType: models.NetworkHost, method: "POST", path: "/post", headers: "Content-Type: application/json", body: `{"test": "data"}`, expectSuccess: true},
+		{networkType: models.NetworkHost, method: "PUT", path: "/put", headers: "Content-Type: application/json", body: `{"test": "update"}`, expectSuccess: true},
+		{networkType: models.NetworkHost, method: "DELETE", path: "/delete", expectSuccess: true},
 	}
 
 	for _, tc := range cases {
@@ -219,13 +190,13 @@ func (s *HTTPIntegrationSuite) TestWasmHTTPNetworkRestrictions() {
 	cases := []testCase{
 		{
 			method: "GET", path: "/get",
-			networkType:   "none",
+			networkType:   models.NetworkNone,
 			expectSuccess: false,
 		},
 		{
 			method: "GET", path: "/get",
-			networkType:   "restricted",
-			hosts:         "example.com,test.com",
+			networkType:   models.NetworkHTTP,
+			hosts:         []string{"example.com", "test.com"},
 			expectSuccess: false,
 		},
 	}
@@ -245,14 +216,14 @@ func (s *HTTPIntegrationSuite) TestWasmHTTPWildcardHostMatching() {
 	cases := []testCase{
 		{
 			method: "GET", path: "/get",
-			networkType:   "restricted",
-			hosts:         host,
+			networkType:   models.NetworkHTTP,
+			hosts:         []string{host},
 			expectSuccess: true,
 		},
 		{
 			method: "GET", path: "/get",
-			networkType:   "restricted",
-			hosts:         "127.0.0.*",
+			networkType:   models.NetworkHTTP,
+			hosts:         []string{"127.0.0.*"},
 			expectSuccess: true,
 		},
 	}

@@ -25,7 +25,7 @@ func endpointHandler(method string, statusCode int, response string) http.Handle
 func defaultParams() Params {
 	return Params{
 		Network: &models.NetworkConfig{
-			Type: models.NetworkFull,
+			Type: models.NetworkHost,
 		},
 		Timeout:            5 * time.Second,
 		MaxResponseSize:    1024 * 1024, // 1MB
@@ -39,7 +39,7 @@ type testCase struct {
 	path          string
 	headers       string
 	body          string
-	networkType   string
-	hosts         string
+	networkType   models.Network
+	hosts         []string
 	expectSuccess bool
 }

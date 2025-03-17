@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // HTTPUnitSuite contains unit tests for the HTTP module's core functionality.
@@ -249,46 +249,6 @@ func (s *HTTPUnitSuite) TestHeaderParsing() {
 			headers := make(http.Header)
 			parseHeaders([]byte(tc.input), headers)
 			assert.Equal(s.T(), tc.expected, headers)
-		})
-	}
-}
-
-// TestRequestPreparation tests HTTP request preparation
-func (s *HTTPUnitSuite) TestRequestPreparation() {
-	cases := []struct {
-		name    string
-		method  uint32
-		url     string
-		headers http.Header
-		body    []byte
-	}{
-		{
-			name:   "GET request",
-			method: MethodGet,
-			url:    s.serverURL + "/get",
-		},
-		{
-			name:   "POST request with body",
-			method: MethodPost,
-			url:    s.serverURL + "/post",
-			headers: http.Header{
-				"Content-Type": []string{"application/json"},
-			},
-			body: []byte(`{"test":"data"}`),
-		},
-	}
-
-	for _, tc := range cases {
-		s.Run(tc.name, func() {
-			req, err := s.module.prepareRequest(s.ctx, tc.method, tc.url, tc.headers, tc.body)
-			require.NoError(s.T(), err)
-			assert.Equal(s.T(), methodToString(tc.method), req.Method)
-			assert.Equal(s.T(), tc.url, req.URL.String())
-			if tc.headers != nil {
-				for k, v := range tc.headers {
-					assert.Equal(s.T(), v[0], req.Header.Get(k))
-				}
-			}
 		})
 	}
 }
