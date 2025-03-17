@@ -208,6 +208,7 @@ func NewRequesterNode(
 		transformer.OrchestratorInstallationID(system.InstallationID()),
 		transformer.OrchestratorInstanceID(metadataStore.InstanceID()),
 		transformer.DefaultsApplier(cfg.BacalhauConfig.JobDefaults),
+		transformer.NewLegacyWasmModuleTransformer(),
 	}
 
 	logStreamProxy, err := proxy.NewLogStreamProxy(proxy.LogStreamProxyParams{
