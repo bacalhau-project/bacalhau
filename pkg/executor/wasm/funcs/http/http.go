@@ -136,6 +136,65 @@ func newHTTPModule(params Params) *module {
 	}
 }
 
+// httpRequest implements the WASI HTTP request function
+func (m *module) httpRequest(
+	ctx context.Context,
+	mod api.Module,
+	method uint32,
+	urlPtr, urlLen uint32,
+	headersPtr, headersLen uint32,
+	bodyPtr, bodyLen uint32,
+	responseHeadersPtr, responseHeadersLenPtr uint32,
+	responseBodyPtr, responseBodyLenPtr uint32,
+	statusPtr uint32,
+) uint32 {
+	// Verify output pointers are provided
+	if responseHeadersPtr == 0 || responseHeadersLenPtr == 0 ||
+		responseBodyPtr == 0 || responseBodyLenPtr == 0 {
+		return StatusBadInput
+	}
+
+	// Prepare the request
+	req, err := m.prepareHTTPRequest(ctx, mod, method, urlPtr, urlLen, headersPtr, headersLen, bodyPtr, bodyLen)
+	if err != nil {
+		switch err.Error() {
+		case errInvalidURL:
+			return StatusInvalidURL
+		case errHostNotAllowed:
+			return StatusNotAllowed
+		case errInvalidBody:
+			return StatusBadInput
+		default:
+			return StatusInvalidURL
+		}
+	}
+
+	// Execute request
+	resp, err := m.client.Do(req)
+	if err != nil {
+		// Check for timeout
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) && urlErr.Timeout() {
+			return StatusTimeout
+		}
+		return StatusNetworkError
+	}
+	defer resp.Body.Close()
+
+	// Calculate maximum allowed response size and read response with limit
+	maxSize := m.calculateMaxResponseSize(mod)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, safeInt64(maxSize)))
+	if err != nil {
+		return StatusNetworkError
+	}
+
+	// Write response to memory
+	return m.writeResponseToMemory(mod, resp, respBody,
+		responseHeadersPtr, responseHeadersLenPtr,
+		responseBodyPtr, responseBodyLenPtr,
+		statusPtr)
+}
+
 // isHostAllowed checks if the given host is allowed according to the configuration
 func (m *module) isHostAllowed(host string) bool {
 	if m.params.Network == nil {
@@ -156,28 +215,6 @@ func (m *module) isHostAllowed(host string) bool {
 	}
 
 	return false
-}
-
-// calculateMaxResponseSize determines the maximum allowable response size
-// based on the module's memory and configuration
-func (m *module) calculateMaxResponseSize(mod api.Module) uint64 {
-	// Get the module's total memory size
-	memorySize := mod.Memory().Size()
-
-	// Calculate allowable size based on configured percentage
-	maxAllowableSize := uint64(float64(memorySize) * m.params.MemoryUsagePercent)
-
-	// Enforce absolute maximum to prevent extremely large allocations
-	if maxAllowableSize > m.params.MaxResponseSize {
-		maxAllowableSize = m.params.MaxResponseSize
-	}
-
-	// Enforce minimum size
-	if maxAllowableSize < MinResponseSize {
-		maxAllowableSize = MinResponseSize
-	}
-
-	return maxAllowableSize
 }
 
 // matchWildcard checks if a hostname matches a pattern with wildcards
@@ -214,34 +251,26 @@ func matchWildcard(pattern, host string) (bool, error) {
 	return strings.HasPrefix(hostLower, parts[0]) && strings.HasSuffix(hostLower, parts[1]), nil
 }
 
-// prepareRequest creates and prepares an HTTP request
-func (m *module) prepareRequest(
-	ctx context.Context,
-	method uint32,
-	urlStr string,
-	headers http.Header,
-	body []byte,
-) (*http.Request, error) {
-	methodStr := methodToString(method)
+// calculateMaxResponseSize determines the maximum allowable response size
+// based on the module's memory and configuration
+func (m *module) calculateMaxResponseSize(mod api.Module) uint64 {
+	// Get the module's total memory size
+	memorySize := mod.Memory().Size()
 
-	var reqBody io.Reader
-	if len(body) > 0 {
-		reqBody = strings.NewReader(string(body))
+	// Calculate allowable size based on configured percentage
+	maxAllowableSize := uint64(float64(memorySize) * m.params.MemoryUsagePercent)
+
+	// Enforce absolute maximum to prevent extremely large allocations
+	if maxAllowableSize > m.params.MaxResponseSize {
+		maxAllowableSize = m.params.MaxResponseSize
 	}
 
-	req, err := http.NewRequestWithContext(ctx, methodStr, urlStr, reqBody)
-	if err != nil {
-		return nil, err
+	// Enforce minimum size
+	if maxAllowableSize < MinResponseSize {
+		maxAllowableSize = MinResponseSize
 	}
 
-	// Set headers
-	for k, v := range headers {
-		for _, hv := range v {
-			req.Header.Add(k, hv)
-		}
-	}
-
-	return req, nil
+	return maxAllowableSize
 }
 
 // prepareHTTPRequest prepares the HTTP request from WASM memory
@@ -290,26 +319,26 @@ func (m *module) prepareHTTPRequest(
 		}
 	}
 
-	return m.prepareRequest(ctx, method, urlStr, headers, bodyBytes)
-}
+	methodStr := methodToString(method)
 
-// safeInt64 converts uint64 to int64, clamping to MaxInt64 if necessary
-func safeInt64(n uint64) int64 {
-	if n > uint64(math.MaxInt64) {
-		return math.MaxInt64
+	var reqBody io.Reader
+	if len(bodyBytes) > 0 {
+		reqBody = strings.NewReader(string(bodyBytes))
 	}
-	return int64(n)
-}
 
-// safeUint32 converts int to uint32, clamping to 0 or MaxUint32 if necessary
-func safeUint32(n int) uint32 {
-	if n < 0 {
-		return 0
+	req, err := http.NewRequestWithContext(ctx, methodStr, urlStr, reqBody)
+	if err != nil {
+		return nil, err
 	}
-	if n > math.MaxUint32 {
-		return math.MaxUint32
+
+	// Set headers
+	for k, v := range headers {
+		for _, hv := range v {
+			req.Header.Add(k, hv)
+		}
 	}
-	return uint32(n)
+
+	return req, nil
 }
 
 // writeResponseToMemory writes the HTTP response back to WASM memory
@@ -380,67 +409,6 @@ func (m *module) writeResponseToMemory(
 	return StatusSuccess
 }
 
-// httpRequest implements the WASI HTTP request function
-//
-//nolint:gocyclo,funlen
-func (m *module) httpRequest(
-	ctx context.Context,
-	mod api.Module,
-	method uint32,
-	urlPtr, urlLen uint32,
-	headersPtr, headersLen uint32,
-	bodyPtr, bodyLen uint32,
-	responseHeadersPtr, responseHeadersLenPtr uint32,
-	responseBodyPtr, responseBodyLenPtr uint32,
-	statusPtr uint32,
-) uint32 {
-	// Verify output pointers are provided
-	if responseHeadersPtr == 0 || responseHeadersLenPtr == 0 ||
-		responseBodyPtr == 0 || responseBodyLenPtr == 0 {
-		return StatusBadInput
-	}
-
-	// Prepare the request
-	req, err := m.prepareHTTPRequest(ctx, mod, method, urlPtr, urlLen, headersPtr, headersLen, bodyPtr, bodyLen)
-	if err != nil {
-		switch err.Error() {
-		case errInvalidURL:
-			return StatusInvalidURL
-		case errHostNotAllowed:
-			return StatusNotAllowed
-		case errInvalidBody:
-			return StatusBadInput
-		default:
-			return StatusInvalidURL
-		}
-	}
-
-	// Execute request
-	resp, err := m.client.Do(req)
-	if err != nil {
-		// Check for timeout
-		var urlErr *url.Error
-		if errors.As(err, &urlErr) && urlErr.Timeout() {
-			return StatusTimeout
-		}
-		return StatusNetworkError
-	}
-	defer resp.Body.Close()
-
-	// Calculate maximum allowed response size and read response with limit
-	maxSize := m.calculateMaxResponseSize(mod)
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, safeInt64(maxSize)))
-	if err != nil {
-		return StatusNetworkError
-	}
-
-	// Write response to memory
-	return m.writeResponseToMemory(mod, resp, respBody,
-		responseHeadersPtr, responseHeadersLenPtr,
-		responseBodyPtr, responseBodyLenPtr,
-		statusPtr)
-}
-
 // Helper functions
 
 // methodToString converts method constant to string
@@ -486,4 +454,23 @@ func parseHeaders(headerBytes []byte, headers http.Header) {
 
 		headers.Add(key, value)
 	}
+}
+
+// safeInt64 converts uint64 to int64, clamping to MaxInt64 if necessary
+func safeInt64(n uint64) int64 {
+	if n > uint64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(n)
+}
+
+// safeUint32 converts int to uint32, clamping to 0 or MaxUint32 if necessary
+func safeUint32(n int) uint32 {
+	if n < 0 {
+		return 0
+	}
+	if n > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(n)
 }
