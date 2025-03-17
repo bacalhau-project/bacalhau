@@ -40,7 +40,7 @@ func validateOAuth2Config(oauth2Config types.Oauth2Config) (bool, error) {
 	hasJWKSUri := oauth2Config.JWKSUri != ""
 	hasIssuer := oauth2Config.Issuer != ""
 	hasAudience := oauth2Config.Audience != ""
-	hasClientID := oauth2Config.DeviceClientId != ""
+	hasClientID := oauth2Config.DeviceClientID != ""
 
 	// If any field is set, then all fields must be set (except PollingInterval)
 	anyFieldSet := hasJWKSUri || hasIssuer || hasAudience || hasClientID
@@ -63,7 +63,7 @@ func validateOAuth2Config(oauth2Config types.Oauth2Config) (bool, error) {
 		missingFields = append(missingFields, "Audience")
 	}
 	if !hasClientID {
-		missingFields = append(missingFields, "DeviceClientId")
+		missingFields = append(missingFields, "DeviceClientID")
 	}
 
 	if len(missingFields) > 0 {
@@ -125,7 +125,7 @@ func NewJWTAuthorizer(
 	// Extract other required configuration values
 	issuer := authConfig.Oauth2.Issuer
 	audience := authConfig.Oauth2.Audience
-	clientID := authConfig.Oauth2.DeviceClientId
+	clientID := authConfig.Oauth2.DeviceClientID
 
 	authorizer := &jwtAuthorizer{
 		nodeID:              nodeID,

@@ -33,7 +33,7 @@ type OAuth2Service struct {
 func NewOAuth2Service(nodeOauth2Config types.Oauth2Config) *OAuth2Service {
 	// Create oauth2.Config with the appropriate settings
 	oauthConfig := &oauth2.Config{
-		ClientID: nodeOauth2Config.DeviceClientId,
+		ClientID: nodeOauth2Config.DeviceClientID,
 		Scopes:   nodeOauth2Config.Scopes,
 		Endpoint: oauth2.Endpoint{
 			TokenURL:      nodeOauth2Config.TokenEndpoint,
@@ -70,7 +70,7 @@ func (s *OAuth2Service) InitiateDeviceCodeFlow(ctx context.Context) (*DeviceCode
 		UserCode:                deviceResp.UserCode,
 		VerificationURI:         deviceResp.VerificationURI,
 		VerificationURIComplete: deviceResp.VerificationURIComplete,
-		ExpiresIn:               int(deviceResp.Expiry.Sub(time.Now()).Seconds()),
+		ExpiresIn:               int(time.Until(deviceResp.Expiry).Seconds()),
 		Interval:                int(deviceResp.Interval),
 	}
 

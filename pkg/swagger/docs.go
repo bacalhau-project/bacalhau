@@ -2461,7 +2461,7 @@ const docTemplate = `{
                 "Alias": {
                     "type": "string"
                 },
-                "ApiKey": {
+                "APIKey": {
                     "type": "string"
                 },
                 "Capabilities": {
@@ -3027,7 +3027,7 @@ const docTemplate = `{
                 "DeviceAuthorizationEndpoint": {
                     "type": "string"
                 },
-                "DeviceClientId": {
+                "DeviceClientID": {
                     "type": "string"
                 },
                 "Issuer": {
@@ -3039,7 +3039,7 @@ const docTemplate = `{
                 "PollingInterval": {
                     "type": "integer"
                 },
-                "ProviderId": {
+                "ProviderID": {
                     "type": "string"
                 },
                 "ProviderName": {

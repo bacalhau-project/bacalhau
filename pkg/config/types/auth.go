@@ -42,7 +42,7 @@ type AuthUser struct {
 	Alias        string       `yaml:"Alias,omitempty" json:"Alias,omitempty"`
 	Username     string       `yaml:"Username,omitempty" json:"Username,omitempty"`
 	Password     string       `yaml:"Password,omitempty" json:"Password,omitempty"`
-	ApiKey       string       `yaml:"ApiKey,omitempty" json:"ApiKey,omitempty"`
+	APIKey       string       `yaml:"APIKey,omitempty" json:"APIKey,omitempty"`
 	Capabilities []Capability `yaml:"Capabilities,omitempty" json:"Capabilities,omitempty"`
 }
 
@@ -51,12 +51,12 @@ type Capability struct {
 }
 
 type Oauth2Config struct {
-	ProviderId                  string   `yaml:"ProviderId,omitempty" json:"ProviderId,omitempty"`
+	ProviderID                  string   `yaml:"ProviderID,omitempty" json:"ProviderID,omitempty"`
 	ProviderName                string   `yaml:"ProviderName,omitempty" json:"ProviderName,omitempty"`
 	TokenEndpoint               string   `yaml:"TokenEndpoint,omitempty" json:"TokenEndpoint,omitempty"`
 	JWKSUri                     string   `yaml:"JWKSUri,omitempty" json:"JWKSUri,omitempty"`
 	Issuer                      string   `yaml:"Issuer,omitempty" json:"Issuer,omitempty"`
-	DeviceClientId              string   `yaml:"DeviceClientId,omitempty" json:"DeviceClientId,omitempty"`
+	DeviceClientID              string   `yaml:"DeviceClientID,omitempty" json:"DeviceClientID,omitempty"`
 	Audience                    string   `yaml:"Audience,omitempty" json:"Audience,omitempty"`
 	Scopes                      []string `yaml:"Scopes,omitempty" json:"Scopes,omitempty"`
 	DeviceAuthorizationEndpoint string   `yaml:"DeviceAuthorizationEndpoint,omitempty" json:"DeviceAuthorizationEndpoint,omitempty"`

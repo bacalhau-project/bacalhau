@@ -14,6 +14,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	MinimumPasswordLength = 10
+	MaximumPasswordLength = 255
+	MinimumAPIKeyLength   = 20
+	MaximumAPIKeyLength   = 255
+	UsernameMaxLength     = 100
+)
+
 type entryPointAuthorizer struct {
 	nodeID string
 	// Separate maps for different authentication methods
@@ -39,21 +47,21 @@ func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
 
 	// Validation: Check that user has either username+password OR apiKey but not both
 	hasUsernamePassword := user.Username != "" && user.Password != ""
-	hasApiKey := user.ApiKey != ""
+	hasAPIKey := user.APIKey != ""
 
-	if hasUsernamePassword && hasApiKey {
+	if hasUsernamePassword && hasAPIKey {
 		return fmt.Errorf("user '%s' has both username/password and API key, must have only one authentication method", user.Alias)
 	}
 
-	if !hasUsernamePassword && !hasApiKey {
+	if !hasUsernamePassword && !hasAPIKey {
 		return fmt.Errorf("user '%s' has neither username/password nor API key, must have one authentication method", user.Alias)
 	}
 
 	// Validate username format if provided
 	if user.Username != "" {
 		// Check username length
-		if len(strings.TrimSpace(user.Username)) > 100 {
-			return fmt.Errorf("username for user '%s' exceeds maximum length of 100 characters", user.Alias)
+		if len(strings.TrimSpace(user.Username)) > UsernameMaxLength {
+			return fmt.Errorf("username for user '%s' exceeds maximum length of %d characters", user.Alias, UsernameMaxLength)
 		}
 
 		if len(strings.TrimSpace(user.Username)) == 0 {
@@ -70,22 +78,24 @@ func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
 	// Validate password format if provided
 	if user.Password != "" {
 		// Check password length
-		if len(user.Password) < 10 {
-			return fmt.Errorf("password for user '%s' is too short, minimum length is 10 characters", user.Alias)
+		if len(user.Password) < MinimumPasswordLength {
+			return fmt.Errorf("password for user '%s' is too short, minimum length is %d characters", user.Alias, MinimumPasswordLength)
 		}
-		if len(user.Password) > 255 {
-			return fmt.Errorf("password for user '%s' exceeds maximum length of 200 characters", user.Alias)
+
+		if len(user.Password) > MaximumPasswordLength {
+			return fmt.Errorf("password for user '%s' exceeds maximum length of %d characters", user.Alias, MaximumPasswordLength)
 		}
 	}
 
 	// Validate API key format if provided
-	if user.ApiKey != "" {
+	if user.APIKey != "" {
 		// Check API key length
-		if len(user.ApiKey) < 20 {
-			return fmt.Errorf("API key for user '%s' is too short, minimum length is 20 characters", user.Alias)
+		if len(user.APIKey) < MinimumAPIKeyLength {
+			return fmt.Errorf("API key for user '%s' is too short, minimum length is %d characters", user.Alias, MinimumAPIKeyLength)
 		}
-		if len(user.ApiKey) > 255 {
-			return fmt.Errorf("API key for user '%s' exceeds maximum length of 255 characters", user.Alias)
+
+		if len(user.APIKey) > MaximumAPIKeyLength {
+			return fmt.Errorf("API key for user '%s' exceeds maximum length of %d characters", user.Alias, MaximumAPIKeyLength)
 		}
 	}
 
@@ -102,13 +112,13 @@ func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
 // - user: the current user being validated
 // - seenAliases: map of lowercase aliases to their original casing
 // - seenUsernames: map of lowercase usernames to their original casing
-// - seenApiKeys: map of API keys that have been seen
+// - seenAPIKeys: map of API keys that have been seen
 // Returns an error if any duplicates are found
 func (a *entryPointAuthorizer) checkForDuplicates(
 	user types.AuthUser,
 	seenAliases map[string]string,
 	seenUsernames map[string]string,
-	seenApiKeys map[string]bool,
+	seenAPIKeys map[string]bool,
 ) error {
 	// Check for duplicate alias (case-insensitive)
 	aliasLower := strings.ToLower(user.Alias)
@@ -125,7 +135,7 @@ func (a *entryPointAuthorizer) checkForDuplicates(
 	}
 
 	// Check for duplicate API key
-	if user.ApiKey != "" && seenApiKeys[user.ApiKey] {
+	if user.APIKey != "" && seenAPIKeys[user.APIKey] {
 		return fmt.Errorf("duplicate API key detected for user '%s'", user.Alias)
 	}
 
@@ -160,8 +170,8 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 			seenUsernames[usernameLower] = user.Username
 		}
 
-		if user.ApiKey != "" {
-			seenApiKeys[user.ApiKey] = true
+		if user.APIKey != "" {
+			seenApiKeys[user.APIKey] = true
 		}
 	}
 
@@ -171,8 +181,8 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 // populateUserMaps populates the basicAuthUsers and apiKeyUsers maps with valid users
 func (a *entryPointAuthorizer) populateUserMaps(users []types.AuthUser) {
 	for _, user := range users {
-		if user.ApiKey != "" {
-			a.apiKeyUsers[user.ApiKey] = user
+		if user.APIKey != "" {
+			a.apiKeyUsers[user.APIKey] = user
 		} else {
 			// User must have username/password
 			a.basicAuthUsers[strings.ToLower(user.Username)] = user
@@ -214,7 +224,7 @@ func NewEntryPointAuthorizer(ctx context.Context, nodeID string, authConfig type
 		endpointPermissions,
 	)
 
-	authorizer.apiKeyAuthorizer = NewApiKeyAuthorizer(
+	authorizer.apiKeyAuthorizer = NewAPIKeyAuthorizer(
 		nodeID,
 		authorizer.apiKeyUsers,
 		capabilityChecker,

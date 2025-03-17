@@ -288,7 +288,7 @@ func createAPIServer(ctx context.Context, cfg NodeConfig, userKey *baccrypto.Use
 
 	var chosenAuthorizer authz.Authorizer
 
-	if len(cfg.BacalhauConfig.API.Auth.Users) > 0 || cfg.BacalhauConfig.API.Auth.Oauth2.ProviderId != "" {
+	if len(cfg.BacalhauConfig.API.Auth.Users) > 0 || cfg.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
 		// If new auth configuration detected, use new authorizer
 		chosenAuthorizer, err = authz.NewEntryPointAuthorizer(ctx, cfg.NodeID, cfg.BacalhauConfig.API.Auth)
 		if err != nil {

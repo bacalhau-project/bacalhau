@@ -102,7 +102,7 @@ func (o *SSOOptions) runSSO(cmd *cobra.Command, api client.API, cfg types.Bacalh
 	}
 
 	// Check if OAuth2 is configured
-	if nodeAuthConfig.Config.ProviderName == "" || nodeAuthConfig.Config.ProviderId == "" {
+	if nodeAuthConfig.Config.ProviderName == "" || nodeAuthConfig.Config.ProviderID == "" {
 		log.Debug().Msg("orchestrator not configured with SSO login support. OAuth2 not configured on this server")
 		return bacerrors.New("orchestrator does not support logging in using SSO").
 			WithHint(errorHint)

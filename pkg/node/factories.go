@@ -97,7 +97,7 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 			var allErr error
 
 			// If any new users or oauth2 config is specified , disable legacy auth methods endpoint
-			if len(nodeConfig.BacalhauConfig.API.Auth.Users) > 0 || nodeConfig.BacalhauConfig.API.Auth.Oauth2.ProviderId != "" {
+			if len(nodeConfig.BacalhauConfig.API.Auth.Users) > 0 || nodeConfig.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
 				auths := make(map[string]authn.Authenticator, 1)
 				return provider.NewMappedProvider(auths), allErr
 			}

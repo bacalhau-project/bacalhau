@@ -25,7 +25,7 @@ import (
 var ReadTokenFn = ReadToken
 
 func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
-	apiAuthApiKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
+	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
 	baseURL, _ := ConstructAPIEndpoint(cfg.API)
 	tlsCfg := cfg.API.TLS
 
@@ -69,7 +69,11 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 	var resolvedAuthToken *apimodels.HTTPCredential
 
 	// Check if the credentials are valid
-	apiKeyOrBasicAuthFlowEnabled, credentialScheme, credentialString, err := resolveAuthCredentials(apiAuthApiKey, basicAuthUsername, basicAuthPassword)
+	apiKeyOrBasicAuthFlowEnabled, credentialScheme, credentialString, err := resolveAuthCredentials(
+		apiAuthAPIKey,
+		basicAuthUsername,
+		basicAuthPassword,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("authentication error: %v", err)
 	}
@@ -223,7 +227,8 @@ func resolveAuthCredentials(
 	newAuthFlowEnabled bool,
 	authScheme string,
 	credentialValue string,
-	err error) {
+	err error,
+) {
 
 	// Trim spaces from all credentials
 	apiKey = strings.TrimSpace(apiKey)
@@ -248,12 +253,13 @@ func resolveAuthCredentials(
 
 	// Error if mixing authentication types
 	if hasAPIKey && (hasBasicAuthUsername || hasBasicAuthPassword) {
-		return true, "", "", fmt.Errorf("cannot use both BACALHAU_API_KEY and BACALHAU_API_USERNAME/BACALHAU_API_PASSWORD simultaneously")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("can't use both " +
+			"BACALHAU_API_KEY and BACALHAU_API_USERNAME/BACALHAU_API_PASSWORD simultaneously")
 	}
 
 	// Handle API key authentication
 	if hasAPIKey {
-		return true, "Bearer", apiKey, nil
+		return newAuthFlowEnabled, "Bearer", apiKey, nil
 	}
 
 	// Handle username/password basic authentication
@@ -261,19 +267,19 @@ func resolveAuthCredentials(
 		// Format basic auth credentials (username:password) as Base64. RFC dictated
 		basicAuthString := fmt.Sprintf("%s:%s", basicAuthUsername, basicAuthPassword)
 		encodedAuth := base64.StdEncoding.EncodeToString([]byte(basicAuthString))
-		return true, "Basic", encodedAuth, nil
+		return newAuthFlowEnabled, "Basic", encodedAuth, nil
 	}
 
 	// Handle incomplete basic auth credentials
 	if hasBasicAuthUsername {
-		return true, "", "", fmt.Errorf("BACALHAU_API_USERNAME provided but not BACALHAU_API_PASSWORD")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("BACALHAU_API_USERNAME provided but not BACALHAU_API_PASSWORD")
 	}
 	if hasBasicAuthPassword {
-		return true, "", "", fmt.Errorf("BACALHAU_API_PASSWORD provided but not BACALHAU_API_USERNAME")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("BACALHAU_API_PASSWORD provided but not BACALHAU_API_USERNAME")
 	}
 
 	// This should never happen given the checks above
-	return true, "", "", fmt.Errorf("unable to decide authentication method")
+	return newAuthFlowEnabled, "", "", fmt.Errorf("unable to decide authentication method")
 }
 
 func extractAuthCredentialsFromEnvVariables() (apiKey, basicAuthUsername, basicAuthPassword string) {

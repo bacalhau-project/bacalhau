@@ -77,7 +77,7 @@ func TestNewJWTAuthorizer_Success(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -111,7 +111,7 @@ func TestNewJWTAuthorizer_MissingJWKSURL(t *testing.T) {
 			// JWKSUri is intentionally empty
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -153,7 +153,7 @@ func TestAuthorize_ValidToken(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -217,7 +217,7 @@ func TestAuthorize_ExpiredToken(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -282,7 +282,7 @@ func TestAuthorize_WrongIssuer(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -347,7 +347,7 @@ func TestAuthorize_MissingPermission(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -412,7 +412,7 @@ func TestAuthorize_OpenEndpoint(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -461,7 +461,7 @@ func TestAuthorize_MissingAuthHeader(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -510,7 +510,7 @@ func TestAuthorize_InvalidAuthHeaderFormat(t *testing.T) {
 			JWKSUri:        jwksServer.URL,
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 
@@ -590,7 +590,7 @@ func TestNewJWTAuthorizer_PartialOAuth2Config(t *testing.T) {
 	authConfig := types.AuthConfig{
 		Oauth2: types.Oauth2Config{
 			JWKSUri: "https://example.com/.well-known/jwks.json",
-			// Missing Issuer, Audience, DeviceClientId
+			// Missing Issuer, Audience, DeviceClientID
 		},
 	}
 
@@ -617,7 +617,7 @@ func TestNewJWTAuthorizer_PartialOAuth2Config(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing required OAuth2 fields")
 	assert.Contains(t, err.Error(), "Issuer")
 	assert.Contains(t, err.Error(), "Audience")
-	assert.Contains(t, err.Error(), "DeviceClientId")
+	assert.Contains(t, err.Error(), "DeviceClientID")
 }
 
 // TestNewJWTAuthorizer_InvalidJWKSURL tests the case when JWKS URL is invalid
@@ -628,7 +628,7 @@ func TestNewJWTAuthorizer_InvalidJWKSURL(t *testing.T) {
 			JWKSUri:        "invalid-url", // Not a valid URL
 			Issuer:         "test-issuer",
 			Audience:       "test-audience",
-			DeviceClientId: "test-client-id",
+			DeviceClientID: "test-client-id",
 		},
 	}
 

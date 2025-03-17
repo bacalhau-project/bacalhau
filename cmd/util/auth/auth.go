@@ -50,7 +50,8 @@ func RunAuthenticationFlow(
 
 	//println("4- inside RunAuthenticationFlow method ")
 	if methods != nil && len(methods.Methods) == 0 {
-		return nil, fmt.Errorf("the orchestrator supports the new authentication method. Please login using username/password, API key, or thorugh SSO")
+		return nil, fmt.Errorf("the orchestrator supports the" +
+			" new authentication method. Please login using username/password, API key, or thorugh SSO")
 	}
 
 	filteredMethods := make(map[string]authn.Requirement, len(methods.Methods))

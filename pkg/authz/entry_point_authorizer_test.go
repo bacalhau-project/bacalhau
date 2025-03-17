@@ -42,7 +42,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 		authorizer := &entryPointAuthorizer{}
 		user := types.AuthUser{
 			Alias:  "API User",
-			ApiKey: "this-is-a-valid-api-key-12345678901234567890",
+			APIKey: "this-is-a-valid-api-key-12345678901234567890",
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job"},
@@ -85,7 +85,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 			Alias:    "Dual Auth User",
 			Username: "testuser",
 			Password: "password1234567",
-			ApiKey:   "this-is-a-valid-api-key-12345678901234567890",
+			APIKey:   "this-is-a-valid-api-key-12345678901234567890",
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job"},
@@ -170,7 +170,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 		authorizer := &entryPointAuthorizer{}
 		user := types.AuthUser{
 			Alias:  "Short API Key User",
-			ApiKey: "tooshort", // Too short
+			APIKey: "tooshort", // Too short
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job"},
@@ -315,7 +315,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 
 		user := types.AuthUser{
 			Alias:  "Long API Key User",
-			ApiKey: longApiKey,
+			APIKey: longApiKey,
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job"},
@@ -435,7 +435,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 
 		user := types.AuthUser{
 			Alias:  "Another API User",
-			ApiKey: "this-is-a-valid-api-key-12345678901234567890", // Duplicate API key
+			APIKey: "this-is-a-valid-api-key-12345678901234567890", // Duplicate API key
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job"},
@@ -502,7 +502,7 @@ func TestEntryPointValidateAllUsers(t *testing.T) {
 			},
 			{
 				Alias:  "API Key User",
-				ApiKey: "this-is-a-valid-api-key-12345678901234567890",
+				APIKey: "this-is-a-valid-api-key-12345678901234567890",
 				Capabilities: []types.Capability{
 					{
 						Actions: []string{"read:job", "write:job"},
@@ -608,7 +608,7 @@ func TestEntryPointPopulateUserMaps(t *testing.T) {
 			},
 			{
 				Alias:  "API Key User",
-				ApiKey: "this-is-a-valid-api-key-12345678901234567890",
+				APIKey: "this-is-a-valid-api-key-12345678901234567890",
 				Capabilities: []types.Capability{
 					{
 						Actions: []string{"read:job", "write:job"},
@@ -754,7 +754,7 @@ func TestEntryPointCreation(t *testing.T) {
 				},
 				{
 					Alias:  "API Key User",
-					ApiKey: "this-is-a-valid-api-key-12345678901234567890",
+					APIKey: "this-is-a-valid-api-key-12345678901234567890",
 					Capabilities: []types.Capability{
 						{
 							Actions: []string{"read:job", "write:job"},
@@ -843,7 +843,7 @@ func createTestEntryPointAuthorizer() *entryPointAuthorizer {
 	apiKeyUsers := map[string]types.AuthUser{
 		"valid-api-key-123": {
 			Alias:  "API User",
-			ApiKey: "valid-api-key-123",
+			APIKey: "valid-api-key-123",
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job", "write:job"},
@@ -871,7 +871,7 @@ func createTestEntryPointAuthorizer() *entryPointAuthorizer {
 	)
 
 	// Create the API key authorizer
-	apiKeyAuthorizer := NewApiKeyAuthorizer(
+	apiKeyAuthorizer := NewAPIKeyAuthorizer(
 		"test-node",
 		apiKeyUsers,
 		capabilityChecker,

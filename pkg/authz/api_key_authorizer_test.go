@@ -20,7 +20,7 @@ func TestApiKeyValidation(t *testing.T) {
 		authHeader := createBearerAuthHeader("valid-api-key-123")
 
 		// Execute
-		user, authenticated, err := authorizer.validateApiKey(authHeader)
+		user, authenticated, err := authorizer.validateAPIKey(authHeader)
 
 		// Verify
 		require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestApiKeyValidation(t *testing.T) {
 		authHeader := createBearerAuthHeader("invalid-api-key")
 
 		// Execute
-		_, authenticated, err := authorizer.validateApiKey(authHeader)
+		_, authenticated, err := authorizer.validateAPIKey(authHeader)
 
 		// Verify
 		require.Error(t, err)
@@ -53,7 +53,7 @@ func TestApiKeyValidation(t *testing.T) {
 		authHeader := createBearerAuthHeader("")
 
 		// Execute
-		_, authenticated, err := authorizer.validateApiKey(authHeader)
+		_, authenticated, err := authorizer.validateAPIKey(authHeader)
 
 		// Verify
 		require.Error(t, err)
@@ -171,7 +171,7 @@ func createTestApiKeyAuthorizer() *apiKeyAuthorizer {
 	apiKeyUsers := map[string]types.AuthUser{
 		"valid-api-key-123": {
 			Alias:  "API User",
-			ApiKey: "valid-api-key-123",
+			APIKey: "valid-api-key-123",
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job", "write:job"},
@@ -180,7 +180,7 @@ func createTestApiKeyAuthorizer() *apiKeyAuthorizer {
 		},
 		"admin-api-key-456": {
 			Alias:  "Admin API User",
-			ApiKey: "admin-api-key-456",
+			APIKey: "admin-api-key-456",
 			Capabilities: []types.Capability{
 				{
 					Actions: []string{"read:job", "write:job", "read:node", "write:node"},

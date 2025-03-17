@@ -16,8 +16,8 @@ type apiKeyAuthorizer struct {
 	endpointPermissions map[string]string
 }
 
-// validateApiKey validates an API key from a Bearer token
-func (a *apiKeyAuthorizer) validateApiKey(authHeader string) (types.AuthUser, bool, error) {
+// validateAPIKey validates an API key from a Bearer token
+func (a *apiKeyAuthorizer) validateAPIKey(authHeader string) (types.AuthUser, bool, error) {
 	// Extract the API key
 	apiKey := authHeader[7:] // Skip "Bearer "
 	if apiKey == "" {
@@ -34,13 +34,12 @@ func (a *apiKeyAuthorizer) validateApiKey(authHeader string) (types.AuthUser, bo
 	return user, true, nil
 }
 
-func NewApiKeyAuthorizer(
+func NewAPIKeyAuthorizer(
 	nodeID string,
 	apiKeyUsers map[string]types.AuthUser,
 	capabilityChecker *CapabilityChecker,
 	endpointPermissions map[string]string,
 ) Authorizer {
-
 	// Create the authorizer instance
 	authorizer := &apiKeyAuthorizer{
 		nodeID:              nodeID,
@@ -77,7 +76,7 @@ func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	}
 
 	authHeader := authorizationHeaders[0]
-	user, authenticated, authErr := a.validateApiKey(authHeader)
+	user, authenticated, authErr := a.validateAPIKey(authHeader)
 
 	// Handle authentication error
 	if authErr != nil {

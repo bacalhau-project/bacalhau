@@ -38,7 +38,7 @@ func setupMockServer(t *testing.T, deviceAuthHandler, tokenHandler http.HandlerF
 // createTestConfig creates a test OAuth2 config with the provided server URL
 func createTestConfig(serverURL string) types.Oauth2Config {
 	return types.Oauth2Config{
-		DeviceClientId:              "test-client-id",
+		DeviceClientID:              "test-client-id",
 		Scopes:                      []string{"test-scope"},
 		DeviceAuthorizationEndpoint: serverURL + "/device/code",
 		TokenEndpoint:               serverURL + "/token",
@@ -50,7 +50,7 @@ func createTestConfig(serverURL string) types.Oauth2Config {
 func TestNewOAuth2Service(t *testing.T) {
 	// Create a test configuration
 	config := types.Oauth2Config{
-		DeviceClientId:              "test-client-id",
+		DeviceClientID:              "test-client-id",
 		Scopes:                      []string{"profile", "email"},
 		DeviceAuthorizationEndpoint: "https://example.com/device/code",
 		TokenEndpoint:               "https://example.com/token",

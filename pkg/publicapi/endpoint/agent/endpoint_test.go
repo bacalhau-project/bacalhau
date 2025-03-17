@@ -243,9 +243,9 @@ func TestEndpointNodeOauth2ConfigPopulated(t *testing.T) {
 		API: types.API{
 			Auth: types.AuthConfig{
 				Oauth2: types.Oauth2Config{
-					ProviderId:                  "test-provider",
+					ProviderID:                  "test-provider",
 					ProviderName:                "Test Provider",
-					DeviceClientId:              "device-client-id-123",
+					DeviceClientID:              "device-client-id-123",
 					DeviceAuthorizationEndpoint: "https://test-provider.com/oauth/device/code",
 					JWKSUri:                     "https://test-provider.com/.well-known/jwks.json",
 					TokenEndpoint:               "https://test-provider.com/oauth/token",
@@ -279,12 +279,12 @@ func TestEndpointNodeOauth2ConfigPopulated(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the OAuth2 config values
-	assert.Equal(t, "test-provider", response.Config.ProviderId)
+	assert.Equal(t, "test-provider", response.Config.ProviderID)
 	assert.Equal(t, "Test Provider", response.Config.ProviderName)
 	assert.Equal(t, "https://test-provider.com/.well-known/jwks.json", response.Config.JWKSUri)
 
 	// Verify DeviceCode flow
-	assert.Equal(t, "device-client-id-123", response.Config.DeviceClientId)
+	assert.Equal(t, "device-client-id-123", response.Config.DeviceClientID)
 	assert.Equal(t, "https://test-provider.com/oauth/device/code", response.Config.DeviceAuthorizationEndpoint)
 	assert.Equal(t, "https://test-provider.com/oauth/token", response.Config.TokenEndpoint)
 	assert.Equal(t, 5, response.Config.PollingInterval)
@@ -327,10 +327,10 @@ func TestEndpointNodeOauth2ConfigEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the OAuth2 config is empty
-	assert.Empty(t, response.Config.ProviderId)
+	assert.Empty(t, response.Config.ProviderID)
 	assert.Empty(t, response.Config.ProviderName)
 	assert.Empty(t, response.Config.JWKSUri)
-	assert.Empty(t, response.Config.DeviceClientId)
+	assert.Empty(t, response.Config.DeviceClientID)
 }
 
 // TestEndpointNodeOauth2ConfigRouteRegistration tests that the nodeOauth2Config route is properly registered

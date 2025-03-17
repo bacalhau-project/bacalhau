@@ -24,6 +24,8 @@ func (b Bacalhau) UserKeyPath() (string, error) {
 }
 
 const AuthTokensFileName = "tokens.json"
+
+// #nosec G101 - This is just a filename, not credentials
 const JWTTokensFileName = "jwt-tokens.json"
 
 func (b Bacalhau) AuthTokensPath() (string, error) {
