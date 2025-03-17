@@ -15,7 +15,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -33,6 +32,7 @@ type BaseExecutorParams struct {
 	Publishers             publisher.PublisherProvider
 	FailureInjectionConfig models.FailureInjectionConfig
 	EnvResolver            EnvVarResolver
+	PortAllocator          PortAllocator
 }
 
 // BaseExecutor is the base implementation for backend service.
@@ -47,6 +47,7 @@ type BaseExecutor struct {
 	resultsPath      ResultsPath
 	failureInjection models.FailureInjectionConfig
 	envResolver      EnvVarResolver
+	portAllocator    PortAllocator
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
@@ -60,61 +61,22 @@ func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 		failureInjection: params.FailureInjectionConfig,
 		resultsPath:      params.ResultsPath,
 		envResolver:      params.EnvResolver,
+		portAllocator:    params.PortAllocator,
 	}
 }
 
-func prepareInputVolumes(
+func (e *BaseExecutor) prepareInputVolumes(
 	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
-	execution *models.Execution) (
-	[]storage.PreparedStorage, func(context.Context) error, error,
-) {
+	execution *models.Execution,
+) ([]storage.PreparedStorage, func(context.Context) error, error) {
 	inputVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, execution.Job.Task().InputSources...)
+		ctx, e.Storages, e.storageDirectory, execution, execution.Job.Task().InputSources...)
 	if err != nil {
 		return nil, nil, err
 	}
 	return inputVolumes, func(ctx context.Context) error {
-		return storage.ParallelCleanStorage(ctx, storageProvider, inputVolumes)
+		return storage.ParallelCleanStorage(ctx, e.Storages, inputVolumes)
 	}, nil
-}
-
-func prepareWasmVolumes(
-	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
-	execution *models.Execution,
-	wasmEngine wasmmodels.EngineSpec) (
-	map[string][]storage.PreparedStorage, func(context.Context) error, error,
-) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, wasmEngine.ImportModules...)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, storageProvider, storageDirectory, execution, wasmEngine.EntryModule)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	volumes := map[string][]storage.PreparedStorage{
-		"importModules": importModuleVolumes,
-		"entryModules":  entryModuleVolumes,
-	}
-
-	cleanup := func(ctx context.Context) error {
-		err1 := storage.ParallelCleanStorage(ctx, storageProvider, importModuleVolumes)
-		err2 := storage.ParallelCleanStorage(ctx, storageProvider, entryModuleVolumes)
-		if err1 != nil || err2 != nil {
-			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
-		}
-		return nil
-	}
-
-	return volumes, cleanup, nil
 }
 
 // InputCleanupFn is a function type that defines the contract for cleaning up
@@ -126,65 +88,36 @@ func prepareWasmVolumes(
 // For example, an InputCleanupFn might be responsible for deallocating storage used
 // for input volumes, or deleting temporary input files that were created as part of the
 // job's execution. The nature of it operation depends on the storage provided by `storageProvider` and
-// input sources of the jobs associated tasks. For the case of a wasm job its input and entry module storage volumes
-// should be removed via the method after the jobs execution reaches a terminal state.
+// input sources of the jobs associated tasks.
 type InputCleanupFn = func(context.Context) error
 
-func PrepareRunArguments(
+func (e *BaseExecutor) PrepareRunArguments(
 	ctx context.Context,
-	storageProvider storage.StorageProvider,
-	storageDirectory string,
 	execution *models.Execution,
 	resultsDir string,
-	envResolver EnvVarResolver,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
-	inputVolumes, inputCleanup, err := prepareInputVolumes(ctx, storageProvider, storageDirectory, execution)
+	inputVolumes, inputCleanup, err := e.prepareInputVolumes(ctx, execution)
 	if err != nil {
 		return nil, nil, err
 	}
 	cleanupFuncs = append(cleanupFuncs, inputCleanup)
 
-	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
-	// download them before passing it to the wasm executor
-	/*
-		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
-		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
-		spec.Inputs with its EntryModule and ImportModules fields.
-		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
-		inputs via their arguments - docker image comes to mind as a potential candidate).
-
-		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
-		before passing it to the executor. Previously executors were responsible for downloading their inputs to
-		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
-		plugins to handle the download of different storage specs seems impractical
-		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
-		provides more context on the need for the change).
-	*/
-	var engineArgs *models.SpecConfig
-	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
-		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		volumes, wasmCleanup, err := prepareWasmVolumes(ctx, storageProvider, storageDirectory, execution, wasmEngine)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		cleanupFuncs = append(cleanupFuncs, wasmCleanup)
-
-		engineArgs = &models.SpecConfig{
-			Type:   models.EngineWasm,
-			Params: wasmEngine.ToArguments(volumes["entryModules"][0], volumes["importModules"]...).ToMap(),
-		}
-	} else {
-		engineArgs = execution.Job.Task().Engine
+	// Allocate ports
+	portMappings, err := e.portAllocator.AllocatePorts(execution)
+	if err != nil {
+		return nil, nil, err
 	}
+	cleanupFuncs = append(cleanupFuncs, func(ctx context.Context) error {
+		e.portAllocator.ReleasePorts(execution)
+		return nil
+	})
 
-	env, err := GetExecutionEnvVars(execution, envResolver)
+	// Update execution with allocated ports
+	execution.AllocatePorts(portMappings)
+
+	env, err := GetExecutionEnvVars(execution, e.envResolver)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
@@ -197,7 +130,7 @@ func PrepareRunArguments(
 			Outputs:      execution.Job.Task().ResultPaths,
 			Inputs:       inputVolumes,
 			ResultsDir:   resultsDir,
-			EngineParams: engineArgs,
+			EngineParams: execution.Job.Task().Engine,
 			Env:          env,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
@@ -206,11 +139,9 @@ func PrepareRunArguments(
 				MaxStderrReturnLength: system.MaxStderrReturnLength,
 			},
 		}, func(ctx context.Context) error {
-			log.Ctx(ctx).Info().Str("execution", execution.ID).Msg("cleaning up execution")
 			var cleanupErr error
 			for _, cleanupFunc := range cleanupFuncs {
 				if err := cleanupFunc(ctx); err != nil {
-					log.Ctx(ctx).Error().Err(err).Str("execution", execution.ID).Msg("cleaning up execution")
 					cleanupErr = errors.Join(cleanupErr, err)
 				}
 			}
@@ -250,7 +181,7 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	args, cleanup, err := PrepareRunArguments(ctx, e.Storages, executionStorage, execution, resultFolder, e.envResolver)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultFolder)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)

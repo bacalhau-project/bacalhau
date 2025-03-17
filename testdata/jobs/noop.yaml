@@ -11,12 +11,3 @@ Tasks:
     ResultPaths:
       - Name: output_custom
         Path: /output_custom
-    InputSources:
-      - Alias: input_custom
-        Target: /input_custom
-        Source:
-          Type: noop
-      - Alias: input_custom2
-        Target: /input_custom2
-        Source:
-          Type: noop

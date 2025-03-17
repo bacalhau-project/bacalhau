@@ -5,13 +5,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -45,17 +43,12 @@ func NewGetOptions() *GetOptions {
 func NewGetCmd() *cobra.Command {
 	OG := NewGetOptions()
 
-	getFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	getCmd := &cobra.Command{
 		Use:           "get [id]",
 		Short:         "Get the results of a job",
 		Long:          getLong,
 		Example:       getExample,
 		Args:          cobra.ExactArgs(1),
-		PreRunE:       hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), getFlags)),
 		PostRunE:      hook.RemoteCmdPostRunHooks,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -75,10 +68,6 @@ func NewGetCmd() *cobra.Command {
 	}
 
 	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
-
-	if err := configflags.RegisterFlags(getCmd, getFlags); err != nil {
-		util.Fatal(getCmd, err, 1)
-	}
 
 	return getCmd
 }

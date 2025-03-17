@@ -23,6 +23,7 @@ import (
 
 const testNodeCount = 1
 
+//nolint:funlen,mnd
 func RunTestCase(
 	t *testing.T,
 	testCase scenario.Scenario,
@@ -65,8 +66,8 @@ func RunTestCase(
 		return storageList
 	}
 
-	job.Task().InputSources = prepareStorage(testCase.Inputs)
-	job.Task().ResultPaths = testCase.Outputs
+	job.Task().InputSources = append(job.Task().InputSources, prepareStorage(testCase.Inputs)...)
+	job.Task().ResultPaths = append(job.Task().ResultPaths, testCase.Outputs...)
 	job.Task().Publisher = publisher_local.NewSpecConfig()
 	job.Count = testNodeCount
 
@@ -93,14 +94,22 @@ func RunTestCase(
 	envResolver := env.NewResolver(env.ResolverParams{
 		AllowList: []string{"TEST_*"}, // Allow only TEST_* environment variables to be forwarded
 	})
+	portAllocator, err := compute.NewPortAllocator(10000, 20000)
+	require.NoError(t, err)
 
-	runCommandArguments, cleanup, err := compute.PrepareRunArguments(
+	// TODO: use base executor instead of directly using the executor
+	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
+		ID:               "test-executor",
+		Storages:         storageProvider,
+		StorageDirectory: t.TempDir(),
+		EnvResolver:      envResolver,
+		PortAllocator:    portAllocator,
+	})
+
+	runCommandArguments, cleanup, err := baseExecutor.PrepareRunArguments(
 		ctx,
-		storageProvider,
-		t.TempDir(),
 		execution,
 		resultsDirectory,
-		envResolver,
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -109,7 +118,7 @@ func RunTestCase(
 		}
 	})
 
-	_, err = executor.Run(ctx, runCommandArguments)
+	result, err := executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		// TODO not sure how this behavior should be replicated.
 		err = testCase.SubmitChecker(&apimodels.PutJobResponse{
@@ -117,6 +126,11 @@ func RunTestCase(
 			EvaluationID: "TODO",
 			Warnings:     nil,
 		}, err)
+		require.NoError(t, err)
+	}
+
+	if testCase.CommandResultsChecker != nil {
+		err = testCase.CommandResultsChecker(result)
 		require.NoError(t, err)
 	}
 

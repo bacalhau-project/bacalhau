@@ -24,11 +24,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 const (
@@ -61,7 +63,10 @@ func (s *ExecutorTestSuite) SetupTest() {
 	cfg, err := config.NewTestConfig()
 	require.NoError(s.T(), err)
 
-	s.executor, err = NewExecutor("bacalhau-executor-unit-test", cfg.Engines.Types.Docker)
+	s.executor, err = NewExecutor(ExecutorParams{
+		ID:     "bacalhau-executor-unit-test",
+		Config: cfg.Engines.Types.Docker,
+	})
 	require.NoError(s.T(), err)
 	s.T().Cleanup(func() {
 		if err := s.executor.Shutdown(context.Background()); err != nil {
@@ -295,7 +300,7 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	task := mock.Task()
 	task.Engine = s.curlTask()
-	task.Network = &models.NetworkConfig{Type: models.NetworkFull}
+	task.Network = &models.NetworkConfig{Type: models.NetworkHost}
 
 	result, err := s.runJob(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
@@ -648,6 +653,195 @@ func (s *ExecutorTestSuite) TestDockerEnvironmentVariables() {
 
 			output := strings.TrimSpace(result.STDOUT)
 			s.Equal(tt.want, output)
+		})
+	}
+}
+
+func (s *ExecutorTestSuite) TestPortMappingInHostMode() {
+	testutils.SkipIfNotLinux(s.T(), "docker host mode is not supported on non-linux platforms")
+
+	port, err := network.GetFreePort()
+	s.Require().NoError(err)
+
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
+		WithEntrypoint("sh", "-c", fmt.Sprintf(`while true; do echo -e "HTTP/1.1 200 OK\n\nOK" | nc -l -p %d; done`, port)).
+		Build()
+	s.Require().NoError(err)
+
+	task := mock.Task()
+	task.Engine = es
+	task.Network = &models.NetworkConfig{
+		Type: models.NetworkHost,
+		Ports: models.PortMap{
+			{
+				Name:   "http",
+				Static: port,
+			},
+		},
+	}
+
+	// Start the container
+	s.startJob(task, "host-network-test")
+
+	// In host mode, the container port should be directly accessible on the host
+	s.Require().Eventually(func() bool {
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func (s *ExecutorTestSuite) TestPortMappingInBridgeMode() {
+	// Create a container that listens on the target port
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
+		WithEntrypoint("sh", "-c", `while true; do echo -e "HTTP/1.1 200 OK\n\nOK" | nc -l -p 80; done`).
+		Build()
+	s.Require().NoError(err)
+
+	port, err := network.GetFreePort()
+	s.Require().NoError(err)
+
+	task := mock.Task()
+	task.Engine = es
+	task.Network = &models.NetworkConfig{
+		Type: models.NetworkBridge,
+		Ports: models.PortMap{
+			{
+				Name:   "http",
+				Static: port, // Host port
+				Target: 80,   // Container port
+			},
+		},
+	}
+
+	// Start the container
+	s.startJob(task, "bridge-network-test")
+
+	// In bridge mode, the container port should be accessible via the mapped host port
+	s.Require().Eventually(func() bool {
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d", port))
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func (s *ExecutorTestSuite) TestMultiplePortMappingsInBridgeMode() {
+	// Create a container that listens on both ports
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
+		WithEntrypoint("sh", "-c", `
+			(while true; do echo -e "HTTP/1.1 200 OK\n\nOK" | nc -l -p 80; done) &
+			(while true; do echo -e "HTTP/1.1 200 OK\n\nOK" | nc -l -p 81; done)
+		`).
+		Build()
+	s.Require().NoError(err)
+
+	port1, err := network.GetFreePort()
+	s.Require().NoError(err)
+
+	port2, err := network.GetFreePort()
+	s.Require().NoError(err)
+
+	task := mock.Task()
+	task.Engine = es
+	task.Network = &models.NetworkConfig{
+		Type: models.NetworkBridge,
+		Ports: models.PortMap{
+			{
+				Name:   "http1",
+				Static: port1,
+				Target: 80,
+			},
+			{
+				Name:   "http2",
+				Static: port2,
+				Target: 81,
+			},
+		},
+	}
+
+	// Start the container
+	s.startJob(task, "bridge-network-multiple-ports-test")
+
+	// Both ports should be accessible
+	s.Require().Eventually(func() bool {
+		resp1, err := http.Get(fmt.Sprintf("http://localhost:%d", port1))
+		if err != nil {
+			return false
+		}
+		defer resp1.Body.Close()
+
+		resp2, err := http.Get(fmt.Sprintf("http://localhost:%d", port2))
+		if err != nil {
+			return false
+		}
+		defer resp2.Body.Close()
+
+		return resp1.StatusCode == http.StatusOK && resp2.StatusCode == http.StatusOK
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+func (s *ExecutorTestSuite) TestAccessToHostService() {
+	// Start a simple HTTP server on the host
+	handler := http.NewServeMux()
+	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("host-service"))
+	})
+
+	listener, err := net.Listen("tcp", ":0") // Let OS choose port
+	s.Require().NoError(err)
+	defer listener.Close()
+
+	server := &http.Server{Handler: handler}
+	go server.Serve(listener)
+	defer server.Close()
+
+	// Get the port that was assigned
+	hostPort := listener.Addr().(*net.TCPAddr).Port
+
+	tests := []struct {
+		name        string
+		networkType models.Network
+		hostURL     string
+	}{
+		{
+			name:        "host network mode",
+			networkType: models.NetworkHost,
+			hostURL:     fmt.Sprintf("http://localhost:%d", hostPort),
+		},
+		{
+			name:        "bridge network mode",
+			networkType: models.NetworkBridge,
+			hostURL:     fmt.Sprintf("http://host.docker.internal:%d", hostPort),
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			if tt.networkType == models.NetworkHost {
+				testutils.SkipIfNotLinux(s.T(), "docker host mode is not supported on non-linux platforms")
+			}
+
+			// Create a task that tries to connect to our test server
+			es, err := dockermodels.NewDockerEngineBuilder(CurlDockerImage).
+				WithEntrypoint("curl", "-s", tt.hostURL).
+				Build()
+			s.Require().NoError(err)
+
+			task := mock.Task()
+			task.Engine = es
+			task.Network = &models.NetworkConfig{
+				Type: tt.networkType,
+			}
+
+			stdout, err := s.runJobGetStdout(task, fmt.Sprintf("access-host-%s", tt.networkType))
+			s.Require().NoError(err)
+			s.Equal("host-service", stdout)
 		})
 	}
 }

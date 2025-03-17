@@ -107,7 +107,10 @@ func NewStandardExecutorProvider(
 
 	if cfg.IsNotDisabled(models.EngineDocker) {
 		var err error
-		providers[models.EngineDocker], err = docker.NewExecutor(executorOptions.DockerID, cfg.Types.Docker)
+		providers[models.EngineDocker], err = docker.NewExecutor(docker.ExecutorParams{
+			ID:     executorOptions.DockerID,
+			Config: cfg.Types.Docker,
+		})
 		if err != nil {
 			return nil, err
 		}

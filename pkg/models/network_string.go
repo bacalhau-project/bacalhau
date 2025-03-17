@@ -9,13 +9,15 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[NetworkNone-0]
-	_ = x[NetworkFull-1]
-	_ = x[NetworkHTTP-2]
+	_ = x[NetworkHost-1]
+	_ = x[NetworkFull-2]
+	_ = x[NetworkHTTP-3]
+	_ = x[NetworkBridge-4]
 }
 
-const _Network_name = "NoneFullHTTP"
+const _Network_name = "NoneHostFullHTTPBridge"
 
-var _Network_index = [...]uint8{0, 4, 8, 12}
+var _Network_index = [...]uint8{0, 4, 8, 12, 16, 22}
 
 func (i Network) String() string {
 	if i < 0 || i >= Network(len(_Network_index)-1) {

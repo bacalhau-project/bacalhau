@@ -37,3 +37,23 @@ func IsGreaterOrEqual[T math.Number](value, other T, msg string, args ...any) er
 	}
 	return nil
 }
+
+// IsLessThan checks if the first provided numeric value (of type T) is less than the second.
+// It returns an error if the first value is not less than the second, using the provided message and arguments.
+// T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
+func IsLessThan[T math.Number](value, other T, msg string, args ...any) error {
+	if value >= other {
+		return createError(msg, args...)
+	}
+	return nil
+}
+
+// IsLessOrEqual checks if the first provided numeric value (of type T) is less or equal to the second.
+// It returns an error if the first value is not less or equal to the second, using the provided message and arguments.
+// T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
+func IsLessOrEqual[T math.Number](value, other T, msg string, args ...any) error {
+	if value > other {
+		return createError(msg, args...)
+	}
+	return nil
+}

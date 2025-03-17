@@ -106,9 +106,13 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	s.T().Log("Setting up storage")
 	if len(task.InputSources) == 0 {
 		task.InputSources = s.prepareStorage(stack, scenario.Inputs)
+	} else {
+		task.InputSources = append(task.InputSources, s.prepareStorage(stack, scenario.Inputs)...)
 	}
 	if len(task.ResultPaths) == 0 {
 		task.ResultPaths = scenario.Outputs
+	} else {
+		task.ResultPaths = append(task.ResultPaths, scenario.Outputs...)
 	}
 
 	apiServer := stack.Nodes[0].APIServer

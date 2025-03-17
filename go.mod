@@ -5,7 +5,7 @@ go 1.23
 require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
-	github.com/MicahParks/keyfunc/v3 v3.3.5
+	github.com/MicahParks/keyfunc/v3 v3.3.10
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.17
@@ -17,12 +17,13 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v27.1.1+incompatible
-	github.com/dylibso/observe-sdk/go v0.0.0-20231201014635-141351c24659
+	github.com/docker/go-connections v0.4.0
+	github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang-jwt/jwt/v5 v5.2.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
@@ -59,7 +60,7 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/swag v1.16.4
-	github.com/tetratelabs/wazero v1.6.0
+	github.com/tetratelabs/wazero v1.9.0
 	github.com/theckman/yacspin v0.13.12
 	github.com/vincent-petithory/dataurl v1.0.0
 	go.etcd.io/bbolt v1.3.8
@@ -80,7 +81,7 @@ require (
 	go.ptx.dk/multierrgroup v0.0.3
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.33.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	k8s.io/apimachinery v0.29.0
 	sigs.k8s.io/yaml v1.4.0
@@ -105,7 +106,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.32.2 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
@@ -119,7 +119,7 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20240805132620-81f5be970eca // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
@@ -134,8 +134,8 @@ require (
 	github.com/multiformats/go-multicodec v0.9.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nats-io/jwt/v2 v2.7.0 // indirect
-	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/jwt/v2 v2.7.3 // indirect
+	github.com/nats-io/nkeys v0.4.10 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
@@ -179,7 +179,7 @@ require (
 	github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 // indirect
 	github.com/fatih/color v1.16.0
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -258,12 +258,12 @@ require (
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/term v0.28.0
-	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.9.0
+	golang.org/x/net v0.35.0 // indirect
+	golang.org/x/sync v0.11.0
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/time v0.10.0
 	golang.org/x/tools v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/grpc v1.69.4 // indirect

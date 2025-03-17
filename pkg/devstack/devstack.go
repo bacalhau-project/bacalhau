@@ -13,7 +13,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/network"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -196,11 +195,7 @@ func Setup(
 }
 
 //nolint:funlen
-func (stack *DevStack) PrintNodeInfo(ctx context.Context, cm *system.CleanupManager) (string, error) {
-	if !config_legacy.DevstackGetShouldPrintInfo() {
-		return "", nil
-	}
-
+func (stack *DevStack) GetStackInfo(ctx context.Context) string {
 	logString := ""
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)
 	devStackAPIHost := stack.Nodes[0].APIServer.Address
@@ -251,7 +246,7 @@ To use the devstack, run the following commands in your shell:
 		computeOnlyNodes,
 		hybridNodes,
 		summaryBuilder.String())
-	return returnString, nil
+	return returnString
 }
 
 func (stack *DevStack) GetNode(_ context.Context, nodeID string) (
