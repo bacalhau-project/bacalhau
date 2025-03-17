@@ -28,7 +28,7 @@ func (s *OrchestratorConfigOverrideAndFlagAndConfigFlagSuite) SetupSuite() {
 	orchestratorConfigFile1 := s.commonAssets("nodes_configs/2_config.yaml")
 	orchestratorConfigFile2 := s.commonAssets("nodes_configs/2_config_override.yaml")
 	orchestratorStartCommand := fmt.Sprintf(
-		"bacalhau serve --config=%s --config=%s --config WebUI.Enabled=false --config webui.enabled=true",
+		"bacalhau serve --config=%s --config=%s --config webui.enabled=false --config webui.enabled=true",
 		orchestratorConfigFile1,
 		orchestratorConfigFile2,
 	)
