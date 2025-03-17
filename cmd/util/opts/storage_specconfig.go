@@ -24,15 +24,22 @@ type StorageSpecConfigOpt struct {
 	values []*models.InputSource
 }
 
-func (o *StorageSpecConfigOpt) Set(value string) error {
+// AddValue adds a new storage source to the list of sources
+func (o *StorageSpecConfigOpt) AddValue(value *models.InputSource) {
+	o.values = append(o.values, value)
+}
+
+// ParseStorageSpec parses a storage spec string in the format source:destination or with explicit key=value pairs
+// and returns an InputSource. This is extracted from StorageSpecConfigOpt.Set for reuse.
+func ParseStorageSpec(value string, defaultDestination string) (*models.InputSource, error) {
 	csvReader := csv.NewReader(strings.NewReader(value))
 	fields, err := csvReader.Read()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var sourceURI string
-	destination := "/inputs" // default destination
+	destination := defaultDestination
 	options := make(map[string]string)
 
 	for i, field := range fields {
@@ -43,7 +50,7 @@ func (o *StorageSpecConfigOpt) Set(value string) error {
 			if i == 0 {
 				parsedURI, err := url.Parse(field)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				// find the last colon, excluding the schema part
 				schema := parsedURI.Scheme
@@ -57,7 +64,7 @@ func (o *StorageSpecConfigOpt) Set(value string) error {
 				}
 				continue
 			} else {
-				return fmt.Errorf("invalid storage option: %s. Must be a key=value pair", field)
+				return nil, fmt.Errorf("invalid storage option: %s. Must be a key=value pair", field)
 			}
 		}
 
@@ -73,11 +80,15 @@ func (o *StorageSpecConfigOpt) Set(value string) error {
 				options[k] = v
 			}
 		default:
-			return fmt.Errorf("unexpected key %s in field %s", key, field)
+			return nil, fmt.Errorf("unexpected key %s in field %s", key, field)
 		}
 	}
 	alias := sourceURI
-	storageSpec, err := storageStringToSpecConfig(sourceURI, destination, alias, options)
+	return storageStringToSpecConfig(sourceURI, destination, alias, options)
+}
+
+func (o *StorageSpecConfigOpt) Set(value string) error {
+	storageSpec, err := ParseStorageSpec(value, "/inputs")
 	if err != nil {
 		return err
 	}

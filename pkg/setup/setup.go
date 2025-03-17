@@ -9,17 +9,11 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
-
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 )
 
 func SetupMigrationManager() (*repo.MigrationManager, error) {
-	return repo.NewMigrationManager(
-		migrations.V1Migration,
-		migrations.V2Migration,
-		migrations.V3Migration,
-	)
+	return repo.NewMigrationManager()
 }
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.
@@ -72,15 +66,19 @@ func SetupBacalhauRepoForTesting(t testing.TB) (*repo.FsRepo, types.Bacalhau) {
 		types.OrchestratorEnabledKey: true,
 	}
 
-	// the BACALHAU_NODE_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.
+	// the BACALHAU_IPFS_CONNECT env var is only bound if it's corresponding flags are registered.
 	// This is because viper cannot bind its value to any existing keys via viper.AutomaticEnv() since the
 	// environment variable doesn't map to a key in the config, so we add special handling here until we move away
 	// from this flag to the dedicated flags like "BACALHAU_PUBLISHER_IPFS_ENDPOINT",
 	// "BACALHAU_INPUTSOURCES_IPFS_ENDPOINT", etc which have a direct mapping to the config key based on their name.
-	if connect := os.Getenv("BACALHAU_NODE_IPFS_CONNECT"); connect != "" {
-		cfgValues[types.PublishersTypesIPFSEndpointKey] = connect
-		cfgValues[types.ResultDownloadersTypesIPFSEndpointKey] = connect
-		cfgValues[types.InputSourcesTypesIPFSEndpointKey] = connect
+	ipfsConnect := os.Getenv("BACALHAU_IPFS_CONNECT")
+	if ipfsConnect == "" {
+		ipfsConnect = os.Getenv("BACALHAU_NODE_IPFS_CONNECT")
+	}
+	if ipfsConnect != "" {
+		cfgValues[types.PublishersTypesIPFSEndpointKey] = ipfsConnect
+		cfgValues[types.ResultDownloadersTypesIPFSEndpointKey] = ipfsConnect
+		cfgValues[types.InputSourcesTypesIPFSEndpointKey] = ipfsConnect
 	}
 
 	// init a config with this viper instance using the local configuration as default

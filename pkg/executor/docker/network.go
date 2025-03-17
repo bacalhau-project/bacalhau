@@ -14,7 +14,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/docker/go-connections/nat"
@@ -77,7 +76,7 @@ func (e *Executor) setupNetworkForJob(
 	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
 
-	case models.NetworkHost:
+	case models.NetworkHost, models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
 		// In host mode, ports are directly accessible on the host network
@@ -142,7 +141,7 @@ func (e *Executor) createHTTPGateway(
 	networkConfig *models.NetworkConfig,
 ) (*network.Inspect, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage, config_legacy.GetDockerCredentials())
+	err := e.client.PullImage(ctx, httpGatewayImage)
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "error pulling gateway image")
 	}

@@ -1701,7 +1701,7 @@ const docTemplate = `{
                     }
                 },
                 "Count": {
-                    "description": "Count is the number of replicas that should be scheduled.",
+                    "description": "Count is the number of replicas that should be scheduled.\nFor batch and service jobs:\n- If not present in JSON, defaults to 1\n- If explicitly set to 0, means stop all executions\n- If \u003e 0, specifies exact number of replicas\nFor daemon and ops jobs:\n- Values of 0 or 1 are ignored (job runs on all matching nodes)\n- Values \u003e 1 are invalid and will cause validation to fail",
                     "type": "integer"
                 },
                 "CreateTime": {
@@ -1886,11 +1886,13 @@ const docTemplate = `{
                 0,
                 1,
                 2,
-                3
+                3,
+                4
             ],
             "x-enum-varnames": [
                 "NetworkNone",
                 "NetworkHost",
+                "NetworkFull",
                 "NetworkHTTP",
                 "NetworkBridge"
             ]
@@ -2801,7 +2803,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "AcceptNetworkedJobs": {
-                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.",
+                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.\nWill be deprecated in v1.7 in favor of RejectNetworkedJobs.",
                     "type": "boolean"
                 },
                 "Locality": {
@@ -2819,6 +2821,10 @@ const docTemplate = `{
                 "ProbeHTTP": {
                     "description": "ProbeHTTP specifies the HTTP endpoint for probing job submission.",
                     "type": "string"
+                },
+                "RejectNetworkedJobs": {
+                    "description": "RejectNetworkedJobs indicates whether to reject jobs that require network access.",
+                    "type": "boolean"
                 },
                 "RejectStatelessJobs": {
                     "description": "RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.",

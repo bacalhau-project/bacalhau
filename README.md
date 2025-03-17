@@ -4,157 +4,113 @@
   </a>
 </p>
 
-<h1 align="center">The Distributed Computation Framework ⚡<br>Compute Over Data (CoD)</h1>
+<h1 align="center">Globally Distributed Compute Orchestrator ⚡<br>Compute Over Data (CoD)</h1>
 <br>
 
 <p align="center">
-    <a href="https://github.com/bacalhau-project/bacalhau/blob/dev/LICENSE" alt="Contributors">
+    <a href="https://github.com/bacalhau-project/bacalhau/blob/main/LICENSE" alt="License">
         <img src="https://img.shields.io/badge/license-Apache-green" />
-        </a>
+    </a>
     <a href="https://github.com/bacalhau-project/bacalhau/releases/" alt="Release">
         <img src="https://img.shields.io/github/v/release/bacalhau-project/bacalhau?display_name=tag" />
-        </a>
+    </a>
     <a href="https://github.com/bacalhau-project/bacalhau/pulse" alt="Activity">
         <img src="https://img.shields.io/github/commit-activity/m/bacalhau-project/bacalhau" />
-        </a>
-    <a href="https://img.shields.io/github/downloads/bacalhau-project/bacalhau/total">
-        <img src="https://img.shields.io/github/downloads/bacalhau-project/bacalhau/total" alt="total download">
-        </a>
-     <a href="https://github.com/bacalhau-project/bacalhau/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/bacalhau-project/bacalhau" alt="Bacalhau contributors" >
+    </a>
+    <a href="https://github.com/bacalhau-project/bacalhau/graphs/contributors">
+        <img src="https://img.shields.io/github/contributors/bacalhau-project/bacalhau" alt="Bacalhau contributors" >
     </a>
     <a href="https://www.bacalhau.org/">
-    <img alt="Bacalhau website" src="https://img.shields.io/badge/website-bacalhau.org-red">
-  </a>
-      <a href="https://bit.ly/bacalhau-project-slack" alt="Slack">
+        <img alt="Bacalhau website" src="https://img.shields.io/badge/website-bacalhau.org-red">
+    </a>
+    <a href="https://bit.ly/bacalhau-project-slack" alt="Slack">
         <img src="https://img.shields.io/badge/slack-join_community-red.svg?color=0052FF&labelColor=090422&logo=slack" />
-        </a>
+    </a>
     <a href="https://twitter.com/intent/follow?screen_name=BacalhauProject">
         <img src="https://img.shields.io/twitter/follow/BacalhauProject?style=social&logo=twitter" alt="follow on Twitter">
-        </a>
+    </a>
 </p>
 
-[Bacalhau](https://www.bacalhau.org/) is a platform for fast, cost efficient, and secure computation by running jobs where the data is generated and stored. With Bacalhau you can streamline your existing workflows without the need of extensive rewriting by running arbitrary Docker containers, WebAssembly (wasm) images, or arbitrary binaries as tasks.
+## What is Bacalhau?
 
-## Table of Contents
-- [Table of Contents](#table-of-contents)
-- [Why Bacalhau?](#why-bacalhau)
-- [Getting started - Bacalhau in 1 minute](#getting-started---bacalhau-in-1-minute)
-  - [Learn more](#learn-more)
-- [Documentation](#documentation)
-- [Developers guide](#developers-guide)
-  - [Running Bacalhau locally](#running-bacalhau-locally)
-  - [Notes for Dev contributors](#notes-for-dev-contributors)
-  - [OpenAPI](#openapi)
-  - [Python Libraries](#python-libraries)
-- [Issues, feature requests, and questions](#issues-feature-requests-and-questions)
-- [Ways to contribute](#ways-to-contribute)
-- [Open Source](#open-source)
+[Bacalhau](https://www.bacalhau.org/) is an open-source distributed compute orchestration framework designed to bring compute to the data. Instead of moving large datasets around networks, Bacalhau makes it easy to execute jobs close to the data's location, drastically reducing latency and resource overhead.
 
 ## Why Bacalhau?
-- :zap: **Fast job processing**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default.
-- :moneybag: **Low cost**: Reduce (or eliminate) ingress/egress costs since jobs are processed closer to the source. Take advantage of as well idle computation capabilities at the edge.
-- :lock: **Secure**: Data scrubbing and security can happen before migration to reduce the chance of leaking private information, and with a far more granular, code-based permission model.
-- 🚛 **Large-scale data**: Bacalhau operates on a network of open compute resources made available to serve any data processing workload. With Bacalhau, you can batch process petabytes (quadrillion bytes) of data.
 
-## Getting started - Bacalhau in 1 minute
+- ⚡ **Fast job processing**: Jobs in Bacalhau are processed where the data was created and all jobs are parallel by default
+- 💰 **Low cost**: Reduce (or eliminate) ingress/egress costs since jobs are processed closer to the source
+- 🔒 **Secure**: Data scrubbing and security can happen before migration, with a granular, code-based permission model
+- 🚛 **Large-scale data**: Process petabytes of data efficiently without massive data transfers
+- 🏢 **Data sovereignty**: Process sensitive data within security boundaries without requiring it to leave your premises
+- 🤝 **Cross-organizational computation**: Allow specific vetted computations on protected datasets without exposing raw data
 
-Go to the folder directory that you want to store your job results
+## Key Features
 
-Install the bacalhau client
+1. **Single Binary Simplicity**: Bacalhau is a single self-contained binary that functions as a client, orchestrator, and compute node—making it incredibly easy to set up and scale
+   
+2. **Modular Architecture**: Support for multiple execution engines (Docker, WebAssembly) and storage providers through clean interfaces
 
-```bash
+3. **Orchestrator-Compute Model**: A dedicated orchestrator coordinates job scheduling, while compute nodes run tasks
+
+4. **Flexible Storage Integrations**: Integrates with S3, HTTP/HTTPS, IPFS, and local storage systems
+
+5. **Multiple Job Types**: Support for batch, ops, daemon, and service job types for different workflow requirements
+
+6. **Declarative & Imperative Submissions**: Define jobs in YAML (declarative) or pass arguments via CLI (imperative)
+
+7. **Publisher Support**: Output results to local volumes, S3, or other storage backends
+
+## Getting Started
+
+### Quick Installation
+
+```bash 
+# Install Bacalhau CLI (Linux/macOS)
 curl -sL https://get.bacalhau.org/install.sh | bash
+
+# Verify installation
+bacalhau version
 ```
 
-Submit a "Hello World" job
+For the complete quick start guide, including running your first job, see our [Quick Start Documentation](https://docs.bacalhau.org/getting-started/quick-start).
 
-```bash
-bacalhau docker run ubuntu echo Hello World
-```
+## Use Cases
 
-Download your result
+Bacalhau's distributed compute framework enables a wide range of applications:
 
-```bash
-bacalhau get 63d08ff0..... # make sure to use the right job id from the docker run command
-```
-
-![](docs/static/img/terminal.gif)
-
-For a more detailed tutorial, check out our [Getting Started tutorial](https://docs.bacalhau.org/getting-started/installation).
-
-### Learn more
-- Understand [Bacalhau Concepts](https://youtu.be/WnTlwXHhbcI)
-- Get an overview of the [different usecases](https://www.youtube.com/watch?v=gAHaMsTknZM) that you can use with Bacalhau.
-- To see Bacalhau in action, check out the [Bacalhau Examples](https://docs.bacalhau.org/examples/)
-- You can check out this featured example video tutorial [Text to image- Stable Diffusion GPU](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz). You can watch more tutorials [here](https://www.youtube.com/playlist?list=PL_1oLZF_wrbTIZdRWqFbtOeI78SdDdsEz)
+- **Log Processing**: Process logs efficiently at scale by running distributed jobs directly at the source
+- **Distributed Data Warehousing**: Query and analyze data across multiple regions without moving large datasets
+- **Fleet Management**: Efficiently manage distributed nodes across multiple environments
+- **Distributed Machine Learning**: Train and deploy ML models across a distributed compute fleet
+- **Edge Computing**: Run compute tasks closer to the data source for applications requiring low latency
 
 ## Documentation
+
 📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
 
-The Bacalhau docs is the best starting point as it contains all the information to ensure that everyone who uses Bacalhau is doing so efficiently.
+The Bacalhau documentation contains all the information you need to get started:
 
-## Developers guide
+- [Installation Tutorial](https://docs.bacalhau.org/getting-started/installation)
+- [Basic Usage](https://docs.bacalhau.org/getting-started/cli)
+- [Common Workflows](https://docs.bacalhau.org/common-workflows)
 
-### Running Bacalhau locally
+## Community & Contributing
 
-Developers can spin up bacalhau and run a local demo using the `devstack` command.
+Bacalhau has a very friendly community, and we are always happy to help:
 
-Please see [running_locally.md](docs/docs/dev/running-locally.md) for instructions. Also, see [debugging_locally.md](docs/docs/dev/debugging_locally.md) for some useful tricks for debugging.
+- [Join the Slack Community](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ) and go to the `#general` channel - it is the easiest way to engage with other members in the community and get help
 
-### Notes for Dev contributors
+If you are interested in contributing to the Bacalhau project:
 
-Bacalhau's CI pipeline performs a variety of linting and formatting checks on new pull requests.
-To have these checks run locally when you make a new commit, you can use the precommit hook in `./githooks`:
-
-```bash
-make install-pre-commit
-
-# check if pre-commit works
-make precommit
-```
-If you want to run the linter manually:
-
-```bash
-curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/go/bin
-golangci-lint --version
-make lint
-```
-The config lives in `.golangci.yml`
-
-### OpenAPI
-
-OpenAPI v2 annotations sit by the endpoints in `pkg/publicapi`; these are built using [swag](https://github.com/swaggo/swag), a Go converter for Swagger documentation.
-Find more details about the Swag annotations [in their docs](https://github.com/swaggo/swag#declarative-comments-format).
-The swagger specification is built automatically by the CI pipeline (see the `build_swagger` workflow) but you can trigger a local build with `make swagger-docs`.
-
-The build parses the OpenAPI annotations as well as the markdown files in `docs/swagger/` (containing  long-form descriptions of the API endpoints), and generates the following swagger specification files:
-
-* `docs/docs.go`
-* `docs/swagger.json`
-* `docs/swagger.yaml`
-
-### Python Libraries
-
-We ship two Python Bacalhau libraries:
-
-* `bacalhau-apiclient` wraps *only* the API endpoint calls and request/response models. It's autogenerated from the OpenAPI specification (see paragraph above). Read more about it in its [readme](./clients/README.md).
-* `bacalhau-sdk` is a **high-level** Bacalhau SDK that ships all the client-side logic (e.g. signing requests) needed to query the endpoints. Its [examples folder](./python/examples) contains code snippets to create, list and inspect jobs. Under the hood, it uses the `bacalhau-apiclient` to call the API. Please use this library in your projects. Read more about it in its [readme](./python/README.md).
-
-## Issues, feature requests, and questions
+- Set up your [local environment](docs/dev/local-env.md)
+- Check out our [Contributing Guide](https://docs.bacalhau.org/community/community/ways-to-contribute)
+- For issues and feature requests, please [open a GitHub issue](https://github.com/bacalhau-project/bacalhau/issues)
 
 We are excited to hear your feedback!
-* For issues and feature requests, please [open a GitHub issue](https://github.com/bacalhau-project/bacalhau/issues).
-* For questions, give feedback or answer questions that will help other user product please use [GitHub Discussions](https://github.com/bacalhau-project/bacalhau/discussions).
-* To engage with other members in the community, join us in our [slack community](https://join.slack.com/t/bacalhauproject/shared_invite/zt-1sihp4vxf-TjkbXz6JRQpg2AhetPzYYQ) `#bacalhau` channel :raising_hand:
-
-## Ways to contribute
-**All manner of contributions are more than welcome!**
-
-We have highlighted the different ways you can contribute in our [contributing guide](https://docs.bacalhau.org/community/ways-to-contribute). You can be part of community discussions, development, and more.
 
 ## Open Source
-This repository contains the Bacalhau software, covered under the [Apache-2.0](./LICENSE), except where noted (any Bacalhau logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
+
+This repository contains the Bacalhau software, covered under the [Apache-2.0](./LICENSE) license, except where noted (any Bacalhau logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
 
 Bacalhau is a product produced from this open source software, exclusively by Expanso, Inc. It is distributed under our commercial terms.
 

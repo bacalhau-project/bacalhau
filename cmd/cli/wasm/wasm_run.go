@@ -4,55 +4,66 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 
-	"github.com/ipfs/go-cid"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
-	"github.com/bacalhau-project/bacalhau/cmd/util/parse"
+	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
-	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm"
 	engine_wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 var (
 	wasmRunLong = templates.LongDesc(`
-		Runs a job that was compiled to WASM
+		Runs a job that was compiled to WASM.
+		
+		The entry module can be specified in three ways:
+		1. Local file path (e.g., ./main.wasm)
+		2. Storage spec (e.g., s3://bucket/main.wasm, http://example.com/main.wasm)
+		3. Target path (when the module is added via --input flag)
+		
+		You can override the target path for any of these using the path:target syntax:
+		- Local file: ./main.wasm:/app/custom.wasm
+		- Storage spec: s3://bucket/main.wasm:/app/custom.wasm
+		
+		Import modules must be added via the --input flag and referenced by their target paths.
 		`)
 
 	wasmRunExample = templates.Examples(`
-		# Runs the <localfile.wasm> module in bacalhau
-		bacalhau wasm run <localfile.wasm>
+		# Run a WASM module from local file
+		bacalhau wasm run ./main.wasm
 
-		# Fetches the wasm module from <cid> and executes it.
-		bacalhau wasm run <cid>
+		# Run a WASM module from S3
+		bacalhau wasm run s3://bucket/main.wasm
+
+		# Run a WASM module from HTTP
+		bacalhau wasm run http://example.com/main.wasm
+
+		# Run a WASM module with custom target path
+		bacalhau wasm run ./main.wasm:/app/custom.wasm
+		bacalhau wasm run s3://bucket/main.wasm:/app/custom.wasm
+
+		# Run a WASM module with import modules
+		bacalhau wasm run --input s3://bucket/lib.wasm:/app/lib.wasm s3://bucket/main.wasm --import-modules /app/lib.wasm
 		`)
 )
 
 type WasmRunOptions struct {
-	// parameters and entry modules are arguments
-	ImportModules        []*models.InputSource
-	Entrypoint           string
-	EnvironmentVariables []string
+	// Target paths for import modules that will be available to the entry module
+	ImportModules []string
+	// The name of the WASM function to call in the entry module
+	Entrypoint string
 
 	JobSettings     *cliflags.JobSettings
 	TaskSettings    *cliflags.TaskSettings
@@ -61,89 +72,63 @@ type WasmRunOptions struct {
 
 func NewWasmOptions() *WasmRunOptions {
 	return &WasmRunOptions{
-		ImportModules:        []*models.InputSource{},
-		Entrypoint:           "_start",
-		EnvironmentVariables: []string{},
-		JobSettings:          cliflags.DefaultJobSettings(),
-		TaskSettings:         cliflags.DefaultTaskSettings(),
-		RunTimeSettings:      cliflags.DefaultRunTimeSettings(),
+		ImportModules: []string{},
+		Entrypoint:    "_start",
+
+		JobSettings:     cliflags.DefaultJobSettings(),
+		TaskSettings:    cliflags.DefaultTaskSettings(),
+		RunTimeSettings: cliflags.DefaultRunTimeSettings(),
 	}
 }
 
 func NewCmd() *cobra.Command {
 	wasmCmd := &cobra.Command{
-		Use:                "wasm",
-		Short:              "Run and prepare WASM jobs on the network",
-		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
-		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
+		Use:   "wasm",
+		Short: "Run and prepare WASM jobs on the network",
 	}
 
-	wasmCmd.AddCommand(
-		newRunCmd(),
-		newValidateCmd(),
-	)
-
+	wasmCmd.AddCommand(newRunCmd())
 	return wasmCmd
 }
 
 func newRunCmd() *cobra.Command {
 	opts := NewWasmOptions()
 
-	wasmRunFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	wasmRunCmd := &cobra.Command{
-		Use:      "run {cid-of-wasm | <local.wasm>} [--entry-point <string>] [wasm-args ...]",
+		Use:      "run ENTRY-MODULE [wasm-args ...]",
 		Short:    "Run a WASM job on the network",
 		Long:     wasmRunLong,
 		Example:  wasmRunExample,
 		Args:     cobra.MinimumNArgs(1),
-		PreRunE:  hook.Chain(hook.ClientPreRunHooks, configflags.PreRun(viper.GetViper(), wasmRunFlags)),
 		PostRunE: hook.ClientPostRunHooks,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			// create a v2 api client
-			apiV2, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.GetAPIClientV2(cmd, cfg)
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}
-			return run(cmd, args, apiV2, opts)
+			return run(cmd, cmdArgs, api, opts)
 		},
 	}
-
-	wasmRunCmd.SilenceUsage = true
-	wasmRunCmd.SilenceErrors = true
 
 	cliflags.RegisterJobFlags(wasmRunCmd, opts.JobSettings)
 	cliflags.RegisterTaskFlags(wasmRunCmd, opts.TaskSettings)
 	wasmRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
-	if err := configflags.RegisterFlags(wasmRunCmd, wasmRunFlags); err != nil {
-		util.Fatal(wasmRunCmd, err, 1)
-	}
-
+	// register flags unique to wasm.
 	wasmFlags := pflag.NewFlagSet("wasm", pflag.ContinueOnError)
-	wasmFlags.VarP(
-		flags.NewURLStorageSpecArrayFlag(&opts.ImportModules), "import-module-urls", "U",
-		`URL of the WASM modules to import from a URL source. URL accept any valid URL supported by `+
-			`the 'wget' command, and supports both HTTP and HTTPS.`,
+	wasmFlags.StringSliceVarP(&opts.ImportModules, "import-modules", "I", []string{},
+		`Target paths of WASM modules to import. These paths must match the target paths specified in the --input flags.
+		For example, if you added a module with --input s3://bucket/lib.wasm:/app/lib.wasm, use --import-modules /app/lib.wasm`,
 	)
-	wasmFlags.VarP(
-		flags.NewIPFSStorageSpecArrayFlag(&opts.ImportModules), "import-module-volumes", "I",
-		`CID:path of the WASM modules to import from IPFS, if you need to set the path of the mounted data.`,
-	)
-	wasmFlags.StringVar(
-		&opts.Entrypoint, "entry-point", opts.Entrypoint,
+	wasmFlags.StringVar(&opts.Entrypoint, "entry-point", opts.Entrypoint,
 		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
 		will execute the job.`,
 	)
-	wasmFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
-		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
 	wasmRunCmd.Flags().AddFlagSet(wasmFlags)
 	return wasmRunCmd
@@ -184,138 +169,99 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 	return nil
 }
 
-func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Job, error) {
-	entryModule, err := parseWasmEntryModule(ctx, args[0])
-	if err != nil {
-		return nil, err
-	}
-	envVar, err := parse.StringSliceToMap(opts.EnvironmentVariables)
-	if err != nil {
-		return nil, fmt.Errorf("wasm env vars invalid: %w", err)
-	}
-	engineSpec, err := engine_wasm.NewWasmEngineBuilder(entryModule).
-		WithParameters(args[1:]...).
-		WithEntrypoint(opts.Entrypoint).
-		WithImportModules(opts.ImportModules).
-		WithEnvironmentVariables(envVar).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
-}
-
-func parseWasmEntryModule(ctx context.Context, in string) (*models.InputSource, error) {
-	// Try interpreting this as a CID.
-	wasmCid, err := cid.Parse(in)
+// parseWasmModule handles the entry module path and returns an InputSource if it's a local file or storage spec.
+// If it's a target path, it returns nil and the path should be treated as-is.
+func parseWasmModule(ctx context.Context, in string, defaultTarget string) (*models.InputSource, error) {
+	// Try interpreting this as a storage spec (http://, s3://, etc.)
+	spec, err := opts.ParseStorageSpec(in, defaultTarget)
 	if err == nil {
-		ipfsSpec, err := storage_ipfs.NewSpecConfig(wasmCid.String())
-		if err != nil {
-			return nil, err
-		}
-		return &models.InputSource{
-			Source: ipfsSpec,
-			Alias:  fmt.Sprintf("ipfs://%s", wasmCid),
-			// TODO REVIEW a target was never previously set here, unsure what to do?
-			Target: "",
-		}, nil
+		return spec, nil
 	}
-	// Try interpreting this as a path.
-	info, err := os.Stat(in)
+
+	// Try interpreting this as a local path with target override
+	var filePath, targetPath string
+	if parts := strings.Split(in, ":"); len(parts) == 2 {
+		filePath = parts[0]
+		targetPath = parts[1]
+	} else {
+		filePath = in
+		targetPath = defaultTarget
+	}
+
+	// Check if it's a local file
+	info, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, errors.Wrapf(err, "%q is not a valid CID or local file", in)
-		} else {
-			return nil, err
+			// Not a local file, treat as target path
+			return nil, nil
 		}
+		return nil, err
 	}
 
 	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("%q should point to a single file", in)
-	}
-
-	if err := os.Chdir(filepath.Dir(in)); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%q should point to a single file", filePath)
 	}
 
 	storage := inline.NewStorage()
-	inlineData, err := storage.Upload(ctx, info.Name())
-	if err != nil {
-		return nil, err
-	}
-
-	inlineSpec, err := inline.DecodeSpec(&inlineData)
+	inlineData, err := storage.Upload(ctx, filePath)
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.InputSource{
 		Source: &inlineData,
-		Alias:  inlineSpec.URL,
-		// TODO REVIEW a target was never previously set here, unsure what to do?
-		Target: "",
+		Target: targetPath,
 	}, nil
 }
 
-func newValidateCmd() *cobra.Command {
-	opts := NewWasmOptions()
+func build(ctx context.Context, args []string, opts *WasmRunOptions) (*models.Job, error) {
+	entryModule := args[0]
 
-	validateWasmCommand := &cobra.Command{
-		Use:   "validate <local.wasm> [--entry-point <string>]",
-		Short: "Check that a WASM program is runnable on the network",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateWasm(cmd, args, opts); err != nil {
-				util.Fatal(cmd, err, 1)
+	// Try to handle the entry module as a local file or storage spec
+	inputSource, err := parseWasmModule(ctx, entryModule, "main.wasm")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse entry module: %w", err)
+	}
+
+	// If it's a local file or storage spec, add it to the inputs
+	if inputSource != nil {
+		opts.TaskSettings.InputSources.AddValue(inputSource)
+		// Use the target path as the entry module path
+		entryModule = inputSource.Target
+	}
+
+	// Process import modules
+	var importModulePaths []string
+	for _, importModule := range opts.ImportModules {
+		// Try to handle the import module as a local file or storage spec
+		moduleInputSource, err := parseWasmModule(ctx, importModule, "")
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse import module %q: %w", importModule, err)
+		}
+
+		// If it's a local file or storage spec, add it to the inputs
+		if moduleInputSource != nil {
+			if moduleInputSource.Target == "" {
+				return nil, fmt.Errorf("import module %q must specify a target path using the format 'path:target'", importModule)
 			}
-			return nil
-		},
+			opts.TaskSettings.InputSources.AddValue(moduleInputSource)
+			// Use the target path as the import module path
+			importModulePaths = append(importModulePaths, moduleInputSource.Target)
+		} else {
+			// If it's just a target path, use it as-is
+			importModulePaths = append(importModulePaths, importModule)
+		}
 	}
 
-	validateWasmCommand.SilenceUsage = true
-	validateWasmCommand.SilenceErrors = true
-
-	validateWasmCommand.PersistentFlags().StringVar(
-		&opts.Entrypoint, "entry-point", opts.Entrypoint,
-		`The name of the WASM function in the entry module to call. This should be a zero-parameter zero-result function that
-		will execute the job.`,
-	)
-
-	return validateWasmCommand
-}
-
-func validateWasm(cmd *cobra.Command, args []string, opts *WasmRunOptions) error {
-	ctx := cmd.Context()
-
-	programPath := args[0]
-	entryPoint := opts.Entrypoint
-
-	engine := wazero.NewRuntime(ctx)
-	defer closer.ContextCloserWithLogOnError(ctx, "engine", engine)
-
-	config := wazero.NewModuleConfig()
-	loader := wasm.NewModuleLoader(engine, config)
-	module, err := loader.Load(ctx, programPath)
+	// Build engine spec using the target paths
+	engineSpec, err := engine_wasm.NewWasmEngineBuilder(entryModule).
+		WithParameters(args[1:]...).
+		WithEntrypoint(opts.Entrypoint).
+		WithImportModules(importModulePaths).
+		Build()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	wasi, err := wasi_snapshot_preview1.NewBuilder(engine).Compile(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = wasm.ValidateModuleImports(module, wasi)
-	if err != nil {
-		return err
-	}
-
-	err = wasm.ValidateModuleAsEntryPoint(module, entryPoint)
-	if err != nil {
-		return err
-	}
-
-	cmd.Println("OK")
-	return nil
+	return helpers.BuildJobFromFlags(engineSpec, opts.JobSettings, opts.TaskSettings)
 }

@@ -7,13 +7,13 @@ import (
 )
 
 type NetworkingStrategy struct {
-	Accept bool
+	Reject bool
 }
 
 var _ bidstrategy.SemanticBidStrategy = (*NetworkingStrategy)(nil)
 
-func NewNetworkingStrategy(accept bool) *NetworkingStrategy {
-	return &NetworkingStrategy{accept}
+func NewNetworkingStrategy(reject bool) *NetworkingStrategy {
+	return &NetworkingStrategy{reject}
 }
 
 const (
@@ -29,5 +29,5 @@ func (s *NetworkingStrategy) ShouldBid(
 		return bidstrategy.NewBidResponse(true, localOnlyReason), nil
 	}
 
-	return bidstrategy.NewBidResponse(s.Accept, accessReason), nil
+	return bidstrategy.NewBidResponse(!s.Reject, accessReason), nil
 }
