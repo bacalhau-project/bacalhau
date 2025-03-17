@@ -96,7 +96,6 @@ func (o *SSOOptions) runSSO(cmd *cobra.Command, api client.API, cfg types.Bacalh
 	// Get the node auth config which contains OAuth2 settings
 	nodeAuthConfig, err := api.Agent().NodeAuthConfig(ctx)
 	if err != nil {
-		fmt.Println(err.Error())
 		log.Debug().Err(err).Msg("an error has occurred fetching the node authentication details")
 		return bacerrors.New("an error has occurred fetching the node authentication details").
 			WithHint(errorHint)
