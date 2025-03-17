@@ -147,7 +147,7 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 	// Create maps to track used aliases, usernames, and API keys
 	seenAliases := make(map[string]string)   // map[lowercase_alias]original_alias
 	seenUsernames := make(map[string]string) // map[lowercase_username]original_username
-	seenApiKeys := make(map[string]bool)
+	seenAPIKeys := make(map[string]bool)
 
 	// Validate all users first
 	for _, user := range users {
@@ -157,7 +157,7 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 		}
 
 		// Check for duplicates
-		if err := a.checkForDuplicates(user, seenAliases, seenUsernames, seenApiKeys); err != nil {
+		if err := a.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys); err != nil {
 			return err
 		}
 
@@ -171,7 +171,7 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 		}
 
 		if user.APIKey != "" {
-			seenApiKeys[user.APIKey] = true
+			seenAPIKeys[user.APIKey] = true
 		}
 	}
 

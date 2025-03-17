@@ -373,7 +373,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 			"test user": "Test User", // Use lowercase key as that's what the function checks
 		}
 		seenUsernames := map[string]string{}
-		seenApiKeys := map[string]bool{}
+		seenAPIKeys := map[string]bool{}
 
 		user := types.AuthUser{
 			Alias:    "Test User", // Same as "Test User" when converted to lowercase
@@ -387,7 +387,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		}
 
 		// Execute
-		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenApiKeys)
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
 
 		// Verify
 		require.Error(t, err)
@@ -402,7 +402,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		seenUsernames := map[string]string{
 			"testuser": "testuser",
 		}
-		seenApiKeys := map[string]bool{}
+		seenAPIKeys := map[string]bool{}
 
 		user := types.AuthUser{
 			Alias:    "Another User",
@@ -416,7 +416,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		}
 
 		// Execute
-		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenApiKeys)
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
 
 		// Verify
 		require.Error(t, err)
@@ -429,7 +429,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 
 		seenAliases := map[string]string{}
 		seenUsernames := map[string]string{}
-		seenApiKeys := map[string]bool{
+		seenAPIKeys := map[string]bool{
 			"this-is-a-valid-api-key-12345678901234567890": true,
 		}
 
@@ -444,7 +444,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		}
 
 		// Execute
-		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenApiKeys)
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
 
 		// Verify
 		require.Error(t, err)
@@ -461,7 +461,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		seenUsernames := map[string]string{
 			"existingusername": "existingUsername",
 		}
-		seenApiKeys := map[string]bool{
+		seenAPIKeys := map[string]bool{
 			"existing-api-key-12345678901234567890": true,
 		}
 
@@ -477,7 +477,7 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		}
 
 		// Execute
-		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenApiKeys)
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
 
 		// Verify
 		require.NoError(t, err)

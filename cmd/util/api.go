@@ -24,6 +24,7 @@ import (
 // ReadTokenFn is a function type for the ReadToken function that can be overridden for testing
 var ReadTokenFn = ReadToken
 
+//nolint:funlen
 func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
 	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
 	baseURL, _ := ConstructAPIEndpoint(cfg.API)
@@ -229,7 +230,6 @@ func resolveAuthCredentials(
 	credentialValue string,
 	err error,
 ) {
-
 	// Trim spaces from all credentials
 	apiKey = strings.TrimSpace(apiKey)
 	basicAuthUsername = strings.TrimSpace(basicAuthUsername)
