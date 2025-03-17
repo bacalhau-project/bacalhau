@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/credsecurity"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/pkg/errors"
 )
@@ -20,6 +21,8 @@ type basicAuthAuthorizer struct {
 	capabilityChecker *CapabilityChecker
 	// Endpoint permissions mapping
 	endpointPermissions map[string]string
+	// Bcrypt manager for password verification
+	bcryptManager *credsecurity.BcryptManager
 }
 
 // validateBasicAuth validates basic authentication credentials
@@ -46,9 +49,18 @@ func (a *basicAuthAuthorizer) validateBasicAuth(authHeader string) (types.AuthUs
 		return types.AuthUser{}, false, errors.New("invalid basic auth credentials")
 	}
 
-	// Compare passwords using constant-time comparison to prevent timing attacks
-	if subtle.ConstantTimeCompare([]byte(user.Password), []byte(password)) != 1 {
-		return types.AuthUser{}, false, errors.New("invalid basic auth credentials")
+	// Check if the stored password is a bcrypt hash
+	if a.bcryptManager.IsBcryptHash(user.Password) {
+		// Verify using bcrypt
+		err = a.bcryptManager.VerifyPassword(password, user.Password)
+		if err != nil {
+			return types.AuthUser{}, false, errors.New("invalid basic auth credentials")
+		}
+	} else {
+		// Compare passwords using constant-time comparison for plain text
+		if subtle.ConstantTimeCompare([]byte(user.Password), []byte(password)) != 1 {
+			return types.AuthUser{}, false, errors.New("invalid basic auth credentials")
+		}
 	}
 
 	// Authentication successful
@@ -66,6 +78,7 @@ func NewBasicAuthAuthorizer(
 		basicAuthUsers:      basicAuthUsers,
 		capabilityChecker:   capabilityChecker,
 		endpointPermissions: endpointPermissions,
+		bcryptManager:       credsecurity.NewDefaultBcryptManager(),
 	}
 
 	return authorizer

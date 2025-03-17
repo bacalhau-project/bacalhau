@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/credsecurity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,6 +78,133 @@ func TestBasicAuthValidation(t *testing.T) {
 		require.Error(t, err)
 		assert.False(t, authenticated)
 		assert.Contains(t, err.Error(), "invalid basic auth credentials format")
+	})
+
+	t.Run("ValidBcryptPassword", func(t *testing.T) {
+		// Setup an authorizer with a user that has a bcrypt hashed password
+		authorizer := createTestAuthorizer()
+
+		// Create a bcrypt hash of "securepass"
+		bcryptManager := credsecurity.NewDefaultBcryptManager()
+		hashedPassword, err := bcryptManager.HashPassword("securepass")
+		require.NoError(t, err)
+
+		// Add a user with a bcrypt hashed password
+		authorizer.basicAuthUsers["bcryptuser"] = types.AuthUser{
+			Alias:    "Bcrypt User",
+			Password: hashedPassword,
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job", "write:job"},
+				},
+			},
+		}
+
+		// Create valid auth header with the plaintext password
+		authHeader := createBasicAuthHeader("bcryptuser", "securepass")
+
+		// Execute
+		user, authenticated, err := authorizer.validateBasicAuth(authHeader)
+
+		// Verify
+		require.NoError(t, err)
+		assert.True(t, authenticated)
+		assert.Equal(t, "Bcrypt User", user.Alias)
+		assert.Equal(t, "read:job", user.Capabilities[0].Actions[0])
+	})
+
+	t.Run("InvalidBcryptPassword", func(t *testing.T) {
+		// Setup an authorizer with a user that has a bcrypt hashed password
+		authorizer := createTestAuthorizer()
+
+		// Create a bcrypt hash of "securepass"
+		bcryptManager := credsecurity.NewDefaultBcryptManager()
+		hashedPassword, err := bcryptManager.HashPassword("securepass")
+		require.NoError(t, err)
+
+		// Add a user with a bcrypt hashed password
+		authorizer.basicAuthUsers["bcryptuser"] = types.AuthUser{
+			Alias:    "Bcrypt User",
+			Password: hashedPassword,
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job", "write:job"},
+				},
+			},
+		}
+
+		// Create invalid auth header with the wrong password
+		authHeader := createBasicAuthHeader("bcryptuser", "wrongpass")
+
+		// Execute
+		_, authenticated, err := authorizer.validateBasicAuth(authHeader)
+
+		// Verify
+		require.Error(t, err)
+		assert.False(t, authenticated)
+		assert.Contains(t, err.Error(), "invalid basic auth credentials")
+	})
+
+	t.Run("MixedAuthenticationMethods", func(t *testing.T) {
+		// Setup an authorizer with both plaintext and bcrypt users
+		authorizer := createTestAuthorizer()
+
+		// Create a bcrypt hash of "securepass"
+		bcryptManager := credsecurity.NewDefaultBcryptManager()
+		hashedPassword, err := bcryptManager.HashPassword("securepass")
+		require.NoError(t, err)
+
+		// Add a user with a bcrypt hashed password
+		authorizer.basicAuthUsers["bcryptuser"] = types.AuthUser{
+			Alias:    "Bcrypt User",
+			Password: hashedPassword,
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job", "write:job"},
+				},
+			},
+		}
+
+		// Test plain text user still works
+		plainAuthHeader := createBasicAuthHeader("testuser", "testpass")
+		user, authenticated, err := authorizer.validateBasicAuth(plainAuthHeader)
+		require.NoError(t, err)
+		assert.True(t, authenticated)
+		assert.Equal(t, "Test User", user.Alias)
+
+		// Test bcrypt user works too
+		bcryptAuthHeader := createBasicAuthHeader("bcryptuser", "securepass")
+		bcryptUser, bcryptAuthenticated, bcryptErr := authorizer.validateBasicAuth(bcryptAuthHeader)
+		require.NoError(t, bcryptErr)
+		assert.True(t, bcryptAuthenticated)
+		assert.Equal(t, "Bcrypt User", bcryptUser.Alias)
+	})
+
+	t.Run("BcryptFormatButInvalidHash", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Add a user with an invalid bcrypt format (correct prefix but invalid hash)
+		authorizer.basicAuthUsers["invalidhashuser"] = types.AuthUser{
+			Alias:    "Invalid Hash User",
+			Password: "$2a$10$invalidhashnotvalidbcrypt",
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"},
+				},
+			},
+		}
+
+		// Create auth header
+		authHeader := createBasicAuthHeader("invalidhashuser", "anypassword")
+
+		// Execute
+		_, authenticated, err := authorizer.validateBasicAuth(authHeader)
+
+		// Verify
+		require.Error(t, err)
+		assert.False(t, authenticated)
+		assert.Contains(t, err.Error(), "invalid basic auth credentials")
 	})
 }
 

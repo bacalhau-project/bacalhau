@@ -14,5 +14,6 @@ func NewCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewSSOCmd())
+	cmd.AddCommand(NewHashPasswordCmd())
 	return cmd
 }
