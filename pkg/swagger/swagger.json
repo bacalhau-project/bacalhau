@@ -2454,10 +2454,10 @@
         "types.AuthUser": {
             "type": "object",
             "properties": {
-                "Alias": {
+                "APIKey": {
                     "type": "string"
                 },
-                "ApiKey": {
+                "Alias": {
                     "type": "string"
                 },
                 "Capabilities": {
@@ -3023,7 +3023,7 @@
                 "DeviceAuthorizationEndpoint": {
                     "type": "string"
                 },
-                "DeviceClientId": {
+                "DeviceClientID": {
                     "type": "string"
                 },
                 "Issuer": {
@@ -3035,7 +3035,7 @@
                 "PollingInterval": {
                     "type": "integer"
                 },
-                "ProviderId": {
+                "ProviderID": {
                     "type": "string"
                 },
                 "ProviderName": {

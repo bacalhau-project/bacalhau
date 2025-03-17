@@ -2458,10 +2458,10 @@ const docTemplate = `{
         "types.AuthUser": {
             "type": "object",
             "properties": {
-                "Alias": {
+                "APIKey": {
                     "type": "string"
                 },
-                "APIKey": {
+                "Alias": {
                     "type": "string"
                 },
                 "Capabilities": {
