@@ -57,6 +57,32 @@
                 }
             }
         },
+        "/api/v1/agent/authconfig": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the OAuth2 configuration of the node.",
+                "operationId": "agent/authconfig",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetAgentNodeAuthConfigResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/agent/config": {
             "get": {
                 "produces": [
@@ -1049,6 +1075,17 @@
                 },
                 "sub": {
                     "description": "the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.GetAgentNodeAuthConfigResponse": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/types.Oauth2Config"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -2402,6 +2439,38 @@
                     "additionalProperties": {
                         "$ref": "#/definitions/types.AuthenticatorConfig"
                     }
+                },
+                "Oauth2": {
+                    "$ref": "#/definitions/types.Oauth2Config"
+                },
+                "Users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AuthUser"
+                    }
+                }
+            }
+        },
+        "types.AuthUser": {
+            "type": "object",
+            "properties": {
+                "Alias": {
+                    "type": "string"
+                },
+                "ApiKey": {
+                    "type": "string"
+                },
+                "Capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Capability"
+                    }
+                },
+                "Password": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
                 }
             }
         },
@@ -2506,6 +2575,17 @@
                 },
                 "Timeouts": {
                     "$ref": "#/definitions/types.TaskTimeoutConfig"
+                }
+            }
+        },
+        "types.Capability": {
+            "type": "object",
+            "properties": {
+                "Actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2931,6 +3011,44 @@
                 "ManualApproval": {
                     "description": "ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.",
                     "type": "boolean"
+                }
+            }
+        },
+        "types.Oauth2Config": {
+            "type": "object",
+            "properties": {
+                "Audience": {
+                    "type": "string"
+                },
+                "DeviceAuthorizationEndpoint": {
+                    "type": "string"
+                },
+                "DeviceClientId": {
+                    "type": "string"
+                },
+                "Issuer": {
+                    "type": "string"
+                },
+                "JWKSUri": {
+                    "type": "string"
+                },
+                "PollingInterval": {
+                    "type": "integer"
+                },
+                "ProviderId": {
+                    "type": "string"
+                },
+                "ProviderName": {
+                    "type": "string"
+                },
+                "Scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "TokenEndpoint": {
+                    "type": "string"
                 }
             }
         },
