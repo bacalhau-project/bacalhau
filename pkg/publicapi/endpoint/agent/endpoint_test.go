@@ -29,7 +29,7 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	router := echo.New()
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseManager, err := licensing.NewManager(&types.License{LocalPath: ""})
 	require.NoError(t, err)
 
 	// populate the fields that should be redacted with "secret" values.
@@ -90,7 +90,7 @@ func TestEndpointLicenseValid(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
@@ -138,7 +138,7 @@ func TestEndpointLicenseNotConfigured(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
@@ -199,7 +199,7 @@ func TestEndpointLicenseExpired(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewManager(&config.Orchestrator.License)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{

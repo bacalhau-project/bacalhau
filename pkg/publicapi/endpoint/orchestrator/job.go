@@ -41,6 +41,16 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	if err := c.Validate(&args); err != nil {
 		return err
 	}
+
+	// Check license validation state
+	var warnings []string
+	if e.licenseManager != nil {
+		state := e.licenseManager.Validate()
+		if !state.Type.IsValid() {
+			warnings = append(warnings, state.Message)
+		}
+	}
+
 	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
 	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
@@ -54,7 +64,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	return c.JSON(http.StatusOK, apimodels.PutJobResponse{
 		JobID:        resp.JobID,
 		EvaluationID: resp.EvaluationID,
-		Warnings:     resp.Warnings,
+		Warnings:     append(resp.Warnings, warnings...),
 	})
 }
 
