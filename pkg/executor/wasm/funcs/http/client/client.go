@@ -2,6 +2,8 @@
 package client
 
 import (
+	"sort"
+	"strings"
 	"unsafe"
 )
 
@@ -47,11 +49,90 @@ func httpRequest(
 	statusPtr uint32,
 ) uint32
 
+// Headers represents HTTP headers as a map
+type Headers map[string][]string
+
 // Response represents an HTTP response
 type Response struct {
-	StatusCode int    // HTTP status code
-	Headers    string // Response headers
-	Body       string // Response body
+	StatusCode int     // HTTP status code
+	Headers    Headers // Response headers
+	Body       string  // Response body
+}
+
+// Add adds a header value for a given key
+func (h Headers) Add(key, value string) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return
+	}
+	if h[key] == nil {
+		h[key] = []string{}
+	}
+	h[key] = append(h[key], value)
+}
+
+// Set sets a header value for a given key, replacing any existing values
+func (h Headers) Set(key, value string) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return
+	}
+	h[key] = []string{value}
+}
+
+// Get returns the first value for a given header key
+func (h Headers) Get(key string) string {
+	if values := h[key]; len(values) > 0 {
+		return values[0]
+	}
+	return ""
+}
+
+// Values returns all values for a given header key
+func (h Headers) Values(key string) []string {
+	return h[key]
+}
+
+// String converts headers to a string format for internal use
+func (h Headers) String() string {
+	if len(h) == 0 {
+		return ""
+	}
+
+	var headerLines []string
+	for key, values := range h {
+		for _, value := range values {
+			headerLines = append(headerLines, key+": "+value)
+		}
+	}
+	sort.Strings(headerLines) // ensure consistent ordering
+	return strings.Join(headerLines, "\n")
+}
+
+// ParseHeaders parses a header string into a Headers map
+func ParseHeaders(headerStr string) Headers {
+	headers := make(Headers)
+	if headerStr == "" {
+		return headers
+	}
+
+	lines := strings.Split(headerStr, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		headers.Add(key, value)
+	}
+	return headers
 }
 
 // HTTPError represents an error from the HTTP client
@@ -80,10 +161,45 @@ func NewClient() *Client {
 	}
 }
 
+// Get makes a GET request
+func (c *Client) Get(url string, headers Headers) (*Response, error) {
+	return c.Request(MethodGet, url, headers, "")
+}
+
+// Post makes a POST request
+func (c *Client) Post(url string, headers Headers, body string) (*Response, error) {
+	return c.Request(MethodPost, url, headers, body)
+}
+
+// Put makes a PUT request
+func (c *Client) Put(url string, headers Headers, body string) (*Response, error) {
+	return c.Request(MethodPut, url, headers, body)
+}
+
+// Delete makes a DELETE request
+func (c *Client) Delete(url string, headers Headers) (*Response, error) {
+	return c.Request(MethodDelete, url, headers, "")
+}
+
+// Head makes a HEAD request
+func (c *Client) Head(url string, headers Headers) (*Response, error) {
+	return c.Request(MethodHead, url, headers, "")
+}
+
+// Options makes an OPTIONS request
+func (c *Client) Options(url string, headers Headers) (*Response, error) {
+	return c.Request(MethodOptions, url, headers, "")
+}
+
+// Patch makes a PATCH request
+func (c *Client) Patch(url string, headers Headers, body string) (*Response, error) {
+	return c.Request(MethodPatch, url, headers, body)
+}
+
 // Request makes a HTTP request and returns the response
-func (c *Client) Request(method uint32, url, headers, body string) (*Response, error) {
+func (c *Client) Request(method uint32, url string, headers Headers, body string) (*Response, error) {
 	urlPtr, urlLen := stringToPtr(url)
-	headersPtr, headersLen := stringToPtr(headers)
+	headersPtr, headersLen := stringToPtr(headers.String())
 	bodyPtr, bodyLen := stringToPtr(body)
 
 	// Allocate buffers with the configured sizes
@@ -122,7 +238,7 @@ func (c *Client) Request(method uint32, url, headers, body string) (*Response, e
 
 	return &Response{
 		StatusCode: int(responseStatus),
-		Headers:    respHeaders,
+		Headers:    ParseHeaders(respHeaders),
 		Body:       respBody,
 	}, nil
 }
@@ -160,26 +276,4 @@ func errorFromStatus(status uint32) error {
 	default:
 		return &HTTPError{Code: status, Message: "unknown error"}
 	}
-}
-
-// Convenience methods for common HTTP methods
-
-// Get makes a GET request
-func (c *Client) Get(url, headers string) (*Response, error) {
-	return c.Request(MethodGet, url, headers, "")
-}
-
-// Post makes a POST request
-func (c *Client) Post(url, headers, body string) (*Response, error) {
-	return c.Request(MethodPost, url, headers, body)
-}
-
-// Put makes a PUT request
-func (c *Client) Put(url, headers, body string) (*Response, error) {
-	return c.Request(MethodPut, url, headers, body)
-}
-
-// Delete makes a DELETE request
-func (c *Client) Delete(url, headers string) (*Response, error) {
-	return c.Request(MethodDelete, url, headers, "")
 }

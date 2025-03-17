@@ -51,19 +51,6 @@ The module accepts the following environment variables:
 - `HTTP_HEADERS`: HTTP headers to include in the request
 - `HTTP_BODY`: Request body (for POST, PUT, PATCH)
 
-### Example
-
-```bash
-# Make a GET request
-HTTP_URL=https://example.com bacalhau wasm run main.wasm
-
-# Make a POST request with headers and body
-HTTP_METHOD=POST \
-HTTP_URL=https://example.com/api \
-HTTP_HEADERS="Content-Type: application/json" \
-HTTP_BODY='{"key": "value"}' \
-bacalhau wasm run main.wasm
-```
 
 ## Implementation Details
 

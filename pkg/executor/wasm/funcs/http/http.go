@@ -469,9 +469,10 @@ func safeUint32(n int) uint32 {
 	if n < 0 {
 		return 0
 	}
-	// Use uint32 for comparison to handle 32-bit architectures
+	// Use uint64 for comparison to handle all architectures safely
 	if uint64(n) > uint64(^uint32(0)) {
 		return ^uint32(0) // MaxUint32 using bitwise complement of zero
 	}
-	return uint32(n)
+	// Safe to convert now that we've clamped the value
+	return uint32(n) //nolint:gosec // Safe because we've clamped the value to valid uint32 range
 }
