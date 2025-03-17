@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	http "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/testdata"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
@@ -423,19 +424,141 @@ func WasmLogTest(t testing.TB) Scenario {
 	}
 }
 
+func WasmGetHTTP(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"Status Code: 200"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type: models.NetworkFull,
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmGetHTTPAllowList(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"Status Code: 200"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type:    models.NetworkHTTP,
+						Domains: []string{"httpbin.org"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmGetHTTPNotAllowList(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"host not allowed"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type:    models.NetworkHTTP,
+						Domains: []string{"httpbin.com"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmNoNetworking(t testing.TB) Scenario {
+	return Scenario{
+		CommandResultsChecker: ErrorMessageContains(`unknown module "wasi:http/requests"`),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type: models.NetworkNone,
+					},
+				},
+			},
+		},
+	}
+}
+
 func GetAllScenarios(t testing.TB) map[string]Scenario {
 	scenarios := map[string]Scenario{
-		"cat_file_to_stdout": CatFileToStdout(t),
-		"cat_file_to_volume": CatFileToVolume(t),
-		"grep_file":          GrepFile(t),
-		"sed_file":           SedFile(t),
-		"awk_file":           AwkFile(t),
-		"logtest":            WasmLogTest(t),
-		"wasm_hello_world":   WasmHelloWorld(t),
-		"wasm_env_vars":      WasmEnvVars(t),
-		"wasm_csv_transform": WasmCsvTransform(t),
-		"wasm_exit_code":     WasmExitCode(t),
-		"wasm_dynamic_link":  WasmDynamicLink(t),
+		"cat_file_to_stdout":        CatFileToStdout(t),
+		"cat_file_to_volume":        CatFileToVolume(t),
+		"grep_file":                 GrepFile(t),
+		"sed_file":                  SedFile(t),
+		"awk_file":                  AwkFile(t),
+		"logtest":                   WasmLogTest(t),
+		"wasm_hello_world":          WasmHelloWorld(t),
+		"wasm_env_vars":             WasmEnvVars(t),
+		"wasm_csv_transform":        WasmCsvTransform(t),
+		"wasm_exit_code":            WasmExitCode(t),
+		"wasm_dynamic_link":         WasmDynamicLink(t),
+		"wasm_http_get_full":        WasmGetHTTP(t),
+		"wasm_http_get_allowlist":   WasmGetHTTPAllowList(t),
+		"wasm_http_not_allowlisted": WasmGetHTTPNotAllowList(t),
+		"wasm_no_networking":        WasmNoNetworking(t),
 	}
 
 	if runtime.GOOS == "windows" {
