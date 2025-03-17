@@ -2,7 +2,9 @@ package http
 
 import (
 	"context"
+	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,6 +54,13 @@ const (
 
 	// DefaultMemoryUsagePercent is the default percentage of memory that can be used for HTTP responses
 	DefaultMemoryUsagePercent = 0.8 // 80%
+)
+
+// Error constants for HTTP module
+const (
+	errInvalidURL     = "invalid URL"
+	errHostNotAllowed = "host not allowed"
+	errInvalidBody    = "invalid body"
 )
 
 type Params struct {
@@ -235,48 +244,39 @@ func (m *module) prepareRequest(
 	return req, nil
 }
 
-// httpRequest implements the WASI HTTP request function
-func (m *module) httpRequest(
+// prepareHTTPRequest prepares the HTTP request from WASM memory
+func (m *module) prepareHTTPRequest(
 	ctx context.Context,
 	mod api.Module,
 	method uint32,
 	urlPtr, urlLen uint32,
 	headersPtr, headersLen uint32,
 	bodyPtr, bodyLen uint32,
-	responseHeadersPtr, responseHeadersLenPtr uint32,
-	responseBodyPtr, responseBodyLenPtr uint32,
-	statusPtr uint32,
-) uint32 {
+) (*http.Request, error) {
 	memory := mod.Memory()
 
 	// Read URL from WebAssembly memory
 	urlBytes, ok := memory.Read(urlPtr, urlLen)
 	if !ok {
-		return StatusInvalidURL
+		return nil, errors.New(errInvalidURL)
 	}
 
 	urlStr := string(urlBytes)
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		return StatusInvalidURL
+		return nil, errors.New(errInvalidURL)
 	}
 
 	// Check if the host is allowed
 	if !m.isHostAllowed(parsedURL.Host) {
-		return StatusNotAllowed
-	}
-
-	// Verify output pointers are provided
-	if responseHeadersPtr == 0 || responseHeadersLenPtr == 0 ||
-		responseBodyPtr == 0 || responseBodyLenPtr == 0 {
-		return StatusBadInput
+		return nil, errors.New(errHostNotAllowed)
 	}
 
 	// Read headers if provided
 	headers := make(http.Header)
 	if headersPtr != 0 && headersLen > 0 {
-		headersBytes, ok := memory.Read(headersPtr, headersLen)
-		if ok {
+		var headersBytes []byte
+		if headersBytes, ok = memory.Read(headersPtr, headersLen); ok {
 			parseHeaders(headersBytes, headers)
 		}
 	}
@@ -286,35 +286,42 @@ func (m *module) httpRequest(
 	if bodyPtr != 0 && bodyLen > 0 {
 		bodyBytes, ok = memory.Read(bodyPtr, bodyLen)
 		if !ok {
-			return StatusBadInput
+			return nil, errors.New(errInvalidBody)
 		}
 	}
 
-	// Calculate maximum allowed response size for this module
-	maxSize := m.calculateMaxResponseSize(mod)
+	return m.prepareRequest(ctx, method, urlStr, headers, bodyBytes)
+}
 
-	// Prepare and execute the actual request
-	req, err := m.prepareRequest(ctx, method, urlStr, headers, bodyBytes)
-	if err != nil {
-		return StatusInvalidURL
+// safeInt64 converts uint64 to int64, clamping to MaxInt64 if necessary
+func safeInt64(n uint64) int64 {
+	if n > uint64(math.MaxInt64) {
+		return math.MaxInt64
 	}
+	return int64(n)
+}
 
-	// Execute request
-	resp, err := m.client.Do(req)
-	if err != nil {
-		// Check for timeout
-		if urlErr, ok := err.(*url.Error); ok && urlErr.Timeout() {
-			return StatusTimeout
-		}
-		return StatusNetworkError
+// safeUint32 converts int to uint32, clamping to 0 or MaxUint32 if necessary
+func safeUint32(n int) uint32 {
+	if n < 0 {
+		return 0
 	}
-	defer resp.Body.Close()
+	if n > math.MaxUint32 {
+		return math.MaxUint32
+	}
+	return uint32(n)
+}
 
-	// Read response body with size limit
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, int64(maxSize)))
-	if err != nil {
-		return StatusNetworkError
-	}
+// writeResponseToMemory writes the HTTP response back to WASM memory
+func (m *module) writeResponseToMemory(
+	mod api.Module,
+	resp *http.Response,
+	respBody []byte,
+	responseHeadersPtr, responseHeadersLenPtr uint32,
+	responseBodyPtr, responseBodyLenPtr uint32,
+	statusPtr uint32,
+) uint32 {
+	memory := mod.Memory()
 
 	// Format response headers as a string
 	var headerLines []string
@@ -326,69 +333,112 @@ func (m *module) httpRequest(
 	headersStr := strings.Join(headerLines, "\n")
 
 	// Read the maximum available buffer sizes
-	var headersBufSize, bodyBufSize uint32
-	headersBufSize, ok = memory.ReadUint32Le(responseHeadersLenPtr)
+	headersBufSize, ok := memory.ReadUint32Le(responseHeadersLenPtr)
 	if !ok {
 		return StatusMemoryError
 	}
 
-	bodyBufSize, ok = memory.ReadUint32Le(responseBodyLenPtr)
+	bodyBufSize, ok := memory.ReadUint32Le(responseBodyLenPtr)
 	if !ok {
 		return StatusMemoryError
 	}
 
-	// Get actual sizes
-	actualHeadersLen := uint32(len(headersStr))
-	actualBodyLen := uint32(len(respBody))
-
-	// Truncate if necessary and update the actual lengths
-	if actualHeadersLen > headersBufSize {
+	// Truncate data if necessary to fit in provided buffers
+	if safeUint32(len(headersStr)) > headersBufSize {
 		headersStr = headersStr[:headersBufSize]
-		actualHeadersLen = headersBufSize
 	}
 
-	if actualBodyLen > bodyBufSize {
+	if safeUint32(len(respBody)) > bodyBufSize {
 		respBody = respBody[:bodyBufSize]
-		actualBodyLen = bodyBufSize
 	}
 
 	// Write response status code if pointer provided
 	if statusPtr != 0 {
-		ok = memory.WriteUint32Le(statusPtr, uint32(resp.StatusCode))
-		if !ok {
+		if !memory.WriteUint32Le(statusPtr, safeUint32(resp.StatusCode)) {
 			return StatusMemoryError
 		}
 	}
 
-	// Write actual response header length
-	ok = memory.WriteUint32Le(responseHeadersLenPtr, actualHeadersLen)
-	if !ok {
+	// Write actual lengths
+	if !memory.WriteUint32Le(responseHeadersLenPtr, safeUint32(len(headersStr))) {
 		return StatusMemoryError
 	}
 
-	// Write actual response body length
-	ok = memory.WriteUint32Le(responseBodyLenPtr, actualBodyLen)
-	if !ok {
+	if !memory.WriteUint32Le(responseBodyLenPtr, safeUint32(len(respBody))) {
 		return StatusMemoryError
 	}
 
-	// Write headers to memory
-	for i, b := range []byte(headersStr) {
-		ok = memory.WriteByte(responseHeadersPtr+uint32(i), b)
-		if !ok {
-			return StatusMemoryError
-		}
+	// Write headers and body data
+	if !memory.Write(responseHeadersPtr, []byte(headersStr)) {
+		return StatusMemoryError
 	}
 
-	// Write response body to memory
-	for i, b := range respBody {
-		ok = memory.WriteByte(responseBodyPtr+uint32(i), b)
-		if !ok {
-			return StatusMemoryError
-		}
+	if !memory.Write(responseBodyPtr, respBody) {
+		return StatusMemoryError
 	}
 
 	return StatusSuccess
+}
+
+// httpRequest implements the WASI HTTP request function
+//
+//nolint:gocyclo,funlen
+func (m *module) httpRequest(
+	ctx context.Context,
+	mod api.Module,
+	method uint32,
+	urlPtr, urlLen uint32,
+	headersPtr, headersLen uint32,
+	bodyPtr, bodyLen uint32,
+	responseHeadersPtr, responseHeadersLenPtr uint32,
+	responseBodyPtr, responseBodyLenPtr uint32,
+	statusPtr uint32,
+) uint32 {
+	// Verify output pointers are provided
+	if responseHeadersPtr == 0 || responseHeadersLenPtr == 0 ||
+		responseBodyPtr == 0 || responseBodyLenPtr == 0 {
+		return StatusBadInput
+	}
+
+	// Prepare the request
+	req, err := m.prepareHTTPRequest(ctx, mod, method, urlPtr, urlLen, headersPtr, headersLen, bodyPtr, bodyLen)
+	if err != nil {
+		switch err.Error() {
+		case errInvalidURL:
+			return StatusInvalidURL
+		case errHostNotAllowed:
+			return StatusNotAllowed
+		case errInvalidBody:
+			return StatusBadInput
+		default:
+			return StatusInvalidURL
+		}
+	}
+
+	// Execute request
+	resp, err := m.client.Do(req)
+	if err != nil {
+		// Check for timeout
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) && urlErr.Timeout() {
+			return StatusTimeout
+		}
+		return StatusNetworkError
+	}
+	defer resp.Body.Close()
+
+	// Calculate maximum allowed response size and read response with limit
+	maxSize := m.calculateMaxResponseSize(mod)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, safeInt64(maxSize)))
+	if err != nil {
+		return StatusNetworkError
+	}
+
+	// Write response to memory
+	return m.writeResponseToMemory(mod, resp, respBody,
+		responseHeadersPtr, responseHeadersLenPtr,
+		responseBodyPtr, responseBodyLenPtr,
+		statusPtr)
 }
 
 // Helper functions

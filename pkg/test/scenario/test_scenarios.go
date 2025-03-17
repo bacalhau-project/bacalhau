@@ -424,7 +424,7 @@ func WasmLogTest(t testing.TB) Scenario {
 	}
 }
 
-func WasmGetHttp(t testing.TB) Scenario {
+func WasmGetHTTP(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileContains(
 			"stdout",
@@ -454,7 +454,7 @@ func WasmGetHttp(t testing.TB) Scenario {
 	}
 }
 
-func WasmGetHttpAllowList(t testing.TB) Scenario {
+func WasmGetHTTPAllowList(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileContains(
 			"stdout",
@@ -485,7 +485,7 @@ func WasmGetHttpAllowList(t testing.TB) Scenario {
 	}
 }
 
-func WasmGetHttpNotAllowList(t testing.TB) Scenario {
+func WasmGetHTTPNotAllowList(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileContains(
 			"stdout",
@@ -555,9 +555,9 @@ func GetAllScenarios(t testing.TB) map[string]Scenario {
 		"wasm_csv_transform":        WasmCsvTransform(t),
 		"wasm_exit_code":            WasmExitCode(t),
 		"wasm_dynamic_link":         WasmDynamicLink(t),
-		"wasm_http_get_full":        WasmGetHttp(t),
-		"wasm_http_get_allowlist":   WasmGetHttpAllowList(t),
-		"wasm_http_not_allowlisted": WasmGetHttpNotAllowList(t),
+		"wasm_http_get_full":        WasmGetHTTP(t),
+		"wasm_http_get_allowlist":   WasmGetHTTPAllowList(t),
+		"wasm_http_not_allowlisted": WasmGetHTTPNotAllowList(t),
 		"wasm_no_networking":        WasmNoNetworking(t),
 	}
 
