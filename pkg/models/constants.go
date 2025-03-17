@@ -13,6 +13,12 @@ const (
 
 	// EnvVarPrefix is the prefix used for all Bacalhau executions environment variables
 	EnvVarPrefix = "BACALHAU_"
+
+	// EnvVarHostPortPrefix is the prefix used for host port environment variables
+	EnvVarHostPortPrefix = "BACALHAU_HOST_PORT_"
+
+	// EnvVarPortPrefix is the prefix used for port environment variables
+	EnvVarPortPrefix = "BACALHAU_PORT_"
 )
 
 const (

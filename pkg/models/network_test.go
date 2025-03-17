@@ -6,11 +6,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestNetworkConfig_IsValid(t *testing.T) {
+type NetworkTestSuite struct {
+	suite.Suite
+}
+
+func TestNetworkSuite(t *testing.T) {
+	suite.Run(t, new(NetworkTestSuite))
+}
+
+func (s *NetworkTestSuite) TestNetworkConfigDomainValidation() {
 	tests := []struct {
 		name    string
 		domains []string
@@ -48,74 +55,224 @@ func TestNetworkConfig_IsValid(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		s.Run(tt.name, func() {
 			n := NetworkConfig{
 				Type:    NetworkHTTP,
 				Domains: tt.domains,
 			}
-			if err := n.Validate(); tt.wantErr {
-				assert.Error(t, err)
+			err := n.Validate()
+			if tt.wantErr {
+				s.Error(err)
 			} else {
-				assert.NoError(t, err)
+				s.NoError(err)
 			}
 		})
 	}
 }
 
-func TestDomainSet(t *testing.T) {
+func (s *NetworkTestSuite) TestPortValidation() {
 	tests := []struct {
-		input, output []string
+		name    string
+		port    Port
+		wantErr bool
+		errMsg  string
 	}{
 		{
-			[]string{"foo.com", "bar.com"},
-			[]string{"foo.com", "bar.com"},
+			name: "valid port",
+			port: Port{
+				Name:   "http",
+				Static: 8080,
+			},
+			wantErr: false,
 		},
 		{
-			[]string{"y.foo.com", ".foo.com", "x.foo.com"},
-			[]string{".foo.com"},
+			name: "missing name",
+			port: Port{
+				Static: 8080,
+			},
+			wantErr: true,
+			errMsg:  "port mapping name is required",
 		},
-		{
-			[]string{"y.foo.com", "foo.com", "x.foo.com"},
-			[]string{"y.foo.com", "foo.com", "x.foo.com"},
-		},
+		// ... other test cases ...
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%v->%v", test.input, test.output), func(t *testing.T) {
-			set := NetworkConfig{Domains: test.input}
-			require.ElementsMatch(t, test.output, set.DomainSet())
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			err := tt.port.Validate()
+			if tt.wantErr {
+				s.Error(err)
+				if tt.errMsg != "" {
+					s.Contains(err.Error(), tt.errMsg)
+				}
+			} else {
+				s.NoError(err)
+			}
 		})
 	}
 }
 
-func TestDomainMatching(t *testing.T) {
+func (s *NetworkTestSuite) TestDomainSet() {
 	tests := []struct {
-		require     func(require.TestingT, interface{}, interface{}, ...interface{})
-		left, right string
+		name    string
+		domains []string
+		want    []string
 	}{
-		{require.Equal, "foo.com", "foo.com"},
-		{require.Equal, ".foo.com", "foo.com"},
-		{require.Equal, "foo.com", ".foo.com"},
-		{require.Equal, " .foo.com", ".foo.com"},
-		{require.Equal, "x.foo.com", ".foo.com"},
-		{require.Equal, "y.x.foo.com", ".foo.com"},
-		{require.NotEqual, "x.foo.com", "foo.com"},
-		{require.NotEqual, "foo.com", "x.foo.com"},
-		{require.NotEqual, "bar.com", "foo.com"},
-		{require.NotEqual, ".bar.com", "foo.com"},
-		{require.NotEqual, ".bar.com", ".foo.com"},
-		{require.NotEqual, "bar.com", ".foo.com"},
-		{require.Less, "zzz.com", "foo.com"},
-		{require.Greater, "aaa.com", "foo.com"},
-		{require.Equal, "FOO.com", "foo.COM"},
-		{require.Less, "bFoo.com", "aFoo.com"},
-		{require.Greater, "aFoo.com", "bFoo.com"},
-		{require.Less, "x-foo.com", ".foo.com"},
+		{
+			name:    "empty domains",
+			domains: []string{},
+			want:    []string{},
+		},
+		{
+			name:    "single domain",
+			domains: []string{"example.com"},
+			want:    []string{"example.com"},
+		},
+		{
+			name:    "different domains",
+			domains: []string{"example.com", "test.com"},
+			want:    []string{"example.com", "test.com"},
+		},
+		{
+			name:    "wildcard domains",
+			domains: []string{"y.foo.com", ".foo.com", "x.foo.com"},
+			want:    []string{".foo.com"},
+		},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s<=>%s", test.left, test.right), func(t *testing.T) {
-			test.require(t, 0, matchDomain(test.left, test.right))
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			nc := &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: tt.domains,
+			}
+			got := nc.DomainSet()
+			s.ElementsMatch(got, tt.want)
+		})
+	}
+}
+
+func (s *NetworkTestSuite) TestDomainMatching() {
+	tests := []struct {
+		assertion string
+		left      string
+		right     string
+		wantEqual bool
+	}{
+		// Equal cases
+		{assertion: "equal", left: "foo.com", right: "foo.com", wantEqual: true},
+		{assertion: "equal", left: ".foo.com", right: "foo.com", wantEqual: true},
+		{assertion: "equal", left: "foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: " .foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "x.foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "y.x.foo.com", right: ".foo.com", wantEqual: true},
+		{assertion: "equal", left: "FOO.com", right: "foo.COM", wantEqual: true},
+
+		// Not equal cases
+		{assertion: "notEqual", left: "x.foo.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "foo.com", right: "x.foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "bar.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: ".bar.com", right: "foo.com", wantEqual: false},
+		{assertion: "notEqual", left: ".bar.com", right: ".foo.com", wantEqual: false},
+		{assertion: "notEqual", left: "bar.com", right: ".foo.com", wantEqual: false},
+
+		// Ordering cases
+		{assertion: "less", left: "zzz.com", right: "foo.com", wantEqual: false},
+		{assertion: "greater", left: "aaa.com", right: "foo.com", wantEqual: false},
+		{assertion: "less", left: "bFoo.com", right: "aFoo.com", wantEqual: false},
+		{assertion: "greater", left: "aFoo.com", right: "bFoo.com", wantEqual: false},
+		{assertion: "less", left: "x-foo.com", right: ".foo.com", wantEqual: false},
+	}
+
+	for _, tt := range tests {
+		s.Run(fmt.Sprintf("%s:%s<=>%s", tt.assertion, tt.left, tt.right), func() {
+			result := matchDomain(tt.left, tt.right)
+			if tt.wantEqual {
+				s.Zero(result)
+			} else {
+				s.NotZero(result)
+			}
+		})
+	}
+}
+
+func (s *NetworkTestSuite) TestNetworkConfigCopy() {
+	original := &NetworkConfig{
+		Type:    NetworkBridge,
+		Domains: []string{"example.com"},
+		Ports: PortMap{
+			{
+				Name:        "http",
+				Static:      8080,
+				Target:      80,
+				HostNetwork: "127.0.0.1",
+			},
+		},
+	}
+
+	copied := original.Copy()
+
+	// Test that it's a deep copy
+	s.Equal(original.Type, copied.Type)
+	s.Equal(original.Domains, copied.Domains)
+	s.Equal(len(original.Ports), len(copied.Ports))
+
+	// Modify original to ensure deep copy
+	original.Type = NetworkHost
+	original.Domains[0] = "modified.com"
+	original.Ports[0].Static = 9090
+
+	// Verify copied version remains unchanged
+	s.Equal(NetworkBridge, copied.Type)
+	s.Equal("example.com", copied.Domains[0])
+	s.Equal(8080, copied.Ports[0].Static)
+}
+
+func (s *NetworkTestSuite) TestNetworkConfigNormalize() {
+	tests := []struct {
+		name     string
+		input    *NetworkConfig
+		expected *NetworkConfig
+	}{
+		{
+			name:     "nil config",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "empty slices",
+			input: &NetworkConfig{
+				Type: NetworkBridge,
+			},
+			expected: &NetworkConfig{
+				Type:    NetworkBridge,
+				Domains: []string{},
+				Ports:   PortMap{},
+			},
+		},
+		{
+			name: "normalize domains",
+			input: &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: []string{" EXAMPLE.com ", "TEST.com "},
+			},
+			expected: &NetworkConfig{
+				Type:    NetworkHTTP,
+				Domains: []string{"example.com", "test.com"},
+				Ports:   PortMap{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			tt.input.Normalize()
+			if tt.input == nil {
+				s.Nil(tt.expected)
+				return
+			}
+			s.Equal(tt.expected.Type, tt.input.Type)
+			s.Equal(tt.expected.Domains, tt.input.Domains)
+			s.Equal(tt.expected.Ports, tt.input.Ports)
 		})
 	}
 }

@@ -105,6 +105,14 @@ func NewComputeNode(
 		AllowList: cfg.BacalhauConfig.Compute.Env.AllowList,
 	})
 
+	portAllocator, err := compute.NewPortAllocator(
+		cfg.BacalhauConfig.Compute.Network.PortRangeStart,
+		cfg.BacalhauConfig.Compute.Network.PortRangeEnd,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     cfg.NodeID,
 		Store:                  executionStore,
@@ -115,6 +123,7 @@ func NewComputeNode(
 		FailureInjectionConfig: cfg.FailureInjectionConfig,
 		ResultsPath:            *resultsPath,
 		EnvResolver:            envResolver,
+		PortAllocator:          portAllocator,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -178,6 +187,10 @@ func NewComputeNode(
 		DebugInfoProviders: debugInfoProviders,
 	})
 
+	// Get the address this node should advertise
+	// TODO: attempt to auto-detect the address if not provided
+	address := cfg.BacalhauConfig.Compute.Network.AdvertisedAddress
+
 	// node info provider
 	nodeInfoProvider.RegisterNodeInfoDecorator(compute.NewNodeInfoDecorator(compute.NodeInfoDecoratorParams{
 		Executors:              executors,
@@ -187,6 +200,7 @@ func NewComputeNode(
 		QueueCapacityTracker:   enqueuedUsageTracker,
 		ExecutorBuffer:         bufferRunner,
 		MaxJobRequirements:     allocatedResources,
+		AdvertisedAddress:      address,
 	}))
 	nodeInfoProvider.RegisterLabelProvider(capacity.NewGPULabelsProvider(allocatedResources))
 
@@ -306,7 +320,8 @@ func NewBidder(
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if cfg.SystemConfig.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
-			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs ||
+				!cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
 			}),

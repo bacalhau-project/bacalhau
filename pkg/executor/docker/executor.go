@@ -19,7 +19,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envvar"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -46,6 +45,12 @@ const (
 	outputStreamCheckTimeout  = 5 * time.Second
 )
 
+type ExecutorParams struct {
+	ID              string
+	Config          types.Docker
+	ShouldKeepStack bool
+}
+
 type Executor struct {
 	// used to allow multiple docker executors to run against the same docker server
 	ID string
@@ -57,23 +62,22 @@ type Executor struct {
 	complete          map[string]chan struct{}
 	client            *docker.Client
 	dockerCacheConfig types.DockerManifestCache
+	shouldKeepStack   bool
 }
 
-func NewExecutor(
-	id string,
-	dockerCacheCfg types.Docker,
-) (*Executor, error) {
+func NewExecutor(params ExecutorParams) (*Executor, error) {
 	dockerClient, err := docker.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
 
 	de := &Executor{
-		ID:                id,
+		ID:                params.ID,
 		client:            dockerClient,
 		activeFlags:       make(map[string]chan struct{}),
 		complete:          make(map[string]chan struct{}),
-		dockerCacheConfig: dockerCacheCfg.ManifestCache,
+		dockerCacheConfig: params.Config.ManifestCache,
+		shouldKeepStack:   params.ShouldKeepStack,
 	}
 
 	return de, nil
@@ -83,7 +87,7 @@ func (e *Executor) Shutdown(ctx context.Context) error {
 	// We have to use a detached context, rather than the one passed in to `NewExecutor`, as it may have already been
 	// canceled and so would prevent us from performing any cleanup work.
 	safeCtx := pkgUtil.NewDetachedContext(ctx)
-	if config_legacy.ShouldKeepStack() || !e.client.IsInstalled(safeCtx) {
+	if e.shouldKeepStack || !e.client.IsInstalled(safeCtx) {
 		return nil
 	}
 
@@ -159,7 +163,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		containerID: containerID,
 		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
-		keepStack:   config_legacy.ShouldKeepStack(),
+		keepStack:   e.shouldKeepStack,
 		waitCh:      make(chan bool),
 		activeCh:    make(chan bool),
 		running:     atomic.NewBool(false),
@@ -360,14 +364,13 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *executor.R
 	}
 
 	if _, set := os.LookupEnv("SKIP_IMAGE_PULL"); !set {
-		dockerCreds := config_legacy.GetDockerCredentials()
-		if pullErr := e.client.PullImage(ctx, dockerArgs.Image, dockerCreds); pullErr != nil {
+		if pullErr := e.client.PullImage(ctx, dockerArgs.Image); pullErr != nil {
 			return container.CreateResponse{}, docker.NewDockerImageError(pullErr, dockerArgs.Image)
 		}
 	}
 	log.Ctx(ctx).Trace().Msgf("Container: %+v %+v", containerConfig, mounts)
 	// Create a network if the job requests it, modifying the containerConfig and hostConfig.
-	err = e.setupNetworkForJob(ctx, params.JobID, params.ExecutionID, params.Network, containerConfig, hostConfig)
+	err = e.setupNetworkForJob(ctx, params, containerConfig, hostConfig)
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("setting up network: %w", err)
 	}

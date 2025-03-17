@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -31,13 +32,18 @@ import (
 	"go.ptx.dk/multierrgroup"
 	"golang.org/x/exp/slices"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/docker/tracing"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
+const unknownPlatform = "unknown"
+
 type Client struct {
 	tracing.TracedClient
+	hostPlatform v1.Platform
+	platformSet  bool
+	platformMu   sync.Mutex
+	credentials  Credentials
 }
 
 func NewDockerClient() (*Client, error) {
@@ -46,7 +52,8 @@ func NewDockerClient() (*Client, error) {
 		return nil, NewDockerError(err)
 	}
 	return &Client{
-		client,
+		TracedClient: client,
+		credentials:  GetDockerCredentials(),
 	}, nil
 }
 
@@ -204,50 +211,64 @@ func (c *Client) RemoveContainer(ctx context.Context, id string) error {
 	return nil
 }
 
-func (c *Client) ImagePlatforms(ctx context.Context, image string, dockerCreds config_legacy.DockerCredentials) ([]v1.Platform, error) {
-	info, _, err := c.ImageInspectWithRaw(ctx, image)
-	if err == nil {
-		return []v1.Platform{
-			{
-				Architecture: info.Architecture,
-				OS:           info.Os,
-				OSVersion:    info.OsVersion,
-			},
-		}, nil
-	} else if !dockerclient.IsErrNotFound(err) {
-		// The only error we wanted to see was a not found error which means we don't have
-		// the image being requested.
-		return nil, NewDockerError(err)
+func (c *Client) getHostPlatform(ctx context.Context) (v1.Platform, error) {
+	c.platformMu.Lock()
+	defer c.platformMu.Unlock()
+
+	// Return cached platform if available
+	if c.platformSet {
+		return c.hostPlatform, nil
 	}
 
-	authToken := getAuthToken(ctx, image, dockerCreds)
-
-	distribution, err := c.DistributionInspect(ctx, image, authToken)
-	if err != nil {
-		return nil, NewDockerImageError(err, image)
-	}
-
-	return distribution.Platforms, nil
-}
-
-func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) {
+	// Try to get the platform info
 	version, err := c.ServerVersion(ctx)
 	if err != nil {
-		return nil, err
+		return v1.Platform{}, fmt.Errorf("failed to get host platform: %w", err)
 	}
 
+	// Find the Engine component
 	engineIdx := slices.IndexFunc(version.Components, func(v types.ComponentVersion) bool {
 		return v.Name == "Engine"
 	})
+	if engineIdx == -1 {
+		return v1.Platform{}, fmt.Errorf("docker engine component not found")
+	}
+
+	// Extract platform details
+	engine := version.Components[engineIdx].Details
+	if engine["Os"] == "" || engine["Arch"] == "" {
+		return v1.Platform{}, fmt.Errorf("incomplete platform information from docker engine")
+	}
 
 	// Note that 'Os' is linux on Darwin/Windows platforms that are running Linux VMs
-	engine := version.Components[engineIdx].Details
-	return []v1.Platform{
-		{
-			Architecture: engine["Arch"],
-			OS:           engine["Os"],
-		},
-	}, nil
+	c.hostPlatform = v1.Platform{
+		Architecture: engine["Arch"],
+		OS:           engine["Os"],
+	}
+	c.platformSet = true
+	return c.hostPlatform, nil
+}
+
+func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) {
+	platform, err := c.getHostPlatform(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return []v1.Platform{platform}, nil
+}
+
+func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool {
+	// If any fields are "unknown", the platform info is not reliable
+	if info.Os == unknownPlatform || info.Architecture == unknownPlatform {
+		log.Debug().
+			Str("image_os", info.Os).
+			Str("image_arch", info.Architecture).
+			Msg("Image has unknown platform values")
+		return false
+	}
+
+	// Check if platforms match
+	return info.Os == hostPlatform.OS && info.Architecture == hostPlatform.Architecture
 }
 
 // ImageDistribution fetches the details for the specified image by asking
@@ -302,72 +323,93 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 //
 // This is the image that will finally be installed.
 func (c *Client) ImageDistribution(
-	ctx context.Context, image string, creds config_legacy.DockerCredentials,
-) (*ImageManifest, error) {
-	// Check whether the requested image (e.g. ubuntu:kinetic) is available from
-	// the local docker daemon from a previous download, and use that digest.
-	// There is no guarantee that this digest is 100% the most recent digest for
-	// the provided image tag, it may have changed remotely and unless we
-	// explicitly query for it remotely, we will never know it has been updated.
-	info, _, err := c.ImageInspectWithRaw(ctx, image)
-	if err == nil {
-		repos := info.RepoDigests
-		if len(repos) >= 1 {
-			// We only want the digest part of the name, otherwise we would have
-			// to go through supporting two different values in the returned
-			// ImageManifest (fully qualified IDs and also just digests)
-			digestParts := strings.Split(repos[0], "@")
-			digest, err := digest.Parse(digestParts[1])
-			if err != nil {
-				return nil, NewCustomDockerError(ImageDigestMismatch, "image digest mismatch")
-			}
-
-			return &ImageManifest{
-				Digest: digest,
-				Platforms: []v1.Platform{
-					{
-						Architecture: info.Architecture,
-						OS:           info.Os,
-						OSVersion:    info.OsVersion,
-					},
-				},
-			}, nil
-		}
+	ctx context.Context, image string) (*ImageManifest, error) {
+	hostPlatform, err := c.getHostPlatform(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	authToken := getAuthToken(ctx, image, creds)
+	// Check local image first
+	info, _, err := c.ImageInspectWithRaw(ctx, image)
+	if err == nil {
+		// If image matches our platform and has a digest, we can trust it
+		if c.isPlatformCompatible(info, hostPlatform) {
+			repos := info.RepoDigests
+			if len(repos) >= 1 {
+				// We only want the digest part of the name, otherwise we would have
+				// to go through supporting two different values in the returned
+				// ImageManifest (fully qualified IDs and also just digests)
+				digestParts := strings.Split(repos[0], "@")
+				digest, err := digest.Parse(digestParts[1])
+				if err != nil {
+					return nil, NewCustomDockerError(ImageDigestMismatch, "image digest mismatch")
+				}
+
+				return &ImageManifest{
+					Digest: digest,
+					Platforms: []v1.Platform{
+						{
+							Architecture: info.Architecture,
+							OS:           info.Os,
+							OSVersion:    info.OsVersion,
+						},
+					},
+				}, nil
+			}
+		} else {
+			log.Ctx(ctx).Debug().
+				Str("image", image).
+				Str("local_platform", fmt.Sprintf("%s/%s", info.Os, info.Architecture)).
+				Str("host_platform", platformString(hostPlatform)).
+				Msg("Local image platform mismatch, checking registry")
+		}
+	} else if !dockerclient.IsErrNotFound(err) {
+		return nil, NewDockerImageError(err, image)
+	}
+
+	// Try registry
+	authToken := getAuthToken(ctx, image, c.credentials)
 	dist, err := c.DistributionInspect(ctx, image, authToken)
 	if err != nil {
 		return nil, NewDockerImageError(err, image)
 	}
 
-	obj := dist.Descriptor.Digest
-	manifest := &ImageManifest{
-		Digest:    obj,
-		Platforms: append([]v1.Platform(nil), dist.Platforms...),
+	// Filter out unknown platforms
+	var platforms []v1.Platform
+	for _, p := range dist.Platforms {
+		if p.OS != unknownPlatform && p.Architecture != unknownPlatform {
+			platforms = append(platforms, p)
+		}
 	}
 
-	return manifest, nil
+	return &ImageManifest{
+		Digest:    dist.Descriptor.Digest,
+		Platforms: platforms,
+	}, nil
 }
 
-func (c *Client) PullImage(ctx context.Context, img string, dockerCreds config_legacy.DockerCredentials) error {
-	_, _, err := c.ImageInspectWithRaw(ctx, img)
+func (c *Client) PullImage(ctx context.Context, img string) error {
+	hostPlatform, err := c.getHostPlatform(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Check if we already have this image locally and it matches our platform
+	info, _, err := c.ImageInspectWithRaw(ctx, img)
 	if err == nil {
-		// If there is no error, then return immediately as it means we have the docker image
-		// being discussed. No need to pull it.
-		return nil
+		if c.isPlatformCompatible(info, hostPlatform) {
+			return nil
+		}
+	} else if !dockerclient.IsErrNotFound(err) {
+		return NewDockerImageError(err, img)
+	} else {
+		log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")
 	}
 
-	if !dockerclient.IsErrNotFound(err) {
-		// The only error we wanted to see was a not found error which means we don't have
-		// the image being requested.
-		return NewDockerError(err)
-	}
-
-	log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")
-
+	// Set platform in pull options
 	pullOptions := image.PullOptions{
-		RegistryAuth: getAuthToken(ctx, img, dockerCreds),
+		RegistryAuth: getAuthToken(ctx, img, c.credentials),
+		Platform:     platformString(hostPlatform),
 	}
 
 	output, err := c.ImagePull(ctx, img, pullOptions)
@@ -452,7 +494,7 @@ func logImagePullStatus(ctx context.Context, m *sync.Map) {
 	e.Msg("Pulling layers")
 }
 
-func getAuthToken(ctx context.Context, image string, dockerCreds config_legacy.DockerCredentials) string {
+func getAuthToken(ctx context.Context, image string, dockerCreds Credentials) string {
 	if dockerCreds.IsValid() {
 		// We only currently support auth for the default registry, so any
 		// pulls for `image` or `user/image` should be okay, anything trying
@@ -479,4 +521,29 @@ func getAuthToken(ctx context.Context, image string, dockerCreds config_legacy.D
 	}
 
 	return ""
+}
+
+func platformString(platform v1.Platform) string {
+	return fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+}
+
+const (
+	UsernameEnvVar = "DOCKER_USERNAME"
+	PasswordEnvVar = "DOCKER_PASSWORD"
+)
+
+type Credentials struct {
+	Username string
+	Password string
+}
+
+func (d *Credentials) IsValid() bool {
+	return d.Username != "" && d.Password != ""
+}
+
+func GetDockerCredentials() Credentials {
+	return Credentials{
+		Username: os.Getenv(UsernameEnvVar),
+		Password: os.Getenv(PasswordEnvVar),
+	}
 }

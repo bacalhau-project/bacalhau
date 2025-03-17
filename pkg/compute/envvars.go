@@ -53,6 +53,18 @@ func GetExecutionEnvVars(execution *models.Execution, resolver EnvVarResolver) (
 		// Add partition-related environment variables
 		sysEnv[models.EnvVarPrefix+"PARTITION_INDEX"] = fmt.Sprintf("%d", execution.PartitionIndex)
 		sysEnv[models.EnvVarPrefix+"PARTITION_COUNT"] = fmt.Sprintf("%d", execution.Job.Count)
+
+		// Add port-related environment variables
+		if execution.Job.Task().Network != nil {
+			for _, port := range execution.Job.Task().Network.Ports {
+				if port.Static > 0 {
+					sysEnv[models.EnvVarHostPortPrefix+port.Name] = fmt.Sprintf("%d", port.Static)
+				}
+				if port.Target > 0 {
+					sysEnv[models.EnvVarPortPrefix+port.Name] = fmt.Sprintf("%d", port.Target)
+				}
+			}
+		}
 	}
 
 	// Merge task and system variables, with system taking precedence

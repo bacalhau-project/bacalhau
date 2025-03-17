@@ -99,7 +99,7 @@ var listColumns = []output.TableColumn[configListEntry]{
 		},
 	},
 	{
-		ColumnConfig: table.ColumnConfig{Name: "Value"},
+		ColumnConfig: table.ColumnConfig{Name: "Value", WidthMax: 80, WidthMaxEnforcer: text.WrapSoft},
 		Value: func(s configListEntry) string {
 			return fmt.Sprintf("%v", s.Value)
 		},

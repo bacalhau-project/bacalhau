@@ -5,14 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -51,9 +49,8 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Entrypoint           []string
-	WorkingDirectory     string
-	EnvironmentVariables []string
+	Entrypoint       []string
+	WorkingDirectory string
 
 	JobSettings     *cliflags.JobSettings
 	TaskSettings    *cliflags.TaskSettings
@@ -84,18 +81,12 @@ func NewCmd() *cobra.Command {
 func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
-	dockerRunFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	dockerRunCmd := &cobra.Command{
-		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
-		Short:   "Run a docker job on the network",
-		Long:    runLong,
-		Example: runExample,
-		Args:    cobra.MinimumNArgs(1),
-		// bind flags for this command to the config.
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), dockerRunFlags)),
+		Use:      "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
+		Short:    "Run a docker job on the network",
+		Long:     runLong,
+		Example:  runExample,
+		Args:     cobra.MinimumNArgs(1),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
@@ -115,17 +106,12 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	cliflags.RegisterTaskFlags(dockerRunCmd, opts.TaskSettings)
 	dockerRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
-	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
-		util.Fatal(dockerRunCmd, err, 1)
-	}
 	// register flags unique to docker.
 	dockerFlags := pflag.NewFlagSet("docker", pflag.ContinueOnError)
 	dockerFlags.StringVarP(&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`)
 	dockerFlags.StringSliceVar(&opts.Entrypoint, "entrypoint", opts.Entrypoint,
 		`Override the default ENTRYPOINT of the image`)
-	dockerFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
-		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
 	dockerRunCmd.Flags().AddFlagSet(dockerFlags)
 
@@ -174,7 +160,6 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 		WithParameters(parameters...).
 		WithWorkingDirectory(opts.WorkingDirectory).
 		WithEntrypoint(opts.Entrypoint...).
-		WithEnvironmentVariables(opts.EnvironmentVariables...).
 		Build()
 	if err != nil {
 		return nil, err
