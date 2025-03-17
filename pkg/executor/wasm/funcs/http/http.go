@@ -469,8 +469,9 @@ func safeUint32(n int) uint32 {
 	if n < 0 {
 		return 0
 	}
-	if n > math.MaxUint32 {
-		return math.MaxUint32
+	// Use uint32 for comparison to handle 32-bit architectures
+	if uint64(n) > uint64(^uint32(0)) {
+		return ^uint32(0) // MaxUint32 using bitwise complement of zero
 	}
 	return uint32(n)
 }
