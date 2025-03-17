@@ -23,6 +23,9 @@ type AuthConfig struct {
 	// that permits access to all API endpoints to both authenticated and
 	// unauthenticated users (the default as of v1.2.0) will be used.
 	AccessPolicyPath string `yaml:"AccessPolicyPath,omitempty" json:"AccessPolicyPath,omitempty"`
+
+	Users  []AuthUser   `yaml:"Users,omitempty" json:"Users,omitempty"`
+	Oauth2 Oauth2Config `yaml:"Oauth2,omitempty" json:"Oauth2,omitempty"`
 }
 
 // AuthenticatorConfig is config for a specific named authentication method,
@@ -33,4 +36,29 @@ type AuthConfig struct {
 type AuthenticatorConfig struct {
 	Type       string `yaml:"Type,omitempty" json:"Type,omitempty"`
 	PolicyPath string `yaml:"PolicyPath,omitempty" json:"PolicyPath,omitempty"`
+}
+
+type AuthUser struct {
+	Alias        string       `yaml:"Alias,omitempty" json:"Alias,omitempty"`
+	Username     string       `yaml:"Username,omitempty" json:"Username,omitempty"`
+	Password     string       `yaml:"Password,omitempty" json:"Password,omitempty"`
+	ApiKey       string       `yaml:"ApiKey,omitempty" json:"ApiKey,omitempty"`
+	Capabilities []Capability `yaml:"Capabilities,omitempty" json:"Capabilities,omitempty"`
+}
+
+type Capability struct {
+	Actions []string `yaml:"Actions,omitempty" json:"Actions,omitempty"`
+}
+
+type Oauth2Config struct {
+	ProviderId                  string   `yaml:"ProviderId,omitempty" json:"ProviderId,omitempty"`
+	ProviderName                string   `yaml:"ProviderName,omitempty" json:"ProviderName,omitempty"`
+	TokenEndpoint               string   `yaml:"TokenEndpoint,omitempty" json:"TokenEndpoint,omitempty"`
+	JWKSUri                     string   `yaml:"JWKSUri,omitempty" json:"JWKSUri,omitempty"`
+	Issuer                      string   `yaml:"Issuer,omitempty" json:"Issuer,omitempty"`
+	DeviceClientId              string   `yaml:"DeviceClientId,omitempty" json:"DeviceClientId,omitempty"`
+	Audience                    string   `yaml:"Audience,omitempty" json:"Audience,omitempty"`
+	Scopes                      []string `yaml:"Scopes,omitempty" json:"Scopes,omitempty"`
+	DeviceAuthorizationEndpoint string   `yaml:"DeviceAuthorizationEndpoint,omitempty" json:"DeviceAuthorizationEndpoint,omitempty"`
+	PollingInterval             int      `yaml:"PollingInterval,omitempty" json:"PollingInterval,omitempty"`
 }
