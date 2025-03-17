@@ -53,7 +53,7 @@ func NewPortAllocator(start, end int) (PortAllocator, error) {
 // - The execution has invalid network configuration
 func (pa *portAllocator) AllocatePorts(execution *models.Execution) (models.PortMap, error) {
 	networkCfg := execution.Job.Task().Network
-	if networkCfg == nil || (networkCfg.Type != models.NetworkHost && networkCfg.Type != models.NetworkBridge) {
+	if networkCfg == nil || !networkCfg.Type.SupportPortAllocation() {
 		return models.PortMap{}, nil
 	}
 

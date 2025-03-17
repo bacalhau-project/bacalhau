@@ -1886,11 +1886,13 @@ const docTemplate = `{
                 0,
                 1,
                 2,
-                3
+                3,
+                4
             ],
             "x-enum-varnames": [
                 "NetworkNone",
                 "NetworkHost",
+                "NetworkFull",
                 "NetworkHTTP",
                 "NetworkBridge"
             ]
