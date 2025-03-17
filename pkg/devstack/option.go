@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/imdario/mergo"
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -21,7 +22,7 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 
 	return &DevStackConfig{
 		BacalhauConfig:         bacalhauConfig,
-		SystemConfig:           node.SystemConfig{},
+		SystemConfig:           node.TestSystemConfig(),
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
 
@@ -146,7 +147,10 @@ func WithMemoryProfilingFile(path string) ConfigOption {
 
 func WithSystemConfig(cfg node.SystemConfig) ConfigOption {
 	return func(c *DevStackConfig) {
-		c.SystemConfig = cfg
+		err := mergo.Merge(&c.SystemConfig, cfg)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

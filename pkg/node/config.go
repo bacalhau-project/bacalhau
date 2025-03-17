@@ -66,6 +66,12 @@ func DefaultSystemConfig() SystemConfig {
 	}
 }
 
+func TestSystemConfig() SystemConfig {
+	config := DefaultSystemConfig()
+	config.SkipLicenseValidation = true
+	return config
+}
+
 // applyDefaults applies the default values to the system config
 func (c *SystemConfig) applyDefaults() {
 	defaults := DefaultSystemConfig()
