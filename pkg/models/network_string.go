@@ -10,13 +10,14 @@ func _() {
 	var x [1]struct{}
 	_ = x[NetworkNone-0]
 	_ = x[NetworkHost-1]
-	_ = x[NetworkHTTP-2]
-	_ = x[NetworkBridge-3]
+	_ = x[NetworkFull-2]
+	_ = x[NetworkHTTP-3]
+	_ = x[NetworkBridge-4]
 }
 
-const _Network_name = "NoneHostHTTPBridge"
+const _Network_name = "NoneHostFullHTTPBridge"
 
-var _Network_index = [...]uint8{0, 4, 8, 12, 18}
+var _Network_index = [...]uint8{0, 4, 8, 12, 16, 22}
 
 func (i Network) String() string {
 	if i < 0 || i >= Network(len(_Network_index)-1) {

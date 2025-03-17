@@ -13,6 +13,7 @@ import (
 	cmdtesting "github.com/bacalhau-project/bacalhau/cmd/testing"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 	"github.com/bacalhau-project/bacalhau/testdata"
 )
@@ -46,7 +47,16 @@ func (s *RunSuite) TestRun() {
 				require.Error(s.T(), err, "Should have seen error submitting job")
 			} else {
 				require.NoError(s.T(), err, "Error submitting job")
-				testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
+
+				// Get the job from the output
+				job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
+
+				// Create a state resolver to wait for job completion
+				stateResolver := scenario.NewStateResolverFromAPI(s.ClientV2)
+
+				// Wait for the job to complete successfully
+				err = stateResolver.Wait(ctx, job.ID, scenario.WaitForSuccessfulCompletion())
+				require.NoError(s.T(), err, "Job should have completed successfully")
 			}
 		})
 	}

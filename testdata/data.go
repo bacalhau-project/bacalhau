@@ -35,6 +35,9 @@ var noopJobYAML []byte
 //go:embed jobs/wasm.yaml
 var wasmJobYAML []byte
 
+//go:embed jobs/wasm_legacy.yaml
+var wasmLegacyJobYAML []byte
+
 var (
 	DockerJobYAML    *Fixture
 	DockerOutputYAML *Fixture
@@ -44,6 +47,7 @@ var (
 	NamelessJobYAML  *Fixture
 	NoopJobYAML      *Fixture
 	WasmJobYAML      *Fixture
+	WASMJobLegacy    *Fixture
 )
 
 func init() {
@@ -55,6 +59,7 @@ func init() {
 	NamelessJobYAML = NewJobFixture("nameless job", namelessJobYAML, false)
 	NoopJobYAML = NewJobFixture("noop", noopJobYAML, false)
 	WasmJobYAML = NewJobFixture("wasm", wasmJobYAML, false)
+	WASMJobLegacy = NewJobFixture("wasm legacy", wasmLegacyJobYAML, false)
 }
 
 type Fixture struct {
@@ -74,6 +79,7 @@ func AllFixtures() []*Fixture {
 		NamelessJobYAML,
 		NoopJobYAML,
 		WasmJobYAML,
+		WASMJobLegacy,
 	}
 }
 
