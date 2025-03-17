@@ -49,9 +49,8 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Entrypoint           []string
-	WorkingDirectory     string
-	EnvironmentVariables []string
+	Entrypoint       []string
+	WorkingDirectory string
 
 	JobSettings     *cliflags.JobSettings
 	TaskSettings    *cliflags.TaskSettings
@@ -113,8 +112,6 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`)
 	dockerFlags.StringSliceVar(&opts.Entrypoint, "entrypoint", opts.Entrypoint,
 		`Override the default ENTRYPOINT of the image`)
-	dockerFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
-		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
 	dockerRunCmd.Flags().AddFlagSet(dockerFlags)
 
@@ -163,7 +160,6 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 		WithParameters(parameters...).
 		WithWorkingDirectory(opts.WorkingDirectory).
 		WithEntrypoint(opts.Entrypoint...).
-		WithEnvironmentVariables(opts.EnvironmentVariables...).
 		Build()
 	if err != nil {
 		return nil, err

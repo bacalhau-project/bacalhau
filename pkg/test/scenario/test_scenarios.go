@@ -8,6 +8,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
+	http "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/testdata"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
@@ -53,7 +54,10 @@ func CatFileToStdout(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(cat.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(cat.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(simpleMountPath).MustBuild(),
 				},
@@ -224,7 +228,10 @@ func WasmHelloWorld(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(noop.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(noop.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
@@ -247,9 +254,12 @@ func WasmExitCode(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(exit_code.Program())).
+					Env:  map[string]models.EnvVarValue{"EXIT_CODE": "5"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(exit_code.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
-						WithEnvironmentVariables(map[string]string{"EXIT_CODE": "5"}).
 						MustBuild(),
 				},
 			},
@@ -261,8 +271,8 @@ func WasmEnvVars(t testing.TB) Scenario {
 	return Scenario{
 		ResultsChecker: FileContains(
 			"stdout",
-			[]string{"AWESOME=definitely", "TEST=yes"},
-			3, //nolint:mnd // magic number appropriate for test
+			[]string{"AWESOME=definitely", "TEST=yes", "BACALHAU_PARTITION_INDEX=0"},
+			-1, //nolint:mnd // magic number appropriate for test
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -271,14 +281,12 @@ func WasmEnvVars(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(env.Program())).
+					Env:  map[string]models.EnvVarValue{"TEST": "yes", "AWESOME": "definitely"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(env.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
-						WithEnvironmentVariables(
-							map[string]string{
-								"TEST":    "yes",
-								"AWESOME": "definitely",
-							},
-						).
 						MustBuild(),
 				},
 			},
@@ -318,7 +326,10 @@ func WasmCsvTransform(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(csv.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(csv.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							"inputs/horses.csv",
@@ -360,7 +371,10 @@ func WasmDynamicLink(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(dynamic.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(dynamic.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						MustBuild(),
 				},
@@ -394,7 +408,10 @@ func WasmLogTest(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(InlineData(logtest.Program())).
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(logtest.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							"inputs/cosmic_computer.txt",
@@ -407,19 +424,141 @@ func WasmLogTest(t testing.TB) Scenario {
 	}
 }
 
+func WasmGetHTTP(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"Status Code: 200"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type: models.NetworkFull,
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmGetHTTPAllowList(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"Status Code: 200"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type:    models.NetworkHTTP,
+						Domains: []string{"httpbin.org"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmGetHTTPNotAllowList(t testing.TB) Scenario {
+	return Scenario{
+		ResultsChecker: FileContains(
+			"stdout",
+			[]string{"host not allowed"},
+			-1, //nolint:mnd // magic number appropriate for test
+		),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type:    models.NetworkHTTP,
+						Domains: []string{"httpbin.com"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func WasmNoNetworking(t testing.TB) Scenario {
+	return Scenario{
+		CommandResultsChecker: ErrorMessageContains(`unknown module "wasi:http/requests"`),
+		Job: &models.Job{
+			Name:  t.Name(),
+			Type:  models.JobTypeBatch,
+			Count: 1,
+			Tasks: []*models.Task{
+				{
+					Name: t.Name(),
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					InputSources: []*models.InputSource{
+						InlineDataWithTarget(http.Program(), "main.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("main.wasm").
+						WithEntrypoint("_start").
+						MustBuild(),
+					Network: &models.NetworkConfig{
+						Type: models.NetworkNone,
+					},
+				},
+			},
+		},
+	}
+}
+
 func GetAllScenarios(t testing.TB) map[string]Scenario {
 	scenarios := map[string]Scenario{
-		"cat_file_to_stdout": CatFileToStdout(t),
-		"cat_file_to_volume": CatFileToVolume(t),
-		"grep_file":          GrepFile(t),
-		"sed_file":           SedFile(t),
-		"awk_file":           AwkFile(t),
-		"logtest":            WasmLogTest(t),
-		"wasm_hello_world":   WasmHelloWorld(t),
-		"wasm_env_vars":      WasmEnvVars(t),
-		"wasm_csv_transform": WasmCsvTransform(t),
-		"wasm_exit_code":     WasmExitCode(t),
-		"wasm_dynamic_link":  WasmDynamicLink(t),
+		"cat_file_to_stdout":        CatFileToStdout(t),
+		"cat_file_to_volume":        CatFileToVolume(t),
+		"grep_file":                 GrepFile(t),
+		"sed_file":                  SedFile(t),
+		"awk_file":                  AwkFile(t),
+		"logtest":                   WasmLogTest(t),
+		"wasm_hello_world":          WasmHelloWorld(t),
+		"wasm_env_vars":             WasmEnvVars(t),
+		"wasm_csv_transform":        WasmCsvTransform(t),
+		"wasm_exit_code":            WasmExitCode(t),
+		"wasm_dynamic_link":         WasmDynamicLink(t),
+		"wasm_http_get_full":        WasmGetHTTP(t),
+		"wasm_http_get_allowlist":   WasmGetHTTPAllowList(t),
+		"wasm_http_not_allowlisted": WasmGetHTTPNotAllowList(t),
+		"wasm_no_networking":        WasmNoNetworking(t),
 	}
 
 	if runtime.GOOS == "windows" {

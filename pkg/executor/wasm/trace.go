@@ -184,6 +184,11 @@ func (t tracedRuntime) Module(moduleName string) api.Module {
 }
 
 func (t tracedRuntime) Close(ctx context.Context) error {
+	if t.adapter != nil {
+		if err := t.adapter.StopWithContext(ctx, true); err != nil {
+			return err
+		}
+	}
 	return t.Runtime.Close(ctx)
 }
 

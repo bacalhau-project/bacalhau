@@ -34,6 +34,10 @@ const (
 	// This gives the container direct access to the host's network interfaces.
 	NetworkHost
 
+	// NetworkFull same as NetworkHost but maintained for backward compatibility
+	// Deprecated: Use NetworkHost instead.
+	NetworkFull
+
 	// NetworkHTTP specifies that the job requires HTTP networking to certain domains.
 	//
 	// The model is: the job specifier submits a job with the domain(s) it will
@@ -71,18 +75,16 @@ const (
 	NetworkBridge
 )
 
+// SupportPortAllocation returns whether the network type supports port allocation.
+func (n Network) SupportPortAllocation() bool {
+	return n == NetworkHost || n == NetworkBridge || n == NetworkFull
+}
+
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	s = strings.TrimSpace(strings.ToLower(s))
-
-	// Handle legacy "full" value
-	if s == "full" {
-		return NetworkHost, nil
-	}
-
 	for typ := NetworkNone; typ <= NetworkBridge; typ++ {
-		if strings.EqualFold(typ.String(), s) {
+		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
 			return typ, nil
 		}
 	}
@@ -169,7 +171,7 @@ func (n *NetworkConfig) Validate() error {
 
 	// Validate ports
 	if len(n.Ports) > 0 {
-		if n.Type != NetworkHost && n.Type != NetworkBridge {
+		if !n.Type.SupportPortAllocation() {
 			err = errors.Join(err, fmt.Errorf("ports can only be set for Host or Bridge network modes"))
 			return err
 		}
@@ -319,7 +321,7 @@ func (pm PortMap) Validate(networkType Network) error {
 		}
 
 		// Host mode validation
-		if networkType == NetworkHost && port.Target != 0 {
+		if (networkType == NetworkHost || networkType == NetworkFull) && port.Target != 0 {
 			err = errors.Join(err, fmt.Errorf("target ports cannot be set for Host network mode"))
 		}
 

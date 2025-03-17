@@ -2,8 +2,7 @@ package wasm
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"sync"
 
@@ -11,119 +10,74 @@ import (
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"go.opentelemetry.io/otel/attribute"
 	"go.ptx.dk/multierrgroup"
-
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
-// ModuleLoader handles the loading of WebAssembly modules from
-// storage.PreparedStorage and the automatic resolution of required imports.
+// ModuleLoader handles the loading and instantiation of WebAssembly modules.
+// It manages module dependencies and ensures proper initialization order.
 //
-// ModuleLoader allows WebAssembly module dependencies to be specified within
-// the WebAssembly program, allowing the user to deploy self-contained
-// WebAssembly blobs. See the introductory talk at https://youtu.be/6zJkMLzXbQc.
+// The loader supports:
+// - Loading modules from the mounted filesystem
+// - Dynamic resolution of imported modules at runtime
+// - Automatic handling of WASI modules
+// - Thread-safe module instantiation
 //
-// This works by using the "module name" field of a WebAssembly import header,
-// (which for user-supplied modules is arbitrary) as a hint to the loader as to
-// where the dependency lives and how to retrieve it. The module still needs to
-// be specified as input data for the job (a previous implementation of the
-// ModuleLoader could load modules from remote locations, but this one cannot).
+// Dynamic Loading:
+// When a WASM module imports another module by name, the loader will:
+// 1. Check if the module is already instantiated
+// 2. If not, check if it's the WASI module
+// 3. If not, look for a matching .wasm file in the mounted filesystem
+// 4. If found, load and instantiate the module recursively
+// 5. If not found, return an error
+//
+// Module Resolution:
+// - Direct paths: Load the WASM file at the given path
+// - Directories: Look for a single .wasm file in the directory
+// - Module names: Resolve against the mounted filesystem
 type ModuleLoader struct {
-	runtime  wazero.Runtime
-	config   wazero.ModuleConfig
-	storages []storage.PreparedStorage
+	// runtime is the WASM runtime used for module compilation and instantiation
+	runtime wazero.Runtime
+	// config contains the configuration for module instantiation
+	config wazero.ModuleConfig
+	// fs is the filesystem where modules are mounted
+	fs fs.FS
 
-	// Runtime will throw an error if the same module is instantiated more than
-	// once. So we use this mutex around checking for modules and instantiating
+	// mtx ensures thread-safe module instantiation
+	// The runtime will throw an error if the same module is instantiated more than once
 	mtx sync.Mutex
 }
 
-func NewModuleLoader(runtime wazero.Runtime, config wazero.ModuleConfig, storages ...storage.PreparedStorage) *ModuleLoader {
-	return &ModuleLoader{runtime: runtime, config: config, storages: storages}
+// NewModuleLoader creates a new module loader with the given runtime, configuration,
+// and mounted filesystem.
+func NewModuleLoader(runtime wazero.Runtime, config wazero.ModuleConfig, fs fs.FS) *ModuleLoader {
+	return &ModuleLoader{
+		runtime: runtime,
+		config:  config,
+		fs:      fs,
+	}
 }
 
-// Load compiles and returns a module located at the passed path.
-func (loader *ModuleLoader) Load(ctx context.Context, path string) (wazero.CompiledModule, error) {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.ModuleLoader.Load")
-	span.SetAttributes(attribute.String("Path", path))
-	defer span.End()
-
-	log.Ctx(ctx).Debug().Str("Path", path).Msg("Loading WASM module")
-	bytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	module, err := loader.runtime.CompileModule(ctx, bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return module, nil
-}
-
-// loadModule loads and compiles all of the modules located by the passed storage specs.
-func (loader *ModuleLoader) loadModule(ctx context.Context, m storage.PreparedStorage) (wazero.CompiledModule, error) {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModule")
-	defer span.End()
-
-	programPath := m.Volume.Source
-
-	info, err := os.Stat(programPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// We expect the input to be a single WASM file. It is common however for
-	// IPFS implementations to wrap files into a directory. So we make a special
-	// case here – if the input is a single file in a directory, we will assume
-	// this is the program file and load it.
-	if info.IsDir() {
-		files, err := os.ReadDir(programPath)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(files) != 1 {
-			return nil, fmt.Errorf("should be %d file in %s but there are %d", 1, programPath, len(files))
-		}
-		programPath = filepath.Join(programPath, files[0].Name())
-	}
-
-	module, err := loader.Load(ctx, programPath)
-	if err != nil {
-		return nil, err
-	}
-	return module, err
-}
-
-// InstantiateRemoteModule loads and instantiates the remote module and all of
-// its dependencies. It only looks in the job's input storage specs for modules.
+// InstantiateModule loads and instantiates the module at the given path and all of
+// its dependencies. It looks in the provided filesystem for modules.
 //
 // This function calls itself recursively for any discovered dependencies on the
 // loaded modules, so that the returned module has all of its dependencies fully
 // instantiated and is ready to use.
-func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m storage.PreparedStorage) (api.Module, error) {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.ModuleLoader.InstantiateRemoteModule")
-	span.SetAttributes(attribute.String("ModuleName", m.InputSource.Alias))
-	defer span.End()
-
-	if module := loader.runtime.Module(m.InputSource.Alias); module != nil {
-		// Module already instantiated.
+func (loader *ModuleLoader) InstantiateModule(ctx context.Context, modulePath string) (api.Module, error) {
+	// Check if module is already instantiated
+	if module := loader.runtime.Module(modulePath); module != nil {
 		return module, nil
 	}
 
-	// Get the remote module.
-	module, err := loader.loadModule(ctx, m)
+	// Load the module from the mounted filesystem
+	compiledModule, err := loader.loadModuleByPath(ctx, modulePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Examine its imports and recursively load them.
+	// Load all dependencies in parallel
 	var wg multierrgroup.Group
-	for _, importedFunc := range module.ImportedFunctions() {
+	for _, importedFunc := range compiledModule.ImportedFunctions() {
 		moduleName, _, _ := importedFunc.Import()
 		wg.Go(func() error {
 			_, err := loader.loadModuleByName(ctx, moduleName)
@@ -131,29 +85,45 @@ func (loader *ModuleLoader) InstantiateRemoteModule(ctx context.Context, m stora
 		})
 	}
 	if err = wg.Wait(); err != nil {
-		return nil, err
+		return nil, NewModuleLoadError(modulePath, err)
 	}
 
 	// We now have all dependencies loaded, so load this module.
 	loader.mtx.Lock()
 	defer loader.mtx.Unlock()
 
-	if module := loader.runtime.Module(m.InputSource.Alias); module != nil {
+	// Double-check module hasn't been instantiated while we were loading dependencies
+	if module := loader.runtime.Module(modulePath); module != nil {
 		return module, nil
 	}
-	return loader.runtime.InstantiateModule(ctx, module, loader.config.WithName(m.InputSource.Alias))
+
+	module, err := loader.runtime.InstantiateModule(ctx, compiledModule, loader.config.WithName(modulePath))
+	if err != nil {
+		return nil, NewModuleLoadError(modulePath, err)
+	}
+	return module, nil
 }
 
-const unknownModuleErrStr = ("could not find WASM module with name %q. " +
-	"expecting a built-in module name (like %q), " +
-	"or the Alias of one of the job's InputSources. " +
-	"see also: https://docs.bacalhau.org/getting-started/wasm-workload-onboarding")
+// loadModuleByPath loads and compiles a module from the filesystem.
+// If the path is a directory containing a single file, that file is used.
+func (loader *ModuleLoader) loadModuleByPath(ctx context.Context, path string) (wazero.CompiledModule, error) {
+	log.Ctx(ctx).Debug().Str("Path", path).Msg("Loading WASM module")
+	resolvedPath, err := loader.resolveModulePath(path)
+	if err != nil {
+		return nil, err
+	}
 
+	return loader.loadFile(ctx, resolvedPath)
+}
+
+// loadModuleByName handles dynamic module imports by name.
+// It first checks if the module is already instantiated or is the WASI module.
+// If not, it attempts to resolve the module name against the mounted filesystem
+// and load it recursively.
+//
+// The function is thread-safe and handles concurrent loading of the same module.
 func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName string) (api.Module, error) {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.ModuleLoader.loadModuleByName")
-	span.SetAttributes(attribute.String("ModuleName", moduleName))
-	defer span.End()
-
+	// First check if already instantiated or is WASI
 	if module, err := func() (api.Module, error) {
 		loader.mtx.Lock()
 		defer loader.mtx.Unlock()
@@ -164,7 +134,10 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 
 		if moduleName == wasi_snapshot_preview1.ModuleName {
 			_, err := wasi_snapshot_preview1.NewBuilder(loader.runtime).Instantiate(ctx)
-			return loader.runtime.Module(moduleName), err
+			if err != nil {
+				return nil, NewWASIError(err)
+			}
+			return loader.runtime.Module(moduleName), nil
 		}
 
 		return nil, nil
@@ -172,16 +145,59 @@ func (loader *ModuleLoader) loadModuleByName(ctx context.Context, moduleName str
 		return module, err
 	}
 
-	// check if the module we are dynamically linking was specific in as an input to the job.
-	// BUG: this just completely ignores the module name?? and
-	// will presumably end up in an error if the first storage is not a WASM
-	// module, or if the first storage is a WASM module but not the one we were
-	// looking for?
-	for _, s := range loader.storages {
-		if s.InputSource.Alias == moduleName {
-			return loader.InstantiateRemoteModule(ctx, s)
-		}
+	// Try to find and load from filesystem
+	modulePath, err := loader.resolveModulePath(moduleName)
+	if err == nil {
+		return loader.InstantiateModule(ctx, modulePath)
 	}
 
-	return nil, fmt.Errorf(unknownModuleErrStr, moduleName, wasi_snapshot_preview1.ModuleName)
+	return nil, NewUnknownModuleError(moduleName)
+}
+
+// resolveModulePath resolves a module path or name to an actual file path.
+// If the path is a directory, it looks for a single .wasm file in that directory.
+// Returns an error if the path cannot be resolved or if a directory contains
+// multiple .wasm files.
+func (loader *ModuleLoader) resolveModulePath(path string) (string, error) {
+	info, err := fs.Stat(loader.fs, path)
+	if err != nil {
+		return "", NewModuleNotFoundError(path)
+	}
+
+	// If path is a directory, look for a single WASM file
+	if info.IsDir() {
+		files, err := fs.ReadDir(loader.fs, path)
+		if err != nil {
+			return "", NewModuleLoadError(path, err)
+		}
+
+		var wasmFiles []fs.DirEntry
+		for _, file := range files {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".wasm" {
+				wasmFiles = append(wasmFiles, file)
+			}
+		}
+
+		if len(wasmFiles) != 1 {
+			return "", NewModuleNotFoundError(path)
+		}
+		path = filepath.Join(path, wasmFiles[0].Name())
+	}
+	return path, nil
+}
+
+// loadFile compiles a WASM module from the given path in the mounted filesystem.
+// It reads the module bytes and compiles them for execution.
+func (loader *ModuleLoader) loadFile(ctx context.Context, path string) (wazero.CompiledModule, error) {
+	bytes, err := fs.ReadFile(loader.fs, path)
+	if err != nil {
+		return nil, NewModuleLoadError(path, err)
+	}
+
+	module, err := loader.runtime.CompileModule(ctx, bytes)
+	if err != nil {
+		return nil, NewModuleCompileError(path, err)
+	}
+
+	return module, nil
 }

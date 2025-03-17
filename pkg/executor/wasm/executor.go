@@ -10,43 +10,48 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
-	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/filefs"
-	wasmlogs "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/mountfs"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/util/touchfs"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
+// Executor handles the execution of WebAssembly modules.
+// It manages the lifecycle of WASM executions, including starting, waiting for completion,
+// and handling cancellation.
 type Executor struct {
 	// handlers is a map of executionID to its handler.
 	handlers generic.SyncMap[string, *executionHandler]
 }
 
+// NewExecutor creates a new WASM executor instance.
 func NewExecutor() (*Executor, error) {
 	return &Executor{}, nil
 }
 
+// IsInstalled checks if the WASM executor is available.
+// Since WASM executor runs natively in Go, it's always available.
 func (e *Executor) IsInstalled(context.Context) (bool, error) {
-	// WASM executor runs natively in Go and so is always available
 	return true, nil
 }
 
+// ShouldBid determines if the executor should bid on a job.
+// WASM jobs don't have additional requirements, so it always returns true.
 func (*Executor) ShouldBid(ctx context.Context, request bidstrategy.BidStrategyRequest) (bidstrategy.BidStrategyResponse, error) {
 	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
+// ShouldBidBasedOnUsage determines if the executor should bid on a job based on resource usage.
+// WASM jobs don't have additional requirements, so it always returns true.
 func (*Executor) ShouldBidBasedOnUsage(
 	ctx context.Context,
 	request bidstrategy.BidStrategyRequest,
@@ -55,20 +60,10 @@ func (*Executor) ShouldBidBasedOnUsage(
 	return bidstrategy.NewBidResponse(true, "not place additional requirements on WASM jobs"), nil
 }
 
-// Wazero: is compliant to WebAssembly Core Specification 1.0 and 2.0.
-//
-// WebAssembly1:  linear memory objects have sizes measured in pages. Each page is 65536 (2^16) bytes.
-// In WebAssembly version 1, a linear memory can have at most 65536 pages, for a total of 2^32 bytes (4 gibibytes).
-
-const WasmArch = 32
-const WasmPageSize = 65536
-const WasmMaxPagesLimit = 1 << (WasmArch / 2)
-
 // Start initiates an execution based on the provided RunCommandRequest.
+// It sets up the WASM runtime with appropriate memory limits and filesystem mounts,
+// then starts the execution in a separate goroutine.
 func (e *Executor) Start(ctx context.Context, request *executor.RunCommandRequest) error {
-	ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/executor/wasm.Executor.Start")
-	defer span.End()
-
 	if handler, found := e.handlers.Get(request.ExecutionID); found {
 		if handler.active() {
 			return executor.NewExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
@@ -77,23 +72,10 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		}
 	}
 
-	// Apply memory limits to the runtime. We have to do this in multiples of
-	// the WASM page size of 64kb, so round up to the nearest page size if the
-	// limit is not specified as a multiple of that.
-	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
-	if request.Resources.Memory > 0 {
-		requestedPages := request.Resources.Memory/WasmPageSize + math.Min(request.Resources.Memory%WasmPageSize, 1)
-		if requestedPages > WasmMaxPagesLimit {
-			err := fmt.Errorf("requested memory exceeds the wasm limit - %d > 4GB", request.Resources.Memory)
-			log.Err(err).Msgf("requested memory exceeds maximum limit: %d > %d", requestedPages, WasmMaxPagesLimit)
-			return err
-		}
-		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
-	}
-
-	engineParams, err := wasmmodels.DecodeArguments(request.EngineParams)
+	// Configure runtime with memory limits
+	engineConfig, err := e.configureRuntime(request.Resources.Memory)
 	if err != nil {
-		return fmt.Errorf("decoding wasm arguments: %w", err)
+		return err
 	}
 
 	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)
@@ -101,36 +83,37 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		return err
 	}
 
-	// Create a new log manager and obtain some writers that we can pass to the wasm
-	// configuration
-	wasmLogs, err := wasmlogs.NewLogManager(ctx, request.ExecutionID)
+	handler, err := newExecutionHandler(ctx,
+		request,
+		wazero.NewRuntimeWithConfig(ctx, engineConfig),
+		rootFs)
+
 	if err != nil {
 		return err
-	}
-
-	handler := &executionHandler{
-		runtime:     wazero.NewRuntimeWithConfig(ctx, engineConfig),
-		arguments:   engineParams,
-		fs:          rootFs,
-		inputs:      request.Inputs,
-		executionID: request.ExecutionID,
-		resultsDir:  request.ResultsDir,
-		limits:      request.OutputLimits,
-		logger: log.With().
-			Str("execution", request.ExecutionID).
-			Str("job", request.JobID).
-			Str("entrypoint", engineParams.EntryPoint).
-			Logger(),
-		logManager: wasmLogs,
-		activeCh:   make(chan bool),
-		waitCh:     make(chan bool),
-		running:    atomic.NewBool(false),
 	}
 
 	// register the handler for this executionID
 	e.handlers.Put(request.ExecutionID, handler)
 	go handler.run(ctx)
 	return nil
+}
+
+// configureRuntime sets up the WASM runtime with appropriate memory limits
+func (e *Executor) configureRuntime(memoryLimit uint64) (wazero.RuntimeConfig, error) {
+	engineConfig := wazero.NewRuntimeConfig().WithCloseOnContextDone(true)
+
+	// Apply memory limits to the runtime. We have to do this in multiples of
+	// the WASM page size of 64kb, so round up to the nearest page size if the
+	// limit is not specified as a multiple of that.
+	if memoryLimit > 0 {
+		requestedPages := memoryLimit/WasmPageSize + math.Min(memoryLimit%WasmPageSize, 1)
+		if requestedPages > WasmMaxPagesLimit {
+			maxBytes := uint64(WasmMaxPagesLimit) * WasmPageSize
+			return nil, NewMemoryLimitError(memoryLimit, maxBytes)
+		}
+		engineConfig = engineConfig.WithMemoryLimitPages(uint32(requestedPages))
+	}
+	return engineConfig, nil
 }
 
 // Wait initiates a wait for the completion of a specific execution using its
@@ -162,7 +145,7 @@ func (e *Executor) Wait(ctx context.Context, executionID string) (<-chan *models
 // the error channel. If the execution result is nil, an error suggests a potential
 // flaw in the executor logic.
 func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult, errCh chan error, handle *executionHandler) {
-	log.Info().Str("executionID", handle.executionID).Msg("waiting on execution")
+	log.Info().Str("executionID", handle.request.ExecutionID).Msg("waiting on execution")
 
 	defer close(out)
 	defer close(errCh)
@@ -172,7 +155,7 @@ func (e *Executor) doWait(ctx context.Context, out chan *models.RunCommandResult
 		errCh <- ctx.Err() // Send the cancellation error to the error channel
 		return
 	case <-handle.waitCh:
-		log.Info().Str("executionID", handle.executionID).Msg("received results from execution")
+		log.Info().Str("executionID", handle.request.ExecutionID).Msg("received results from execution")
 		if handle.result != nil {
 			out <- handle.result
 		} else {
@@ -191,7 +174,7 @@ func (e *Executor) Cancel(ctx context.Context, executionID string) error {
 	return handler.kill(ctx)
 }
 
-// GetOutputStream provides a stream of output logs for a specific execution.
+// GetLogStream provides a stream of output logs for a specific execution.
 // Parameters 'withHistory' and 'follow' control whether to include past logs
 // and whether to keep the stream open for new logs, respectively.
 // It returns an error if the execution is not found.
@@ -240,7 +223,15 @@ func (e *Executor) makeFsFromStorage(
 	var err error
 	rootFs := mountfs.New()
 
+	// Validate input sources
 	for _, v := range volumes {
+		if v.InputSource.Target == "" {
+			return nil, NewInputConfigError("input source has no target path")
+		}
+		if v.Volume.Source == "" {
+			return nil, NewInputConfigError("input source has no source path")
+		}
+
 		log.Ctx(ctx).Debug().
 			Str("input", v.InputSource.Target).
 			Str("source", v.Volume.Source).
@@ -249,7 +240,7 @@ func (e *Executor) makeFsFromStorage(
 		var stat os.FileInfo
 		stat, err = os.Stat(v.Volume.Source)
 		if err != nil {
-			return nil, err
+			return nil, NewInputConfigError(fmt.Sprintf("input source %q does not exist: %s", v.Volume.Source, err))
 		}
 
 		var inputFs fs.FS
@@ -261,17 +252,25 @@ func (e *Executor) makeFsFromStorage(
 
 		err = rootFs.Mount(v.InputSource.Target, inputFs)
 		if err != nil {
-			return nil, err
+			return nil, NewInputConfigError(fmt.Sprintf("failed to mount input %q: %s", v.InputSource.Target, err))
 		}
 	}
 
+	// Validate output configuration
 	for _, output := range outputs {
 		if output.Name == "" {
-			return nil, fmt.Errorf("output volume has no name: %+v", output)
+			return nil, NewOutputError("output volume has no name")
 		}
 
 		if output.Path == "" {
-			return nil, fmt.Errorf("output volume has no path: %+v", output)
+			return nil, NewOutputError("output volume has no path")
+		}
+
+		// Check for conflicts with input paths
+		for _, v := range volumes {
+			if v.InputSource.Target == output.Name {
+				return nil, NewOutputError(fmt.Sprintf("output name %q conflicts with input target", output.Name))
+			}
 		}
 
 		srcDir := filepath.Join(jobResultsDir, output.Name)
@@ -282,12 +281,12 @@ func (e *Executor) makeFsFromStorage(
 
 		err = os.Mkdir(srcDir, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W)
 		if err != nil {
-			return nil, err
+			return nil, NewFilesystemError(output.Name, err)
 		}
 
 		err = rootFs.Mount(output.Name, touchfs.New(srcDir))
 		if err != nil {
-			return nil, err
+			return nil, NewFilesystemError(output.Name, err)
 		}
 	}
 

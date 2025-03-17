@@ -7,12 +7,17 @@ import (
 	"strings"
 
 	"go.ptx.dk/multierrgroup"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // A CheckResults is a function that will examine job output that has been
 // written to storage and assert something about it. If the condition it is
 // checking is false, it returns an error, else it returns nil.
 type CheckResults func(resultsDir string) error
+
+// A CheckCommandResults is a function that will examine the results of an executed command
+type CheckCommandResults func(result *models.RunCommandResult) error
 
 // FileContains returns a CheckResults that asserts that the expected string is
 // in the output file and that the file itself is of the correct size. If
@@ -135,5 +140,16 @@ func ManyChecks(checks ...CheckResults) CheckResults {
 			wg.Go(func() error { return check(resultsDir) })
 		}
 		return wg.Wait()
+	}
+}
+
+// ErrorMessageContains returns a CheckCommandResults that asserts that the expected string is
+// in the error message of the command result
+func ErrorMessageContains(expectedString string) CheckCommandResults {
+	return func(result *models.RunCommandResult) error {
+		if !strings.Contains(result.ErrorMsg, expectedString) {
+			return fmt.Errorf("error message mismatch:\nExpected Contains: %q\nActual: %q", expectedString, result.ErrorMsg)
+		}
+		return nil
 	}
 }

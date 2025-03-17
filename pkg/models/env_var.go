@@ -72,3 +72,16 @@ func EnvVarsToStringMap(env map[string]EnvVarValue) map[string]string {
 	}
 	return result
 }
+
+// EnvVarsFromStringsMap converts a map of strings to a map of environment variables.
+// This is useful when interfacing with APIs that expect traditional string-based environment variables.
+func EnvVarsFromStringsMap(env map[string]string) map[string]EnvVarValue {
+	if env == nil {
+		return nil
+	}
+	result := make(map[string]EnvVarValue, len(env))
+	for k, v := range env {
+		result[k] = EnvVarValue(v)
+	}
+	return result
+}

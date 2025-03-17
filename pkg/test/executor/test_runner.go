@@ -66,8 +66,8 @@ func RunTestCase(
 		return storageList
 	}
 
-	job.Task().InputSources = prepareStorage(testCase.Inputs)
-	job.Task().ResultPaths = testCase.Outputs
+	job.Task().InputSources = append(job.Task().InputSources, prepareStorage(testCase.Inputs)...)
+	job.Task().ResultPaths = append(job.Task().ResultPaths, testCase.Outputs...)
 	job.Task().Publisher = publisher_local.NewSpecConfig()
 	job.Count = testNodeCount
 
@@ -118,7 +118,7 @@ func RunTestCase(
 		}
 	})
 
-	_, err = executor.Run(ctx, runCommandArguments)
+	result, err := executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		// TODO not sure how this behavior should be replicated.
 		err = testCase.SubmitChecker(&apimodels.PutJobResponse{
@@ -126,6 +126,11 @@ func RunTestCase(
 			EvaluationID: "TODO",
 			Warnings:     nil,
 		}, err)
+		require.NoError(t, err)
+	}
+
+	if testCase.CommandResultsChecker != nil {
+		err = testCase.CommandResultsChecker(result)
 		require.NoError(t, err)
 	}
 

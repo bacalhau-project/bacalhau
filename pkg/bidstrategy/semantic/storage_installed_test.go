@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -32,7 +31,6 @@ var (
 var (
 	EmptySpec      *models.Task
 	SpecWithInputs *models.Task
-	SpecWithWasm   *models.Task
 )
 
 func init() {
@@ -41,10 +39,6 @@ func init() {
 
 	SpecWithInputs = mock.Task()
 	SpecWithInputs.InputSources = OneStorageSpec
-
-	SpecWithWasm = mock.Task()
-	SpecWithWasm.InputSources = make([]*models.InputSource, 0)
-	SpecWithWasm.Engine = wasmmodels.NewWasmEngineBuilder(OneStorageSpec[0]).MustBuild()
 }
 
 func TestStorageBidStrategy(t *testing.T) {
@@ -58,8 +52,6 @@ func TestStorageBidStrategy(t *testing.T) {
 		{"no storage with nothing installed", EmptySpec, false, require.True},
 		{"uninstalled storage/Inputs", SpecWithInputs, false, require.False},
 		{"installed storage/Inputs", SpecWithInputs, true, require.True},
-		{"uninstalled storage/Wasm", SpecWithWasm, false, require.False},
-		{"installed storage/Wasm", SpecWithWasm, true, require.True},
 	}
 
 	for _, testCase := range testCases {

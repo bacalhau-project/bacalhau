@@ -17,7 +17,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
 	"github.com/bacalhau-project/bacalhau/testdata/wasm/cat"
@@ -132,18 +131,21 @@ func (s *LogStreamTestSuite) TestWasmOutputStream() {
 				Name: "task1",
 				Engine: &models.SpecConfig{
 					Type: models.EngineWasm,
-					Params: wasmmodels.EngineArguments{
-						EntryModule: storage.PreparedStorage{
-							InputSource: models.InputSource{
-								Source: &models.SpecConfig{
-									Type: models.StorageSourceInline,
-									Params: inline.Source{
-										URL: dataurl.EncodeBytes(cat.Program()),
-									}.ToMap(),
-								},
-							}},
-						EntryPoint: "_start",
+					Params: wasmmodels.EngineSpec{
+						EntryModule: "/app/cat.wasm",
+						Entrypoint:  "_start",
 					}.ToMap(),
+				},
+				InputSources: []*models.InputSource{
+					{
+						Source: &models.SpecConfig{
+							Type: models.StorageSourceInline,
+							Params: inline.Source{
+								URL: dataurl.EncodeBytes(cat.Program()),
+							}.ToMap(),
+						},
+						Target: "/app/cat.wasm",
+					},
 				},
 			},
 		},

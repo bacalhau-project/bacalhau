@@ -71,7 +71,10 @@ func runURLTest(
 			Tasks: []*models.Task{
 				{
 					Name: suite.T().Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					InputSources: []*models.InputSource{
+						scenario.InlineDataWithTarget(cat.Program(), "/app/cat.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("/app/cat.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							testCase.mount1,
@@ -237,7 +240,10 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 			Tasks: []*models.Task{
 				{
 					Name: s.T().Name(),
-					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					InputSources: []*models.InputSource{
+						scenario.InlineDataWithTarget(cat.Program(), "/app/cat.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("/app/cat.wasm").
 						WithEntrypoint("_start").
 						WithParameters(urlmount, path.Join(localMount, localFile)).
 						MustBuild(),

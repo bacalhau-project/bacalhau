@@ -47,7 +47,10 @@ func (s *PublishOnErrorSuite) TestPublishOnError() {
 				{
 					Name:      s.T().Name(),
 					Publisher: publisher_local.NewSpecConfig(),
-					Engine: wasmmodels.NewWasmEngineBuilder(scenario.InlineData(cat.Program())).
+					InputSources: []*models.InputSource{
+						scenario.InlineDataWithTarget(cat.Program(), "/app/cat.wasm"),
+					},
+					Engine: wasmmodels.NewWasmEngineBuilder("/app/cat.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
 							"data/hello.txt",

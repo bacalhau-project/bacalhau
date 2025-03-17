@@ -446,3 +446,4 @@ bprotocolorchestrator
 nclprotocolcompute
 ncltest
 dind
+tinygo
