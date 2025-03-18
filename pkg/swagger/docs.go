@@ -23,25 +23,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "home",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/agent/alive": {
             "get": {
                 "produces": [
@@ -181,103 +162,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.GetVersionResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/compute/debug": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Compute Node"
-                ],
-                "summary": "Returns debug information on what the current node is doing.",
-                "operationId": "apiServer/debug",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/id": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the id of the host node.",
-                "operationId": "id",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/livez": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "livez",
-                "responses": {
-                    "200": {
-                        "description": "TODO",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/node_info": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the info of the node.",
-                "operationId": "nodeInfo",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.NodeInfo"
                         }
                     },
                     "500": {
@@ -919,53 +803,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/version": {
-            "post": {
-                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of ` + "`" + `gitversion` + "`" + ` tags.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Misc"
-                ],
-                "summary": "Returns the build version running on the server.",
-                "operationId": "apiServer/version",
-                "parameters": [
-                    {
-                        "description": "Request must specify a ` + "`" + `client_id` + "`" + `. To retrieve your ` + "`" + `client_id` + "`" + `, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run ` + "`" + `bacalhau describe \u003cjob-id\u003e` + "`" + ` and fetch the ` + "`" + `ClientID` + "`" + ` field.",
-                        "name": "VersionRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/shared.VersionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/shared.VersionResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
                         "schema": {
                             "type": "string"
                         }
@@ -2356,23 +2193,6 @@ const docTemplate = `{
                 "GreaterThan",
                 "LessThan"
             ]
-        },
-        "shared.VersionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "shared.VersionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/models.BuildVersionInfo"
-                }
-            }
         },
         "types.API": {
             "type": "object",

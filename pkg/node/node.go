@@ -23,7 +23,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -189,12 +188,6 @@ func NewNode(
 
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
-
-	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           cfg.NodeID,
-		NodeInfoProvider: nodeInfoProvider,
-	})
 
 	_, err = agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
