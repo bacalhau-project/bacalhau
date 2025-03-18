@@ -3,7 +3,6 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -17,13 +16,6 @@ func JobToYaml(job *models.Job) (string, error) {
 		return "", fmt.Errorf("converting job to yaml: %w", err)
 	}
 	return string(yamlBytes), nil
-}
-
-func PrintWarnings(cmd *cobra.Command, warnings []string) {
-	cmd.Println("Warnings:")
-	for _, warning := range warnings {
-		cmd.Printf("\t* %s\n", warning)
-	}
 }
 
 func BuildJobFromFlags(

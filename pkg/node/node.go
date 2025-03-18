@@ -114,10 +114,10 @@ func NewNode(
 	cfg.SystemConfig.applyDefaults()
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
-	// Initialize license manager
-	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig.Orchestrator.License)
+	// Initialize license reader
+	licenseReader, err := licensing.NewReader(cfg.BacalhauConfig.Orchestrator.License.LocalPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create license manager: %w", err)
+		return nil, fmt.Errorf("failed to create license reader: %w", err)
 	}
 
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
@@ -166,6 +166,7 @@ func NewNode(
 			transportLayer,
 			metadataStore,
 			nodeInfoProvider,
+			licenseReader,
 		)
 		if err != nil {
 			return nil, err
@@ -201,7 +202,7 @@ func NewNode(
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
-		LicenseManager:     licenseManager,
+		LicenseReader:      licenseReader,
 	})
 	if err != nil {
 		return nil, err

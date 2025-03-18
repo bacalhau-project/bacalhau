@@ -88,6 +88,8 @@ type Manager interface {
 	OnConnectionStateChange(handler ConnectionStateChangeHandler)
 
 	Lookup
+
+	Tracker
 }
 
 type Lookup interface {
@@ -99,6 +101,11 @@ type Lookup interface {
 
 	// List returns all nodes matching the given filters.
 	List(ctx context.Context, filters ...NodeStateFilter) ([]models.NodeState, error)
+}
+
+type Tracker interface {
+	// GetConnectedNodesCount returns the number of currently connected nodes.
+	GetConnectedNodesCount() int
 }
 
 // Store defines the interface for persistent node state storage.
