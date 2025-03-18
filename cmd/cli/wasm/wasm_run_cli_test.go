@@ -41,7 +41,7 @@ var (
 		GPU:    "",
 	}
 	expectedDefaultNetworkConfig = &models.NetworkConfig{
-		Type:    models.NetworkNone,
+		Type:    models.NetworkDefault,
 		Domains: []string(nil),
 	}
 	expectedDefaultTimeoutConfig = &models.TimeoutConfig{

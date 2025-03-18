@@ -112,6 +112,14 @@ func NewComputeNode(
 		return nil, err
 	}
 
+	// We set the default network type if the node rejects network jobs.
+	// Otherwise, we let each executor set the proper network type if not explicitly defined.
+	// - docker: sets the default as bridge, since it is supported across multiple platforms
+	// - wasm: sets the default as host, since it doesn't support bridge mode
+	defaultNetworkType := models.NetworkDefault
+	if cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs {
+		defaultNetworkType = models.NetworkNone
+	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     cfg.NodeID,
 		Store:                  executionStore,
@@ -123,6 +131,7 @@ func NewComputeNode(
 		ResultsPath:            *resultsPath,
 		EnvResolver:            envResolver,
 		PortAllocator:          portAllocator,
+		DefaultNetworkType:     defaultNetworkType,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -313,8 +322,7 @@ func NewBidder(
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if cfg.SystemConfig.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
-			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs ||
-				!cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
 			}),

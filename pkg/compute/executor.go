@@ -33,35 +33,42 @@ type BaseExecutorParams struct {
 	FailureInjectionConfig models.FailureInjectionConfig
 	EnvResolver            EnvVarResolver
 	PortAllocator          PortAllocator
+
+	// TODO: this is a temporary solution and should be replaced with a more generic
+	//  solution to populate jobs with default resources and network config.
+	//  Most likely at a higher level in the stack and before queueing the execution.
+	DefaultNetworkType models.Network
 }
 
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID               string
-	store            store.ExecutionStore
-	Storages         storage.StorageProvider
-	storageDirectory string
-	executors        executor.ExecProvider
-	publishers       publisher.PublisherProvider
-	resultsPath      ResultsPath
-	failureInjection models.FailureInjectionConfig
-	envResolver      EnvVarResolver
-	portAllocator    PortAllocator
+	ID                 string
+	store              store.ExecutionStore
+	Storages           storage.StorageProvider
+	storageDirectory   string
+	executors          executor.ExecProvider
+	publishers         publisher.PublisherProvider
+	resultsPath        ResultsPath
+	failureInjection   models.FailureInjectionConfig
+	envResolver        EnvVarResolver
+	portAllocator      PortAllocator
+	defaultNetworkType models.Network
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:               params.ID,
-		store:            params.Store,
-		Storages:         params.Storages,
-		storageDirectory: params.StorageDirectory,
-		executors:        params.Executors,
-		publishers:       params.Publishers,
-		failureInjection: params.FailureInjectionConfig,
-		resultsPath:      params.ResultsPath,
-		envResolver:      params.EnvResolver,
-		portAllocator:    params.PortAllocator,
+		ID:                 params.ID,
+		store:              params.Store,
+		Storages:           params.Storages,
+		storageDirectory:   params.StorageDirectory,
+		executors:          params.Executors,
+		publishers:         params.Publishers,
+		failureInjection:   params.FailureInjectionConfig,
+		resultsPath:        params.ResultsPath,
+		envResolver:        params.EnvResolver,
+		portAllocator:      params.PortAllocator,
+		defaultNetworkType: params.DefaultNetworkType,
 	}
 }
 
@@ -122,11 +129,16 @@ func (e *BaseExecutor) PrepareRunArguments(
 		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
 
+	networkConfig := execution.Job.Task().Network
+	if networkConfig.Type == models.NetworkDefault {
+		networkConfig.Type = e.defaultNetworkType
+	}
+
 	return &executor.RunCommandRequest{
 			JobID:        execution.Job.ID,
 			ExecutionID:  execution.ID,
 			Resources:    execution.TotalAllocatedResources(),
-			Network:      execution.Job.Task().Network,
+			Network:      networkConfig,
 			Outputs:      execution.Job.Task().ResultPaths,
 			Inputs:       inputVolumes,
 			ResultsDir:   resultsDir,
