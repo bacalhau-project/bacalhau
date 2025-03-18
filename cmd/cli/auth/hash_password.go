@@ -55,7 +55,8 @@ func (o *HashPasswordOptions) runHashPassword(cmd *cobra.Command) error {
 	bcryptManager := credsecurity.NewDefaultBcryptManager()
 
 	// Determine if we're reading from a TTY
-	stdInIsTTY := isTerminalCheck(int(syscall.Stdin))
+	// int conversion is needed for windows architecture
+	stdInIsTTY := isTerminalCheck(int(syscall.Stdin)) //nolint:unconvert
 
 	var password string
 	var err error
@@ -63,7 +64,8 @@ func (o *HashPasswordOptions) runHashPassword(cmd *cobra.Command) error {
 	if stdInIsTTY {
 		// If we have a TTY, prompt for password with no echo
 		fmt.Fprint(cmd.OutOrStdout(), "Enter password: ")
-		passwordBytes, err := readPasswordFunc(int(syscall.Stdin))
+		// int conversion is needed for windows architecture
+		passwordBytes, err := readPasswordFunc(int(syscall.Stdin)) //nolint:unconvert
 		if err != nil {
 			log.Debug().Err(err).Msg("failed to read password")
 			return fmt.Errorf("failed to read password: %w", err)
