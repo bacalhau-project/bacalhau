@@ -406,6 +406,13 @@ export type models_Job = {
     Constraints?: Array<models_LabelSelectorRequirement>;
     /**
      * Count is the number of replicas that should be scheduled.
+     * For batch and service jobs:
+     * - If not present in JSON, defaults to 1
+     * - If explicitly set to 0, means stop all executions
+     * - If > 0, specifies exact number of replicas
+     * For daemon and ops jobs:
+     * - Values of 0 or 1 are ignored (job runs on all matching nodes)
+     * - Values > 1 are invalid and will cause validation to fail
      */
     Count?: number;
     CreateTime?: number;
@@ -525,8 +532,9 @@ export type models_LabelSelectorRequirement = {
 export enum models_Network {
     NetworkNone = 0,
     NetworkHost = 1,
-    NetworkHTTP = 2,
-    NetworkBridge = 3
+    NetworkFull = 2,
+    NetworkHTTP = 3,
+    NetworkBridge = 4
 }
 
 export type models_NetworkConfig = {
@@ -828,14 +836,6 @@ export enum selection_Operator {
     GreaterThan = 'gt',
     LessThan = 'lt'
 }
-
-export type shared_VersionRequest = {
-    client_id?: string;
-};
-
-export type shared_VersionResponse = {
-    build_version_info?: models_BuildVersionInfo;
-};
 
 export type types_API = {
     Auth?: types_AuthConfig;
@@ -1139,6 +1139,7 @@ export type types_IpfsDownloader = {
 export type types_JobAdmissionControl = {
     /**
      * AcceptNetworkedJobs indicates whether to accept jobs that require network access.
+     * Will be deprecated in v1.7 in favor of RejectNetworkedJobs.
      */
     AcceptNetworkedJobs?: boolean;
     /**
@@ -1153,6 +1154,10 @@ export type types_JobAdmissionControl = {
      * ProbeHTTP specifies the HTTP endpoint for probing job submission.
      */
     ProbeHTTP?: string;
+    /**
+     * RejectNetworkedJobs indicates whether to reject jobs that require network access.
+     */
+    RejectNetworkedJobs?: boolean;
     /**
      * RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.
      */
@@ -1486,22 +1491,6 @@ export type types_WebUI = {
     Listen?: string;
 };
 
-export type HomeResponse = (string);
-
-export type HomeError = unknown;
-
-export type IdResponse = (string);
-
-export type IdError = (string);
-
-export type LivezResponse = (string);
-
-export type LivezError = unknown;
-
-export type NodeInfoResponse = (models_NodeInfo);
-
-export type NodeInfoError = (string);
-
 export type AgentAliveResponse = (apimodels_IsAliveResponse);
 
 export type AgentAliveError = unknown;
@@ -1525,10 +1514,6 @@ export type AgentNodeError = (string);
 export type AgentVersionResponse = (apimodels_GetVersionResponse);
 
 export type AgentVersionError = (string);
-
-export type ApiServerDebugResponse = (string);
-
-export type ApiServerDebugError = (string);
 
 export type OrchestratorListJobsData = {
     query?: {
@@ -1776,14 +1761,3 @@ export type OrchestratorGetNodeData = {
 export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
 
 export type OrchestratorGetNodeError = (string);
-
-export type ApiServerVersionData = {
-    /**
-     * Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
-     */
-    body: shared_VersionRequest;
-};
-
-export type ApiServerVersionResponse = (shared_VersionResponse);
-
-export type ApiServerVersionError = (string);

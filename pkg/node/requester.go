@@ -34,7 +34,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
-	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
@@ -246,9 +245,6 @@ func NewRequesterNode(
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: delete this when we are ready to stop serving a deprecation notice.
-	requester_endpoint.NewEndpoint(apiServer.Router)
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:         apiServer.Router,
