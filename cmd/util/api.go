@@ -282,10 +282,10 @@ func resolveAuthCredentials(
 	return newAuthFlowEnabled, "", "", fmt.Errorf("unable to decide authentication method")
 }
 
-func extractAuthCredentialsFromEnvVariables() (apiKey, basicAuthUsername, basicAuthPassword string) {
-	basicAuthUsername = strings.TrimSpace(os.Getenv("BACALHAU_API_USERNAME"))
-	basicAuthPassword = strings.TrimSpace(os.Getenv("BACALHAU_API_PASSWORD"))
-	apiKey = strings.TrimSpace(os.Getenv("BACALHAU_API_KEY"))
+func extractAuthCredentialsFromEnvVariables() (string, string, string) {
+	apiKey := strings.TrimSpace(os.Getenv("BACALHAU_API_KEY"))
+	basicAuthUsername := strings.TrimSpace(os.Getenv("BACALHAU_API_USERNAME"))
+	basicAuthPassword := strings.TrimSpace(os.Getenv("BACALHAU_API_PASSWORD"))
 
-	return basicAuthUsername, apiKey, basicAuthPassword
+	return apiKey, basicAuthUsername, basicAuthPassword
 }

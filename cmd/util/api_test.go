@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -294,6 +295,210 @@ func TestConstructAPIEndpoint(t *testing.T) {
 			urlResult, detectedScheme := ConstructAPIEndpoint(tt.apiCfg)
 			assert.Equal(t, tt.expected, urlResult, "ConstructAPIEndpoint() urlResult")
 			assert.Equal(t, tt.expectedScheme, detectedScheme, "ConstructAPIEndpoint() detectedScheme")
+		})
+	}
+}
+
+func TestResolveAuthCredentials(t *testing.T) {
+	tests := []struct {
+		name                string
+		apiKey              string
+		basicAuthUsername   string
+		basicAuthPassword   string
+		wantNewAuthFlow     bool
+		wantAuthScheme      string
+		wantCredentialValue string
+		wantErr             bool
+		expectedErrMsg      string
+	}{
+		{
+			name:                "No credentials provided",
+			apiKey:              "",
+			basicAuthUsername:   "",
+			basicAuthPassword:   "",
+			wantNewAuthFlow:     false,
+			wantAuthScheme:      "",
+			wantCredentialValue: "",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid API key",
+			apiKey:              "test-api-key",
+			basicAuthUsername:   "",
+			basicAuthPassword:   "",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "Bearer",
+			wantCredentialValue: "test-api-key",
+			wantErr:             false,
+		},
+		{
+			name:                "Valid basic auth credentials",
+			apiKey:              "",
+			basicAuthUsername:   "user",
+			basicAuthPassword:   "pass",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "Basic",
+			wantCredentialValue: "dXNlcjpwYXNz", // Base64 encoded "user:pass"
+			wantErr:             false,
+		},
+		{
+			name:                "Missing password in basic auth",
+			apiKey:              "",
+			basicAuthUsername:   "user",
+			basicAuthPassword:   "",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "",
+			wantCredentialValue: "",
+			wantErr:             true,
+			expectedErrMsg:      "BACALHAU_API_USERNAME provided but not BACALHAU_API_PASSWORD",
+		},
+		{
+			name:                "Missing username in basic auth",
+			apiKey:              "",
+			basicAuthUsername:   "",
+			basicAuthPassword:   "pass",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "",
+			wantCredentialValue: "",
+			wantErr:             true,
+			expectedErrMsg:      "BACALHAU_API_PASSWORD provided but not BACALHAU_API_USERNAME",
+		},
+		{
+			name:                "Both API key and basic auth provided",
+			apiKey:              "test-api-key",
+			basicAuthUsername:   "user",
+			basicAuthPassword:   "pass",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "",
+			wantCredentialValue: "",
+			wantErr:             true,
+			expectedErrMsg:      "can't use both BACALHAU_API_KEY and BACALHAU_API_USERNAME/BACALHAU_API_PASSWORD simultaneously",
+		},
+		{
+			name:                "Credentials with whitespace",
+			apiKey:              "  test-api-key  ",
+			basicAuthUsername:   "",
+			basicAuthPassword:   "",
+			wantNewAuthFlow:     true,
+			wantAuthScheme:      "Bearer",
+			wantCredentialValue: "test-api-key",
+			wantErr:             false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNewAuthFlow, gotAuthScheme, gotCredentialValue, err := resolveAuthCredentials(
+				tt.apiKey,
+				tt.basicAuthUsername,
+				tt.basicAuthPassword,
+			)
+
+			assert.Equal(t, tt.wantNewAuthFlow, gotNewAuthFlow, "newAuthFlow mismatch")
+			assert.Equal(t, tt.wantAuthScheme, gotAuthScheme, "authScheme mismatch")
+			assert.Equal(t, tt.wantCredentialValue, gotCredentialValue, "credentialValue mismatch")
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.expectedErrMsg != "" {
+					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				}
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestExtractAuthCredentialsFromEnvVariables(t *testing.T) {
+	// Save original env values to restore later
+	originalAPIKey := os.Getenv("BACALHAU_API_KEY")
+	originalUsername := os.Getenv("BACALHAU_API_USERNAME")
+	originalPassword := os.Getenv("BACALHAU_API_PASSWORD")
+
+	// Cleanup function to restore original env values
+	defer func() {
+		os.Setenv("BACALHAU_API_KEY", originalAPIKey)
+		os.Setenv("BACALHAU_API_USERNAME", originalUsername)
+		os.Setenv("BACALHAU_API_PASSWORD", originalPassword)
+	}()
+
+	tests := []struct {
+		name         string
+		envSetup     map[string]string
+		expectedKey  string
+		expectedUser string
+		expectedPass string
+	}{
+		{
+			name: "No environment variables set",
+			envSetup: map[string]string{
+				"BACALHAU_API_KEY":      "",
+				"BACALHAU_API_USERNAME": "",
+				"BACALHAU_API_PASSWORD": "",
+			},
+			expectedKey:  "",
+			expectedUser: "",
+			expectedPass: "",
+		},
+		{
+			name: "Only API key set",
+			envSetup: map[string]string{
+				"BACALHAU_API_KEY":      "test-api-key",
+				"BACALHAU_API_USERNAME": "",
+				"BACALHAU_API_PASSWORD": "",
+			},
+			expectedKey:  "test-api-key",
+			expectedUser: "",
+			expectedPass: "",
+		},
+		{
+			name: "Only basic auth credentials set",
+			envSetup: map[string]string{
+				"BACALHAU_API_KEY":      "",
+				"BACALHAU_API_USERNAME": "testuser",
+				"BACALHAU_API_PASSWORD": "testpass",
+			},
+			expectedKey:  "",
+			expectedUser: "testuser",
+			expectedPass: "testpass",
+		},
+		{
+			name: "All credentials set",
+			envSetup: map[string]string{
+				"BACALHAU_API_KEY":      "test-api-key",
+				"BACALHAU_API_USERNAME": "testuser",
+				"BACALHAU_API_PASSWORD": "testpass",
+			},
+			expectedKey:  "test-api-key",
+			expectedUser: "testuser",
+			expectedPass: "testpass",
+		},
+		{
+			name: "Credentials with whitespace",
+			envSetup: map[string]string{
+				"BACALHAU_API_KEY":      "  test-api-key  ",
+				"BACALHAU_API_USERNAME": "  testuser  ",
+				"BACALHAU_API_PASSWORD": "  testpass  ",
+			},
+			expectedKey:  "test-api-key",
+			expectedUser: "testuser",
+			expectedPass: "testpass",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set environment variables for the test
+			for key, value := range tt.envSetup {
+				os.Setenv(key, value)
+			}
+
+			gotKey, gotUser, gotPass := extractAuthCredentialsFromEnvVariables()
+
+			assert.Equal(t, tt.expectedKey, gotKey, "API key mismatch")
+			assert.Equal(t, tt.expectedUser, gotUser, "Username mismatch")
+			assert.Equal(t, tt.expectedPass, gotPass, "Password mismatch")
 		})
 	}
 }
