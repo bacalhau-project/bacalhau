@@ -14,7 +14,7 @@ var (
 	validateLong = templates.LongDesc(`
 		Validate a job from a file
 		JSON and YAML formats are accepted.
-		Job Specification: https://docs.bacalhau.org/setting-up/jobs/job
+		Job Specification: https://docs.bacalhau.org/cli-api/specifications/job
 `)
 
 	//nolint:lll // Documentation
@@ -24,7 +24,7 @@ var (
 `)
 )
 
-const JobSpecLink = "https://docs.bacalhau.org/setting-up/jobs/job"
+const JobSpecLink = "https://docs.bacalhau.org/cli-api/specifications/job"
 
 func NewValidateCmd() *cobra.Command {
 	validateCmd := &cobra.Command{
