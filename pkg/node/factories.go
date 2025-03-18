@@ -96,6 +96,12 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
 
+			// If any new users or oauth2 config is specified , disable legacy auth methods endpoint
+			if len(nodeConfig.BacalhauConfig.API.Auth.Users) > 0 || nodeConfig.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
+				auths := make(map[string]authn.Authenticator, 1)
+				return provider.NewMappedProvider(auths), allErr
+			}
+
 			auths := make(map[string]authn.Authenticator, len(nodeConfig.BacalhauConfig.API.Auth.Methods))
 			for name, authnConfig := range nodeConfig.BacalhauConfig.API.Auth.Methods {
 				switch authnConfig.Type {

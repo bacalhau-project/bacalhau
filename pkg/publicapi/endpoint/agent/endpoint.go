@@ -53,6 +53,7 @@ func NewEndpoint(params EndpointParams) (*Endpoint, error) {
 	g.GET("/debug", e.debug)
 	g.GET("/config", e.config)
 	g.GET("/license", e.license)
+	g.GET("/authconfig", e.nodeAuthConfig)
 
 	return e, nil
 }
@@ -169,5 +170,25 @@ func (e *Endpoint) license(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{
 		LicenseClaims: licenseClaims,
+	})
+}
+
+// nodeAuthConfig godoc
+//
+//	@ID			agent/authconfig
+//	@Summary	Returns the OAuth2 configuration of the node.
+//	@Tags		Ops
+//	@Produce	json
+//	@Success	200	{object}	apimodels.GetAgentNodeAuthConfigResponse
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/agent/authconfig [get]
+func (e *Endpoint) nodeAuthConfig(c echo.Context) error {
+	cfg, err := e.bacalhauConfig.Copy()
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("error getting node oauth2 config: %s", err))
+	}
+	return c.JSON(http.StatusOK, apimodels.GetAgentNodeAuthConfigResponse{
+		Version: "1.0.0",
+		Config:  cfg.API.Auth.Oauth2,
 	})
 }
