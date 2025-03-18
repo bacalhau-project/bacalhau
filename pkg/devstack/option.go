@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/imdario/mergo"
 	"github.com/rs/zerolog"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -147,10 +146,7 @@ func WithMemoryProfilingFile(path string) ConfigOption {
 
 func WithSystemConfig(cfg node.SystemConfig) ConfigOption {
 	return func(c *DevStackConfig) {
-		err := mergo.Merge(&c.SystemConfig, cfg)
-		if err != nil {
-			panic(err)
-		}
+		c.SystemConfig = cfg
 	}
 }
 
