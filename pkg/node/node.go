@@ -80,7 +80,7 @@ func (c *NodeConfig) Validate() error {
 	// If either Users or Oauth2 config is defined,
 	// Methods and AccessPolicyPath should be empty.
 	// We do not allow mixing old and new auth together
-	if (hasUsers || hasOauth2) && (len(authConfig.Methods) > 0 || authConfig.AccessPolicyPath != "") {
+	if (hasUsers || hasOauth2) && (authConfig.AccessPolicyPath != "") {
 		mErr = errors.Join(mErr, errors.New("mixing old and new auth mechanisms not supported. "+
 			"when Users or Oauth2 is defined in API.Auth, Methods and AccessPolicyPath must be empty"))
 	}

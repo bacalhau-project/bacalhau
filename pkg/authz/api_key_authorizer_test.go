@@ -164,6 +164,52 @@ func TestApiKeyAuthorization(t *testing.T) {
 	})
 }
 
+func TestGetUserIdentifierForAPIKey(t *testing.T) {
+	// Setup
+	authorizer := createTestApiKeyAuthorizer()
+
+	t.Run("User with Alias", func(t *testing.T) {
+		user := types.AuthUser{
+			Alias:    "Test Alias",
+			Username: "testuser",
+			APIKey:   "test-api-key-12345",
+		}
+		identifier := authorizer.getUserIdentifier(user)
+		assert.Equal(t, "Test Alias", identifier)
+	})
+
+	t.Run("User with Username but no Alias", func(t *testing.T) {
+		user := types.AuthUser{
+			Username: "testuser",
+			APIKey:   "test-api-key-12345",
+		}
+		identifier := authorizer.getUserIdentifier(user)
+		assert.Equal(t, "testuser", identifier)
+	})
+
+	t.Run("User with only API Key", func(t *testing.T) {
+		user := types.AuthUser{
+			APIKey: "test-api-key-12345",
+		}
+		identifier := authorizer.getUserIdentifier(user)
+		assert.Equal(t, "API key ending in ...12345", identifier)
+	})
+
+	t.Run("User with short API Key", func(t *testing.T) {
+		user := types.AuthUser{
+			APIKey: "1234",
+		}
+		identifier := authorizer.getUserIdentifier(user)
+		assert.Equal(t, "API key 1234", identifier)
+	})
+
+	t.Run("Unknown User", func(t *testing.T) {
+		user := types.AuthUser{}
+		identifier := authorizer.getUserIdentifier(user)
+		assert.Equal(t, "unknown user", identifier)
+	})
+}
+
 // Helper functions to create test data
 
 func createTestApiKeyAuthorizer() *apiKeyAuthorizer {

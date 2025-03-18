@@ -139,36 +139,6 @@ func TestNodeConfig_Validate_AuthConfig_ValidCases(t *testing.T) {
 }
 
 func TestNodeConfig_Validate_AuthConfig_InvalidCases(t *testing.T) {
-	t.Run("AuthConfig with Users and Methods should be invalid", func(t *testing.T) {
-		authConfig := types.AuthConfig{
-			Methods: map[string]types.AuthenticatorConfig{
-				"test": {
-					Type:       "test-type",
-					PolicyPath: "test-path",
-				},
-			},
-			Users: []types.AuthUser{
-				{
-					Username: "test-user",
-					Password: "test-password",
-				},
-			},
-		}
-		bacConfig := types.Bacalhau{}
-		bacConfig.API.Auth = authConfig
-
-		cfg := &NodeConfig{
-			NodeID:                 "test-node-id",
-			CleanupManager:         system.NewCleanupManager(),
-			FailureInjectionConfig: models.FailureInjectionConfig{},
-			BacalhauConfig:         bacConfig,
-		}
-
-		err := cfg.Validate()
-		assert.Error(t, err, "Validate() should return an error for AuthConfig with Users and Methods")
-		assert.Contains(t, err.Error(), "mixing old and new auth mechanisms", "Error message should describe the issue")
-	})
-
 	t.Run("AuthConfig with Users and AccessPolicyPath should be invalid", func(t *testing.T) {
 		authConfig := types.AuthConfig{
 			AccessPolicyPath: "/path/to/policy",
@@ -191,33 +161,6 @@ func TestNodeConfig_Validate_AuthConfig_InvalidCases(t *testing.T) {
 
 		err := cfg.Validate()
 		assert.Error(t, err, "Validate() should return an error for AuthConfig with Users and AccessPolicyPath")
-		assert.Contains(t, err.Error(), "mixing old and new auth mechanisms", "Error message should describe the issue")
-	})
-
-	t.Run("AuthConfig with Oauth2 and Methods should be invalid", func(t *testing.T) {
-		authConfig := types.AuthConfig{
-			Methods: map[string]types.AuthenticatorConfig{
-				"test": {
-					Type:       "test-type",
-					PolicyPath: "test-path",
-				},
-			},
-			Oauth2: types.Oauth2Config{
-				ProviderID: "test-provider",
-			},
-		}
-		bacConfig := types.Bacalhau{}
-		bacConfig.API.Auth = authConfig
-
-		cfg := &NodeConfig{
-			NodeID:                 "test-node-id",
-			CleanupManager:         system.NewCleanupManager(),
-			FailureInjectionConfig: models.FailureInjectionConfig{},
-			BacalhauConfig:         bacConfig,
-		}
-
-		err := cfg.Validate()
-		assert.Error(t, err, "Validate() should return an error for AuthConfig with Oauth2 and Methods")
 		assert.Contains(t, err.Error(), "mixing old and new auth mechanisms", "Error message should describe the issue")
 	})
 
@@ -279,12 +222,7 @@ func TestNodeConfig_Validate_AuthConfig_InvalidCases(t *testing.T) {
 
 	t.Run("AuthConfig with different Oauth2 field (not ProviderID) should be detected", func(t *testing.T) {
 		authConfig := types.AuthConfig{
-			Methods: map[string]types.AuthenticatorConfig{
-				"test": {
-					Type:       "test-type",
-					PolicyPath: "test-path",
-				},
-			},
+			AccessPolicyPath: "/path/to/policy",
 			Oauth2: types.Oauth2Config{
 				// Using a different field than ProviderID
 				ProviderName: "test-provider-name",

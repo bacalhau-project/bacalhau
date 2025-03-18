@@ -231,13 +231,13 @@ func TestEndpointNodeOauth2ConfigPopulated(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseReader, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		LicenseReader:  licenseReader,
 	})
 	require.NoError(t, err)
 
@@ -279,13 +279,13 @@ func TestEndpointNodeOauth2ConfigEmpty(t *testing.T) {
 	}
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseReader, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		LicenseReader:  licenseReader,
 	})
 	require.NoError(t, err)
 
@@ -311,13 +311,13 @@ func TestEndpointNodeOauth2ConfigRouteRegistration(t *testing.T) {
 	router := echo.New()
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseReader, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	endpoint, err := NewEndpoint(EndpointParams{
 		Router:         router,
 		BacalhauConfig: types.Bacalhau{},
-		LicenseManager: licenseManager,
+		LicenseReader:  licenseReader,
 	})
 	require.NoError(t, err)
 

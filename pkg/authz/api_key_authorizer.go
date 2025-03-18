@@ -51,6 +51,26 @@ func NewAPIKeyAuthorizer(
 	return authorizer
 }
 
+// getUserIdentifier returns a string to identify the user in logs and error messages
+// It prefers alias if present, then username if present, then last 5 chars of API key
+func (a *apiKeyAuthorizer) getUserIdentifier(user types.AuthUser) string {
+	if user.Alias != "" {
+		return user.Alias
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	if user.APIKey != "" {
+		// Get last 5 characters of API key
+		const apiKeyMaskOffset = 5
+		if len(user.APIKey) > apiKeyMaskOffset {
+			return "API key ending in ..." + user.APIKey[len(user.APIKey)-5:]
+		}
+		return "API key " + user.APIKey
+	}
+	return "unknown user"
+}
+
 // Authorize implements the Authorizer interface
 func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	if req.URL == nil {
@@ -102,7 +122,7 @@ func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 				apimodels.NewUnauthorizedError(
 					fmt.Sprintf(
 						"user '%s' does not have the required capability '%s'",
-						user.Alias, requiredCapability),
+						a.getUserIdentifier(user), requiredCapability),
 				)
 		}
 	}
