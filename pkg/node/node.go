@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -60,20 +61,30 @@ func (c *NodeConfig) Validate() error {
 	var mErr error
 	mErr = errors.Join(mErr, validate.NotBlank(c.NodeID, "node id is required"))
 
-	//// Check that Auth and BuiltInAuth are not both defined
-	//authDefined := len(c.BacalhauConfig.API.Auth.Methods) > 0 || c.BacalhauConfig.API.Auth.AccessPolicyPath != ""
-	//
-	//builtInAuthDefined := false
-	//if c.BacalhauConfig.API.BuiltInAuth.BasicAuth.Admins.SrcFilePath != "" ||
-	//	c.BacalhauConfig.API.BuiltInAuth.BasicAuth.Users.SrcFilePath != "" ||
-	//	len(c.BacalhauConfig.API.BuiltInAuth.BasicAuth.Admins.UserConfig) > 0 ||
-	//	len(c.BacalhauConfig.API.BuiltInAuth.BasicAuth.Users.UserConfig) > 0 {
-	//	builtInAuthDefined = true
-	//}
-	//
-	//if authDefined && builtInAuthDefined {
-	//	mErr = errors.Join(mErr, fmt.Errorf("both Auth and BuiltInAuth are defined in the configuration; only one can be used at a time"))
-	//}
+	// Validate Auth Config
+	authConfig := c.BacalhauConfig.API.Auth
+
+	// Check if Users is not empty
+	hasUsers := len(authConfig.Users) > 0
+
+	// Check if Oauth2Config has at least one defined property
+	hasOauth2 := false
+	v := reflect.ValueOf(authConfig.Oauth2)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if !field.IsZero() {
+			hasOauth2 = true
+			break
+		}
+	}
+
+	// If either Users or Oauth2 config is defined,
+	// Methods and AccessPolicyPath should be empty.
+	// We do not allow mixing old and new auth together
+	if (hasUsers || hasOauth2) && (len(authConfig.Methods) > 0 || authConfig.AccessPolicyPath != "") {
+		mErr = errors.Join(mErr, errors.New("mixing old and new auth mechanisms not supported. "+
+			"when Users or Oauth2 is defined in API.Auth, Methods and AccessPolicyPath must be empty"))
+	}
 
 	return mErr
 }

@@ -40,38 +40,36 @@ type entryPointAuthorizer struct {
 
 // validateUser validates a user configuration and returns an error if it's invalid
 func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
-	// Validation: Check that user has a non-empty Alias
-	if user.Alias == "" {
-		return fmt.Errorf("user has empty Alias, Alias is mandatory")
-	}
+	// Get user identifier for error messages
+	userID := getUserIdentifier(user)
 
 	// Validation: Check that user has either username+password OR apiKey but not both
 	hasUsernamePassword := user.Username != "" && user.Password != ""
 	hasAPIKey := user.APIKey != ""
 
 	if hasUsernamePassword && hasAPIKey {
-		return fmt.Errorf("user '%s' has both username/password and API key, must have only one authentication method", user.Alias)
+		return fmt.Errorf("user '%s' has both username/password and API key, must have only one authentication method", userID)
 	}
 
 	if !hasUsernamePassword && !hasAPIKey {
-		return fmt.Errorf("user '%s' has neither username/password nor API key, must have one authentication method", user.Alias)
+		return fmt.Errorf("user '%s' has neither username/password nor API key, must have one authentication method", userID)
 	}
 
 	// Validate username format if provided
 	if user.Username != "" {
 		// Check username length
 		if len(strings.TrimSpace(user.Username)) > UsernameMaxLength {
-			return fmt.Errorf("username for user '%s' exceeds maximum length of %d characters", user.Alias, UsernameMaxLength)
+			return fmt.Errorf("username for user '%s' exceeds maximum length of %d characters", userID, UsernameMaxLength)
 		}
 
 		if len(strings.TrimSpace(user.Username)) == 0 {
-			return fmt.Errorf("username for user '%s' should not be empty", user.Alias)
+			return fmt.Errorf("username for user '%s' should not be empty", userID)
 		}
 
 		// Check username is alphanumeric
 		alphanumericRegex := regexp.MustCompile("^[a-zA-Z0-9]+$")
 		if !alphanumericRegex.MatchString(user.Username) {
-			return fmt.Errorf("username for user '%s' must contain only alphanumeric characters (a-z, A-Z, 0-9)", user.Alias)
+			return fmt.Errorf("username for user '%s' must contain only alphanumeric characters (a-z, A-Z, 0-9)", userID)
 		}
 	}
 
@@ -79,11 +77,11 @@ func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
 	if user.Password != "" {
 		// Check password length
 		if len(user.Password) < MinimumPasswordLength {
-			return fmt.Errorf("password for user '%s' is too short, minimum length is %d characters", user.Alias, MinimumPasswordLength)
+			return fmt.Errorf("password for user '%s' is too short, minimum length is %d characters", userID, MinimumPasswordLength)
 		}
 
 		if len(user.Password) > MaximumPasswordLength {
-			return fmt.Errorf("password for user '%s' exceeds maximum length of %d characters", user.Alias, MaximumPasswordLength)
+			return fmt.Errorf("password for user '%s' exceeds maximum length of %d characters", userID, MaximumPasswordLength)
 		}
 	}
 
@@ -91,20 +89,39 @@ func (a *entryPointAuthorizer) validateUser(user types.AuthUser) error {
 	if user.APIKey != "" {
 		// Check API key length
 		if len(user.APIKey) < MinimumAPIKeyLength {
-			return fmt.Errorf("API key for user '%s' is too short, minimum length is %d characters", user.Alias, MinimumAPIKeyLength)
+			return fmt.Errorf("API key for user '%s' is too short, minimum length is %d characters", userID, MinimumAPIKeyLength)
 		}
 
 		if len(user.APIKey) > MaximumAPIKeyLength {
-			return fmt.Errorf("API key for user '%s' exceeds maximum length of %d characters", user.Alias, MaximumAPIKeyLength)
+			return fmt.Errorf("API key for user '%s' exceeds maximum length of %d characters", userID, MaximumAPIKeyLength)
 		}
 	}
 
 	// Validation: Check that user has at least one capability
 	if len(user.Capabilities) == 0 {
-		return fmt.Errorf("user '%s' has no capabilities defined, must have at least one capability", user.Alias)
+		return fmt.Errorf("user '%s' has no capabilities defined, must have at least one capability", userID)
 	}
 
 	return nil
+}
+
+// getUserIdentifier returns a string to identify the user in logs and error messages
+// It prefers alias if present, then username if present, then last 5 chars of API key
+func getUserIdentifier(user types.AuthUser) string {
+	if user.Alias != "" {
+		return user.Alias
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	if user.APIKey != "" {
+		// Get last 5 characters of API key
+		if len(user.APIKey) > 5 {
+			return "API key ending in ..." + user.APIKey[len(user.APIKey)-5:]
+		}
+		return "API key " + user.APIKey
+	}
+	return "unknown user"
 }
 
 // checkForDuplicates checks for duplicate aliases, usernames, and API keys
@@ -120,10 +137,14 @@ func (a *entryPointAuthorizer) checkForDuplicates(
 	seenUsernames map[string]string,
 	seenAPIKeys map[string]bool,
 ) error {
-	// Check for duplicate alias (case-insensitive)
-	aliasLower := strings.ToLower(user.Alias)
-	if originalAlias, exists := seenAliases[aliasLower]; exists {
-		return fmt.Errorf("duplicate alias detected: '%s' and '%s' (aliases are case-insensitive)", originalAlias, user.Alias)
+	userID := getUserIdentifier(user)
+
+	// Check for duplicate alias (case-insensitive) only if alias is defined
+	if user.Alias != "" {
+		aliasLower := strings.ToLower(user.Alias)
+		if originalAlias, exists := seenAliases[aliasLower]; exists {
+			return fmt.Errorf("duplicate alias detected: '%s' and '%s' (aliases are case-insensitive)", originalAlias, user.Alias)
+		}
 	}
 
 	// Check for duplicate username (case-insensitive)
@@ -136,7 +157,7 @@ func (a *entryPointAuthorizer) checkForDuplicates(
 
 	// Check for duplicate API key
 	if user.APIKey != "" && seenAPIKeys[user.APIKey] {
-		return fmt.Errorf("duplicate API key detected for user '%s'", user.Alias)
+		return fmt.Errorf("duplicate API key detected for user '%s'", userID)
 	}
 
 	return nil
@@ -162,8 +183,11 @@ func (a *entryPointAuthorizer) validateAllUsers(users []types.AuthUser) error {
 		}
 
 		// Update tracking maps after validation passes
-		aliasLower := strings.ToLower(user.Alias)
-		seenAliases[aliasLower] = user.Alias
+		// Only track non-empty aliases
+		if user.Alias != "" {
+			aliasLower := strings.ToLower(user.Alias)
+			seenAliases[aliasLower] = user.Alias
+		}
 
 		if user.Username != "" {
 			usernameLower := strings.ToLower(user.Username)
@@ -191,11 +215,6 @@ func (a *entryPointAuthorizer) populateUserMaps(users []types.AuthUser) {
 }
 
 func NewEntryPointAuthorizer(ctx context.Context, nodeID string, authConfig types.AuthConfig) (Authorizer, error) {
-	// Check if there are any users configured
-	if len(authConfig.Users) == 0 {
-		return nil, fmt.Errorf("no users configured for native authorizer")
-	}
-
 	capabilityChecker := NewCapabilityChecker()
 	endpointPermissions := GetDefaultEndpointPermissions()
 
@@ -244,43 +263,6 @@ func NewEntryPointAuthorizer(ctx context.Context, nodeID string, authConfig type
 	authorizer.jwtAuthorizer = createdJWTAuthorizer
 
 	return authorizer, nil
-}
-
-// isJWTToken determines if a token is a JWT by checking its format and structure
-// It performs a preliminary validation without validating the signature
-func isJWTToken(tokenString string) bool {
-	// Check if the token has the correct number of segments (3 segments = 2 periods)
-	parts := strings.Split(tokenString, ".")
-	if len(parts) != 3 {
-		return false
-	}
-
-	// Try to decode the header (first part)
-	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return false
-	}
-
-	// Check if the header is valid JSON
-	var header map[string]interface{}
-	if err := json.Unmarshal(headerBytes, &header); err != nil {
-		return false
-	}
-
-	// Try to decode the payload (second part)
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return false
-	}
-
-	// Check if the payload is valid JSON
-	var payload map[string]interface{}
-	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
-		return false
-	}
-
-	// If we got this far, it's likely a JWT token
-	return true
 }
 
 // Authorize implements the Authorizer interface
@@ -332,4 +314,41 @@ func (a *entryPointAuthorizer) Authorize(req *http.Request) (Authorization, erro
 			TokenValid: false,
 		}, apimodels.NewUnauthorizedError("unsupported authentication method")
 	}
+}
+
+// isJWTToken determines if a token is a JWT by checking its format and structure
+// It performs a preliminary validation without validating the signature
+func isJWTToken(tokenString string) bool {
+	// Check if the token has the correct number of segments (3 segments = 2 periods)
+	parts := strings.Split(tokenString, ".")
+	if len(parts) != 3 {
+		return false
+	}
+
+	// Try to decode the header (first part)
+	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return false
+	}
+
+	// Check if the header is valid JSON
+	var header map[string]interface{}
+	if err := json.Unmarshal(headerBytes, &header); err != nil {
+		return false
+	}
+
+	// Try to decode the payload (second part)
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+
+	// Check if the payload is valid JSON
+	var payload map[string]interface{}
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		return false
+	}
+
+	// If we got this far, it's likely a JWT token
+	return true
 }

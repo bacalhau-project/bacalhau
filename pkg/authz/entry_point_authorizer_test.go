@@ -57,7 +57,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("InvalidUserWithoutAlias", func(t *testing.T) {
+	t.Run("ValidUserWithoutAlias", func(t *testing.T) {
 		// Setup
 		authorizer := &entryPointAuthorizer{}
 		user := types.AuthUser{
@@ -74,8 +74,7 @@ func TestEntryPointUserValidation(t *testing.T) {
 		err := authorizer.validateUser(user)
 
 		// Verify
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "empty Alias")
+		require.NoError(t, err, "User without alias should be valid")
 	})
 
 	t.Run("InvalidUserWithBothAuthMethods", func(t *testing.T) {
@@ -362,6 +361,70 @@ func TestEntryPointUserValidation(t *testing.T) {
 		// Verify
 		require.NoError(t, err)
 	})
+
+	t.Run("ErrorMessagesWithoutAlias", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+		user := types.AuthUser{
+			Username: "testuser",
+			// Missing password to trigger error
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"},
+				},
+			},
+		}
+
+		// Execute
+		err := authorizer.validateUser(user)
+
+		// Verify
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "user 'testuser' has neither username/password")
+	})
+
+	t.Run("ErrorMessagesWithAPIKey", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+		apiKey := "this-is-a-valid-api-key-12345678901234567890"
+		user := types.AuthUser{
+			APIKey: apiKey,
+			// Add username to trigger error for having both auth methods
+			Username: "testuser",
+			Password: "testpass",
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"},
+				},
+			},
+		}
+
+		// Execute
+		err := authorizer.validateUser(user)
+
+		// Verify
+		require.Error(t, err)
+		// Since username is present, it should be used as the identifier
+		assert.Contains(t, err.Error(), "user 'testuser' has both username/password and API key")
+	})
+
+	t.Run("ErrorMessagesWithOnlyAPIKey", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+		apiKey := "this-is-a-valid-api-key-12345678901234567890"
+		user := types.AuthUser{
+			APIKey: apiKey,
+			// No username/password, but no capabilities to trigger error
+		}
+
+		// Execute
+		err := authorizer.validateUser(user)
+
+		// Verify
+		require.Error(t, err)
+		// When only API key is present, should use API key suffix
+		assert.Contains(t, err.Error(), "API key ending in ...67890")
+	})
 }
 
 func TestEntryPointDuplicateChecking(t *testing.T) {
@@ -451,6 +514,68 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 		assert.Contains(t, err.Error(), "duplicate API key detected")
 	})
 
+	t.Run("EmptyAliasesSkipDuplicateCheck", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+
+		seenAliases := map[string]string{
+			"test user": "Test User", // Use lowercase key as that's what the function checks
+		}
+		seenUsernames := map[string]string{}
+		seenAPIKeys := map[string]bool{}
+
+		user := types.AuthUser{
+			Alias:    "", // Empty alias should skip duplicate check
+			Username: "uniqueuser",
+			Password: "password1234567",
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"},
+				},
+			},
+		}
+
+		// Execute
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
+
+		// Verify
+		require.NoError(t, err, "Empty alias should skip duplicate check")
+	})
+
+	t.Run("MultipleUsersWithEmptyAliases", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+
+		users := []types.AuthUser{
+			{
+				Alias:    "", // First user with empty alias
+				Username: "user1",
+				Password: "password1234567",
+				Capabilities: []types.Capability{
+					{
+						Actions: []string{"read:job"},
+					},
+				},
+			},
+			{
+				Alias:    "",      // Second user with empty alias (should be allowed)
+				Username: "user2", // Different username
+				Password: "password1234567",
+				Capabilities: []types.Capability{
+					{
+						Actions: []string{"read:job"},
+					},
+				},
+			},
+		}
+
+		// Execute
+		err := authorizer.validateAllUsers(users)
+
+		// Verify
+		require.NoError(t, err, "Multiple users with empty aliases should be allowed")
+	})
+
 	t.Run("NoDuplicates", func(t *testing.T) {
 		// Setup
 		authorizer := &entryPointAuthorizer{}
@@ -481,6 +606,34 @@ func TestEntryPointDuplicateChecking(t *testing.T) {
 
 		// Verify
 		require.NoError(t, err)
+	})
+
+	t.Run("DuplicateAPIKeyErrorMessage", func(t *testing.T) {
+		// Setup
+		authorizer := &entryPointAuthorizer{}
+
+		seenAliases := map[string]string{}
+		seenUsernames := map[string]string{}
+		seenAPIKeys := map[string]bool{
+			"this-is-a-valid-api-key-12345678901234567890": true,
+		}
+
+		user := types.AuthUser{
+			// No alias provided
+			APIKey: "this-is-a-valid-api-key-12345678901234567890", // Duplicate API key
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"},
+				},
+			},
+		}
+
+		// Execute
+		err := authorizer.checkForDuplicates(user, seenAliases, seenUsernames, seenAPIKeys)
+
+		// Verify
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "API key ending in ...67890")
 	})
 }
 
@@ -772,7 +925,7 @@ func TestEntryPointCreation(t *testing.T) {
 		require.NotNil(t, authorizer)
 	})
 
-	t.Run("FailCreationWithNoUsers", func(t *testing.T) {
+	t.Run("SuccessfulCreationWithNoUsers", func(t *testing.T) {
 		// Setup
 		authConfig := types.AuthConfig{
 			Users: []types.AuthUser{}, // Empty users
@@ -782,9 +935,8 @@ func TestEntryPointCreation(t *testing.T) {
 		authorizer, err := NewEntryPointAuthorizer(context.Background(), "test-node", authConfig)
 
 		// Verify
-		require.Error(t, err)
-		assert.Nil(t, authorizer)
-		assert.Contains(t, err.Error(), "no users configured")
+		require.NoError(t, err)
+		assert.NotNil(t, authorizer)
 	})
 
 	t.Run("FailCreationWithInvalidUsers", func(t *testing.T) {
@@ -1076,4 +1228,47 @@ type mockAuthorizer struct {
 
 func (m *mockAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	return m.authorizeFunc(req)
+}
+
+func TestGetUserIdentifier(t *testing.T) {
+	t.Run("PreferAlias", func(t *testing.T) {
+		user := types.AuthUser{
+			Alias:    "Test Alias",
+			Username: "testuser",
+			APIKey:   "this-is-a-valid-api-key-12345678901234567890",
+		}
+		identifier := getUserIdentifier(user)
+		assert.Equal(t, "Test Alias", identifier)
+	})
+
+	t.Run("FallbackToUsername", func(t *testing.T) {
+		user := types.AuthUser{
+			Username: "testuser",
+			APIKey:   "this-is-a-valid-api-key-12345678901234567890",
+		}
+		identifier := getUserIdentifier(user)
+		assert.Equal(t, "testuser", identifier)
+	})
+
+	t.Run("FallbackToAPIKey", func(t *testing.T) {
+		user := types.AuthUser{
+			APIKey: "this-is-a-valid-api-key-12345678901234567890",
+		}
+		identifier := getUserIdentifier(user)
+		assert.Equal(t, "API key ending in ...67890", identifier)
+	})
+
+	t.Run("ShortAPIKey", func(t *testing.T) {
+		user := types.AuthUser{
+			APIKey: "short",
+		}
+		identifier := getUserIdentifier(user)
+		assert.Equal(t, "API key short", identifier)
+	})
+
+	t.Run("EmptyUser", func(t *testing.T) {
+		user := types.AuthUser{}
+		identifier := getUserIdentifier(user)
+		assert.Equal(t, "unknown user", identifier)
+	})
 }

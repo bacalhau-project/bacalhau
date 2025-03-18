@@ -294,6 +294,65 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		assert.False(t, auth.TokenValid)
 		assert.Contains(t, err.Error(), "missing URL")
 	})
+
+	t.Run("UnauthorizedMessageUsesUsernameWhenNoAlias", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Add a user without an alias
+		authorizer.basicAuthUsers["noalias"] = types.AuthUser{
+			Username: "noalias",
+			Password: "testpass",
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"}, // Deliberately missing node capability
+				},
+			},
+		}
+
+		// Create request to node endpoint (which requires node capability)
+		req := createTestRequest("/v1/admin", createBasicAuthHeader("noalias", "testpass"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.Error(t, err)
+		assert.False(t, auth.Approved)
+		assert.True(t, auth.TokenValid)
+		// Error message should contain username since alias is empty
+		assert.Contains(t, err.Error(), "user 'noalias' does not have the required capability")
+	})
+
+	t.Run("UnauthorizedMessageUsesAliasWhenPresent", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Add a user with an alias
+		authorizer.basicAuthUsers["withalias"] = types.AuthUser{
+			Alias:    "Custom Alias",
+			Username: "withalias",
+			Password: "testpass",
+			Capabilities: []types.Capability{
+				{
+					Actions: []string{"read:job"}, // Deliberately missing node capability
+				},
+			},
+		}
+
+		// Create request to node endpoint (which requires node capability)
+		req := createTestRequest("/v1/admin", createBasicAuthHeader("withalias", "testpass"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.Error(t, err)
+		assert.False(t, auth.Approved)
+		assert.True(t, auth.TokenValid)
+		// Error message should contain alias since it's present
+		assert.Contains(t, err.Error(), "user 'Custom Alias' does not have the required capability")
+	})
 }
 
 // Helper functions to create test data

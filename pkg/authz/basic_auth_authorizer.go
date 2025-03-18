@@ -139,11 +139,16 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 				TokenValid: true,
 			}, nil
 		} else {
+			// Get identifier for error message - prefer alias if set, otherwise use username
+			userIdentifier := user.Username
+			if user.Alias != "" {
+				userIdentifier = user.Alias
+			}
 			return Authorization{
 					Approved:   false,
 					TokenValid: true,
 				}, apimodels.NewUnauthorizedError(fmt.Sprintf("user '%s' does not have the required capability '%s'",
-					user.Alias, requiredCapability))
+					userIdentifier, requiredCapability))
 		}
 	}
 
