@@ -49,14 +49,14 @@ func NewManager(params ManagerParams) (Manager, error) {
 		params.ValidationInterval = validationInterval
 	}
 
-	mngr := &manager{
+	m := &manager{
 		reader:             params.Reader,
 		nodesLookup:        params.NodesTracker,
 		validationInterval: params.ValidationInterval,
 		skipValidation:     params.SkipValidation,
 	}
-	mngr.logLicenseState(true)
-	return mngr, nil
+	m.logLicenseState(true)
+	return m, nil
 }
 
 // Start starts a background routine that periodically validates the license and logs warnings
