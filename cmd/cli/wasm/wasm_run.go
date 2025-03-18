@@ -156,8 +156,9 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 		return fmt.Errorf("failed to submit job: %w", err)
 	}
 
-	if len(resp.Warnings) > 0 {
-		helpers.PrintWarnings(cmd, resp.Warnings)
+	if !opts.RunTimeSettings.PrintJobIDOnly && len(resp.Warnings) > 0 {
+		printer.PrintWarnings(cmd, resp.Warnings)
+		cmd.Println()
 	}
 
 	job.ID = resp.JobID
