@@ -133,7 +133,7 @@ func (suite *ManagerTestSuite) TestValidate_ValidLicense() {
 
 	state := suite.manager.Validate()
 	suite.Require().Equal(LicenseValidationTypeValid, state.Type)
-	suite.Require().Equal(GetValidMessage(), state.Message)
+	suite.Require().Equal(GetValidMessage(suite.reader.license.ExpiresAt.Time, 5), state.Message)
 }
 
 func (suite *ManagerTestSuite) TestValidate_SkipValidation() {
@@ -149,7 +149,7 @@ func (suite *ManagerTestSuite) TestValidate_SkipValidation() {
 	suite.Require().NotNil(manager)
 
 	state := manager.Validate()
-	suite.Require().Equal(LicenseValidationTypeValid, state.Type)
+	suite.Require().Equal(LicenseValidationTypeSkipped, state.Type)
 	suite.Require().Equal(GetSkippedMessage(), state.Message)
 }
 

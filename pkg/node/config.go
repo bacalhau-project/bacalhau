@@ -91,4 +91,7 @@ func (c *SystemConfig) applyDefaults() {
 	if c.DefaultComputeJobResourceLimits.IsZero() {
 		c.DefaultComputeJobResourceLimits = defaults.DefaultComputeJobResourceLimits
 	}
+	if !c.SkipLicenseValidation {
+		c.SkipLicenseValidation = defaults.SkipLicenseValidation
+	}
 }

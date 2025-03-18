@@ -367,14 +367,6 @@ func createLicenseManager(cfg NodeConfig, reader licensing.Reader, nodesManager 
 		return nil, err
 	}
 
-	// log license validation if not valid
-	licenseState := licenseManager.Validate()
-	if licenseState.Type == licensing.LicenseValidationTypeFreeTierValid {
-		log.Info().Msg(licenseState.Message)
-	} else if licenseState.Type != licensing.LicenseValidationTypeValid {
-		log.Warn().Msg(licenseState.Message)
-	}
-
 	// start the license manager
 	licenseManager.Start()
 	return licenseManager, nil

@@ -49,12 +49,14 @@ func NewManager(params ManagerParams) (Manager, error) {
 		params.ValidationInterval = validationInterval
 	}
 
-	return &manager{
+	mngr := &manager{
 		reader:             params.Reader,
 		nodesLookup:        params.NodesTracker,
 		validationInterval: params.ValidationInterval,
 		skipValidation:     params.SkipValidation,
-	}, nil
+	}
+	mngr.logLicenseState(true)
+	return mngr, nil
 }
 
 // Start starts a background routine that periodically validates the license and logs warnings
@@ -84,13 +86,24 @@ func (l *manager) Start() {
 				l.mu.Unlock()
 				return
 			case <-ticker.C:
-				state := l.Validate()
-				if state.Type != LicenseValidationTypeValid && state.Type != LicenseValidationTypeFreeTierValid {
-					log.Warn().Msgf("License warning: %s", state.Message)
-				}
+				l.logLicenseState(false)
 			}
 		}
 	}()
+}
+
+func (l *manager) logLicenseState(logValid bool) {
+	state := l.Validate()
+	switch {
+	case state.Type == LicenseValidationTypeSkipped:
+		log.Debug().Msg(state.Message)
+	case state.Type.IsValid():
+		if logValid {
+			log.Info().Msg(state.Message)
+		}
+	default:
+		log.Warn().Msg(state.Message)
+	}
 }
 
 // Stop stops the validation loop
@@ -114,7 +127,7 @@ func (l *manager) License() *license.LicenseClaims {
 func (l *manager) Validate() LicenseValidationState {
 	if l.skipValidation {
 		return LicenseValidationState{
-			Type:    LicenseValidationTypeValid,
+			Type:    LicenseValidationTypeSkipped,
 			Message: GetSkippedMessage(),
 		}
 	}
@@ -156,7 +169,7 @@ func (l *manager) Validate() LicenseValidationState {
 
 	return LicenseValidationState{
 		Type:    LicenseValidationTypeValid,
-		Message: GetValidMessage(),
+		Message: GetValidMessage(claims.ExpiresAt.Time, maxNodes),
 	}
 }
 

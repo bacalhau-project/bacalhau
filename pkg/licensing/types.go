@@ -53,6 +53,10 @@ const (
 	LicenseValidationTypeFreeTierExceeded
 	// LicenseValidationTypeFreeTierValid indicates the system is within free tier limits
 	LicenseValidationTypeFreeTierValid
+	// LicenseValidationTypeSkipped indicates that license validation is skipped
+	LicenseValidationTypeSkipped
+	// licenseValidationTypeUnknown indicates an unknown validation state
+	licenseValidationTypeUnknown
 )
 
 // String returns the string representation of the validation type
@@ -70,6 +74,8 @@ func (t LicenseValidationType) String() string {
 		return "FreeTierExceeded"
 	case LicenseValidationTypeFreeTierValid:
 		return "FreeTierValid"
+	case LicenseValidationTypeSkipped:
+		return "Skipped"
 	default:
 		return "Unknown"
 	}
@@ -77,12 +83,12 @@ func (t LicenseValidationType) String() string {
 
 // ParseLicenseValidationType parses a string into a LicenseValidationType
 func ParseLicenseValidationType(s string) (LicenseValidationType, error) {
-	for typ := LicenseValidationTypeValid; typ <= LicenseValidationTypeFreeTierValid; typ++ {
+	for typ := LicenseValidationTypeValid; typ <= licenseValidationTypeUnknown; typ++ {
 		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
 			return typ, nil
 		}
 	}
-	return LicenseValidationTypeValid, fmt.Errorf("%T: unknown type '%s'", LicenseValidationTypeValid, s)
+	return licenseValidationTypeUnknown, fmt.Errorf("%T: unknown type '%s'", licenseValidationTypeUnknown, s)
 }
 
 // MarshalText implements the encoding.TextMarshaler interface
@@ -101,7 +107,7 @@ func (t *LicenseValidationType) UnmarshalText(text []byte) error {
 }
 
 func (t LicenseValidationType) IsValid() bool {
-	return t == LicenseValidationTypeValid || t == LicenseValidationTypeFreeTierValid
+	return t == LicenseValidationTypeValid || t == LicenseValidationTypeFreeTierValid || t == LicenseValidationTypeSkipped
 }
 
 // LicenseState represents the current state of the license
