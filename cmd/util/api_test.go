@@ -12,6 +12,7 @@ import (
 // TestReadTokenFn is a function type for the ReadToken function for testing
 var TestReadTokenFn = ReadToken
 
+// cSpell:disable
 func TestParseURL(t *testing.T) {
 	tests := []struct {
 		name             string
