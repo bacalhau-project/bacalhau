@@ -21,7 +21,7 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 
 	return &DevStackConfig{
 		BacalhauConfig:         bacalhauConfig,
-		SystemConfig:           node.SystemConfig{},
+		SystemConfig:           node.TestSystemConfig(),
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
 

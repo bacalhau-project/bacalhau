@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/benbjohnson/clock"
@@ -60,7 +61,8 @@ type nodesManager struct {
 	shutdownTimeout         time.Duration
 
 	// Runtime state
-	liveState *sync.Map // Thread-safe map of nodeID -> trackedLiveState
+	liveState      *sync.Map // Thread-safe map of nodeID -> trackedLiveState
+	connectedNodes int64     // Atomic counter for connected nodes
 
 	// Background task management
 	tasks   sync.WaitGroup // Tracks running background tasks
@@ -757,6 +759,13 @@ func (n *nodesManager) OnConnectionStateChange(handler ConnectionStateChangeHand
 
 // notifyConnectionStateChange notifies all registered handlers of a state change
 func (n *nodesManager) notifyConnectionStateChange(event NodeConnectionEvent) {
+	// Update connected nodes counter
+	if event.Current == models.NodeStates.CONNECTED {
+		atomic.AddInt64(&n.connectedNodes, 1)
+	} else if event.Previous == models.NodeStates.CONNECTED {
+		atomic.AddInt64(&n.connectedNodes, -1)
+	}
+
 	n.handlers.RLock()
 	defer n.handlers.RUnlock()
 
@@ -926,6 +935,11 @@ func (n *nodesManager) selfRegister(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// GetConnectedNodesCount returns the number of currently connected nodes.
+func (n *nodesManager) GetConnectedNodesCount() int {
+	return int(atomic.LoadInt64(&n.connectedNodes))
 }
 
 // compile-time check that nodesManager implements the Manager interface
