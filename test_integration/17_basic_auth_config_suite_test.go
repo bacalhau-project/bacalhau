@@ -14,6 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/exec"
 )
 
+// cSpell:disable
 type BasicAuthConfigSuite struct {
 	BaseDockerComposeTestSuite
 }
