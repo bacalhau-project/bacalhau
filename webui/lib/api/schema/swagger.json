@@ -1757,9 +1757,11 @@
                 1,
                 2,
                 3,
-                4
+                4,
+                5
             ],
             "x-enum-varnames": [
+                "NetworkDefault",
                 "NetworkNone",
                 "NetworkHost",
                 "NetworkFull",
@@ -2698,10 +2700,6 @@
         "types.JobAdmissionControl": {
             "type": "object",
             "properties": {
-                "AcceptNetworkedJobs": {
-                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.\nWill be deprecated in v1.7 in favor of RejectNetworkedJobs.",
-                    "type": "boolean"
-                },
                 "Locality": {
                     "description": "Locality specifies the locality of the job input data.",
                     "allOf": [
