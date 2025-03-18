@@ -53,6 +53,7 @@ func (j *JobProgressPrinter) PrintJobProgress(ctx context.Context, job *models.J
 
 	// Follow Progress
 	if err := j.followProgress(ctx, job, cmd); err != nil {
+		cmd.Println()
 		PrintError(cmd, err)
 	}
 

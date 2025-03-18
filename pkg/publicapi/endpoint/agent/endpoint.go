@@ -20,7 +20,7 @@ type EndpointParams struct {
 	NodeInfoProvider   models.NodeInfoProvider
 	DebugInfoProviders []models.DebugInfoProvider
 	BacalhauConfig     types.Bacalhau
-	LicenseManager     *licensing.LicenseManager
+	LicenseReader      licensing.Reader
 }
 
 type Endpoint struct {
@@ -28,11 +28,11 @@ type Endpoint struct {
 	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []models.DebugInfoProvider
 	bacalhauConfig     types.Bacalhau
-	licenseManager     *licensing.LicenseManager
+	licenseReader      licensing.Reader
 }
 
 func NewEndpoint(params EndpointParams) (*Endpoint, error) {
-	if params.LicenseManager == nil {
+	if params.LicenseReader == nil {
 		return nil, fmt.Errorf("license manager is required for agent endpoint")
 	}
 
@@ -41,7 +41,7 @@ func NewEndpoint(params EndpointParams) (*Endpoint, error) {
 		nodeInfoProvider:   params.NodeInfoProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 		bacalhauConfig:     params.BacalhauConfig,
-		licenseManager:     params.LicenseManager,
+		licenseReader:      params.LicenseReader,
 	}
 
 	// JSON group
@@ -160,7 +160,7 @@ func (e *Endpoint) config(c echo.Context) error {
 //	@Failure	404	{object}	string
 //	@Router		/api/v1/agent/license [get]
 func (e *Endpoint) license(c echo.Context) error {
-	licenseClaims := e.licenseManager.License()
+	licenseClaims := e.licenseReader.License()
 	if licenseClaims == nil {
 		return echo.NewHTTPError(
 			http.StatusNotFound,

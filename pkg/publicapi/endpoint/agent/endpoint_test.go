@@ -29,13 +29,13 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	router := echo.New()
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseManager, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	// populate the fields that should be redacted with "secret" values.
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 		BacalhauConfig: types.Bacalhau{
 			Orchestrator: types.Orchestrator{
 				Auth: types.OrchestratorAuth{
@@ -81,22 +81,13 @@ func TestEndpointLicenseValid(t *testing.T) {
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader(licensePath)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
@@ -129,22 +120,13 @@ func TestEndpointLicenseValid(t *testing.T) {
 func TestEndpointLicenseNotConfigured(t *testing.T) {
 	router := echo.New()
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				// No license path configured
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
@@ -190,22 +172,13 @@ func TestEndpointLicenseExpired(t *testing.T) {
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader(licensePath)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
