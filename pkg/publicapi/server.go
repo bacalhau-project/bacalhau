@@ -71,25 +71,12 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 		config:  params.Config,
 	}
 
-	// migrate old endpoints to new versioned ones
-	migrations := map[string]string{
-		"/peers":                      "/api/v1/peers",
-		"/node_info":                  "/api/v1/node_info",
-		"^/version":                   "/api/v1/version",
-		"/healthz":                    "/api/v1/healthz",
-		"/id":                         "/api/v1/id",
-		"/livez":                      "/api/v1/livez",
-		"/requester/list":             "/api/v1/requester/list",
-		"/requester/nodes":            "/api/v1/requester/nodes",
-		"/requester/states":           "/api/v1/requester/states",
-		"/requester/results":          "/api/v1/requester/results",
-		"/requester/events":           "/api/v1/requester/events",
-		"/requester/submit":           "/api/v1/requester/submit",
-		"/requester/cancel":           "/api/v1/requester/cancel",
-		"/requester/debug":            "/api/v1/requester/debug",
-		"/requester/logs":             "/api/v1/requester/logs",
-		"/requester/websocket/events": "/api/v1/requester/websocket/events",
-	}
+	// Register legacy endpoint redirects
+	server.registerRedirects(map[string]string{
+		"/":        "/api/v1/agent/version",
+		"/version": "/api/v1/agent/version",
+		"/livez":   "/api/v1/agent/alive",
+	})
 
 	// set custom binders and validators
 	server.Router.Binder = NewNormalizeBinder()
@@ -103,11 +90,6 @@ func NewAPIServer(params ServerParams) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// base middleware before routing
-	server.Router.Pre(
-		echomiddelware.Rewrite(migrations),
-	)
 
 	serverBuildInfo := version.Get()
 	serverVersion, err := semver.NewVersion(serverBuildInfo.GitVersion)
@@ -257,4 +239,13 @@ func (apiServer *Server) interceptListenError(err error) error {
 				types.APIPortKey, os.Args[0], types.APIPortKey)
 	}
 	return err
+}
+
+// registerRedirects registers GET handlers for each path that redirect to their corresponding destination
+func (apiServer *Server) registerRedirects(redirects map[string]string) {
+	for path, dest := range redirects {
+		apiServer.Router.GET(path, func(c echo.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, dest)
+		})
+	}
 }

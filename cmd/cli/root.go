@@ -13,7 +13,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
@@ -108,17 +107,6 @@ func NewRootCmd() *cobra.Command {
 		version.NewCmd(),
 		license.NewCmd(),
 		wasm.NewCmd(),
-
-		// deprecated command
-		deprecated.NewExecCommand(),
-		deprecated.NewCancelCmd(),
-		deprecated.NewCreateCmd(),
-		deprecated.NewDescribeCmd(),
-		deprecated.NewGetCmd(),
-		deprecated.NewIDCmd(),
-		deprecated.NewListCmd(),
-		deprecated.NewLogsCmd(),
-		deprecated.NewValidateCmd(),
 	)
 
 	// Customize help template to include environment variables section

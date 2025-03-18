@@ -26,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
@@ -180,12 +179,6 @@ func NewComputeNode(
 	if startupErr != nil {
 		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
 	}
-
-	// register compute public http apis
-	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
-		Router:             apiServer.Router,
-		DebugInfoProviders: debugInfoProviders,
-	})
 
 	// Get the address this node should advertise
 	// TODO: attempt to auto-detect the address if not provided
