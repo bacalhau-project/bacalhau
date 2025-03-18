@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/auth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
@@ -100,12 +101,22 @@ func NewRootCmd() *cobra.Command {
 		devstack.NewCmd(),
 		docker.NewCmd(),
 		job.NewCmd(),
+		auth.NewCmd(),
 		node.NewCmd(),
 		serve.NewCmd(),
 		version.NewCmd(),
 		license.NewCmd(),
 		wasm.NewCmd(),
 	)
+
+	// Customize help template to include environment variables section
+	helpTemplate := RootCmd.HelpTemplate() + `
+Auth Environment Variables:
+  BACALHAU_API_KEY         API key for builtin authentication
+  BACALHAU_API_USERNAME    Username for Basic Auth builtin authentication
+  BACALHAU_API_PASSWORD    Password for Basic Auth builtin authentication
+`
+	RootCmd.SetHelpTemplate(helpTemplate)
 
 	return RootCmd
 }

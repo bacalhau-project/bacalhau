@@ -47,6 +47,12 @@ func adaptAuthenticator(method authn.Authenticator, route *echo.Group) {
 		if err := c.Bind(&req); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 		}
+
+		if req.Headers == nil {
+			req.Headers = make(map[string]string)
+		}
+		req.Headers["Authorization"] = c.Request().Header.Get("Authorization")
+
 		if err := c.Validate(&req); err != nil {
 			return err
 		}

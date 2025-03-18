@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -53,10 +54,37 @@ type NodeConfig struct {
 	FailureInjectionConfig models.FailureInjectionConfig
 }
 
+// Validate Config
 func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
 	var mErr error
 	mErr = errors.Join(mErr, validate.NotBlank(c.NodeID, "node id is required"))
+
+	// Validate Auth Config
+	authConfig := c.BacalhauConfig.API.Auth
+
+	// Check if Users is not empty
+	hasUsers := len(authConfig.Users) > 0
+
+	// Check if Oauth2Config has at least one defined property
+	hasOauth2 := false
+	v := reflect.ValueOf(authConfig.Oauth2)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if !field.IsZero() {
+			hasOauth2 = true
+			break
+		}
+	}
+
+	// If either Users or Oauth2 config is defined,
+	// Methods and AccessPolicyPath should be empty.
+	// We do not allow mixing old and new auth together
+	if (hasUsers || hasOauth2) && (authConfig.AccessPolicyPath != "") {
+		mErr = errors.Join(mErr, errors.New("mixing old and new auth mechanisms not supported. "+
+			"when Users or Oauth2 is defined in API.Auth, Methods and AccessPolicyPath must be empty"))
+	}
+
 	return mErr
 }
 
@@ -131,7 +159,7 @@ func NewNode(
 	cfg.DependencyInjector =
 		mergeDependencyInjectors(cfg.DependencyInjector, NewStandardNodeDependencyInjector(cfg.BacalhauConfig, userKey))
 
-	apiServer, err := createAPIServer(cfg, userKey)
+	apiServer, err := createAPIServer(ctx, cfg, userKey)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +275,7 @@ func NewNode(
 	return node, nil
 }
 
-func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Server, error) {
+func createAPIServer(ctx context.Context, cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Server, error) {
 	authzPolicy, err := policy.FromPathOrDefault(cfg.BacalhauConfig.API.Auth.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err
@@ -263,6 +291,18 @@ func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Ser
 
 	safePortNumber := uint16(givenPortNumber)
 
+	var chosenAuthorizer authz.Authorizer
+
+	if len(cfg.BacalhauConfig.API.Auth.Users) > 0 || cfg.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
+		// If new auth configuration detected, use new authorizer
+		chosenAuthorizer, err = authz.NewEntryPointAuthorizer(ctx, cfg.NodeID, cfg.BacalhauConfig.API.Auth)
+		if err != nil {
+			return nil, fmt.Errorf("error initializing users: %s", err.Error())
+		}
+	} else {
+		chosenAuthorizer = authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), cfg.NodeID)
+	}
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
@@ -271,7 +311,7 @@ func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Ser
 		Port:       safePortNumber,
 		HostID:     cfg.NodeID,
 		Config:     publicapi.DefaultConfig(), // using default as we don't expose this config to the user
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), cfg.NodeID),
+		Authorizer: chosenAuthorizer,
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,

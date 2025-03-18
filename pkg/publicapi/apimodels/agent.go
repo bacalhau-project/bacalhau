@@ -44,3 +44,9 @@ type GetAgentLicenseResponse struct {
 	BaseGetResponse
 	*license.LicenseClaims
 }
+
+type GetAgentNodeAuthConfigResponse struct {
+	BaseGetResponse
+	Version string
+	Config  types.Oauth2Config
+}
