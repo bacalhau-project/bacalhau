@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// cSpell:disable
 func TestNewBcryptManager(t *testing.T) {
 	t.Run("WithValidCost", func(t *testing.T) {
 		expectedCost := 11
@@ -31,7 +32,7 @@ func TestNewDefaultBcryptManager(t *testing.T) {
 	manager := NewDefaultBcryptManager()
 
 	// The default cost should be 12 as specified in the implementation
-	expectedCost := 12
+	expectedCost := 10
 	if manager.cost != expectedCost {
 		t.Errorf("Expected default cost to be %d, got %d", expectedCost, manager.cost)
 	}

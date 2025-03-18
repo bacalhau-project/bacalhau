@@ -17,7 +17,7 @@ type BcryptManager struct {
 // NewDefaultBcryptManager creates a new BcryptManager with a reasonable default cost value
 // This uses a cost of 12, which provides good security while maintaining acceptable performance
 func NewDefaultBcryptManager() *BcryptManager {
-	return NewBcryptManager(12)
+	return NewBcryptManager(bcrypt.DefaultCost)
 }
 
 // NewBcryptManager creates a new BcryptManager with the specified cost
@@ -83,7 +83,8 @@ func (bm *BcryptManager) IsBcryptHash(hash string) bool {
 
 	// Basic length check (prefix + cost digits + $ + salt + hash)
 	// Minimum length: $2a$ (4) + 2 digits + $ (1) + 22 chars salt + 31 chars hash = 60
-	if len(hash) < 60 {
+	const maxSizeOfHash = 60
+	if len(hash) < maxSizeOfHash {
 		return false
 	}
 

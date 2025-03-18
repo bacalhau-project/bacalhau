@@ -116,7 +116,8 @@ func getUserIdentifier(user types.AuthUser) string {
 	}
 	if user.APIKey != "" {
 		// Get last 5 characters of API key
-		if len(user.APIKey) > 5 {
+		const apiKeyMaskOffset = 5
+		if len(user.APIKey) > apiKeyMaskOffset {
 			return "API key ending in ..." + user.APIKey[len(user.APIKey)-5:]
 		}
 		return "API key " + user.APIKey

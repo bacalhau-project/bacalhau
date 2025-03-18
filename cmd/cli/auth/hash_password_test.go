@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// cSpell:disable
 // mockStdin replaces os.Stdin with a pipe for testing
 func mockStdin(t *testing.T, input string) func() {
 	t.Helper()
