@@ -255,7 +255,7 @@ func resolveAuthCredentials(
 	// Error if mixing authentication types
 	if hasAPIKey && (hasBasicAuthUsername || hasBasicAuthPassword) {
 		return newAuthFlowEnabled, "", "", fmt.Errorf("can't use both %s and %s/%s simultaneously",
-			common.BacalhauApiKey, common.BacalhauApiUsername, common.BacalhauApiPassword)
+			common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	}
 
 	// Handle API key authentication
@@ -274,11 +274,11 @@ func resolveAuthCredentials(
 	// Handle incomplete basic auth credentials
 	if hasBasicAuthUsername {
 		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
-			common.BacalhauApiUsername, common.BacalhauApiPassword)
+			common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	}
 	if hasBasicAuthPassword {
 		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
-			common.BacalhauApiPassword, common.BacalhauApiUsername)
+			common.BacalhauAPIPassword, common.BacalhauAPIUsername)
 	}
 
 	// This should never happen given the checks above
@@ -286,9 +286,9 @@ func resolveAuthCredentials(
 }
 
 func extractAuthCredentialsFromEnvVariables() (string, string, string) {
-	apiKey := strings.TrimSpace(os.Getenv(common.BacalhauApiKey))
-	basicAuthUsername := strings.TrimSpace(os.Getenv(common.BacalhauApiUsername))
-	basicAuthPassword := strings.TrimSpace(os.Getenv(common.BacalhauApiPassword))
+	apiKey := strings.TrimSpace(os.Getenv(common.BacalhauAPIKey))
+	basicAuthUsername := strings.TrimSpace(os.Getenv(common.BacalhauAPIUsername))
+	basicAuthPassword := strings.TrimSpace(os.Getenv(common.BacalhauAPIPassword))
 
 	return apiKey, basicAuthUsername, basicAuthPassword
 }

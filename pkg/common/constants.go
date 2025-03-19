@@ -1,5 +1,5 @@
 package common
 
-const BacalhauApiKey = "BACALHAU_API_KEY"
-const BacalhauApiUsername = "BACALHAU_API_USERNAME"
-const BacalhauApiPassword = "BACALHAU_API_PASSWORD"
+const BacalhauAPIKey = "BACALHAU_API_KEY"
+const BacalhauAPIUsername = "BACALHAU_API_USERNAME"
+const BacalhauAPIPassword = "BACALHAU_API_PASSWORD"

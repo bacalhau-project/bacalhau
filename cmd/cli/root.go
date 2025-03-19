@@ -116,7 +116,7 @@ Auth Environment Variables:
   %s         API key for builtin authentication
   %s    Username for Basic Auth builtin authentication
   %s    Password for Basic Auth builtin authentication
-`, common.BacalhauApiKey, common.BacalhauApiUsername, common.BacalhauApiPassword)
+`, common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	RootCmd.SetHelpTemplate(helpTemplate)
 
 	return RootCmd

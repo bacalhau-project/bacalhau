@@ -65,9 +65,9 @@ func (o *InfoOptions) runInfo(cmd *cobra.Command, api client.API, cfg types.Baca
 	currentAPIEndpoint, _ := util.ConstructAPIEndpoint(cfg.API)
 
 	// Check environment variables
-	apiKey := os.Getenv(common.BacalhauApiKey)
-	username := os.Getenv(common.BacalhauApiUsername)
-	password := os.Getenv(common.BacalhauApiPassword)
+	apiKey := os.Getenv(common.BacalhauAPIKey)
+	username := os.Getenv(common.BacalhauAPIUsername)
+	password := os.Getenv(common.BacalhauAPIPassword)
 
 	outputBuilder := strings.Builder{}
 

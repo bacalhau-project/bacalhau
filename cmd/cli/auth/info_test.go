@@ -215,13 +215,13 @@ func TestInfo_NoSSOConfig(t *testing.T) {
 // TestInfo_WithEnvironmentVariables tests when environment variables are set
 func TestInfo_WithEnvironmentVariables(t *testing.T) {
 	// Set environment variables
-	os.Setenv(common.BacalhauApiKey, "test-key")
-	os.Setenv(common.BacalhauApiUsername, "test-user")
-	os.Setenv(common.BacalhauApiPassword, "test-pass")
+	os.Setenv(common.BacalhauAPIKey, "test-key")
+	os.Setenv(common.BacalhauAPIUsername, "test-user")
+	os.Setenv(common.BacalhauAPIPassword, "test-pass")
 	defer func() {
-		os.Unsetenv(common.BacalhauApiKey)
-		os.Unsetenv(common.BacalhauApiUsername)
-		os.Unsetenv(common.BacalhauApiPassword)
+		os.Unsetenv(common.BacalhauAPIKey)
+		os.Unsetenv(common.BacalhauAPIUsername)
+		os.Unsetenv(common.BacalhauAPIPassword)
 	}()
 
 	// Create a mock client
