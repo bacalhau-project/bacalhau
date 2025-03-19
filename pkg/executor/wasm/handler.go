@@ -197,6 +197,11 @@ func (h *executionHandler) loadModules(ctx context.Context, engine tracedRuntime
 	h.logger.Info().Msg("instantiating wasm modules")
 	loader := NewModuleLoader(engine, config, h.fs)
 
+	// in wasm, if network type is undefined, we default to host
+	if h.request.Network == nil || h.request.Network.Type == models.NetworkDefault {
+		h.request.Network = &models.NetworkConfig{Type: models.NetworkHost}
+	}
+
 	// Load HTTP module if networking is enabled
 	if h.request.Network != nil && h.request.Network.Type != models.NetworkNone {
 		// Configure HTTP module parameters

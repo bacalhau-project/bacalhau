@@ -78,11 +78,6 @@ func (s *NetworkingSuite) networkScenario(task *models.Task) scenario.Scenario {
 		Stack: &scenario.StackConfig{
 			DevStackOptions: []devstack.ConfigOption{
 				devstack.WithNumberOfHybridNodes(1),
-				devstack.WithBacalhauConfigOverride(types.Bacalhau{
-					JobAdmissionControl: types.JobAdmissionControl{
-						AcceptNetworkedJobs: true,
-					},
-				}),
 			},
 		},
 		Job: &models.Job{
@@ -126,6 +121,49 @@ func (s *NetworkingSuite) TestBridgeNetworking() {
 	})
 	testCase.ResultsChecker = scenario.FileEquals("stdout", "OK")
 	testCase.JobCheckers = []scenario.StateChecks{scenario.WaitForSuccessfulCompletion()}
+
+	s.RunScenario(testCase)
+}
+
+func (s *NetworkingSuite) TestUndefinedNetworking() {
+	testCase := s.networkScenario(&models.Task{
+		Name: s.T().Name(),
+		Engine: dockmodels.NewDockerEngineBuilder("curlimages/curl:8.1.0").
+			WithEntrypoint("curl", "-s", "-f", fmt.Sprintf("http://host.docker.internal:%d", s.port)).
+			MustBuild(),
+		Publisher: publisher_local.NewSpecConfig(),
+		Network: &models.NetworkConfig{
+			Type: models.NetworkDefault,
+		},
+	})
+	testCase.ResultsChecker = scenario.FileEquals("stdout", "OK")
+	testCase.JobCheckers = []scenario.StateChecks{scenario.WaitForSuccessfulCompletion()}
+
+	s.RunScenario(testCase)
+}
+
+func (s *NetworkingSuite) TestUndefinedNetworkingRejected() {
+	testCase := s.networkScenario(&models.Task{
+		Name: s.T().Name(),
+		Engine: dockmodels.NewDockerEngineBuilder("curlimages/curl:8.1.0").
+			WithEntrypoint("curl", "-s", "-f", fmt.Sprintf("http://localhost:%d", s.port)).
+			MustBuild(),
+		Publisher: publisher_local.NewSpecConfig(),
+		Network: &models.NetworkConfig{
+			Type: models.NetworkDefault,
+		},
+	})
+	testCase.ResultsChecker = scenario.ManyChecks(
+		scenario.FileEquals("stdout", ""),
+		scenario.FileEquals("exitCode", "7"),
+	)
+	testCase.JobCheckers = []scenario.StateChecks{scenario.WaitForSuccessfulCompletion()}
+
+	testCase.Stack.DevStackOptions = append(testCase.Stack.DevStackOptions, devstack.WithBacalhauConfigOverride(types.Bacalhau{
+		JobAdmissionControl: types.JobAdmissionControl{
+			RejectNetworkedJobs: true,
+		},
+	}))
 
 	s.RunScenario(testCase)
 }

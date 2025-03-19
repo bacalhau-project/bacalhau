@@ -45,7 +45,7 @@ var (
 		GPU:    "",
 	}
 	expectedDefaultNetworkConfig = &models.NetworkConfig{
-		Type:    models.NetworkNone,
+		Type:    models.NetworkDefault,
 		Domains: []string(nil),
 	}
 	expectedDefaultTimeoutConfig = &models.TimeoutConfig{
@@ -368,12 +368,12 @@ func TestJobFlagParsing(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:  "with network none default",
+			name:  "with network undefined default",
 			flags: []string{"image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.Equal(t, models.NetworkNone, task.Network.Type)
+				assert.Equal(t, models.NetworkDefault, task.Network.Type)
 			},
 			expectedError: false,
 		},

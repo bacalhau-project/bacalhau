@@ -135,7 +135,14 @@ func (s *ExecutionTestSuite) TestAllocatePorts() {
 			},
 		},
 		{
-			name:         "nil network config",
+			name:         "undefined network config",
+			networkType:  NetworkDefault,
+			initialPorts: nil,
+			allocated:    nil,
+			want:         PortMap{},
+		},
+		{
+			name:         "none network config",
 			networkType:  NetworkNone,
 			initialPorts: nil,
 			allocated:    nil,

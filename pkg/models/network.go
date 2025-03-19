@@ -27,8 +27,17 @@ const (
 type Network int
 
 const (
+	// NetworkDefault specifies that the job's networking configuration should be
+	// determined by the compute node's executor based on its capabilities and configuration.
+	// Each executor will apply its own appropriate default:
+	// - Docker executor defaults to bridge networking
+	// - WASM executor defaults to host networking
+	// If the compute node has RejectNetworkedJobs enabled in admission control,
+	// networking will be disabled regardless of executor.
+	NetworkDefault Network = iota
+
 	// NetworkNone specifies@ that the job does not require networking.
-	NetworkNone Network = iota
+	NetworkNone
 
 	// NetworkHost (previously NetworkFull) specifies that the job requires unfiltered raw IP networking.
 	// This gives the container direct access to the host's network interfaces.
@@ -80,16 +89,22 @@ func (n Network) SupportPortAllocation() bool {
 	return n == NetworkHost || n == NetworkBridge || n == NetworkFull
 }
 
+// Disabled returns whether network connections should be completely disabled according
+// to this config.
+func (n Network) Disabled() bool {
+	return n == NetworkNone
+}
+
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	for typ := NetworkNone; typ <= NetworkBridge; typ++ {
+	for typ := NetworkDefault; typ <= NetworkBridge; typ++ {
 		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
 			return typ, nil
 		}
 	}
 
-	return NetworkNone, fmt.Errorf("%T: unknown type '%s'", NetworkNone, s)
+	return NetworkDefault, fmt.Errorf("%T: unknown type '%s'", NetworkDefault, s)
 }
 
 func (n Network) MarshalText() ([]byte, error) {
@@ -111,7 +126,7 @@ type NetworkConfig struct {
 // Disabled returns whether network connections should be completely disabled according
 // to this config.
 func (n *NetworkConfig) Disabled() bool {
-	return n.Type == NetworkNone
+	return n.Type.Disabled()
 }
 
 // Normalize ensures that the network config is in a consistent state.
@@ -149,7 +164,7 @@ func (n *NetworkConfig) Validate() error {
 	var err error
 
 	// Validate network type
-	if n.Type < NetworkNone || n.Type > NetworkBridge {
+	if n.Type < NetworkDefault || n.Type > NetworkBridge {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
