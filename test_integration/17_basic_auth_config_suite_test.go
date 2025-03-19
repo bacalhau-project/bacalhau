@@ -146,7 +146,7 @@ func (s *BasicAuthConfigSuite) TestCommandsBypassingAuthentication() {
 
 	result, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "version"})
 	s.Require().NoError(err)
-	s.Require().Contains(result, "LATEST")
+	s.Require().Contains(result, "SERVER")
 }
 
 func TestBasicAuthConfigSuite(t *testing.T) {
