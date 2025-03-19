@@ -120,8 +120,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	// Normalize and validate the job spec
-	j.Normalize()
+	// Validate the job spec
 	err = j.ValidateSubmission()
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)

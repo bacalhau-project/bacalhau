@@ -65,8 +65,7 @@ func BuildJobFromFlags(
 		Tasks:       []*models.Task{task},
 	}
 
-	// Normalize and validate the job spec
-	job.Normalize()
+	// Validate the job spec
 	if err := job.ValidateSubmission(); err != nil {
 		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
