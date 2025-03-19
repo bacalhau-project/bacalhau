@@ -135,18 +135,12 @@ func (e *Endpoint) debug(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {
-	cfg, err := e.bacalhauConfig.Copy()
+	clonedRedactedConfig, err := redactConfigSensitiveInfo(e.bacalhauConfig)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("could not copy bacalhau config: %s", err))
 	}
-	if cfg.Compute.Auth.Token != "" {
-		cfg.Compute.Auth.Token = "<redacted>"
-	}
-	if cfg.Orchestrator.Auth.Token != "" {
-		cfg.Orchestrator.Auth.Token = "<redacted>"
-	}
 	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
-		Config: cfg,
+		Config: clonedRedactedConfig,
 	})
 }
 
@@ -183,12 +177,9 @@ func (e *Endpoint) license(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/authconfig [get]
 func (e *Endpoint) nodeAuthConfig(c echo.Context) error {
-	cfg, err := e.bacalhauConfig.Copy()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("error getting node oauth2 config: %s", err))
-	}
+	// No need to redact Oauth2 config since these are made to be public
 	return c.JSON(http.StatusOK, apimodels.GetAgentNodeAuthConfigResponse{
 		Version: "1.0.0",
-		Config:  cfg.API.Auth.Oauth2,
+		Config:  e.bacalhauConfig.API.Auth.Oauth2,
 	})
 }
