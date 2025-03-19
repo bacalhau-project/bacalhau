@@ -149,6 +149,26 @@ func TestInfo_WithSSOSupport(t *testing.T) {
 	// Test environment variable note
 	require.Contains(t, output, "Note: Environment variables take precedence")
 	require.Contains(t, output, "To use SSO login, please unset Auth related environment variables")
+
+	// Create config with custom endpoint
+	config := types.Bacalhau{
+		API: types.API{
+			Host: "custom.endpoint",
+			Port: 8080,
+		},
+	}
+
+	var out2 bytes.Buffer
+	cmd2 := NewInfoCmd()
+	cmd2.SetOut(&out2)
+	o2 := NewInfoOptions()
+	err2 := o2.runInfo(cmd2, api, config)
+
+	require.NoError(t, err2)
+
+	output2 := out2.String()
+	// Test target environment with custom endpoint
+	require.Contains(t, output2, "Target environment: http://custom.endpoint:8080")
 }
 
 // TestInfo_NoSSOConfig tests when the server responds but has no SSO config
@@ -241,4 +261,55 @@ func TestInfo_WithEnvironmentVariables(t *testing.T) {
 	// Test environment variable note
 	require.Contains(t, output, "Note: Environment variables take precedence")
 	require.Contains(t, output, "To use SSO login, please unset Auth related environment variables")
+}
+
+// Add a new test specifically for different API endpoints
+func TestInfo_DifferentAPIEndpoints(t *testing.T) {
+	mockClient := &mockClient{
+		nodeAuthConfig: &apimodels.GetAgentNodeAuthConfigResponse{},
+	}
+	api := client.NewAPI(mockClient)
+
+	testCases := []struct {
+		name     string
+		config   types.Bacalhau
+		expected string
+	}{
+		{
+			name: "Custom host and port",
+			config: types.Bacalhau{
+				API: types.API{
+					Host: "api.bacalhau.org",
+					Port: 1234,
+				},
+			},
+			expected: "http://api.bacalhau.org:1234",
+		},
+		{
+			name: "HTTPS endpoint",
+			config: types.Bacalhau{
+				API: types.API{
+					Host: "secure.bacalhau.org",
+					TLS: types.TLS{
+						UseTLS: true,
+					},
+				},
+			},
+			expected: "https://secure.bacalhau.org",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var out bytes.Buffer
+			cmd := NewInfoCmd()
+			cmd.SetOut(&out)
+			o := NewInfoOptions()
+			err := o.runInfo(cmd, api, tc.config)
+
+			require.NoError(t, err)
+			output := out.String()
+			require.Contains(t, output, fmt.Sprintf("Target environment: %s", tc.expected))
+		})
+	}
 }

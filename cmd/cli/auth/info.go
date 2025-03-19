@@ -62,12 +62,17 @@ func NewInfoCmd() *cobra.Command {
 func (o *InfoOptions) runInfo(cmd *cobra.Command, api client.API, cfg types.Bacalhau) error {
 	ctx := cmd.Context()
 
+	currentAPIEndpoint, _ := util.ConstructAPIEndpoint(cfg.API)
+
 	// Check environment variables
 	apiKey := os.Getenv(common.BacalhauApiKey)
 	username := os.Getenv(common.BacalhauApiUsername)
 	password := os.Getenv(common.BacalhauApiPassword)
 
 	outputBuilder := strings.Builder{}
+
+	// Print target environment
+	outputBuilder.WriteString(fmt.Sprintf("\nTarget environment: %s\n\n", currentAPIEndpoint))
 
 	// Print environment variable status
 	outputBuilder.WriteString("Environment Variables:\n")

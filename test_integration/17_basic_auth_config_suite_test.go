@@ -160,6 +160,7 @@ func (s *BasicAuthConfigSuite) TestAuthInfoCommand() {
 		}),
 	)
 	s.Require().NoError(err)
+	s.Require().Contains(result, "Target environment: http://bacalhau-orchestrator-node:1234", result)
 	s.Require().Contains(result, "Environment Variables:", result)
 	s.Require().Contains(result, "API Key: Not Set", result)
 	s.Require().Contains(result, "Username: Set", result)
