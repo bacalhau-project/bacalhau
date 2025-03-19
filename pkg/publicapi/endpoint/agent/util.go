@@ -11,21 +11,22 @@ func redactConfigSensitiveInfo(config types.Bacalhau) (types.Bacalhau, error) {
 		return types.Bacalhau{}, err
 	}
 
+	const redactedMask = "********"
 	if deepCopyOfConfig.Compute.Auth.Token != "" {
-		deepCopyOfConfig.Compute.Auth.Token = "********"
+		deepCopyOfConfig.Compute.Auth.Token = redactedMask
 	}
 	if deepCopyOfConfig.Orchestrator.Auth.Token != "" {
-		deepCopyOfConfig.Orchestrator.Auth.Token = "********"
+		deepCopyOfConfig.Orchestrator.Auth.Token = redactedMask
 	}
 
 	// Redact user passwords and API keys
 	for userIdx := range deepCopyOfConfig.API.Auth.Users {
 		user := &deepCopyOfConfig.API.Auth.Users[userIdx]
 		if user.Password != "" {
-			user.Password = "********"
+			user.Password = redactedMask
 		}
 		if user.APIKey != "" {
-			user.APIKey = "********"
+			user.APIKey = redactedMask
 		}
 	}
 
