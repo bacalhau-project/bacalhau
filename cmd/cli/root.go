@@ -24,6 +24,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/common"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -110,12 +111,12 @@ func NewRootCmd() *cobra.Command {
 	)
 
 	// Customize help template to include environment variables section
-	helpTemplate := RootCmd.HelpTemplate() + `
+	helpTemplate := RootCmd.HelpTemplate() + fmt.Sprintf(`
 Auth Environment Variables:
-  BACALHAU_API_KEY         API key for builtin authentication
-  BACALHAU_API_USERNAME    Username for Basic Auth builtin authentication
-  BACALHAU_API_PASSWORD    Password for Basic Auth builtin authentication
-`
+  %s         API key for builtin authentication
+  %s    Username for Basic Auth builtin authentication
+  %s    Password for Basic Auth builtin authentication
+`, common.BacalhauApiKey, common.BacalhauApiUsername, common.BacalhauApiPassword)
 	RootCmd.SetHelpTemplate(helpTemplate)
 
 	return RootCmd
