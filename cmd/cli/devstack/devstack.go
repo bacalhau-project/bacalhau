@@ -54,6 +54,7 @@ type options struct {
 	CPUProfilingFile    string
 	MemoryProfilingFile string
 	BasePath            string
+	RandomPorts         bool // Use random ports for the nodes. Useful to avoid conflicts with active orchestrators
 }
 
 func (o *options) devstackOptions() []devstack.ConfigOption {
@@ -65,6 +66,7 @@ func (o *options) devstackOptions() []devstack.ConfigOption {
 		devstack.WithCPUProfilingFile(o.CPUProfilingFile),
 		devstack.WithMemoryProfilingFile(o.MemoryProfilingFile),
 		devstack.WithBasePath(o.BasePath),
+		devstack.WithUseStandardPorts(!o.RandomPorts),
 	}
 	return opts
 }
@@ -163,6 +165,11 @@ func NewCmd() *cobra.Command {
 	devstackCmd.PersistentFlags().StringVar(
 		&ODs.BasePath, "stack-repo", ODs.BasePath,
 		"Folder to act as the devstack configuration repo",
+	)
+
+	devstackCmd.PersistentFlags().BoolVar(&ODs.RandomPorts, "random-ports", ODs.RandomPorts,
+		"Use random ports for the nodes. Otherwise will start with standard ports (e.g. 1234). "+
+			"Useful to avoid conflicts with active orchestrators",
 	)
 
 	return devstackCmd
