@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/common"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -253,8 +254,8 @@ func resolveAuthCredentials(
 
 	// Error if mixing authentication types
 	if hasAPIKey && (hasBasicAuthUsername || hasBasicAuthPassword) {
-		return newAuthFlowEnabled, "", "", fmt.Errorf("can't use both " +
-			"BACALHAU_API_KEY and BACALHAU_API_USERNAME/BACALHAU_API_PASSWORD simultaneously")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("can't use both %s and %s/%s simultaneously",
+			common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	}
 
 	// Handle API key authentication
@@ -272,10 +273,12 @@ func resolveAuthCredentials(
 
 	// Handle incomplete basic auth credentials
 	if hasBasicAuthUsername {
-		return newAuthFlowEnabled, "", "", fmt.Errorf("BACALHAU_API_USERNAME provided but not BACALHAU_API_PASSWORD")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
+			common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	}
 	if hasBasicAuthPassword {
-		return newAuthFlowEnabled, "", "", fmt.Errorf("BACALHAU_API_PASSWORD provided but not BACALHAU_API_USERNAME")
+		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
+			common.BacalhauAPIPassword, common.BacalhauAPIUsername)
 	}
 
 	// This should never happen given the checks above
@@ -283,9 +286,9 @@ func resolveAuthCredentials(
 }
 
 func extractAuthCredentialsFromEnvVariables() (string, string, string) {
-	apiKey := strings.TrimSpace(os.Getenv("BACALHAU_API_KEY"))
-	basicAuthUsername := strings.TrimSpace(os.Getenv("BACALHAU_API_USERNAME"))
-	basicAuthPassword := strings.TrimSpace(os.Getenv("BACALHAU_API_PASSWORD"))
+	apiKey := strings.TrimSpace(os.Getenv(common.BacalhauAPIKey))
+	basicAuthUsername := strings.TrimSpace(os.Getenv(common.BacalhauAPIUsername))
+	basicAuthPassword := strings.TrimSpace(os.Getenv(common.BacalhauAPIPassword))
 
 	return apiKey, basicAuthUsername, basicAuthPassword
 }
