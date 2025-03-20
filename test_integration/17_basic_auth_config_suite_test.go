@@ -137,6 +137,7 @@ func (s *BasicAuthConfigSuite) TestRunHelloWorldJobWithDifferentAuth() {
 		}),
 	)
 	s.Require().ErrorContains(err, "user 'API key ending in ...EEFBN' does not have the required capability 'write:job'")
+
 }
 
 func (s *BasicAuthConfigSuite) TestCommandsBypassingAuthentication() {
@@ -147,6 +148,27 @@ func (s *BasicAuthConfigSuite) TestCommandsBypassingAuthentication() {
 	result, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "version"})
 	s.Require().NoError(err)
 	s.Require().Contains(result, "SERVER")
+}
+
+func (s *BasicAuthConfigSuite) TestAuthInfoCommand() {
+	// Auth Info
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "auth", "info"},
+		exec.WithEnv([]string{
+			"BACALHAU_API_USERNAME=snoopyusername",
+			"BACALHAU_API_PASSWORD=snoopypassword",
+		}),
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "Target environment: http://bacalhau-orchestrator-node:1234", result)
+	s.Require().Contains(result, "Environment Variables:", result)
+	s.Require().Contains(result, "API Key: Not Set", result)
+	s.Require().Contains(result, "Username: Set", result)
+	s.Require().Contains(result, "Password: Set", result)
+	s.Require().Contains(result, "Node SSO Authentication:", result)
+	s.Require().Contains(result, "Server does not support SSO login", result)
+	s.Require().Contains(result, "Note: Environment variables take precedence over other authentication mechanisms including SSO.", result)
+	s.Require().Contains(result, "To use SSO login, please unset Auth related environment variables first.", result)
 }
 
 func TestBasicAuthConfigSuite(t *testing.T) {
