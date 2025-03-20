@@ -12,5 +12,6 @@ func NewSSORootCmd() *cobra.Command {
 
 	cmd.AddCommand(NewSSOLoginCmd())
 	cmd.AddCommand(NewSSOLogoutCmd())
+	cmd.AddCommand(NewSSOTokenCmd())
 	return cmd
 }
