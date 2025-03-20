@@ -1,4 +1,4 @@
-package auth
+package sso
 
 import (
 	"bytes"
@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestNewSSOCmd tests the creation of the SSO command
-func TestNewSSOCmd(t *testing.T) {
-	cmd := NewSSOCmd()
+// TestNewSSOLoginCmd tests the creation of the SSO command
+func TestNewSSOLoginCmd(t *testing.T) {
+	cmd := NewSSOLoginCmd()
 
 	assert.NotNil(t, cmd, "Command should not be nil")
-	assert.Equal(t, "sso", cmd.Use, "Command use should be 'sso'")
+	assert.Equal(t, "login", cmd.Use, "Command use should be 'sso'")
 	assert.Contains(t, cmd.Short, "Login using SSO", "Command should have appropriate short description")
 }
 
