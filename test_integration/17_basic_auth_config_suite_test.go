@@ -171,6 +171,31 @@ func (s *BasicAuthConfigSuite) TestAuthInfoCommand() {
 	s.Require().Contains(result, "To use SSO login, please unset Auth related environment variables first.", result)
 }
 
+func (s *BasicAuthConfigSuite) TestConfigRedactedContent() {
+	// Auth Info
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "agent", "config"},
+		exec.WithEnv([]string{
+			"BACALHAU_API_USERNAME=snoopyusername",
+			"BACALHAU_API_PASSWORD=snoopypassword",
+		}),
+	)
+
+	s.Require().NoError(err)
+
+	redactedPasswordsCount := strings.Count(result, "Password: '********'")
+	redactedAPIKeysCount := strings.Count(result, "APIKey: '********'")
+	redactedAuthTokenCount := strings.Count(result, "Token: '********'")
+	s.Require().Equal(2, redactedPasswordsCount)
+	s.Require().Equal(2, redactedAPIKeysCount)
+	s.Require().Equal(1, redactedAuthTokenCount)
+
+	s.Require().NotContains(result, "snoopypassword", result)
+	s.Require().NotContains(result, "readonlyuserpassword", result)
+	s.Require().NotContains(result, "P7D4CBB284634DD081FAC33868436ECCL", result)
+	s.Require().NotContains(result, "QWERTYHFGCBNSKFIREHFURHUFE7KEEFBN", result)
+	s.Require().NotContains(result, "i_am_very_secret_token", result)
+}
 func TestBasicAuthConfigSuite(t *testing.T) {
 	suite.Run(t, NewBasicAuthConfigSuite())
 }
