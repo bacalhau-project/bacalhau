@@ -51,7 +51,10 @@ func (o *LogoutOptions) runSSOLogout(cmd *cobra.Command, cfg types.Bacalhau) err
 	if !o.Force {
 		fmt.Fprintf(cmd.OutOrStdout(), "Are you sure you want to logout from %s? (y/N): ", apiURL)
 		var response string
-		if _, err := fmt.Fscanln(cmd.InOrStdin(), &response); err != nil {
+
+		_, err := fmt.Fscanln(cmd.InOrStdin(), &response)
+		// Ignore EOF and unexpected newline errors which happen when user just presses Enter
+		if err != nil && err.Error() != "EOF" && err.Error() != "unexpected newline" {
 			return err
 		}
 		if response != "y" && response != "Y" {

@@ -147,6 +147,37 @@ func TestLogout_ConfirmNo(t *testing.T) {
 	assert.Equal(t, expectedContent, string(content))
 }
 
+func TestLogout_ConfirmEmpty(t *testing.T) {
+	// Setup
+	cmd, buf := setupTestCmd(t)
+	tokenPath, cleanup := createTempTokenFile(t)
+	defer cleanup()
+
+	cfg := types.Bacalhau{
+		API: types.API{
+			Host: "test-api",
+			Port: 1234,
+		},
+		DataDir: filepath.Dir(tokenPath),
+	}
+
+	// Simulate user just pressing Enter (empty input)
+	cmd.SetIn(bytes.NewBufferString("\n"))
+
+	o := &LogoutOptions{Force: false}
+	err := o.runSSOLogout(cmd, cfg)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "Logout cancelled")
+
+	// Verify token file is unchanged
+	content, err := os.ReadFile(tokenPath)
+	require.NoError(t, err)
+	expectedContent := `{"http://test-api:1234":"test-token"}`
+	assert.Equal(t, expectedContent, string(content))
+}
+
 func TestNewSSOLogoutCmd(t *testing.T) {
 	cmd := NewSSOLogoutCmd()
 
