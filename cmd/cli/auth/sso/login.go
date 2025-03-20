@@ -14,8 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/sso"
 )
@@ -23,22 +21,16 @@ import (
 const errorHint = "Please rerun command with DEBUG LOG_LEVEL for more details"
 
 // SSOOptions is a struct to support node command
-type SSOLoginOptions struct {
-	OutputOpts    output.NonTabularOutputOptions
-	ShowAuthToken bool
-}
+type SSOLoginOptions struct{}
 
 // NewSSOLoginOptions returns initialized Options
 func NewSSOLoginOptions() *SSOLoginOptions {
-	return &SSOLoginOptions{
-		OutputOpts:    output.NonTabularOutputOptions{Format: output.YAMLFormat},
-		ShowAuthToken: false,
-	}
+	return &SSOLoginOptions{}
 }
 
 func NewSSOLoginCmd() *cobra.Command {
 	o := NewSSOLoginOptions()
-	nodeCmd := &cobra.Command{
+	loginCmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login using SSO",
 		Args:  cobra.NoArgs,
@@ -60,9 +52,8 @@ func NewSSOLoginCmd() *cobra.Command {
 			return o.runSSOLogin(cmd, api, cfg)
 		},
 	}
-	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
-	nodeCmd.Flags().BoolVar(&o.ShowAuthToken, "show-auth-token", false, "Display the authentication token")
-	return nodeCmd
+
+	return loginCmd
 }
 
 // Run executes node command
@@ -74,23 +65,6 @@ func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg ty
 	if err != nil {
 		log.Debug().Err(err).Msg("failed to get JWTTokensPath path")
 		return bacerrors.New("unable to save temporary SSO credentials").WithHint(errorHint)
-	}
-
-	// If show-auth-token flag is set, print JWT town if it exists
-	if o.ShowAuthToken {
-		existingCred, readErr := util.ReadToken(authTokenPath, apiURL)
-		if readErr != nil {
-			log.Debug().Err(readErr).Msg("failed to read JWTTokensPath path")
-			return bacerrors.New("unable to retrieve saved SSO credentials").WithHint(errorHint)
-		}
-
-		if existingCred != nil {
-			fmt.Fprintln(cmd.OutOrStdout(), existingCred.Value)
-		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), "No authentication token found")
-		}
-
-		return nil
 	}
 
 	// Get the node auth config which contains OAuth2 settings
