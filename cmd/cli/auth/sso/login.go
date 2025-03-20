@@ -1,4 +1,4 @@
-package auth
+package sso
 
 import (
 	"context"
@@ -23,23 +23,23 @@ import (
 const errorHint = "Please rerun command with DEBUG LOG_LEVEL for more details"
 
 // SSOOptions is a struct to support node command
-type SSOOptions struct {
+type SSOLoginOptions struct {
 	OutputOpts    output.NonTabularOutputOptions
 	ShowAuthToken bool
 }
 
-// NewSSOOptions returns initialized Options
-func NewSSOOptions() *SSOOptions {
-	return &SSOOptions{
+// NewSSOLoginOptions returns initialized Options
+func NewSSOLoginOptions() *SSOLoginOptions {
+	return &SSOLoginOptions{
 		OutputOpts:    output.NonTabularOutputOptions{Format: output.YAMLFormat},
 		ShowAuthToken: false,
 	}
 }
 
-func NewSSOCmd() *cobra.Command {
-	o := NewSSOOptions()
+func NewSSOLoginCmd() *cobra.Command {
+	o := NewSSOLoginOptions()
 	nodeCmd := &cobra.Command{
-		Use:   "sso",
+		Use:   "login",
 		Short: "Login using SSO",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +57,7 @@ func NewSSOCmd() *cobra.Command {
 				return bacerrors.New("failed to initialize API call").
 					WithHint(errorHint)
 			}
-			return o.runSSO(cmd, api, cfg)
+			return o.runSSOLogin(cmd, api, cfg)
 		},
 	}
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
@@ -66,7 +66,7 @@ func NewSSOCmd() *cobra.Command {
 }
 
 // Run executes node command
-func (o *SSOOptions) runSSO(cmd *cobra.Command, api client.API, cfg types.Bacalhau) error {
+func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg types.Bacalhau) error {
 	ctx := cmd.Context()
 
 	apiURL, urlScheme := util.ConstructAPIEndpoint(cfg.API)
