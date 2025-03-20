@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// cSpell:disable
 // setupTestCmd creates a new command and buffer for testing
 func setupTokenTestCmd(t *testing.T) (*cobra.Command, *bytes.Buffer) {
 	cmd := &cobra.Command{Use: "test"}
