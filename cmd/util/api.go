@@ -68,6 +68,11 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		clientv2.WithHeaders(headers),
 	}
 
+	// Skip Authentication all together for specific commands
+	if shouldSkipAuthentication(cmd) {
+		return clientv2.New(baseURL, opts...), nil
+	}
+
 	var resolvedAuthToken *apimodels.HTTPCredential
 
 	// Check if the credentials are valid
@@ -114,20 +119,18 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		}
 	}
 
-	newAuthenticationFlowEnabled := apiKeyOrBasicAuthFlowEnabled || existingSSOCredential != nil
-	skipAuthentication := cmd.Use == "sso" || cmd.Use == "version" || cmd.Use == "alive"
-
 	userKeyPath, err := cfg.UserKeyPath()
 	if err != nil {
 		return nil, err
 	}
+
+	newAuthenticationFlowEnabled := apiKeyOrBasicAuthFlowEnabled || existingSSOCredential != nil
 
 	return clientv2.NewAPI(
 		&clientv2.AuthenticatingClient{
 			Client:                       clientv2.NewHTTPClient(baseURL, opts...),
 			Credential:                   resolvedAuthToken,
 			NewAuthenticationFlowEnabled: newAuthenticationFlowEnabled,
-			SkipAuthentication:           skipAuthentication,
 			PersistCredential: func(cred *apimodels.HTTPCredential) error {
 				return WriteToken(legacyAuthTokenFilePath, baseURL, cred)
 			},
@@ -291,4 +294,40 @@ func extractAuthCredentialsFromEnvVariables() (string, string, string) {
 	basicAuthPassword := strings.TrimSpace(os.Getenv(common.BacalhauAPIPassword))
 
 	return apiKey, basicAuthUsername, basicAuthPassword
+}
+
+func shouldSkipAuthentication(cmd *cobra.Command) bool {
+	// Split command path by space and remove the first element (command itself)
+	commandParts := strings.Split(strings.TrimSpace(cmd.CommandPath()), " ")
+	if len(commandParts) <= 1 {
+		return false
+	}
+	commandParts = commandParts[1:]
+
+	// Version command
+	if len(commandParts) == 1 && commandParts[0] == "version" {
+		return true
+	}
+
+	// Agent version command
+	if len(commandParts) == 2 && commandParts[0] == "agent" && commandParts[1] == "version" {
+		return true
+	}
+
+	// Agent alive command
+	if len(commandParts) == 2 && commandParts[0] == "agent" && commandParts[1] == "alive" {
+		return true
+	}
+
+	// Auth info
+	if len(commandParts) == 2 && commandParts[0] == "auth" && commandParts[1] == "info" {
+		return true
+	}
+
+	// Auth sso login command
+	if len(commandParts) == 3 && commandParts[0] == "auth" && commandParts[1] == "sso" && commandParts[2] == "login" {
+		return true
+	}
+
+	return false
 }

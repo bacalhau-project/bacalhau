@@ -2,8 +2,10 @@ package util
 
 import (
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -500,6 +502,92 @@ func TestExtractAuthCredentialsFromEnvVariables(t *testing.T) {
 			assert.Equal(t, tt.expectedKey, gotKey, "API key mismatch")
 			assert.Equal(t, tt.expectedUser, gotUser, "Username mismatch")
 			assert.Equal(t, tt.expectedPass, gotPass, "Password mismatch")
+		})
+	}
+}
+
+func TestShouldSkipAuthentication(t *testing.T) {
+	tests := []struct {
+		name           string
+		commandPath    string
+		commandUse     string
+		expectedResult bool
+	}{
+		{
+			name:           "Version command",
+			commandPath:    "bacalhau version",
+			commandUse:     "version",
+			expectedResult: true,
+		},
+		{
+			name:           "Agent version command",
+			commandPath:    "bacalhau agent version",
+			commandUse:     "version",
+			expectedResult: true,
+		},
+		{
+			name:           "Agent alive command",
+			commandPath:    "bacalhau agent alive",
+			commandUse:     "alive",
+			expectedResult: true,
+		},
+		{
+			name:           "Auth sso login command",
+			commandPath:    "bacalhau auth sso login",
+			commandUse:     "login",
+			expectedResult: true,
+		},
+		{
+			name:           "Single part command that should not skip",
+			commandPath:    "bacalhau list",
+			commandUse:     "list",
+			expectedResult: false,
+		},
+		{
+			name:           "Two part command that should not skip",
+			commandPath:    "bacalhau job list",
+			commandUse:     "list",
+			expectedResult: false,
+		},
+		{
+			name:           "Command Use doesn't match path",
+			commandPath:    "bacalhau version",
+			commandUse:     "something-else",
+			expectedResult: false,
+		},
+		{
+			name:           "Empty command path",
+			commandPath:    "",
+			commandUse:     "version",
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCmd := &cobra.Command{
+				Use: tt.commandUse,
+			}
+
+			// Create the command hierarchy based on the command path
+			if tt.commandPath != "" {
+				parts := strings.Split(tt.commandPath, " ")
+				if len(parts) > 1 {
+					current := mockCmd
+					for i := len(parts) - 2; i >= 1; i-- {
+						parent := &cobra.Command{Use: parts[i]}
+						parent.AddCommand(current)
+						current = parent
+					}
+					root := &cobra.Command{Use: parts[0]}
+					root.AddCommand(current)
+				}
+			}
+
+			result := shouldSkipAuthentication(mockCmd)
+			assert.Equal(t, tt.expectedResult, result,
+				"shouldSkipAuthentication() for command path '%s' with Use '%s'",
+				tt.commandPath, tt.commandUse)
 		})
 	}
 }
