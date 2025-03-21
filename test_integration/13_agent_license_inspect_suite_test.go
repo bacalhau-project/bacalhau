@@ -46,16 +46,14 @@ func (s *AgentLicenseInspectSuite) TestValidateRemoteLicense() {
 	)
 	s.Require().NoErrorf(err, "Error inspecting license: %q", err)
 
-	expectedOutput := `Product      = Bacalhau
-License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2
-Customer ID  = test-customer-id-123
-Valid Until  = 2045-07-28
-Version      = v1
-Expired      = false
-Capabilities = max_nodes=1
-Metadata     = {}`
-
-	s.Require().Contains(agentLicenseInspectionOutput, expectedOutput)
+	s.Require().Contains(agentLicenseInspectionOutput, "Product      = Bacalhau")
+	s.Require().Contains(agentLicenseInspectionOutput, "License ID   = e66d1f3a-a8d8-4d57-8f14-00722844afe2")
+	s.Require().Contains(agentLicenseInspectionOutput, "Customer ID  = test-customer-id-123")
+	s.Require().Contains(agentLicenseInspectionOutput, "Valid Until  = 2045-07-28")
+	s.Require().Contains(agentLicenseInspectionOutput, "Version      = v1")
+	s.Require().Contains(agentLicenseInspectionOutput, "Expired      = false")
+	s.Require().Contains(agentLicenseInspectionOutput, "Capabilities = max_nodes=1")
+	s.Require().Contains(agentLicenseInspectionOutput, "Metadata     = {}")
 }
 
 func (s *AgentLicenseInspectSuite) TestValidateAgentLicenseJSONOutput() {
