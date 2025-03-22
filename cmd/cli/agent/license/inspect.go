@@ -37,7 +37,7 @@ func NewAgentLicenseInspectCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}

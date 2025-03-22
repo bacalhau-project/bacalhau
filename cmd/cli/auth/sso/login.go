@@ -43,7 +43,7 @@ func NewSSOLoginCmd() *cobra.Command {
 					WithHint(errorHint)
 			}
 
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to initialize API client")
 				return bacerrors.New("failed to initialize API call").

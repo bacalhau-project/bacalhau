@@ -486,10 +486,6 @@ type AuthenticatingClient struct {
 	// NewAuthenticationFlowEnabled is true when new auth flow is detected.
 	// This is kept here for backward compatibility reasons only
 	NewAuthenticationFlowEnabled bool
-
-	// SkipAuthentication is true when new auth flow is detected.
-	// This is kept here for backward compatibility reasons only
-	SkipAuthentication bool
 }
 
 func (t *AuthenticatingClient) Get(ctx context.Context, path string, in apimodels.GetRequest, out apimodels.GetResponse) error {
@@ -536,10 +532,6 @@ func (t *AuthenticatingClient) Dial(
 }
 
 func doRequest[R apimodels.Request](ctx context.Context, t *AuthenticatingClient, request R, runRequest func(R) error) (err error) {
-	if t.SkipAuthentication {
-		return runRequest(request)
-	}
-
 	if t.NewAuthenticationFlowEnabled {
 		// Skip all legacy credential flow
 		request.SetCredential(t.Credential)

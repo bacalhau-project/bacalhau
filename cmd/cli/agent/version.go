@@ -37,7 +37,7 @@ func NewVersionCmd() *cobra.Command {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
