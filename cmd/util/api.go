@@ -51,6 +51,10 @@ func (cm *APIClientManager) GetUnauthenticatedAPIClient() (clientv2.API, error) 
 
 func (cm *APIClientManager) GetAuthenticatedAPIClient() (clientv2.API, error) {
 	apiRequestsOptions, err := generateAPIRequestsOptions(cm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
 	var resolvedAuthToken *apimodels.HTTPCredential
 
