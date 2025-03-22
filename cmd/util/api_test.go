@@ -2,13 +2,16 @@ package util
 
 import (
 	"os"
-	"strings"
+	"path/filepath"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
+	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
+	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // TestReadTokenFn is a function type for the ReadToken function for testing
@@ -506,88 +509,184 @@ func TestExtractAuthCredentialsFromEnvVariables(t *testing.T) {
 	}
 }
 
-func TestShouldSkipAuthentication(t *testing.T) {
+func TestGenerateAPIRequestsOptions(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "bacalhau-test-*")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
 	tests := []struct {
-		name           string
-		commandPath    string
-		commandUse     string
-		expectedResult bool
+		name          string
+		cfg           types.Bacalhau
+		setupFiles    func(t *testing.T) // Function to setup any required files
+		expectedError string             // Empty string means no error expected
+		verifyOptions func(t *testing.T, opts []clientv2.OptionFn)
 	}{
 		{
-			name:           "Version command",
-			commandPath:    "bacalhau version",
-			commandUse:     "version",
-			expectedResult: true,
+			name: "Basic configuration without TLS",
+			cfg: types.Bacalhau{
+				API: types.API{
+					TLS: types.TLS{
+						UseTLS:   false,
+						Insecure: false,
+						CAFile:   "",
+					},
+				},
+				DataDir: tmpDir,
+			},
+			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
+				config := clientv2.DefaultConfig()
+				for _, opt := range opts {
+					opt(&config)
+				}
+				assert.False(t, config.TLS.UseTLS)
+				assert.False(t, config.TLS.Insecure)
+				assert.Empty(t, config.TLS.CACert)
+				assert.NotNil(t, config.Headers)
+			},
 		},
 		{
-			name:           "Agent version command",
-			commandPath:    "bacalhau agent version",
-			commandUse:     "version",
-			expectedResult: true,
+			name: "Configuration with TLS enabled",
+			cfg: types.Bacalhau{
+				API: types.API{
+					TLS: types.TLS{
+						UseTLS:   true,
+						Insecure: false,
+						CAFile:   "",
+					},
+				},
+				DataDir: tmpDir,
+			},
+			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
+				config := clientv2.DefaultConfig()
+				for _, opt := range opts {
+					opt(&config)
+				}
+				assert.True(t, config.TLS.UseTLS)
+				assert.False(t, config.TLS.Insecure)
+				assert.Empty(t, config.TLS.CACert)
+				assert.NotNil(t, config.Headers)
+			},
 		},
 		{
-			name:           "Agent alive command",
-			commandPath:    "bacalhau agent alive",
-			commandUse:     "alive",
-			expectedResult: true,
+			name: "Configuration with insecure TLS",
+			cfg: types.Bacalhau{
+				API: types.API{
+					TLS: types.TLS{
+						UseTLS:   true,
+						Insecure: true,
+						CAFile:   "",
+					},
+				},
+				DataDir: tmpDir,
+			},
+			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
+				config := clientv2.DefaultConfig()
+				for _, opt := range opts {
+					opt(&config)
+				}
+				assert.True(t, config.TLS.UseTLS)
+				assert.True(t, config.TLS.Insecure)
+				assert.Empty(t, config.TLS.CACert)
+				assert.NotNil(t, config.Headers)
+			},
 		},
 		{
-			name:           "Auth sso login command",
-			commandPath:    "bacalhau auth sso login",
-			commandUse:     "login",
-			expectedResult: true,
+			name: "Configuration with valid CA file",
+			cfg: types.Bacalhau{
+				API: types.API{
+					TLS: types.TLS{
+						UseTLS:   true,
+						Insecure: false,
+						CAFile:   filepath.Join(tmpDir, "ca.crt"),
+					},
+				},
+				DataDir: tmpDir,
+			},
+			setupFiles: func(t *testing.T) {
+				err := os.WriteFile(filepath.Join(tmpDir, "ca.crt"), []byte("dummy ca content"), 0644)
+				assert.NoError(t, err)
+			},
+			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
+				config := clientv2.DefaultConfig()
+				for _, opt := range opts {
+					opt(&config)
+				}
+				assert.True(t, config.TLS.UseTLS)
+				assert.False(t, config.TLS.Insecure)
+				assert.Equal(t, filepath.Join(tmpDir, "ca.crt"), config.TLS.CACert)
+				assert.NotNil(t, config.Headers)
+			},
 		},
 		{
-			name:           "Single part command that should not skip",
-			commandPath:    "bacalhau list",
-			commandUse:     "list",
-			expectedResult: false,
-		},
-		{
-			name:           "Two part command that should not skip",
-			commandPath:    "bacalhau job list",
-			commandUse:     "list",
-			expectedResult: false,
-		},
-		{
-			name:           "Command Use doesn't match path",
-			commandPath:    "bacalhau version",
-			commandUse:     "something-else",
-			expectedResult: false,
-		},
-		{
-			name:           "Empty command path",
-			commandPath:    "",
-			commandUse:     "version",
-			expectedResult: false,
+			name: "Configuration with non-existent CA file",
+			cfg: types.Bacalhau{
+				API: types.API{
+					TLS: types.TLS{
+						UseTLS:   true,
+						Insecure: false,
+						CAFile:   filepath.Join(tmpDir, "non-existent.crt"),
+					},
+				},
+				DataDir: tmpDir,
+			},
+			expectedError: "does not exists",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockCmd := &cobra.Command{
-				Use: tt.commandUse,
+			// Setup any required files
+			if tt.setupFiles != nil {
+				tt.setupFiles(t)
 			}
 
-			// Create the command hierarchy based on the command path
-			if tt.commandPath != "" {
-				parts := strings.Split(tt.commandPath, " ")
-				if len(parts) > 1 {
-					current := mockCmd
-					for i := len(parts) - 2; i >= 1; i-- {
-						parent := &cobra.Command{Use: parts[i]}
-						parent.AddCommand(current)
-						current = parent
-					}
-					root := &cobra.Command{Use: parts[0]}
-					root.AddCommand(current)
-				}
+			// Run the function
+			opts, err := generateAPIRequestsOptions(tt.cfg)
+
+			// Check error cases
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				return
 			}
 
-			result := shouldSkipAuthentication(mockCmd)
-			assert.Equal(t, tt.expectedResult, result,
-				"shouldSkipAuthentication() for command path '%s' with Use '%s'",
-				tt.commandPath, tt.commandUse)
+			// For non-error cases
+			assert.NoError(t, err)
+			assert.NotNil(t, opts)
+
+			// Verify the number of options generated
+			// We expect 4 options (TLS, InsecureTLS, CA cert, and headers)
+			assert.Len(t, opts, 4)
+
+			// Verify the options using the provided verification function
+			if tt.verifyOptions != nil {
+				tt.verifyOptions(t, opts)
+			}
+
+			// Verify headers content by applying options to a config
+			config := clientv2.DefaultConfig()
+			for _, opt := range opts {
+				opt(&config)
+			}
+
+			headers := config.Headers
+			assert.NotNil(t, headers)
+			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauGitVersion)
+			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauGitCommit)
+			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauBuildDate)
+			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauBuildOS)
+			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauArch)
+
+			// If system metadata was loaded successfully, check for instance ID
+			if sysmeta, err := repo.LoadSystemMetadata(tt.cfg.DataDir); err == nil && sysmeta.InstanceID != "" {
+				assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauInstanceID)
+			}
+
+			// If installation ID is available, check for it
+			if installationID := system.InstallationID(); installationID != "" {
+				assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauInstallationID)
+			}
 		})
 	}
 }
