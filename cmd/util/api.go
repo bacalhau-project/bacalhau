@@ -25,10 +25,108 @@ import (
 // ReadTokenFn is a function type for the ReadToken function that can be overridden for testing
 var ReadTokenFn = ReadToken
 
-//nolint:funlen
-func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
-	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
+type APIClientManager struct {
+	cmd     *cobra.Command
+	cfg     types.Bacalhau
+	baseURL string
+}
+
+func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManager {
 	baseURL, _ := ConstructAPIEndpoint(cfg.API)
+	return &APIClientManager{
+		cmd:     cmd,
+		cfg:     cfg,
+		baseURL: baseURL,
+	}
+}
+
+func (cm *APIClientManager) GetUnauthenticatedAPIClient() (clientv2.API, error) {
+	apiRequestOptions, err := generateAPIRequestsOptions(cm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientv2.New(cm.baseURL, apiRequestOptions...), nil
+}
+
+func (cm *APIClientManager) GetAuthenticatedAPIClient() (clientv2.API, error) {
+	apiRequestsOptions, err := generateAPIRequestsOptions(cm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
+	var resolvedAuthToken *apimodels.HTTPCredential
+
+	// Check if the credentials are valid
+	apiKeyOrBasicAuthFlowEnabled, credentialScheme, credentialString, err := resolveAuthCredentials(
+		apiAuthAPIKey,
+		basicAuthUsername,
+		basicAuthPassword,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("authentication error: %v", err)
+	}
+
+	legacyAuthTokenFilePath, err := cm.cfg.AuthTokensPath()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read access tokens path – API calls will be without authorization")
+	}
+
+	// Try to get the tokens file for SSO tokens
+	ssoAuthTokenPath, err := cm.cfg.JWTTokensPath()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read access jwt tokens path")
+	}
+
+	// Do not error out if we are not able to do that , just log
+	existingSSOCredential, err := ReadTokenFn(ssoAuthTokenPath, cm.baseURL)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read SSO access tokens file")
+	}
+
+	// If credentials are provided, add them to the headers
+	if apiKeyOrBasicAuthFlowEnabled {
+		resolvedAuthToken = &apimodels.HTTPCredential{
+			Scheme: credentialScheme,
+			Value:  credentialString,
+		}
+		log.Debug().Msg("Using API Key or Basic Auth authentication credentials")
+	} else if existingSSOCredential != nil {
+		resolvedAuthToken = existingSSOCredential
+		log.Debug().Msg("Using SSO authentication credentials")
+	} else {
+		// Legacy Auth FLow
+		resolvedAuthToken, err = ReadTokenFn(legacyAuthTokenFilePath, cm.baseURL)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+		}
+	}
+
+	// Legacy Auth FLow
+	userKeyPath, err := cm.cfg.UserKeyPath()
+	if err != nil {
+		return nil, err
+	}
+
+	newAuthenticationFlowEnabled := apiKeyOrBasicAuthFlowEnabled || existingSSOCredential != nil
+
+	return clientv2.NewAPI(
+		&clientv2.AuthenticatingClient{
+			Client:                       clientv2.NewHTTPClient(cm.baseURL, apiRequestsOptions...),
+			Credential:                   resolvedAuthToken,
+			NewAuthenticationFlowEnabled: newAuthenticationFlowEnabled,
+			PersistCredential: func(cred *apimodels.HTTPCredential) error {
+				return WriteToken(legacyAuthTokenFilePath, cm.baseURL, cred)
+			},
+			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
+				return auth.RunAuthenticationFlow(ctx, cm.cmd, a, userKeyPath)
+			},
+		},
+	), nil
+}
+
+func generateAPIRequestsOptions(cfg types.Bacalhau) ([]clientv2.OptionFn, error) {
 	tlsCfg := cfg.API.TLS
 
 	if tlsCfg.CAFile != "" {
@@ -68,74 +166,7 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		clientv2.WithHeaders(headers),
 	}
 
-	var resolvedAuthToken *apimodels.HTTPCredential
-
-	// Check if the credentials are valid
-	apiKeyOrBasicAuthFlowEnabled, credentialScheme, credentialString, err := resolveAuthCredentials(
-		apiAuthAPIKey,
-		basicAuthUsername,
-		basicAuthPassword,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("authentication error: %v", err)
-	}
-
-	legacyAuthTokenFilePath, err := cfg.AuthTokensPath()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read access tokens path – API calls will be without authorization")
-	}
-
-	// Try to get the tokens file for SSO tokens
-	ssoAuthTokenPath, err := cfg.JWTTokensPath()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read access jwt tokens path")
-	}
-
-	// Do not error out if we are not able to do that , just log
-	existingSSOCredential, err := ReadTokenFn(ssoAuthTokenPath, baseURL)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read SSO access tokens file")
-	}
-
-	// If credentials are provided, add them to the headers
-	if apiKeyOrBasicAuthFlowEnabled {
-		resolvedAuthToken = &apimodels.HTTPCredential{
-			Scheme: credentialScheme,
-			Value:  credentialString,
-		}
-		log.Debug().Msg("Using API Key or Basic Auth authentication credentials")
-	} else if existingSSOCredential != nil {
-		resolvedAuthToken = existingSSOCredential
-		log.Debug().Msg("Using SSO authentication credentials")
-	} else {
-		resolvedAuthToken, err = ReadTokenFn(legacyAuthTokenFilePath, baseURL)
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
-		}
-	}
-
-	newAuthenticationFlowEnabled := apiKeyOrBasicAuthFlowEnabled || existingSSOCredential != nil
-	skipAuthentication := cmd.Use == "sso" || cmd.Use == "version" || cmd.Use == "alive"
-
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		return nil, err
-	}
-
-	return clientv2.NewAPI(
-		&clientv2.AuthenticatingClient{
-			Client:                       clientv2.NewHTTPClient(baseURL, opts...),
-			Credential:                   resolvedAuthToken,
-			NewAuthenticationFlowEnabled: newAuthenticationFlowEnabled,
-			SkipAuthentication:           skipAuthentication,
-			PersistCredential: func(cred *apimodels.HTTPCredential) error {
-				return WriteToken(legacyAuthTokenFilePath, baseURL, cred)
-			},
-			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
-				return auth.RunAuthenticationFlow(ctx, cmd, a, userKeyPath)
-			},
-		},
-	), nil
+	return opts, nil
 }
 
 func ConstructAPIEndpoint(apiCfg types.API) (string, string) {
