@@ -161,6 +161,9 @@ func (n *NetworkConfig) Copy() *NetworkConfig {
 // Validate returns an error if any of the fields do not pass validation, or nil
 // otherwise.
 func (n *NetworkConfig) Validate() error {
+	if n == nil {
+		return nil
+	}
 	var err error
 
 	// Validate network type
