@@ -71,9 +71,6 @@ func (t *Task) Normalize() {
 	if t.Publisher == nil {
 		t.Publisher = &SpecConfig{}
 	}
-	if t.Network == nil {
-		t.Network = &NetworkConfig{}
-	}
 	if t.Timeouts == nil {
 		t.Timeouts = &TimeoutConfig{}
 	}
