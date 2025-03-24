@@ -191,7 +191,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 			},
 		},
 	}
-	job.Normalize()
 	_, err = client.Jobs().Put(s.ctx, &apimodels.PutJobRequest{
 		Job: job,
 	})

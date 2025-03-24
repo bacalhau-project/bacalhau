@@ -38,11 +38,11 @@ func (suite *TaskTestSuite) TestTaskNormalization() {
 	suite.NotNil(task.Meta)
 	suite.NotNil(task.Env)
 	suite.NotNil(task.ResourcesConfig)
+	suite.NotNil(task.Network)
+	suite.NotNil(task.Network.Ports)
 	suite.NotNil(task.Timeouts)
 	suite.NotEmpty(task.InputSources)
 	suite.NotEmpty(task.ResultPaths)
-
-	suite.Nil(task.Network)
 }
 
 func (suite *TaskTestSuite) TestTaskValidation() {
