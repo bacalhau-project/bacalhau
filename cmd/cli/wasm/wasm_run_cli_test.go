@@ -40,10 +40,7 @@ var (
 		Disk:   "",
 		GPU:    "",
 	}
-	expectedDefaultNetworkConfig = &models.NetworkConfig{
-		Type:    models.NetworkDefault,
-		Domains: []string(nil),
-	}
+	expectedDefaultNetworkConfig = (*models.NetworkConfig)(nil)
 	expectedDefaultTimeoutConfig = &models.TimeoutConfig{
 		TotalTimeout: 0,
 		QueueTimeout: 0,
@@ -473,8 +470,7 @@ func TestJobFlagParsing(t *testing.T) {
 
 func defaultTaskAssertions(t *testing.T, task *models.Task) {
 	assert.Equal(t, task.Name, "main")
-	assert.Empty(t, task.Publisher.Type)
-	assert.Empty(t, task.Publisher.Params)
+	assert.Nil(t, task.Publisher)
 	assert.Empty(t, task.Env)
 	assert.Empty(t, task.Meta)
 	assert.Empty(t, task.ResultPaths)
