@@ -54,7 +54,7 @@ func (r *ResourcesConfig) Copy() *ResourcesConfig {
 // Validate returns an error if the resources are invalid
 func (r *ResourcesConfig) Validate() error {
 	if r == nil {
-		return nil
+		return errors.New("missing resources")
 	}
 	resources, err := r.ToResources()
 	if err != nil {

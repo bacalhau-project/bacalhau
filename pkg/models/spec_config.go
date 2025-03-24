@@ -85,7 +85,7 @@ func (s *SpecConfig) Validate() error {
 // This is useful for when you want to validate a spec config that is optional.
 func (s *SpecConfig) ValidateAllowBlank() error {
 	if s == nil {
-		return nil
+		return errors.New("nil spec config")
 	}
 	return nil
 }

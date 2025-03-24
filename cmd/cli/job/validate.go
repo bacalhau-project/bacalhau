@@ -66,7 +66,8 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Validate the job spec
+	// Normalize and validate the job spec
+	j.Normalize()
 	if err := j.ValidateSubmission(); err != nil {
 		return err
 	}
