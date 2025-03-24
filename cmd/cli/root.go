@@ -6,10 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/cmd/cli/auth"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/bacalhau-project/bacalhau/cmd/cli/auth"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
@@ -24,6 +25,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/common"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -47,8 +49,9 @@ func NewRootCmd() *cobra.Command {
 	// when these flags are provided their value will be used instead of the value present in the config file.
 	// If no flg is provided, and the config file doesn't have a value defined then the default value will be used.
 	rootFlags := map[string][]configflags.Definition{
-		"api":  configflags.ClientAPIFlags,
-		"repo": configflags.DataDirFlag,
+		"api":     configflags.ClientAPIFlags,
+		"logging": configflags.LogFlags,
+		"repo":    configflags.DataDirFlag,
 	}
 	// register the flags on the command.
 	if err := configflags.RegisterFlags(RootCmd, rootFlags); err != nil {
@@ -110,12 +113,12 @@ func NewRootCmd() *cobra.Command {
 	)
 
 	// Customize help template to include environment variables section
-	helpTemplate := RootCmd.HelpTemplate() + `
+	helpTemplate := RootCmd.HelpTemplate() + fmt.Sprintf(`
 Auth Environment Variables:
-  BACALHAU_API_KEY         API key for builtin authentication
-  BACALHAU_API_USERNAME    Username for Basic Auth builtin authentication
-  BACALHAU_API_PASSWORD    Password for Basic Auth builtin authentication
-`
+  %s         API key for builtin authentication
+  %s    Username for Basic Auth builtin authentication
+  %s    Password for Basic Auth builtin authentication
+`, common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
 	RootCmd.SetHelpTemplate(helpTemplate)
 
 	return RootCmd

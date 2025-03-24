@@ -62,8 +62,8 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	var payload apimodels.GetAgentConfigResponse
 	err = json.NewDecoder(rr.Body).Decode(&payload)
 	require.NoError(t, err)
-	assert.Equal(t, payload.Config.Orchestrator.Auth.Token, "<redacted>")
-	assert.Equal(t, payload.Config.Compute.Auth.Token, "<redacted>")
+	assert.Equal(t, payload.Config.Orchestrator.Auth.Token, "********")
+	assert.Equal(t, payload.Config.Compute.Auth.Token, "********")
 }
 
 // TestEndpointLicenseValid tests the license endpoint when a valid license is configured

@@ -137,6 +137,7 @@ func (s *BasicAuthConfigSuite) TestRunHelloWorldJobWithDifferentAuth() {
 		}),
 	)
 	s.Require().ErrorContains(err, "user 'API key ending in ...EEFBN' does not have the required capability 'write:job'")
+
 }
 
 func (s *BasicAuthConfigSuite) TestCommandsBypassingAuthentication() {
@@ -149,6 +150,90 @@ func (s *BasicAuthConfigSuite) TestCommandsBypassingAuthentication() {
 	s.Require().Contains(result, "SERVER")
 }
 
+func (s *BasicAuthConfigSuite) TestAuthInfoCommand() {
+	// Auth Info
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "auth", "info"},
+		exec.WithEnv([]string{
+			"BACALHAU_API_USERNAME=snoopyusername",
+			"BACALHAU_API_PASSWORD=snoopypassword",
+		}),
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "Target environment: http://bacalhau-orchestrator-node:1234", result)
+	s.Require().Contains(result, "Environment Variables:", result)
+	s.Require().Contains(result, "API Key: Not Set", result)
+	s.Require().Contains(result, "Username: Set", result)
+	s.Require().Contains(result, "Password: Set", result)
+	s.Require().Contains(result, "Node SSO Authentication:", result)
+	s.Require().Contains(result, "Server does not support SSO login", result)
+	s.Require().Contains(result, "Note: Environment variables take precedence over other authentication mechanisms including SSO.", result)
+	s.Require().Contains(result, "To use SSO login, please unset Auth related environment variables first.", result)
+}
+
+func (s *BasicAuthConfigSuite) TestAuthInfoNoCredentialsCommand() {
+	// Auth Info
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "auth", "info"},
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "Target environment: http://bacalhau-orchestrator-node:1234", result)
+	s.Require().Contains(result, "Environment Variables:", result)
+	s.Require().Contains(result, "API Key: Not Set", result)
+	s.Require().Contains(result, "Username: Not Set", result)
+	s.Require().Contains(result, "Password: Not Set", result)
+	s.Require().Contains(result, "Node SSO Authentication:", result)
+	s.Require().Contains(result, "Server does not support SSO login", result)
+	s.Require().Contains(result, "Note: Environment variables take precedence over other authentication mechanisms including SSO.", result)
+	s.Require().Contains(result, "To use SSO login, please unset Auth related environment variables first.", result)
+}
+
+func (s *BasicAuthConfigSuite) TestAuthIsSkippedForCertainCommands() {
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "version"},
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "SERVER", result)
+
+	result, err = s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "agent", "version"},
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "BuildDate")
+	s.Require().Contains(result, "GitCommit")
+
+	result, err = s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "agent", "alive"},
+	)
+	s.Require().NoError(err)
+	s.Require().Contains(result, "Status: OK")
+}
+
+func (s *BasicAuthConfigSuite) TestConfigRedactedContent() {
+	// Auth Info
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{"bacalhau", "agent", "config"},
+		exec.WithEnv([]string{
+			"BACALHAU_API_USERNAME=snoopyusername",
+			"BACALHAU_API_PASSWORD=snoopypassword",
+		}),
+	)
+
+	s.Require().NoError(err)
+
+	redactedPasswordsCount := strings.Count(result, "Password: '********'")
+	redactedAPIKeysCount := strings.Count(result, "APIKey: '********'")
+	redactedAuthTokenCount := strings.Count(result, "Token: '********'")
+	s.Require().Equal(2, redactedPasswordsCount)
+	s.Require().Equal(2, redactedAPIKeysCount)
+	s.Require().Equal(1, redactedAuthTokenCount)
+
+	s.Require().NotContains(result, "snoopypassword", result)
+	s.Require().NotContains(result, "readonlyuserpassword", result)
+	s.Require().NotContains(result, "P7D4CBB284634DD081FAC33868436ECCL", result)
+	s.Require().NotContains(result, "QWERTYHFGCBNSKFIREHFURHUFE7KEEFBN", result)
+	s.Require().NotContains(result, "i_am_very_secret_token", result)
+}
 func TestBasicAuthConfigSuite(t *testing.T) {
 	suite.Run(t, NewBasicAuthConfigSuite())
 }

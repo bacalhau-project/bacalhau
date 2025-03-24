@@ -1,4 +1,4 @@
-package auth
+package sso
 
 import (
 	"context"
@@ -14,8 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/output"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/sso"
 )
@@ -23,23 +21,17 @@ import (
 const errorHint = "Please rerun command with DEBUG LOG_LEVEL for more details"
 
 // SSOOptions is a struct to support node command
-type SSOOptions struct {
-	OutputOpts    output.NonTabularOutputOptions
-	ShowAuthToken bool
+type SSOLoginOptions struct{}
+
+// NewSSOLoginOptions returns initialized Options
+func NewSSOLoginOptions() *SSOLoginOptions {
+	return &SSOLoginOptions{}
 }
 
-// NewSSOOptions returns initialized Options
-func NewSSOOptions() *SSOOptions {
-	return &SSOOptions{
-		OutputOpts:    output.NonTabularOutputOptions{Format: output.YAMLFormat},
-		ShowAuthToken: false,
-	}
-}
-
-func NewSSOCmd() *cobra.Command {
-	o := NewSSOOptions()
-	nodeCmd := &cobra.Command{
-		Use:   "sso",
+func NewSSOLoginCmd() *cobra.Command {
+	o := NewSSOLoginOptions()
+	loginCmd := &cobra.Command{
+		Use:   "login",
 		Short: "Login using SSO",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,22 +43,21 @@ func NewSSOCmd() *cobra.Command {
 					WithHint(errorHint)
 			}
 
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to initialize API client")
 				return bacerrors.New("failed to initialize API call").
 					WithHint(errorHint)
 			}
-			return o.runSSO(cmd, api, cfg)
+			return o.runSSOLogin(cmd, api, cfg)
 		},
 	}
-	nodeCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
-	nodeCmd.Flags().BoolVar(&o.ShowAuthToken, "show-auth-token", false, "Display the authentication token")
-	return nodeCmd
+
+	return loginCmd
 }
 
 // Run executes node command
-func (o *SSOOptions) runSSO(cmd *cobra.Command, api client.API, cfg types.Bacalhau) error {
+func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg types.Bacalhau) error {
 	ctx := cmd.Context()
 
 	apiURL, urlScheme := util.ConstructAPIEndpoint(cfg.API)
@@ -74,23 +65,6 @@ func (o *SSOOptions) runSSO(cmd *cobra.Command, api client.API, cfg types.Bacalh
 	if err != nil {
 		log.Debug().Err(err).Msg("failed to get JWTTokensPath path")
 		return bacerrors.New("unable to save temporary SSO credentials").WithHint(errorHint)
-	}
-
-	// If show-auth-token flag is set, print JWT town if it exists
-	if o.ShowAuthToken {
-		existingCred, readErr := util.ReadToken(authTokenPath, apiURL)
-		if readErr != nil {
-			log.Debug().Err(readErr).Msg("failed to read JWTTokensPath path")
-			return bacerrors.New("unable to retrieve saved SSO credentials").WithHint(errorHint)
-		}
-
-		if existingCred != nil {
-			fmt.Fprintln(cmd.OutOrStdout(), existingCred.Value)
-		} else {
-			fmt.Fprintln(cmd.OutOrStdout(), "No authentication token found")
-		}
-
-		return nil
 	}
 
 	// Get the node auth config which contains OAuth2 settings
