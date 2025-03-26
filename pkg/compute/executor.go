@@ -319,8 +319,10 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 				err = os.RemoveAll(executionRootDir)
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to remove execution root dir at %s", executionRootDir)
+					return
 				} else {
 					log.Debug().Msgf("Removed execution root dir at %s", executionRootDir)
+					return
 				}
 			}
 		}()

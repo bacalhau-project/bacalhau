@@ -95,7 +95,11 @@ func (h *executionHandler) run(ctx context.Context) {
 	}
 
 	// start writing container output to the log file
-	go executor.WriteExecutionOutput(h.resultsDir, logStreamReader)
+	go func() {
+		if err := executor.WriteExecutionOutput(h.resultsDir, logStreamReader); err != nil {
+			h.logger.Error().Err(err).Msg("failed to write container output")
+		}
+	}()
 
 	// The container is now active
 	close(h.activeCh)
