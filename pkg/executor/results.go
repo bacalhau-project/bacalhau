@@ -160,3 +160,20 @@ func NewFailedResult(reason string) *models.RunCommandResult {
 func FailResult(err error) (*models.RunCommandResult, error) {
 	return &models.RunCommandResult{ErrorMsg: err.Error()}, err
 }
+
+const (
+	executionOutputFileName  = "unifiedout"
+	executionOutputFileLimit = 10 * datasize.MB
+)
+
+func WriteExecutionOutput(resultsDir string, logReader io.Reader) error {
+	log.Debug().Msgf("Writing execution output at %s", resultsDir)
+	return writeOutputResult(resultsDir, outputResult{
+		contents:     logReader,
+		filename:     executionOutputFileName,
+		fileLimit:    executionOutputFileLimit,
+		summary:      nil,
+		summaryLimit: 1,
+		truncated:    nil,
+	})
+}

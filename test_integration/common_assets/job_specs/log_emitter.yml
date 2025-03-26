@@ -1,0 +1,16 @@
+Name: Log emitter job
+Type: batch
+Count: 1
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: busybox:1.37.0
+        Entrypoint:
+          - /bin/sh
+        Parameters:
+          - "-c"
+          - "x=1; while [ $x -le 30 ]; do echo $x; x=$((x+1)); sleep 1; done"
+    Publisher:
+      Type: local

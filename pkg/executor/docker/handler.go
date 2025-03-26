@@ -68,6 +68,10 @@ func (h *executionHandler) run(ctx context.Context) {
 	}()
 	// start the container
 	h.logger.Info().Msg("starting container execution")
+
+	// remember a timestamp right before starting the container to guarantee all logs are captured
+	containerStartTs := strconv.FormatInt(time.Now().Unix(), 10)
+
 	if err := h.client.ContainerStart(ctx, h.containerID, container.StartOptions{}); err != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container"
@@ -81,6 +85,18 @@ func (h *executionHandler) run(ctx context.Context) {
 		// we failed to start the container, bail.
 		return
 	}
+
+	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, containerStartTs, true)
+	if err != nil {
+		logStreamErr := errors.Wrap(err, "failed create container output stream")
+		h.logger.Warn().Err(logStreamErr).Msg("failed to capture container output")
+		h.result = executor.NewFailedResult(fmt.Sprintf("failed to start container: %s", logStreamErr))
+		return
+	}
+
+	// start writing container output to the log file
+	go executor.WriteExecutionOutput(h.resultsDir, logStreamReader)
+
 	// The container is now active
 	close(h.activeCh)
 
