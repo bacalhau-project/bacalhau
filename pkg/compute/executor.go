@@ -23,8 +23,7 @@ import (
 
 const StorageDirectoryPerms = 0o755
 const (
-	// executionRootCleanupDelay = 60 * time.Minute
-	executionRootCleanupDelay = 10 * time.Second
+	executionRootCleanupDelay = 10 * time.Minute
 	executionOutputDirName    = "output"
 )
 

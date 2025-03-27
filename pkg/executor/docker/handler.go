@@ -70,7 +70,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	h.logger.Info().Msg("starting container execution")
 
 	// remember a timestamp right before starting the container to guarantee all logs are captured
-	containerStartTs := strconv.FormatInt(time.Now().Unix(), 10)
+	containerStartTS := strconv.FormatInt(time.Now().Unix(), 10)
 
 	if err := h.client.ContainerStart(ctx, h.containerID, container.StartOptions{}); err != nil {
 		// Special error to alert people about bad executable
@@ -86,7 +86,7 @@ func (h *executionHandler) run(ctx context.Context) {
 		return
 	}
 
-	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, containerStartTs, true)
+	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, containerStartTS, true, true)
 	if err != nil {
 		logStreamErr := errors.Wrap(err, "failed create container output stream")
 		h.logger.Warn().Err(logStreamErr).Msg("failed to capture container output")
@@ -236,7 +236,7 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
 	// If we want everything, we specify 1, a timestamp which we are confident we don't have
 	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow)
+	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow, false)
 }
 
 func (h *executionHandler) active() bool {
