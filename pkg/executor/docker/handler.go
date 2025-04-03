@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strconv"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,10 +16,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/atomic"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type executionHandler struct {
@@ -68,6 +71,10 @@ func (h *executionHandler) run(ctx context.Context) {
 	}()
 	// start the container
 	h.logger.Info().Msg("starting container execution")
+
+	// remember a timestamp right before starting the container to guarantee all logs are captured
+	startTimestamp := time.Now()
+
 	if err := h.client.ContainerStart(ctx, h.containerID, container.StartOptions{}); err != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container"
@@ -81,6 +88,23 @@ func (h *executionHandler) run(ctx context.Context) {
 		// we failed to start the container, bail.
 		return
 	}
+
+	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, &startTimestamp, true, true)
+	if err != nil {
+		logStreamErr := errors.Wrap(err, "failed create container output stream")
+		h.logger.Warn().Err(logStreamErr).Msg("failed to capture container output")
+		h.result = executor.NewFailedResult(fmt.Sprintf("failed to start container: %s", logStreamErr))
+		return
+	}
+
+	// start capturing the container output
+	go func(logReader io.ReadCloser) {
+		defer closer.CloseWithLogOnError("containerLogs", logReader)
+		if err := h.captureContainerOutput(logReader); err != nil {
+			h.logger.Error().Err(err).Msg("failed to store container logs")
+		}
+	}(logStreamReader)
+
 	// The container is now active
 	close(h.activeCh)
 
@@ -202,10 +226,13 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 }
 
 func (h *executionHandler) outputStream(ctx context.Context, request messages.ExecutionLogsRequest) (io.ReadCloser, error) {
-	since := "1"
+	var since time.Time
 	if request.Tail {
-		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:mnd
+		since = time.Now()
+	} else {
+		since = time.Unix(0, 0)
 	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -213,12 +240,29 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 	// the container isn't created yet.
 	case <-h.activeCh:
 	}
-	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
-	// If we want everything, we specify 1, a timestamp which we are confident we don't have
-	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow)
+
+	// Read and filter container logs from the local file
+	file, err := os.Open(filepath.Join(h.resultsDir, executionOutputFileName))
+	if err != nil {
+		return nil, docker.NewCustomDockerError(bacerrors.IOError, fmt.Sprintf("unable to find container logs for execution %s", h.executionID))
+	}
+
+	return docker.ContainerOutputStream(file, since, request.Follow)
 }
 
 func (h *executionHandler) active() bool {
 	return h.running.Load()
+}
+
+const executionOutputFileName = "raw_container_logs"
+
+func (h *executionHandler) captureContainerOutput(logReader io.Reader) error {
+	h.logger.Debug().Msgf("Writing execution output to %s", h.resultsDir)
+
+	file, err := os.Create(filepath.Join(h.resultsDir, executionOutputFileName))
+	if err != nil {
+		return err
+	}
+	defer closer.CloseWithLogOnError("containerLogsFile", file)
+	return docker.WriteMultiplexedOutput(file, logReader)
 }

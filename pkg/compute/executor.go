@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -21,6 +22,10 @@ import (
 )
 
 const StorageDirectoryPerms = 0o755
+const (
+	executionRootCleanupDelay = 10 * time.Minute
+	executionOutputDirName    = "output"
+)
 
 type BaseExecutorParams struct {
 	ID                     string
@@ -84,6 +89,26 @@ func (e *BaseExecutor) prepareInputVolumes(
 	return inputVolumes, func(ctx context.Context) error {
 		return storage.ParallelCleanStorage(ctx, e.Storages, inputVolumes)
 	}, nil
+}
+
+func (e *BaseExecutor) prepareRootDir(ctx context.Context, execution *models.Execution) (string, string, error) {
+	executionRootPath := buildExecutionRootPath(e, execution)
+	executionResultsPath := buildExecutionOutputPath(executionRootPath)
+
+	if err := os.MkdirAll(executionRootPath, StorageDirectoryPerms); err != nil {
+		return executionRootPath, executionResultsPath, err
+	}
+
+	log.Ctx(ctx).Debug().Msgf("Execution root dir: %s", executionRootPath)
+
+	// Execution output directory
+	if err := os.MkdirAll(executionResultsPath, StorageDirectoryPerms); err != nil {
+		return executionRootPath, executionResultsPath, err
+	}
+
+	log.Ctx(ctx).Debug().Msgf("Execution output dir: %s", executionResultsPath)
+
+	return executionRootPath, executionResultsPath, nil
 }
 
 // InputCleanupFn is a function type that defines the contract for cleaning up
@@ -181,19 +206,19 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
+	_, err = e.resultsPath.PrepareResultsDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
 		return result
 	}
 
-	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
-	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
-		result.Err = fmt.Errorf("preparing storage path: %w", err)
+	_, resultsDir, err := e.prepareRootDir(ctx, execution)
+	if err != nil {
+		result.Err = fmt.Errorf("preparing execution root directory: %w", err)
 		return result
 	}
 
-	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultFolder)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultsDir)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
@@ -281,6 +306,27 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
 		}
 	}()
+
+	// schedule resource artifact cleanup
+	defer func() {
+		go func() {
+			ticker := time.NewTicker(executionRootCleanupDelay)
+			defer ticker.Stop()
+			executionRootDir := buildExecutionRootPath(e, execution)
+			log.Debug().Msgf("scheduled execution root dir removal at %s", executionRootDir)
+			for range ticker.C {
+				err = os.RemoveAll(executionRootDir)
+				if err != nil {
+					log.Error().Err(err).Msgf("failed to remove execution root dir at %s", executionRootDir)
+					return
+				} else {
+					log.Debug().Msgf("removed execution root dir at %s", executionRootDir)
+					return
+				}
+			}
+		}()
+	}()
+
 	if err := res.Err; err != nil {
 		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
@@ -425,6 +471,15 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 	if updateError != nil {
 		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	}
+}
+
+func buildExecutionRootPath(e *BaseExecutor, execution *models.Execution) string {
+	executionRootPath := filepath.Join(e.storageDirectory, execution.ID)
+	return executionRootPath
+}
+
+func buildExecutionOutputPath(executionRootPath string) string {
+	return filepath.Join(executionRootPath, executionOutputDirName)
 }
 
 // compile-time interface check
