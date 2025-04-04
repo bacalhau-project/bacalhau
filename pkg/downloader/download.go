@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
@@ -97,9 +98,16 @@ func DownloadResults( //nolint:funlen,gocyclo
 		return nil
 	}
 	for resultPath := range downloadedResults {
+
+		fileInfo, err := os.Stat(resultPath)
+		if err != nil {
+			return nil
+		}
+
 		log.Ctx(ctx).Debug().
 			Str("Source", resultPath).
 			Str("Target", resultsOutputDir).
+			Str("Size", datasize.ByteSize(fileInfo.Size()).String()).
 			Msg("Copying downloaded data to target")
 
 		// if the result is a tar.gz file, we uncompress it first to a folder with the same name (minus the extension)

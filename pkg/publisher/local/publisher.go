@@ -93,10 +93,41 @@ func (p *Publisher) PublishResult(
 	}
 	defer file.Close()
 
+	fileInfo, err := os.Stat(resultPath)
+	if err != nil {
+		return models.SpecConfig{}, err
+	}
+	if fileInfo.IsDir() {
+		entries, err := os.ReadDir(resultPath)
+		if err != nil {
+			return models.SpecConfig{}, err
+		}
+
+		fileCount := 0
+		logDebug := log.Ctx(ctx).Debug()
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				entryInfo, err := os.Stat(resultPath)
+				if err != nil {
+					return models.SpecConfig{}, err
+				}
+				logDebug = logDebug.Str("file", entry.Name()).Str(fmt.Sprintf("%s-size", entry.Name()), fmt.Sprint(entryInfo.Size()))
+				fileCount++
+			}
+		}
+		logDebug.Msgf("compressing %d files in %s directory", fileCount, resultPath)
+	}
+
 	err = gzip.Compress(resultPath, file)
 	if err != nil {
 		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to compress output file")
 	}
+
+	fileInfo, err = os.Stat(file.Name())
+	if err != nil {
+		return models.SpecConfig{}, err
+	}
+	log.Ctx(ctx).Debug().Msgf("compressed file size %d", fileInfo.Size())
 
 	downloadURL, err := url.JoinPath(p.urlPrefix, filename)
 	if err != nil {
