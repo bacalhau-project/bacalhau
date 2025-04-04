@@ -176,9 +176,7 @@ func (c *Client) GetOutputStream(ctx context.Context, containerID string, since 
 		return nil, NewDockerError(err)
 	}
 
-	if !cont.State.Running {
-		return nil, NewCustomDockerError(ContainerNotRunning, "cannot get logs when container is not running")
-	}
+	// As long as the container exists we can get logs from it
 
 	logOptions := container.LogsOptions{
 		ShowStdout: true,
