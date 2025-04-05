@@ -3,59 +3,86 @@ package compute
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/rs/zerolog/log"
 )
 
-type ResultsPath struct {
-	// where do we copy the results from jobs temporarily?
-	ResultsDir string
+const (
+	OutputDir  = "output"
+	LogsDir    = "logs"
+	ResultsDir = "results"
+)
+
+func ExecutionLogsDir(resultsRootDir string, executionID string) string {
+	return filepath.Join(resultsRootDir, LogsDir)
 }
 
-func NewResultsPath() (*ResultsPath, error) {
-	dir, err := os.MkdirTemp("", "bacalhau-results")
-	if err != nil {
+func ExecutionResultsDir(resultsRootDir string, executionID string) string {
+	return filepath.Join(resultsRootDir, ResultsDir)
+}
+
+// Execution results folder structure
+//
+//	→ rootDir
+//		→ OutputDir								<- root for the results of all executions
+//			→ $execution_id						<- execution output directory
+//				→ LogsDir
+//				→ ResultsDir
+type ResultsPath struct {
+	OutputDir string
+}
+
+func NewResultsPath(rootDir string) (*ResultsPath, error) {
+	outputDir := filepath.Join(rootDir, OutputDir)
+	if err := prepareDir(outputDir); err != nil {
 		return nil, err
 	}
+
 	return &ResultsPath{
-		ResultsDir: dir,
+		OutputDir: outputDir,
 	}, nil
 }
 
-func (results *ResultsPath) getResultsDir(executionID string) string {
-	return fmt.Sprintf("%s/%s", results.ResultsDir, executionID)
+func (r *ResultsPath) ExecutionOutputDir(executionID string) string {
+	return filepath.Join(r.OutputDir, executionID)
 }
 
-// PrepareResultsDir creates a temporary directory to store the results of a job execution.
-func (results *ResultsPath) PrepareResultsDir(executionID string) (string, error) {
-	dir := results.getResultsDir(executionID)
-	err := os.MkdirAll(dir, util.OS_ALL_RWX)
-	if err != nil {
-		return "", fmt.Errorf("error creating results dir %s: %w", dir, err)
+func (r *ResultsPath) PrepareExecutionOutputDir(executionID string) (string, error) {
+	// execution results root directory
+	executionResultsRootPath := r.ExecutionOutputDir(executionID)
+	if err := prepareDir(executionResultsRootPath); err != nil {
+		return "", err
 	}
-	info, err := os.Stat(dir)
-	if err != nil {
-		return "", fmt.Errorf("error getting results dir %s info: %w", dir, err)
+
+	// execution logs directory
+	logsPath := ExecutionLogsDir(executionResultsRootPath, executionID)
+	if err := prepareDir(logsPath); err != nil {
+		return "", err
 	}
-	log.Trace().Msgf("Created execution results dir (%s). Permissions: %s", dir, info.Mode())
-	return dir, err
+
+	// execution results directory
+	resultsPath := ExecutionResultsDir(executionResultsRootPath, executionID)
+	if err := prepareDir(resultsPath); err != nil {
+		return "", err
+	}
+
+	return executionResultsRootPath, nil
 }
 
-// EnsureResultsDir ensures that the results directory exists.
-func (results *ResultsPath) EnsureResultsDir(executionID string) (string, error) {
-	dir := results.getResultsDir(executionID)
-	_, err := os.Stat(dir)
-	if err != nil {
-		return "", fmt.Errorf("error getting results dir %s info: %w", dir, err)
-	}
-	return dir, err
+func (r *ResultsPath) Close() error {
+	log.Debug().Str("path", r.OutputDir).Msg("removing root results dir")
+	return os.RemoveAll(r.OutputDir)
 }
 
-func (results *ResultsPath) Close() error {
-	if _, err := os.Stat(results.ResultsDir); os.IsNotExist(err) {
-		return nil
+// Creates a folder at given path with rwx------ permissions.
+// Parent directory must exist.
+func prepareDir(path string) error {
+	log.Debug().Str("path", path).Msg("creating results dir")
+	err := os.Mkdir(path, util.OS_USER_RWX) // Results directories should only be accessible by the Bacalhau user
+	if err != nil {
+		return fmt.Errorf("error creating results dir %s: %w", path, err)
 	}
-
-	return os.RemoveAll(results.ResultsDir)
+	return nil
 }

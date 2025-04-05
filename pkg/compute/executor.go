@@ -5,26 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-const StorageDirectoryPerms = 0o755
 const (
+	StorageDirectoryPerms     = 0o755
 	executionRootCleanupDelay = 10 * time.Minute
-	executionOutputDirName    = "output"
 )
 
 type BaseExecutorParams struct {
@@ -89,26 +87,6 @@ func (e *BaseExecutor) prepareInputVolumes(
 	return inputVolumes, func(ctx context.Context) error {
 		return storage.ParallelCleanStorage(ctx, e.Storages, inputVolumes)
 	}, nil
-}
-
-func (e *BaseExecutor) prepareRootDir(ctx context.Context, execution *models.Execution) (string, string, error) {
-	executionRootPath := buildExecutionRootPath(e, execution)
-	executionResultsPath := buildExecutionOutputPath(executionRootPath)
-
-	if err := os.MkdirAll(executionRootPath, StorageDirectoryPerms); err != nil {
-		return executionRootPath, executionResultsPath, err
-	}
-
-	log.Ctx(ctx).Debug().Msgf("Execution root dir: %s", executionRootPath)
-
-	// Execution output directory
-	if err := os.MkdirAll(executionResultsPath, StorageDirectoryPerms); err != nil {
-		return executionRootPath, executionResultsPath, err
-	}
-
-	log.Ctx(ctx).Debug().Msgf("Execution output dir: %s", executionResultsPath)
-
-	return executionRootPath, executionResultsPath, nil
 }
 
 // InputCleanupFn is a function type that defines the contract for cleaning up
@@ -206,19 +184,13 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	_, err = e.resultsPath.PrepareResultsDir(execution.ID)
+	outputDir, err := e.resultsPath.PrepareExecutionOutputDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
 		return result
 	}
 
-	_, resultsDir, err := e.prepareRootDir(ctx, execution)
-	if err != nil {
-		result.Err = fmt.Errorf("preparing execution root directory: %w", err)
-		return result
-	}
-
-	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultsDir)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, outputDir)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
@@ -301,31 +273,28 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 	}()
 
 	res := e.Start(ctx, execution)
-	defer func() {
+
+	defer func(executionOutputDir string) {
+		// For now execution results are removed after a fixed delay.
+		go func() {
+			log.Debug().Str("path", executionOutputDir).Msg("scheduled execution results dir removal")
+			ticker := time.NewTicker(executionRootCleanupDelay)
+			defer ticker.Stop()
+			for range ticker.C {
+				err = os.RemoveAll(executionOutputDir)
+				if err != nil {
+					log.Error().Err(err).Str("path", executionOutputDir).Msg("failed to remove execution results dir")
+					return
+				}
+				log.Debug().Str("path", executionOutputDir).Msg("removed execution results dir")
+			}
+		}()
+
+		// The rest can be cleaned up immediately after completion
 		if err := res.Cleanup(ctx); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
 		}
-	}()
-
-	// schedule resource artifact cleanup
-	defer func() {
-		go func() {
-			ticker := time.NewTicker(executionRootCleanupDelay)
-			defer ticker.Stop()
-			executionRootDir := buildExecutionRootPath(e, execution)
-			log.Debug().Msgf("scheduled execution root dir removal at %s", executionRootDir)
-			for range ticker.C {
-				err = os.RemoveAll(executionRootDir)
-				if err != nil {
-					log.Error().Err(err).Msgf("failed to remove execution root dir at %s", executionRootDir)
-					return
-				} else {
-					log.Debug().Msgf("removed execution root dir at %s", executionRootDir)
-					return
-				}
-			}
-		}()
-	}()
+	}(e.resultsPath.ExecutionOutputDir(execution.ID))
 
 	if err := res.Err; err != nil {
 		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
@@ -387,20 +356,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 		expectedState = models.ExecutionStatePublishing
 
-		resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			// cleanup resources
-			log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
-			err = os.RemoveAll(resultsDir)
-			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
-			}
-		}()
-
+		resultsDir := ExecutionResultsDir(e.resultsPath.ExecutionOutputDir(execution.ID), execution.ID)
 		publishedResult, err = e.publish(ctx, execution, resultsDir)
 		if err != nil {
 			return err
@@ -428,15 +384,15 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, execution *models.Execution,
-	resultFolder string,
+	resultsDir string,
 ) (*models.SpecConfig, error) {
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+	log.Ctx(ctx).Debug().Str("executionID", execution.ID).Str("resultsDir", resultsDir).Msg("Publishing execution results")
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultsDir)
 	if err != nil {
 		return nil, bacerrors.Wrap(err, "failed to publish result")
 	}
@@ -471,15 +427,6 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 	if updateError != nil {
 		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
 	}
-}
-
-func buildExecutionRootPath(e *BaseExecutor, execution *models.Execution) string {
-	executionRootPath := filepath.Join(e.storageDirectory, execution.ID)
-	return executionRootPath
-}
-
-func buildExecutionOutputPath(executionRootPath string) string {
-	return filepath.Join(executionRootPath, executionOutputDirName)
 }
 
 // compile-time interface check

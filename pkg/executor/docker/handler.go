@@ -17,6 +17,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -36,7 +37,7 @@ type executionHandler struct {
 	// meta data about the task
 	executionID string
 	containerID string
-	resultsDir  string
+	outputDir   string
 	limits      executor.OutputLimits
 	keepStack   bool
 
@@ -97,10 +98,10 @@ func (h *executionHandler) run(ctx context.Context) {
 		return
 	}
 
-	// start capturing the container output
+	// start capturing the container logs
 	go func(logReader io.ReadCloser) {
 		defer closer.CloseWithLogOnError("containerLogs", logReader)
-		if err := h.captureContainerOutput(logReader); err != nil {
+		if err := h.captureContainerLogs(logReader); err != nil {
 			h.logger.Error().Err(err).Msg("failed to store container logs")
 		}
 	}(logStreamReader)
@@ -189,7 +190,8 @@ func (h *executionHandler) run(ctx context.Context) {
 	// we successfully followed the container logs, the container may still have produced and error which we will record
 	// along with a truncated version of the logs.
 	// persist stderr/out to the results directory, and store the metadata in the handler.
-	h.result = executor.WriteJobResults(h.resultsDir, stdoutPipe, stderrPipe, int(containerExitStatusCode), containerError, h.limits)
+	resultsDir := compute.ExecutionResultsDir(h.outputDir, h.executionID)
+	h.result = executor.WriteJobResults(resultsDir, stdoutPipe, stderrPipe, int(containerExitStatusCode), containerError, h.limits)
 
 	h.logger.Info().
 		Int64("status", containerExitStatusCode).
@@ -242,7 +244,7 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 	}
 
 	// Read and filter container logs from the local file
-	file, err := os.Open(filepath.Join(h.resultsDir, executionOutputFileName))
+	file, err := os.Open(filepath.Join(compute.ExecutionLogsDir(h.outputDir, h.executionID), executionOutputFileName))
 	if err != nil {
 		return nil, docker.NewCustomDockerError(bacerrors.IOError, fmt.Sprintf("unable to find container logs for execution %s", h.executionID))
 	}
@@ -256,10 +258,11 @@ func (h *executionHandler) active() bool {
 
 const executionOutputFileName = "raw_container_logs"
 
-func (h *executionHandler) captureContainerOutput(logReader io.Reader) error {
-	h.logger.Debug().Msgf("Writing execution output to %s", h.resultsDir)
+func (h *executionHandler) captureContainerLogs(logReader io.Reader) error {
+	logsDir := compute.ExecutionLogsDir(h.outputDir, h.executionID)
+	h.logger.Debug().Str("path", logsDir).Msgf("capturing container logs")
 
-	file, err := os.Create(filepath.Join(h.resultsDir, executionOutputFileName))
+	file, err := os.Create(filepath.Join(logsDir, executionOutputFileName))
 	if err != nil {
 		return err
 	}
