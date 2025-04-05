@@ -304,8 +304,8 @@ func (h *executionHandler) executeMainFunction(ctx context.Context, instance api
 
 	// Collect results
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
-	resultsDir := compute.ExecutionResultsDir(h.request.ResultsDir, h.request.ExecutionID)
-	h.result = executor.WriteJobResults(resultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
+	executionResultsDir := compute.ExecutionResultsDir(h.request.ResultsDir, h.request.ExecutionID)
+	h.result = executor.WriteJobResults(executionResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
 }
 
 // active returns whether the execution is currently running
