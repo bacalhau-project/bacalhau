@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -158,7 +159,8 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 }
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
-	result := s.T().TempDir()
+	resultPath, _ := compute.NewResultsPath(s.T().TempDir())
+	result, _ := resultPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{spec}
