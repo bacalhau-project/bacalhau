@@ -259,10 +259,10 @@ func (h *executionHandler) active() bool {
 const executionOutputFileName = "raw_container_logs"
 
 func (h *executionHandler) captureContainerLogs(logReader io.Reader) error {
-	logsDir := compute.ExecutionLogsDir(h.outputDir, h.executionID)
-	h.logger.Debug().Str("path", logsDir).Msgf("capturing container logs")
+	filePath := filepath.Join(compute.ExecutionLogsDir(h.outputDir, h.executionID), executionOutputFileName)
+	h.logger.Debug().Str("path", filePath).Msgf("capturing container logs")
 
-	file, err := os.Create(filepath.Join(logsDir, executionOutputFileName))
+	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
