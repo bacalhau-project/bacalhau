@@ -23,12 +23,6 @@ jobs:
         run: |
           mkdir -p webui/build && touch webui/build/index.html
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .tool-versions
-          cache: "npm"
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -36,11 +30,6 @@ jobs:
           cache: "pip"
 
       # Install dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libsqlite3-dev
-
       - name: Install Python dependencies
         run: |
           python -m pip install pre-commit

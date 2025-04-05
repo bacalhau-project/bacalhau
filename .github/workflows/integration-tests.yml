@@ -20,6 +20,10 @@ jobs:
         with:
           go-version-file: go.work
 
+      - name: Setup Dummy WebUi Build
+        run: |
+          mkdir -p webui/build && touch webui/build/index.html
+          
       - name: Set up cache
         uses: actions/cache@v4
         with:
