@@ -31,6 +31,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
+	testutils "github.com/bacalhau-project/bacalhau/pkg/test/utils"
 )
 
 const (
@@ -536,7 +537,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	}).Stream(context.Background())
 	// res, ok := <-ch
 	// require.True(s.T(), ok)
-	res, _ := <-ch
+	res := <-ch
 	executionLog := res.Value
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
 	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
