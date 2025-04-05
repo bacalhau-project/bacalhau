@@ -449,3 +449,6 @@ dind
 tinygo
 JWKSURL
 ungranted
+natsserver
+natstest
+natsutil

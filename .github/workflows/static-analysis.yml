@@ -19,10 +19,6 @@ jobs:
           go-version-file: go.work
           cache: true
 
-      - name: Setup Dummy WebUi Build
-        run: |
-          mkdir -p webui/build && touch webui/build/index.html
-
       # Run all static analysis checks
       - name: Codespell
         run: |

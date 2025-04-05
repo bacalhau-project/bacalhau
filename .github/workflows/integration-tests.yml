@@ -20,10 +20,6 @@ jobs:
         with:
           go-version-file: go.work
 
-      - name: Setup Dummy WebUi Build
-        run: |
-          mkdir -p webui/build && touch webui/build/index.html
-          
       - name: Set up cache
         uses: actions/cache@v4
         with:
@@ -35,4 +31,8 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run integration tests
-        run: go test ./... -v -run Integration
+        env:
+          TEST_BUILD_TAGS: integration
+          TEST_PARALLEL_PACKAGES: 8
+          LOG_LEVEL: debug
+        run: make test-and-report
