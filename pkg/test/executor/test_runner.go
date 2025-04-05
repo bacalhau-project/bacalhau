@@ -87,7 +87,8 @@ func RunTestCase(
 	execution := mock.ExecutionForJob(job)
 	execution.AllocateResources(job.Task().Name, models.Resources{})
 
-	resultsDirectory := t.TempDir()
+	resultsPath, _ := compute.NewResultsPath(t.TempDir())
+	resultsDirectory, _ := resultsPath.PrepareExecutionOutputDir(execution.ID)
 	storageProvider := stack.Nodes[0].ComputeNode.Storages
 
 	// Create a permissive env resolver for testing
@@ -135,7 +136,7 @@ func RunTestCase(
 	}
 
 	if testCase.ResultsChecker != nil {
-		err = testCase.ResultsChecker(resultsDirectory)
+		err = testCase.ResultsChecker(compute.ExecutionResultsDir(resultsDirectory, execution.ID))
 		require.NoError(t, err)
 	}
 }

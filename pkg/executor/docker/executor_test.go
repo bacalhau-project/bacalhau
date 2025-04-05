@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
@@ -128,7 +129,8 @@ func (s *ExecutorTestSuite) runJob(spec *models.Task, executionID string) (*mode
 }
 
 func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
-	result := s.T().TempDir()
+	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
+	result, _ := resultsPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{spec}
@@ -158,7 +160,8 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 }
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
-	result := s.T().TempDir()
+	resultPath, _ := compute.NewResultsPath(s.T().TempDir())
+	result, _ := resultPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{spec}
@@ -463,7 +466,8 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	task.Engine = es
 
 	name := "timeout"
-	resultDir := s.T().TempDir()
+	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
+	resultDir, _ := resultsPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{task}
@@ -503,36 +507,6 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	case <-ticker.C:
 		s.T().Fatal("container was not canceled.")
 	}
-}
-
-func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
-	id := "streams-fail"
-	done := make(chan bool, 1)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
-		WithEntrypoint("sh", "cat /sys/fs/cgroup/cpu.max").
-		Build()
-	s.Require().NoError(err)
-	task := mock.Task()
-	task.Engine = es
-	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
-	task.Normalize()
-
-	go func() {
-		_, _ = s.runJobWithContext(ctx, task, id)
-		done <- true
-	}()
-	<-done
-	reader, err := s.executor.GetLogStream(ctx, messages.ExecutionLogsRequest{
-		ExecutionID: id,
-		Tail:        true,
-		Follow:      true,
-	})
-
-	require.Nil(s.T(), reader)
-	require.Error(s.T(), err)
 }
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {

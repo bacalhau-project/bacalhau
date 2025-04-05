@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
@@ -303,7 +304,8 @@ func (h *executionHandler) executeMainFunction(ctx context.Context, instance api
 
 	// Collect results
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
-	h.result = executor.WriteJobResults(h.request.ResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
+	executionResultsDir := compute.ExecutionResultsDir(h.request.ResultsDir, h.request.ExecutionID)
+	h.result = executor.WriteJobResults(executionResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
 }
 
 // active returns whether the execution is currently running

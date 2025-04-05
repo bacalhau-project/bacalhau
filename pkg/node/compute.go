@@ -94,7 +94,7 @@ func NewComputeNode(
 	})
 	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
-	resultsPath, err := compute.NewResultsPath()
+	resultsPath, err := compute.NewResultsPath(executionDir)
 	if err != nil {
 		return nil, err
 	}
