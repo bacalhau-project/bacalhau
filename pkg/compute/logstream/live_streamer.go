@@ -4,12 +4,9 @@ import (
 	"context"
 	"io"
 
-	"fmt"
-
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
 )
 
 type LiveStreamerParams struct {
@@ -48,11 +45,9 @@ func (s *LiveStreamer) Stream(ctx context.Context) chan *concurrency.AsyncResult
 			default:
 				asyncResult := new(concurrency.AsyncResult[models.ExecutionLog])
 				executionLog, err := s.readExecutionLog()
-				log.Debug().Str("line", executionLog.Line).Str("stream", fmt.Sprint(executionLog.Type)).Msg("read log line")
 				if err != nil {
 					if err != io.EOF {
 						// return one last log entry with the error message before closing the channel
-						log.Error().Err(err).Msg("error while reading execution log")
 						asyncResult.Err = err
 						ch <- asyncResult
 					}
