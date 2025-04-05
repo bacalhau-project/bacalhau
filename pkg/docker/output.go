@@ -80,7 +80,6 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 
 		// If encountered a stream end frame, return immediately
 		if streamType == SystemStreamEnd {
-			log.Debug().Msg("STREAM END")
 			return written, nil
 		}
 
