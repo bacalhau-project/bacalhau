@@ -162,7 +162,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		ID:          e.ID,
 		executionID: request.ExecutionID,
 		containerID: containerID,
-		outputDir:   request.ResultsDir,
+		resultsDir:  request.ResultsDir,
 		limits:      request.OutputLimits,
 		keepStack:   e.shouldKeepStack,
 		waitCh:      make(chan bool),
