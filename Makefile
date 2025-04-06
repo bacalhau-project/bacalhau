@@ -352,7 +352,7 @@ images: docker/.pulled
 clean:
 	${GO} clean
 	${RM} -r bin/*
-	${RM} -r webui/build/*
+	find webui/build/* ! -name '.keep' -exec ${RM} -r {} +
 	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images

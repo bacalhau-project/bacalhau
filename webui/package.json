@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && touch build/.keep",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",

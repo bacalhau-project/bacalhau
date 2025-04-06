@@ -8,7 +8,7 @@ coverage
 
 # # production
 build/*
-!/build/.gitkeep
+!/build/.keep
 
 # misc
 *DS_Store*
