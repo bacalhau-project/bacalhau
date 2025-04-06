@@ -13,6 +13,10 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
 
     steps:
       - uses: actions/checkout@v4
