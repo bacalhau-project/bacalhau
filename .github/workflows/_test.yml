@@ -102,6 +102,10 @@ jobs:
           go build -o ${{ inputs.binary_output_path }} \
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
           
+          pwd
+          ls -la ${{ inputs.binary_output_path }}
+          # Ensure the binary is executable
+          chmod +x ${{ inputs.binary_output_path }}
           # Verify binary works
           ${{ inputs.binary_output_path }} version
 
