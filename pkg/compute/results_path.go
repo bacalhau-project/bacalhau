@@ -15,12 +15,12 @@ const (
 	ResultsDir = "results"
 )
 
-// Retunrs the path do the sub-directory in which execution logs are stored
+// Returns the path do the sub-directory in which execution logs are stored
 func ExecutionLogsDir(executionOutputDir string) string {
 	return filepath.Join(executionOutputDir, LogsDir)
 }
 
-// Retunrs the path do the sub-directory in which execution results are stored
+// Returns the path do the sub-directory in which execution results are stored
 func ExecutionResultsDir(executionOutputDir string) string {
 	return filepath.Join(executionOutputDir, ResultsDir)
 }
