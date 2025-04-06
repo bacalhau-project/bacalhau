@@ -35,13 +35,25 @@ jobs:
           mkdir -p ${{ env.COVERAGE_DIR }}
 
       - name: Build binary (if required)
+        env:
+            GOOS: ${{ inputs.os }}
+            GOARCH: ${{ inputs.arch }}
+            PRIVATE_PEM: ${{ secrets.PRIVATE_PEM }}
+            PUBLIC_PEM: ${{ secrets.PUBLIC_PEM }}
+            PRIVATE_KEY_PASSPHRASE: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
         run: |
-          # Build the binary for tests
-          TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o test_integration/common_assets/bacalhau_bin \
-            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
+          # Add Keys to expected files
+          echo "${PRIVATE_PEM}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+          echo "${PUBLIC_PEM}" > /tmp/public.pem && chmod 600 /tmp/public.pem
+          
+          # Build the binary
+          make binary
 
           ls -l test_integration/common_assets/
+          test_integration/common_assets/bacalhau_bin --version
+          
+          # Remove keys, good security practice
+          rm /tmp/private.pem /tmp/public.pem
 
       - name: Run Go tests in integration test directory
         shell: bash
