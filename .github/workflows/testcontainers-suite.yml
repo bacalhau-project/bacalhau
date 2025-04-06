@@ -52,7 +52,7 @@ jobs:
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
 
           ls -l test_integration/common_assets/
-          test_integration/common_assets/bacalhau_bin --version
+          test_integration/common_assets/bacalhau_bin version
           
           # Remove keys, good security practice
           rm /tmp/private.pem /tmp/public.pem
