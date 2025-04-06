@@ -23,6 +23,12 @@ jobs:
         with:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.os }}-${{ inputs.arch }}
+          path: compiled-artifacts/
+
       - name: Install Golang
         uses: actions/setup-go@v5
         with:
@@ -62,7 +68,15 @@ jobs:
       - name: Run Go tests in integration test directory
         shell: bash
         run: |
-          cd test_integration
+          echo "===> Copy compiled artifact to use in docker images..."
+          cd compiled-artifacts
+          tar -xzf bacalhau_*.tar.gz
+          cp ./bacalhau ../test_integration/common_assets/bacalhau_bin
+          
+          test_integration/common_assets/bacalhau_bin version
+          
+          echo "===> Running tests..."       
+          cd ../test_integration
           
           ls -l common_assets
           go test -v -count=1 ./...
