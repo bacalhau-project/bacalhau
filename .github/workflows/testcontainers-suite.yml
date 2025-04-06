@@ -45,7 +45,8 @@ jobs:
 
       - name: Run Go tests in integration test directory
         shell: bash
-        working-directory: test_integration
         run: |
+          cd test_integration
+          
           ls -l common_assets
           go test -v -count=1 ./...
