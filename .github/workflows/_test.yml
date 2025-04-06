@@ -1,0 +1,93 @@
+name: Reusable Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      test_tags:
+        description: 'Test tags to use (e.g. unit,integration)'
+        required: true
+        type: string
+      test_name:
+        description: 'Name for test reports and artifacts'
+        required: true
+        type: string
+      parallelism:
+        description: 'Test parallelism (-p flag)'
+        required: false
+        type: number
+        default: 1
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_REGION:
+        required: false
+
+jobs:
+  run-tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create coverage directory
+        run: mkdir -p coverage
+        
+      - name: Run tests
+        run: |
+          gotestsum \
+            --junitfile ${{ inputs.test_name }}.xml \
+            --format testname \
+            --jsonfile ${{ inputs.test_name }}.json \
+            -- \
+              ./pkg/... ./cmd/... \
+              -coverpkg=./... -coverprofile=coverage/${{ inputs.test_name }}.coverage \
+              --tags=${{ inputs.test_tags }} -p ${{ inputs.parallelism }}
+              
+      - name: Generate HTML coverage report
+        run: go tool cover -html=coverage/${{ inputs.test_name }}.coverage -o coverage/${{ inputs.test_name }}.html
+        
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/${{ inputs.test_name }}.coverage
+          flags: ${{ inputs.test_name }}
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: ${{ inputs.test_name }} Tests
+          path: ${{ inputs.test_name }}.xml
+          reporter: java-junit
+          fail-on-error: false
+          
+      - name: Upload Test Reports as Artifacts
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: ${{ inputs.test_name }}-reports
+          path: |
+            ${{ inputs.test_name }}.xml
+            ${{ inputs.test_name }}.json
+            coverage/${{ inputs.test_name }}.coverage
+            coverage/${{ inputs.test_name }}.html
+          retention-days: 14

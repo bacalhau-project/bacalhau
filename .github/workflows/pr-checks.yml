@@ -1,0 +1,103 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+  repository_dispatch:
+    types: [ ok-to-test ]
+
+jobs:
+  static-analysis:
+    name: Static Analysis
+    uses: ./.github/workflows/_static-analysis.yml
+    with:
+      go_version_file: go.work
+      golangci_lint_version: v1.64.5
+
+  unit-tests:
+    name: Unit Tests
+    uses: ./.github/workflows/_test.yml
+    with:
+      test_tags: unit
+      test_name: unit-tests
+      parallelism: 4
+
+  integration-tests:
+    name: Integration Tests
+    needs: unit-tests
+    uses: ./.github/workflows/_test.yml
+    with:
+      test_tags: integration
+      test_name: integration-tests
+      parallelism: 1
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+  combined-coverage:
+    name: Generate Combined Coverage
+    needs: [ unit-tests, integration-tests ]
+    uses: ./.github/workflows/_test_coverage.yml
+    with:
+      coverage_reports: '["unit-tests", "integration-tests"]'
+      output_name: 'pr-combined'
+      retention_days: 14
+      codecov: true
+
+  build-binaries:
+    name: Build Binaries
+    needs: [ static-analysis, unit-tests, integration-tests ]
+    uses: ./.github/workflows/_build.yml
+    secrets: inherit
+    if: success()
+
+  container-tests:
+    name: Container Tests
+    needs: build-binaries
+    uses: ./.github/workflows/_test-containers.yml
+    with:
+      os: linux
+      arch: amd64
+      test_timeout: 45
+      junit_report: true
+
+    # needs: [lint, unit-tests, integration-tests]
+    # runs-on: ubuntu-latest
+    # strategy:
+    #   matrix:
+    #     arch: [amd64, arm64]
+    #     os: [linux, darwin, windows]
+    #     exclude:
+    #       - os: windows
+    #         arch: arm64
+
+    # steps:
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+
+    #   - name: Setup Go
+    #     uses: actions/setup-go@v5
+    #     with:
+    #       go-version: '1.21'
+    #       cache: true
+
+    #   - name: Build Binary
+    #     env:
+    #       GOOS: ${{ matrix.os }}
+    #       GOARCH: ${{ matrix.arch }}
+    #     run: |
+    #       EXT=""
+    #       if [ "${{ matrix.os }}" = "windows" ]; then
+    #         EXT=".exe"
+    #       fi
+    #       TAG=$(git describe --tags --always)
+    #       OUTPUT="bacalhau_${{ matrix.os }}_${{ matrix.arch }}${EXT}"
+    #       go build -o "$OUTPUT" -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" ./cmd/bacalhau
+
+    #   - name: Upload Build Artifact
+    #     uses: actions/upload-artifact@v4
+    #     with:
+    #       name: bacalhau_${{ matrix.os }}_${{ matrix.arch }}
+    #       path: bacalhau_${{ matrix.os }}_${{ matrix.arch }}*
+    #       retention-days: 7

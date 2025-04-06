@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  test:
+    name: Run All Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test_tags: unit,integration
+      test_name: release-tests
+      parallelism: 2
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_TEST_BUCKET: ${{ secrets.S3_TEST_BUCKET }}
+
+  build-and-release:
+    name: Build and Upload Release Binaries
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        os: [linux, darwin, windows]
+        exclude:
+          - os: windows
+            arch: arm64
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          EXT=""
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            EXT=".exe"
+          fi
+          VERSION="${{ steps.get_release.outputs.tag_name }}"
+          OUTPUT="bacalhau_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}${EXT}"
+          go build -o "$OUTPUT" -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${VERSION}'" ./cmd/bacalhau
+
+      - name: Create SHA256 Checksums
+        run: |
+          VERSION="${{ steps.get_release.outputs.tag_name }}"
+          FILE="bacalhau_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            FILE="${FILE}.exe"
+          fi
+          sha256sum "${FILE}" > "${FILE}.sha256"
+          cat "${FILE}.sha256"
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            bacalhau_*
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to S3 Releases Bucket
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --acl private --follow-symlinks
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_RELEASES_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          SOURCE_DIR: './bacalhau_*'
+          DEST_DIR: 'releases/${{ steps.get_release.outputs.tag_name }}/'
+
+  update-latest:
+    name: Update Latest Release Pointer
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Create latest.json
+        run: |
+          echo '{
+            "version": "${{ steps.get_release.outputs.tag_name }}",
+            "url": "https://s3.amazonaws.com/${{ secrets.AWS_RELEASES_BUCKET }}/releases/${{ steps.get_release.outputs.tag_name }}/"
+          }' > latest.json
+          cat latest.json
+
+      - name: Upload latest.json to S3
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --acl public-read
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_RELEASES_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          SOURCE_DIR: './latest.json'
+          DEST_DIR: '/'
