@@ -3,6 +3,11 @@ name: Reusable Test Workflow
 on:
   workflow_call:
     inputs:
+      go_version_file:
+        description: 'Path to the file containing Go version'
+        required: false
+        default: 'go.work'
+        type: string
       test_tags:
         description: 'Test tags to use (e.g. unit,integration)'
         required: true
@@ -42,7 +47,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: ${{ inputs.go_version_file }}
           cache: true
           
       - name: Install gotestsum

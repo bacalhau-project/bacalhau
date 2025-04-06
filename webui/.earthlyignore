@@ -6,10 +6,6 @@ node_modules
 # testing
 coverage
 
-# # production
-build/*
-!/build/.keep
-
 # misc
 *DS_Store*
 *env*local*
