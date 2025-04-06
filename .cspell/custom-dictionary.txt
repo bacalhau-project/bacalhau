@@ -295,6 +295,9 @@ multiaddr
 multierror
 multiformats
 mypy
+natsserver
+natstest
+natsutil
 nbconvert
 nclprotocol
 nclprotocolcompute
