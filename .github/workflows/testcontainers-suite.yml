@@ -22,11 +22,19 @@ jobs:
         with:
           go-version-file: go.work
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+
       - name: Build binary (if required)
         run: |
           # Build the binary for tests
           TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o test_integration/common_assets/bacalhau_bin2 \
+          GOOS=linux GOARCH=amd64 go build -o test_integration/common_assets/bacalhau_bin \
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
 
           ls -l test_integration/common_assets/
