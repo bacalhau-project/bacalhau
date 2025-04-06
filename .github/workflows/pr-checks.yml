@@ -6,6 +6,11 @@ on:
 #  pull_request_target:
 #    types: [labeled]
 
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+
 jobs:
   debug-should-run:
     name: Debug PR Context
