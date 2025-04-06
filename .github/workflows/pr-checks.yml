@@ -7,8 +7,8 @@ on:
 #    types: [labeled]
 
 permissions:
-  id-token: write
   contents: read
+  actions: read
   checks: write
 
 jobs:
