@@ -72,7 +72,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
 
   combined-coverage:
-    name: Generate Combined Coverage
+    name: Combined Coverage
     needs: [unit-tests, integration-tests, container-tests]
     uses: ./.github/workflows/_test_coverage.yml
     with:

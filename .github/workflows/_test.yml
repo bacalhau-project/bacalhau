@@ -100,8 +100,7 @@ jobs:
           # Build the binary for tests
           TAG=$(git describe --tags --always)
           go build -o ${{ inputs.binary_output_path }} \
-            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" \
-            ./cmd/bacalhau
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
           
           # Verify binary works
           ${{ inputs.binary_output_path }} version
