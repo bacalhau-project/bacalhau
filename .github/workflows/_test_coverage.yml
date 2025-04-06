@@ -20,7 +20,7 @@ on:
       codecov:
         description: 'Whether to upload to codecov'
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
         id: parse-reports
         run: |
           # Convert the JSON array to a space-separated list for use in bash
-          REPORT_NAMES=$(echo '${{ inputs.coverage_reports }}' | jq -r '.[]')
+          REPORT_NAMES=$(echo '${{ inputs.coverage_reports }}' | jq -r '.[]' | tr '\n' ' ' | xargs)
           echo "report_names=$REPORT_NAMES" >> $GITHUB_OUTPUT
           echo "Reports to combine: $REPORT_NAMES"
 
