@@ -84,8 +84,6 @@ jobs:
     if: success()
 
   testcontainers-suite:
-    needs: [ build-binaries]
-    if: success()
     uses: ./.github/workflows/testcontainers-suite.yml
     with:
       os: linux
