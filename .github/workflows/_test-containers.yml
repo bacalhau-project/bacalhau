@@ -99,7 +99,7 @@ jobs:
             -- -v -count=1 ${{ inputs.test_args }} ./...
 
       - name: Run container tests directly
-        if: "!inputs.junit_report"
+        if: inputs.junit_report == 'false'
         shell: bash
         run: |
           cd test_integration

@@ -2,7 +2,7 @@ name: Static Analysis
 
 on:
   workflow_call:
-  inputs:
+    inputs:
       go_version_file:
         description: 'Path to the file containing Go version'
         required: false
