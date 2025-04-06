@@ -46,8 +46,10 @@ jobs:
           echo "${PRIVATE_PEM}" > /tmp/private.pem && chmod 600 /tmp/private.pem
           echo "${PUBLIC_PEM}" > /tmp/public.pem && chmod 600 /tmp/public.pem
           
-          # Build the binary
-          make binary
+          # Build the binary for tests
+          TAG=$(git describe --tags --always)
+          go build -o test_integration/common_assets/bacalhau_bin \
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
 
           ls -l test_integration/common_assets/
           test_integration/common_assets/bacalhau_bin --version
