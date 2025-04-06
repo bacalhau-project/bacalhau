@@ -8,19 +8,50 @@ on:
         required: false
         default: 'go.work'
         type: string
-      test_tags:
-        description: 'Test tags to use (e.g. unit,integration)'
-        required: true
-        type: string
       test_name:
         description: 'Name for test reports and artifacts'
         required: true
+        type: string
+      test_path:
+        description: 'Path to the directory containing tests'
+        required: false
+        default: './pkg/... ./cmd/...'
+        type: string
+      test_tags:
+        description: 'Test tags to use (e.g. unit,integration)'
+        required: false
+        default: ''
+        type: string
+      test_working_dir:
+        description: 'Working directory to run tests from'
+        required: false
+        default: '.'
         type: string
       parallelism:
         description: 'Test parallelism (-p flag)'
         required: false
         type: number
         default: 1
+      timeout_minutes:
+        description: 'Timeout for tests in minutes'
+        required: false
+        default: 30
+        type: number
+      build_binary:
+        description: 'Whether to build a binary for tests'
+        required: false
+        default: false
+        type: boolean
+      binary_output_path:
+        description: 'Output path for built binary'
+        required: false
+        default: ''
+        type: string
+      additional_test_args:
+        description: 'Additional arguments to pass to go test'
+        required: false
+        default: ''
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: false
@@ -33,11 +64,16 @@ jobs:
   run-tests:
     name: Run Tests
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION != '' && secrets.AWS_REGION || 'us-east-1' }}
-    
+      # Define key paths relative to repository root
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,29 +89,55 @@ jobs:
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
 
-      - name: Create coverage directory
-        run: mkdir -p coverage
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
         
+      - name: Build binary (if required)
+        if: inputs.build_binary
+        run: |
+          # Build the binary for tests
+          TAG=$(git describe --tags --always)
+          go build -o ${{ inputs.binary_output_path }} \
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" \
+            ./cmd/bacalhau
+          
+          # Verify binary works
+          ${{ inputs.binary_output_path }} version
+
+      - name: Docker info
+        run: |
+          docker info
+          docker version
+
       - name: Run tests
         continue-on-error: true
+        shell: bash
+        working-directory: ${{ inputs.test_working_dir }}
         run: |
-          gotestsum \
-            --junitfile ${{ inputs.test_name }}.xml \
-            --format testname \
-            --jsonfile ${{ inputs.test_name }}.json \
+          # Ensure all paths are relative to repo root
+            gotestsum \
+            --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
+              --format testname \
+            --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
-              ./pkg/... ./cmd/... \
-              -coverpkg=./... -coverprofile=coverage/${{ inputs.test_name }}.coverage \
-              --tags=${{ inputs.test_tags }} -p ${{ inputs.parallelism }}
+                ${{ inputs.test_path }} \
+              -coverpkg=./... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+                ${{ inputs.test_tags != '' && format('--tags={0}', inputs.test_tags) || '' }} \
+                -p ${{ inputs.parallelism }} \
+                ${{ inputs.additional_test_args }}
               
       - name: Generate HTML coverage report
-        run: go tool cover -html=coverage/${{ inputs.test_name }}.coverage -o coverage/${{ inputs.test_name }}.html
+        run: |
+          go tool cover -html=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+                        -o ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
 
       - name: Test Report
         uses: dorny/test-reporter@v1
         with:
-          name: ${{ inputs.test_name }} Tests
-          path: ${{ inputs.test_name }}.xml
+          name: ${{ inputs.test_name }} Report
+          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
           reporter: java-junit
           fail-on-error: true
           
@@ -84,8 +146,8 @@ jobs:
         with:
           name: ${{ inputs.test_name }}-reports
           path: |
-            ${{ inputs.test_name }}.xml
-            ${{ inputs.test_name }}.json
-            coverage/${{ inputs.test_name }}.coverage
-            coverage/${{ inputs.test_name }}.html
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json
+            ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage
+            ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
           retention-days: 30
