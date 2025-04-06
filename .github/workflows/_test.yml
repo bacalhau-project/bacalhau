@@ -31,7 +31,7 @@ jobs:
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      AWS_REGION: ${{ secrets.AWS_REGION != '' && secrets.AWS_REGION || 'us-east-1' }}
     
     steps:
       - name: Checkout code
@@ -52,6 +52,7 @@ jobs:
         run: mkdir -p coverage
         
       - name: Run tests
+        continue-on-error: true
         run: |
           gotestsum \
             --junitfile ${{ inputs.test_name }}.xml \
@@ -64,25 +65,17 @@ jobs:
               
       - name: Generate HTML coverage report
         run: go tool cover -html=coverage/${{ inputs.test_name }}.coverage -o coverage/${{ inputs.test_name }}.html
-        
-      - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: coverage/${{ inputs.test_name }}.coverage
-          flags: ${{ inputs.test_name }}
 
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: success() || failure()
         with:
           name: ${{ inputs.test_name }} Tests
           path: ${{ inputs.test_name }}.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
           
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
-        if: success() || failure()
         with:
           name: ${{ inputs.test_name }}-reports
           path: |
@@ -90,4 +83,4 @@ jobs:
             ${{ inputs.test_name }}.json
             coverage/${{ inputs.test_name }}.coverage
             coverage/${{ inputs.test_name }}.html
-          retention-days: 14
+          retention-days: 30
