@@ -48,12 +48,14 @@ const (
 // - github.com/docker/go-docker/blob/master/container_logs.go
 //
 // See also discussions on timestamp timezone github.com/moby/moby/pull/35051#issuecomment-334117784
+//
+//nolint:gocyclo
 func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOnEndFrame bool) (written int64, err error) {
 	var (
 		buf                 = make([]byte, startingBufLen)
 		bufLen              = len(buf)
 		numRead, numWritten int
-		frameSize           int
+		frameSize           uint32
 	)
 
 	for {
@@ -85,7 +87,7 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 		}
 
 		// Retrieve the size of the frame (with the timestamp)
-		frameSize = int(binary.BigEndian.Uint32(buf[stdWriterSizeIndex : stdWriterSizeIndex+4]))
+		frameSize = binary.BigEndian.Uint32(buf[stdWriterSizeIndex : stdWriterSizeIndex+4])
 
 		// Check that the frame is at least as long a timestamp and a space
 		if frameSize < timestampLen+1 {
@@ -94,18 +96,18 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 
 		// Check if the buffer is big enough to read the frame.
 		// Extend it if necessary.
-		if frameSize+stdWriterPrefixLen > bufLen {
-			buf = append(buf, make([]byte, frameSize+stdWriterPrefixLen-bufLen+1)...)
+		if int(frameSize+stdWriterPrefixLen) > bufLen {
+			buf = append(buf, make([]byte, int(frameSize+stdWriterPrefixLen)-bufLen+1)...)
 			bufLen = len(buf)
 		}
 
 		// While the amount of bytes read is less than the size of the frame + header, we keep reading
-		for numRead < frameSize+stdWriterPrefixLen {
+		for numRead < int(frameSize+stdWriterPrefixLen) {
 			var numRead2 int
 			numRead2, err = src.Read(buf[numRead:])
 			numRead += numRead2
 			if err == io.EOF {
-				if numRead < frameSize+stdWriterPrefixLen {
+				if numRead < int(frameSize+stdWriterPrefixLen) {
 					return written, nil
 				}
 				break
@@ -140,7 +142,7 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 			copy(newPrefixBuf, buf[:stdWriterSizeIndex])
 
 			// modified frame size (subtract the length of the timestamp and the space after it)
-			newFrameSize := uint32(frameSize - (timestampLen + 1))
+			newFrameSize := frameSize - (timestampLen + 1)
 			binary.BigEndian.PutUint32(newPrefixBuf[stdWriterSizeIndex:], newFrameSize)
 
 			// write new frame prefix to the destination
@@ -158,7 +160,7 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 			}
 
 			// if the frame has not been fully written: error
-			if numWritten != frameSize-(timestampLen+1) {
+			if numWritten != int(frameSize)-(timestampLen+1) {
 				return 0, io.ErrShortWrite
 			}
 			written += int64(numWritten)
@@ -167,7 +169,7 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 		// move the rest of the buffer to the beginning
 		copy(buf, buf[frameSize+stdWriterPrefixLen:])
 		// move the index
-		numRead -= frameSize + stdWriterPrefixLen
+		numRead -= int(frameSize + stdWriterPrefixLen)
 	}
 }
 

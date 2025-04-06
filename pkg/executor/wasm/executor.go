@@ -79,7 +79,12 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		return err
 	}
 
-	rootFs, err := e.makeFsFromStorage(ctx, compute.ExecutionResultsDir(request.ResultsDir, request.ExecutionID), request.Inputs, request.Outputs)
+	rootFs, err := e.makeFsFromStorage(
+		ctx,
+		compute.ExecutionResultsDir(request.ResultsDir),
+		request.Inputs,
+		request.Outputs,
+	)
 	if err != nil {
 		return err
 	}

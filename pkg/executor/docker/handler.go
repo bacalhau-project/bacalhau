@@ -190,7 +190,7 @@ func (h *executionHandler) run(ctx context.Context) {
 	// we successfully followed the container logs, the container may still have produced and error which we will record
 	// along with a truncated version of the logs.
 	// persist stderr/out to the results directory, and store the metadata in the handler.
-	resultsDir := compute.ExecutionResultsDir(h.resultsDir, h.executionID)
+	resultsDir := compute.ExecutionResultsDir(h.resultsDir)
 	h.result = executor.WriteJobResults(resultsDir, stdoutPipe, stderrPipe, int(containerExitStatusCode), containerError, h.limits)
 
 	h.logger.Info().
@@ -244,7 +244,7 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 	}
 
 	// Read and filter container logs from the local file
-	file, err := os.Open(filepath.Join(compute.ExecutionLogsDir(h.resultsDir, h.executionID), executionOutputFileName))
+	file, err := os.Open(filepath.Join(compute.ExecutionLogsDir(h.resultsDir), executionOutputFileName))
 	if err != nil {
 		return nil, docker.NewCustomDockerError(bacerrors.IOError, fmt.Sprintf("unable to find container logs for execution %s", h.executionID))
 	}
@@ -259,7 +259,7 @@ func (h *executionHandler) active() bool {
 const executionOutputFileName = "raw_container_logs"
 
 func (h *executionHandler) captureContainerLogs(logReader io.Reader) error {
-	filePath := filepath.Join(compute.ExecutionLogsDir(h.resultsDir, h.executionID), executionOutputFileName)
+	filePath := filepath.Join(compute.ExecutionLogsDir(h.resultsDir), executionOutputFileName)
 	h.logger.Debug().Str("path", filePath).Msgf("capturing container logs")
 
 	file, err := os.Create(filePath)

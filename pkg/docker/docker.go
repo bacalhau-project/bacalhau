@@ -170,7 +170,12 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	return stdoutReader, stderrReader, nil
 }
 
-func (c *Client) GetOutputStream(ctx context.Context, containerID string, since *time.Time, follow, timestamps bool) (io.ReadCloser, error) {
+func (c *Client) GetOutputStream(
+	ctx context.Context,
+	containerID string,
+	since *time.Time,
+	follow, timestamps bool,
+) (io.ReadCloser, error) {
 	cont, err := c.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return nil, NewDockerError(err)

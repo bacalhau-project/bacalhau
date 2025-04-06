@@ -136,7 +136,7 @@ func RunTestCase(
 	}
 
 	if testCase.ResultsChecker != nil {
-		err = testCase.ResultsChecker(compute.ExecutionResultsDir(resultsDirectory, execution.ID))
+		err = testCase.ResultsChecker(compute.ExecutionResultsDir(resultsDirectory))
 		require.NoError(t, err)
 	}
 }

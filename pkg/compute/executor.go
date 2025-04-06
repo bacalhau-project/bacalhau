@@ -356,7 +356,7 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 		expectedState = models.ExecutionStatePublishing
 
-		resultsDir := ExecutionResultsDir(e.resultsPath.ExecutionOutputDir(execution.ID), execution.ID)
+		resultsDir := ExecutionResultsDir(e.resultsPath.ExecutionOutputDir(execution.ID))
 		publishedResult, err = e.publish(ctx, execution, resultsDir)
 		if err != nil {
 			return err

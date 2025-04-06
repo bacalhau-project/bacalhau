@@ -15,12 +15,14 @@ const (
 	ResultsDir = "results"
 )
 
-func ExecutionLogsDir(resultsRootDir string, executionID string) string {
-	return filepath.Join(resultsRootDir, LogsDir)
+// Retunrs the path do the sub-directory in which execution logs are stored
+func ExecutionLogsDir(executionOutputDir string) string {
+	return filepath.Join(executionOutputDir, LogsDir)
 }
 
-func ExecutionResultsDir(resultsRootDir string, executionID string) string {
-	return filepath.Join(resultsRootDir, ResultsDir)
+// Retunrs the path do the sub-directory in which execution results are stored
+func ExecutionResultsDir(executionOutputDir string) string {
+	return filepath.Join(executionOutputDir, ResultsDir)
 }
 
 // Execution results folder structure
@@ -51,24 +53,24 @@ func (r *ResultsPath) ExecutionOutputDir(executionID string) string {
 
 func (r *ResultsPath) PrepareExecutionOutputDir(executionID string) (string, error) {
 	// execution results root directory
-	executionResultsRootPath := r.ExecutionOutputDir(executionID)
-	if err := prepareDir(executionResultsRootPath); err != nil {
+	executionOutputDir := r.ExecutionOutputDir(executionID)
+	if err := prepareDir(executionOutputDir); err != nil {
 		return "", err
 	}
 
 	// execution logs directory
-	logsPath := ExecutionLogsDir(executionResultsRootPath, executionID)
+	logsPath := ExecutionLogsDir(executionOutputDir)
 	if err := prepareDir(logsPath); err != nil {
 		return "", err
 	}
 
 	// execution results directory
-	resultsPath := ExecutionResultsDir(executionResultsRootPath, executionID)
+	resultsPath := ExecutionResultsDir(executionOutputDir)
 	if err := prepareDir(resultsPath); err != nil {
 		return "", err
 	}
 
-	return executionResultsRootPath, nil
+	return executionOutputDir, nil
 }
 
 func (r *ResultsPath) Close() error {

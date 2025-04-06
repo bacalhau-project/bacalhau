@@ -71,7 +71,7 @@ var errorLogsTestCase = scenario.Scenario{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
-					return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ResultsDir, execContext.ExecutionID), strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
+					return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ResultsDir), strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
 						MaxStdoutFileLength:   system.MaxStdoutFileLength,
 						MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 						MaxStderrFileLength:   system.MaxStderrFileLength,

@@ -304,7 +304,7 @@ func (h *executionHandler) executeMainFunction(ctx context.Context, instance api
 
 	// Collect results
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
-	executionResultsDir := compute.ExecutionResultsDir(h.request.ResultsDir, h.request.ExecutionID)
+	executionResultsDir := compute.ExecutionResultsDir(h.request.ResultsDir)
 	h.result = executor.WriteJobResults(executionResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
 }
 

@@ -334,7 +334,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *executor.R
 		WorkingDir: dockerArgs.WorkingDirectory,
 	}
 
-	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, compute.ExecutionResultsDir(params.ResultsDir, params.ExecutionID))
+	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, compute.ExecutionResultsDir(params.ResultsDir))
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("creating container mounts: %w", err)
 	}
