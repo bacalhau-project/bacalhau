@@ -42,8 +42,18 @@ on:
         required: false
         default: false
         type: boolean
+      download_binary:
+        description: 'Whether to download a binary for tests'
+        required: false
+        default: false
+        type: boolean
+      binary_artifact_name:
+        description: 'Name of the artifact containing the binary'
+        required: false
+        default: 'linux-amd64'
+        type: string
       binary_output_path:
-        description: 'Output path for built binary'
+        description: 'Output path for binary'
         required: false
         default: ''
         type: string
@@ -90,8 +100,33 @@ jobs:
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
         
+      - name: Download binary (if required)
+        if: inputs.download_binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.binary_artifact_name }}
+          path: compiled-artifacts/
+
+      - name: Setup downloaded binary (if required)
+        if: inputs.download_binary
+        shell: bash
+        run: |
+          # Extract and copy binary to the specified location
+          cd compiled-artifacts
+          tar -xzf bacalhau_*.tar.gz
+          
+          # Create directory for binary if it doesn't exist
+          mkdir -p $(dirname ${{ inputs.binary_output_path }})
+          
+          # Copy binary to the specified location and make it executable
+          cp ./bacalhau ${{ inputs.binary_output_path }}
+          chmod +x ${{ inputs.binary_output_path }}
+          
+          # Verify binary works
+          ${{ inputs.binary_output_path }} version
+
       - name: Build binary (if required)
-        if: inputs.build_binary
+        if: inputs.build_binary && !inputs.download_binary
         run: |
           # Build the binary for tests
           TAG=$(git describe --tags --always)
