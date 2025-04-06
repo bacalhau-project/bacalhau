@@ -15,12 +15,14 @@ const (
 	ResultsDir = "results"
 )
 
-func ExecutionLogsDir(resultsRootDir string, executionID string) string {
-	return filepath.Join(resultsRootDir, LogsDir)
+// Returns the path do the sub-directory in which execution logs are stored
+func ExecutionLogsDir(executionOutputDir string) string {
+	return filepath.Join(executionOutputDir, LogsDir)
 }
 
-func ExecutionResultsDir(resultsRootDir string, executionID string) string {
-	return filepath.Join(resultsRootDir, ResultsDir)
+// Returns the path do the sub-directory in which execution results are stored
+func ExecutionResultsDir(executionOutputDir string) string {
+	return filepath.Join(executionOutputDir, ResultsDir)
 }
 
 // Execution results folder structure
