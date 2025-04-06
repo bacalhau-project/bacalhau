@@ -52,24 +52,20 @@ on:
         required: false
         default: ''
         type: string
-    secrets:
-      AWS_ACCESS_KEY_ID:
+      environment_name:
+        description: 'GitHub Environment to use'
         required: false
-      AWS_SECRET_ACCESS_KEY:
-        required: false
-      AWS_REGION:
-        required: false
+        default: ''
+        type: string
 
 jobs:
   run-tests:
     name: Run Tests
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout_minutes }}
+    environment: ${{ inputs.environment_name }}
+    # Define key paths relative to repository root
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION != '' && secrets.AWS_REGION || 'us-east-1' }}
-      # Define key paths relative to repository root
       REPO_ROOT: ${{ github.workspace }}
       REPORTS_DIR: ${{ github.workspace }}/reports
       COVERAGE_DIR: ${{ github.workspace }}/coverage

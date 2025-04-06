@@ -39,6 +39,7 @@ jobs:
       test_working_dir: '.'
       test_tags: unit
       parallelism: 4
+      environment_name: 'test'
 
   integration-tests:
     name: Integration Tests
@@ -50,10 +51,7 @@ jobs:
       test_working_dir: '.'
       test_tags: integration
       parallelism: 1
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      environment_name: 'test'
 
   container-tests:
     name: Container Tests
@@ -66,10 +64,7 @@ jobs:
       build_binary: true
       binary_output_path: 'test_integration/common_assets/bacalhau_bin'
       timeout_minutes: 45
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      environment_name: 'test'
 
   combined-coverage:
     name: Combined Coverage
