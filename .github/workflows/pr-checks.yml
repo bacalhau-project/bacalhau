@@ -78,7 +78,7 @@ jobs:
 
   build-binaries:
     name: Build Binaries
-    needs: [ static-analysis, unit-tests, integration-tests ]
+#    needs: [ static-analysis, unit-tests, integration-tests ]
     uses: ./.github/workflows/_build.yml
     secrets: inherit
     if: success()

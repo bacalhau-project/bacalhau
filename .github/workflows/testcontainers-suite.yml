@@ -73,10 +73,9 @@ jobs:
           tar -xzf bacalhau_*.tar.gz
           cp ./bacalhau ../test_integration/common_assets/bacalhau_bin
           
-          test_integration/common_assets/bacalhau_bin version
-          
           echo "===> Running tests..."       
           cd ../test_integration
+          common_assets/bacalhau_bin version
           
           ls -l common_assets
           go test -v -count=1 ./...
