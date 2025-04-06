@@ -1,10 +1,12 @@
 name: Pull Request Checks
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [ main ]
-  repository_dispatch:
-    types: [ ok-to-test ]
+
+env:
+  # Only run if the PR is from the same repo or if it has the 'ok-to-test' label
+  SHOULD_RUN: ${{ github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'ok-to-test') }}
 
 jobs:
   static-analysis:
@@ -16,6 +18,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
+    if: env.SHOULD_RUN == 'true'
     uses: ./.github/workflows/_test.yml
     with:
       test_tags: unit
@@ -24,6 +27,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
+    if: env.SHOULD_RUN == 'true'
     uses: ./.github/workflows/_test.yml
     with:
       test_tags: integration
@@ -53,6 +57,7 @@ jobs:
 
   container-tests:
     name: Container Tests
+    if: env.SHOULD_RUN == 'true'
     needs: build-binaries
     uses: ./.github/workflows/_test-containers.yml
     with:
