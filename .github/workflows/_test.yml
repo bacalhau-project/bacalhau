@@ -98,8 +98,7 @@ jobs:
         if: inputs.build_binary
         run: |
           # Build the binary for tests
-          TAG=$(git describe --tags --always)
-          go build -o ${{ inputs.binary_output_path }} \
+          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
           
           pwd
