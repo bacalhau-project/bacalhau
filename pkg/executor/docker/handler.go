@@ -95,8 +95,11 @@ func (h *executionHandler) run(ctx context.Context) {
 	}
 
 	// start capturing the container logs
+	// A channel that blocks until logs are captured
+	logsCh := make(chan bool)
 	go func(logReader io.ReadCloser) {
 		defer closer.CloseWithLogOnError("containerLogs", logReader)
+		defer close(logsCh)
 		if err := h.captureContainerLogs(logReader); err != nil {
 			h.logger.Error().Err(err).Msg("failed to store container logs")
 		}
@@ -161,6 +164,10 @@ func (h *executionHandler) run(ctx context.Context) {
 		}
 	}
 
+	// wait for logs to be finished being captured
+	<-logsCh
+
+	// TODO: read logs from the captured file instead of asking the container again
 	stdoutPipe, stderrPipe, err := h.client.FollowLogs(ctx, h.containerID)
 	if err != nil {
 		h.logger.Warn().Err(err).Msg("failed to follow container logs")
