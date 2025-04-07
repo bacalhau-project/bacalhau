@@ -81,7 +81,7 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 
 	rootFs, err := e.makeFsFromStorage(
 		ctx,
-		compute.ExecutionResultsDir(request.ResultsDir),
+		compute.ExecutionResultsDir(request.ExecutionDir),
 		request.Inputs,
 		request.Outputs,
 	)

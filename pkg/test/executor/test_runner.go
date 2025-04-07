@@ -87,8 +87,10 @@ func RunTestCase(
 	execution := mock.ExecutionForJob(job)
 	execution.AllocateResources(job.Task().Name, models.Resources{})
 
-	resultsPath, _ := compute.NewResultsPath(t.TempDir())
-	resultsDirectory, _ := resultsPath.PrepareExecutionOutputDir(execution.ID)
+	resultsPath, err := compute.NewResultsPath(t.TempDir())
+	require.NoError(t, err)
+	executionDir, err := resultsPath.PrepareExecutionOutputDir(execution.ID)
+	require.NoError(t, err)
 	storageProvider := stack.Nodes[0].ComputeNode.Storages
 
 	// Create a permissive env resolver for testing
@@ -110,7 +112,7 @@ func RunTestCase(
 	runCommandArguments, cleanup, err := baseExecutor.PrepareRunArguments(
 		ctx,
 		execution,
-		resultsDirectory,
+		executionDir,
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -136,7 +138,7 @@ func RunTestCase(
 	}
 
 	if testCase.ResultsChecker != nil {
-		err = testCase.ResultsChecker(compute.ExecutionResultsDir(resultsDirectory))
+		err = testCase.ResultsChecker(compute.ExecutionResultsDir(executionDir))
 		require.NoError(t, err)
 	}
 }

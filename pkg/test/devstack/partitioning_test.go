@@ -164,7 +164,7 @@ func (s *PartitionSuite) TestPartitionRetry() {
 						}
 
 						output += fmt.Sprintf("Success on partition %s\n", partition)
-						return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ResultsDir),
+						return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ExecutionDir),
 							strings.NewReader(output),
 							nil,
 							0,

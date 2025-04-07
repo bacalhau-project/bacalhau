@@ -22,7 +22,7 @@ import (
 
 const (
 	StorageDirectoryPerms     = 0o755
-	executionRootCleanupDelay = 10 * time.Minute
+	executionRootCleanupDelay = 1 * time.Hour
 )
 
 type BaseExecutorParams struct {
@@ -104,7 +104,7 @@ type InputCleanupFn = func(context.Context) error
 func (e *BaseExecutor) PrepareRunArguments(
 	ctx context.Context,
 	execution *models.Execution,
-	resultsDir string,
+	executionDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
@@ -144,7 +144,7 @@ func (e *BaseExecutor) PrepareRunArguments(
 			Network:      networkConfig,
 			Outputs:      execution.Job.Task().ResultPaths,
 			Inputs:       inputVolumes,
-			ResultsDir:   resultsDir,
+			ExecutionDir: executionDir,
 			EngineParams: execution.Job.Task().Engine,
 			Env:          env,
 			OutputLimits: executor.OutputLimits{
@@ -184,13 +184,13 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	outputDir, err := e.resultsPath.PrepareExecutionOutputDir(execution.ID)
+	executionDir, err := e.resultsPath.PrepareExecutionOutputDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
 		return result
 	}
 
-	args, cleanup, err := e.PrepareRunArguments(ctx, execution, outputDir)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, executionDir)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
