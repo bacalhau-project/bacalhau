@@ -59,13 +59,13 @@ func (r *ResultsPath) PrepareExecutionOutputDir(executionID string) (string, err
 	}
 
 	// execution logs directory
-	logsPath := ExecutionLogsDir(executionResultsRootPath, executionID)
+	logsPath := ExecutionLogsDir(executionResultsRootPath)
 	if err := prepareDir(logsPath); err != nil {
 		return "", err
 	}
 
 	// execution results directory
-	resultsPath := ExecutionResultsDir(executionResultsRootPath, executionID)
+	resultsPath := ExecutionResultsDir(executionResultsRootPath)
 	if err := prepareDir(resultsPath); err != nil {
 		return "", err
 	}

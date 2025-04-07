@@ -3,6 +3,7 @@
 package docker
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"math"
@@ -130,7 +131,7 @@ func (s *ExecutorTestSuite) runJob(spec *models.Task, executionID string) (*mode
 
 func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
-	result, _ := resultsPath.PrepareExecutionOutputDir(name)
+	executionDir, _ := resultsPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{spec}
@@ -147,7 +148,7 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 			Network:      spec.Network,
 			Outputs:      spec.ResultPaths,
 			Inputs:       nil,
-			ResultsDir:   result,
+			ExecutionDir: executionDir,
 			EngineParams: spec.Engine,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
@@ -161,7 +162,7 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 
 func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
 	resultPath, _ := compute.NewResultsPath(s.T().TempDir())
-	result, _ := resultPath.PrepareExecutionOutputDir(name)
+	executionDir, _ := resultPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{spec}
@@ -178,7 +179,7 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 			Network:      spec.Network,
 			Outputs:      spec.ResultPaths,
 			Inputs:       nil,
-			ResultsDir:   result,
+			ExecutionDir: executionDir,
 			EngineParams: spec.Engine,
 			Env:          models.EnvVarsToStringMap(spec.Env),
 			OutputLimits: executor.OutputLimits{
@@ -467,7 +468,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 
 	name := "timeout"
 	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
-	resultDir, _ := resultsPath.PrepareExecutionOutputDir(name)
+	executionDir, _ := resultsPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
 	j.ID = name
 	j.Tasks = []*models.Task{task}
@@ -483,7 +484,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 			Network:      task.Network,
 			Outputs:      task.ResultPaths,
 			Inputs:       nil,
-			ResultsDir:   resultDir,
+			ExecutionDir: executionDir,
 			EngineParams: task.Engine,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
@@ -507,6 +508,43 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	case <-ticker.C:
 		s.T().Fatal("container was not canceled.")
 	}
+}
+
+func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
+	id := "streams-exited-container"
+	done := make(chan bool, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	expectedOutput := "some job output"
+	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
+		WithEntrypoint("sh", "-c", fmt.Sprintf("echo %s", expectedOutput)).
+		Build()
+	s.Require().NoError(err)
+	task := mock.Task()
+	task.Engine = es
+	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
+	task.Normalize()
+
+	go func() {
+		_, _ = s.runJobWithContext(ctx, task, id)
+		done <- true
+	}()
+	<-done
+	reader, err := s.executor.GetLogStream(ctx, messages.ExecutionLogsRequest{
+		ExecutionID: id,
+		Tail:        true,
+		Follow:      true,
+	})
+
+	require.NoError(s.T(), err)
+	scanner := bufio.NewScanner(reader)
+	var actualLogs string
+	for scanner.Scan() {
+		actualLogs += scanner.Text()
+	}
+	require.NoError(s.T(), scanner.Err())
+	require.Equal(s.T(), expectedOutput, actualLogs)
 }
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
