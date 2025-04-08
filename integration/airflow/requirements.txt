@@ -25,7 +25,7 @@ apache-airflow==2.10.3
     #   bacalhau_airflow (setup.py)
 apache-airflow-providers-common-io==1.3.0
     # via apache-airflow
-apache-airflow-providers-common-sql==1.11.0
+apache-airflow-providers-common-sql==1.25.0rc1
     # via
     #   apache-airflow
     #   apache-airflow-providers-sqlite
