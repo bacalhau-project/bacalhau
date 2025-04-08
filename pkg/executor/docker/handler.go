@@ -223,6 +223,7 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 	return nil
 }
 
+// TODO: Log streaming should be moved outside of executor/handler and just rely on local files captured during container execution.
 func (h *executionHandler) outputStream(ctx context.Context, request messages.ExecutionLogsRequest) (io.ReadCloser, error) {
 	var since time.Time
 	if request.Tail {

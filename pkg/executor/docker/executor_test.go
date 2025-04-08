@@ -3,7 +3,6 @@
 package docker
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"math"
@@ -533,18 +532,18 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	<-done
 	reader, err := s.executor.GetLogStream(ctx, messages.ExecutionLogsRequest{
 		ExecutionID: id,
-		Tail:        true,
-		Follow:      true,
+		Tail:        false,
+		Follow:      false,
 	})
 
-	require.NoError(s.T(), err)
-	scanner := bufio.NewScanner(reader)
-	var actualLogs string
-	for scanner.Scan() {
-		actualLogs += scanner.Text()
-	}
-	require.NoError(s.T(), scanner.Err())
-	require.Equal(s.T(), expectedOutput, actualLogs)
+	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
+		Reader: reader,
+	}).Stream(context.Background())
+	res, ok := <-ch
+	require.True(s.T(), ok)
+	executionLog := res.Value
+	require.Equal(s.T(), string(executionLog.Line), expectedOutput+"\n") // LiveStreamer adds line break
+	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
 }
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
@@ -563,7 +562,7 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	reader, err := s.executor.GetLogStream(context.Background(), messages.ExecutionLogsRequest{
 		ExecutionID: id,
-		Tail:        true,
+		Tail:        false,
 		Follow:      true,
 	})
 

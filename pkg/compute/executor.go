@@ -361,6 +361,18 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 		if err != nil {
 			return err
 		}
+
+		defer func() {
+			// cleanup execution results
+			log.Ctx(ctx).Debug().
+				Str("execution", execution.ID).
+				Str("path", resultsDir).
+				Msg("cleaning up execution results")
+			err = os.RemoveAll(resultsDir)
+			if err != nil {
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results directory at %s", resultsDir)
+			}
+		}()
 	}
 
 	// mark the execution as completed
