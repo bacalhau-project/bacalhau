@@ -273,6 +273,7 @@ func NewComputeNode(
 		if err = executionStore.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close execution store")
 		}
+		// TODO: Remove this behaviour once we have proper execution metadata garbage collection.
 		if err = resultsPath.Close(); err != nil {
 			log.Error().Err(err).Msg("failed to close results path")
 		}
