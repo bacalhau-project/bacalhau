@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/tetratelabs/wazero"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/math"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
@@ -78,7 +79,12 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		return err
 	}
 
-	rootFs, err := e.makeFsFromStorage(ctx, request.ResultsDir, request.Inputs, request.Outputs)
+	rootFs, err := e.makeFsFromStorage(
+		ctx,
+		compute.ExecutionResultsDir(request.ExecutionDir),
+		request.Inputs,
+		request.Outputs,
+	)
 	if err != nil {
 		return err
 	}

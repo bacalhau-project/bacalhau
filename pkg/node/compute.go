@@ -94,7 +94,7 @@ func NewComputeNode(
 	})
 	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
-	resultsPath, err := compute.NewResultsPath()
+	resultsPath, err := compute.NewResultsPath(executionDir)
 	if err != nil {
 		return nil, err
 	}
@@ -273,6 +273,7 @@ func NewComputeNode(
 		if err = executionStore.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close execution store")
 		}
+		// TODO: Remove this behaviour once we have proper execution metadata garbage collection.
 		if err = resultsPath.Close(); err != nil {
 			log.Error().Err(err).Msg("failed to close results path")
 		}
