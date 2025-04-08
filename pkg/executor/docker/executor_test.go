@@ -44,7 +44,7 @@ type ExecutorTestSuite struct {
 	suite.Suite
 	executor *Executor
 	server   *http.Server
-	cm       *system.CleanupManager
+	ctx      context.Context
 }
 
 func TestExecutorTestSuite(t *testing.T) {
@@ -54,12 +54,9 @@ func TestExecutorTestSuite(t *testing.T) {
 func (s *ExecutorTestSuite) SetupTest() {
 	logger.ConfigureTestLogging(s.T())
 	docker.MustHaveDocker(s.T())
+	s.ctx = context.Background()
 
 	var err error
-	s.cm = system.NewCleanupManager()
-	s.T().Cleanup(func() {
-		s.cm.Cleanup(context.Background())
-	})
 
 	cfg, err := config.NewTestConfig()
 	require.NoError(s.T(), err)
@@ -69,11 +66,6 @@ func (s *ExecutorTestSuite) SetupTest() {
 		Config: cfg.Engines.Types.Docker,
 	})
 	require.NoError(s.T(), err)
-	s.T().Cleanup(func() {
-		if err := s.executor.Shutdown(context.Background()); err != nil {
-			s.T().Logf("failed to shutdown executor: %s", err)
-		}
-	})
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.URL.Path))
@@ -86,7 +78,7 @@ func (s *ExecutorTestSuite) SetupTest() {
 	// the "docker0" interface.
 	var gateway net.IP
 	if runtime.GOOS == "linux" {
-		gateway, err = s.executor.client.HostGatewayIP(context.Background())
+		gateway, err = s.executor.client.HostGatewayIP(s.ctx)
 		require.NoError(s.T(), err)
 	} else {
 		gateway = net.ParseIP("127.0.0.1")
@@ -101,8 +93,17 @@ func (s *ExecutorTestSuite) SetupTest() {
 		Addr:    listener.Addr().String(),
 		Handler: http.HandlerFunc(handler),
 	}
-	s.cm.RegisterCallback(s.server.Close)
 	go s.server.Serve(listener)
+}
+
+// tearDownTest is called after each test in the suite.
+func (s *ExecutorTestSuite) TearDownTest() {
+	if s.server != nil {
+		s.server.Close()
+	}
+	if s.executor != nil {
+		s.executor.Shutdown(context.Background())
+	}
 }
 
 func (s *ExecutorTestSuite) containerHttpURL() *url.URL {
@@ -124,10 +125,6 @@ func (s *ExecutorTestSuite) curlTask() *models.SpecConfig {
 	return es
 }
 
-func (s *ExecutorTestSuite) runJob(spec *models.Task, executionID string) (*models.RunCommandResult, error) {
-	return s.runJobWithContext(context.Background(), spec, executionID)
-}
-
 func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
 	executionDir, _ := resultsPath.PrepareExecutionOutputDir(name)
@@ -139,38 +136,7 @@ func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
 	require.NoError(s.T(), err)
 
 	s.Require().NoError(s.executor.Start(
-		context.Background(),
-		&executor.RunCommandRequest{
-			JobID:        j.ID,
-			ExecutionID:  name,
-			Resources:    resources,
-			Network:      spec.Network,
-			Outputs:      spec.ResultPaths,
-			Inputs:       nil,
-			ExecutionDir: executionDir,
-			EngineParams: spec.Engine,
-			OutputLimits: executor.OutputLimits{
-				MaxStdoutFileLength:   system.MaxStdoutFileLength,
-				MaxStdoutReturnLength: system.MaxStdoutReturnLength,
-				MaxStderrFileLength:   system.MaxStderrFileLength,
-				MaxStderrReturnLength: system.MaxStderrReturnLength,
-			},
-		},
-	))
-}
-
-func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.Task, name string) (*models.RunCommandResult, error) {
-	resultPath, _ := compute.NewResultsPath(s.T().TempDir())
-	executionDir, _ := resultPath.PrepareExecutionOutputDir(name)
-	j := mock.Job()
-	j.ID = name
-	j.Tasks = []*models.Task{spec}
-
-	resources, err := spec.ResourcesConfig.ToResources()
-	require.NoError(s.T(), err)
-
-	s.Require().NoError(s.executor.Start(
-		ctx,
+		s.ctx,
 		&executor.RunCommandRequest{
 			JobID:        j.ID,
 			ExecutionID:  name,
@@ -189,7 +155,11 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 			},
 		},
 	))
-	resultC, errC := s.executor.Wait(ctx, name)
+}
+
+func (s *ExecutorTestSuite) startJobAndWaitCompletion(spec *models.Task, name string) (*models.RunCommandResult, error) {
+	s.startJob(spec, name)
+	resultC, errC := s.executor.Wait(s.ctx, name)
 	select {
 	case out := <-resultC:
 		return out, nil
@@ -198,9 +168,17 @@ func (s *ExecutorTestSuite) runJobWithContext(ctx context.Context, spec *models.
 	}
 }
 
-func (s *ExecutorTestSuite) runJobGetStdout(spec *models.Task, executionID string) (string, error) {
-	runnerOutput, runErr := s.runJob(spec, executionID)
-	return runnerOutput.STDOUT, runErr
+// startJobAndWaitRunning starts a job and waits for it to be in the running state.
+func (s *ExecutorTestSuite) startJobAndWaitRunning(spec *models.Task, name string) {
+	s.startJob(spec, name)
+	s.Eventuallyf(func() bool {
+		c, err := s.executor.FindRunningContainer(s.ctx, name)
+		if err == nil {
+			s.T().Logf("found running container: %s for execution %s", c, name)
+			return true
+		}
+		return false
+	}, time.Second*5, time.Millisecond*50, "Container %s not running", name)
 }
 
 const (
@@ -236,10 +214,10 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsCPU() {
 	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
 	task.Normalize()
 
-	result, err := s.runJobGetStdout(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err)
 
-	values := strings.Fields(result)
+	values := strings.Fields(result.STDOUT)
 	s.Require().Len(values, 2, "the container reported CPU (%s) does not match the expected format", result)
 
 	numerator, err := strconv.Atoi(values[0])
@@ -281,12 +259,12 @@ func (s *ExecutorTestSuite) TestDockerResourceLimitsMemory() {
 		task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: p.in}
 		task.Normalize()
 
-		result, err := s.runJobGetStdout(task, uuid.New().String())
+		result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 		require.NoError(s.T(), err)
 
-		s.Require().NotEmpty(result, "the container reported memory returned an empty string")
+		s.Require().NotEmpty(result.STDOUT, "the container reported memory returned an empty string")
 
-		intVar, err := strconv.Atoi(strings.TrimSpace(result))
+		intVar, err := strconv.Atoi(strings.TrimSpace(result.STDOUT))
 		require.NoError(s.T(), err)
 
 		// Docker adjusts the memory limit to align with the Linux kernel's memory management,
@@ -305,7 +283,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFull() {
 	task.Engine = s.curlTask()
 	task.Network = &models.NetworkConfig{Type: models.NetworkHost}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -316,7 +294,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingNone() {
 	task.Engine = s.curlTask()
 	task.Network = &models.NetworkConfig{Type: models.NetworkNone}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err)
 	require.Empty(s.T(), result.STDOUT)
 	require.NotEmpty(s.T(), result.STDERR)
@@ -328,7 +306,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTP() {
 	task.Engine = s.curlTask()
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -340,7 +318,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingHTTPWithMultipleDomains() {
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{
 		s.containerHttpURL().Hostname(), "bacalhau.org"}}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -355,7 +333,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingWithSubdomains() {
 	task.Engine = s.curlTask()
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{hostname, hostroot}}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err, result.STDERR)
 	require.Zero(s.T(), result.ExitCode, result.STDERR)
 	require.Equal(s.T(), "/hello.txt", result.STDOUT)
@@ -366,7 +344,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTP() {
 	task.Engine = s.curlTask()
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{"bacalhau.org"}}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
 	require.NotZero(s.T(), result.ExitCode)
@@ -383,7 +361,7 @@ func (s *ExecutorTestSuite) TestDockerNetworkingFiltersHTTPS() {
 	task.Engine = es
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 
 	// The curl will succeed but should return a non-zero exit code and error page.
 	require.NoError(s.T(), err)
@@ -405,9 +383,8 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	task := mock.Task()
 	task.Engine = es
 
-	jobCtx := context.Background()
 	go func() {
-		result, err := s.runJobWithContext(jobCtx, task, executionID)
+		result, err := s.startJobAndWaitCompletion(task, executionID)
 		if err != nil {
 			errC <- err
 		} else {
@@ -426,7 +403,7 @@ func (s *ExecutorTestSuite) TestDockerExecutionCancellation() {
 	handler, _ := s.executor.handlers.Get(executionID)
 	<-handler.activeCh
 
-	err = s.executor.Cancel(jobCtx, executionID)
+	err = s.executor.Cancel(s.ctx, executionID)
 	s.Require().NoError(err)
 
 	select {
@@ -448,14 +425,15 @@ func (s *ExecutorTestSuite) TestDockerNetworkingAppendsHTTPHeader() {
 	task.Network = &models.NetworkConfig{Type: models.NetworkHTTP, Domains: []string{s.containerHttpURL().Hostname()}}
 
 	executionID := uuid.New().String()
-	result, err := s.runJob(task, executionID)
+	result, err := s.startJobAndWaitCompletion(task, executionID)
 	require.NoError(s.T(), err)
 	require.Equal(s.T(), executionID, result.STDOUT, result.STDOUT)
 }
 
 func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	expected := "message after sleep"
-	jobCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	var cancel context.CancelFunc
+	s.ctx, cancel = context.WithTimeout(s.ctx, 3*time.Second)
 	defer cancel()
 
 	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
@@ -475,7 +453,7 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 	resources, err := task.ResourcesConfig.ToResources()
 	require.NoError(s.T(), err)
 
-	s.Require().NoError(s.executor.Start(jobCtx,
+	s.Require().NoError(s.executor.Start(s.ctx,
 		&executor.RunCommandRequest{
 			JobID:        j.ID,
 			ExecutionID:  name,
@@ -511,9 +489,6 @@ func (s *ExecutorTestSuite) TestTimesOutCorrectly() {
 
 func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	id := "streams-exited-container"
-	done := make(chan bool, 1)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	expectedOutput := "some job output"
 	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
@@ -525,20 +500,21 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
 	task.Normalize()
 
-	go func() {
-		_, _ = s.runJobWithContext(ctx, task, id)
-		done <- true
-	}()
-	<-done
-	reader, err := s.executor.GetLogStream(ctx, messages.ExecutionLogsRequest{
+	_, err = s.startJobAndWaitCompletion(task, id)
+	s.Require().NoError(err)
+
+	reader, err := s.executor.GetLogStream(s.ctx, messages.ExecutionLogsRequest{
 		ExecutionID: id,
 		Tail:        false,
 		Follow:      false,
 	})
 
+	require.NoError(s.T(), err)
+	require.NotNil(s.T(), reader)
+
 	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
 		Reader: reader,
-	}).Stream(context.Background())
+	}).Stream(s.ctx)
 	res, ok := <-ch
 	require.True(s.T(), ok)
 	executionLog := res.Value
@@ -548,9 +524,10 @@ func (s *ExecutorTestSuite) TestDockerStreamsAlreadyComplete() {
 
 func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	id := "streams-ok"
+	sleepSeconds := 3
 
 	es, err := dockermodels.NewDockerEngineBuilder("busybox:1.37.0").
-		WithEntrypoint("sh", "-c", "echo hello && sleep 20").
+		WithEntrypoint("sh", "-c", fmt.Sprintf("echo hello && sleep %d", sleepSeconds)).
 		Build()
 	s.Require().NoError(err)
 
@@ -558,9 +535,9 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 	task.Engine = es
 	task.ResourcesConfig = &models.ResourcesConfig{CPU: CPU_LIMIT, Memory: MEBIBYTE_MEMORY_LIMIT}
 	task.Normalize()
-	s.startJob(task, id)
+	s.startJobAndWaitRunning(task, id)
 
-	reader, err := s.executor.GetLogStream(context.Background(), messages.ExecutionLogsRequest{
+	reader, err := s.executor.GetLogStream(s.ctx, messages.ExecutionLogsRequest{
 		ExecutionID: id,
 		Tail:        false,
 		Follow:      true,
@@ -571,13 +548,15 @@ func (s *ExecutorTestSuite) TestDockerStreamsSlowTask() {
 
 	ch := logstream.NewLiveStreamer(logstream.LiveStreamerParams{
 		Reader: reader,
-	}).Stream(context.Background())
+	}).Stream(s.ctx)
 	res, ok := <-ch
 	require.True(s.T(), ok)
 	executionLog := res.Value
 	require.Equal(s.T(), string(executionLog.Line), "hello\n")
 	require.Equal(s.T(), executionLog.Type, models.ExecutionLogTypeSTDOUT)
 
+	// verify the channel returns when the job is completed after sleepSeconds
+	// if test becomes flaky, then consider increasing sleepSeconds or remove this validation
 	_, ok = <-ch
 	require.False(s.T(), ok)
 }
@@ -590,7 +569,7 @@ func (s *ExecutorTestSuite) TestDockerOOM() {
 	task := mock.Task()
 	task.Engine = es
 
-	result, err := s.runJob(task, uuid.New().String())
+	result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 	require.NoError(s.T(), err)
 	require.Contains(s.T(), result.ErrorMsg, "memory limit exceeded")
 }
@@ -658,7 +637,7 @@ func (s *ExecutorTestSuite) TestDockerEnvironmentVariables() {
 			task.Engine = es
 			task.Env = tt.taskEnv
 
-			result, err := s.runJob(task, uuid.New().String())
+			result, err := s.startJobAndWaitCompletion(task, uuid.New().String())
 			require.NoError(s.T(), err)
 			require.Zero(s.T(), result.ExitCode, result.STDERR)
 
@@ -850,9 +829,9 @@ func (s *ExecutorTestSuite) TestAccessToHostService() {
 				Type: tt.networkType,
 			}
 
-			stdout, err := s.runJobGetStdout(task, fmt.Sprintf("access-host-%s", tt.networkType))
+			result, err := s.startJobAndWaitCompletion(task, fmt.Sprintf("access-host-%s", tt.networkType))
 			s.Require().NoError(err)
-			s.Equal("host-service", stdout)
+			s.Equal("host-service", result.STDOUT)
 		})
 	}
 }
