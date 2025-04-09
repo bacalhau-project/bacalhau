@@ -142,7 +142,7 @@ jobs:
           # Ensure all paths are relative to repo root
             gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
-            --format standard-verbose \
+              --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
                 ${{ inputs.test_path }} \
@@ -155,6 +155,7 @@ jobs:
         with:
           name: ${{ inputs.test_name }} Report
           path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+          max-annotations: '50'
           reporter: java-junit
           fail-on-error: false
 
