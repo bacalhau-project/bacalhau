@@ -1,4 +1,4 @@
-name: Pull Request Checks
+name: PR Checks
 
 on:
   pull_request:
@@ -23,7 +23,6 @@ jobs:
           echo "🔍 labels: ${{ toJson(github.event.pull_request.labels) }}"
 
   static-analysis:
-    name: Static Analysis
     uses: ./.github/workflows/_static-analysis.yml
     with:
       go_version_file: go.work
