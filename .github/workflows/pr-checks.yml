@@ -3,8 +3,6 @@ name: PR Checks
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-#  pull_request_target:
-#    types: [labeled]
 
 permissions:
   contents: read
@@ -23,6 +21,7 @@ jobs:
           echo "🔍 labels: ${{ toJson(github.event.pull_request.labels) }}"
 
   static-analysis:
+    name: Static Analysis
     uses: ./.github/workflows/_static-analysis.yml
     with:
       go_version_file: go.work
@@ -35,32 +34,24 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    if: github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'ok-to-test')
     uses: ./.github/workflows/_test.yml
     with:
       test_name: unit-tests
       test_path: './pkg/... ./cmd/...'
-      test_working_dir: '.'
       test_tags: unit
       parallelism: 4
-      environment_name: 'test'
 
   integration-tests:
     name: Integration Tests
-    if: github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'ok-to-test')
     uses: ./.github/workflows/_test.yml
     with:
       test_name: integration-tests
       test_path: './pkg/... ./cmd/...'
-      test_working_dir: '.'
       test_tags: integration
-      parallelism: 1
-      environment_name: 'test'
 
   container-tests:
     name: Container Tests
     needs: [build-binaries]
-    if: github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'ok-to-test')
     uses: ./.github/workflows/_test.yml
     with:
       test_name: container-tests
@@ -70,7 +61,6 @@ jobs:
       binary_artifact_name: 'linux-amd64'
       binary_output_path: 'test_integration/common_assets/bacalhau_bin'
       timeout_minutes: 45
-      environment_name: 'test'
 
   combined-coverage:
     name: Combined Coverage

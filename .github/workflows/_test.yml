@@ -65,7 +65,7 @@ on:
       environment_name:
         description: 'GitHub Environment to use'
         required: false
-        default: ''
+        default: 'test'
         type: string
 
 jobs:
