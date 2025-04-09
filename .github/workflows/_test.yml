@@ -156,6 +156,7 @@ jobs:
           name: ${{ inputs.test_name }} Report
           path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
           reporter: java-junit
+          fail-on-error: false
 
       - name: Generate HTML coverage report
         run: |
@@ -164,6 +165,7 @@ jobs:
 
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ${{ inputs.test_name }}-reports
           path: |
