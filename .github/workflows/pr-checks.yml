@@ -45,6 +45,7 @@ jobs:
     with:
       test_name: integration-tests
       test_args: "-tags=integration"
+      install_ipfs: true
 
   container-tests:
     name: Container Tests

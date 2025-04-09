@@ -57,6 +57,11 @@ on:
         required: false
         default: "test"
         type: string
+      install_ipfs:
+        description: "Whether to install IPFS for tests"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   run-tests:
@@ -130,10 +135,16 @@ jobs:
           # Verify binary works
           ${{ inputs.binary_output_path }} version
 
-      - name: Docker info
+      - name: Install IPFS (if required)
+        if: inputs.install_ipfs
         run: |
-          docker info
-          docker version
+          # Install IPFS
+          wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
+          tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
+          sudo mv kubo/ipfs /usr/local/bin/ipfs
+          ipfs init
+          ipfs daemon &
+          export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 
       - name: Run tests
         shell: bash
@@ -152,11 +163,11 @@ jobs:
 
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: '!cancelled()'
+        if: "!cancelled()"
         with:
           name: ${{ inputs.test_name }} Report
           path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
-          max-annotations: '50'
+          max-annotations: "50"
           reporter: java-junit
           fail-on-error: false
 
@@ -167,7 +178,7 @@ jobs:
 
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
-        if: '!cancelled()'
+        if: "!cancelled()"
         with:
           name: ${{ inputs.test_name }}-reports
           path: |
