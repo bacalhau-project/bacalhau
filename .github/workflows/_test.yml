@@ -143,7 +143,9 @@ jobs:
           tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
           sudo mv kubo/ipfs /usr/local/bin/ipfs
           ipfs init
-          ipfs daemon &
+          ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
+          ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+          ipfs daemon --offline &
           export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 
       - name: Run tests
