@@ -142,7 +142,7 @@ jobs:
           # Ensure all paths are relative to repo root
             gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
-              --format testname \
+            --format standard-verbose \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
                 ${{ inputs.test_path }} \
@@ -151,7 +151,7 @@ jobs:
 
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: always()
+        if: '!cancelled()'
         with:
           name: ${{ inputs.test_name }} Report
           path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
@@ -165,7 +165,7 @@ jobs:
 
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
-        if: always()
+        if: '!cancelled()'
         with:
           name: ${{ inputs.test_name }}-reports
           path: |
