@@ -145,7 +145,7 @@ jobs:
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
-              -coverpkg=./pkg/... ./cmd/... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+              -coverpkg=./pkg/...,./cmd/... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
                 ${{ inputs.test_args }} \ 
                 ${{ inputs.test_path }} 
 
