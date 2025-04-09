@@ -21,14 +21,14 @@ jobs:
           echo "🔍 labels: ${{ toJson(github.event.pull_request.labels) }}"
 
   static-analysis:
-    name: Static Analysis
+    name: Analyze
     uses: ./.github/workflows/_static-analysis.yml
     with:
       go_version_file: go.work
       golangci_lint_version: v1.64.5
 
   build-binaries:
-    name: Build Binaries
+    name: Binary
     uses: ./.github/workflows/_build.yml
     secrets: inherit
 
@@ -37,17 +37,14 @@ jobs:
     uses: ./.github/workflows/_test.yml
     with:
       test_name: unit-tests
-      test_path: './pkg/... ./cmd/...'
-      test_tags: unit
-      parallelism: 4
+      test_args: "-p 4 --tags=unit"
 
   integration-tests:
     name: Integration Tests
     uses: ./.github/workflows/_test.yml
     with:
       test_name: integration-tests
-      test_path: './pkg/... ./cmd/...'
-      test_tags: integration
+      test_args: "--tags=integration"
 
   container-tests:
     name: Container Tests
@@ -55,20 +52,20 @@ jobs:
     uses: ./.github/workflows/_test.yml
     with:
       test_name: container-tests
-      test_path: './...'
-      test_working_dir: 'test_integration'
+      test_path: "./..."
+      test_working_dir: "test_integration"
       download_binary: true
-      binary_artifact_name: 'linux-amd64'
-      binary_output_path: 'test_integration/common_assets/bacalhau_bin'
+      binary_artifact_name: "linux-amd64"
+      binary_output_path: "test_integration/common_assets/bacalhau_bin"
       timeout_minutes: 45
 
   combined-coverage:
-    name: Combined Coverage
+    name: Coverage
     needs: [unit-tests, integration-tests, container-tests]
     uses: ./.github/workflows/_test_coverage.yml
     with:
       coverage_reports: '["unit-tests", "integration-tests", "container-tests"]'
-      output_name: 'pr-combined'
+      output_name: "pr-combined"
       retention_days: 14
       codecov: true
 

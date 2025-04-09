@@ -4,73 +4,63 @@ on:
   workflow_call:
     inputs:
       go_version_file:
-        description: 'Path to the file containing Go version'
+        description: "Path to the file containing Go version"
         required: false
-        default: 'go.work'
+        default: "go.work"
         type: string
       test_name:
-        description: 'Name for test reports and artifacts'
+        description: "Name for test reports and artifacts"
         required: true
         type: string
       test_path:
-        description: 'Path to the directory containing tests'
+        description: "Path to the directory containing tests"
         required: false
-        default: './pkg/... ./cmd/...'
-        type: string
-      test_tags:
-        description: 'Test tags to use (e.g. unit,integration)'
-        required: false
-        default: ''
+        default: "./pkg/... ./cmd/..."
         type: string
       test_working_dir:
-        description: 'Working directory to run tests from'
+        description: "Working directory to run tests from"
         required: false
-        default: '.'
+        default: "."
         type: string
-      parallelism:
-        description: 'Test parallelism (-p flag)'
-        required: false
-        type: number
-        default: 1
       timeout_minutes:
-        description: 'Timeout for tests in minutes'
+        description: "Timeout for tests in minutes"
         required: false
         default: 30
         type: number
       build_binary:
-        description: 'Whether to build a binary for tests'
+        description: "Whether to build a binary for tests"
         required: false
         default: false
         type: boolean
       download_binary:
-        description: 'Whether to download a binary for tests'
+        description: "Whether to download a binary for tests"
         required: false
         default: false
         type: boolean
       binary_artifact_name:
-        description: 'Name of the artifact containing the binary'
+        description: "Name of the artifact containing the binary"
         required: false
-        default: 'linux-amd64'
+        default: "linux-amd64"
         type: string
       binary_output_path:
-        description: 'Output path for binary'
+        description: "Output path for binary"
         required: false
-        default: ''
+        default: ""
         type: string
-      additional_test_args:
-        description: 'Additional arguments to pass to go test'
+      test_args:
+        description: "Arguments to pass to go test (e.g., -p, --tags)"
         required: false
-        default: ''
+        default: ""
         type: string
       environment_name:
-        description: 'GitHub Environment to use'
+        description: "GitHub Environment to use"
         required: false
-        default: 'test'
+        default: "test"
         type: string
 
 jobs:
   run-tests:
-    name: Run Tests
+    name: Run
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout_minutes }}
     environment: ${{ inputs.environment_name }}
@@ -91,7 +81,7 @@ jobs:
         with:
           go-version-file: ${{ inputs.go_version_file }}
           cache: true
-          
+
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest
 
@@ -99,7 +89,7 @@ jobs:
         run: |
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
-        
+
       - name: Download binary (if required)
         if: inputs.download_binary
         uses: actions/download-artifact@v4
@@ -114,14 +104,14 @@ jobs:
           # Extract and copy binary to the specified location
           cd compiled-artifacts
           tar -xzf bacalhau_*.tar.gz
-          
+
           # Create directory for binary if it doesn't exist
           mkdir -p $(dirname ${{ inputs.binary_output_path }})
-          
+
           # Copy binary to the specified location and make it executable
           cp ./bacalhau ${{ inputs.binary_output_path }}
           chmod +x ${{ inputs.binary_output_path }}
-          
+
           # Verify binary works
           ${{ inputs.binary_output_path }} version
 
@@ -132,7 +122,7 @@ jobs:
           TAG=$(git describe --tags --always)
           GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
-          
+
           pwd
           ls -la ${{ inputs.binary_output_path }}
           # Ensure the binary is executable
@@ -146,7 +136,6 @@ jobs:
           docker version
 
       - name: Run tests
-        continue-on-error: true
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
@@ -157,24 +146,22 @@ jobs:
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
                 ${{ inputs.test_path }} \
-              -coverpkg=./... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
-                ${{ inputs.test_tags != '' && format('--tags={0}', inputs.test_tags) || '' }} \
-                -p ${{ inputs.parallelism }} \
-                ${{ inputs.additional_test_args }}
-              
+              -coverpkg=./pkg/... ./cmd/... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+                ${{ inputs.test_args }}
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: ${{ inputs.test_name }} Report
+          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+          reporter: java-junit
+
       - name: Generate HTML coverage report
         run: |
           go tool cover -html=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
                         -o ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
 
-      - name: Test Report
-        uses: dorny/test-reporter@v1
-        with:
-          name: ${{ inputs.test_name }} Report
-          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
-          reporter: java-junit
-          fail-on-error: true
-          
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
         with:
