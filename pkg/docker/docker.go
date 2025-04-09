@@ -170,23 +170,27 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 	return stdoutReader, stderrReader, nil
 }
 
-func (c *Client) GetOutputStream(ctx context.Context, id string, since string, follow bool) (io.ReadCloser, error) {
-	cont, err := c.ContainerInspect(ctx, id)
+func (c *Client) GetOutputStream(
+	ctx context.Context,
+	containerID string,
+	since *time.Time,
+	follow, timestamps bool,
+) (io.ReadCloser, error) {
+	cont, err := c.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return nil, NewDockerError(err)
 	}
 
-	if !cont.State.Running {
-		return nil, NewCustomDockerError(ContainerNotRunning, "cannot get logs when container is not running")
-	}
+	// As long as the container exists we can get logs from it
 
 	logOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     follow,
+		Timestamps: timestamps,
 	}
-	if since != "" {
-		logOptions.Since = since
+	if since != nil {
+		logOptions.Since = since.Format(time.RFC3339Nano)
 	}
 
 	ctx = log.Ctx(ctx).With().Str("ContainerID", cont.ID).Str("Image", cont.Image).Logger().WithContext(ctx)

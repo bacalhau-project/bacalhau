@@ -5,22 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-const StorageDirectoryPerms = 0o755
+const (
+	StorageDirectoryPerms     = 0o755
+	executionRootCleanupDelay = 1 * time.Hour
+)
 
 type BaseExecutorParams struct {
 	ID                     string
@@ -101,7 +104,7 @@ type InputCleanupFn = func(context.Context) error
 func (e *BaseExecutor) PrepareRunArguments(
 	ctx context.Context,
 	execution *models.Execution,
-	resultsDir string,
+	executionDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
@@ -141,7 +144,7 @@ func (e *BaseExecutor) PrepareRunArguments(
 			Network:      networkConfig,
 			Outputs:      execution.Job.Task().ResultPaths,
 			Inputs:       inputVolumes,
-			ResultsDir:   resultsDir,
+			ExecutionDir: executionDir,
 			EngineParams: execution.Job.Task().Engine,
 			Env:          env,
 			OutputLimits: executor.OutputLimits{
@@ -181,19 +184,13 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
+	executionDir, err := e.resultsPath.PrepareExecutionOutputDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
 		return result
 	}
 
-	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
-	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
-		result.Err = fmt.Errorf("preparing storage path: %w", err)
-		return result
-	}
-
-	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultFolder)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, executionDir)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
@@ -276,11 +273,29 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 	}()
 
 	res := e.Start(ctx, execution)
-	defer func() {
+
+	defer func(executionOutputDir string) {
+		// For now execution results are removed after a fixed delay.
+		go func() {
+			log.Debug().Str("path", executionOutputDir).Msg("scheduled execution results dir removal")
+			ticker := time.NewTicker(executionRootCleanupDelay)
+			defer ticker.Stop()
+			for range ticker.C {
+				err = os.RemoveAll(executionOutputDir)
+				if err != nil {
+					log.Error().Err(err).Str("path", executionOutputDir).Msg("failed to remove execution results dir")
+					return
+				}
+				log.Debug().Str("path", executionOutputDir).Msg("removed execution results dir")
+			}
+		}()
+
+		// The rest can be cleaned up immediately after completion
 		if err := res.Cleanup(ctx); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
 		}
-	}()
+	}(e.resultsPath.ExecutionOutputDir(execution.ID))
+
 	if err := res.Err; err != nil {
 		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
@@ -341,24 +356,23 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 		expectedState = models.ExecutionStatePublishing
 
-		resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
+		resultsDir := ExecutionResultsDir(e.resultsPath.ExecutionOutputDir(execution.ID))
+		publishedResult, err = e.publish(ctx, execution, resultsDir)
 		if err != nil {
 			return err
 		}
 
 		defer func() {
-			// cleanup resources
-			log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+			// cleanup execution results
+			log.Ctx(ctx).Debug().
+				Str("execution", execution.ID).
+				Str("path", resultsDir).
+				Msg("cleaning up execution results")
 			err = os.RemoveAll(resultsDir)
 			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results directory at %s", resultsDir)
 			}
 		}()
-
-		publishedResult, err = e.publish(ctx, execution, resultsDir)
-		if err != nil {
-			return err
-		}
 	}
 
 	// mark the execution as completed
@@ -382,15 +396,15 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, execution *models.Execution,
-	resultFolder string,
+	resultsDir string,
 ) (*models.SpecConfig, error) {
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+	log.Ctx(ctx).Debug().Str("executionID", execution.ID).Str("resultsDir", resultsDir).Msg("Publishing execution results")
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultsDir)
 	if err != nil {
 		return nil, bacerrors.Wrap(err, "failed to publish result")
 	}
