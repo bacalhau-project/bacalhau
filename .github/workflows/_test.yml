@@ -145,10 +145,9 @@ jobs:
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
-              -coverpkg="./pkg/...,./cmd/..." \
-              -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
-              ${{ inputs.test_args }} \ 
-              ${{ inputs.test_path }} 
+              -coverpkg=./pkg/...,./cmd/... -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+                ${{ inputs.test_args }} \ 
+                ${{ inputs.test_path }} 
 
       - name: Test Report
         uses: dorny/test-reporter@v1
