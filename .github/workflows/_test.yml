@@ -159,7 +159,7 @@ jobs:
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
               ${{ inputs.test_path }} \
-              -coverpkg={{ env.REPO_ROOT }}/pkg/...,{{ env.REPO_ROOT }}/cmd/... \
+              -coverpkg=${{ env.REPO_ROOT }}/pkg/...,${{ env.REPO_ROOT }}/cmd/... \
               -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
               ${{ inputs.test_args }}
 
