@@ -51,7 +51,7 @@ const (
 	// and the write bit for group ensures deletability
 	// This enables running Bacalhau as a non-privileged user while
 	// maintaining compatibility with containers that run as root
-	MountPerms = 0o2775
+	MountPerms = 0o777
 )
 
 type ExecutorParams struct {
