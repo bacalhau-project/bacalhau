@@ -51,7 +51,7 @@ const (
 	// and the write bit for group ensures deletability
 	// This enables running Bacalhau as a non-privileged user while
 	// maintaining compatibility with containers that run as root
-	MountPerms = 0o777
+	MountPerms = 0o2777
 )
 
 type ExecutorParams struct {
@@ -486,7 +486,7 @@ func makeContainerMounts(
 		// Create output dir with group write permissions and setgid bit
 		// This ensures all files created in this directory inherit its group ownership
 		// and allows non-root Bacalhau users to manage files created by containers
-		if err := os.Mkdir(srcDir, MountPerms); err != nil {
+		if err := os.MkdirAll(srcDir, MountPerms); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
 		}
 
