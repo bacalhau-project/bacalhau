@@ -501,6 +501,10 @@ func makeContainerMounts(
 			Source: srcDir,
 			// the path of the output volume is from the perspective of inside the container
 			Target: output.Path,
+			// this allows proper propagation of permissions
+			BindOptions: &mount.BindOptions{
+				Propagation: mount.PropagationRShared,
+			},
 		})
 	}
 	return mounts, nil
