@@ -81,6 +81,32 @@ jobs:
       COVERAGE_DIR: ${{ github.workspace }}/coverage
 
     steps:
+      - name: Debug Environment
+        run: |
+          echo "Current user: $(id)"
+          echo "Docker user: $(docker run --rm alpine id)"
+          echo "Docker info: $(docker info | grep 'Username\|Rootless')"
+      - name: Debug Docker Container
+        run: |
+          # Run a container like your test would, but keep it alive
+          docker run -d --name debug_container \
+            -v /tmp/debug_mount:/data \
+            busybox:1.37.0 sleep 1000
+
+          # Exec into it to check user
+          docker exec debug_container id
+
+          # Create files like your test would
+          docker exec debug_container sh -c "echo hello > /data/file.txt && mkdir -p /data/apples && echo oranges > /data/apples/file.txt"
+
+          # Check file permissions from inside container
+          docker exec debug_container ls -la /data/apples
+
+          # Check file permissions from host
+          ls -la /tmp/debug_mount/apples
+
+          # Clean up
+          docker rm -f debug_container
       - name: Checkout code
         uses: actions/checkout@v4
         with:
