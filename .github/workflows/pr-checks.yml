@@ -54,6 +54,7 @@ jobs:
     with:
       test_name: container-tests
       test_path: "./..."
+      coverage_packages: "" # No coverage for container tests
       test_working_dir: "test_integration"
       download_binary: true
       binary_artifact_name: "linux-amd64"
@@ -62,10 +63,10 @@ jobs:
 
   combined-coverage:
     name: Coverage
-    needs: [unit-tests, integration-tests, container-tests]
+    needs: [unit-tests, integration-tests]
     uses: ./.github/workflows/_test_coverage.yml
     with:
-      coverage_reports: '["unit-tests", "integration-tests", "container-tests"]'
+      coverage_reports: '["unit-tests", "integration-tests"]'
       output_name: "pr-combined"
       retention_days: 14
       codecov: true

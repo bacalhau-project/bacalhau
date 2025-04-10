@@ -81,16 +81,6 @@ jobs:
       COVERAGE_DIR: ${{ github.workspace }}/coverage
 
     steps:
-      - name: Debug Environment
-        run: |
-          echo "Current user: $(id)"
-          echo "Docker user: $(docker run --rm alpine id)"
-          echo "Docker info: $(docker info | grep 'Username\|Rootless')"
-          echo "docker info"
-          docker info
-          echo "docker context"
-          docker context ls
-
       - name: Prepare tmp directories for tests
         run: |
           # Create a test directory with permissive ACLs
@@ -178,15 +168,27 @@ jobs:
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-            gotestsum \
+            # Create base test command
+            TEST_CMD="gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
-              ${{ inputs.test_path }} \
+              ${{ inputs.test_path }}"
+            
+            # Only add coverage flags if coverage_packages is not empty
+            if [ ! -z "${{ inputs.coverage_packages }}" ]; then
+              TEST_CMD="$TEST_CMD \
               -coverpkg=${{ inputs.coverage_packages }} \
-              -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
-              ${{ inputs.test_args }}
+              -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage"
+            fi
+            
+            # Add any additional test args
+            TEST_CMD="$TEST_CMD ${{ inputs.test_args }}"
+            
+            # Run the constructed command
+            echo "Running: $TEST_CMD"
+            eval $TEST_CMD
 
       - name: Test Report
         uses: dorny/test-reporter@v1
@@ -199,6 +201,7 @@ jobs:
           fail-on-error: false
 
       - name: Generate HTML coverage report
+        if: inputs.coverage_packages != ''
         run: |
           go tool cover -html=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
                         -o ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
