@@ -181,7 +181,7 @@ jobs:
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-            gotestsum \
+            sudo gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
