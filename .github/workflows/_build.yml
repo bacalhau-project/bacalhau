@@ -2,13 +2,17 @@ name: Build Bacalhau Binaries
 
 on:
   workflow_call:
+    outputs:
+      linux-amd64-ready:
+        description: "Flag indicating Linux AMD64 build is complete"
+        value: ${{ jobs.build.outputs.linux-amd64-ready }}
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     outputs:
-      status: ${{ job.status }}
+      linux-amd64-ready: ${{ steps.track-linux-amd64.outputs.ready }}
     strategy:
       matrix:
         include:
@@ -72,8 +76,8 @@ jobs:
           path: "dist/bacalhau_*"
           retention-days: 1  # Short retention since these are intermediate artifacts, also save money
 
-      - name: Report build status
-        if: always()
-        run: |
-          echo "Build completed for ${{ matrix.os }}-${{ matrix.goarch }}"
-          echo "Status: ${{ job.status }}"
+      # Simple tracker for linux-amd64 completion
+      - name: Track Linux AMD64 completion
+        id: track-linux-amd64
+        if: matrix.os == 'linux' && matrix.goarch == 'amd64'
+        run: echo "ready=true" >> $GITHUB_OUTPUT

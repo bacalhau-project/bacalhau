@@ -1,4 +1,4 @@
-name: Reusable Test Workflow
+name: Test Workflow
 
 on:
   workflow_call:
@@ -28,7 +28,7 @@ on:
         default: 30
         type: number
       test_args:
-        description: "Arguments to pass to go test (e.g., -p, --tags)"
+        description: "Arguments to pass to go test (e.g., -p, --tags, -retry)"
         required: false
         default: ""
         type: string
@@ -96,7 +96,7 @@ jobs:
       - name: Install IPFS (if required)
         if: inputs.install_ipfs
         run: |
-          # Install IPFS
+          # Install IPFS for integration tests that require a local IPFS node
           wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
           tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
           sudo mv kubo/ipfs /usr/local/bin/ipfs
