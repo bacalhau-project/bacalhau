@@ -112,6 +112,24 @@ jobs:
 
           # Clean up
           docker rm -f debug_container
+
+      - name: Set up Docker with user namespace remapping
+        run: |
+          # Create daemon.json with userns-remap
+          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+          {
+            "userns-remap": "$(id -un)"
+          }
+          EOF
+
+          # Restart Docker to apply settings
+          sudo systemctl restart docker
+
+          # Wait for Docker to be available
+          while ! docker info > /dev/null 2>&1; do
+            echo "Waiting for Docker..."
+            sleep 1
+          done
       - name: Checkout code
         uses: actions/checkout@v4
         with:
