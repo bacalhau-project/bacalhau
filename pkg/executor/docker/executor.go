@@ -486,9 +486,12 @@ func makeContainerMounts(
 		// Create output dir with group write permissions and setgid bit
 		// This ensures all files created in this directory inherit its group ownership
 		// and allows non-root Bacalhau users to manage files created by containers
-		if err := os.MkdirAll(srcDir, MountPerms); err != nil {
+		if err := os.Mkdir(srcDir, MountPerms); err != nil {
+			log.Ctx(ctx).Error().Err(err).Str("directory", srcDir).Msg("failed to create results dir for execution")
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
 		}
+		observedPerms, _ := os.Stat(srcDir)
+		log.Ctx(ctx).Debug().Str("directory", srcDir).Interface("observed_permissions", observedPerms.Mode()).Msg("successfully created results dir for execution")
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
 
