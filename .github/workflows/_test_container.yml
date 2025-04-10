@@ -76,6 +76,8 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -119,7 +121,9 @@ jobs:
         if: inputs.build_binary && !inputs.download_binary
         run: |
           # Build the binary for tests
-          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }}
+          TAG=$(git describe --tags --always)
+          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'"
 
           # Ensure the binary is executable
           chmod +x ${{ inputs.binary_output_path }}
