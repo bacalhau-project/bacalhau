@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	repoPermission         = 0755
+	repoPermission         = 0o2777
 	defaultRunInfoFilename = "bacalhau.run"
 	runInfoFilePermissions = 0755
 )

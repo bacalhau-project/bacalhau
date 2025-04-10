@@ -83,7 +83,7 @@ func prepareDir(path string) error {
 	log.Debug().Str("path", path).Msg("creating results dir")
 	// TODO: results directories should only be accessible by the Bacalhau user,
 	//  but doing so fails tests in GitHub Actions with "permission denied" during cleanup.
-	err := os.Mkdir(path, StorageDirectoryPerms)
+	err := os.MkdirAll(path, StorageDirectoryPerms)
 	if err != nil {
 		return fmt.Errorf("error creating results dir %s: %w", path, err)
 	}
