@@ -86,6 +86,11 @@ jobs:
           echo "Current user: $(id)"
           echo "Docker user: $(docker run --rm alpine id)"
           echo "Docker info: $(docker info | grep 'Username\|Rootless')"
+          echo "docker info"
+          docker info
+          echo "docker context"
+          docker context ls
+
       - name: Debug Docker Container
         run: |
           # Run a container like your test would, but keep it alive
@@ -181,7 +186,7 @@ jobs:
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-            sudo gotestsum \
+            gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
