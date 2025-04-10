@@ -105,38 +105,77 @@ jobs:
           # Extract and copy binary to the specified location
           cd compiled-artifacts
           tar -xzf bacalhau_*.tar.gz
-
+          
+          # Print the binary location for debugging
+          echo "Binary path to create: ${{ inputs.binary_output_path }}"
+          
           # Create directory for binary if it doesn't exist
-          mkdir -p $(dirname ${{ inputs.binary_output_path }})
-
+          mkdir -p $(dirname "${{ inputs.binary_output_path }}")
+          
+          # Check if the directory was created
+          ls -la $(dirname "${{ inputs.binary_output_path }}")
+          
           # Copy binary to the specified location and make it executable
-          cp ./bacalhau ${{ inputs.binary_output_path }}
-
-          # Verify binary works
-          ${{ inputs.binary_output_path }} version
+          cp ./bacalhau "${{ inputs.binary_output_path }}"
+          chmod +x "${{ inputs.binary_output_path }}"
+          
+          # Verify the binary exists and is executable
+          ls -la "${{ inputs.binary_output_path }}"
+          
+          # Verify binary works from repository root
+          "${{ inputs.binary_output_path }}" version
 
       - name: Build binary (if required)
         if: inputs.build_binary && !inputs.download_binary
         run: |
           # Build the binary for tests
           TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
+          GOOS=linux GOARCH=amd64 go build -o "${{ inputs.binary_output_path }}" \
             -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'"
 
           # Ensure the binary is executable
-          chmod +x ${{ inputs.binary_output_path }}
+          chmod +x "${{ inputs.binary_output_path }}"
           # Verify binary works
-          ${{ inputs.binary_output_path }} version
+          "${{ inputs.binary_output_path }}" version
+
+      - name: Debug directory structure
+        run: |
+          echo "Repository root contents:"
+          ls -la
+          
+          echo "Test working directory contents:"
+          ls -la "${{ inputs.test_working_dir }}"
+          
+          echo "Common assets directory contents:"
+          ls -la "${{ inputs.test_working_dir }}/common_assets" || echo "Common assets directory not found"
 
       - name: Run tests
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-          # First verify the binary is reachable from this directory
-          ls -la common_assets/bacalhau_bin || ls -la
+          # Get the binary filename from the path
+          BINARY_PATH="${{ inputs.binary_output_path }}"
+          BINARY_FILENAME=$(basename "$BINARY_PATH")
+          BINARY_DIR=$(dirname "$BINARY_PATH")
           
-          # Try to run the binary from current directory
+          echo "Binary path: $BINARY_PATH"
+          echo "Binary filename: $BINARY_FILENAME"
+          echo "Binary directory: $BINARY_DIR"
+          
+          # Check if binary exists
+          ls -la "$BINARY_PATH" || echo "Binary not found at $BINARY_PATH"
+          
+          # Ensure common_assets directory exists
+          mkdir -p common_assets
+          
+          # Create/update symbolic link to the binary
+          ln -sf "$REPO_ROOT/$BINARY_PATH" "common_assets/bacalhau_bin"
+          
+          # Verify symbolic link
+          ls -la common_assets/
+          
+          # Verify binary works from current directory
           common_assets/bacalhau_bin version
-        
+          
           # Run the tests
           go test -v -count=1 ./...
