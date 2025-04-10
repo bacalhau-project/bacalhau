@@ -490,6 +490,11 @@ func makeContainerMounts(
 			log.Ctx(ctx).Error().Err(err).Str("directory", srcDir).Msg("failed to create results dir for execution")
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
 		}
+
+		if err := os.Chmod(srcDir, 0o2775); err != nil {
+			return nil, err
+		}
+
 		observedPerms, _ := os.Stat(srcDir)
 		log.Ctx(ctx).Debug().Str("directory", srcDir).Interface("observed_permissions", observedPerms.Mode()).Msg("successfully created results dir for execution")
 
