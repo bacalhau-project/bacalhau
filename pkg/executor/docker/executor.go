@@ -44,12 +44,14 @@ const (
 	outputStreamCheckTickTime = 100 * time.Millisecond
 	outputStreamCheckTimeout  = 5 * time.Second
 
-	// MountPerms defines directory permissions (rwxrwxr-x) that allow:
+	// MountPerms defines directory permissions that allow:
 	// - Containers to write files as root inside these directories
 	// - Non-root Bacalhau users to delete these files afterward
+	// The setgid bit (s) ensures new files inherit the directory's group
+	// and the write bit for group ensures deletability
 	// This enables running Bacalhau as a non-privileged user while
 	// maintaining compatibility with containers that run as root
-	MountPerms = 0o775
+	MountPerms = 0o2775
 )
 
 type ExecutorParams struct {
@@ -481,18 +483,11 @@ func makeContainerMounts(
 		}
 
 		srcDir := filepath.Join(resultsDir, output.Name)
+		// Create output dir with group write permissions and setgid bit
+		// This ensures all files created in this directory inherit its group ownership
+		// and allows non-root Bacalhau users to manage files created by containers
 		if err := os.Mkdir(srcDir, MountPerms); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
-		}
-
-		// Set setgid bit so files inherit directory's group ownership
-		// This enables Bacalhau to run as non-root while still allowing:
-		// 1. Containers to create files as root internally
-		// 2. Bacalhau to delete all output files after job completion
-		// Without requiring root privileges on the host
-		// Future considerations: Docker user namespaces, ACLs, non-root containers
-		if err := os.Chmod(srcDir, MountPerms|os.ModeSetgid); err != nil {
-			return nil, fmt.Errorf("failed to set group sticky bit: %w", err)
 		}
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)

@@ -374,7 +374,6 @@ rerr
 ripath
 rocm
 rpad
-rwxrwxr
 samber
 scipy
 scminput
