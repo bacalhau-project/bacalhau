@@ -148,18 +148,27 @@ jobs:
           ipfs daemon --offline &
           export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 
+      - name: Get module name
+        id: get-module
+        run: |
+          MODULE_NAME=$(go list -m)
+          echo "MODULE_NAME=${MODULE_NAME}" >> $GITHUB_OUTPUT
+          echo "Module name: ${MODULE_NAME}"
+
       - name: Run tests
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-          # Ensure all paths are relative to repo root
+          # Always use module paths for coverage
+          MODULE_NAME="${{ steps.get-module.outputs.MODULE_NAME }}"
+          
             gotestsum \
             --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
               --format testname \
             --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
             -- \
               ${{ inputs.test_path }} \
-              -coverpkg=${{ env.REPO_ROOT }}/pkg/...,${{ env.REPO_ROOT }}/cmd/... \
+              -coverpkg=${MODULE_NAME}/pkg/...,${MODULE_NAME}/cmd/... \
               -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
               ${{ inputs.test_args }}
 
