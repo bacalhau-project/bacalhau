@@ -119,9 +119,7 @@ jobs:
         if: inputs.build_binary && !inputs.download_binary
         run: |
           # Build the binary for tests
-          TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
-            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'"
+          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }}
 
           # Ensure the binary is executable
           chmod +x ${{ inputs.binary_output_path }}
