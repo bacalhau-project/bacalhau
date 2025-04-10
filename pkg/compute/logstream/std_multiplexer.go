@@ -1,4 +1,4 @@
-package docker
+package logstream
 
 import (
 	"encoding/binary"
@@ -6,14 +6,11 @@ import (
 	"io"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	// // SystemInfo represents non-error messages originating from the system that make it into the multiplexed stream.
-	// SystemInfo      stdcopy.StdType = stdcopy.Systemerr + 1
 	// SystemStreamEnd represents the end of the multiplexed stream
 	SystemStreamEnd stdcopy.StdType = stdcopy.Systemerr + 1
 
@@ -30,7 +27,11 @@ const (
 // It converts these timestamped frames (created when using the Timestamps LogOption) into a non-timestamped
 // format compatible with the original StdCopy.
 //
-// Optionally, it filters out frames older than the specified 'since' parameter.
+// If tail is true, it will keep trying to read from the source even if it reaches EOF.
+//
+// Optionally, it filters out frames older than the specified 'since' parameter. If nil is passed no filtering is performed
+//
+// A cancellation can be sent through the cancelCh channel. It will be processed when the next frame is read.
 //
 // The Docker multiplexed stream format follows this structure
 //
@@ -49,8 +50,14 @@ const (
 //
 // See also discussions on timestamp timezone github.com/moby/moby/pull/35051#issuecomment-334117784
 //
-//nolint:gocyclo
-func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOnEndFrame bool) (written int64, err error) {
+//nolint:gocyclo,funlen
+func TimestampedStdCopy(
+	dstout io.Writer,
+	src io.Reader,
+	since *time.Time,
+	tail bool,
+	cancelCh chan struct{},
+) (written int64, err error) {
 	var (
 		buf                 = make([]byte, startingBufLen)
 		bufLen              = len(buf)
@@ -58,6 +65,8 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 		frameSize           uint32
 	)
 
+	tailTicker := time.NewTicker(endFrameWait)
+	defer tailTicker.Stop()
 	for {
 		// Make sure we have at least a full header
 		for numRead < stdWriterPrefixLen {
@@ -65,28 +74,46 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 			numRead2, err = src.Read(buf[numRead:])
 			numRead += numRead2
 			if err == io.EOF {
-				if !stopOnEndFrame && numRead < stdWriterPrefixLen {
+				if !tail && numRead < stdWriterPrefixLen {
+					// EOF and not tailing
+					// Stop reading more frames
+					log.Debug().Str("buffered_bytes", fmt.Sprintf("%d", numRead)).Msg("partial header read while not tailing")
 					return written, nil
 				}
-				time.Sleep(endFrameWait)
-				continue
-				// break
+				// EOF and tailing
+				// Wait for a while until a delay is expired or a cancellation received
+				tailTicker.Reset(endFrameWait)
+				select {
+				case <-cancelCh:
+					// Stop reading more frames
+					log.Debug().Str("buffered_bytes", fmt.Sprintf("%d", numRead)).Msg("cancelling read while waiting for header")
+					return written, nil
+				case <-tailTicker.C:
+					continue
+				}
 			}
 			if err != nil {
 				return 0, err
 			}
 		}
 
-		// Determine which stream the frame belongs to (stdout/stderr)
+		// Determine which stream the frame belongs to
 		streamType := stdcopy.StdType(buf[stdWriterFdIndex])
 
-		// If encountered a stream end frame, return immediately
+		// Retrieve the size of the frame
+		frameSize = binary.BigEndian.Uint32(buf[stdWriterSizeIndex : stdWriterSizeIndex+4])
+
+		// If encountered a stream end frame, return immediately even if tail is set
+		// because there are no more frames expected after the stream end
 		if streamType == SystemStreamEnd {
 			return written, nil
 		}
 
-		// Retrieve the size of the frame (with the timestamp)
-		frameSize = binary.BigEndian.Uint32(buf[stdWriterSizeIndex : stdWriterSizeIndex+4])
+		// If there was an error while writing into the original multiplexed stream (Docker daemon), return it
+		if streamType == stdcopy.Systemerr {
+			errorMsg := string(buf[stdWriterPrefixLen : frameSize+stdWriterPrefixLen])
+			return written, fmt.Errorf("error from daemon in stream: %s", errorMsg)
+		}
 
 		// Check that the frame is at least as long a timestamp and a space
 		if frameSize < timestampLen+1 {
@@ -106,24 +133,21 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 			numRead2, err = src.Read(buf[numRead:])
 			numRead += numRead2
 			if err == io.EOF {
-				if numRead < int(frameSize+stdWriterPrefixLen) {
+				if !tail && numRead < int(frameSize+stdWriterPrefixLen) {
 					return written, nil
 				}
-				break
+				tailTicker.Reset(endFrameWait)
+				select {
+				case <-cancelCh:
+					log.Debug().Str("buffered_size", fmt.Sprintf("%d", numRead)).Msg("cancelling read while waitinf for frame")
+					return written, nil
+				case <-tailTicker.C:
+					continue
+				}
 			}
 			if err != nil {
 				return 0, err
 			}
-		}
-
-		// if there was an error while writing into the original multiplexed stream (Docker daemon), return it
-		if streamType == stdcopy.Systemerr {
-			return written, fmt.Errorf("error from daemon in stream: %s", string(buf[stdWriterPrefixLen:frameSize+stdWriterPrefixLen]))
-		}
-
-		// if we encountered the stream end, return immediately
-		if streamType == SystemStreamEnd {
-			return written, nil
 		}
 
 		// retrieve the timestamp
@@ -132,7 +156,19 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 			return written, err
 		}
 
-		if !timestamp.Before(since) {
+		// Check if cancelled.
+		// Note that this is a best effort attempt to cancel the read.
+		// If a cancellation arrives white data is being written to the destination,
+		// it will only be handled when processing the next frame.
+		select {
+		case <-cancelCh:
+			log.Debug().Str("buffered_size", fmt.Sprintf("%d", numRead)).Msg("dropping frame due to cancellation")
+			return written, nil
+		default:
+			// continue
+		}
+
+		if since == nil || !timestamp.Before(*since) {
 			// write modified frame into the output
 
 			newPrefixBuf := make([]byte, stdWriterPrefixLen)
@@ -172,49 +208,35 @@ func TimestampedStdCopy(dstout io.Writer, src io.Reader, since time.Time, stopOn
 	}
 }
 
-func ContainerOutputStream(source io.ReadCloser, since time.Time, follow bool) (io.ReadCloser, error) {
-	dstReader, dstWriter := io.Pipe()
-	go func() {
-		defer closer.CloseWithLogOnError("multiplexedWriter", dstWriter)
-		defer closer.CloseWithLogOnError("multiplexedReader", source)
-
-		_, err := TimestampedStdCopy(dstWriter, source, since, follow)
-		if err != nil {
-			log.Error().Err(err).Msg("error reading container output")
-		}
-	}()
-	return dstReader, nil
-}
-
-func WriteMultiplexedOutput(dstWriter io.Writer, outputReader io.Reader) error {
+// StdCopyWithEndFrame is a modified version of Docker stdcopy.StdCopy that writes an end frame
+// to the destination when EOF is reached.
+func StdCopyWithEndFrame(dstout io.Writer, src io.Reader) (written int64, err error) {
 	buf := make([]byte, startingBufLen)
-
 	for {
-		numRead, err := outputReader.Read(buf)
+		numRead, err := src.Read(buf)
 
 		// Any data that has been read gets written to the destination
 		if numRead > 0 {
-			if _, writeErr := dstWriter.Write(buf[:numRead]); writeErr != nil {
-				return writeErr
+			if numWritten, writeErr := dstout.Write(buf[:numRead]); writeErr != nil {
+				written += int64(numWritten)
+				return written, writeErr
 			}
 		}
 
 		if err == io.EOF {
 			// Write a stream end frame
-			if writeErr := writeEndFrame(dstWriter); writeErr != nil {
-				return writeErr
-			}
-			return nil
+			numWritten, writeErr := WriteEndFrame(dstout)
+			log.Debug().Msg("writing end frame")
+			written += int64(numWritten)
+			return written, writeErr
 		} else if err != nil {
 			// Return any other error
-			return err
+			return written, err
 		}
 	}
 }
 
-// Writes an end frame to the given writer indicating that no more data is expected to be received.
-// An end frame can be used to follow container logs when it is still running.
-func writeEndFrame(dstWriter io.Writer) error {
+func WriteEndFrame(dstWriter io.Writer) (int, error) {
 	buf := make([]byte, stdWriterPrefixLen)
 
 	// Set the stream type to be SystemStreamEnd
@@ -222,6 +244,5 @@ func writeEndFrame(dstWriter io.Writer) error {
 	// Rest of the prefix is zero-ed out and there is no data following the prefix in the frame
 
 	// Write the prefix to the destination
-	_, err := dstWriter.Write(buf)
-	return err
+	return dstWriter.Write(buf)
 }
