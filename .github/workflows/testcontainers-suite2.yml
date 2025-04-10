@@ -1,0 +1,54 @@
+name: TestContainers Suite
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+
+      - name: Build binary (if required)
+        env:
+          GOOS: ${{ inputs.os }}
+          GOARCH: ${{ inputs.arch }}
+        run: |
+          # Build the binary for tests
+          go build -o test_integration/common_assets/bacalhau_bin .
+
+          ls -l test_integration/common_assets/
+          test_integration/common_assets/bacalhau_bin version
+
+      - name: Run Go tests in integration test directory
+        shell: bash
+        run: |
+          cd test_integration
+          
+          ls -l common_assets
+          go test -v -count=1 ./...

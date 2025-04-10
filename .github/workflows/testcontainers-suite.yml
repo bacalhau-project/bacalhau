@@ -1,0 +1,81 @@
+name: TestContainers Suite
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      arch:
+        required: true
+        type: string
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
+
+      - name: Download compiled binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.os }}-${{ inputs.arch }}
+          path: compiled-artifacts/
+
+      - name: Install Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+
+      - name: Build binary (if required)
+        env:
+          GOOS: ${{ inputs.os }}
+          GOARCH: ${{ inputs.arch }}
+          PRIVATE_PEM: ${{ secrets.PRIVATE_PEM }}
+          PUBLIC_PEM: ${{ secrets.PUBLIC_PEM }}
+          PRIVATE_KEY_PASSPHRASE: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
+        run: |
+          # Add Keys to expected files
+          echo "${PRIVATE_PEM}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+          echo "${PUBLIC_PEM}" > /tmp/public.pem && chmod 600 /tmp/public.pem
+          
+          # Build the binary for tests
+          TAG=$(git describe --tags --always)
+          go build -o test_integration/common_assets/bacalhau_bin \
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
+
+          ls -l test_integration/common_assets/
+          test_integration/common_assets/bacalhau_bin version
+          
+          # Remove keys, good security practice
+          rm /tmp/private.pem /tmp/public.pem
+
+      - name: Run Go tests in integration test directory
+        shell: bash
+        run: |
+          echo "===> Copy compiled artifact to use in docker images..."
+          cd compiled-artifacts
+          tar -xzf bacalhau_*.tar.gz
+          cp ./bacalhau ../test_integration/common_assets/bacalhau_bin
+          
+          echo "===> Running tests..."       
+          cd ../test_integration
+          common_assets/bacalhau_bin version
+          
+          ls -l common_assets
+          go test -v -count=1 ./...

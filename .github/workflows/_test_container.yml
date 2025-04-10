@@ -1,0 +1,159 @@
+name: Reusable Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      go_version_file:
+        description: "Path to the file containing Go version"
+        required: false
+        default: "go.work"
+        type: string
+      test_name:
+        description: "Name for test reports and artifacts"
+        required: true
+        type: string
+      test_path:
+        description: "Path to the directory containing tests"
+        required: false
+        default: "./pkg/... ./cmd/..."
+        type: string
+      test_working_dir:
+        description: "Working directory to run tests from"
+        required: false
+        default: "."
+        type: string
+      timeout_minutes:
+        description: "Timeout for tests in minutes"
+        required: false
+        default: 30
+        type: number
+      build_binary:
+        description: "Whether to build a binary for tests"
+        required: false
+        default: false
+        type: boolean
+      download_binary:
+        description: "Whether to download a binary for tests"
+        required: false
+        default: false
+        type: boolean
+      binary_artifact_name:
+        description: "Name of the artifact containing the binary"
+        required: false
+        default: "linux-amd64"
+        type: string
+      binary_output_path:
+        description: "Output path for binary"
+        required: false
+        default: ""
+        type: string
+      test_args:
+        description: "Arguments to pass to go test (e.g., -p, --tags)"
+        required: false
+        default: ""
+        type: string
+      environment_name:
+        description: "GitHub Environment to use"
+        required: false
+        default: "test"
+        type: string
+      install_ipfs:
+        description: "Whether to install IPFS for tests"
+        required: false
+        default: false
+        type: boolean
+      coverage_packages:
+        description: "Comma-separated list of packages to include in coverage"
+        required: false
+        default: "github.com/bacalhau-project/bacalhau/pkg/...,github.com/bacalhau-project/bacalhau/cmd/..."
+        type: string
+
+jobs:
+  run-tests:
+    name: Run
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    environment: ${{ inputs.environment_name }}
+    # Define key paths relative to repository root
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
+    steps:
+      - name: Prepare tmp directories for tests
+        run: |
+          # Create a test directory with permissive ACLs
+          mkdir -p /tmp
+          sudo chmod 1777 /tmp
+
+          # Apply ACLs to allow both the container root and runner user to modify files
+          # This is key - it allows files created by root to be modified by non-root
+          sudo setfacl -d -m u::rwx,g::rwx,o::rwx /tmp
+
+          # Set sticky bit to prevent others from deleting files
+          sudo chmod +t /tmp
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go_version_file }}
+          cache: true
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+
+      - name: Download binary (if required)
+        if: inputs.download_binary
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.binary_artifact_name }}
+          path: compiled-artifacts/
+
+      - name: Setup downloaded binary (if required)
+        if: inputs.download_binary
+        shell: bash
+        run: |
+          # Extract and copy binary to the specified location
+          cd compiled-artifacts
+          tar -xzf bacalhau_*.tar.gz
+
+          # Create directory for binary if it doesn't exist
+          mkdir -p $(dirname ${{ inputs.binary_output_path }})
+
+          # Copy binary to the specified location and make it executable
+          cp ./bacalhau ${{ inputs.binary_output_path }}
+          chmod +x ${{ inputs.binary_output_path }}
+
+          # Verify binary works
+          ${{ inputs.binary_output_path }} version
+
+      - name: Build binary (if required)
+        if: inputs.build_binary && !inputs.download_binary
+        run: |
+          # Build the binary for tests
+          TAG=$(git describe --tags --always)
+          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
+            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
+
+          # Ensure the binary is executable
+          chmod +x ${{ inputs.binary_output_path }}
+          # Verify binary works
+          ${{ inputs.binary_output_path }} version
+
+
+      - name: Run tests
+        shell: bash
+        working-directory: ${{ inputs.test_working_dir }}
+        run: |
+            go test -v -count=1 ./...
