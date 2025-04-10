@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
 
 const (
@@ -81,9 +83,7 @@ func (r *ResultsPath) Close() error {
 // Parent directory must exist.
 func prepareDir(path string) error {
 	log.Debug().Str("path", path).Msg("creating results dir")
-	// TODO: results directories should only be accessible by the Bacalhau user,
-	//  but doing so fails tests in GitHub Actions with "permission denied" during cleanup.
-	err := os.MkdirAll(path, StorageDirectoryPerms)
+	err := os.MkdirAll(path, util.OS_USER_RWX) // Results directories should only be accessible by the Bacalhau user
 	if err != nil {
 		return fmt.Errorf("error creating results dir %s: %w", path, err)
 	}

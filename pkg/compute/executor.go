@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	StorageDirectoryPerms     = 0o2777
+	StorageDirectoryPerms     = 0o755
 	executionRootCleanupDelay = 1 * time.Hour
 )
 

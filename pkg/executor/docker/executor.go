@@ -31,6 +31,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
+	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -43,15 +44,6 @@ const (
 
 	outputStreamCheckTickTime = 100 * time.Millisecond
 	outputStreamCheckTimeout  = 5 * time.Second
-
-	// MountPerms defines directory permissions that allow:
-	// - Containers to write files as root inside these directories
-	// - Non-root Bacalhau users to delete these files afterward
-	// The setgid bit (s) ensures new files inherit the directory's group
-	// and the write bit for group ensures deletability
-	// This enables running Bacalhau as a non-privileged user while
-	// maintaining compatibility with containers that run as root
-	MountPerms = 0o2777
 )
 
 type ExecutorParams struct {
@@ -483,20 +475,9 @@ func makeContainerMounts(
 		}
 
 		srcDir := filepath.Join(resultsDir, output.Name)
-		// Create output dir with group write permissions and setgid bit
-		// This ensures all files created in this directory inherit its group ownership
-		// and allows non-root Bacalhau users to manage files created by containers
-		if err := os.Mkdir(srcDir, MountPerms); err != nil {
-			log.Ctx(ctx).Error().Err(err).Str("directory", srcDir).Msg("failed to create results dir for execution")
+		if err := os.Mkdir(srcDir, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
 		}
-
-		if err := os.Chmod(srcDir, 0o2775); err != nil {
-			return nil, err
-		}
-
-		observedPerms, _ := os.Stat(srcDir)
-		log.Ctx(ctx).Debug().Str("directory", srcDir).Interface("observed_permissions", observedPerms.Mode()).Msg("successfully created results dir for execution")
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
 
@@ -509,10 +490,6 @@ func makeContainerMounts(
 			Source: srcDir,
 			// the path of the output volume is from the perspective of inside the container
 			Target: output.Path,
-			// this allows proper propagation of permissions
-			BindOptions: &mount.BindOptions{
-				Propagation: mount.PropagationRShared,
-			},
 		})
 	}
 	return mounts, nil

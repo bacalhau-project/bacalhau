@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	repoPermission         = 0775
+	repoPermission         = 0755
 	defaultRunInfoFilename = "bacalhau.run"
 	runInfoFilePermissions = 0755
 )
@@ -100,9 +100,6 @@ func (fsr *FsRepo) Init() error {
 				"\tIf present, ensure the config file in %s contains a valid DataDir field path", filepath.Join(fsr.path, config.DefaultFileName))
 	}
 
-	if err := os.Chmod(fsr.path, 0o2775); err != nil {
-		return err
-	}
 	// TODO this should be a part of the config.
 	telemetry.SetupFromEnvs()
 
