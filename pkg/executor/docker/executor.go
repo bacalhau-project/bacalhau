@@ -31,7 +31,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/docker/bidstrategy/semantic"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
-	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/generic"
 )
 
@@ -44,6 +43,13 @@ const (
 
 	outputStreamCheckTickTime = 100 * time.Millisecond
 	outputStreamCheckTimeout  = 5 * time.Second
+
+	// MountPerms defines directory permissions (rwxrwxr-x) that allow:
+	// - Containers to write files as root inside these directories
+	// - Non-root Bacalhau users to delete these files afterward
+	// This enables running Bacalhau as a non-privileged user while
+	// maintaining compatibility with containers that run as root
+	MountPerms = 0o775
 )
 
 type ExecutorParams struct {
@@ -475,8 +481,18 @@ func makeContainerMounts(
 		}
 
 		srcDir := filepath.Join(resultsDir, output.Name)
-		if err := os.Mkdir(srcDir, util.OS_ALL_R|util.OS_ALL_X|util.OS_USER_W); err != nil {
+		if err := os.Mkdir(srcDir, MountPerms); err != nil {
 			return nil, fmt.Errorf("failed to create results dir for execution: %w", err)
+		}
+
+		// Set setgid bit so files inherit directory's group ownership
+		// This enables Bacalhau to run as non-root while still allowing:
+		// 1. Containers to create files as root internally
+		// 2. Bacalhau to delete all output files after job completion
+		// Without requiring root privileges on the host
+		// Future considerations: Docker user namespaces, ACLs, non-root containers
+		if err := os.Chmod(srcDir, MountPerms|os.ModeSetgid); err != nil {
+			return nil, fmt.Errorf("failed to set group sticky bit: %w", err)
 		}
 
 		log.Ctx(ctx).Trace().Msgf("Output Volume: %+v", output)
