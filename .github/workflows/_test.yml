@@ -80,20 +80,12 @@ jobs:
       REPORTS_DIR: ${{ github.workspace }}/reports
       COVERAGE_DIR: ${{ github.workspace }}/coverage
 
+    # Configure all shell commands to run with sudo
+    defaults:
+      run:
+        shell: sudo bash -e {0}
+
     steps:
-      - name: Prepare tmp directories for tests
-        run: |
-          # Create a test directory with permissive ACLs
-          mkdir -p /tmp
-          sudo chmod 1777 /tmp
-
-          # Apply ACLs to allow both the container root and runner user to modify files
-          # This is key - it allows files created by root to be modified by non-root
-          sudo setfacl -d -m u::rwx,g::rwx,o::rwx /tmp
-
-          # Set sticky bit to prevent others from deleting files
-          sudo chmod +t /tmp
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -112,6 +104,8 @@ jobs:
         run: |
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
+          chmod -R 777 ${{ env.REPORTS_DIR }}
+          chmod -R 777 ${{ env.COVERAGE_DIR }}
 
       - name: Download binary (if required)
         if: inputs.download_binary
@@ -122,7 +116,6 @@ jobs:
 
       - name: Setup downloaded binary (if required)
         if: inputs.download_binary
-        shell: bash
         run: |
           # Extract and copy binary to the specified location
           cd compiled-artifacts
@@ -157,7 +150,7 @@ jobs:
           # Install IPFS
           wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
           tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
-          sudo mv kubo/ipfs /usr/local/bin/ipfs
+          mv kubo/ipfs /usr/local/bin/ipfs
           ipfs init
           ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
           ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
@@ -165,7 +158,6 @@ jobs:
           export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
 
       - name: Run tests
-        shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
             # Create base test command
