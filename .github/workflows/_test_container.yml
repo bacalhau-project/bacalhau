@@ -135,6 +135,7 @@ jobs:
         working-directory: ${{ inputs.test_working_dir }}
         run: |
           # Verify binary works before running tests
+          ls -la common_assets/bacalhau_bin
           common_assets/bacalhau_bin version
           
           # Run the tests
