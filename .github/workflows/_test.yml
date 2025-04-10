@@ -91,45 +91,19 @@ jobs:
           echo "docker context"
           docker context ls
 
-      - name: Debug Docker Container
+      - name: Prepare tmp directories for tests
         run: |
-          # Run a container like your test would, but keep it alive
-          docker run -d --name debug_container \
-            -v /tmp/debug_mount:/data \
-            busybox:1.37.0 sleep 1000
+          # Create a test directory with permissive ACLs
+          mkdir -p /tmp
+          sudo chmod 1777 /tmp
 
-          # Exec into it to check user
-          docker exec debug_container id
+          # Apply ACLs to allow both the container root and runner user to modify files
+          # This is key - it allows files created by root to be modified by non-root
+          sudo setfacl -d -m u::rwx,g::rwx,o::rwx /tmp
 
-          # Create files like your test would
-          docker exec debug_container sh -c "echo hello > /data/file.txt && mkdir -p /data/apples && echo oranges > /data/apples/file.txt"
+          # Set sticky bit to prevent others from deleting files
+          sudo chmod +t /tmp
 
-          # Check file permissions from inside container
-          docker exec debug_container ls -la /data/apples
-
-          # Check file permissions from host
-          ls -la /tmp/debug_mount/apples
-
-          # Clean up
-          docker rm -f debug_container
-
-      - name: Set up Docker with user namespace remapping
-        run: |
-          # Create daemon.json with userns-remap
-          sudo tee /etc/docker/daemon.json > /dev/null <<EOF
-          {
-            "userns-remap": "$(id -un)"
-          }
-          EOF
-
-          # Restart Docker to apply settings
-          sudo systemctl restart docker
-
-          # Wait for Docker to be available
-          while ! docker info > /dev/null 2>&1; do
-            echo "Waiting for Docker..."
-            sleep 1
-          done
       - name: Checkout code
         uses: actions/checkout@v4
         with:
