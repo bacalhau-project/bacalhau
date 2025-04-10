@@ -10,16 +10,6 @@ permissions:
   checks: write
 
 jobs:
-  debug-should-run:
-    name: Debug PR Context
-    runs-on: ubuntu-latest
-    steps:
-      - name: Print PR info
-        run: |
-          echo "🔍 github.repository: ${{ github.repository }}"
-          echo "🔍 head.repo.full_name: ${{ github.event.pull_request.head.repo.full_name }}"
-          echo "🔍 labels: ${{ toJson(github.event.pull_request.labels) }}"
-
   static-analysis:
     name: Analyze
     uses: ./.github/workflows/_static-analysis.yml
@@ -70,43 +60,3 @@ jobs:
       output_name: "pr-combined"
       retention_days: 14
       codecov: true
-
-    # needs: [lint, unit-tests, integration-tests]
-    # runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     arch: [amd64, arm64]
-    #     os: [linux, darwin, windows]
-    #     exclude:
-    #       - os: windows
-    #         arch: arm64
-
-    # steps:
-    #   - name: Checkout code
-    #     uses: actions/checkout@v4
-
-    #   - name: Setup Go
-    #     uses: actions/setup-go@v5
-    #     with:
-    #       go-version: '1.21'
-    #       cache: true
-
-    #   - name: Build Binary
-    #     env:
-    #       GOOS: ${{ matrix.os }}
-    #       GOARCH: ${{ matrix.arch }}
-    #     run: |
-    #       EXT=""
-    #       if [ "${{ matrix.os }}" = "windows" ]; then
-    #         EXT=".exe"
-    #       fi
-    #       TAG=$(git describe --tags --always)
-    #       OUTPUT="bacalhau_${{ matrix.os }}_${{ matrix.arch }}${EXT}"
-    #       go build -o "$OUTPUT" -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" ./cmd/bacalhau
-
-    #   - name: Upload Build Artifact
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: bacalhau_${{ matrix.os }}_${{ matrix.arch }}
-    #       path: bacalhau_${{ matrix.os }}_${{ matrix.arch }}*
-    #       retention-days: 7
