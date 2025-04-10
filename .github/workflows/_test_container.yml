@@ -12,11 +12,6 @@ on:
         description: "Name for test reports and artifacts"
         required: true
         type: string
-      test_path:
-        description: "Path to the directory containing tests"
-        required: false
-        default: "./pkg/... ./cmd/..."
-        type: string
       test_working_dir:
         description: "Working directory to run tests from"
         required: false
@@ -47,25 +42,10 @@ on:
         required: false
         default: ""
         type: string
-      test_args:
-        description: "Arguments to pass to go test (e.g., -p, --tags)"
-        required: false
-        default: ""
-        type: string
       environment_name:
         description: "GitHub Environment to use"
         required: false
         default: "test"
-        type: string
-      install_ipfs:
-        description: "Whether to install IPFS for tests"
-        required: false
-        default: false
-        type: boolean
-      coverage_packages:
-        description: "Comma-separated list of packages to include in coverage"
-        required: false
-        default: "github.com/bacalhau-project/bacalhau/pkg/...,github.com/bacalhau-project/bacalhau/cmd/..."
         type: string
 
 jobs:
@@ -96,8 +76,6 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -133,7 +111,6 @@ jobs:
 
           # Copy binary to the specified location and make it executable
           cp ./bacalhau ${{ inputs.binary_output_path }}
-          chmod +x ${{ inputs.binary_output_path }}
 
           # Verify binary works
           ${{ inputs.binary_output_path }} version
@@ -154,6 +131,8 @@ jobs:
 
       - name: Run tests
         shell: bash
-        working-directory: ${{ inputs.test_working_dir }}
         run: |
-            go test -v -count=1 ./...
+          cd ${{ inputs.test_working_dir }}
+          common_assets/bacalhau_bin version
+        
+          go test -v -count=1 ./...

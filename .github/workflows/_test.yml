@@ -27,26 +27,6 @@ on:
         required: false
         default: 30
         type: number
-      build_binary:
-        description: "Whether to build a binary for tests"
-        required: false
-        default: false
-        type: boolean
-      download_binary:
-        description: "Whether to download a binary for tests"
-        required: false
-        default: false
-        type: boolean
-      binary_artifact_name:
-        description: "Name of the artifact containing the binary"
-        required: false
-        default: "linux-amd64"
-        type: string
-      binary_output_path:
-        description: "Output path for binary"
-        required: false
-        default: ""
-        type: string
       test_args:
         description: "Arguments to pass to go test (e.g., -p, --tags)"
         required: false
@@ -113,44 +93,6 @@ jobs:
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
 
-      - name: Download binary (if required)
-        if: inputs.download_binary
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.binary_artifact_name }}
-          path: compiled-artifacts/
-
-      - name: Setup downloaded binary (if required)
-        if: inputs.download_binary
-        shell: bash
-        run: |
-          # Extract and copy binary to the specified location
-          cd compiled-artifacts
-          tar -xzf bacalhau_*.tar.gz
-
-          # Create directory for binary if it doesn't exist
-          mkdir -p $(dirname ${{ inputs.binary_output_path }})
-
-          # Copy binary to the specified location and make it executable
-          cp ./bacalhau ${{ inputs.binary_output_path }}
-          chmod +x ${{ inputs.binary_output_path }}
-
-          # Verify binary works
-          ${{ inputs.binary_output_path }} version
-
-      - name: Build binary (if required)
-        if: inputs.build_binary && !inputs.download_binary
-        run: |
-          # Build the binary for tests
-          TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
-            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" .
-
-          # Ensure the binary is executable
-          chmod +x ${{ inputs.binary_output_path }}
-          # Verify binary works
-          ${{ inputs.binary_output_path }} version
-
       - name: Install IPFS (if required)
         if: inputs.install_ipfs
         run: |
@@ -168,27 +110,15 @@ jobs:
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
-            # Create base test command
-            TEST_CMD="gotestsum \
-            --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
-              --format testname \
-            --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
-            -- \
-              ${{ inputs.test_path }}"
-            
-            # Only add coverage flags if coverage_packages is not empty
-            if [ ! -z "${{ inputs.coverage_packages }}" ]; then
-              TEST_CMD="$TEST_CMD \
-              -coverpkg=${{ inputs.coverage_packages }} \
-              -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage"
-            fi
-            
-            # Add any additional test args
-            TEST_CMD="$TEST_CMD ${{ inputs.test_args }}"
-            
-            # Run the constructed command
-            echo "Running: $TEST_CMD"
-            eval $TEST_CMD
+          gotestsum \
+          --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
+            --format testname \
+          --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
+          -- \
+            ${{ inputs.test_path }} \
+            -coverpkg=${{ inputs.coverage_packages }} \
+            -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+            ${{ inputs.test_args }}
 
       - name: Test Report
         uses: dorny/test-reporter@v1

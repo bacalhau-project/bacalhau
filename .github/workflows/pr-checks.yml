@@ -43,13 +43,10 @@ jobs:
     uses: ./.github/workflows/_test_container.yml
     with:
       test_name: container-tests
-      test_path: "./..."
-      coverage_packages: "" # No coverage for container tests
       test_working_dir: "test_integration"
       download_binary: true
       binary_artifact_name: "linux-amd64"
       binary_output_path: "test_integration/common_assets/bacalhau_bin"
-      timeout_minutes: 45
 
   combined-coverage:
     name: Coverage
