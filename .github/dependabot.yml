@@ -23,3 +23,7 @@ updates:
     labels:
       - "lang/github-actions"
       - "dependabot/version-updates"
+    # Monitor all our new workflow files
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]

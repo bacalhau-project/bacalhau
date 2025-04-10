@@ -1,0 +1,91 @@
+name: Main Branch Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  combined-tests:
+    name: Run All Tests
+    uses: ./.github/workflows/reusable-test.yml
+    with:
+      test_tags: unit,integration
+      test_name: main-branch-tests
+      parallelism: 2
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_TEST_BUCKET: ${{ secrets.S3_TEST_BUCKET }}
+
+  build-and-upload:
+    name: Build and Upload Binaries
+    needs: combined-tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        os: [linux, darwin, windows]
+        exclude:
+          - os: windows
+            arch: arm64
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          EXT=""
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            EXT=".exe"
+          fi
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          TAG=$(git describe --tags --always)
+          OUTPUT="bacalhau_${COMMIT_SHA}_${{ matrix.os }}_${{ matrix.arch }}${EXT}"
+          go build -o "$OUTPUT" -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'" ./cmd/bacalhau
+      
+      - name: Upload to S3
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --acl private --follow-symlinks
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_BUILDS_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          SOURCE_DIR: './bacalhau_*'
+          DEST_DIR: 'builds/'
+
+      - name: Create SHA256 Checksums
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          FILE="bacalhau_${COMMIT_SHA}_${{ matrix.os }}_${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            FILE="${FILE}.exe"
+          fi
+          sha256sum "${FILE}" > "${FILE}.sha256"
+          cat "${FILE}.sha256"
+
+      - name: Upload Checksums to S3
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        with:
+          args: --acl private --follow-symlinks
+        env:
+          AWS_S3_BUCKET: ${{ secrets.AWS_BUILDS_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          SOURCE_DIR: './*.sha256'
+          DEST_DIR: 'checksums/'
