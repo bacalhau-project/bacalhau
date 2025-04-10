@@ -17,11 +17,6 @@ on:
         required: false
         default: 14
         type: number
-      codecov:
-        description: 'Whether to upload to codecov'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
   combine-coverage:
@@ -99,13 +94,6 @@ jobs:
           # Extract total coverage percentage for the job summary
           TOTAL_COV=$(go tool cover -func=coverage/${{ inputs.output_name }}.coverage | grep total | awk '{print $3}')
           echo "total_coverage=$TOTAL_COV" >> $GITHUB_OUTPUT
-
-      - name: Upload to Codecov
-        if: inputs.codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: coverage/${{ inputs.output_name }}.coverage
-          flags: ${{ inputs.output_name }}
 
       - name: Upload combined coverage report
         uses: actions/upload-artifact@v4

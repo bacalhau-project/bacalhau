@@ -56,4 +56,3 @@ jobs:
       coverage_reports: '["unit-tests", "integration-tests"]'
       output_name: "pr-combined"
       retention_days: 14
-      codecov: true
