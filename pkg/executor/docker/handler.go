@@ -110,11 +110,17 @@ func (h *executionHandler) run(ctx context.Context) {
 		// Send the result or capturing the logs to the channel but don't block on it so this goroutine can exit.
 		// By the time we get here the execution might have already been cancelled.
 		// So we don't know whether there is a reader on the channel or not.
+		logTrace := log.Trace().
+			Str("logs_dir", logsDir).
+			Int64("byte_size", writeResult.Value)
+		if writeResult.Error != nil {
+			logTrace = logTrace.Err(writeResult.Error)
+		}
 		select {
 		case logCaptureCh <- writeResult:
-			log.Trace().Str("logs_dir", logsDir).Msg("container log capture result sent")
+			logTrace.Msg("container log capture result sent")
 		default:
-			log.Trace().Str("logs_dir", logsDir).Msg("no reader on container log capture")
+			logTrace.Msg("no reader on container log capture")
 		}
 	}()
 
@@ -273,7 +279,7 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 			}
 		case readingResult := <-readResultCh:
 			if readingResult.Error != nil {
-				log.Error().Err(err).Msg("execution log reader failed")
+				log.Error().Err(readingResult.Error).Msg("execution log reader failed")
 			} else {
 				log.Debug().
 					Str("execution", h.executionID).

@@ -77,7 +77,7 @@ func TimestampedStdCopy(
 				if !tail && numRead < stdWriterPrefixLen {
 					// EOF and not tailing
 					// Stop reading more frames
-					log.Debug().Str("buffered_bytes", fmt.Sprintf("%d", numRead)).Msg("partial header read while not tailing")
+					log.Debug().Int("buffered_bytes", numRead).Msg("partial header read while not tailing")
 					return written, nil
 				}
 				// EOF and tailing
@@ -86,7 +86,7 @@ func TimestampedStdCopy(
 				select {
 				case <-cancelCh:
 					// Stop reading more frames
-					log.Debug().Str("buffered_bytes", fmt.Sprintf("%d", numRead)).Msg("cancelling read while waiting for header")
+					log.Debug().Int("buffered_bytes", numRead).Msg("cancelling read while waiting for header")
 					return written, nil
 				case <-tailTicker.C:
 					continue
@@ -139,7 +139,7 @@ func TimestampedStdCopy(
 				tailTicker.Reset(endFrameWait)
 				select {
 				case <-cancelCh:
-					log.Debug().Str("buffered_size", fmt.Sprintf("%d", numRead)).Msg("cancelling read while waitinf for frame")
+					log.Debug().Int("buffered_size", numRead).Msg("cancelling read while waiting for frame")
 					return written, nil
 				case <-tailTicker.C:
 					continue
@@ -162,7 +162,7 @@ func TimestampedStdCopy(
 		// it will only be handled when processing the next frame.
 		select {
 		case <-cancelCh:
-			log.Debug().Str("buffered_size", fmt.Sprintf("%d", numRead)).Msg("dropping frame due to cancellation")
+			log.Debug().Int("buffered_size", numRead).Msg("dropping frame due to cancellation")
 			return written, nil
 		default:
 			// continue

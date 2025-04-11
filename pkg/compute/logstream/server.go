@@ -81,7 +81,7 @@ func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLog
 		readingResult := <-readingResultCh
 		defer closer.CloseWithLogOnError("execution_stream_pipe", writer)
 		if readingResult.Error != nil {
-			log.Error().Err(err).Msg("execution log reader failed")
+			log.Error().Err(readingResult.Error).Msg("execution log reader failed")
 		} else {
 			log.Debug().
 				Str("execution", execution.ID).
@@ -137,13 +137,11 @@ func (s *server) executionWait(ctx context.Context, executionID string) (*models
 
 		select {
 		case <-ctx.Done():
-			msg := "cancelled while waiting for execution"
-			log.Debug().Str("execution", executionID).Msg(msg)
-			return nil, errors.New(msg)
+			log.Debug().Str("execution", executionID).Msg("cancelled while waiting for execution")
+			return nil, fmt.Errorf("cancelled while waiting for execution %s", executionID)
 		case <-timeout:
-			msg := "timeout while waiting for execution"
-			log.Debug().Str("execution", executionID).Msg(msg)
-			return nil, errors.New(msg)
+			log.Debug().Str("execution", executionID).Msg("timeout while waiting for execution")
+			return nil, fmt.Errorf("timeout while waiting for execution %s", executionID)
 		case <-ticker.C:
 			continue
 		}
