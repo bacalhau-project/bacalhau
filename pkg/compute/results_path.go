@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	OutputDir  = "output"
-	LogsDir    = "logs"
-	ResultsDir = "results"
+	OutputDir            = "output"
+	LogsDir              = "logs"
+	ResultsDir           = "results"
+	ExecutionLogFileName = "raw_container_logs"
 )
 
 // Returns the path do the sub-directory in which execution logs are stored
