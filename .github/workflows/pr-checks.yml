@@ -43,7 +43,7 @@ jobs:
     with:
       test_name: container-tests
       test_working_dir: "test_integration"
-      build_mode: "test"
+      build_mode: "make"
       binary_output_path: "common_assets/bacalhau_bin"
 
   combined-coverage:
