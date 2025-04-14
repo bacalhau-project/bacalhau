@@ -123,6 +123,9 @@ jobs:
             -coverpkg=${{ inputs.coverage_packages }} \
             -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
             ${{ inputs.test_args }}
+          
+          # Store exit code
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
 
       - name: Test Report
         uses: dorny/test-reporter@v1
