@@ -11,7 +11,7 @@ inputs:
     required: true
     default: 'amd64'
   mode:
-    description: 'Build mode: "release" (tarball) or "test" (direct binary)'
+    description: 'Build mode: "release" (tarball), "test" (direct binary), or "make" (calls make build)'
     required: true
     default: 'release'
   test_tags:
@@ -34,7 +34,7 @@ inputs:
     description: 'Path of files to upload as artifact'
     required: false
     default: 'dist/bacalhau_*'
-  artificat_retention:
+  artifact_retention:
     description: 'Retention days for the artifact'
     required: false
     default: '30'
@@ -97,6 +97,14 @@ runs:
         make build-bacalhau-tgz
         echo "::endgroup::"
 
+    - name: Build with make
+      if: inputs.mode == 'make'
+      shell: bash
+      run: |
+        echo "::group::Building with make build"
+        make build
+        echo "::endgroup::"
+
     - name: Build for testing
       if: inputs.mode == 'test'
       shell: bash
@@ -121,13 +129,49 @@ runs:
           echo "Tag flags: ${TAG_FLAGS}"
         fi
         
-        echo "Creating output directory for: ${{ inputs.binary_output_path }}"
-        mkdir -p $(dirname ${{ inputs.binary_output_path }})
+        # Create a temporary output path
+        TEMP_OUT_PATH="./bacalhau-test-binary"
         
         echo "Running go build with flags: ${BUILD_FLAGS} ${TAG_FLAGS} ${COVERAGE_FLAGS}"
-        go build -ldflags "${BUILD_FLAGS}" ${TAG_FLAGS} ${COVERAGE_FLAGS} -trimpath -o ${{ inputs.binary_output_path }} .
-        chmod +x ${{ inputs.binary_output_path }}
+        go build -ldflags "${BUILD_FLAGS}" ${TAG_FLAGS} ${COVERAGE_FLAGS} -trimpath -o ${TEMP_OUT_PATH} .
+        chmod +x ${TEMP_OUT_PATH}
         echo "Test build completed"
+        echo "::endgroup::"
+
+    - name: Move binary to output path
+      if: inputs.binary_output_path != ''
+      shell: bash
+      run: |
+        echo "::group::Moving binary to output path"
+        mkdir -p $(dirname ${{ inputs.binary_output_path }})
+        
+        if [[ "${{ inputs.mode }}" == "release" ]]; then
+          # Extract from tarball
+          echo "Extracting binary from release tarball"
+          TARBALL=$(find dist -name "bacalhau_*.tar.gz" | head -n 1)
+          if [[ -n "$TARBALL" ]]; then
+            TMP_DIR=$(mktemp -d)
+            tar -xzf $TARBALL -C $TMP_DIR
+            cp $TMP_DIR/bacalhau ${{ inputs.binary_output_path }}
+            rm -rf $TMP_DIR
+          else
+            echo "Warning: Could not find tarball to extract binary from"
+          fi
+        elif [[ "${{ inputs.mode }}" == "make" || "${{ inputs.mode }}" == "makefile" ]]; then
+          # Copy from default make build location
+          echo "Copying binary from make build location"
+          cp bin/${{ inputs.os }}/${{ inputs.arch }}/bacalhau ${{ inputs.binary_output_path }}
+        elif [[ "${{ inputs.mode }}" == "test" ]]; then
+          # For test mode, we already built to a temp location
+          if [[ -f "./bacalhau-test-binary" ]]; then
+            echo "Moving test binary from temporary location"
+            mv ./bacalhau-test-binary ${{ inputs.binary_output_path }}
+          fi
+        fi
+        
+        # Ensure executable permissions
+        chmod +x ${{ inputs.binary_output_path }}
+        echo "Binary successfully moved to ${{ inputs.binary_output_path }}"
         echo "::endgroup::"
 
     - name: Cleanup signing keys
@@ -141,7 +185,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}
-        path: ${{ inputs.mode == 'test' && inputs.binary_output_path || inputs.artifact_path }}
+        path: ${{ inputs.binary_output_path != '' && inputs.binary_output_path || inputs.artifact_path }}
         retention-days: ${{ inputs.artifact_retention }}
 
     - name: Build summary
@@ -158,6 +202,10 @@ runs:
           if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
             echo "Coverage: Enabled"
           fi
+        fi
+        
+        if [[ "${{ inputs.mode }}" == "make" || "${{ inputs.mode }}" == "makefile" ]]; then
+          echo "Make build: Standard make build"
         fi
         if [[ "${{ inputs.upload_artifact }}" == "true" ]]; then
           echo "Artifact: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}"
