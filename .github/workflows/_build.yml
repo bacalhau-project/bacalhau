@@ -40,6 +40,7 @@ jobs:
           os: ${{ matrix.os }}
           arch: ${{ matrix.goarch }}
           mode: 'release'
+          upload_artifact: 'true'
           private_pem: ${{ secrets.PRIVATE_PEM }}
           public_pem: ${{ secrets.PUBLIC_PEM }}
           passphrase: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}

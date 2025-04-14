@@ -103,7 +103,7 @@ jobs:
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
 
-      - name: Build binary using composite action
+      - name: Build binary
         uses: ./.github/actions/build-bacalhau
         with:
           os: ${{ inputs.build_os }}

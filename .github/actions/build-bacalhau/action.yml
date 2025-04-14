@@ -25,7 +25,7 @@ inputs:
   upload_artifact:
     description: 'Whether to upload as a GitHub artifact'
     required: false
-    default: 'true'
+    default: 'false'
   artifact_name:
     description: 'Name for the artifact (defaults to OS-ARCH)'
     required: false
