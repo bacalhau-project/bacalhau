@@ -19,10 +19,10 @@ jobs:
     name: Static Analysis
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # Setup common tools with caching
+      # Setup Go with caching
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -32,21 +32,40 @@ jobs:
       # Run all static analysis checks
       - name: Codespell
         run: |
+          # Install cspell for spell checking
           yarn global add cspell@latest
           make spellcheck-code
 
-      # Run swagger validation if enabled
+      # Run swagger validation to ensure API documentation is correct
       - name: Validate Swagger
         uses: ./.github/actions/swagger-validation
+        id: swagger-validation
 
       # Run pre-commit hooks if enabled
       - name: Run pre-commit checks
         run: |
+          # Install pre-commit
           python -m pip install pre-commit
+
+          # Run all pre-commit hooks on all files
           pre-commit run --show-diff-on-failure --color=always --all-files
 
-      # Run golangci-lint if enabled
-      - name: golangci-lint
+      # Run golangci-lint
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6.5.1
         with:
           version: ${{ inputs.golangci_lint_version }}
+          args: --timeout=5m --verbose
+
+      # Summarize results
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Static Analysis Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if there were any failures and report them
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ All static analysis checks passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some static analysis checks failed. Please see the job logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

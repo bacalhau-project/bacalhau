@@ -71,25 +71,13 @@ jobs:
       COVERAGE_DIR: ${{ github.workspace }}/coverage
 
     steps:
-      - name: Prepare tmp directories for tests
-        run: |
-          # Create a test directory with permissive ACLs
-          mkdir -p /tmp
-          sudo chmod 1777 /tmp
-
-          # Apply ACLs to allow both the container root and runner user to modify files
-          # This is key - it allows files created by root to be modified by non-root
-          sudo setfacl -d -m u::rwx,g::rwx,o::rwx /tmp
-
-          # Set sticky bit to prevent others from deleting files
-          sudo chmod +t /tmp
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - name: Setup Go
+        id: setup-go
         uses: actions/setup-go@v5
         with:
           go-version-file: ${{ inputs.go_version_file }}

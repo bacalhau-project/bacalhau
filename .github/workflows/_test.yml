@@ -76,10 +76,9 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Go
+        id: setup-go
         uses: actions/setup-go@v5
         with:
           go-version-file: ${{ inputs.go_version_file }}
@@ -90,11 +89,14 @@ jobs:
 
       - name: Create directories
         run: |
+          # Create directories for test reports and coverage data
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
+          echo "✅ Report and coverage directories created"
 
       - name: Install IPFS (if required)
         if: inputs.install_ipfs
+        timeout-minutes: 5
         run: |
           # Install IPFS for integration tests that require a local IPFS node
           wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
@@ -110,6 +112,9 @@ jobs:
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
+          echo "Running ${{ inputs.test_name }} tests..."
+          
+          # Run tests with gotestsum for better reporting
           gotestsum \
           --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
           --format testname \
@@ -134,8 +139,19 @@ jobs:
       - name: Generate HTML coverage report
         if: inputs.coverage_packages != ''
         run: |
+          echo "Generating HTML coverage report..."
+          
+          # Check if coverage file exists
+          if [ ! -f "${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage" ]; then
+            echo "❌ Coverage file not found. Skipping HTML report generation."
+            exit 0
+          fi
+          
+          # Generate HTML report from coverage data
           go tool cover -html=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
                         -o ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
+
+          echo "✅ HTML coverage report generated"
 
       - name: Upload Test Reports as Artifacts
         uses: actions/upload-artifact@v4
@@ -148,3 +164,21 @@ jobs:
             ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage
             ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
           retention-days: 30
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## ${{ inputs.test_name }} Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Report test status
+          if [ "${{ steps.run-tests.outputs.exit_code }}" == "0" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed. See test report for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Add coverage information if available
+          if [ -f "${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage" ]; then
+            TOTAL_COV=$(go tool cover -func=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage | grep total | awk '{print $3}')
+            echo "📊 Test coverage: **${TOTAL_COV}**" >> $GITHUB_STEP_SUMMARY
+          fi

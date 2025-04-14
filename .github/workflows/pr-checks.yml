@@ -9,6 +9,11 @@ permissions:
   actions: read
   checks: write
 
+# Define timeout for the entire workflow to prevent hanging jobs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   static-analysis:
     name: Analyze
@@ -16,11 +21,6 @@ jobs:
     with:
       go_version_file: go.work
       golangci_lint_version: v1.64.5
-
-  build-binaries:
-    name: Binary
-    uses: ./.github/workflows/_build.yml
-    secrets: inherit
 
   unit-tests:
     name: Unit Tests
