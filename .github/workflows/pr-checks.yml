@@ -27,14 +27,14 @@ jobs:
     uses: ./.github/workflows/_test.yml
     with:
       test_name: unit-tests
-      test_args: "-tags=unit -failfast -retry 2" # Add retry logic for flaky tests
+      test_args: "-tags=unit"
 
   integration-tests:
     name: Integration Tests
     uses: ./.github/workflows/_test.yml
     with:
       test_name: integration-tests
-      test_args: "-tags=integration -failfast -retry 2" # Add retry logic for flaky tests
+      test_args: "-tags=integration"
       install_ipfs: true
 
   container-tests:

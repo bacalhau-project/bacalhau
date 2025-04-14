@@ -112,8 +112,9 @@ jobs:
         run: |
           gotestsum \
           --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
-            --format testname \
+          --format testname \
           --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
+          --rerun-fails \
           -- \
             ${{ inputs.test_path }} \
             -coverpkg=${{ inputs.coverage_packages }} \

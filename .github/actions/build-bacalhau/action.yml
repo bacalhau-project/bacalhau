@@ -67,47 +67,68 @@ runs:
     - name: Set up environment
       shell: bash
       run: |
+        echo "::group::Setting up build environment"
+        echo "Setting GOOS=${{ inputs.os }}, GOARCH=${{ inputs.arch }}"
         echo "GOOS=${{ inputs.os }}" >> $GITHUB_ENV
         echo "GOARCH=${{ inputs.arch }}" >> $GITHUB_ENV
+        echo "Build mode: ${{ inputs.mode }}"
+        echo "::endgroup::"
 
     - name: Setup signing keys
       if: inputs.private_pem != '' && inputs.public_pem != ''
       shell: bash
       run: |
+        echo "::group::Setting up signing keys"
+        echo "Preparing PEM keys for binary signing"
         echo "${{ inputs.private_pem }}" > /tmp/private.pem && chmod 600 /tmp/private.pem
         echo "${{ inputs.public_pem }}" > /tmp/public.pem && chmod 600 /tmp/public.pem
         
         if [[ -n "${{ inputs.passphrase }}" ]]; then
+          echo "Setting passphrase for private key"
           echo "PRIVATE_KEY_PASSPHRASE=${{ inputs.passphrase }}" >> $GITHUB_ENV
         fi
+        echo "::endgroup::"
 
     - name: Build for release
       if: inputs.mode == 'release'
       shell: bash
       run: |
+        echo "::group::Building release binary"
         make build-bacalhau-tgz
+        echo "::endgroup::"
 
     - name: Build for testing
       if: inputs.mode == 'test'
       shell: bash
       run: |
+        echo "::group::Building test binary"
+        echo "Starting test build for ${{ inputs.os }}/${{ inputs.arch }}"
         TAG=$(git describe --tags --always)
+        echo "Git tag: ${TAG}"
+        
         BUILD_FLAGS="-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}"
+        echo "Build flags: ${BUILD_FLAGS}"
         
         COVERAGE_FLAGS=""
         if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
           COVERAGE_FLAGS="-cover -covermode=atomic"
+          echo "Coverage flags: ${COVERAGE_FLAGS}"
         fi
         
         TAG_FLAGS=""
         if [[ -n "${{ inputs.test_tags }}" ]]; then
           TAG_FLAGS="--tags=${{ inputs.test_tags }}"
+          echo "Tag flags: ${TAG_FLAGS}"
         fi
         
+        echo "Creating output directory for: ${{ inputs.binary_output_path }}"
         mkdir -p $(dirname ${{ inputs.binary_output_path }})
         
+        echo "Running go build with flags: ${BUILD_FLAGS} ${TAG_FLAGS} ${COVERAGE_FLAGS}"
         go build -ldflags "${BUILD_FLAGS}" ${TAG_FLAGS} ${COVERAGE_FLAGS} -trimpath -o ${{ inputs.binary_output_path }} .
         chmod +x ${{ inputs.binary_output_path }}
+        echo "Test build completed"
+        echo "::endgroup::"
 
     - name: Cleanup signing keys
       if: inputs.private_pem != '' && inputs.public_pem != ''
@@ -122,3 +143,23 @@ runs:
         name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}
         path: ${{ inputs.mode == 'test' && inputs.binary_output_path || inputs.artifact_path }}
         retention-days: ${{ inputs.artifact_retention }}
+
+    - name: Build summary
+      shell: bash
+      run: |
+        echo "::group::Build summary"
+        echo "✅ Bacalhau build completed for ${{ inputs.os }}/${{ inputs.arch }}"
+        echo "Mode: ${{ inputs.mode }}"
+        if [[ "${{ inputs.mode }}" == "test" ]]; then
+          echo "Output binary: ${{ inputs.binary_output_path }}"
+          if [[ "${{ inputs.test_tags }}" != "" ]]; then
+            echo "Tags: ${{ inputs.test_tags }}"
+          fi
+          if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
+            echo "Coverage: Enabled"
+          fi
+        fi
+        if [[ "${{ inputs.upload_artifact }}" == "true" ]]; then
+          echo "Artifact: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}"
+        fi
+        echo "::endgroup::"
