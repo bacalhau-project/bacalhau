@@ -39,14 +39,12 @@ jobs:
 
   container-tests:
     name: Container Tests
-    needs: [build-binaries]
     uses: ./.github/workflows/_test_container.yml
     with:
       test_name: container-tests
       test_working_dir: "test_integration"
-      download_binary: true
-      binary_artifact_name: "linux-amd64"
-      binary_output_path: "test_integration/common_assets/bacalhau_bin"
+      build_mode: "release"
+      binary_output_path: "common_assets/bacalhau_bin"
 
   combined-coverage:
     name: Coverage

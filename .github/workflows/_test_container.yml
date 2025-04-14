@@ -22,25 +22,35 @@ on:
         required: false
         default: 30
         type: number
-      build_binary:
-        description: "Whether to build a binary for tests"
+      build_mode:
+        description: "Binary build mode: 'release' or 'test'"
         required: false
-        default: false
-        type: boolean
-      download_binary:
-        description: "Whether to download a binary for tests"
+        default: "test"
+        type: string
+      build_os:
+        description: "Operating system to build for"
         required: false
-        default: false
-        type: boolean
-      binary_artifact_name:
-        description: "Name of the artifact containing the binary"
+        default: "linux"
+        type: string
+      build_arch:
+        description: "Architecture to build for"
         required: false
-        default: "linux-amd64"
+        default: "amd64"
+        type: string
+      test_tags:
+        description: "Build tags for test mode (e.g. unit,integration)"
+        required: false
+        default: ""
+        type: string
+      test_coverage:
+        description: "Whether to include coverage instrumentation in test builds"
+        required: false
+        default: "false"
         type: string
       binary_output_path:
         description: "Output path for binary"
         required: false
-        default: ""
+        default: "common_assets/bacalhau_bin"
         type: string
       environment_name:
         description: "GitHub Environment to use"
@@ -93,49 +103,49 @@ jobs:
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
 
-      - name: Download binary (if required)
-        if: inputs.download_binary
-        uses: actions/download-artifact@v4
+      - name: Build binary using composite action
+        uses: ./.github/actions/build-bacalhau
         with:
-          name: ${{ inputs.binary_artifact_name }}
-          path: compiled-artifacts/
+          os: ${{ inputs.build_os }}
+          arch: ${{ inputs.build_arch }}
+          mode: ${{ inputs.build_mode }}
+          test_tags: ${{ inputs.test_tags }}
+          test_coverage: ${{ inputs.test_coverage }}
+          binary_output_path: ${{ github.workspace }}/temp_binary/bacalhau
 
-      - name: Setup downloaded binary (if required)
-        if: inputs.download_binary
+      - name: Setup binary for testing
         shell: bash
         run: |
-          # Extract and copy binary to the specified location
-          tar -xzf compiled-artifacts/bacalhau_*.tar.gz -C compiled-artifacts/
-
           # Create directory for binary if it doesn't exist
-          mkdir -p $(dirname ${{ inputs.binary_output_path }})
+          mkdir -p $(dirname ${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }})
+          
+          if [[ "${{ inputs.build_mode }}" == "release" ]]; then
+            # For release mode, we need to extract the tarball
+            echo "Extracting release binary from tarball"
+            mkdir -p extracted
+            tar -xzf ${{ github.workspace }}/dist/bacalhau_*.tar.gz -C extracted/
 
           # Copy binary to the specified location and make it executable
-          cp compiled-artifacts/bacalhau "${{ inputs.binary_output_path }}"
-          chmod +x "${{ inputs.binary_output_path }}"
-
-          # Verify binary works
-          ${{ inputs.binary_output_path }} version
-
-      - name: Build binary (if required)
-        if: inputs.build_binary && !inputs.download_binary
-        run: |
-          # Build the binary for tests
-          TAG=$(git describe --tags --always)
-          GOOS=linux GOARCH=amd64 go build -o ${{ inputs.binary_output_path }} \
-            -v -ldflags="-X 'github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}'"
+            cp extracted/bacalhau "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
+          else
+            # For test mode, copy directly
+            echo "Copying test binary"
+            cp ${{ github.workspace }}/temp_binary/bacalhau "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
+          fi
 
           # Ensure the binary is executable
-          chmod +x ${{ inputs.binary_output_path }}
+          chmod +x "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
+          
           # Verify binary works
-          ${{ inputs.binary_output_path }} version
+          echo "Verifying binary works:"
+          "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}" version
 
       - name: Run tests
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
           # Verify binary works before running tests
-          common_assets/bacalhau_bin version
+          ${{ inputs.binary_output_path }} version
           
           # Run the tests
           go test -v -count=1 ./...

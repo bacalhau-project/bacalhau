@@ -115,8 +115,8 @@ jobs:
           --format testname \
           --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
           --rerun-fails \
+          --packages="${{ inputs.test_path}}" \
           -- \
-            ${{ inputs.test_path }} \
             -coverpkg=${{ inputs.coverage_packages }} \
             -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
             ${{ inputs.test_args }}
