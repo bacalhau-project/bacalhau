@@ -1,0 +1,124 @@
+name: 'Build Bacalhau'
+description: 'Builds a Bacalhau binary for a specific OS and architecture'
+
+inputs:
+  os:
+    description: 'Operating system to build for'
+    required: true
+    default: 'linux'
+  arch:
+    description: 'Architecture to build for'
+    required: true
+    default: 'amd64'
+  mode:
+    description: 'Build mode: "release" (tarball) or "test" (direct binary)'
+    required: true
+    default: 'release'
+  test_tags:
+    description: 'Build tags for test mode (e.g. unit,integration)'
+    required: false
+    default: ''
+  test_coverage:
+    description: 'Whether to include coverage instrumentation in test builds'
+    required: false
+    default: 'false'
+  upload_artifact:
+    description: 'Whether to upload as a GitHub artifact'
+    required: false
+    default: 'true'
+  artifact_name:
+    description: 'Name for the artifact (defaults to OS-ARCH)'
+    required: false
+    default: ''
+  artifact_path:
+    description: 'Path of files to upload as artifact'
+    required: false
+    default: 'dist/bacalhau_*'
+  artificat_retention:
+    description: 'Retention days for the artifact'
+    required: false
+    default: '30'
+  binary_output_path:
+    description: 'Where to output the built binary (for test mode)'
+    required: false
+    default: ''
+  private_pem:
+    description: 'Private PEM content for signing'
+    required: false
+    default: ''
+  public_pem:
+    description: 'Public PEM content for signing'
+    required: false
+    default: ''
+  passphrase:
+    description: 'Passphrase for private key'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install earthly
+      if: inputs.mode == 'release'
+      uses: earthly/actions-setup@v1
+      with:
+        github-token: ${{ github.token }}
+
+    - name: Set up environment
+      shell: bash
+      run: |
+        echo "GOOS=${{ inputs.os }}" >> $GITHUB_ENV
+        echo "GOARCH=${{ inputs.arch }}" >> $GITHUB_ENV
+
+    - name: Setup signing keys
+      if: inputs.private_pem != '' && inputs.public_pem != ''
+      shell: bash
+      run: |
+        echo "${{ inputs.private_pem }}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+        echo "${{ inputs.public_pem }}" > /tmp/public.pem && chmod 600 /tmp/public.pem
+        
+        if [[ -n "${{ inputs.passphrase }}" ]]; then
+          echo "PRIVATE_KEY_PASSPHRASE=${{ inputs.passphrase }}" >> $GITHUB_ENV
+        fi
+
+    - name: Build for release
+      if: inputs.mode == 'release'
+      shell: bash
+      run: |
+        make build-bacalhau-tgz
+
+    - name: Build for testing
+      if: inputs.mode == 'test'
+      shell: bash
+      run: |
+        TAG=$(git describe --tags --always)
+        BUILD_FLAGS="-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}"
+        
+        COVERAGE_FLAGS=""
+        if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
+          COVERAGE_FLAGS="-cover -covermode=atomic"
+        fi
+        
+        TAG_FLAGS=""
+        if [[ -n "${{ inputs.test_tags }}" ]]; then
+          TAG_FLAGS="--tags=${{ inputs.test_tags }}"
+        fi
+        
+        mkdir -p $(dirname ${{ inputs.binary_output_path }})
+        
+        go build -ldflags "${BUILD_FLAGS}" ${TAG_FLAGS} ${COVERAGE_FLAGS} -trimpath -o ${{ inputs.binary_output_path }} .
+        chmod +x ${{ inputs.binary_output_path }}
+
+    - name: Cleanup signing keys
+      if: inputs.private_pem != '' && inputs.public_pem != ''
+      shell: bash
+      run: |
+        rm -f /tmp/private.pem /tmp/public.pem
+
+    - name: Upload artifact
+      if: inputs.upload_artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}
+        path: ${{ inputs.mode == 'test' && inputs.binary_output_path || inputs.artifact_path }}
+        retention-days: ${{ inputs.artifact_retention }}
