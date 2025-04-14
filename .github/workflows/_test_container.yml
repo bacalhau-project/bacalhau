@@ -1,0 +1,147 @@
+name: Test Containers Workflow
+
+on:
+  workflow_call:
+    inputs:
+      go_version_file:
+        description: "Path to the file containing Go version"
+        required: false
+        default: "go.work"
+        type: string
+      test_name:
+        description: "Name for test reports and artifacts"
+        required: true
+        type: string
+      test_working_dir:
+        description: "Working directory to run tests from"
+        required: false
+        default: "."
+        type: string
+      test_path:
+        description: "Path to the directory containing tests"
+        required: false
+        default: "./..."
+        type: string
+      timeout_minutes:
+        description: "Timeout for tests in minutes"
+        required: false
+        default: 30
+        type: number
+      build_mode:
+        description: "Binary build mode: 'release' or 'test'"
+        required: false
+        default: "test"
+        type: string
+      build_os:
+        description: "Operating system to build for"
+        required: false
+        default: "linux"
+        type: string
+      build_arch:
+        description: "Architecture to build for"
+        required: false
+        default: "amd64"
+        type: string
+      binary_output_path:
+        description: "Output path for binary"
+        required: false
+        default: "common_assets/bacalhau_bin"
+        type: string
+      environment_name:
+        description: "GitHub Environment to use"
+        required: false
+        default: "test"
+        type: string
+
+jobs:
+  run-tests:
+    name: Run
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    environment: ${{ inputs.environment_name }}
+    # Define key paths relative to repository root
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go_version_file }}
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+          echo "✅ Report and coverage directories created"
+
+      - name: Build binary
+        uses: ./.github/actions/build-bacalhau
+        with:
+          os: ${{ inputs.build_os }}
+          arch: ${{ inputs.build_arch }}
+          mode: ${{ inputs.build_mode }}
+          binary_output_path: ${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}
+
+      - name: Run tests
+        id: run-tests
+        shell: bash
+        working-directory: ${{ inputs.test_working_dir }}
+        run: |
+          # Verify binary works before running tests
+          ${{ inputs.binary_output_path }} version
+          
+          echo "Running ${{ inputs.test_name }} tests..."
+          
+          # Run the tests with gotestsum for better reporting
+          gotestsum \
+            --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
+            --format testname \
+            --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
+            --rerun-fails \
+            --packages="${{ inputs.test_path }}" 
+          
+          # Store exit code
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }} Report
+          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+          max-annotations: "50"
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload Test Reports as Artifacts
+        uses: actions/upload-artifact@v4
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }}-reports
+          path: |
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json
+          retention-days: 30
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## ${{ inputs.test_name }} Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Report test status
+          if [ "${{ steps.run-tests.outputs.exit_code }}" == "0" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed. See test report for details." >> $GITHUB_STEP_SUMMARY
+          fi
