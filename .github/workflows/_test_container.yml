@@ -1,4 +1,4 @@
-name: Reusable Test Workflow
+name: Test Containers Workflow
 
 on:
   workflow_call:
@@ -16,6 +16,11 @@ on:
         description: "Working directory to run tests from"
         required: false
         default: "."
+        type: string
+      test_path:
+        description: "Path to the directory containing tests"
+        required: false
+        default: "./..."
         type: string
       timeout_minutes:
         description: "Timeout for tests in minutes"
@@ -36,16 +41,6 @@ on:
         description: "Architecture to build for"
         required: false
         default: "amd64"
-        type: string
-      test_tags:
-        description: "Build tags for test mode (e.g. unit,integration)"
-        required: false
-        default: ""
-        type: string
-      test_coverage:
-        description: "Whether to include coverage instrumentation in test builds"
-        required: false
-        default: "false"
         type: string
       binary_output_path:
         description: "Output path for binary"
@@ -90,6 +85,7 @@ jobs:
         run: |
           mkdir -p ${{ env.REPORTS_DIR }}
           mkdir -p ${{ env.COVERAGE_DIR }}
+          echo "✅ Report and coverage directories created"
 
       - name: Build binary
         uses: ./.github/actions/build-bacalhau
@@ -97,16 +93,57 @@ jobs:
           os: ${{ inputs.build_os }}
           arch: ${{ inputs.build_arch }}
           mode: ${{ inputs.build_mode }}
-          test_tags: ${{ inputs.test_tags }}
-          test_coverage: ${{ inputs.test_coverage }}
           binary_output_path: ${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}
 
       - name: Run tests
+        id: run-tests
         shell: bash
         working-directory: ${{ inputs.test_working_dir }}
         run: |
           # Verify binary works before running tests
           ${{ inputs.binary_output_path }} version
           
-          # Run the tests
-          go test -v -count=1 ./...
+          echo "Running ${{ inputs.test_name }} tests..."
+          
+          # Run the tests with gotestsum for better reporting
+          gotestsum \
+            --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
+            --format testname \
+            --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
+            --rerun-fails \
+            --packages="${{ inputs.test_path }}" 
+          
+          # Store exit code
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }} Report
+          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+          max-annotations: "50"
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload Test Reports as Artifacts
+        uses: actions/upload-artifact@v4
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }}-reports
+          path: |
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json
+          retention-days: 30
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## ${{ inputs.test_name }} Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Report test status
+          if [ "${{ steps.run-tests.outputs.exit_code }}" == "0" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed. See test report for details." >> $GITHUB_STEP_SUMMARY
+          fi
