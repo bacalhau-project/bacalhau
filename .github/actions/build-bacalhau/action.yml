@@ -59,7 +59,7 @@ runs:
   using: "composite"
   steps:
     - name: Install earthly
-      if: inputs.mode == 'release'
+      if: inputs.mode == 'release' || inputs.mode == 'make'
       uses: earthly/actions-setup@v1
       with:
         github-token: ${{ github.token }}
@@ -157,7 +157,7 @@ runs:
           else
             echo "Warning: Could not find tarball to extract binary from"
           fi
-        elif [[ "${{ inputs.mode }}" == "make" || "${{ inputs.mode }}" == "makefile" ]]; then
+        elif [[ "${{ inputs.mode }}" == "make" ]]; then
           # Copy from default make build location
           echo "Copying binary from make build location"
           cp bin/${{ inputs.os }}/${{ inputs.arch }}/bacalhau ${{ inputs.binary_output_path }}
@@ -204,7 +204,7 @@ runs:
           fi
         fi
         
-        if [[ "${{ inputs.mode }}" == "make" || "${{ inputs.mode }}" == "makefile" ]]; then
+        if [[ "${{ inputs.mode }}" == "make" ]]; then
           echo "Make build: Standard make build"
         fi
         if [[ "${{ inputs.upload_artifact }}" == "true" ]]; then
