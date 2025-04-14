@@ -72,11 +72,9 @@ jobs:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - name: Setup Go
-        id: setup-go
         uses: actions/setup-go@v5
         with:
           go-version-file: ${{ inputs.go_version_file }}
-          cache: true
 
       - name: Install gotestsum
         run: go install gotest.tools/gotestsum@latest

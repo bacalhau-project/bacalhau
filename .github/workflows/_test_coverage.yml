@@ -30,7 +30,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.work
-          cache: true
 
       - name: Install gocovmerge
         run: go install github.com/wadey/gocovmerge@latest
