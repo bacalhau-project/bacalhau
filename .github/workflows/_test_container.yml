@@ -111,34 +111,7 @@ jobs:
           mode: ${{ inputs.build_mode }}
           test_tags: ${{ inputs.test_tags }}
           test_coverage: ${{ inputs.test_coverage }}
-          binary_output_path: ${{ github.workspace }}/temp_binary/bacalhau
-
-      - name: Setup binary for testing
-        shell: bash
-        run: |
-          # Create directory for binary if it doesn't exist
-          mkdir -p $(dirname ${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }})
-          
-          if [[ "${{ inputs.build_mode }}" == "release" ]]; then
-            # For release mode, we need to extract the tarball
-            echo "Extracting release binary from tarball"
-            mkdir -p extracted
-            tar -xzf ${{ github.workspace }}/dist/bacalhau_*.tar.gz -C extracted/
-
-          # Copy binary to the specified location and make it executable
-            cp extracted/bacalhau "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
-          else
-            # For test mode, copy directly
-            echo "Copying test binary"
-            cp ${{ github.workspace }}/temp_binary/bacalhau "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
-          fi
-
-          # Ensure the binary is executable
-          chmod +x "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}"
-          
-          # Verify binary works
-          echo "Verifying binary works:"
-          "${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}" version
+          binary_output_path: ${{ inputs.test_working_dir }}/${{ inputs.binary_output_path }}
 
       - name: Run tests
         shell: bash
