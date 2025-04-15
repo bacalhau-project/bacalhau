@@ -94,7 +94,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}
@@ -140,8 +140,9 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOpt
 		return bacerrors.Wrap(err, "failed to submit job")
 	}
 
-	if len(resp.Warnings) > 0 {
-		helpers.PrintWarnings(cmd, resp.Warnings)
+	if !opts.RunTimeSettings.PrintJobIDOnly && len(resp.Warnings) > 0 {
+		printer.PrintWarnings(cmd, resp.Warnings)
+		cmd.Println()
 	}
 
 	job.ID = resp.JobID

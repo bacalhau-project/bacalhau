@@ -32,6 +32,11 @@ type SubmitJobEvent struct {
 	TaskMetaCount        int      `json:"task_meta_count"`
 	TaskInputSourceTypes []string `json:"task_input_source_types"`
 	TaskResultPathCount  int      `json:"task_result_path_count"`
+	// TaskDockerImage captures Docker image information, only populated when TaskEngineType is "docker".
+	// For non-trusted images (not from bacalhau or expanso), the image name is hashed for privacy.
+	// TODO: Consider adding WASM module tracking in the future, but WASM modules are typically
+	// provided as input sources rather than referenced images.
+	TaskDockerImage string `json:"task_docker_image,omitempty"`
 
 	Resources Resource `json:"resources,omitempty"`
 
@@ -97,6 +102,7 @@ func NewSubmitJobEvent(j models.Job, warnings ...string) SubmitJobEvent {
 		TaskMetaCount:        len(t.Meta),
 		TaskInputSourceTypes: taskInputTypes,
 		TaskResultPathCount:  len(t.ResultPaths),
+		TaskDockerImage:      GetDockerImageTelemetry(t.Engine),
 		Resources:            resource,
 		TaskNetworkType:      t.Network.Type.String(),
 		TaskDomainsCount:     len(t.Network.Domains),

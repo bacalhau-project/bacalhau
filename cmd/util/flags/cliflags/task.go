@@ -75,7 +75,7 @@ func DefaultTaskSettings() *TaskSettings {
 			GPU:    "",
 		},
 		Network: NetworkSettings{
-			Network: models.NetworkNone,
+			Network: models.NetworkDefault,
 			Domains: make([]string, 0),
 		},
 		Timeout:      int64(time.Duration(0)),

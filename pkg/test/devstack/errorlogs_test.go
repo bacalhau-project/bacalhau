@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	dockmodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	publisher_local "github.com/bacalhau-project/bacalhau/pkg/publisher/local"
@@ -70,7 +71,7 @@ var errorLogsTestCase = scenario.Scenario{
 		ExecutorConfig: noop.ExecutorConfig{
 			ExternalHooks: noop.ExecutorConfigExternalHooks{
 				JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
-					return executor.WriteJobResults(execContext.ResultsDir, strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
+					return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ExecutionDir), strings.NewReader("apples"), strings.NewReader("oranges"), 19, nil, executor.OutputLimits{
 						MaxStdoutFileLength:   system.MaxStdoutFileLength,
 						MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 						MaxStderrFileLength:   system.MaxStderrFileLength,

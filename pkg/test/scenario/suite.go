@@ -96,7 +96,6 @@ func (s *ScenarioRunner) setupStack(stackConfig *StackConfig) (*devstack.DevStac
 func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	var resultsDir string
 
-	scenario.Job.Normalize()
 	job := scenario.Job
 	task := job.Task()
 	docker.EngineSpecRequiresDocker(s.T(), task.Engine)

@@ -1251,6 +1251,82 @@ func (s *NodeManagerTestSuite) TestConcurrentShutdown() {
 	s.Assert().Equal(lastComputeSeqNum, state.ConnectionState.LastComputeSeqNum)
 }
 
+func (s *NodeManagerTestSuite) TestGetConnectedNodesCount() {
+	// Initially should have 0 nodes (self is a requester)
+	assert.Equal(s.T(), 0, s.manager.GetConnectedNodesCount())
+
+	// Connect multiple nodes
+	node1 := s.createNodeInfo("node1")
+	node2 := s.createNodeInfo("node2")
+	node3 := s.createNodeInfo("node3")
+
+	// Connect first node
+	_, err := s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: node1})
+	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 1
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Advance clock to simulate time passing between registrations
+	s.clock.Add(5 * time.Second)
+
+	// Connect second node
+	_, err = s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: node2})
+	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 2
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Advance clock again
+	s.clock.Add(5 * time.Second)
+
+	// Connect third node
+	_, err = s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: node3})
+	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 3
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Disconnect first node
+	s.clock.Add(s.disconnected - 5*time.Second) // Advance to just before node1 should disconnect
+	s.Eventually(func() bool {
+		state, err := s.manager.Get(s.ctx, node1.ID())
+		s.Require().NoError(err)
+		return state.ConnectionState.Status == models.NodeStates.DISCONNECTED
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 2
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Disconnect second node via shutdown notice
+	_, err = s.manager.ShutdownNotice(s.ctx, nodes.ExtendedShutdownNoticeRequest{
+		ShutdownNoticeRequest: messages.ShutdownNoticeRequest{
+			NodeID: node2.ID(),
+			Reason: "testing",
+		},
+	})
+	s.Require().NoError(err)
+
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 1
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Reconnect first node
+	_, err = s.manager.Handshake(s.ctx, messages.HandshakeRequest{NodeInfo: node1})
+	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 2
+	}, 500*time.Millisecond, 20*time.Millisecond)
+
+	// Delete third node
+	err = s.manager.DeleteNode(s.ctx, node3.ID())
+	s.Require().NoError(err)
+	s.Eventually(func() bool {
+		return s.manager.GetConnectedNodesCount() == 1
+	}, 500*time.Millisecond, 20*time.Millisecond)
+}
+
 type mockNodeInfoProvider struct {
 	info models.NodeInfo
 }

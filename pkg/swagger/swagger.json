@@ -19,25 +19,6 @@
     "host": "localhost:1234",
     "basePath": "/",
     "paths": {
-        "/": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "home",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/agent/alive": {
             "get": {
                 "produces": [
@@ -52,6 +33,32 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.IsAliveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/authconfig": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the OAuth2 configuration of the node.",
+                "operationId": "agent/authconfig",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetAgentNodeAuthConfigResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -177,103 +184,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.GetVersionResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/compute/debug": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Compute Node"
-                ],
-                "summary": "Returns debug information on what the current node is doing.",
-                "operationId": "apiServer/debug",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/id": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the id of the host node.",
-                "operationId": "id",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/livez": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "livez",
-                "responses": {
-                    "200": {
-                        "description": "TODO",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/node_info": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the info of the node.",
-                "operationId": "nodeInfo",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.NodeInfo"
                         }
                     },
                     "500": {
@@ -927,53 +837,6 @@
                     }
                 }
             }
-        },
-        "/api/v1/version": {
-            "post": {
-                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Misc"
-                ],
-                "summary": "Returns the build version running on the server.",
-                "operationId": "apiServer/version",
-                "parameters": [
-                    {
-                        "description": "Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe \u003cjob-id\u003e` and fetch the `ClientID` field.",
-                        "name": "VersionRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/shared.VersionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/shared.VersionResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -1049,6 +912,17 @@
                 },
                 "sub": {
                     "description": "the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.GetAgentNodeAuthConfigResponse": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/types.Oauth2Config"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -1883,9 +1757,11 @@
                 1,
                 2,
                 3,
-                4
+                4,
+                5
             ],
             "x-enum-varnames": [
+                "NetworkDefault",
                 "NetworkNone",
                 "NetworkHost",
                 "NetworkFull",
@@ -2353,23 +2229,6 @@
                 "LessThan"
             ]
         },
-        "shared.VersionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "shared.VersionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/models.BuildVersionInfo"
-                }
-            }
-        },
         "types.API": {
             "type": "object",
             "properties": {
@@ -2402,6 +2261,38 @@
                     "additionalProperties": {
                         "$ref": "#/definitions/types.AuthenticatorConfig"
                     }
+                },
+                "Oauth2": {
+                    "$ref": "#/definitions/types.Oauth2Config"
+                },
+                "Users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AuthUser"
+                    }
+                }
+            }
+        },
+        "types.AuthUser": {
+            "type": "object",
+            "properties": {
+                "APIKey": {
+                    "type": "string"
+                },
+                "Alias": {
+                    "type": "string"
+                },
+                "Capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Capability"
+                    }
+                },
+                "Password": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
                 }
             }
         },
@@ -2506,6 +2397,17 @@
                 },
                 "Timeouts": {
                     "$ref": "#/definitions/types.TaskTimeoutConfig"
+                }
+            }
+        },
+        "types.Capability": {
+            "type": "object",
+            "properties": {
+                "Actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2798,10 +2700,6 @@
         "types.JobAdmissionControl": {
             "type": "object",
             "properties": {
-                "AcceptNetworkedJobs": {
-                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.\nWill be deprecated in v1.7 in favor of RejectNetworkedJobs.",
-                    "type": "boolean"
-                },
                 "Locality": {
                     "description": "Locality specifies the locality of the job input data.",
                     "allOf": [
@@ -2931,6 +2829,44 @@
                 "ManualApproval": {
                     "description": "ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.",
                     "type": "boolean"
+                }
+            }
+        },
+        "types.Oauth2Config": {
+            "type": "object",
+            "properties": {
+                "Audience": {
+                    "type": "string"
+                },
+                "DeviceAuthorizationEndpoint": {
+                    "type": "string"
+                },
+                "DeviceClientID": {
+                    "type": "string"
+                },
+                "Issuer": {
+                    "type": "string"
+                },
+                "JWKSUri": {
+                    "type": "string"
+                },
+                "PollingInterval": {
+                    "type": "integer"
+                },
+                "ProviderID": {
+                    "type": "string"
+                },
+                "ProviderName": {
+                    "type": "string"
+                },
+                "Scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "TokenEndpoint": {
+                    "type": "string"
                 }
             }
         },

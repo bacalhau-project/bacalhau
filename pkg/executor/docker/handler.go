@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strconv"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,10 +16,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/atomic"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
+	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type executionHandler struct {
@@ -31,11 +35,11 @@ type executionHandler struct {
 
 	//
 	// meta data about the task
-	executionID string
-	containerID string
-	resultsDir  string
-	limits      executor.OutputLimits
-	keepStack   bool
+	executionID  string
+	containerID  string
+	executionDir string
+	limits       executor.OutputLimits
+	keepStack    bool
 
 	//
 	// synchronization
@@ -66,8 +70,22 @@ func (h *executionHandler) run(ctx context.Context) {
 		close(h.waitCh)
 		ActiveExecutions.Dec(ctx, attribute.String("executor_id", h.ID))
 	}()
+
+	// prepare container output logs before starting the container to avoid race conditions
+	// when asking for logs immediately after starting the container and before logs are written
+	// TODO: this should be handled by outer component and not the executor,
+	//  or have the reader gracefully, and accurately, handle the case where the file is not yet created.
+	logsFile, err := h.createLogsPath()
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to create container logs file")
+		h.result = executor.NewFailedResult(fmt.Sprintf("failed to create container logs file: %s", err))
+		return
+	}
+	defer closer.CloseWithLogOnError("containerLogs", logsFile)
+
 	// start the container
 	h.logger.Info().Msg("starting container execution")
+
 	if err := h.client.ContainerStart(ctx, h.containerID, container.StartOptions{}); err != nil {
 		// Special error to alert people about bad executable
 		internalContainerStartErrorMsg := "failed to start container"
@@ -81,6 +99,22 @@ func (h *executionHandler) run(ctx context.Context) {
 		// we failed to start the container, bail.
 		return
 	}
+
+	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, nil, true, true)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to capture container output")
+		h.result = executor.NewFailedResult(fmt.Sprintf("failed to capture container output: %s", err))
+		return
+	}
+
+	// start capturing the container logs
+	go func(logReader io.ReadCloser) {
+		defer closer.CloseWithLogOnError("containerLogs", logReader)
+		if err := h.captureContainerLogs(logsFile, logReader); err != nil {
+			h.logger.Error().Err(err).Msg("failed to store container logs")
+		}
+	}(logStreamReader)
+
 	// The container is now active
 	close(h.activeCh)
 
@@ -120,7 +154,7 @@ func (h *executionHandler) run(ctx context.Context) {
 			return
 		}
 		if containerJSON.ContainerJSONBase.State.OOMKilled {
-			containerError = errors.New(`memory limit exceeded. Please refer to https://docs.bacalhau.org/getting-started/resources/#docker-executor for more information`) //nolint:lll
+			containerError = errors.New(`memory limit exceeded`) //nolint:lll
 			h.result = &models.RunCommandResult{
 				ExitCode: int(containerExitStatusCode),
 				ErrorMsg: containerError.Error(),
@@ -165,7 +199,8 @@ func (h *executionHandler) run(ctx context.Context) {
 	// we successfully followed the container logs, the container may still have produced and error which we will record
 	// along with a truncated version of the logs.
 	// persist stderr/out to the results directory, and store the metadata in the handler.
-	h.result = executor.WriteJobResults(h.resultsDir, stdoutPipe, stderrPipe, int(containerExitStatusCode), containerError, h.limits)
+	resultsDir := compute.ExecutionResultsDir(h.executionDir)
+	h.result = executor.WriteJobResults(resultsDir, stdoutPipe, stderrPipe, int(containerExitStatusCode), containerError, h.limits)
 
 	h.logger.Info().
 		Int64("status", containerExitStatusCode).
@@ -201,11 +236,15 @@ func (h *executionHandler) destroy(timeout time.Duration) error {
 	return nil
 }
 
+// TODO: Log streaming should be moved outside of executor/handler and just rely on local files captured during container execution.
 func (h *executionHandler) outputStream(ctx context.Context, request messages.ExecutionLogsRequest) (io.ReadCloser, error) {
-	since := "1"
+	var since time.Time
 	if request.Tail {
-		since = strconv.FormatInt(time.Now().Unix(), 10) //nolint:mnd
+		since = time.Now()
+	} else {
+		since = time.Unix(0, 0)
 	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -213,12 +252,33 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 	// the container isn't created yet.
 	case <-h.activeCh:
 	}
-	// Gets the underlying reader, and provides data since the value of the `since` timestamp.
-	// If we want everything, we specify 1, a timestamp which we are confident we don't have
-	// logs before. If we want to just follow new logs, we pass `time.Now()` as a string.
-	return h.client.GetOutputStream(ctx, h.containerID, since, request.Follow)
+
+	// Read and filter container logs from the local file
+	file, err := os.Open(filepath.Join(compute.ExecutionLogsDir(h.executionDir), executionOutputFileName))
+	if err != nil {
+		return nil, docker.NewCustomDockerError(bacerrors.IOError, fmt.Sprintf("unable to find container logs for execution %s", h.executionID))
+	}
+
+	return docker.ContainerOutputStream(file, since, request.Follow)
 }
 
 func (h *executionHandler) active() bool {
 	return h.running.Load()
+}
+
+const executionOutputFileName = "raw_container_logs"
+
+// createLogsPath creates the path for the container logs file.
+func (h *executionHandler) createLogsPath() (*os.File, error) {
+	filePath := filepath.Join(compute.ExecutionLogsDir(h.executionDir), executionOutputFileName)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func (h *executionHandler) captureContainerLogs(file *os.File, logReader io.Reader) error {
+	h.logger.Debug().Str("path", file.Name()).Msgf("capturing container logs")
+	return docker.WriteMultiplexedOutput(file, logReader)
 }

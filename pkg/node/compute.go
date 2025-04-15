@@ -26,7 +26,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
-	compute_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol"
@@ -95,7 +94,7 @@ func NewComputeNode(
 	})
 	enqueuedUsageTracker := capacity.NewLocalUsageTracker()
 
-	resultsPath, err := compute.NewResultsPath()
+	resultsPath, err := compute.NewResultsPath(executionDir)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +112,14 @@ func NewComputeNode(
 		return nil, err
 	}
 
+	// We set the default network type if the node rejects network jobs.
+	// Otherwise, we let each executor set the proper network type if not explicitly defined.
+	// - docker: sets the default as bridge, since it is supported across multiple platforms
+	// - wasm: sets the default as host, since it doesn't support bridge mode
+	defaultNetworkType := models.NetworkDefault
+	if cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs {
+		defaultNetworkType = models.NetworkNone
+	}
 	baseExecutor := compute.NewBaseExecutor(compute.BaseExecutorParams{
 		ID:                     cfg.NodeID,
 		Store:                  executionStore,
@@ -124,6 +131,7 @@ func NewComputeNode(
 		ResultsPath:            *resultsPath,
 		EnvResolver:            envResolver,
 		PortAllocator:          portAllocator,
+		DefaultNetworkType:     defaultNetworkType,
 	})
 
 	bufferRunner := compute.NewExecutorBuffer(compute.ExecutorBufferParams{
@@ -180,12 +188,6 @@ func NewComputeNode(
 	if startupErr != nil {
 		return nil, fmt.Errorf("failed to execute compute node startup tasks: %s", startupErr)
 	}
-
-	// register compute public http apis
-	compute_endpoint.NewEndpoint(compute_endpoint.EndpointParams{
-		Router:             apiServer.Router,
-		DebugInfoProviders: debugInfoProviders,
-	})
 
 	// Get the address this node should advertise
 	// TODO: attempt to auto-detect the address if not provided
@@ -271,6 +273,7 @@ func NewComputeNode(
 		if err = executionStore.Close(ctx); err != nil {
 			log.Error().Err(err).Msg("failed to close execution store")
 		}
+		// TODO: Remove this behaviour once we have proper execution metadata garbage collection.
 		if err = resultsPath.Close(); err != nil {
 			log.Error().Err(err).Msg("failed to close results path")
 		}
@@ -320,8 +323,7 @@ func NewBidder(
 	var semanticBidStrats []bidstrategy.SemanticBidStrategy
 	if cfg.SystemConfig.BidSemanticStrategy == nil {
 		semanticBidStrats = []bidstrategy.SemanticBidStrategy{
-			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs ||
-				!cfg.BacalhauConfig.JobAdmissionControl.AcceptNetworkedJobs),
+			semantic.NewNetworkingStrategy(cfg.BacalhauConfig.JobAdmissionControl.RejectNetworkedJobs),
 			semantic.NewStatelessJobStrategy(semantic.StatelessJobStrategyParams{
 				RejectStatelessJobs: cfg.BacalhauConfig.JobAdmissionControl.RejectStatelessJobs,
 			}),

@@ -1,0 +1,186 @@
+name: Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      go_version_file:
+        description: "Path to the file containing Go version"
+        required: false
+        default: "go.work"
+        type: string
+      test_name:
+        description: "Name for test reports and artifacts"
+        required: true
+        type: string
+      test_path:
+        description: "Path to the directory containing tests"
+        required: false
+        default: "./pkg/... ./cmd/..."
+        type: string
+      test_working_dir:
+        description: "Working directory to run tests from"
+        required: false
+        default: "."
+        type: string
+      timeout_minutes:
+        description: "Timeout for tests in minutes"
+        required: false
+        default: 30
+        type: number
+      test_args:
+        description: "Arguments to pass to go test (e.g., -p, --tags, -retry)"
+        required: false
+        default: ""
+        type: string
+      environment_name:
+        description: "GitHub Environment to use"
+        required: false
+        default: "test"
+        type: string
+      install_ipfs:
+        description: "Whether to install IPFS for tests"
+        required: false
+        default: false
+        type: boolean
+      coverage_packages:
+        description: "Comma-separated list of packages to include in coverage"
+        required: false
+        default: "github.com/bacalhau-project/bacalhau/pkg/...,github.com/bacalhau-project/bacalhau/cmd/..."
+        type: string
+
+jobs:
+  run-tests:
+    name: Run
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    environment: ${{ inputs.environment_name }}
+    # Define key paths relative to repository root
+    env:
+      REPO_ROOT: ${{ github.workspace }}
+      REPORTS_DIR: ${{ github.workspace }}/reports
+      COVERAGE_DIR: ${{ github.workspace }}/coverage
+
+    steps:
+      - name: Prepare tmp directories for tests
+        run: |
+          # Create a test directory with permissive ACLs
+          mkdir -p /tmp
+          sudo chmod 1777 /tmp
+
+          # Apply ACLs to allow both the container root and runner user to modify files
+          # This is key - it allows files created by root to be modified by non-root
+          sudo setfacl -d -m u::rwx,g::rwx,o::rwx /tmp
+
+          # Set sticky bit to prevent others from deleting files
+          sudo chmod +t /tmp
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go_version_file }}
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Create directories
+        run: |
+          # Create directories for test reports and coverage data
+          mkdir -p ${{ env.REPORTS_DIR }}
+          mkdir -p ${{ env.COVERAGE_DIR }}
+          echo "✅ Report and coverage directories created"
+
+      - name: Install IPFS (if required)
+        if: inputs.install_ipfs
+        timeout-minutes: 5
+        run: |
+          # Install IPFS for integration tests that require a local IPFS node
+          wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
+          tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
+          sudo mv kubo/ipfs /usr/local/bin/ipfs
+          ipfs init
+          ipfs config Addresses.API /ip4/127.0.0.1/tcp/5001
+          ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+          ipfs daemon --offline &
+          export BACALHAU_IPFS_CONNECT=/ip4/127.0.0.1/tcp/5001
+
+      - name: Run tests
+        id: run-tests
+        shell: bash
+        working-directory: ${{ inputs.test_working_dir }}
+        run: |
+          echo "Running ${{ inputs.test_name }} tests..."
+          
+          # Run tests with gotestsum for better reporting
+          gotestsum \
+          --junitfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml \
+          --format testname \
+          --jsonfile ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json \
+          --rerun-fails \
+          --packages="${{ inputs.test_path}}" \
+          -- \
+            -coverpkg=${{ inputs.coverage_packages }} \
+            -coverprofile=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+            ${{ inputs.test_args }}
+          
+          # Store exit code
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }} Report
+          path: ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+          max-annotations: "50"
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Generate HTML coverage report
+        if: inputs.coverage_packages != ''
+        run: |
+          echo "Generating HTML coverage report..."
+          
+          # Check if coverage file exists
+          if [ ! -f "${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage" ]; then
+            echo "❌ Coverage file not found. Skipping HTML report generation."
+            exit 0
+          fi
+          
+          # Generate HTML report from coverage data
+          go tool cover -html=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage \
+                        -o ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
+
+          echo "✅ HTML coverage report generated"
+
+      - name: Upload Test Reports as Artifacts
+        uses: actions/upload-artifact@v4
+        if: "!cancelled()"
+        with:
+          name: ${{ inputs.test_name }}-reports
+          path: |
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.xml
+            ${{ env.REPORTS_DIR }}/${{ inputs.test_name }}.json
+            ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage
+            ${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.html
+          retention-days: 30
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## ${{ inputs.test_name }} Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Report test status
+          if [ "${{ steps.run-tests.outputs.exit_code }}" == "0" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Some tests failed. See test report for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Add coverage information if available
+          if [ -f "${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage" ]; then
+            TOTAL_COV=$(go tool cover -func=${{ env.COVERAGE_DIR }}/${{ inputs.test_name }}.coverage | grep total | awk '{print $3}')
+            echo "📊 Test coverage: **${TOTAL_COV}**" >> $GITHUB_STEP_SUMMARY
+          fi

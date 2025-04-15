@@ -1,0 +1,213 @@
+name: 'Build Bacalhau'
+description: 'Builds a Bacalhau binary for a specific OS and architecture'
+
+inputs:
+  os:
+    description: 'Operating system to build for'
+    required: true
+    default: 'linux'
+  arch:
+    description: 'Architecture to build for'
+    required: true
+    default: 'amd64'
+  mode:
+    description: 'Build mode: "release" (tarball), "test" (direct binary), or "make" (calls make build)'
+    required: true
+    default: 'release'
+  test_tags:
+    description: 'Build tags for test mode (e.g. unit,integration)'
+    required: false
+    default: ''
+  test_coverage:
+    description: 'Whether to include coverage instrumentation in test builds'
+    required: false
+    default: 'false'
+  upload_artifact:
+    description: 'Whether to upload as a GitHub artifact'
+    required: false
+    default: 'false'
+  artifact_name:
+    description: 'Name for the artifact (defaults to OS-ARCH)'
+    required: false
+    default: ''
+  artifact_path:
+    description: 'Path of files to upload as artifact'
+    required: false
+    default: 'dist/bacalhau_*'
+  artifact_retention:
+    description: 'Retention days for the artifact'
+    required: false
+    default: '30'
+  binary_output_path:
+    description: 'Where to output the built binary (for test mode)'
+    required: false
+    default: ''
+  private_pem:
+    description: 'Private PEM content for signing'
+    required: false
+    default: ''
+  public_pem:
+    description: 'Public PEM content for signing'
+    required: false
+    default: ''
+  passphrase:
+    description: 'Passphrase for private key'
+    required: false
+    default: ''
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install earthly
+      if: inputs.mode == 'release' || inputs.mode == 'make'
+      uses: earthly/actions-setup@v1
+      with:
+        github-token: ${{ github.token }}
+
+    - name: Set up environment
+      shell: bash
+      run: |
+        echo "::group::Setting up build environment"
+        echo "Setting GOOS=${{ inputs.os }}, GOARCH=${{ inputs.arch }}"
+        echo "GOOS=${{ inputs.os }}" >> $GITHUB_ENV
+        echo "GOARCH=${{ inputs.arch }}" >> $GITHUB_ENV
+        echo "Build mode: ${{ inputs.mode }}"
+        echo "::endgroup::"
+
+    - name: Setup signing keys
+      if: inputs.private_pem != '' && inputs.public_pem != ''
+      shell: bash
+      run: |
+        echo "::group::Setting up signing keys"
+        echo "Preparing PEM keys for binary signing"
+        echo "${{ inputs.private_pem }}" > /tmp/private.pem && chmod 600 /tmp/private.pem
+        echo "${{ inputs.public_pem }}" > /tmp/public.pem && chmod 600 /tmp/public.pem
+        
+        if [[ -n "${{ inputs.passphrase }}" ]]; then
+          echo "Setting passphrase for private key"
+          echo "PRIVATE_KEY_PASSPHRASE=${{ inputs.passphrase }}" >> $GITHUB_ENV
+        fi
+        echo "::endgroup::"
+
+    - name: Build for release
+      if: inputs.mode == 'release'
+      shell: bash
+      run: |
+        echo "::group::Building release binary"
+        make build-bacalhau-tgz
+        echo "::endgroup::"
+
+    - name: Build with make
+      if: inputs.mode == 'make'
+      shell: bash
+      run: |
+        echo "::group::Building with make build"
+        make build
+        echo "::endgroup::"
+
+    - name: Build for testing
+      if: inputs.mode == 'test'
+      shell: bash
+      run: |
+        echo "::group::Building test binary"
+        echo "Starting test build for ${{ inputs.os }}/${{ inputs.arch }}"
+        TAG=$(git describe --tags --always)
+        echo "Git tag: ${TAG}"
+        
+        BUILD_FLAGS="-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=${TAG}"
+        echo "Build flags: ${BUILD_FLAGS}"
+        
+        COVERAGE_FLAGS=""
+        if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
+          COVERAGE_FLAGS="-cover -covermode=atomic"
+          echo "Coverage flags: ${COVERAGE_FLAGS}"
+        fi
+        
+        TAG_FLAGS=""
+        if [[ -n "${{ inputs.test_tags }}" ]]; then
+          TAG_FLAGS="--tags=${{ inputs.test_tags }}"
+          echo "Tag flags: ${TAG_FLAGS}"
+        fi
+        
+        # Create a temporary output path
+        TEMP_OUT_PATH="./bacalhau-test-binary"
+        
+        echo "Running go build with flags: ${BUILD_FLAGS} ${TAG_FLAGS} ${COVERAGE_FLAGS}"
+        go build -ldflags "${BUILD_FLAGS}" ${TAG_FLAGS} ${COVERAGE_FLAGS} -trimpath -o ${TEMP_OUT_PATH} .
+        chmod +x ${TEMP_OUT_PATH}
+        echo "Test build completed"
+        echo "::endgroup::"
+
+    - name: Move binary to output path
+      if: inputs.binary_output_path != ''
+      shell: bash
+      run: |
+        echo "::group::Moving binary to output path"
+        mkdir -p $(dirname ${{ inputs.binary_output_path }})
+        
+        if [[ "${{ inputs.mode }}" == "release" ]]; then
+          # Extract from tarball
+          echo "Extracting binary from release tarball"
+          TARBALL=$(find dist -name "bacalhau_*.tar.gz" | head -n 1)
+          if [[ -n "$TARBALL" ]]; then
+            TMP_DIR=$(mktemp -d)
+            tar -xzf $TARBALL -C $TMP_DIR
+            cp $TMP_DIR/bacalhau ${{ inputs.binary_output_path }}
+            rm -rf $TMP_DIR
+          else
+            echo "Warning: Could not find tarball to extract binary from"
+          fi
+        elif [[ "${{ inputs.mode }}" == "make" ]]; then
+          # Copy from default make build location
+          echo "Copying binary from make build location"
+          cp bin/${{ inputs.os }}/${{ inputs.arch }}/bacalhau ${{ inputs.binary_output_path }}
+        elif [[ "${{ inputs.mode }}" == "test" ]]; then
+          # For test mode, we already built to a temp location
+          if [[ -f "./bacalhau-test-binary" ]]; then
+            echo "Moving test binary from temporary location"
+            mv ./bacalhau-test-binary ${{ inputs.binary_output_path }}
+          fi
+        fi
+        
+        # Ensure executable permissions
+        chmod +x ${{ inputs.binary_output_path }}
+        echo "Binary successfully moved to ${{ inputs.binary_output_path }}"
+        echo "::endgroup::"
+
+    - name: Cleanup signing keys
+      if: inputs.private_pem != '' && inputs.public_pem != ''
+      shell: bash
+      run: |
+        rm -f /tmp/private.pem /tmp/public.pem
+
+    - name: Upload artifact
+      if: inputs.upload_artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}
+        path: ${{ inputs.binary_output_path != '' && inputs.binary_output_path || inputs.artifact_path }}
+        retention-days: ${{ inputs.artifact_retention }}
+
+    - name: Build summary
+      shell: bash
+      run: |
+        echo "::group::Build summary"
+        echo "✅ Bacalhau build completed for ${{ inputs.os }}/${{ inputs.arch }}"
+        echo "Mode: ${{ inputs.mode }}"
+        if [[ "${{ inputs.mode }}" == "test" ]]; then
+          echo "Output binary: ${{ inputs.binary_output_path }}"
+          if [[ "${{ inputs.test_tags }}" != "" ]]; then
+            echo "Tags: ${{ inputs.test_tags }}"
+          fi
+          if [[ "${{ inputs.test_coverage }}" == "true" ]]; then
+            echo "Coverage: Enabled"
+          fi
+        fi
+        
+        if [[ "${{ inputs.mode }}" == "make" ]]; then
+          echo "Make build: Standard make build"
+        fi
+        if [[ "${{ inputs.upload_artifact }}" == "true" ]]; then
+          echo "Artifact: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}"
+        fi
+        echo "::endgroup::"

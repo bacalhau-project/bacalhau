@@ -34,13 +34,13 @@ var (
 		# Run a new job from an already executed job
 		bacalhau job describe 6e51df50 | bacalhau job run
 
-		# Download the 
+		# Download the
 		`)
 )
 
 type RunOptions struct {
 	RunTimeSettings        *cliflags.RunTimeSettings // Run time settings for execution (e.g. follow, wait after submission)
-	ShowWarnings           bool                      // Show warnings when submitting a job
+	HideWarnings           bool                      // Show warnings when submitting a job
 	NoTemplate             bool
 	TemplateVars           map[string]string
 	TemplateEnvVarsPattern string
@@ -70,7 +70,7 @@ func NewRunCmd() *cobra.Command {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
@@ -79,7 +79,7 @@ func NewRunCmd() *cobra.Command {
 	}
 
 	runCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(o.RunTimeSettings))
-	runCmd.Flags().BoolVar(&o.ShowWarnings, "show-warnings", false, "Show warnings when submitting a job")
+	runCmd.Flags().BoolVar(&o.HideWarnings, "hide-warnings", false, "Hide warnings when submitting a job")
 	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
 		"Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements")
 	runCmd.Flags().StringToStringVarP(&o.TemplateVars, "template-vars", "V", nil,
@@ -120,8 +120,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}
 
-	// Normalize and validate the job spec
-	j.Normalize()
+	// Validate the job spec
 	err = j.ValidateSubmission()
 	if err != nil {
 		return fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
@@ -130,7 +129,7 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 	if o.RunTimeSettings.DryRun {
 		warnings := j.SanitizeSubmission()
 		if len(warnings) > 0 {
-			o.printWarnings(cmd, warnings)
+			printer.PrintWarnings(cmd, warnings)
 		}
 		outputOps := output.NonTabularOutputOptions{Format: output.YAMLFormat}
 		if err = output.OutputOneNonTabular(cmd, outputOps, j); err != nil {
@@ -147,8 +146,9 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 		return fmt.Errorf("failed request: %w", err)
 	}
 
-	if o.ShowWarnings && len(resp.Warnings) > 0 {
-		o.printWarnings(cmd, resp.Warnings)
+	if !o.HideWarnings && !o.RunTimeSettings.PrintJobIDOnly && len(resp.Warnings) > 0 {
+		printer.PrintWarnings(cmd, resp.Warnings)
+		cmd.Println()
 	}
 
 	j.ID = resp.JobID
@@ -158,11 +158,4 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 	}
 
 	return nil
-}
-
-func (o *RunOptions) printWarnings(cmd *cobra.Command, warnings []string) {
-	cmd.Println("Warnings:")
-	for _, warning := range warnings {
-		cmd.Printf("\t* %s\n", warning)
-	}
 }
