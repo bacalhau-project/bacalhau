@@ -736,8 +736,56 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/orchestrator/nodes/{id}": {
+            "get": {
+                "description": "Get an orchestrator node",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Get an orchestrator node",
+                "operationId": "orchestrator/getNode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the orchestrator node to fetch for.",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetNodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             },
-            "post": {
+            "put": {
                 "description": "Update an orchestrator node.",
                 "consumes": [
                     "application/json"
@@ -773,48 +821,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.PutNodeResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/orchestrator/nodes/{id}": {
-            "get": {
-                "description": "Get an orchestrator node",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orchestrator"
-                ],
-                "summary": "Get an orchestrator node",
-                "operationId": "orchestrator/getNode",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the orchestrator node to fetch for.",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.GetNodeResponse"
                         }
                     },
                     "400": {
