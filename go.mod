@@ -45,8 +45,8 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.13.0
-	github.com/nats-io/nats-server/v2 v2.10.22
-	github.com/nats-io/nats.go v1.37.0
+	github.com/nats-io/nats-server/v2 v2.10.27
+	github.com/nats-io/nats.go v1.39.1
 	github.com/nats-io/nuid v1.0.1
 	github.com/open-policy-agent/opa v0.60.0
 	github.com/opencontainers/image-spec v1.1.0-rc5
@@ -81,7 +81,7 @@ require (
 	go.ptx.dk/multierrgroup v0.0.3
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.28.0
 	k8s.io/apimachinery v0.29.0
@@ -205,7 +205,7 @@ require (
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
