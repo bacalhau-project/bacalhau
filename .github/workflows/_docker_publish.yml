@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       target_type:
-        description: 'Target type for publishing (main, nightly, release, non-release)'
+        description: 'Target type for publishing (edge, nightly, release, non-release)'
         required: true
         type: string
       environment:
@@ -100,12 +100,12 @@ jobs:
           DIND_TAGS="${BACALHAU_IMAGE}:${GIT_VERSION}-dind"
 
           # Apply additional tags based on target type
-          if [ "${{ inputs.target_type }}" == "main" ]; then
-            # For main branch builds, add 'main' tag
-            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:main"
-            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:main-dind"
+          if [ "${{ inputs.target_type }}" == "edge" ]; then
+            # For edge builds, add 'edge' tag
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:edge"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:edge-dind"
 
-            echo "Adding 'main' tags"
+            echo "Adding 'edge' tags"
 
           elif [ "${{ inputs.target_type }}" == "nightly" ]; then
             # For nightly builds, add 'nightly' tag and date-specific tag

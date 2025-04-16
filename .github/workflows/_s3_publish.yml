@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       target_type:
-        description: 'Target type for publishing (main, nightly, release, non-release)'
+        description: 'Target type for publishing (edge, nightly, release, non-release)'
         required: true
         type: string
       environment:
@@ -66,8 +66,8 @@ jobs:
         run: |
           # Determine S3 prefix based on target type
           case "${{ inputs.target_type }}" in
-            main)
-              S3_PREFIX="main"
+            edge)
+              S3_PREFIX="edge"
               ;;
             nightly)
               S3_PREFIX="nightly"
@@ -262,7 +262,7 @@ jobs:
           echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
           
           # Add manifest paths section if applicable
-          if [[ "${{ inputs.target_type }}" == "release" || "${{ inputs.target_type }}" == "main" || "${{ inputs.target_type }}" == "nightly" ]]; then
+          if [[ "${{ inputs.target_type }}" == "release" || "${{ inputs.target_type }}" == "edge" || "${{ inputs.target_type }}" == "nightly" ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
             echo "| Type | Manifest Path |" >> $GITHUB_STEP_SUMMARY

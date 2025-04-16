@@ -18,7 +18,7 @@ permissions:
 # Prevent multiple build workflows from running simultaneously
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false  # Don't cancel in-progress runs for main branch builds
+  cancel-in-progress: true
 
 jobs:
   # Build all binaries for release
@@ -33,7 +33,7 @@ jobs:
     needs: [build-binaries]
     uses: ./.github/workflows/_s3_publish.yml
     with:
-      target_type: 'main'
+      target_type: 'edge'
     secrets: inherit
 
   # Build and push Docker images
@@ -42,5 +42,5 @@ jobs:
     needs: [ build-binaries ]
     uses: ./.github/workflows/_docker_publish.yml
     with:
-      target_type: 'main'
+      target_type: 'edge'
     secrets: inherit
