@@ -156,132 +156,135 @@ jobs:
           
           echo "Creating manifest for $GIT_VERSION (S3 prefix: $S3_PREFIX)"
           
-          # Create JSON manifest that points to versioned paths
-          cat > latest-manifest.json << EOF
-  {
-    "version": "$GIT_VERSION",
-    "buildDate": "$BUILD_DATE",
-    "gitCommit": "${{ steps.version.outputs.git_commit }}",
-    "major": ${{ steps.version.outputs.major }},
-    "minor": ${{ steps.version.outputs.minor }},
-    "isPreRelease": $([ "$GIT_VERSION" == *"-"* ] && echo "true" || echo "false"),
-    "artifacts": {
-                   EOF
-      
-      # Add artifact information for each OS/arch combination
-                   for dir in artifacts/bacalhau-*; do
-                   if [ -d "$dir" ]; then
-                   OS_ARCH=$(basename "$dir")
-                   
-                   if [[ "$OS_ARCH" =~ ^bacalhau-([^-]+)-([^-]+)$ ]]; then
-                   OS="${BASH_REMATCH[1]}"
+          # Create JSON manifest using jq instead of heredocs
+          # First create the header portion of the JSON
+          jq -n \
+            --arg version "$GIT_VERSION" \
+            --arg buildDate "$BUILD_DATE" \
+            --arg gitCommit "${{ steps.version.outputs.git_commit }}" \
+            --argjson major ${{ steps.version.outputs.major }} \
+            --argjson minor ${{ steps.version.outputs.minor }} \
+            --argjson isPreRelease $([ "$GIT_VERSION" == *"-"* ] && echo "true" || echo "false") \
+            '{
+              "version": $version,
+              "buildDate": $buildDate,
+              "gitCommit": $gitCommit,
+              "major": $major,
+              "minor": $minor,
+              "isPreRelease": $isPreRelease,
+              "artifacts": {}
+            }' > latest-manifest.json
+          
+          # Add artifact information for each OS/arch combination
+          for dir in artifacts/bacalhau-*; do
+            if [ -d "$dir" ]; then
+              OS_ARCH=$(basename "$dir")
+          
+              if [[ "$OS_ARCH" =~ ^bacalhau-([^-]+)-([^-]+)$ ]]; then
+                OS="${BASH_REMATCH[1]}"
                 ARCH="${BASH_REMATCH[2]}"
-                
+          
                 # Find the tarball for this OS/arch
                 TARBALL=$(find "$dir" -name "*.tar.gz" | head -1)
-                   if [ -n "$TARBALL" ]; then
-                   FILENAME=$(basename "$TARBALL")
-      # Create an entry that points to the versioned path
-                   VERSIONED_PATH="/versions/$GIT_VERSION/$FILENAME"
-                   cat >> latest-manifest.json << EOF
-      "${OS}-${ARCH}": {
-        "filename": "$FILENAME",
-        "path": "$VERSIONED_PATH",
-        "os": "$OS",
-        "arch": "$ARCH"
-      },
-                   EOF
-                   fi
-                   fi
-                   fi
-                   done
-      
-      # Remove the trailing comma if there are entries
-                   sed -i '$ s/,$//' latest-manifest.json
-      
-      # Close the JSON structure
-                   cat >> latest-manifest.json << EOF
-    }
-  }
-  EOF
-  
-  # Show the generated manifest for debugging
-  echo "Generated manifest:"
-  cat latest-manifest.json
-  
-  # Upload manifest to primary channel
-  aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/latest.json" \
-  --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
-  --content-type "application/json"
-  echo "Created latest manifest at s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/latest.json"
-  
-  # Upload to /latest for stable releases
-  if [[ "$PUBLISH_TO_LATEST" == "true" ]]; then
-  aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/latest/latest.json" \
-  --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
-  --content-type "application/json"
-  echo "Created latest manifest at s3://${{ vars.S3_BUCKET }}/latest/latest.json"
-  fi
+                if [ -n "$TARBALL" ]; then
+                  FILENAME=$(basename "$TARBALL")
+                  # Create an entry that points to the versioned path
+                  VERSIONED_PATH="/versions/$GIT_VERSION/$FILENAME"
+          
+                  # Add to the JSON using jq
+                  jq --arg key "${OS}-${ARCH}" \
+                     --arg filename "$FILENAME" \
+                     --arg path "$VERSIONED_PATH" \
+                     --arg os "$OS" \
+                     --arg arch "$ARCH" \
+                     '.artifacts[$key] = {
+                       "filename": $filename,
+                       "path": $path,
+                       "os": $os,
+                       "arch": $arch
+                     }' latest-manifest.json > temp.json && mv temp.json latest-manifest.json
+                fi
+              fi
+            fi
+          done
+          
+          # Show the generated manifest for debugging
+          echo "Generated manifest:"
+          cat latest-manifest.json
+          
+          # Upload manifest to primary channel
+          aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/latest.json" \
+            --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
+            --content-type "application/json"
+          echo "Created latest manifest at s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/latest.json"
+          
+          # Upload to /latest for stable releases
+          if [[ "$PUBLISH_TO_LATEST" == "true" ]]; then
+            aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/latest/latest.json" \
+              --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
+              --content-type "application/json"
+            echo "Created latest manifest at s3://${{ vars.S3_BUCKET }}/latest/latest.json"
+          fi
 
-- name: Generate upload summary
-  if: success()
-  run: |
-    echo "## S3 Upload Summary" >> $GITHUB_STEP_SUMMARY
-    echo "" >> $GITHUB_STEP_SUMMARY
-    echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
-    echo "" >> $GITHUB_STEP_SUMMARY
-    
-    # Format metadata as a table for better readability
-    echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
-    echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
-    echo "| **Target** | ${{ inputs.target_type }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **S3 Bucket** | ${{ vars.S3_BUCKET }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **S3 Region** | ${{ vars.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
-    echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
-    
-    # Add manifest paths section if applicable
-    if [[ "${{ inputs.target_type }}" == "release" || "${{ inputs.target_type }}" == "main" || "${{ inputs.target_type }}" == "nightly" ]]; then
-      echo "" >> $GITHUB_STEP_SUMMARY
-      echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
-      echo "| Type | Manifest Path |" >> $GITHUB_STEP_SUMMARY
-      echo "|------|--------------|" >> $GITHUB_STEP_SUMMARY
-      echo "| ${{ inputs.target_type }} | \`s3://${{ vars.S3_BUCKET }}/${{ steps.upload.outputs.s3_prefix }}/latest.json\` |" >> $GITHUB_STEP_SUMMARY
-    
-      if [[ "${{ steps.upload.outputs.publish_to_latest }}" == "true" ]]; then
-        echo "| latest | \`s3://${{ vars.S3_BUCKET }}/latest/latest.json\` |" >> $GITHUB_STEP_SUMMARY
-      fi
-    fi
-    
-    # Add uploaded files section
-    echo "" >> $GITHUB_STEP_SUMMARY
-    echo "### Uploaded Files" >> $GITHUB_STEP_SUMMARY
-    
-    # Check if there are any files uploaded
-    if [ -s uploads_list.txt ]; then
-      # Count how many unique OS/ARCH combinations were uploaded
-      PLATFORMS=$(cat uploads_list.txt | cut -d'|' -f2 | sort -u | wc -l)
-      echo "" >> $GITHUB_STEP_SUMMARY
-      echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
-      echo "" >> $GITHUB_STEP_SUMMARY
-    
-      # Create a simplified markdown table header with only Platform and S3 Path
-      echo "| Platform | S3 Path |" >> $GITHUB_STEP_SUMMARY
-      echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
-    
-      # Sort by platform for better readability and only show platform and S3 path
-      # Ensure no blank rows - make sure each line has proper formatting
-      sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
-        # Skip any empty lines that might cause formatting issues
-        if [[ -z "$PLATFORM" || -z "$S3_PATH" ]]; then
-          continue
-        fi
-    
-        # Add table row with just platform and S3 path
-        echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
-      done
-    else
-      echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY
-    fi
+      - name: Generate upload summary
+        if: success()
+        run: |
+          echo "## S3 Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Format metadata as a table for better readability
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | ${{ inputs.target_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Bucket** | ${{ vars.S3_BUCKET }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Region** | ${{ vars.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Add manifest paths section if applicable
+          if [[ "${{ inputs.target_type }}" == "release" || "${{ inputs.target_type }}" == "main" || "${{ inputs.target_type }}" == "nightly" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
+            echo "| Type | Manifest Path |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|--------------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ${{ inputs.target_type }} | \`s3://${{ vars.S3_BUCKET }}/${{ steps.upload.outputs.s3_prefix }}/latest.json\` |" >> $GITHUB_STEP_SUMMARY
+          
+            if [[ "${{ steps.upload.outputs.publish_to_latest }}" == "true" ]]; then
+              echo "| latest | \`s3://${{ vars.S3_BUCKET }}/latest/latest.json\` |" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+          
+          # Add uploaded files section
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded Files" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if there are any files uploaded
+          if [ -s uploads_list.txt ]; then
+            # Count how many unique OS/ARCH combinations were uploaded
+            PLATFORMS=$(cat uploads_list.txt | cut -d'|' -f2 | sort -u | wc -l)
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          
+            # Create a simplified markdown table header with only Platform and S3 Path
+            echo "| Platform | S3 Path |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+            # Sort by platform for better readability and only show platform and S3 path
+            # Ensure no blank rows - make sure each line has proper formatting
+            sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
+              # Skip any empty lines that might cause formatting issues
+              if [[ -z "$PLATFORM" || -z "$S3_PATH" ]]; then
+                continue
+              fi
+          
+              # Add table row with just platform and S3 path
+              echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY
+          fi
