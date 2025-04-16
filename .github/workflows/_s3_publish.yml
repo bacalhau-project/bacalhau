@@ -114,16 +114,16 @@ jobs:
           
               echo "Processing $OS/$ARCH"
               
-              # Find all tarballs (both binary and signature)
-              TARBALLS=$(find "$dir" -name "*.tar.gz")
-              if [ -z "$TARBALLS" ]; then
-                echo "No tarballs found in $dir, skipping"
+              # Find both tarballs and signature files
+              ARTIFACTS=$(find "$dir" -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc")
+              if [ -z "$ARTIFACTS" ]; then
+                echo "No artifacts found in $dir, skipping"
                 continue
               fi
               
-              # Process and upload each tarball found
-              for TARBALL in $TARBALLS; do
-                FILENAME=$(basename "$TARBALL")
+              # Process and upload each artifact found
+              for ARTIFACT in $ARTIFACTS; do
+                FILENAME=$(basename "$ARTIFACT")
                 
                 # Set metadata for S3 object - always use the build date from version info
                 METADATA="BuildDate=$BUILD_DATE,GOOS=$OS,GOARCH=$ARCH,GitCommit=${{ steps.version.outputs.git_commit }},GitVersion=${{ steps.version.outputs.git_version }},Major=${{ steps.version.outputs.major }},Minor=${{ steps.version.outputs.minor }}"
@@ -131,7 +131,7 @@ jobs:
                 # Always upload to the primary prefix
                 echo "Uploading to s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME"
                 echo "With metadata: $METADATA"
-                aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME" \
+                aws s3 cp "$ARTIFACT" "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME" \
                   --metadata "$METADATA"
                 
                 # Add to summary list with build date and full S3 path
@@ -140,7 +140,7 @@ jobs:
                 # If it's a full release, also upload to /latest
                 if [[ "$PUBLISH_TO_LATEST" == "true" ]]; then
                   echo "Also uploading to s3://${{ vars.S3_BUCKET }}/latest/$FILENAME"
-                  aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/latest/$FILENAME" \
+                  aws s3 cp "$ARTIFACT" "s3://${{ vars.S3_BUCKET }}/latest/$FILENAME" \
                     --metadata "$METADATA"
                   
                   # Add the latest upload to the summary as well
@@ -160,13 +160,17 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Release Type:** ${{ steps.version.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Region:** ${{ vars.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Git Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Git Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Date:** ${{ steps.version.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Format metadata as a table for better readability
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | ${{ inputs.target_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Bucket** | ${{ vars.S3_BUCKET }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Region** | ${{ vars.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
           
           # Add uploaded files section
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -176,23 +180,18 @@ jobs:
           if [ -s uploads_list.txt ]; then
             # Count how many unique OS/ARCH combinations were uploaded
             PLATFORMS=$(cat uploads_list.txt | cut -d'|' -f2 | sort -u | wc -l)
+            echo "" >> $GITHUB_STEP_SUMMARY
             echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
-            # Create a markdown table header
-            echo "| Platform | File | Build Date | S3 Path |" >> $GITHUB_STEP_SUMMARY
-            echo "| -------- | ---- | ---------- | ------- |" >> $GITHUB_STEP_SUMMARY
+            # Create a simplified markdown table header with only Platform and S3 Path
+            echo "| Platform | S3 Path |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
               
-            # Sort by platform for better readability
+            # Sort by platform for better readability and only show platform and S3 path
             sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
-              # Extract just the filename 
-              FILENAME=$(basename "$S3_PATH")
-              
-              # Format the date for better readability
-              FORMATTED_DATE=$(date -d "$BUILD_DATE" "+%Y-%m-%d %H:%M:%S UTC" 2>/dev/null || echo "$BUILD_DATE")
-              
-              # Add table row with file info
-              echo "| $PLATFORM | \`$FILENAME\` | $FORMATTED_DATE | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
+              # Add table row with just platform and S3 path
+              echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
             done
           else
             echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY

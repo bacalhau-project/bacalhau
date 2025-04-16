@@ -26,7 +26,7 @@ runs:
         
         # Test the base image - does it run and contain bacalhau binary?
         echo "Testing bacalhau binary in image..."
-        if docker run --rm ${{ inputs.image }}:${{ inputs.tag }} bacalhau version; then
+        if docker run --rm ${{ inputs.image }}:${{ inputs.tag }} version; then
           echo "✅ Binary test passed"
         else
           echo "❌ Binary test failed" >&2

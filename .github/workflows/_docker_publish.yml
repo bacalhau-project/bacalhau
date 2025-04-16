@@ -15,7 +15,7 @@ on:
 
 jobs:
   publish-docker-images:
-    name: Publish Docker Images
+    name: Publish to GHCR
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     permissions:
