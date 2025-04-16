@@ -66,7 +66,7 @@ func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, re
 
 	// Run a basic command to init the ~/.bacalhau directory, or else the output will unfortunately
 	// mess with tests results, even if just a json format is requested
-	_, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list"})
+	_, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "agent", "alive"})
 	s.Require().NoErrorf(err, "Error running a basic command to init the '.bacalhau' directory: %q", err)
 }
 
@@ -156,12 +156,15 @@ func (s *BaseDockerComposeTestSuite) executeCommandInDefaultJumpbox(cmd []string
 	return s.executeCommandInContainer("bacalhau-jumpbox-node", cmd, execOptions...)
 }
 
-func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration) (time.Duration, error) {
+func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
 	startTime := time.Now()
 	endTime := startTime.Add(timeout)
 
 	for time.Now().Before(endTime) {
-		jobDescriptionResultJson, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", "--output=json", jobID})
+		jobDescriptionResultJson, err := s.executeCommandInDefaultJumpbox(
+			[]string{"bacalhau", "job", "describe", "--output=json", jobID},
+			execOptions...,
+		)
 		if err != nil {
 			return time.Since(startTime), err
 		}

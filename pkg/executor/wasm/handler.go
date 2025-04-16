@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http"
 	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
@@ -197,6 +198,11 @@ func (h *executionHandler) loadModules(ctx context.Context, engine tracedRuntime
 	h.logger.Info().Msg("instantiating wasm modules")
 	loader := NewModuleLoader(engine, config, h.fs)
 
+	// in wasm, if network type is undefined, we default to host
+	if h.request.Network == nil || h.request.Network.Type == models.NetworkDefault {
+		h.request.Network = &models.NetworkConfig{Type: models.NetworkHost}
+	}
+
 	// Load HTTP module if networking is enabled
 	if h.request.Network != nil && h.request.Network.Type != models.NetworkNone {
 		// Configure HTTP module parameters
@@ -298,7 +304,8 @@ func (h *executionHandler) executeMainFunction(ctx context.Context, instance api
 
 	// Collect results
 	stdoutReader, stderrReader := h.logManager.GetDefaultReaders(false)
-	h.result = executor.WriteJobResults(h.request.ResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
+	executionResultsDir := compute.ExecutionResultsDir(h.request.ExecutionDir)
+	h.result = executor.WriteJobResults(executionResultsDir, stdoutReader, stderrReader, int(exitCode), wasmErr, h.request.OutputLimits)
 }
 
 // active returns whether the execution is currently running

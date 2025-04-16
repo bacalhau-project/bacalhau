@@ -13,13 +13,6 @@ type PutJobRequest struct {
 	Job *models.Job `json:"Job"`
 }
 
-// Normalize is used to canonicalize fields in the PutJobRequest.
-func (r *PutJobRequest) Normalize() {
-	if r.Job != nil {
-		r.Job.Normalize()
-	}
-}
-
 // Validate is used to validate fields in the PutJobRequest.
 func (r *PutJobRequest) Validate() error {
 	return r.Job.ValidateSubmission()

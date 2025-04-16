@@ -325,3 +325,144 @@ func (s *NCLMessageCreatorTestSuite) TestCreateMessage_Cancel() {
 	s.Equal(upsert.Current.ID, request.ExecutionID)
 	s.Equal(upsert.Events, request.Events)
 }
+
+func (s *NCLMessageCreatorTestSuite) TestTransformNetworkConfig() {
+	// A helper function to create a test execution with a network configuration
+	createExecution := func(networkType models.Network) *models.Execution {
+		execution := mock.Execution()
+		execution.NodeID = "test-node"
+		execution.Job.Meta[models.MetaOrchestratorProtocol] = models.ProtocolNCLV1.String()
+
+		// Make sure we have a task with network config
+		task := execution.Job.Task()
+		if task == nil {
+			task = &models.Task{
+				Name: "test-task",
+			}
+			execution.Job.Tasks = []*models.Task{task}
+		}
+
+		// Set network configuration
+		task.Network = &models.NetworkConfig{
+			Type: networkType,
+		}
+
+		return execution
+	}
+
+	s.Run("host network type transformation", func() {
+		// Create an execution with a task that has NetworkHost
+		execution := createExecution(models.NetworkHost)
+
+		// Transform network config
+		transformed := s.creator.transformNetworkConfig(execution)
+
+		// Verify that NetworkHost was changed to NetworkFull
+		s.NotNil(transformed)
+		s.NotNil(transformed.Job)
+		task := transformed.Job.Task()
+		s.NotNil(task)
+		s.NotNil(task.Network)
+		s.Equal(models.NetworkFull, task.Network.Type)
+	})
+
+	s.Run("default network type transformation", func() {
+		// Create an execution with a task that has NetworkDefault
+		execution := createExecution(models.NetworkDefault)
+
+		// Transform network config
+		transformed := s.creator.transformNetworkConfig(execution)
+
+		// Verify that NetworkDefault was changed to nil
+		s.NotNil(transformed)
+		s.NotNil(transformed.Job)
+		task := transformed.Job.Task()
+		s.NotNil(task)
+		s.Nil(task.Network)
+	})
+
+	s.Run("other network types unchanged", func() {
+		// Test that other network types are not modified
+		testCases := []models.Network{
+			models.NetworkBridge,
+			models.NetworkNone,
+			models.NetworkHTTP,
+		}
+
+		for _, networkType := range testCases {
+			execution := createExecution(networkType)
+			transformed := s.creator.transformNetworkConfig(execution)
+
+			s.NotNil(transformed)
+			s.NotNil(transformed.Job)
+			task := transformed.Job.Task()
+			s.NotNil(task)
+			s.NotNil(task.Network)
+			s.Equal(networkType, task.Network.Type)
+		}
+	})
+
+	s.Run("nil network config unchanged", func() {
+		// Create an execution with a task that has nil network
+		execution := createExecution(models.NetworkBridge)
+		execution.Job.Task().Network = nil
+
+		// Transform network config
+		transformed := s.creator.transformNetworkConfig(execution)
+
+		// Verify that nil network remains nil
+		s.NotNil(transformed)
+		s.NotNil(transformed.Job)
+		task := transformed.Job.Task()
+		s.NotNil(task)
+		s.Nil(task.Network)
+	})
+
+	s.Run("nil job unchanged", func() {
+		// Create an execution with nil Job
+		execution := mock.Execution()
+		execution.Job = nil
+
+		// Transform network config
+		transformed := s.creator.transformNetworkConfig(execution)
+
+		// Verify that nil Job remains nil
+		s.NotNil(transformed)
+		s.Nil(transformed.Job)
+	})
+
+	s.Run("transformation in createAskForBidMessage", func() {
+		// Create an execution with NetworkHost that should be transformed
+		execution := createExecution(models.NetworkHost)
+
+		// Setup a valid ExecutionUpsert
+		upsert := models.ExecutionUpsert{
+			Current: execution,
+			Events:  []*models.Event{},
+		}
+
+		// Call createAskForBidMessage, which should transform the network config
+		msg := s.creator.createAskForBidMessage(upsert)
+
+		// Verify the message was created successfully
+		s.NotNil(msg)
+
+		// Verify the message type
+		s.Equal(messages.AskForBidMessageType, msg.Metadata.Get(envelope.KeyMessageType))
+
+		// Extract the payload and verify it's an AskForBidRequest
+		payload, ok := msg.GetPayload(messages.AskForBidRequest{})
+		s.True(ok)
+
+		// Verify that the execution in the payload has the transformed network config
+		askForBidRequest := payload.(messages.AskForBidRequest)
+		s.NotNil(askForBidRequest.Execution)
+		s.NotNil(askForBidRequest.Execution.Job)
+		task := askForBidRequest.Execution.Job.Task()
+		s.NotNil(task)
+		s.NotNil(task.Network)
+
+		// The network type should be transformed from Host to Full
+		s.Equal(models.NetworkFull, task.Network.Type)
+	})
+}

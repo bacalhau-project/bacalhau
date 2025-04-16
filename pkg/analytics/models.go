@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"time"
 
@@ -40,10 +38,4 @@ func (e *Event) ToLogRecord() (otellog.Record, error) {
 	record.SetTimestamp(time.Now().UTC())
 	record.SetBody(otellog.StringValue(""))
 	return record, nil
-}
-
-func hashString(in string) string {
-	hash := sha256.New()
-	hash.Write([]byte(in))
-	return hex.EncodeToString(hash.Sum(nil))
 }

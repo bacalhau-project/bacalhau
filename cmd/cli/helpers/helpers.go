@@ -3,7 +3,6 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
@@ -17,13 +16,6 @@ func JobToYaml(job *models.Job) (string, error) {
 		return "", fmt.Errorf("converting job to yaml: %w", err)
 	}
 	return string(yamlBytes), nil
-}
-
-func PrintWarnings(cmd *cobra.Command, warnings []string) {
-	cmd.Println("Warnings:")
-	for _, warning := range warnings {
-		cmd.Printf("\t* %s\n", warning)
-	}
 }
 
 func BuildJobFromFlags(
@@ -43,16 +35,23 @@ func BuildJobFromFlags(
 		},
 		InputSources: taskSettings.InputSources.Values(),
 		ResultPaths:  taskSettings.ResultPaths,
-		Network: &models.NetworkConfig{
-			Type:    taskSettings.Network.Network,
-			Domains: taskSettings.Network.Domains,
-		},
 		Timeouts: &models.TimeoutConfig{
 			TotalTimeout: taskSettings.Timeout,
 			QueueTimeout: taskSettings.QueueTimeout,
 		},
 		Env: models.EnvVarsFromStringsMap(taskSettings.EnvironmentVariables),
 	}
+
+	// only set networking if it's not the default so we don't assume the user explicitly wants it,
+	// and to maintain backward compatibility with older bacalhau versions who didn't have this network type
+	// TODO: remove setting defaults for all fields
+	if taskSettings.Network.Network != models.NetworkDefault {
+		task.Network = &models.NetworkConfig{
+			Type:    taskSettings.Network.Network,
+			Domains: taskSettings.Network.Domains,
+		}
+	}
+
 	constraints, err := jobSettings.Constraints()
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse job constraints: %w", err)
@@ -73,8 +72,7 @@ func BuildJobFromFlags(
 		Tasks:       []*models.Task{task},
 	}
 
-	// Normalize and validate the job spec
-	job.Normalize()
+	// Validate the job spec
 	if err := job.ValidateSubmission(); err != nil {
 		return nil, fmt.Errorf("%s: %w", userstrings.JobSpecBad, err)
 	}

@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/auth"
+	"github.com/bacalhau-project/bacalhau/pkg/common"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
@@ -20,15 +22,112 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
 
-func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error) {
-	tlsCfg := cfg.API.TLS
-	apiHost := cfg.API.Host
-	apiPort := cfg.API.Port
+// ReadTokenFn is a function type for the ReadToken function that can be overridden for testing
+var ReadTokenFn = ReadToken
 
-	// set the client api host to localhost if it is 0.0.0.0
-	if apiHost == "0.0.0.0" {
-		apiHost = "127.0.0.1"
+type APIClientManager struct {
+	cmd     *cobra.Command
+	cfg     types.Bacalhau
+	baseURL string
+}
+
+func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManager {
+	baseURL, _ := ConstructAPIEndpoint(cfg.API)
+	return &APIClientManager{
+		cmd:     cmd,
+		cfg:     cfg,
+		baseURL: baseURL,
 	}
+}
+
+func (cm *APIClientManager) GetUnauthenticatedAPIClient() (clientv2.API, error) {
+	apiRequestOptions, err := generateAPIRequestsOptions(cm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientv2.New(cm.baseURL, apiRequestOptions...), nil
+}
+
+func (cm *APIClientManager) GetAuthenticatedAPIClient() (clientv2.API, error) {
+	apiRequestsOptions, err := generateAPIRequestsOptions(cm.cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	apiAuthAPIKey, basicAuthUsername, basicAuthPassword := extractAuthCredentialsFromEnvVariables()
+	var resolvedAuthToken *apimodels.HTTPCredential
+
+	// Check if the credentials are valid
+	apiKeyOrBasicAuthFlowEnabled, credentialScheme, credentialString, err := resolveAuthCredentials(
+		apiAuthAPIKey,
+		basicAuthUsername,
+		basicAuthPassword,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("authentication error: %v", err)
+	}
+
+	legacyAuthTokenFilePath, err := cm.cfg.AuthTokensPath()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read access tokens path – API calls will be without authorization")
+	}
+
+	// Try to get the tokens file for SSO tokens
+	ssoAuthTokenPath, err := cm.cfg.JWTTokensPath()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read access jwt tokens path")
+	}
+
+	// Do not error out if we are not able to do that , just log
+	existingSSOCredential, err := ReadTokenFn(ssoAuthTokenPath, cm.baseURL)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to read SSO access tokens file")
+	}
+
+	// If credentials are provided, add them to the headers
+	if apiKeyOrBasicAuthFlowEnabled {
+		resolvedAuthToken = &apimodels.HTTPCredential{
+			Scheme: credentialScheme,
+			Value:  credentialString,
+		}
+		log.Debug().Msg("Using API Key or Basic Auth authentication credentials")
+	} else if existingSSOCredential != nil {
+		resolvedAuthToken = existingSSOCredential
+		log.Debug().Msg("Using SSO authentication credentials")
+	} else {
+		// Legacy Auth FLow
+		resolvedAuthToken, err = ReadTokenFn(legacyAuthTokenFilePath, cm.baseURL)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
+		}
+	}
+
+	// Legacy Auth FLow
+	userKeyPath, err := cm.cfg.UserKeyPath()
+	if err != nil {
+		return nil, err
+	}
+
+	newAuthenticationFlowEnabled := apiKeyOrBasicAuthFlowEnabled || existingSSOCredential != nil
+
+	return clientv2.NewAPI(
+		&clientv2.AuthenticatingClient{
+			Client:                       clientv2.NewHTTPClient(cm.baseURL, apiRequestsOptions...),
+			Credential:                   resolvedAuthToken,
+			NewAuthenticationFlowEnabled: newAuthenticationFlowEnabled,
+			PersistCredential: func(cred *apimodels.HTTPCredential) error {
+				return WriteToken(legacyAuthTokenFilePath, cm.baseURL, cred)
+			},
+			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
+				return auth.RunAuthenticationFlow(ctx, cm.cmd, a, userKeyPath)
+			},
+		},
+	), nil
+}
+
+func generateAPIRequestsOptions(cfg types.Bacalhau) ([]clientv2.OptionFn, error) {
+	tlsCfg := cfg.API.TLS
 
 	if tlsCfg.CAFile != "" {
 		if _, err := os.Stat(tlsCfg.CAFile); os.IsNotExist(err) {
@@ -36,18 +135,6 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		} else if err != nil {
 			return nil, fmt.Errorf("CA certificate file %q cannot be read: %w", tlsCfg.CAFile, err)
 		}
-	}
-
-	var base string
-
-	if isValidURL, processedURL := parseURL(apiHost, apiPort); isValidURL {
-		base = processedURL
-	} else {
-		scheme := "http"
-		if tlsCfg.UseTLS {
-			scheme = "https"
-		}
-		base = fmt.Sprintf("%s://%s:%d", scheme, apiHost, apiPort)
 	}
 
 	bv := version.Get()
@@ -79,60 +166,62 @@ func GetAPIClientV2(cmd *cobra.Command, cfg types.Bacalhau) (clientv2.API, error
 		clientv2.WithHeaders(headers),
 	}
 
-	authTokenPath, err := cfg.AuthTokensPath()
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read access tokens path – API calls will be without authorization")
-	}
-	existingAuthToken, err := ReadToken(authTokenPath, base)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to read access tokens – API calls will be without authorization")
-	}
-
-	userKeyPath, err := cfg.UserKeyPath()
-	if err != nil {
-		return nil, err
-	}
-
-	return clientv2.NewAPI(
-		&clientv2.AuthenticatingClient{
-			Client:     clientv2.NewHTTPClient(base, opts...),
-			Credential: existingAuthToken,
-			PersistCredential: func(cred *apimodels.HTTPCredential) error {
-				return WriteToken(authTokenPath, base, cred)
-			},
-			Authenticate: func(ctx context.Context, a *clientv2.Auth) (*apimodels.HTTPCredential, error) {
-				return auth.RunAuthenticationFlow(ctx, cmd, a, userKeyPath)
-			},
-		},
-	), nil
+	return opts, nil
 }
 
-func parseURL(rawURL string, defaultPort int) (bool, string) {
+func ConstructAPIEndpoint(apiCfg types.API) (string, string) {
+	tlsCfg := apiCfg.TLS
+	apiHost := apiCfg.Host
+	apiPort := apiCfg.Port
+
+	// set the client api host to localhost if it is 0.0.0.0
+	if apiHost == "0.0.0.0" {
+		apiHost = "127.0.0.1"
+	}
+
+	var baseURL string
+	var scheme string
+
+	if isValidURL, processedURL, detectedScheme := parseURL(apiHost, apiPort); isValidURL {
+		baseURL = processedURL
+		scheme = detectedScheme
+	} else {
+		scheme = "http"
+		if tlsCfg.UseTLS {
+			scheme = "https"
+		}
+		baseURL = fmt.Sprintf("%s://%s:%d", scheme, apiHost, apiPort)
+	}
+
+	return baseURL, scheme
+}
+
+func parseURL(rawURL string, defaultPort int) (bool, string, string) {
 	// Remove any whitespace
 	rawURL = strings.TrimSpace(rawURL)
 
 	// Parse the URL
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		return false, ""
+		return false, "", ""
 	}
 
 	// Check if the URL has a scheme and host
 	if parsedURL.Scheme == "" || parsedURL.Host == "" {
-		return false, ""
+		return false, "", ""
 	}
 
 	// Check if scheme is http or https
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return false, ""
+		return false, "", ""
 	}
 
 	// Reject URLs with path, query, or fragment
 	if parsedURL.Path != "" && parsedURL.Path != "/" {
-		return false, ""
+		return false, "", ""
 	}
 	if parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
-		return false, ""
+		return false, "", ""
 	}
 
 	// Handle port parsing for IPv4 and IPv6
@@ -152,5 +241,85 @@ func parseURL(rawURL string, defaultPort int) (bool, string) {
 	hostPort := net.JoinHostPort(processedHost, port)
 	finalURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, hostPort)
 
-	return true, finalURL
+	return true, finalURL, parsedURL.Scheme
+}
+
+// resolveAuthCredentials processes authentication credentials and returns whether they should be used,
+// along with the appropriate authentication scheme and credential value.
+//
+// Returns:
+// - newAuthFlowEnabled: true if valid credentials were provided and should be used
+// - authScheme: the authentication scheme ("Bearer" or "Basic")
+// - credentialValue: the credential value (API key or Base64-encoded username:password)
+// - error: validation error, if any
+func resolveAuthCredentials(
+	apiKey,
+	basicAuthUsername,
+	basicAuthPassword string,
+) (
+	newAuthFlowEnabled bool,
+	authScheme string,
+	credentialValue string,
+	err error,
+) {
+	// Trim spaces from all credentials
+	apiKey = strings.TrimSpace(apiKey)
+	basicAuthUsername = strings.TrimSpace(basicAuthUsername)
+	basicAuthPassword = strings.TrimSpace(basicAuthPassword)
+
+	// Check if any credentials are provided
+	anyCredentialsProvided := apiKey != "" || basicAuthUsername != "" || basicAuthPassword != ""
+
+	if !anyCredentialsProvided {
+		// No credentials provided, use legacy auth flow
+		return false, "", "", nil
+	}
+
+	// At this point, we know some credentials were provided, so we'll use the new auth flow
+	newAuthFlowEnabled = true
+
+	// Check if trying to use both authentication methods
+	hasAPIKey := apiKey != ""
+	hasBasicAuthUsername := basicAuthUsername != ""
+	hasBasicAuthPassword := basicAuthPassword != ""
+
+	// Error if mixing authentication types
+	if hasAPIKey && (hasBasicAuthUsername || hasBasicAuthPassword) {
+		return newAuthFlowEnabled, "", "", fmt.Errorf("can't use both %s and %s/%s simultaneously",
+			common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
+	}
+
+	// Handle API key authentication
+	if hasAPIKey {
+		return newAuthFlowEnabled, "Bearer", apiKey, nil
+	}
+
+	// Handle username/password basic authentication
+	if hasBasicAuthUsername && hasBasicAuthPassword {
+		// Format basic auth credentials (username:password) as Base64. RFC dictated
+		basicAuthString := fmt.Sprintf("%s:%s", basicAuthUsername, basicAuthPassword)
+		encodedAuth := base64.StdEncoding.EncodeToString([]byte(basicAuthString))
+		return newAuthFlowEnabled, "Basic", encodedAuth, nil
+	}
+
+	// Handle incomplete basic auth credentials
+	if hasBasicAuthUsername {
+		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
+			common.BacalhauAPIUsername, common.BacalhauAPIPassword)
+	}
+	if hasBasicAuthPassword {
+		return newAuthFlowEnabled, "", "", fmt.Errorf("%s provided but not %s",
+			common.BacalhauAPIPassword, common.BacalhauAPIUsername)
+	}
+
+	// This should never happen given the checks above
+	return newAuthFlowEnabled, "", "", fmt.Errorf("unable to decide authentication method")
+}
+
+func extractAuthCredentialsFromEnvVariables() (string, string, string) {
+	apiKey := strings.TrimSpace(os.Getenv(common.BacalhauAPIKey))
+	basicAuthUsername := strings.TrimSpace(os.Getenv(common.BacalhauAPIUsername))
+	basicAuthPassword := strings.TrimSpace(os.Getenv(common.BacalhauAPIPassword))
+
+	return apiKey, basicAuthUsername, basicAuthPassword
 }

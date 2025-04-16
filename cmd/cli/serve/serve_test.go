@@ -133,8 +133,8 @@ func (s *ServeSuite) serve(extraArgs ...string) (uint16, error) {
 			s.FailNow("Server did not start in time")
 
 		case <-t.C:
-			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/livez", s.protocol, port))
-			if string(livezText) == "OK" && statusCode == http.StatusOK {
+			livezText, statusCode, _ := s.curlEndpoint(fmt.Sprintf("%s://127.0.0.1:%d/api/v1/agent/alive", s.protocol, port))
+			if strings.Contains(string(livezText), "OK") && statusCode == http.StatusOK {
 				return port, nil
 			}
 		}
@@ -191,7 +191,6 @@ func (s *ServeSuite) TestCanSubmitJob() {
 			},
 		},
 	}
-	job.Normalize()
 	_, err = client.Jobs().Put(s.ctx, &apimodels.PutJobRequest{
 		Job: job,
 	})
@@ -209,7 +208,7 @@ func (s *ServeSuite) Test200ForNotStartingWebUI() {
 	port, err := s.serve()
 	s.Require().NoError(err, "Error starting server")
 
-	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d/", port))
+	content, statusCode, err := s.curlEndpoint(fmt.Sprintf("http://127.0.0.1:%d", port))
 	_ = content
 
 	s.Require().NoError(err, "Error curling root endpoint")
