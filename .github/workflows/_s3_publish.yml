@@ -164,14 +164,12 @@ jobs:
             --arg gitCommit "${{ steps.version.outputs.git_commit }}" \
             --argjson major ${{ steps.version.outputs.major }} \
             --argjson minor ${{ steps.version.outputs.minor }} \
-            --argjson isPreRelease $([ "$GIT_VERSION" == *"-"* ] && echo "true" || echo "false") \
             '{
               "version": $version,
               "buildDate": $buildDate,
               "gitCommit": $gitCommit,
               "major": $major,
               "minor": $minor,
-              "isPreRelease": $isPreRelease,
               "artifacts": {}
             }' > latest-manifest.json
           
@@ -190,18 +188,36 @@ jobs:
                   FILENAME=$(basename "$TARBALL")
                   # Create an entry that points to the versioned path
                   VERSIONED_PATH="/versions/$GIT_VERSION/$FILENAME"
-          
+                  
+                  # Check for signatures
+                  SIGNATURES=()
+                  SIG_FILES=$(find "$dir" -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc" -o -name "*.signature.sha256")
+                  for SIG_FILE in $SIG_FILES; do
+                    SIG_FILENAME=$(basename "$SIG_FILE")
+                    SIG_PATH="/versions/$GIT_VERSION/$SIG_FILENAME"
+                    SIGNATURES+=("\"$SIG_PATH\"")
+                  done
+                  
+                  # Join signature array into a comma-separated string
+                  if [ ${#SIGNATURES[@]} -gt 0 ]; then
+                    SIGNATURE_JSON="[$(echo "${SIGNATURES[@]}" | tr ' ' ',')]"
+                  else
+                    SIGNATURE_JSON="[]"
+                  fi
+                  
                   # Add to the JSON using jq
                   jq --arg key "${OS}-${ARCH}" \
                      --arg filename "$FILENAME" \
                      --arg path "$VERSIONED_PATH" \
                      --arg os "$OS" \
                      --arg arch "$ARCH" \
+                     --argjson signatures "$SIGNATURE_JSON" \
                      '.artifacts[$key] = {
                        "filename": $filename,
                        "path": $path,
                        "os": $os,
-                       "arch": $arch
+                       "arch": $arch,
+                       "signatures": $signatures
                      }' latest-manifest.json > temp.json && mv temp.json latest-manifest.json
                 fi
               fi
