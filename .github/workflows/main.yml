@@ -35,12 +35,3 @@ jobs:
     with:
       target_type: 'main'
     secrets: inherit
-
-  # Build and push Docker images
-  publish-docker:
-    name: Publish Docker
-    needs: [build-binaries]
-    uses: ./.github/workflows/_docker_publish.yml
-    with:
-      target_type: 'main'
-    secrets: inherit
