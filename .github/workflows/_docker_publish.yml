@@ -1,0 +1,211 @@
+name: Publish Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      target_type:
+        description: 'Target type for publishing (main, nightly, release, pre-release)'
+        required: true
+        type: string
+
+jobs:
+  publish-docker-images:
+    name: Publish Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Required for pushing to GHCR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"  # Fetch all history for proper versioning
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bacalhau-*
+          path: artifacts
+
+      - name: List downloaded artifacts
+        run: |
+          echo "==== LISTING DOWNLOADED ARTIFACTS ===="
+          find artifacts -type f | sort
+          echo "Total files: $(find artifacts -type f | wc -l)"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version info
+        id: version
+        run: |
+          # Get version information
+          git_commit=$(git rev-parse HEAD)
+          git_version=$(git describe --tags --always)
+          
+          echo "==== VERSION INFO ===="
+          echo "Git commit: $git_commit"
+          echo "Git version: $git_version"
+          
+          # Set outputs for use in later steps
+          echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
+          echo "git_version=$git_version" >> $GITHUB_OUTPUT
+          
+          # Determine if this is a release version (like v1.2.3) without pre-release info
+          if [[ "$git_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_clean_semver=true" >> $GITHUB_OUTPUT
+            echo "This is a clean semver version"
+          else
+            echo "is_clean_semver=false" >> $GITHUB_OUTPUT
+            echo "This is not a clean semver version"
+          fi
+
+      - name: Extract binaries from artifacts
+        run: |
+          # Create directory structure for binaries
+          mkdir -p bin/linux/amd64
+          mkdir -p bin/linux/arm64
+          
+          # Find and extract amd64 tarball
+          AMD64_TARBALL=$(find artifacts -name "*_linux_amd64.tar.gz" | head -n 1)
+          if [ -n "$AMD64_TARBALL" ]; then
+            echo "Extracting AMD64 binary from $AMD64_TARBALL"
+            tar -xzf "$AMD64_TARBALL" -C bin/linux/amd64
+            chmod +x bin/linux/amd64/bacalhau
+          else
+            echo "Error: AMD64 tarball not found" >&2
+            exit 1
+          fi
+          
+          # Find and extract arm64 tarball
+          ARM64_TARBALL=$(find artifacts -name "*_linux_arm64.tar.gz" | head -n 1)
+          if [ -n "$ARM64_TARBALL" ]; then
+            echo "Extracting ARM64 binary from $ARM64_TARBALL"
+            tar -xzf "$ARM64_TARBALL" -C bin/linux/arm64
+            chmod +x bin/linux/arm64/bacalhau
+          else
+            echo "Error: ARM64 tarball not found" >&2
+            exit 1
+          fi
+          
+          # Verify extracted binaries
+          find bin -type f -name bacalhau -exec file {} \;
+
+      - name: Set Docker tags
+        id: docker_tags
+        run: |
+          BACALHAU_IMAGE="ghcr.io/${{ github.repository }}"
+          GIT_VERSION="${{ steps.version.outputs.git_version }}"
+
+          # Always include the git version tag
+          BASE_TAGS="${BACALHAU_IMAGE}:${GIT_VERSION}"
+          DIND_TAGS="${BACALHAU_IMAGE}:${GIT_VERSION}-dind"
+
+          # Apply additional tags based on target type
+          if [ "${{ inputs.target_type }}" == "main" ]; then
+            # For main branch builds, add 'main' tag
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:main"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:main-dind"
+
+            echo "Adding 'main' tags"
+
+          elif [ "${{ inputs.target_type }}" == "nightly" ]; then
+            # For nightly builds, add 'nightly' tag and date-specific tag
+            NIGHTLY_DATE=$(date -u +"%Y%m%d")
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:nightly,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:nightly-dind,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}-dind"
+
+            echo "Adding 'nightly' and 'nightly-${NIGHTLY_DATE}' tags"
+
+          elif [ "${{ inputs.target_type }}" == "release" ] || [ "${{ inputs.target_type }}" == "pre-release" ]; then
+            # For all releases (both regular and pre-releases), add 'release' tag
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:release"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:release-dind"
+
+            echo "Adding 'release' tags"
+
+            # For clean semver releases, also add 'latest' tag only
+            if [ "${{ steps.version.outputs.is_clean_semver }}" == "true" ]; then
+              BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:latest"
+              DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:latest-dind"
+
+              echo "Adding 'latest' tags"
+            fi
+          fi
+
+          # Store all tags for use in the build step
+          echo "base_tags=${BASE_TAGS}" >> $GITHUB_OUTPUT
+          echo "dind_tags=${DIND_TAGS}" >> $GITHUB_OUTPUT
+          echo "image=${BACALHAU_IMAGE}" >> $GITHUB_OUTPUT
+          echo "git_version=${GIT_VERSION}" >> $GITHUB_OUTPUT
+
+          # For debugging: List all tags
+          echo "==== BASE IMAGE TAGS ===="
+          echo "$BASE_TAGS" | tr ',' '\n'
+          echo "==== DIND IMAGE TAGS ===="
+          echo "$DIND_TAGS" | tr ',' '\n'
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/bacalhau-base/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.docker_tags.outputs.base_tags }}
+          cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest
+          labels: |
+            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.docker_tags.outputs.git_version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+
+      - name: Build and push DIND image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/bacalhau-dind/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.docker_tags.outputs.dind_tags }}
+          cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest-dind
+          labels: |
+            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.docker_tags.outputs.git_version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+
+      - name: Generate docker summary
+        if: success()
+        run: |
+          echo "## Docker Images Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully built and pushed Docker images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Published Images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Image Type | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "| ---------- | ---- |" >> $GITHUB_STEP_SUMMARY
+          
+          # Replace commas with line breaks for better display
+          BASE_TAGS=$(echo "${{ steps.docker_tags.outputs.base_tags }}" | sed 's/,/<br>/g')
+          DIND_TAGS=$(echo "${{ steps.docker_tags.outputs.dind_tags }}" | sed 's/,/<br>/g')
+          
+          echo "| Base Image | $BASE_TAGS |" >> $GITHUB_STEP_SUMMARY
+          echo "| DIND Image | $DIND_TAGS |" >> $GITHUB_STEP_SUMMARY
