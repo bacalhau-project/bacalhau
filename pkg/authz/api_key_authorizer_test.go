@@ -77,6 +77,7 @@ func TestApiKeyAuthorization(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for success
 	})
 
 	t.Run("UnauthorizedWithMissingCapabilities", func(t *testing.T) {
@@ -90,10 +91,10 @@ func TestApiKeyAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.True(t, auth.TokenValid) // Token is valid, just lacks capabilities
-		assert.Contains(t, err.Error(), "does not have the required capability")
+		assert.Contains(t, auth.Reason, "user 'API User' does not have the required capability")
 	})
 
 	t.Run("AuthorizedWithAdminCapabilities", func(t *testing.T) {
@@ -110,6 +111,7 @@ func TestApiKeyAuthorization(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for success
 	})
 
 	t.Run("SuccessForOpenEndpoint", func(t *testing.T) {
@@ -126,6 +128,7 @@ func TestApiKeyAuthorization(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for open endpoints
 	})
 
 	t.Run("MissingAuthorizationHeader", func(t *testing.T) {
@@ -139,10 +142,10 @@ func TestApiKeyAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.False(t, auth.TokenValid)
-		assert.Contains(t, err.Error(), "missing authorization header")
+		assert.Equal(t, "Missing Authorization header", auth.Reason)
 	})
 
 	t.Run("MissingURL", func(t *testing.T) {
@@ -156,11 +159,65 @@ func TestApiKeyAuthorization(t *testing.T) {
 		req.Header.Add("Authorization", createBearerAuthHeader("valid-api-key-123"))
 
 		// Execute
-		_, err := authorizer.Authorize(req)
+		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "missing URL")
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "Missing Request URL", auth.Reason)
+	})
+
+	// Add new test cases for API key specific scenarios
+	t.Run("InvalidAPIKey", func(t *testing.T) {
+		// Setup
+		authorizer := createTestApiKeyAuthorizer()
+
+		// Create request with invalid API key
+		req := createTestApiKeyRequest("/v1/jobs", createBearerAuthHeader("invalid-api-key"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "invalid API key", auth.Reason)
+	})
+
+	t.Run("EmptyAPIKey", func(t *testing.T) {
+		// Setup
+		authorizer := createTestApiKeyAuthorizer()
+
+		// Create request with empty API key
+		req := createTestApiKeyRequest("/v1/jobs", createBearerAuthHeader(""))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "empty API key provided", auth.Reason)
+	})
+
+	t.Run("NonBearerAuthScheme", func(t *testing.T) {
+		// Setup
+		authorizer := createTestApiKeyAuthorizer()
+
+		// Create request with wrong auth scheme
+		req := createTestApiKeyRequest("/v1/jobs", "Basic sometoken")
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "invalid API key", auth.Reason)
 	})
 }
 

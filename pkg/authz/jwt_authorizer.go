@@ -9,9 +9,9 @@ import (
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // JWTClaims represents the expected claims in a JWT token
@@ -104,7 +104,7 @@ func NewJWTAuthorizer(
 
 	// If OAuth2 config is not complete, return DenyAuthorizer
 	if !isComplete {
-		return NewDenyAuthorizer("JWT authorization not configured"), nil
+		return NewDenyAuthorizer("OAuth2 authentication not configured on server"), nil
 	}
 
 	// Extract JWKS URL from auth config - using OAuth2 configuration
@@ -179,7 +179,8 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError("unauthorized: missing URL")
+			Reason:     "Missing required URL parameter",
+		}, nil
 	}
 
 	// Check if the endpoint is open (doesn't require authentication)
@@ -197,7 +198,11 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	// Get Authorization header
 	authorizationHeaders := req.Header["Authorization"]
 	if len(authorizationHeaders) == 0 {
-		return Authorization{}, apimodels.NewUnauthorizedError("missing authorization header")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Authorization header",
+		}, nil
 	}
 
 	// Extract the token from the Authorization header
@@ -206,7 +211,8 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError("invalid authorization header format, expected 'Bearer TOKEN'")
+			Reason:     "invalid authorization header format, expected 'Bearer TOKEN'",
+		}, nil
 	}
 
 	// Get the token
@@ -215,10 +221,12 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	// Validate the JWT token
 	claims, err := a.validateJWT(tokenString)
 	if err != nil {
+		log.Error().Err(err).Msgf("JWT validation failed: %s", err.Error())
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError(fmt.Sprintf("JWT validation failed: %s", err.Error()))
+			Reason:     "invalid JWT token",
+		}, nil
 	}
 
 	// Create a virtual user from JWT claims
@@ -235,13 +243,7 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	}
 
 	// Check if the user has the required capabilities for the requested resource
-	hasCapability, requiredCapability, err := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
-	if err != nil {
-		return Authorization{
-			Approved:   false,
-			TokenValid: true,
-		}, err
-	}
+	hasCapability, requiredCapability := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
 
 	if hasCapability {
 		return Authorization{
@@ -250,10 +252,11 @@ func (a *jwtAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 		}, nil
 	} else {
 		return Authorization{
-				Approved:   false,
-				TokenValid: true,
-			}, apimodels.NewUnauthorizedError(fmt.Sprintf("user '%s' does not have the required capability '%s'",
-				user.Alias, requiredCapability))
+			Approved:   false,
+			TokenValid: true,
+			Reason: fmt.Sprintf("user '%s' does not have the required capability '%s'",
+				user.Alias, requiredCapability),
+		}, nil
 	}
 }
 
@@ -277,5 +280,6 @@ func (a *denyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	return Authorization{
 		Approved:   false,
 		TokenValid: false,
-	}, apimodels.NewUnauthorizedError(a.reason)
+		Reason:     a.reason,
+	}, nil
 }

@@ -146,9 +146,8 @@ func TestCheckUserAccess(t *testing.T) {
 		}
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/node_info", nil)
-		hasAccess, requiredCapability, err := checker.CheckUserAccess(user, ResourceTypeNode, req)
+		hasAccess, requiredCapability := checker.CheckUserAccess(user, ResourceTypeNode, req)
 
-		assert.NoError(t, err, "Should not return an error")
 		assert.True(t, hasAccess, "User should have access")
 		assert.Equal(t, "read:node", requiredCapability)
 	})
@@ -163,9 +162,8 @@ func TestCheckUserAccess(t *testing.T) {
 		}
 
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/node_info", nil)
-		hasAccess, requiredCapability, err := checker.CheckUserAccess(user, ResourceTypeNode, req)
+		hasAccess, requiredCapability := checker.CheckUserAccess(user, ResourceTypeNode, req)
 
-		assert.NoError(t, err, "Should not return an error")
 		assert.False(t, hasAccess, "User should not have access")
 		assert.Equal(t, "write:node", requiredCapability)
 	})
@@ -337,15 +335,13 @@ func TestResourceTypeAgent(t *testing.T) {
 
 	// Test read access
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent", nil)
-	hasAccess, requiredCapability, err := checker.CheckUserAccess(user, ResourceTypeAgent, req)
-	assert.NoError(t, err)
+	hasAccess, requiredCapability := checker.CheckUserAccess(user, ResourceTypeAgent, req)
 	assert.True(t, hasAccess)
 	assert.Equal(t, "read:agent", requiredCapability)
 
 	// Test write access
 	writeReq := httptest.NewRequest(http.MethodPost, "/api/v1/agent", nil)
-	hasWriteAccess, requiredWriteCapability, err := checker.CheckUserAccess(user, ResourceTypeAgent, writeReq)
-	assert.NoError(t, err)
+	hasWriteAccess, requiredWriteCapability := checker.CheckUserAccess(user, ResourceTypeAgent, writeReq)
 	assert.True(t, hasWriteAccess)
 	assert.Equal(t, "write:agent", requiredWriteCapability)
 }
@@ -488,8 +484,7 @@ func TestMissingCapability(t *testing.T) {
 	// When a resource type is not mapped (resulting in empty resource type),
 	// GetRequiredCapability will return write:node as default
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/unknown/endpoint", nil)
-	hasAccess, requiredCapability, err := checker.CheckUserAccess(user, "", req)
-	assert.NoError(t, err)
+	hasAccess, requiredCapability := checker.CheckUserAccess(user, "", req)
 	assert.Equal(t, "write:node", requiredCapability, "Unknown resource type should default to requiring write:node")
 	assert.True(t, hasAccess, "User with * capability should have access even to unknown resources")
 
@@ -500,8 +495,7 @@ func TestMissingCapability(t *testing.T) {
 			{Actions: []string{"read:job"}}, // Limited permissions
 		},
 	}
-	limitedHasAccess, _, err := checker.CheckUserAccess(limitedUser, "", req)
-	assert.NoError(t, err)
+	limitedHasAccess, _ := checker.CheckUserAccess(limitedUser, "", req)
 	assert.False(t, limitedHasAccess, "User without write:node capability should not have access to unknown resources")
 }
 

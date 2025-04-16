@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const errorInfoHint = "Please rerun command with DEBUG LOG_LEVEL for more details"
+const errorInfoHint = "Set LOG_LEVEL=DEBUG and re-run for detailed logs"
 
 // InfoOptions is a struct to support info command
 type InfoOptions struct {
@@ -48,7 +48,7 @@ func NewInfoCmd() *cobra.Command {
 			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to initialize API client")
-				return bacerrors.New("failed to initialize API call").
+				return bacerrors.New("failed to fetch supported authentication details from server").
 					WithHint(errorInfoHint)
 			}
 			return o.runInfo(cmd, api, cfg)

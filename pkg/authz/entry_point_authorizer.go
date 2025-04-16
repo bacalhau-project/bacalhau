@@ -10,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -269,7 +267,11 @@ func NewEntryPointAuthorizer(ctx context.Context, nodeID string, authConfig type
 // Authorize implements the Authorizer interface
 func (a *entryPointAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	if req.URL == nil {
-		return Authorization{}, errors.New("bad HTTP request: missing URL")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Request URL",
+		}, nil
 	}
 
 	// Check if the endpoint is open (doesn't require authentication)
@@ -287,7 +289,11 @@ func (a *entryPointAuthorizer) Authorize(req *http.Request) (Authorization, erro
 	// Get Authorization header
 	authorizationHeaders := req.Header["Authorization"]
 	if len(authorizationHeaders) == 0 {
-		return Authorization{}, apimodels.NewUnauthorizedError("missing authorization header")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Authorization header",
+		}, nil
 	}
 
 	authHeader := authorizationHeaders[0]
@@ -313,7 +319,8 @@ func (a *entryPointAuthorizer) Authorize(req *http.Request) (Authorization, erro
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError("unsupported authentication method")
+			Reason:     "unsupported authentication method",
+		}, nil
 	}
 }
 
