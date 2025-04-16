@@ -1,0 +1,240 @@
+name: Publish Binaries to S3
+
+on:
+  workflow_call:
+    inputs:
+      target_type:
+        description: 'Target type for publishing (main, nightly, release, pre-release)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment for publishing (e.g. release)'
+        required: false
+        default: 'release'
+        type: string
+      aws_region:
+        description: 'AWS Region for S3 bucket'
+        required: false
+        default: 'us-east-1'
+        type: string
+      s3_bucket:
+        description: 'S3 Bucket name'
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  publish-to-s3:
+    name: Publish to S3
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"  # Fetch all history for proper versioning
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bacalhau-*
+          path: artifacts
+
+      - name: Debug - List all downloaded artifacts
+        run: |
+          echo "==== LISTING ALL DOWNLOADED ARTIFACTS ===="
+          find artifacts -type f | sort
+          echo "==== ARTIFACT DIRECTORIES ===="
+          find artifacts -type d | sort
+          echo "==== TOTAL FILE COUNT ===="
+          find artifacts -type f | wc -l
+          echo "==== TOTAL DIRECTORY COUNT ===="
+          find artifacts -type d | wc -l
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Get version info
+        id: version
+        run: |
+          # Get version information
+          git_commit=$(git rev-parse HEAD)
+          git_version=$(git describe --tags --always)
+          
+          # Extract major/minor from git version
+          if [[ $git_version =~ ^v?([0-9]+)\.([0-9]+)\..*$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+          else
+            major="0"
+            minor="0"
+          fi
+          
+          # Set outputs for use in later steps
+          echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
+          echo "git_version=$git_version" >> $GITHUB_OUTPUT
+          echo "major=$major" >> $GITHUB_OUTPUT
+          echo "minor=$minor" >> $GITHUB_OUTPUT
+
+      - name: Upload binaries to S3
+        id: upload
+        run: |
+          # Determine S3 prefix based on target type
+          case "${{ inputs.target_type }}" in
+            main)
+              S3_PREFIX="main"
+              ;;
+            nightly)
+              S3_PREFIX="nightly"
+              ;;
+            release)
+              S3_PREFIX="release"
+              ;;
+            pre-release)
+              S3_PREFIX="pre-release"
+              ;;
+            *)
+              echo "Unknown target type: ${{ inputs.target_type }}"
+              exit 1
+              ;;
+          esac
+          
+          echo "Publishing to S3 prefix: $S3_PREFIX"
+          
+          # Create a file to store the list of uploaded artifacts for the summary
+          UPLOADS_LIST=""
+          
+          # Process each artifact directory and upload to S3
+          for dir in artifacts/*; do
+            if [ -d "$dir" ]; then
+              OS_ARCH=$(basename "$dir")
+          
+              # Extract OS and ARCH from directory name 
+              if [[ "$OS_ARCH" =~ ^bacalhau-([^-]+)-([^-]+)$ ]]; then
+                OS="${BASH_REMATCH[1]}"
+                ARCH="${BASH_REMATCH[2]}"
+              else
+                echo "Skipping invalid directory name: $OS_ARCH"
+                continue
+              fi
+          
+              echo "Processing $OS/$ARCH"
+              
+              # Find all tarballs (both binary and signature)
+              TARBALLS=$(find "$dir" -name "*.tar.gz")
+              if [ -z "$TARBALLS" ]; then
+                echo "No tarballs found in $dir, skipping"
+                continue
+              fi
+              
+              # Use the first tarball to extract build date
+              FIRST_TARBALL=$(echo "$TARBALLS" | head -n 1)
+              
+              # Try to extract the build date from the binary in the tarball
+              # Extract the tarball to a temp directory to check the binary
+              TEMP_DIR=$(mktemp -d)
+              tar -xzf "$FIRST_TARBALL" -C "$TEMP_DIR" 2>/dev/null || true
+              
+              # Try to find the binary
+              BINARY=$(find "$TEMP_DIR" -name "bacalhau" -type f 2>/dev/null || true)
+              
+              if [ -n "$BINARY" ]; then
+                # Extract build date from binary if possible
+                BUILD_DATE=$(strings "$BINARY" | grep -o '[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}Z' | head -1)
+              fi
+              
+              # If we couldn't extract the date, use the tarball's modification time
+              if [ -z "$BUILD_DATE" ]; then
+                BUILD_DATE=$(date -u -r "$FIRST_TARBALL" +"%Y-%m-%dT%H:%M:%SZ")
+              fi
+              
+              # Clean up temp directory
+              rm -rf "$TEMP_DIR"
+              
+              # Set metadata for S3 object
+              METADATA="BuildDate=$BUILD_DATE,GOOS=$OS,GOARCH=$ARCH,GitCommit=${{ steps.version.outputs.git_commit }},GitVersion=${{ steps.version.outputs.git_version }},Major=${{ steps.version.outputs.major }},Minor=${{ steps.version.outputs.minor }}"
+              
+              # Process and upload each tarball found
+              for TARBALL in $TARBALLS; do
+                FILENAME=$(basename "$TARBALL")
+                
+                # Upload to S3 with metadata
+                echo "Uploading to s3://${{ inputs.s3_bucket }}/$S3_PREFIX/$FILENAME"
+                echo "With metadata: $METADATA"
+                
+                aws s3 cp "$TARBALL" "s3://${{ inputs.s3_bucket }}/$S3_PREFIX/$FILENAME" \
+                  --metadata "$METADATA"
+                
+                # Add to summary list
+                UPLOADS_LIST="${UPLOADS_LIST}$OS/$ARCH: [$FILENAME]\n"
+              done
+            fi
+          done
+          
+          # Save uploads list for summary
+          echo -e "$UPLOADS_LIST" > uploads_list.txt
+
+      - name: Generate upload summary
+        if: success()
+        run: |
+          echo "## S3 Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:** ${{ inputs.s3_bucket }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Region:** ${{ inputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Git Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Git Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Add uploaded files section
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Uploaded Files" >> $GITHUB_STEP_SUMMARY
+          
+          # Check if there are any files uploaded
+          if [ -s uploads_list.txt ]; then
+            # Count how many unique OS/ARCH combinations were uploaded
+            PLATFORMS=$(cat uploads_list.txt | grep -o '[^:]*:' | sort -u | wc -l)
+            echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            # Group files by OS/ARCH for better readability
+            CURRENT_PLATFORM=""
+            
+            # Read each line
+            while IFS= read -r LINE; do
+              # Skip empty lines
+              if [ -z "$LINE" ]; then
+                continue
+              fi
+              
+              # Extract platform part
+              PLATFORM=$(echo "$LINE" | cut -d':' -f1)
+              
+              # If this is a new platform, add a header
+              if [ "$PLATFORM" != "$CURRENT_PLATFORM" ]; then
+                echo "**$PLATFORM**" >> $GITHUB_STEP_SUMMARY
+                CURRENT_PLATFORM="$PLATFORM"
+              fi
+              
+              # Extract the file part
+              FILE=$(echo "$LINE" | cut -d'[' -f2 | cut -d']' -f1)
+              
+              # Add formatted file link
+              echo "- \`$FILE\`" >> $GITHUB_STEP_SUMMARY
+            done < <(cat uploads_list.txt | sort)
+          else
+            echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY
+          fi

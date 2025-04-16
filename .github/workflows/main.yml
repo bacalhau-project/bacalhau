@@ -1,37 +1,54 @@
-name: Main Branch Build and Release
+name: Main
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:  # Allow manual triggering
+#  TODO: remove from pull_request
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
   actions: read
   checks: write
+  id-token: write  # Required for AWS authentication
 
 # Prevent multiple build workflows from running simultaneously
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false  # Don't cancel in-progress runs for main branch builds
 
-jobs:
-  # Build all binaries for release
+jobs:  # Build all binaries for release
   build-binaries:
-    name: Build Binaries
+    name: Binary
     uses: ./.github/workflows/_build.yml
     secrets: inherit
+
+  # Push binaries to S3
+  publish-to-s3:
+    name: Publish to S3
+    needs: [build-binaries]
+    uses: ./.github/workflows/_s3_publish.yml
+    with:
+      target_type: 'main'
+      environment: 'release'
+      aws_region: ${{ vars.AWS_REGION }}
+      s3_bucket: ${{ vars.S3_BUCKET }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   # Build summary job
   build-summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [build-binaries]
+    needs: [build-binaries, publish-to-s3]
     steps:
       - name: Build Summary
         run: |
           echo "## Main Branch Build" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All binaries have been successfully built." >> $GITHUB_STEP_SUMMARY
+          echo "✅ All binaries have been successfully built and published to S3." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Ready for future S3 deployment." >> $GITHUB_STEP_SUMMARY
+          echo "Binaries are available at s3://${{ vars.S3_BUCKET }}/main/" >> $GITHUB_STEP_SUMMARY
