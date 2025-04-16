@@ -32,15 +32,11 @@ jobs:
       target_type: 'nightly'
     secrets: inherit
 
-  # Build summary job
-  build-summary:
-    name: Build Summary
-    runs-on: ubuntu-latest
-    needs: [build-binaries, publish-to-s3]
-    steps:
-      - name: Build Summary
-        run: |
-          echo "## Nightly Build" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All binaries have been successfully built and published to S3." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Binaries are available at s3://${{ vars.S3_BUCKET }}/nightly/" >> $GITHUB_STEP_SUMMARY
+  # Build and push Docker images
+  publish-docker:
+    name: Publish Docker
+    needs: [build-binaries]
+    uses: ./.github/workflows/_docker_publish.yml
+    with:
+      target_type: 'nightly'
+    secrets: inherit

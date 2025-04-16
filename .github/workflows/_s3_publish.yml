@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       target_type:
-        description: 'Target type for publishing (main, nightly, release, pre-release)'
+        description: 'Target type for publishing (main, nightly, release, non-release)'
         required: true
         type: string
       environment:
@@ -52,33 +52,7 @@ jobs:
 
       - name: Get version info
         id: version
-        run: |
-          # Get version information
-          git_commit=$(git rev-parse HEAD)
-          git_version=$(git describe --tags --always)
-          
-          # Extract major/minor from git version
-          if [[ $git_version =~ ^v?([0-9]+)\.([0-9]+)\..*$ ]]; then
-            major="${BASH_REMATCH[1]}"
-            minor="${BASH_REMATCH[2]}"
-          else
-            major="0"
-            minor="0"
-          fi
-          
-          # Print full version info summary
-          echo "==== VERSION INFO SUMMARY ===="
-          echo "Git commit hash: $git_commit"
-          echo "Git version string: $git_version"
-          echo "Major version: $major"
-          echo "Minor version: $minor"
-          echo "============================="
-          
-          # Set outputs for use in later steps
-          echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
-          echo "git_version=$git_version" >> $GITHUB_OUTPUT
-          echo "major=$major" >> $GITHUB_OUTPUT
-          echo "minor=$minor" >> $GITHUB_OUTPUT
+        uses: ./.github/actions/get-version-info
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -86,6 +60,14 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check S3 Bucket existence
+        run: |
+          if ! aws s3api head-bucket --bucket ${{ vars.S3_BUCKET }} 2>/dev/null; then
+            echo "⚠️ S3 bucket '${{ vars.S3_BUCKET }}' does not exist or you don't have access to it"
+            echo "Please check your AWS credentials and bucket name"
+            exit 1
+          fi
 
       - name: Upload binaries to S3
         id: upload
@@ -99,10 +81,8 @@ jobs:
               S3_PREFIX="nightly"
               ;;
             release)
+              # Handle both release and pre-release the same way for S3 paths
               S3_PREFIX="release"
-              ;;
-            pre-release)
-              S3_PREFIX="pre-release"
               ;;
             *)
               echo "Unknown target type: ${{ inputs.target_type }}"
@@ -112,8 +92,19 @@ jobs:
           
           echo "Publishing to S3 prefix: $S3_PREFIX"
           
+          # Check if we should also publish to /latest
+          PUBLISH_TO_LATEST="false"
+          if [[ "${{ steps.version.outputs.release_type }}" == "release" ]]; then
+            PUBLISH_TO_LATEST="true"
+            echo "Will also publish to /latest prefix (release type: ${{ steps.version.outputs.release_type }})"
+          fi
+          
           # Create a file to store the list of uploaded artifacts for the summary
           UPLOADS_LIST=""
+          
+          # Use the build date from the version action
+          BUILD_DATE="${{ steps.version.outputs.build_date }}"
+          echo "Using build date from version info: $BUILD_DATE"
           
           # Process each artifact directory and upload to S3
           for dir in artifacts/*; do
@@ -138,46 +129,31 @@ jobs:
                 continue
               fi
               
-              # Use the first tarball to extract build date
-              FIRST_TARBALL=$(echo "$TARBALLS" | head -n 1)
-              
-              # Try to extract the build date from the binary in the tarball
-              # Extract the tarball to a temp directory to check the binary
-              TEMP_DIR=$(mktemp -d)
-              tar -xzf "$FIRST_TARBALL" -C "$TEMP_DIR" 2>/dev/null || true
-              
-              # Try to find the binary
-              BINARY=$(find "$TEMP_DIR" -name "bacalhau" -type f 2>/dev/null || true)
-              
-              if [ -n "$BINARY" ]; then
-                # Extract build date from binary if possible
-                BUILD_DATE=$(strings "$BINARY" | grep -o '[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9]\{2\}:[0-9]\{2\}:[0-9]\{2\}Z' | head -1)
-              fi
-              
-              # If we couldn't extract the date, use the tarball's modification time
-              if [ -z "$BUILD_DATE" ]; then
-                BUILD_DATE=$(date -u -r "$FIRST_TARBALL" +"%Y-%m-%dT%H:%M:%SZ")
-              fi
-              
-              # Clean up temp directory
-              rm -rf "$TEMP_DIR"
-              
-              # Set metadata for S3 object
-              METADATA="BuildDate=$BUILD_DATE,GOOS=$OS,GOARCH=$ARCH,GitCommit=${{ steps.version.outputs.git_commit }},GitVersion=${{ steps.version.outputs.git_version }},Major=${{ steps.version.outputs.major }},Minor=${{ steps.version.outputs.minor }}"
-              
               # Process and upload each tarball found
               for TARBALL in $TARBALLS; do
                 FILENAME=$(basename "$TARBALL")
                 
-                # Upload to S3 with metadata
+                # Set metadata for S3 object - always use the build date from version info
+                METADATA="BuildDate=$BUILD_DATE,GOOS=$OS,GOARCH=$ARCH,GitCommit=${{ steps.version.outputs.git_commit }},GitVersion=${{ steps.version.outputs.git_version }},Major=${{ steps.version.outputs.major }},Minor=${{ steps.version.outputs.minor }}"
+                
+                # Always upload to the primary prefix
                 echo "Uploading to s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME"
                 echo "With metadata: $METADATA"
-                
                 aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME" \
                   --metadata "$METADATA"
                 
                 # Add to summary list with build date and full S3 path
                 UPLOADS_LIST="${UPLOADS_LIST}${S3_PREFIX}/${FILENAME}|${OS}/${ARCH}|${BUILD_DATE}\n"
+                
+                # If it's a full release, also upload to /latest
+                if [[ "$PUBLISH_TO_LATEST" == "true" ]]; then
+                  echo "Also uploading to s3://${{ vars.S3_BUCKET }}/latest/$FILENAME"
+                  aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/latest/$FILENAME" \
+                    --metadata "$METADATA"
+                  
+                  # Add the latest upload to the summary as well
+                  UPLOADS_LIST="${UPLOADS_LIST}latest/${FILENAME}|${OS}/${ARCH}|${BUILD_DATE}\n"
+                fi
               done
             fi
           done
@@ -193,10 +169,12 @@ jobs:
           echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type:** ${{ steps.version.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
           echo "**S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
           echo "**S3 Region:** ${{ vars.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Date:** ${{ steps.version.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
           
           # Add uploaded files section
           echo "" >> $GITHUB_STEP_SUMMARY

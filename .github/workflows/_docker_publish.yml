@@ -4,14 +4,20 @@ on:
   workflow_call:
     inputs:
       target_type:
-        description: 'Target type for publishing (main, nightly, release, pre-release)'
+        description: 'Target type for publishing (main, nightly, release, non-release)'
         required: true
+        type: string
+      environment:
+        description: 'Environment for publishing (e.g. release)'
+        required: false
+        default: "release"
         type: string
 
 jobs:
   publish-docker-images:
     name: Publish Docker Images
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     permissions:
       contents: read
       packages: write # Required for pushing to GHCR
@@ -22,11 +28,12 @@ jobs:
         with:
           fetch-depth: "0"  # Fetch all history for proper versioning
 
-      - name: Download all artifacts
+      - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: bacalhau-*
+          pattern: bacalhau-linux-{amd64,arm64}
           path: artifacts
+          merge-multiple: true
 
       - name: List downloaded artifacts
         run: |
@@ -49,27 +56,7 @@ jobs:
 
       - name: Get version info
         id: version
-        run: |
-          # Get version information
-          git_commit=$(git rev-parse HEAD)
-          git_version=$(git describe --tags --always)
-          
-          echo "==== VERSION INFO ===="
-          echo "Git commit: $git_commit"
-          echo "Git version: $git_version"
-          
-          # Set outputs for use in later steps
-          echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
-          echo "git_version=$git_version" >> $GITHUB_OUTPUT
-          
-          # Determine if this is a release version (like v1.2.3) without pre-release info
-          if [[ "$git_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "is_clean_semver=true" >> $GITHUB_OUTPUT
-            echo "This is a clean semver version"
-          else
-            echo "is_clean_semver=false" >> $GITHUB_OUTPUT
-            echo "This is not a clean semver version"
-          fi
+        uses: ./.github/actions/get-version-info
 
       - name: Extract binaries from artifacts
         run: |
@@ -128,15 +115,14 @@ jobs:
 
             echo "Adding 'nightly' and 'nightly-${NIGHTLY_DATE}' tags"
 
-          elif [ "${{ inputs.target_type }}" == "release" ] || [ "${{ inputs.target_type }}" == "pre-release" ]; then
+          elif [ "${{ inputs.target_type }}" == "release" ]; then
             # For all releases (both regular and pre-releases), add 'release' tag
             BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:release"
             DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:release-dind"
 
             echo "Adding 'release' tags"
 
-            # For clean semver releases, also add 'latest' tag only
-            if [ "${{ steps.version.outputs.is_clean_semver }}" == "true" ]; then
+            if [ "${{ steps.version.outputs.release_type }}" == "release" ]; then
               BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:latest"
               DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:latest-dind"
 
@@ -166,10 +152,11 @@ jobs:
           tags: ${{ steps.docker_tags.outputs.base_tags }}
           cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest
           labels: |
-            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.build_date }}
-            org.opencontainers.image.version=${{ steps.docker_tags.outputs.git_version }}
+            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.image_build_date }}
+            org.opencontainers.image.version=${{ steps.version.outputs.git_version }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+            org.bacalhau.binary.build_date=${{ steps.version.outputs.build_date }}
 
       - name: Build and push DIND image
         uses: docker/build-push-action@v5
@@ -181,10 +168,23 @@ jobs:
           tags: ${{ steps.docker_tags.outputs.dind_tags }}
           cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest-dind
           labels: |
-            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.build_date }}
-            org.opencontainers.image.version=${{ steps.docker_tags.outputs.git_version }}
+            org.opencontainers.artifact.created=${{ steps.version.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.version.outputs.git_version }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+
+      # Run smoke tests on the built images
+      - name: Test base image
+        uses: ./.github/actions/docker-test-image
+        with:
+          image: ${{ steps.docker_tags.outputs.image }}
+          tag: ${{ steps.version.outputs.git_version }}
+
+      - name: Test DIND image
+        uses: ./.github/actions/docker-test-image
+        with:
+          image: ${{ steps.docker_tags.outputs.image }}
+          tag: ${{ steps.version.outputs.git_version }}-dind
 
       - name: Generate docker summary
         if: success()
@@ -194,8 +194,10 @@ jobs:
           echo "✅ Successfully built and pushed Docker images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type:** ${{ steps.version.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Date:** ${{ steps.version.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Published Images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

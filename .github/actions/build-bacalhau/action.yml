@@ -37,7 +37,7 @@ inputs:
   artifact_retention:
     description: 'Retention days for the artifact'
     required: false
-    default: '30'
+    default: '7'
   binary_output_path:
     description: 'Where to output the built binary (for test mode)'
     required: false
