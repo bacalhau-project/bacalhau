@@ -223,6 +223,7 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for success
 	})
 
 	t.Run("UnauthorizedWithMissingCapabilities", func(t *testing.T) {
@@ -236,10 +237,10 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.True(t, auth.TokenValid) // Token is valid, just lacks capabilities
-		assert.Contains(t, err.Error(), "does not have the required capability")
+		assert.Contains(t, auth.Reason, "user 'Test User' does not have the required capability")
 	})
 
 	t.Run("SuccessForOpenEndpoint", func(t *testing.T) {
@@ -256,6 +257,7 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for open endpoints
 	})
 
 	t.Run("MissingAuthorizationHeader", func(t *testing.T) {
@@ -269,10 +271,10 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.False(t, auth.TokenValid)
-		assert.Contains(t, err.Error(), "missing authorization header")
+		assert.Equal(t, "Missing Authorization header", auth.Reason)
 	})
 
 	t.Run("MissingURL", func(t *testing.T) {
@@ -289,10 +291,10 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.False(t, auth.TokenValid)
-		assert.Contains(t, err.Error(), "missing URL")
+		assert.Equal(t, "Missing Request URL", auth.Reason)
 	})
 
 	t.Run("UnauthorizedMessageUsesUsernameWhenNoAlias", func(t *testing.T) {
@@ -317,11 +319,10 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
-		// Error message should contain username since alias is empty
-		assert.Contains(t, err.Error(), "user 'noalias' does not have the required capability")
+		assert.Contains(t, auth.Reason, "user 'noalias' does not have the required capability")
 	})
 
 	t.Run("UnauthorizedMessageUsesAliasWhenPresent", func(t *testing.T) {
@@ -347,11 +348,113 @@ func TestBasicAuthAuthorization(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
-		// Error message should contain alias since it's present
-		assert.Contains(t, err.Error(), "user 'Custom Alias' does not have the required capability")
+		assert.Contains(t, auth.Reason, "user 'Custom Alias' does not have the required capability")
+	})
+
+	t.Run("InvalidBasicAuthFormat", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with malformed auth header
+		req := createTestRequest("/v1/jobs", "Basic invalid-base64")
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "failed to decode basic auth credentials", auth.Reason)
+	})
+
+	t.Run("NonBasicAuthScheme", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with wrong auth scheme
+		req := createTestRequest("/v1/jobs", "Bearer some-token")
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "failed to decode basic auth credentials", auth.Reason)
+	})
+
+	t.Run("InvalidCredentialsFormat", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with valid base64 but invalid credentials format
+		invalidCreds := base64.StdEncoding.EncodeToString([]byte("invalid-format"))
+		req := createTestRequest("/v1/jobs", "Basic "+invalidCreds)
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "invalid basic auth credentials format", auth.Reason)
+	})
+
+	t.Run("WrongPassword", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with valid username but wrong password
+		req := createTestRequest("/v1/jobs", createBasicAuthHeader("testuser", "wrongpassword"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "invalid basic auth credentials", auth.Reason)
+	})
+
+	t.Run("NonExistentUser", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with non-existent username
+		req := createTestRequest("/v1/jobs", createBasicAuthHeader("nonexistentuser", "anypassword"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "invalid basic auth credentials", auth.Reason)
+	})
+
+	t.Run("CaseInsensitiveUsername", func(t *testing.T) {
+		// Setup
+		authorizer := createTestAuthorizer()
+
+		// Create request with different case username
+		req := createTestRequest("/v1/jobs", createBasicAuthHeader("TestUser", "testpass"))
+
+		// Execute
+		auth, err := authorizer.Authorize(req)
+
+		// Verify
+		require.NoError(t, err)
+		assert.True(t, auth.Approved)
+		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason)
 	})
 }
 
@@ -419,4 +522,17 @@ func createTestRequest(path, authHeader string) *http.Request {
 	}
 
 	return req
+}
+
+// Helper function to verify Authorization results
+func assertAuthorization(t *testing.T, auth Authorization, err error, expectedApproved bool, expectedTokenValid bool, expectedReason string) {
+	t.Helper()
+	require.NoError(t, err)
+	assert.Equal(t, expectedApproved, auth.Approved)
+	assert.Equal(t, expectedTokenValid, auth.TokenValid)
+	if expectedReason == "" {
+		assert.Empty(t, auth.Reason)
+	} else {
+		assert.Equal(t, expectedReason, auth.Reason)
+	}
 }

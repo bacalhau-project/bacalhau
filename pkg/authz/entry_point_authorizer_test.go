@@ -804,6 +804,7 @@ func TestEntryPointAuthorize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for success
 	})
 
 	t.Run("AuthorizeApiKey", func(t *testing.T) {
@@ -820,6 +821,7 @@ func TestEntryPointAuthorize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for success
 	})
 
 	t.Run("AuthorizeOpenEndpoint", func(t *testing.T) {
@@ -836,6 +838,7 @@ func TestEntryPointAuthorize(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason) // No reason needed for open endpoints
 	})
 
 	t.Run("UnauthorizedWithUnsupportedAuthMethod", func(t *testing.T) {
@@ -849,10 +852,10 @@ func TestEntryPointAuthorize(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, auth.Approved)
 		assert.False(t, auth.TokenValid)
-		assert.Contains(t, err.Error(), "unsupported authentication method")
+		assert.Equal(t, "unsupported authentication method", auth.Reason)
 	})
 
 	t.Run("MissingURL", func(t *testing.T) {
@@ -866,11 +869,13 @@ func TestEntryPointAuthorize(t *testing.T) {
 		req.Header.Add("Authorization", createBasicAuthHeader("testuser", "testpass"))
 
 		// Execute
-		_, err := authorizer.Authorize(req)
+		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "missing URL")
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "Missing Request URL", auth.Reason)
 	})
 
 	t.Run("MissingAuthorizationHeader", func(t *testing.T) {
@@ -884,9 +889,10 @@ func TestEntryPointAuthorize(t *testing.T) {
 		auth, err := authorizer.Authorize(req)
 
 		// Verify
-		require.Error(t, err)
-		assert.Equal(t, Authorization{}, auth)
-		assert.Contains(t, err.Error(), "missing authorization header")
+		require.NoError(t, err)
+		assert.False(t, auth.Approved)
+		assert.False(t, auth.TokenValid)
+		assert.Equal(t, "Missing Authorization header", auth.Reason)
 	})
 }
 
@@ -1134,9 +1140,6 @@ func TestIsJWTToken(t *testing.T) {
 
 // TestJWTRouting tests the JWT token routing in the entry point authorizer
 func TestJWTRouting(t *testing.T) {
-	// This test needs to create a new entryPointAuthorizer with mock JWT authorizer
-	// that can signal it was called
-
 	t.Run("JWTTokenRoutedToJWTAuthorizer", func(t *testing.T) {
 		// Create a standard entry point authorizer
 		standardAuthorizer := createTestEntryPointAuthorizer()
@@ -1153,7 +1156,10 @@ func TestJWTRouting(t *testing.T) {
 				authHeader := req.Header.Get("Authorization")
 				assert.True(t, strings.HasPrefix(authHeader, "Bearer "))
 				assert.Equal(t, "Bearer "+jwtToken, authHeader)
-				return Authorization{Approved: true, TokenValid: true}, nil
+				return Authorization{
+					Approved:   true,
+					TokenValid: true,
+				}, nil
 			},
 		}
 
@@ -1170,6 +1176,7 @@ func TestJWTRouting(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason)
 		assert.True(t, jwtAuthorizerCalled, "JWT authorizer should have been called")
 	})
 
@@ -1189,7 +1196,10 @@ func TestJWTRouting(t *testing.T) {
 				authHeader := req.Header.Get("Authorization")
 				assert.True(t, strings.HasPrefix(authHeader, "Bearer "))
 				assert.Equal(t, "Bearer "+apiKey, authHeader)
-				return Authorization{Approved: true, TokenValid: true}, nil
+				return Authorization{
+					Approved:   true,
+					TokenValid: true,
+				}, nil
 			},
 		}
 
@@ -1201,7 +1211,7 @@ func TestJWTRouting(t *testing.T) {
 		mockJWTAuthorizer := &mockAuthorizer{
 			authorizeFunc: func(req *http.Request) (Authorization, error) {
 				jwtAuthorizerCalled = true
-				return Authorization{}, fmt.Errorf("JWT authorizer should not be called")
+				return Authorization{}, nil
 			},
 		}
 		standardAuthorizer.jwtAuthorizer = mockJWTAuthorizer
@@ -1216,6 +1226,7 @@ func TestJWTRouting(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, auth.Approved)
 		assert.True(t, auth.TokenValid)
+		assert.Empty(t, auth.Reason)
 		assert.True(t, apiKeyAuthorizerCalled, "API key authorizer should have been called")
 		assert.False(t, jwtAuthorizerCalled, "JWT authorizer should not have been called")
 	})
