@@ -112,21 +112,19 @@ jobs:
             NIGHTLY_DATE=$(date -u +"%Y%m%d")
             BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:nightly,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}"
             DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:nightly-dind,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}-dind"
-
             echo "Adding 'nightly' and 'nightly-${NIGHTLY_DATE}' tags"
 
           elif [ "${{ inputs.target_type }}" == "release" ]; then
-            # For all releases (both regular and pre-releases), add 'release' tag
-            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:release"
-            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:release-dind"
-
-            echo "Adding 'release' tags"
-
             if [ "${{ steps.version.outputs.release_type }}" == "release" ]; then
+              # For stable releases, use 'latest' tag
               BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:latest"
               DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:latest-dind"
-
               echo "Adding 'latest' tags"
+            else
+              # For pre-releases, use 'pre' tag
+              BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:pre"
+              DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:pre-dind"
+              echo "Adding 'pre' tags"
             fi
           fi
 
