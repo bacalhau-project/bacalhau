@@ -45,6 +45,11 @@ export type apimodels_GetAgentLicenseResponse = {
     sub?: string;
 };
 
+export type apimodels_GetAgentNodeAuthConfigResponse = {
+    config?: types_Oauth2Config;
+    version?: string;
+};
+
 export type apimodels_GetJobResponse = {
     Executions?: apimodels_ListJobExecutionsResponse;
     History?: apimodels_ListJobHistoryResponse;
@@ -530,11 +535,12 @@ export type models_LabelSelectorRequirement = {
 };
 
 export enum models_Network {
-    NetworkNone = 0,
-    NetworkHost = 1,
-    NetworkFull = 2,
-    NetworkHTTP = 3,
-    NetworkBridge = 4
+    NetworkDefault = 0,
+    NetworkNone = 1,
+    NetworkHost = 2,
+    NetworkFull = 3,
+    NetworkHTTP = 4,
+    NetworkBridge = 5
 }
 
 export type models_NetworkConfig = {
@@ -877,6 +883,16 @@ export type types_AuthConfig = {
     Methods?: {
         [key: string]: types_AuthenticatorConfig;
     };
+    Oauth2?: types_Oauth2Config;
+    Users?: Array<types_AuthUser>;
+};
+
+export type types_AuthUser = {
+    APIKey?: string;
+    Alias?: string;
+    Capabilities?: Array<types_Capability>;
+    Password?: string;
+    Username?: string;
 };
 
 export type types_AuthenticatorConfig = {
@@ -935,6 +951,10 @@ export type types_BatchTaskDefaultConfig = {
     Publisher?: types_DefaultPublisherConfig;
     Resources?: types_ResourcesConfig;
     Timeouts?: types_TaskTimeoutConfig;
+};
+
+export type types_Capability = {
+    Actions?: Array<(string)>;
 };
 
 export type types_Cluster = {
@@ -1138,11 +1158,6 @@ export type types_IpfsDownloader = {
 
 export type types_JobAdmissionControl = {
     /**
-     * AcceptNetworkedJobs indicates whether to accept jobs that require network access.
-     * Will be deprecated in v1.7 in favor of RejectNetworkedJobs.
-     */
-    AcceptNetworkedJobs?: boolean;
-    /**
      * Locality specifies the locality of the job input data.
      */
     Locality?: (models_JobSelectionDataLocality);
@@ -1242,6 +1257,19 @@ export type types_NodeManager = {
      * ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.
      */
     ManualApproval?: boolean;
+};
+
+export type types_Oauth2Config = {
+    Audience?: string;
+    DeviceAuthorizationEndpoint?: string;
+    DeviceClientID?: string;
+    Issuer?: string;
+    JWKSUri?: string;
+    PollingInterval?: number;
+    ProviderID?: string;
+    ProviderName?: string;
+    Scopes?: Array<(string)>;
+    TokenEndpoint?: string;
 };
 
 export type types_Orchestrator = {
@@ -1495,6 +1523,10 @@ export type AgentAliveResponse = (apimodels_IsAliveResponse);
 
 export type AgentAliveError = unknown;
 
+export type AgentAuthconfigResponse = (apimodels_GetAgentNodeAuthConfigResponse);
+
+export type AgentAuthconfigError = (string);
+
 export type AgentConfigResponse = (types_Bacalhau);
 
 export type AgentConfigError = (string);
@@ -1732,6 +1764,19 @@ export type OrchestratorListNodesResponse = (apimodels_ListNodesResponse);
 
 export type OrchestratorListNodesError = (string);
 
+export type OrchestratorGetNodeData = {
+    path: {
+        /**
+         * ID of the orchestrator node to fetch for.
+         */
+        id: string;
+    };
+};
+
+export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
+
+export type OrchestratorGetNodeError = (string);
+
 export type OrchestratorUpdateNodeData = {
     /**
      * Put Node Request
@@ -1748,16 +1793,3 @@ export type OrchestratorUpdateNodeData = {
 export type OrchestratorUpdateNodeResponse = (apimodels_PutNodeResponse);
 
 export type OrchestratorUpdateNodeError = (string);
-
-export type OrchestratorGetNodeData = {
-    path: {
-        /**
-         * ID of the orchestrator node to fetch for.
-         */
-        id: string;
-    };
-};
-
-export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
-
-export type OrchestratorGetNodeError = (string);
