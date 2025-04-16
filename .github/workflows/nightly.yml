@@ -30,11 +30,7 @@ jobs:
     uses: ./.github/workflows/_s3_publish.yml
     with:
       target_type: 'nightly'
-      aws_region: ${{ vars.AWS_REGION }}
-      s3_bucket: ${{ vars.S3_BUCKET }}
-    secrets:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    secrets: inherit
 
   # Build summary job
   build-summary:
