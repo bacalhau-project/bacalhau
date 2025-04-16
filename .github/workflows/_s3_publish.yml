@@ -99,7 +99,7 @@ jobs:
           echo "Using build date from version info: $BUILD_DATE"
           
           # Process each artifact directory and upload to S3
-          for dir in artifacts/*; do
+          for dir in artifacts/bacalhau-*; do
             if [ -d "$dir" ]; then
               OS_ARCH=$(basename "$dir")
           
@@ -114,8 +114,8 @@ jobs:
           
               echo "Processing $OS/$ARCH"
               
-              # Find both tarballs and signature files
-              ARTIFACTS=$(find "$dir" -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc")
+              # Find both tarballs and signature files - UPDATED to include .signature.sha256 files
+              ARTIFACTS=$(find "$dir" -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc" -o -name "*.signature.sha256")
               if [ -z "$ARTIFACTS" ]; then
                 echo "No artifacts found in $dir, skipping"
                 continue

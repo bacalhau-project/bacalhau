@@ -195,21 +195,41 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Successfully built and pushed Docker images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Release Type:** ${{ steps.version.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Date:** ${{ steps.version.outputs.build_date }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Format metadata as a table for better readability
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | ${{ inputs.target_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Repository** | ${{ steps.docker_tags.outputs.image }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Add published images section
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Published Images" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          echo "| Image Type | Tags |" >> $GITHUB_STEP_SUMMARY
-          echo "| ---------- | ---- |" >> $GITHUB_STEP_SUMMARY
+          # Extract image tags for better display
+          BASE_TAGS=$(echo "${{ steps.docker_tags.outputs.base_tags }}" | tr ',' '\n')
+          DIND_TAGS=$(echo "${{ steps.docker_tags.outputs.dind_tags }}" | tr ',' '\n')
           
-          # Replace commas with line breaks for better display
-          BASE_TAGS=$(echo "${{ steps.docker_tags.outputs.base_tags }}" | sed 's/,/<br>/g')
-          DIND_TAGS=$(echo "${{ steps.docker_tags.outputs.dind_tags }}" | sed 's/,/<br>/g')
+          # Count how many platforms were published
+          PLATFORMS="2"  # We know it's amd64 and arm64 from the build step
+          echo "Images published for **$PLATFORMS** platforms (linux/amd64, linux/arm64):" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           
-          echo "| Base Image | $BASE_TAGS |" >> $GITHUB_STEP_SUMMARY
-          echo "| DIND Image | $DIND_TAGS |" >> $GITHUB_STEP_SUMMARY
+          # Create a table showing all image tags
+          echo "| Image Type | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|-----|" >> $GITHUB_STEP_SUMMARY
+          
+          # Add base image tags
+          for TAG in $BASE_TAGS; do
+            echo "| Base Image | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          done
+          
+          # Add DIND image tags
+          for TAG in $DIND_TAGS; do
+            echo "| DIND Image | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          done
