@@ -12,15 +12,6 @@ on:
         required: false
         default: 'release'
         type: string
-      aws_region:
-        description: 'AWS Region for S3 bucket'
-        required: false
-        default: 'us-east-1'
-        type: string
-      s3_bucket:
-        description: 'S3 Bucket name'
-        required: true
-        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -31,7 +22,7 @@ jobs:
   publish-to-s3:
     name: Publish to S3
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}  # Use the specified environment
     permissions:
       contents: read
       id-token: write
@@ -64,7 +55,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ inputs.aws_region }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Get version info
         id: version
@@ -171,10 +162,10 @@ jobs:
                 FILENAME=$(basename "$TARBALL")
                 
                 # Upload to S3 with metadata
-                echo "Uploading to s3://${{ inputs.s3_bucket }}/$S3_PREFIX/$FILENAME"
+                echo "Uploading to s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME"
                 echo "With metadata: $METADATA"
                 
-                aws s3 cp "$TARBALL" "s3://${{ inputs.s3_bucket }}/$S3_PREFIX/$FILENAME" \
+                aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME" \
                   --metadata "$METADATA"
                 
                 # Add to summary list
@@ -194,8 +185,8 @@ jobs:
           echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Bucket:** ${{ inputs.s3_bucket }}" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Region:** ${{ inputs.aws_region }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:**${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Region:** ${{ vars.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
           

@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  release:
+    types: [published, prereleased]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - pre-release
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+  id-token: write  # Required for AWS authentication
+
+jobs:
+  # Determine release type
+  get-release-type:
+    name: Determine Release Type
+    runs-on: ubuntu-latest
+    outputs:
+      release_type: ${{ steps.set-type.outputs.release_type }}
+    steps:
+      - name: Set release type
+        id: set-type
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Use the manually specified release type
+            echo "release_type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.release.prerelease }}" == "true" ]; then
+            # This is a pre-release
+            echo "release_type=pre-release" >> $GITHUB_OUTPUT
+          else
+            # This is a full release
+            echo "release_type=release" >> $GITHUB_OUTPUT
+          fi
+          echo "Detected release type: ${{ steps.set-type.outputs.release_type }}"
+
+  # Build all binaries for release
+  build-binaries:
+    name: Binary
+    uses: ./.github/workflows/_build.yml
+    secrets: inherit
+
+  # Push binaries to S3
+  publish-to-s3:
+    name: Publish to S3
+    needs: [get-release-type, build-binaries]
+    uses: ./.github/workflows/_s3_publish.yml
+    with:
+      target_type: ${{ needs.get-release-type.outputs.release_type }}
+      aws_region: ${{ vars.AWS_REGION }}
+      s3_bucket: ${{ vars.S3_BUCKET }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  # Build summary job
+  build-summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [get-release-type, build-binaries, publish-to-s3]
+    steps:
+      - name: Release Summary
+        run: |
+          echo "## Release Build" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All binaries have been successfully built and published to S3." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Type:** ${{ needs.get-release-type.outputs.release_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Path:** s3://${{ vars.S3_BUCKET }}/${{ needs.get-release-type.outputs.release_type }}/" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "**Release Tag:** ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Release URL:** ${{ github.event.release.html_url }}" >> $GITHUB_STEP_SUMMARY
+          fi

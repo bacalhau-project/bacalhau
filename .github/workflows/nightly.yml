@@ -1,13 +1,9 @@
-name: Main
+name: Nightly Release
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '0 0 * * *'  # Run at midnight UTC every day
   workflow_dispatch:  # Allow manual triggering
-#  TODO: remove from pull_request
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -15,12 +11,13 @@ permissions:
   checks: write
   id-token: write  # Required for AWS authentication
 
-# Prevent multiple build workflows from running simultaneously
+# Prevent multiple nightly builds from running simultaneously
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false  # Don't cancel in-progress runs for main branch builds
+  group: ${{ github.workflow }}-nightly
+  cancel-in-progress: true  # Cancel in-progress runs for nightly builds
 
-jobs:  # Build all binaries for release
+jobs:
+  # Build all binaries for release
   build-binaries:
     name: Binary
     uses: ./.github/workflows/_build.yml
@@ -32,8 +29,12 @@ jobs:  # Build all binaries for release
     needs: [build-binaries]
     uses: ./.github/workflows/_s3_publish.yml
     with:
-      target_type: 'main'
-    secrets: inherit
+      target_type: 'nightly'
+      aws_region: ${{ vars.AWS_REGION }}
+      s3_bucket: ${{ vars.S3_BUCKET }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   # Build summary job
   build-summary:
@@ -43,7 +44,7 @@ jobs:  # Build all binaries for release
     steps:
       - name: Build Summary
         run: |
-          echo "## Main Branch Build" >> $GITHUB_STEP_SUMMARY
+          echo "## Nightly Build" >> $GITHUB_STEP_SUMMARY
           echo "✅ All binaries have been successfully built and published to S3." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Binaries are available at s3://${{ vars.S3_BUCKET }}/main/" >> $GITHUB_STEP_SUMMARY
+          echo "Binaries are available at s3://${{ vars.S3_BUCKET }}/nightly/" >> $GITHUB_STEP_SUMMARY
