@@ -183,13 +183,19 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            
+          
             # Create a simplified markdown table header with only Platform and S3 Path
             echo "| Platform | S3 Path |" >> $GITHUB_STEP_SUMMARY
             echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
-              
+          
             # Sort by platform for better readability and only show platform and S3 path
+            # Ensure no blank rows - make sure each line has proper formatting
             sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
+              # Skip any empty lines that might cause formatting issues
+              if [[ -z "$PLATFORM" || -z "$S3_PATH" ]]; then
+                continue
+              fi
+          
               # Add table row with just platform and S3 path
               echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
             done

@@ -7,6 +7,10 @@ inputs:
   tag:
     description: 'Docker image tag to test'
     required: true
+  privileged:
+    description: 'Whether to run the test in privileged mode'
+    required: false
+    default: false
 outputs:
   status:
     description: 'Status of the test (success/failure)'
@@ -24,9 +28,16 @@ runs:
         # Pull the image
         docker pull ${{ inputs.image }}:${{ inputs.tag }}
         
+        PRIVILEGED=""
+        # Privileged mode if specified
+        if [ "${{ inputs.privileged }}" == "true" ]; then
+          PRIVILEGED="--privileged"
+        fi
+        
+        
         # Test the base image - does it run and contain bacalhau binary?
         echo "Testing bacalhau binary in image..."
-        if docker run --rm ${{ inputs.image }}:${{ inputs.tag }} version; then
+        if docker run --rm $PRIVILEGED ${{ inputs.image }}:${{ inputs.tag }} version; then
           echo "✅ Binary test passed"
         else
           echo "❌ Binary test failed" >&2

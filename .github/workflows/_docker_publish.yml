@@ -150,13 +150,13 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.docker_tags.outputs.base_tags }}
+          provenance: false  # Disable default provenance attestation
           cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest
           labels: |
-            org.opencontainers.artifact.created=${{ steps.docker_tags.outputs.image_build_date }}
+            org.opencontainers.artifact.created=${{ steps.version.outputs.build_date }}
             org.opencontainers.image.version=${{ steps.version.outputs.git_version }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
-            org.bacalhau.binary.build_date=${{ steps.version.outputs.build_date }}
 
       - name: Build and push DIND image
         uses: docker/build-push-action@v5
@@ -166,6 +166,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.docker_tags.outputs.dind_tags }}
+          provenance: false  # Disable default provenance attestation
           cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest-dind
           labels: |
             org.opencontainers.artifact.created=${{ steps.version.outputs.build_date }}
@@ -185,6 +186,7 @@ jobs:
         with:
           image: ${{ steps.docker_tags.outputs.image }}
           tag: ${{ steps.version.outputs.git_version }}-dind
+          privileged: true
 
       - name: Generate docker summary
         if: success()
