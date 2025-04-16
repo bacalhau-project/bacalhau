@@ -143,7 +143,6 @@ jobs:
         id: manifest
         run: |
           S3_PREFIX="${{ steps.upload.outputs.s3_prefix }}"
-          PUBLISH_TO_LATEST="${{ steps.upload.outputs.publish_to_latest }}"
           GIT_VERSION="${{ steps.version.outputs.git_version }}"
           BUILD_DATE="${{ steps.version.outputs.build_date }}"
           
@@ -221,12 +220,10 @@ jobs:
           cat latest-manifest.json
           
           # Upload manifest to the manifests directory
-          aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/manifests/$S3_PREFIX/latest.json" \
+          aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/manifests/$S3_PREFIX.json" \
             --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
             --content-type "application/json"
-          echo "Created target-specific manifest at s3://${{ vars.S3_BUCKET }}/manifests/$S3_PREFIX/latest.json"
-          
-          # No uploading to /latest path - removed as per requirements
+          echo "Created target-specific manifest at s3://${{ vars.S3_BUCKET }}/manifests/$S3_PREFIX.json"
 
       - name: Generate upload summary
         if: success()
@@ -252,9 +249,7 @@ jobs:
           echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
           echo "| Type | Manifest Path |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ${{ inputs.target_type }} | \`s3://${{ vars.S3_BUCKET }}/manifests/${{ steps.upload.outputs.s3_prefix }}/latest.json\` |" >> $GITHUB_STEP_SUMMARY
-          
-          # No latest path summary entry needed
+          echo "| ${{ inputs.target_type }} | \`s3://${{ vars.S3_BUCKET }}/manifests/${{ steps.upload.outputs.s3_prefix }}.json\` |" >> $GITHUB_STEP_SUMMARY
           
           # Add uploaded files section
           echo "" >> $GITHUB_STEP_SUMMARY
