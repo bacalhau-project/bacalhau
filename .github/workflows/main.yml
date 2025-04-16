@@ -34,16 +34,3 @@ jobs:  # Build all binaries for release
     with:
       target_type: 'main'
     secrets: inherit
-
-  # Build summary job
-  build-summary:
-    name: Build Summary
-    runs-on: ubuntu-latest
-    needs: [build-binaries, publish-to-s3]
-    steps:
-      - name: Build Summary
-        run: |
-          echo "## Main Branch Build" >> $GITHUB_STEP_SUMMARY
-          echo "✅ All binaries have been successfully built and published to S3." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Binaries are available at s3://${{ vars.S3_BUCKET }}/main/" >> $GITHUB_STEP_SUMMARY

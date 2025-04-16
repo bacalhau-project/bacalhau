@@ -39,7 +39,7 @@ jobs:
           pattern: bacalhau-*
           path: artifacts
 
-      - name: Debug - List all downloaded artifacts
+      - name: List all downloaded artifacts
         run: |
           echo "==== LISTING ALL DOWNLOADED ARTIFACTS ===="
           find artifacts -type f | sort
@@ -49,13 +49,6 @@ jobs:
           find artifacts -type f | wc -l
           echo "==== TOTAL DIRECTORY COUNT ===="
           find artifacts -type d | wc -l
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Get version info
         id: version
@@ -73,11 +66,26 @@ jobs:
             minor="0"
           fi
           
+          # Print full version info summary
+          echo "==== VERSION INFO SUMMARY ===="
+          echo "Git commit hash: $git_commit"
+          echo "Git version string: $git_version"
+          echo "Major version: $major"
+          echo "Minor version: $minor"
+          echo "============================="
+          
           # Set outputs for use in later steps
           echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
           echo "git_version=$git_version" >> $GITHUB_OUTPUT
           echo "major=$major" >> $GITHUB_OUTPUT
           echo "minor=$minor" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload binaries to S3
         id: upload
@@ -168,8 +176,8 @@ jobs:
                 aws s3 cp "$TARBALL" "s3://${{ vars.S3_BUCKET }}/$S3_PREFIX/$FILENAME" \
                   --metadata "$METADATA"
                 
-                # Add to summary list
-                UPLOADS_LIST="${UPLOADS_LIST}$OS/$ARCH: [$FILENAME]\n"
+                # Add to summary list with build date and full S3 path
+                UPLOADS_LIST="${UPLOADS_LIST}${S3_PREFIX}/${FILENAME}|${OS}/${ARCH}|${BUILD_DATE}\n"
               done
             fi
           done
@@ -185,7 +193,7 @@ jobs:
           echo "✅ Successfully uploaded binaries to S3" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Target:** ${{ inputs.target_type }}" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Bucket:**${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
           echo "**S3 Region:** ${{ vars.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Version:** ${{ steps.version.outputs.git_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Git Commit:** ${{ steps.version.outputs.git_commit }}" >> $GITHUB_STEP_SUMMARY
@@ -197,35 +205,25 @@ jobs:
           # Check if there are any files uploaded
           if [ -s uploads_list.txt ]; then
             # Count how many unique OS/ARCH combinations were uploaded
-            PLATFORMS=$(cat uploads_list.txt | grep -o '[^:]*:' | sort -u | wc -l)
+            PLATFORMS=$(cat uploads_list.txt | cut -d'|' -f2 | sort -u | wc -l)
             echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
-            # Group files by OS/ARCH for better readability
-            CURRENT_PLATFORM=""
-            
-            # Read each line
-            while IFS= read -r LINE; do
-              # Skip empty lines
-              if [ -z "$LINE" ]; then
-                continue
-              fi
+            # Create a markdown table header
+            echo "| Platform | File | Build Date | S3 Path |" >> $GITHUB_STEP_SUMMARY
+            echo "| -------- | ---- | ---------- | ------- |" >> $GITHUB_STEP_SUMMARY
               
-              # Extract platform part
-              PLATFORM=$(echo "$LINE" | cut -d':' -f1)
+            # Sort by platform for better readability
+            sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
+              # Extract just the filename 
+              FILENAME=$(basename "$S3_PATH")
               
-              # If this is a new platform, add a header
-              if [ "$PLATFORM" != "$CURRENT_PLATFORM" ]; then
-                echo "**$PLATFORM**" >> $GITHUB_STEP_SUMMARY
-                CURRENT_PLATFORM="$PLATFORM"
-              fi
+              # Format the date for better readability
+              FORMATTED_DATE=$(date -d "$BUILD_DATE" "+%Y-%m-%d %H:%M:%S UTC" 2>/dev/null || echo "$BUILD_DATE")
               
-              # Extract the file part
-              FILE=$(echo "$LINE" | cut -d'[' -f2 | cut -d']' -f1)
-              
-              # Add formatted file link
-              echo "- \`$FILE\`" >> $GITHUB_STEP_SUMMARY
-            done < <(cat uploads_list.txt | sort)
+              # Add table row with file info
+              echo "| $PLATFORM | \`$FILENAME\` | $FORMATTED_DATE | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
+            done
           else
             echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY
           fi
