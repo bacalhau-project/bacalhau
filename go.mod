@@ -45,8 +45,8 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.13.0
-	github.com/nats-io/nats-server/v2 v2.10.22
-	github.com/nats-io/nats.go v1.37.0
+	github.com/nats-io/nats-server/v2 v2.11.1
+	github.com/nats-io/nats.go v1.39.1
 	github.com/nats-io/nuid v1.0.1
 	github.com/open-policy-agent/opa v0.60.0
 	github.com/opencontainers/image-spec v1.1.0-rc5
@@ -81,7 +81,7 @@ require (
 	go.ptx.dk/multierrgroup v0.0.3
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/oauth2 v0.28.0
 	k8s.io/apimachinery v0.29.0
@@ -117,6 +117,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -205,7 +206,7 @@ require (
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/jbenet/goprocess v0.1.4 // indirect
-	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-cidranger v1.1.0 // indirect
@@ -260,11 +261,11 @@ require (
 	go.uber.org/atomic v1.11.0
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/term v0.29.0
-	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.10.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/term v0.30.0
+	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/time v0.11.0
 	golang.org/x/tools v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/grpc v1.69.4 // indirect
