@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -13,7 +12,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,7 +24,7 @@ const (
 	defaultBuffer = 100
 
 	// How long to wait for an execution to appear in the store before giving up
-	executionWaitTimeout = 5 * time.Second
+	executionMaxWaitTime = 5 * time.Second
 
 	// How often to check for the execution in the store
 	executionWaitInterval = 100 * time.Millisecond
@@ -63,46 +61,24 @@ func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLog
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	log.Debug().Str("execution", request.ExecutionID).Msg("creating log stream")
 
+	// Find the execution, wait for it if needed
 	execution, err := s.executionWait(ctx, request.ExecutionID)
 	if err != nil {
 		return nil, fmt.Errorf("execution %s not found", request.ExecutionID)
 	}
 
 	logsDir := compute.ExecutionLogsDir(s.resultsPath.ExecutionOutputDir(execution.ID))
-	outputReader, err := NewExecutionLogReaderFromRequest(logsDir, request)
+	reader, err := NewReaderForRequest(ctx, logsDir, request)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create log reader: %w", err)
 	}
 
-	cancelCh := make(chan struct{})
-	reader, writer := io.Pipe()
-	readingResultCh := outputReader.StartReading(writer, cancelCh)
-	go func() {
-		readingResult := <-readingResultCh
-		defer closer.CloseWithLogOnError("execution_stream_pipe", writer)
-		if readingResult.Error != nil {
-			log.Error().Err(readingResult.Error).Msg("execution log reader failed")
-		} else {
-			log.Debug().
-				Str("execution", execution.ID).
-				Int64("size_bytes", readingResult.Value).
-				Msg("execution log reader finished")
-		}
-	}()
-
-	// Cancel the reader when the context is done. This is a best effort attempt,
-	// as the reader may have already been closed by the time the context is done.
+	// Close the reader when the context is done. This will also stop the log reader from watching log files for updates if
+	// params.Follow is set.
 	go func() {
 		<-ctx.Done()
-		log.Trace().Str("execution", execution.ID).Msg("attempting to cancel log reader")
-		select {
-		case cancelCh <- struct{}{}:
-			// Cancel reader
-			log.Trace().Str("execution", execution.ID).Msg("log reader cancelled")
-		default:
-			// Channel is full or no receiver, skip it to avoid blocking
-			log.Trace().Str("execution", execution.ID).Msg("log reader cancel skipped")
-		}
+		log.Trace().Str("execution", execution.ID).Msg("closing execution log reader")
+		reader.Close()
 	}()
 
 	streamer := NewLiveStreamer(LiveStreamerParams{
@@ -118,7 +94,9 @@ func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLog
 // This method will wait for a short amount of time and return nil if the execution is not found.
 func (s *server) executionWait(ctx context.Context, executionID string) (*models.Execution, error) {
 	waitStart := time.Now()
-	timeout := time.After(executionWaitTimeout)
+	ctx, cancel := context.WithTimeout(ctx, executionMaxWaitTime)
+	defer cancel()
+
 	ticker := time.NewTicker(executionWaitInterval)
 	defer ticker.Stop()
 
@@ -128,7 +106,7 @@ func (s *server) executionWait(ctx context.Context, executionID string) (*models
 			log.Debug().
 				Str("execution", execution.ID).
 				Str("wait_time", time.Since(waitStart).String()).
-				Msg("execution found")
+				Msg("execution lookup succeeded")
 			return execution, nil
 		} else if !errors.As(err, &store.ErrExecutionNotFound{}) {
 			// If the error is not "not found", return it
@@ -137,11 +115,8 @@ func (s *server) executionWait(ctx context.Context, executionID string) (*models
 
 		select {
 		case <-ctx.Done():
-			log.Debug().Str("execution", executionID).Msg("cancelled while waiting for execution")
-			return nil, fmt.Errorf("cancelled while waiting for execution %s", executionID)
-		case <-timeout:
-			log.Debug().Str("execution", executionID).Msg("timeout while waiting for execution")
-			return nil, fmt.Errorf("timeout while waiting for execution %s", executionID)
+			log.Debug().Str("execution", executionID).Msg("context resolved while waiting for execution")
+			return nil, ctx.Err()
 		case <-ticker.C:
 			continue
 		}

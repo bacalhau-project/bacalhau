@@ -1,13 +1,10 @@
 package logstream
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
-	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
 type ExecutionLogWriterParams struct {
@@ -15,30 +12,49 @@ type ExecutionLogWriterParams struct {
 }
 
 type ExecutionLogWriter struct {
-	params *ExecutionLogWriterParams
+	isClosed   bool
+	fileHandle *os.File
+	params     *ExecutionLogWriterParams
 }
 
 func NewExecutionLogWriter(logsDir string) (*ExecutionLogWriter, error) {
-	return &ExecutionLogWriter{&ExecutionLogWriterParams{logsDir}}, nil
+	return &ExecutionLogWriter{
+		params: &ExecutionLogWriterParams{logsDir},
+	}, nil
 }
 
-func (w *ExecutionLogWriter) StartWriting(src io.Reader) chan util.Result[int64] {
-	resultCh := make(chan util.Result[int64])
-	go func() {
-		defer close(resultCh)
-		fileWriter, err := os.Create(filepath.Join(w.params.logsDir, compute.ExecutionLogFileName))
-		if err != nil {
-			resultCh <- util.NewResult[int64](0, err)
-			return
-		}
-		defer closer.CloseWithLogOnError("executionLogWriter", fileWriter)
+func (cw *ExecutionLogWriter) Write(p []byte) (int, error) {
+	fileHandle, err := cw.getFileHandle()
 
-		copiedBytes, err := StdCopyWithEndFrame(fileWriter, src)
-		// Write the result to the channel, but don't block if the channel is full or nothing is reading.
-		select {
-		case resultCh <- util.NewResult(copiedBytes, err):
-		default:
+	if err != nil {
+		return 0, err
+	}
+
+	return fileHandle.Write(p)
+}
+
+func (cw *ExecutionLogWriter) Close() error {
+	if cw.isClosed {
+		return nil
+	}
+	cw.isClosed = true
+	// Close the file if it was opened
+	if cw.fileHandle != nil {
+		if err := cw.fileHandle.Close(); err != nil {
+			return err
 		}
-	}()
-	return resultCh
+	}
+	return nil
+}
+
+func (cw *ExecutionLogWriter) getFileHandle() (*os.File, error) {
+	if cw.fileHandle != nil {
+		return cw.fileHandle, nil
+	}
+	var err error
+	cw.fileHandle, err = os.Create(filepath.Join(cw.params.logsDir, compute.ExecutionLogFileName))
+	if err != nil {
+		return nil, err
+	}
+	return cw.fileHandle, nil
 }

@@ -1,8 +1,8 @@
 package logstream
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 	"github.com/rs/zerolog/log"
 )
@@ -27,28 +26,16 @@ type ExecutionLogReaderParams struct {
 }
 
 type ExecutionLogReader struct {
-	params *ExecutionLogReaderParams
+	ctx          context.Context
+	isClosed     bool
+	readCancelCh chan struct{}
+	pipeReader   io.ReadCloser
+	params       *ExecutionLogReaderParams
 }
 
-func NewExecutionLogReader(params *ExecutionLogReaderParams) (*ExecutionLogReader, error) {
-	// Execution logs directory is expected to exist. If it doesn't, return an error
-	if _, err := os.Stat(params.logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("execution logs directory does not exist: %s", params.logsDir)
-	}
-
-	return &ExecutionLogReader{params}, nil
-}
-
-// Creates a reader for the logs of a given execution. The logs are served from the local file(s)
-// captured during execution run.
-// It is possible that the execution has not yet created any log files,
-// in which case the reader will make a best-effort attemt to wait for the log files to appear.
-func NewExecutionLogReaderFromRequest(logsDir string, request messages.ExecutionLogsRequest) (
-	*ExecutionLogReader,
-	error,
-) {
+func NewReaderForRequest(ctx context.Context, logsDir string, request messages.ExecutionLogsRequest) (*ExecutionLogReader, error) {
 	// TODO: This is a legacy way of intepreting the "Tail" parameter.
-	// It should ideally return the last N frames from the logs.
+	// It should be modified to return the last N frames from the log.
 	var since time.Time
 	if request.Tail {
 		since = time.Now()
@@ -56,42 +43,92 @@ func NewExecutionLogReaderFromRequest(logsDir string, request messages.Execution
 		since = time.Unix(0, 0)
 	}
 
-	return NewExecutionLogReader(&ExecutionLogReaderParams{since, request.Follow, logsDir})
+	return &ExecutionLogReader{
+		ctx:          ctx,
+		readCancelCh: make(chan struct{}, 1),
+		params: &ExecutionLogReaderParams{
+			logsDir: logsDir,
+			since:   since,
+			follow:  request.Follow,
+		},
+	}, nil
 }
 
-// Asynchronously read execution logs to the given destination.
-// This function will wait until the log files are created before starting to read.
-// This function will attempt to cancel the reading if notified via the cancelCh channel.
-func (r *ExecutionLogReader) StartReading(dst io.Writer, cancelCh chan struct{}) chan util.Result[int64] {
-	resultCh := make(chan util.Result[int64])
-	go func() {
-		defer close(resultCh)
-		src, err := fileWait(r.params.logsDir)
-		if err != nil {
-			resultCh <- util.NewResult[int64](0, err)
-			return
-		}
-
-		defer closer.CloseWithLogOnError("executionLogReader", src)
-		copiedBytes, err := TimestampedStdCopy(dst, src, &r.params.since, r.params.follow, cancelCh)
-		select {
-		case resultCh <- util.NewResult(copiedBytes, err):
-		default:
-		}
-	}()
-	return resultCh
+func (rc *ExecutionLogReader) Close() error {
+	// Do nothing if already closed to avoid sending multiple close signals
+	if rc.isClosed {
+		return nil
+	}
+	rc.isClosed = true
+	rc.readCancelCh <- struct{}{}
+	close(rc.readCancelCh)
+	return nil
 }
 
-// TODO: This should be aware of log storage schema: rotation, file naming format, etc.
-// TODO: Error messages from this function are exposed to the user, they should be more user-friendly.
-// Returns a reader for raw execution logs. The caller is responsible for closing the reader when done.
-func fileWait(logsDir string) (io.ReadCloser, error) {
-	filePath := filepath.Join(logsDir, compute.ExecutionLogFileName)
-	waitStart := time.Now()
-	timeout := time.After(executionLogFileMaxWaitTime)
+func (rc *ExecutionLogReader) Read(p []byte) (n int, err error) {
+	// If already closed, return EOF
+	if rc.isClosed {
+		return 0, io.EOF
+	}
+
+	pipedReader, err := rc.getPipeReader()
+	if err != nil {
+		return 0, err
+	}
+
+	return pipedReader.Read(p)
+}
+
+func (rc *ExecutionLogReader) initPipe() (*io.PipeReader, *io.PipeWriter, error) {
+	// Wait for the log file to be created by the executor
+	fileReader, err := rc.logFileWait()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create a pipe that connects filtered logs from the file and the calling function that expects a Reader
+	pipeReader, pipeWriter := io.Pipe()
+
+	// Start reading and filtering the logs from the file
+	// and writing them to the pipe so the caller can read them
+	go rc.startReading(pipeWriter, fileReader)
+	return pipeReader, pipeWriter, nil
+}
+
+func (rc *ExecutionLogReader) getPipeReader() (io.ReadCloser, error) {
+	if rc.pipeReader != nil {
+		return rc.pipeReader, nil
+	}
+	var err error
+	rc.pipeReader, _, err = rc.initPipe()
+	if err != nil {
+		return nil, err
+	}
+	return rc.pipeReader, nil
+}
+
+func (rc *ExecutionLogReader) startReading(pipeWriter io.WriteCloser, logFileReader io.ReadCloser) {
+	// Close the pipe writer and log file reader when done
+	defer pipeWriter.Close()
+	// Close the file reader when done
+	defer closer.CloseWithLogOnError("execution_log_file_reader", logFileReader)
+	_, err := TimestampedStdCopy(pipeWriter, logFileReader, &rc.params.since, rc.params.follow, rc.readCancelCh)
+	if err != nil {
+		log.Error().Err(err).Msg("error reading execution log")
+	}
+}
+
+func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
+	// Create a context with a timeout to avoid waiting indefinitely
+	ctx, cancel := context.WithTimeout(rc.ctx, executionLogFileMaxWaitTime)
+	defer cancel()
+
+	// Periodically check for the log file
 	ticker := time.NewTicker(executionLogWaitInterval)
 	defer ticker.Stop()
 
+	waitStart := time.Now()
+	filePath := filepath.Join(rc.params.logsDir, compute.ExecutionLogFileName)
 	for {
 		file, err := os.Open(filePath)
 		if err == nil {
@@ -109,10 +146,12 @@ func fileWait(logsDir string) (io.ReadCloser, error) {
 		}
 
 		select {
-		case <-timeout:
-			msg := "timeout while waiting for execution logs"
-			log.Debug().Str("path", filePath).Msg(msg)
-			return nil, errors.New(msg)
+		case <-ctx.Done():
+			log.Debug().
+				Err(ctx.Err()).
+				Str("path", filePath).
+				Msg("context resolved while waiting for execution logs")
+			return nil, ctx.Err()
 		case <-ticker.C:
 			continue
 		}

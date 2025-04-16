@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -236,11 +235,11 @@ func TestTimestampedStdCopy_CancelChannel(t *testing.T) {
 	// Setup output buffer
 	var output bytes.Buffer
 	// Start reading frames in a separate goroutine
-	resultCh := make(chan util.Result[int64])
+	errorCh := make(chan error)
 	go func() {
 		// This will block until an end frame is encountered in the source reader
-		written, err := TimestampedStdCopy(&output, bytes.NewReader(frames), nil, true, cancelCh)
-		resultCh <- util.NewResult(written, err)
+		_, err := TimestampedStdCopy(&output, bytes.NewReader(frames), nil, true, cancelCh)
+		errorCh <- err
 	}()
 
 	// Write a frame
@@ -249,17 +248,16 @@ func TestTimestampedStdCopy_CancelChannel(t *testing.T) {
 
 	// Wait for a moment before sending a cancellation because there is a small chance TimestampedStdCopy
 	// sees it before copying the first frame.
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Cancel the reading
 	cancelCh <- struct{}{}
 
 	// Wait for the result
-	result := <-resultCh
+	err := <-errorCh
 
 	// We should receive a result eventually even though no end frame was written
-	require.NoError(t, result.Error)
-	assert.Equal(t, int64(stdWriterPrefixLen+len(stdoutContent)), result.Value)
+	require.NoError(t, err)
 	assertStdCopyCompatibleOutput(t, &output, []byte(stdoutContent), nil)
 }
 

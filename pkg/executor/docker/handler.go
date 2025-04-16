@@ -14,14 +14,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/atomic"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
-	"github.com/bacalhau-project/bacalhau/pkg/util"
 	"github.com/bacalhau-project/bacalhau/pkg/util/closer"
 )
 
@@ -88,44 +86,14 @@ func (h *executionHandler) run(ctx context.Context) {
 		return
 	}
 
-	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, nil, true, true)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("failed to capture container output")
-		h.result = executor.NewFailedResult(fmt.Sprintf("failed to capture container output: %s", err))
-		return
-	}
-
-	// Start capturing the container logs
-	logCaptureCh := make(chan util.Result[int64])
-	go func() {
-		defer closer.CloseWithLogOnError("containerLogs", logStreamReader)
-		defer close(logCaptureCh)
-
-		logsDir := compute.ExecutionLogsDir(h.executionDir)
-		logWriter, err := logstream.NewExecutionLogWriter(logsDir)
-		if err != nil {
-			logCaptureCh <- util.NewResult[int64](0, err)
-		}
-		writeResult := <-logWriter.StartWriting(logStreamReader)
-		// Send the result or capturing the logs to the channel but don't block on it so this goroutine can exit.
-		// By the time we get here the execution might have already been cancelled.
-		// So we don't know whether there is a reader on the channel or not.
-		logTrace := log.Trace().
-			Str("logs_dir", logsDir).
-			Int64("byte_size", writeResult.Value)
-		if writeResult.Error != nil {
-			logTrace = logTrace.Err(writeResult.Error)
-		}
-		select {
-		case logCaptureCh <- writeResult:
-			logTrace.Msg("container log capture result sent")
-		default:
-			logTrace.Msg("no reader on container log capture")
-		}
-	}()
-
 	// The container is now active
 	close(h.activeCh)
+
+	// Capture the container logs in a separate goroutine.
+	logCaptureErrCh := make(chan error, 1)
+	go func() {
+		logCaptureErrCh <- h.captureContainerLogs(ctx)
+	}()
 
 	// the idea here is even if the container errors
 	// we want to capture stdout, stderr and feed it back to the user
@@ -181,6 +149,13 @@ func (h *executionHandler) run(ctx context.Context) {
 				Int64("status", exitStatus.StatusCode).
 				Msg("received status from container")
 		}
+	}
+
+	// Wait for the log capture to finish and populate the Run result
+	logCaptureErr := <-logCaptureErrCh
+	if logCaptureErr != nil {
+		h.result = executor.NewFailedResult(fmt.Sprintf("failed to capture container output: %s", logCaptureErr))
+		return
 	}
 
 	// TODO: We no longer need to ask Docker for the logs again as we already have them written to a file.
@@ -258,39 +233,48 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 
 	// Read and filter container logs from the local file
 	logsDir := compute.ExecutionLogsDir(h.executionDir)
-	outputReader, err := logstream.NewExecutionLogReaderFromRequest(logsDir, request)
+	reader, err := logstream.NewReaderForRequest(ctx, logsDir, request)
 	if err != nil {
-		return nil, docker.NewCustomDockerError(bacerrors.IOError, fmt.Sprintf("unable to find container logs for execution %s", h.executionID))
+		return nil, err
 	}
 
-	cancelCh := make(chan struct{})
-	reader, writer := io.Pipe()
-	readResultCh := outputReader.StartReading(writer, cancelCh)
-	go func() {
-		defer closer.CloseWithLogOnError("execution_log_writer", writer)
-		select {
-		case <-ctx.Done():
-			log.Trace().Str("execution", h.executionID).Msg("attempting to cancel log reader")
-			// Send a cancel signal to the log reader but don't block on it because by this time the reader might have already finished,
-			// and there is nothing that reads from the channel.
-			select {
-			case cancelCh <- struct{}{}:
-			default:
-			}
-		case readingResult := <-readResultCh:
-			if readingResult.Error != nil {
-				log.Error().Err(readingResult.Error).Msg("execution log reader failed")
-			} else {
-				log.Debug().
-					Str("execution", h.executionID).
-					Int64("size_bytes", readingResult.Value).
-					Msg("execution log reader finished")
-			}
-		}
-	}()
 	return reader, nil
 }
 
 func (h *executionHandler) active() bool {
 	return h.running.Load()
+}
+
+func (h *executionHandler) captureContainerLogs(ctx context.Context) error {
+	// Get a reader from the container
+	logStreamReader, err := h.client.GetOutputStream(ctx, h.containerID, nil, true, true)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to capture container logs")
+		return err
+	}
+	defer closer.CloseWithLogOnError("container_logs_reader", logStreamReader)
+
+	logsDir := compute.ExecutionLogsDir(h.executionDir)
+
+	// Create a writer to write the logs to a file
+	logWriter, err := logstream.NewExecutionLogWriter(logsDir)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to create container logs file writer")
+		return err
+	}
+	defer closer.CloseWithLogOnError("container_logs_file_writer", logWriter)
+
+	// Copy container logs to the file, adding an end frame when the reader returns EOF
+	written, err := logstream.StdCopyWithEndFrame(logWriter, logStreamReader)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("failed to capture container logs")
+		return err
+	}
+
+	h.logger.Debug().
+		Int64("byte_size", written).
+		Err(err).
+		Str("logs_dir", logsDir).
+		Msg("container logs captured")
+	return nil
 }

@@ -27,7 +27,8 @@ const (
 // It converts these timestamped frames (created when using the Timestamps LogOption) into a non-timestamped
 // format compatible with the original StdCopy.
 //
-// If tail is true, it will keep trying to read from the source even if it reaches EOF.
+// If follow is true, it will keep trying to read from the source even if it reaches EOF until a cancellation is received
+// or an end frame is encountered.
 //
 // Optionally, it filters out frames older than the specified 'since' parameter. If nil is passed no filtering is performed
 //
@@ -55,7 +56,7 @@ func TimestampedStdCopy(
 	dstout io.Writer,
 	src io.Reader,
 	since *time.Time,
-	tail bool,
+	follow bool,
 	cancelCh chan struct{},
 ) (written int64, err error) {
 	var (
@@ -65,8 +66,8 @@ func TimestampedStdCopy(
 		frameSize           uint32
 	)
 
-	tailTicker := time.NewTicker(endFrameWait)
-	defer tailTicker.Stop()
+	followTicker := time.NewTicker(endFrameWait)
+	defer followTicker.Stop()
 	for {
 		// Make sure we have at least a full header
 		for numRead < stdWriterPrefixLen {
@@ -74,21 +75,21 @@ func TimestampedStdCopy(
 			numRead2, err = src.Read(buf[numRead:])
 			numRead += numRead2
 			if err == io.EOF {
-				if !tail && numRead < stdWriterPrefixLen {
-					// EOF and not tailing
+				if !follow && numRead < stdWriterPrefixLen {
+					// EOF and not following:
 					// Stop reading more frames
-					log.Debug().Int("buffered_bytes", numRead).Msg("partial header read while not tailing")
+					log.Debug().Int("buffered_bytes", numRead).Msg("partial header read while not following")
 					return written, nil
 				}
-				// EOF and tailing
-				// Wait for a while until a delay is expired or a cancellation received
-				tailTicker.Reset(endFrameWait)
+				// EOF and following:
+				// Periodically check if there are updates in the source stream
+				// and if a cancellation has been received
+				followTicker.Reset(endFrameWait)
 				select {
 				case <-cancelCh:
-					// Stop reading more frames
 					log.Debug().Int("buffered_bytes", numRead).Msg("cancelling read while waiting for header")
 					return written, nil
-				case <-tailTicker.C:
+				case <-followTicker.C:
 					continue
 				}
 			}
@@ -103,8 +104,8 @@ func TimestampedStdCopy(
 		// Retrieve the size of the frame
 		frameSize = binary.BigEndian.Uint32(buf[stdWriterSizeIndex : stdWriterSizeIndex+4])
 
-		// If encountered a stream end frame, return immediately even if tail is set
-		// because there are no more frames expected after the stream end
+		// If encountered a stream end frame, return immediately even if follow is set
+		// because there are no more frames expected after the stream end frame
 		if streamType == SystemStreamEnd {
 			return written, nil
 		}
@@ -133,15 +134,15 @@ func TimestampedStdCopy(
 			numRead2, err = src.Read(buf[numRead:])
 			numRead += numRead2
 			if err == io.EOF {
-				if !tail && numRead < int(frameSize+stdWriterPrefixLen) {
+				if !follow && numRead < int(frameSize+stdWriterPrefixLen) {
 					return written, nil
 				}
-				tailTicker.Reset(endFrameWait)
+				followTicker.Reset(endFrameWait)
 				select {
 				case <-cancelCh:
 					log.Debug().Int("buffered_size", numRead).Msg("cancelling read while waiting for frame")
 					return written, nil
-				case <-tailTicker.C:
+				case <-followTicker.C:
 					continue
 				}
 			}
@@ -225,7 +226,7 @@ func StdCopyWithEndFrame(dstout io.Writer, src io.Reader) (written int64, err er
 
 		if err == io.EOF {
 			// Write a stream end frame
-			numWritten, writeErr := WriteEndFrame(dstout)
+			numWritten, writeErr := writeEndFrame(dstout)
 			log.Debug().Msg("writing end frame")
 			written += int64(numWritten)
 			return written, writeErr
@@ -236,7 +237,7 @@ func StdCopyWithEndFrame(dstout io.Writer, src io.Reader) (written int64, err er
 	}
 }
 
-func WriteEndFrame(dstWriter io.Writer) (int, error) {
+func writeEndFrame(dstWriter io.Writer) (int, error) {
 	buf := make([]byte, stdWriterPrefixLen)
 
 	// Set the stream type to be SystemStreamEnd
