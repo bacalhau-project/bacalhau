@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
-  checks: write
+  packages: write  # Required for GHCR
   id-token: write  # Required for AWS authentication
 
 # Prevent multiple nightly builds from running simultaneously

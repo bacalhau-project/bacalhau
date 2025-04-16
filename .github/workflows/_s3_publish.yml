@@ -61,14 +61,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Check S3 Bucket existence
-        run: |
-          if ! aws s3api head-bucket --bucket ${{ vars.S3_BUCKET }} 2>/dev/null; then
-            echo "⚠️ S3 bucket '${{ vars.S3_BUCKET }}' does not exist or you don't have access to it"
-            echo "Please check your AWS credentials and bucket name"
-            exit 1
-          fi
-
       - name: Upload binaries to S3
         id: upload
         run: |

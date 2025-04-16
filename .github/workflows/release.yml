@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
   actions: read
-  checks: write
+  packages: write  # Required for GHCR
   id-token: write  # Required for AWS authentication
 
 jobs:
