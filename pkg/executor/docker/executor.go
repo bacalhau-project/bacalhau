@@ -18,6 +18,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envvar"
@@ -158,16 +159,16 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 			Str("execution", request.ExecutionID).
 			Str("job", request.JobID).
 			Logger(),
-		ID:          e.ID,
-		executionID: request.ExecutionID,
-		containerID: containerID,
-		resultsDir:  request.ResultsDir,
-		limits:      request.OutputLimits,
-		keepStack:   e.shouldKeepStack,
-		waitCh:      make(chan bool),
-		activeCh:    make(chan bool),
-		running:     atomic.NewBool(false),
-		cancelFunc:  cancel,
+		ID:           e.ID,
+		executionID:  request.ExecutionID,
+		containerID:  containerID,
+		executionDir: request.ExecutionDir,
+		limits:       request.OutputLimits,
+		keepStack:    e.shouldKeepStack,
+		waitCh:       make(chan bool),
+		activeCh:     make(chan bool),
+		running:      atomic.NewBool(false),
+		cancelFunc:   cancel,
 	}
 
 	// register the handler for this executionID
@@ -333,7 +334,7 @@ func (e *Executor) newDockerJobContainer(ctx context.Context, params *executor.R
 		WorkingDir: dockerArgs.WorkingDirectory,
 	}
 
-	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, params.ResultsDir)
+	mounts, err := makeContainerMounts(ctx, params.Inputs, params.Outputs, compute.ExecutionResultsDir(params.ExecutionDir))
 	if err != nil {
 		return container.CreateResponse{}, fmt.Errorf("creating container mounts: %w", err)
 	}
