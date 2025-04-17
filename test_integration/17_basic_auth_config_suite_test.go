@@ -122,7 +122,8 @@ func (s *BasicAuthConfigSuite) TestRunHelloWorldJobWithDifferentAuth() {
 			"BACALHAU_API_PASSWORD=readonlyuserpassword",
 		}),
 	)
-	s.Require().ErrorContains(err, "user 'readonlyuser' does not have the required capability 'write:job'")
+	s.Require().ErrorContains(err, "Request Forbidden")
+	s.Require().ErrorContains(err, "Check if user have access to this resource. Event has been recorded")
 
 	// Submit a job without job write capability with APIKey
 	result, err = s.executeCommandInDefaultJumpbox(
@@ -136,7 +137,8 @@ func (s *BasicAuthConfigSuite) TestRunHelloWorldJobWithDifferentAuth() {
 			"BACALHAU_API_KEY=QWERTYHFGCBNSKFIREHFURHUFE7KEEFBN",
 		}),
 	)
-	s.Require().ErrorContains(err, "user 'API key ending in ...EEFBN' does not have the required capability 'write:job'")
+	s.Require().ErrorContains(err, "Request Forbidden")
+	s.Require().ErrorContains(err, "Check if user have access to this resource. Event has been recorded")
 
 }
 

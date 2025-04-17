@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/pkg/errors"
 )
 
@@ -74,7 +73,11 @@ func (a *apiKeyAuthorizer) getUserIdentifier(user types.AuthUser) string {
 // Authorize implements the Authorizer interface
 func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	if req.URL == nil {
-		return Authorization{}, errors.New("bad HTTP request: missing URL")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Request URL",
+		}, nil
 	}
 
 	// Check if the endpoint is open (doesn't require authentication)
@@ -92,7 +95,11 @@ func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	// Get Authorization header
 	authorizationHeaders := req.Header["Authorization"]
 	if len(authorizationHeaders) == 0 {
-		return Authorization{}, apimodels.NewUnauthorizedError("missing authorization header")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Authorization header",
+		}, nil
 	}
 
 	authHeader := authorizationHeaders[0]
@@ -103,27 +110,23 @@ func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError(fmt.Sprintf("authentication failed: %s", authErr.Error()))
+			Reason:     authErr.Error(),
+		}, nil
 	}
 
 	if authenticated {
-		hasCapability, requiredCapability, err := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
-		if err != nil {
-			return Authorization{
-				Approved:   false,
-				TokenValid: true,
-			}, err
-		}
+		hasCapability, requiredCapability := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
 
 		if hasCapability {
 			return Authorization{Approved: true, TokenValid: true}, nil
 		} else {
-			return Authorization{Approved: false, TokenValid: true},
-				apimodels.NewUnauthorizedError(
-					fmt.Sprintf(
-						"user '%s' does not have the required capability '%s'",
-						a.getUserIdentifier(user), requiredCapability),
-				)
+			return Authorization{
+				Approved:   false,
+				TokenValid: true,
+				Reason: fmt.Sprintf(
+					"user '%s' does not have the required capability '%s'",
+					a.getUserIdentifier(user), requiredCapability),
+			}, nil
 		}
 	}
 
@@ -131,5 +134,6 @@ func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
 	return Authorization{
 		Approved:   false,
 		TokenValid: false,
-	}, apimodels.NewUnauthorizedError("authentication failed")
+		Reason:     "Unknown authentication error",
+	}, nil
 }

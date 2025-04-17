@@ -273,6 +273,10 @@ func inferHTTPStatusCode(code ErrorCode) int {
 		return http.StatusBadRequest
 	case NotFoundError:
 		return http.StatusNotFound
+	case UnauthorizedError:
+		return http.StatusUnauthorized
+	case Forbidden:
+		return http.StatusForbidden
 	case ServiceUnavailable:
 		return http.StatusServiceUnavailable
 	case NotImplemented:
