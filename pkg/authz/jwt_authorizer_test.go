@@ -197,9 +197,10 @@ func TestAuthorize_ValidToken(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, result.Approved)
 	assert.True(t, result.TokenValid)
+	assert.Empty(t, result.Reason) // No reason needed for success
 }
 
 // TestAuthorize_ExpiredToken tests authorization with an expired token
@@ -261,10 +262,10 @@ func TestAuthorize_ExpiredToken(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.Error(t, err)
+	require.NoError(t, err)
 	assert.False(t, result.Approved)
 	assert.False(t, result.TokenValid)
-	assert.Contains(t, err.Error(), "expired")
+	assert.Equal(t, "invalid JWT token", result.Reason)
 }
 
 // TestAuthorize_WrongIssuer tests authorization with token from wrong issuer
@@ -326,10 +327,10 @@ func TestAuthorize_WrongIssuer(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.Error(t, err)
+	require.NoError(t, err)
 	assert.False(t, result.Approved)
 	assert.False(t, result.TokenValid)
-	assert.Contains(t, err.Error(), "issuer")
+	assert.Equal(t, "invalid JWT token", result.Reason)
 }
 
 // TestAuthorize_MissingPermission tests authorization with insufficient permissions
@@ -391,10 +392,10 @@ func TestAuthorize_MissingPermission(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.Error(t, err)
+	require.NoError(t, err)
 	assert.False(t, result.Approved)
-	assert.True(t, result.TokenValid) // Token is valid but permission is insufficient
-	assert.Contains(t, err.Error(), "does not have the required capability")
+	assert.True(t, result.TokenValid) // Token is valid but lacks required permissions
+	assert.Contains(t, result.Reason, "user 'test-user' does not have the required capability")
 }
 
 // TestAuthorize_OpenEndpoint tests authorization for an open endpoint
@@ -441,9 +442,10 @@ func TestAuthorize_OpenEndpoint(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, result.Approved)
 	assert.True(t, result.TokenValid)
+	assert.Empty(t, result.Reason) // No reason needed for open endpoints
 }
 
 // TestAuthorize_MissingAuthHeader tests authorization with missing Authorization header
@@ -490,9 +492,10 @@ func TestAuthorize_MissingAuthHeader(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.Error(t, err)
-	assert.Empty(t, result)
-	assert.Contains(t, err.Error(), "missing authorization header")
+	require.NoError(t, err)
+	assert.False(t, result.Approved)
+	assert.False(t, result.TokenValid)
+	assert.Equal(t, "Missing Authorization header", result.Reason)
 }
 
 // TestAuthorize_InvalidAuthHeaderFormat tests authorization with invalid Authorization header format
@@ -539,10 +542,10 @@ func TestAuthorize_InvalidAuthHeaderFormat(t *testing.T) {
 	result, err := auth.Authorize(req)
 
 	// Check results
-	assert.Error(t, err)
+	require.NoError(t, err)
 	assert.False(t, result.Approved)
 	assert.False(t, result.TokenValid)
-	assert.Contains(t, err.Error(), "invalid authorization header format")
+	assert.Equal(t, "invalid authorization header format, expected 'Bearer TOKEN'", result.Reason)
 }
 
 // TestNewJWTAuthorizer_EmptyOAuth2Config tests the case when OAuth2 config is completely empty
@@ -578,10 +581,10 @@ func TestNewJWTAuthorizer_EmptyOAuth2Config(t *testing.T) {
 
 	result, err := auth.Authorize(req)
 
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.False(t, result.Approved)
 	assert.False(t, result.TokenValid)
-	assert.Contains(t, err.Error(), "JWT authorization not configured")
+	assert.Contains(t, result.Reason, "OAuth2 authentication not configured on server")
 }
 
 // TestNewJWTAuthorizer_PartialOAuth2Config tests the case when OAuth2 config is partially filled
@@ -668,10 +671,10 @@ func TestDenyAuthorizer(t *testing.T) {
 		result, err := auth.Authorize(req)
 
 		// Check results
-		assert.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, result.Approved)
 		assert.False(t, result.TokenValid)
-		assert.Contains(t, err.Error(), "access denied by policy")
+		assert.Equal(t, "access denied by policy", result.Reason)
 	})
 
 	t.Run("CustomReason", func(t *testing.T) {
@@ -686,9 +689,9 @@ func TestDenyAuthorizer(t *testing.T) {
 		result, err := auth.Authorize(req)
 
 		// Check results
-		assert.Error(t, err)
+		require.NoError(t, err)
 		assert.False(t, result.Approved)
 		assert.False(t, result.TokenValid)
-		assert.Contains(t, err.Error(), customReason)
+		assert.Equal(t, customReason, result.Reason)
 	})
 }

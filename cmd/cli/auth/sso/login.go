@@ -18,7 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/sso"
 )
 
-const errorHint = "Please rerun command with DEBUG LOG_LEVEL for more details"
+const errorHint = "Set LOG_LEVEL=DEBUG and re-run for detailed logs"
 
 // SSOOptions is a struct to support node command
 type SSOLoginOptions struct{}
@@ -46,7 +46,7 @@ func NewSSOLoginCmd() *cobra.Command {
 			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 			if err != nil {
 				log.Debug().Err(err).Msg("failed to initialize API client")
-				return bacerrors.New("failed to initialize API call").
+				return bacerrors.New("failed to fetch supported authentication details from server").
 					WithHint(errorHint)
 			}
 			return o.runSSOLogin(cmd, api, cfg)
