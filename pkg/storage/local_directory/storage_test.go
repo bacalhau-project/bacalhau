@@ -164,6 +164,7 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 		allowedPaths       []string
 		expectedVolumeSize uint64
 		shouldFail         bool
+		errorMessage       string
 	}{
 		{
 			name:               "size of file1",
@@ -188,18 +189,28 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 			sourcePath:   file2,
 			allowedPaths: []string{file1},
 			shouldFail:   true,
+			errorMessage: "not allowlisted",
 		},
 		{
 			name:         "no allowed paths",
 			sourcePath:   file2,
 			allowedPaths: []string{},
 			shouldFail:   true,
+			errorMessage: "is not allowlisted",
+		},
+		{
+			name:         "missing rw permission",
+			sourcePath:   file1 + ":rw",
+			allowedPaths: []string{file1},
+			shouldFail:   true,
+			errorMessage: "is not granted write access",
 		},
 		{
 			name:         "file doesn't exist",
 			sourcePath:   filepath.Join(tmpDir, "unknown"),
-			allowedPaths: []string{tmpDir},
+			allowedPaths: []string{tmpDir + "/*"},
 			shouldFail:   true,
+			errorMessage: "does not exist",
 		},
 	} {
 		s.Run(tc.name, func() {
@@ -209,6 +220,7 @@ func (s *LocalDirectorySuite) TestGetVolumeSize() {
 			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), mock.Execution(), s.prepareStorageSpec(tc.sourcePath))
 			if tc.shouldFail {
 				require.Error(s.T(), err)
+				require.Truef(s.T(), strings.Contains(err.Error(), tc.errorMessage), "error message should contain %s, but got %s", tc.errorMessage, err.Error())
 				return
 			}
 			require.NoError(s.T(), err)
