@@ -9,7 +9,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/credsecurity"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +30,7 @@ func (a *basicAuthAuthorizer) validateBasicAuth(authHeader string) (types.AuthUs
 	encodedCredentials := authHeader[6:] // Skip "Basic "
 	decodedBytes, err := base64.StdEncoding.DecodeString(encodedCredentials)
 	if err != nil {
-		return types.AuthUser{}, false, errors.Wrap(err, "failed to decode basic auth credentials")
+		return types.AuthUser{}, false, errors.New("failed to decode basic auth credentials")
 	}
 
 	// Split the credentials into username and password
@@ -90,7 +89,8 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError("unauthorized: missing URL")
+			Reason:     "Missing Request URL",
+		}, nil
 	}
 
 	// Check if the endpoint is open (doesn't require authentication)
@@ -108,7 +108,11 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 	// Get Authorization header
 	authorizationHeaders := req.Header["Authorization"]
 	if len(authorizationHeaders) == 0 {
-		return Authorization{}, apimodels.NewUnauthorizedError("missing authorization header")
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Authorization header",
+		}, nil
 	}
 
 	authHeader := authorizationHeaders[0]
@@ -119,19 +123,14 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 		return Authorization{
 			Approved:   false,
 			TokenValid: false,
-		}, apimodels.NewUnauthorizedError(fmt.Sprintf("authentication failed: %s", authErr.Error()))
+			Reason:     authErr.Error(),
+		}, nil
 	}
 
 	// Check if authentication succeeded
 	if authenticated {
 		// Check user capabilities using the capability checker
-		hasCapability, requiredCapability, err := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
-		if err != nil {
-			return Authorization{
-				Approved:   false,
-				TokenValid: true,
-			}, err
-		}
+		hasCapability, requiredCapability := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
 
 		if hasCapability {
 			return Authorization{
@@ -145,10 +144,11 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 				userIdentifier = user.Alias
 			}
 			return Authorization{
-					Approved:   false,
-					TokenValid: true,
-				}, apimodels.NewUnauthorizedError(fmt.Sprintf("user '%s' does not have the required capability '%s'",
-					userIdentifier, requiredCapability))
+				Approved:   false,
+				TokenValid: true,
+				Reason: fmt.Sprintf("user '%s' does not have the required capability '%s'",
+					userIdentifier, requiredCapability),
+			}, nil
 		}
 	}
 
@@ -156,5 +156,6 @@ func (a *basicAuthAuthorizer) Authorize(req *http.Request) (Authorization, error
 	return Authorization{
 		Approved:   false,
 		TokenValid: false,
-	}, apimodels.NewUnauthorizedError("authentication failed")
+		Reason:     "Unknown authentication error",
+	}, nil
 }
