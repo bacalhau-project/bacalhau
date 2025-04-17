@@ -41,6 +41,7 @@ jobs:
           arch: ${{ matrix.goarch }}
           mode: 'release'
           upload_artifact: 'true'
+          artifact_name: 'bacalhau-${{ matrix.os }}-${{ matrix.goarch }}'
           private_pem: ${{ secrets.PRIVATE_PEM }}
           public_pem: ${{ secrets.PUBLIC_PEM }}
           passphrase: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}

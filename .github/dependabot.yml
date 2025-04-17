@@ -6,7 +6,7 @@ updates:
       interval: "daily"
     labels:
       - "lang/go"
-      - "dependabot/version-updates"
+      - "dependencies"
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
@@ -18,7 +18,7 @@ updates:
       interval: "weekly"
     labels:
       - "lang/github-actions"
-      - "dependabot/version-updates"
+      - "dependencies"
     open-pull-requests-limit: 3
     commit-message:
       prefix: "ci"

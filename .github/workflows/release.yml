@@ -1,21 +1,24 @@
-name: Main
+name: Release
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Allow manual triggering
+  release:
+    types: [published, prereleased]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - pre-release
 
 permissions:
   contents: read
   actions: read
   packages: write  # Required for GHCR
   id-token: write  # Required for AWS authentication
-
-# Prevent multiple build workflows from running simultaneously
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   # Build all binaries for release
@@ -27,10 +30,10 @@ jobs:
   # Push binaries to S3
   publish-to-s3:
     name: Publish to S3
-    needs: [build-binaries]
+    needs: [ build-binaries ]
     uses: ./.github/workflows/_s3_publish.yml
     with:
-      target_type: 'edge'
+      target_type: "release"
     secrets: inherit
 
   # Build and push Docker images
@@ -39,5 +42,5 @@ jobs:
     needs: [ build-binaries ]
     uses: ./.github/workflows/_docker_publish.yml
     with:
-      target_type: 'edge'
+      target_type: "release"
     secrets: inherit
