@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -24,13 +25,15 @@ type ExecutionLogReaderParams struct {
 	follow  bool
 	logsDir string
 }
-
 type ExecutionLogReader struct {
 	ctx          context.Context
 	isClosed     bool
 	readCancelCh chan struct{}
 	pipeReader   io.ReadCloser
+	pipeError    error
 	params       *ExecutionLogReaderParams
+	closeOnce    sync.Once
+	initPipeOnce sync.Once
 }
 
 func NewReaderForRequest(ctx context.Context, logsDir string, request messages.ExecutionLogsRequest) (*ExecutionLogReader, error) {
@@ -55,13 +58,10 @@ func NewReaderForRequest(ctx context.Context, logsDir string, request messages.E
 }
 
 func (rc *ExecutionLogReader) Close() error {
-	// Do nothing if already closed to avoid sending multiple close signals
-	if rc.isClosed {
-		return nil
-	}
-	rc.isClosed = true
-	rc.readCancelCh <- struct{}{}
-	close(rc.readCancelCh)
+	rc.closeOnce.Do(func() {
+		rc.isClosed = true
+		close(rc.readCancelCh)
+	})
 	return nil
 }
 
@@ -96,26 +96,31 @@ func (rc *ExecutionLogReader) initPipe() (*io.PipeReader, *io.PipeWriter, error)
 }
 
 func (rc *ExecutionLogReader) getPipeReader() (io.ReadCloser, error) {
-	if rc.pipeReader != nil {
-		return rc.pipeReader, nil
-	}
-	var err error
-	rc.pipeReader, _, err = rc.initPipe()
-	if err != nil {
-		return nil, err
+	rc.initPipeOnce.Do(func() {
+		rc.pipeReader, _, rc.pipeError = rc.initPipe()
+	})
+	if rc.pipeError != nil {
+		return nil, rc.pipeError
 	}
 	return rc.pipeReader, nil
 }
 
-func (rc *ExecutionLogReader) startReading(pipeWriter io.WriteCloser, logFileReader io.ReadCloser) {
-	// Close the pipe writer and log file reader when done
-	defer pipeWriter.Close()
+func (rc *ExecutionLogReader) startReading(pipeWriter *io.PipeWriter, logFileReader io.ReadCloser) {
+	// Close the pipe writer when done
+	var err error
+	defer func() {
+		if err != nil {
+			log.Error().Err(err).Msg("error reading execution log")
+			pipeWriter.CloseWithError(err)
+		} else {
+			pipeWriter.Close()
+		}
+	}()
+
 	// Close the file reader when done
 	defer closer.CloseWithLogOnError("execution_log_file_reader", logFileReader)
-	_, err := TimestampedStdCopy(pipeWriter, logFileReader, &rc.params.since, rc.params.follow, rc.readCancelCh)
-	if err != nil {
-		log.Error().Err(err).Msg("error reading execution log")
-	}
+
+	_, err = TimestampedStdCopy(pipeWriter, logFileReader, &rc.params.since, rc.params.follow, rc.readCancelCh)
 }
 
 func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
@@ -151,7 +156,13 @@ func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
 				Err(ctx.Err()).
 				Str("path", filePath).
 				Msg("context resolved while waiting for execution logs")
-			return nil, ctx.Err()
+			return nil, errors.New("context resolved while waiting for execution logs")
+		case <-rc.readCancelCh:
+			log.Debug().
+				Err(ctx.Err()).
+				Str("path", filePath).
+				Msg("cancelled while waiting for execution logs")
+			return nil, errors.New("cancelled while waiting for execution logs")
 		case <-ticker.C:
 			continue
 		}
