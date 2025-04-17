@@ -92,14 +92,14 @@ func (c *CapabilityChecker) HasRequiredCapability(user types.AuthUser, requiredC
 
 // CheckUserAccess checks if a user has access to a resource for a given HTTP method
 // Returns whether the user has access, the required capability, and any error
-func (c *CapabilityChecker) CheckUserAccess(user types.AuthUser, resourceType ResourceType, req *http.Request) (bool, string, error) {
+func (c *CapabilityChecker) CheckUserAccess(user types.AuthUser, resourceType ResourceType, req *http.Request) (bool, string) {
 	// Get the required capability
 	requiredCapability := c.GetRequiredCapability(resourceType, req.Method)
 
 	// Check if user has the required capability
 	hasCapability := c.HasRequiredCapability(user, requiredCapability)
 
-	return hasCapability, requiredCapability, nil
+	return hasCapability, requiredCapability
 }
 
 // MapEndpointToResourceType maps an API endpoint path to a resource type
