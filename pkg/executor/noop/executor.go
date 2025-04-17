@@ -24,7 +24,7 @@ type ExecutorHandlerJobHandler func(ctx context.Context, execContext ExecutionCo
 // ExecutionContext provides all the context needed for execution
 type ExecutionContext struct {
 	*executor.RunCommandRequest
-	ResultsDir string
+	ExecutionDir string
 }
 
 func ErrorJobHandler(err error) ExecutorHandlerJobHandler {
@@ -59,11 +59,11 @@ type NoopExecutor struct {
 }
 
 type executionHandler struct {
-	jobHandler ExecutorHandlerJobHandler
-	request    *executor.RunCommandRequest
-	resultsDir string
-	done       chan bool
-	result     *handlerResult
+	jobHandler   ExecutorHandlerJobHandler
+	request      *executor.RunCommandRequest
+	executionDir string
+	done         chan bool
+	result       *handlerResult
 }
 
 // isEmpty is a flag to indicate if the handler is empty
@@ -96,7 +96,7 @@ func (e *executionHandler) run(ctx context.Context) {
 
 	execContext := ExecutionContext{
 		RunCommandRequest: e.request,
-		ResultsDir:        e.resultsDir,
+		ExecutionDir:      e.executionDir,
 	}
 
 	// Fall back to original handler
@@ -112,10 +112,10 @@ func (e *NoopExecutor) Start(ctx context.Context, request *executor.RunCommandRe
 	e.Jobs = append(e.Jobs, request.JobID)
 
 	handler := &executionHandler{
-		jobHandler: e.Config.ExternalHooks.JobHandler,
-		request:    request,
-		resultsDir: request.ResultsDir,
-		done:       make(chan bool),
+		jobHandler:   e.Config.ExternalHooks.JobHandler,
+		request:      request,
+		executionDir: request.ExecutionDir,
+		done:         make(chan bool),
 	}
 	e.handlers.Put(request.ExecutionID, handler)
 	go handler.run(ctx)

@@ -100,9 +100,7 @@ endif
 ################################################################################
 .PHONY: precommit
 precommit: check-precommit
-	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
-	@rm webui/build/stub
 	cd python && ${MAKE} pre-commit
 
 # Check if pre-commit is installed only for precommit target
@@ -352,7 +350,6 @@ images: docker/.pulled
 clean:
 	${GO} clean
 	${RM} -r bin/*
-	${RM} -r webui/build/*
 	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images

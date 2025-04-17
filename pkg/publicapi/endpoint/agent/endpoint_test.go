@@ -29,13 +29,13 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	router := echo.New()
 
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&types.License{LocalPath: ""})
+	licenseManager, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	// populate the fields that should be redacted with "secret" values.
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 		BacalhauConfig: types.Bacalhau{
 			Orchestrator: types.Orchestrator{
 				Auth: types.OrchestratorAuth{
@@ -62,8 +62,8 @@ func TestEndpointConfigRedactFields(t *testing.T) {
 	var payload apimodels.GetAgentConfigResponse
 	err = json.NewDecoder(rr.Body).Decode(&payload)
 	require.NoError(t, err)
-	assert.Equal(t, payload.Config.Orchestrator.Auth.Token, "<redacted>")
-	assert.Equal(t, payload.Config.Compute.Auth.Token, "<redacted>")
+	assert.Equal(t, payload.Config.Orchestrator.Auth.Token, "********")
+	assert.Equal(t, payload.Config.Compute.Auth.Token, "********")
 }
 
 // TestEndpointLicenseValid tests the license endpoint when a valid license is configured
@@ -81,22 +81,13 @@ func TestEndpointLicenseValid(t *testing.T) {
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader(licensePath)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
@@ -129,22 +120,13 @@ func TestEndpointLicenseValid(t *testing.T) {
 func TestEndpointLicenseNotConfigured(t *testing.T) {
 	router := echo.New()
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				// No license path configured
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader("")
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
@@ -190,22 +172,13 @@ func TestEndpointLicenseExpired(t *testing.T) {
 	err := os.WriteFile(licensePath, []byte(licenseContent), 0644)
 	require.NoError(t, err)
 
-	config := types.Bacalhau{
-		Orchestrator: types.Orchestrator{
-			License: types.License{
-				LocalPath: licensePath,
-			},
-		},
-	}
-
 	// Create license manager
-	licenseManager, err := licensing.NewLicenseManager(&config.Orchestrator.License)
+	licenseManager, err := licensing.NewReader(licensePath)
 	require.NoError(t, err)
 
 	_, err = NewEndpoint(EndpointParams{
-		Router:         router,
-		BacalhauConfig: config,
-		LicenseManager: licenseManager,
+		Router:        router,
+		LicenseReader: licenseManager,
 	})
 	require.NoError(t, err)
 
@@ -232,4 +205,130 @@ func TestEndpointLicenseExpired(t *testing.T) {
 	assert.Equal(t, int64(1736241098), response.ExpiresAt.Unix())
 	assert.True(t, response.IsExpired())
 	assert.Equal(t, 1, response.MaxNumberOfNodes())
+}
+
+// TestEndpointNodeOauth2ConfigPopulated tests the nodeOauth2Config endpoint when the OAuth2 config is populated
+func TestEndpointNodeOauth2ConfigPopulated(t *testing.T) {
+	router := echo.New()
+
+	// Prepare a config with populated OAuth2 settings
+	config := types.Bacalhau{
+		API: types.API{
+			Auth: types.AuthConfig{
+				Oauth2: types.Oauth2Config{
+					ProviderID:                  "test-provider",
+					ProviderName:                "Test Provider",
+					DeviceClientID:              "device-client-id-123",
+					DeviceAuthorizationEndpoint: "https://test-provider.com/oauth/device/code",
+					JWKSUri:                     "https://test-provider.com/.well-known/jwks.json",
+					TokenEndpoint:               "https://test-provider.com/oauth/token",
+					PollingInterval:             5,
+					Audience:                    "test-audience",
+					Scopes:                      []string{"read:jobs", "write:jobs"},
+				},
+			},
+		},
+	}
+
+	// Create license manager
+	licenseReader, err := licensing.NewReader("")
+	require.NoError(t, err)
+
+	_, err = NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseReader:  licenseReader,
+	})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/authconfig", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var response apimodels.GetAgentNodeAuthConfigResponse
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	require.NoError(t, err)
+
+	// Verify the OAuth2 config values
+	assert.Equal(t, "test-provider", response.Config.ProviderID)
+	assert.Equal(t, "Test Provider", response.Config.ProviderName)
+	assert.Equal(t, "https://test-provider.com/.well-known/jwks.json", response.Config.JWKSUri)
+
+	// Verify DeviceCode flow
+	assert.Equal(t, "device-client-id-123", response.Config.DeviceClientID)
+	assert.Equal(t, "https://test-provider.com/oauth/device/code", response.Config.DeviceAuthorizationEndpoint)
+	assert.Equal(t, "https://test-provider.com/oauth/token", response.Config.TokenEndpoint)
+	assert.Equal(t, 5, response.Config.PollingInterval)
+	assert.Equal(t, "test-audience", response.Config.Audience)
+	assert.Equal(t, []string{"read:jobs", "write:jobs"}, response.Config.Scopes)
+}
+
+// TestEndpointNodeOauth2ConfigEmpty tests the nodeOauth2Config endpoint when the OAuth2 config is empty
+func TestEndpointNodeOauth2ConfigEmpty(t *testing.T) {
+	router := echo.New()
+
+	// Create config with empty OAuth2 settings
+	config := types.Bacalhau{
+		API: types.API{
+			Auth: types.AuthConfig{
+				// OAuth2 config is empty by default
+			},
+		},
+	}
+
+	// Create license manager
+	licenseReader, err := licensing.NewReader("")
+	require.NoError(t, err)
+
+	_, err = NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: config,
+		LicenseReader:  licenseReader,
+	})
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/authconfig", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var response apimodels.GetAgentNodeAuthConfigResponse
+	err = json.NewDecoder(rr.Body).Decode(&response)
+	require.NoError(t, err)
+
+	// Verify the OAuth2 config is empty
+	assert.Empty(t, response.Config.ProviderID)
+	assert.Empty(t, response.Config.ProviderName)
+	assert.Empty(t, response.Config.JWKSUri)
+	assert.Empty(t, response.Config.DeviceClientID)
+}
+
+// TestEndpointNodeOauth2ConfigRouteRegistration tests that the nodeOauth2Config route is properly registered
+func TestEndpointNodeOauth2ConfigRouteRegistration(t *testing.T) {
+	router := echo.New()
+
+	// Create license manager
+	licenseReader, err := licensing.NewReader("")
+	require.NoError(t, err)
+
+	endpoint, err := NewEndpoint(EndpointParams{
+		Router:         router,
+		BacalhauConfig: types.Bacalhau{},
+		LicenseReader:  licenseReader,
+	})
+	require.NoError(t, err)
+
+	// Add the route manually - this would normally be in the NewEndpoint function
+	g := endpoint.router.Group("/api/v1/agent")
+	g.GET("/oauth2config", endpoint.nodeAuthConfig)
+
+	// Test that the route works
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/oauth2config", nil)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
 }

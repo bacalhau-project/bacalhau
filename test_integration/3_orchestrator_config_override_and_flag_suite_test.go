@@ -28,7 +28,7 @@ func (s *OrchestratorConfigOverrideAndFlagSuite) SetupSuite() {
 	orchestratorConfigFile1 := s.commonAssets("nodes_configs/2_config.yaml")
 	orchestratorConfigFile2 := s.commonAssets("nodes_configs/2_config_override.yaml")
 	orchestratorStartCommand := fmt.Sprintf(
-		"bacalhau serve --config=%s --config=%s --labels=extralabel=extravalue",
+		"bacalhau serve --config=%s --config=%s --config Labels='extralabel=extravalue'",
 		orchestratorConfigFile1,
 		orchestratorConfigFile2,
 	)

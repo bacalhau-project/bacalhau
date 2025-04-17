@@ -45,6 +45,11 @@ export type apimodels_GetAgentLicenseResponse = {
     sub?: string;
 };
 
+export type apimodels_GetAgentNodeAuthConfigResponse = {
+    config?: types_Oauth2Config;
+    version?: string;
+};
+
 export type apimodels_GetJobResponse = {
     Executions?: apimodels_ListJobExecutionsResponse;
     History?: apimodels_ListJobHistoryResponse;
@@ -406,6 +411,13 @@ export type models_Job = {
     Constraints?: Array<models_LabelSelectorRequirement>;
     /**
      * Count is the number of replicas that should be scheduled.
+     * For batch and service jobs:
+     * - If not present in JSON, defaults to 1
+     * - If explicitly set to 0, means stop all executions
+     * - If > 0, specifies exact number of replicas
+     * For daemon and ops jobs:
+     * - Values of 0 or 1 are ignored (job runs on all matching nodes)
+     * - Values > 1 are invalid and will cause validation to fail
      */
     Count?: number;
     CreateTime?: number;
@@ -523,10 +535,12 @@ export type models_LabelSelectorRequirement = {
 };
 
 export enum models_Network {
-    NetworkNone = 0,
-    NetworkHost = 1,
-    NetworkHTTP = 2,
-    NetworkBridge = 3
+    NetworkDefault = 0,
+    NetworkNone = 1,
+    NetworkHost = 2,
+    NetworkFull = 3,
+    NetworkHTTP = 4,
+    NetworkBridge = 5
 }
 
 export type models_NetworkConfig = {
@@ -829,14 +843,6 @@ export enum selection_Operator {
     LessThan = 'lt'
 }
 
-export type shared_VersionRequest = {
-    client_id?: string;
-};
-
-export type shared_VersionResponse = {
-    build_version_info?: models_BuildVersionInfo;
-};
-
 export type types_API = {
     Auth?: types_AuthConfig;
     /**
@@ -877,6 +883,16 @@ export type types_AuthConfig = {
     Methods?: {
         [key: string]: types_AuthenticatorConfig;
     };
+    Oauth2?: types_Oauth2Config;
+    Users?: Array<types_AuthUser>;
+};
+
+export type types_AuthUser = {
+    APIKey?: string;
+    Alias?: string;
+    Capabilities?: Array<types_Capability>;
+    Password?: string;
+    Username?: string;
 };
 
 export type types_AuthenticatorConfig = {
@@ -935,6 +951,10 @@ export type types_BatchTaskDefaultConfig = {
     Publisher?: types_DefaultPublisherConfig;
     Resources?: types_ResourcesConfig;
     Timeouts?: types_TaskTimeoutConfig;
+};
+
+export type types_Capability = {
+    Actions?: Array<(string)>;
 };
 
 export type types_Cluster = {
@@ -1138,10 +1158,6 @@ export type types_IpfsDownloader = {
 
 export type types_JobAdmissionControl = {
     /**
-     * AcceptNetworkedJobs indicates whether to accept jobs that require network access.
-     */
-    AcceptNetworkedJobs?: boolean;
-    /**
      * Locality specifies the locality of the job input data.
      */
     Locality?: (models_JobSelectionDataLocality);
@@ -1153,6 +1169,10 @@ export type types_JobAdmissionControl = {
      * ProbeHTTP specifies the HTTP endpoint for probing job submission.
      */
     ProbeHTTP?: string;
+    /**
+     * RejectNetworkedJobs indicates whether to reject jobs that require network access.
+     */
+    RejectNetworkedJobs?: boolean;
     /**
      * RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.
      */
@@ -1237,6 +1257,19 @@ export type types_NodeManager = {
      * ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.
      */
     ManualApproval?: boolean;
+};
+
+export type types_Oauth2Config = {
+    Audience?: string;
+    DeviceAuthorizationEndpoint?: string;
+    DeviceClientID?: string;
+    Issuer?: string;
+    JWKSUri?: string;
+    PollingInterval?: number;
+    ProviderID?: string;
+    ProviderName?: string;
+    Scopes?: Array<(string)>;
+    TokenEndpoint?: string;
 };
 
 export type types_Orchestrator = {
@@ -1486,25 +1519,13 @@ export type types_WebUI = {
     Listen?: string;
 };
 
-export type HomeResponse = (string);
-
-export type HomeError = unknown;
-
-export type IdResponse = (string);
-
-export type IdError = (string);
-
-export type LivezResponse = (string);
-
-export type LivezError = unknown;
-
-export type NodeInfoResponse = (models_NodeInfo);
-
-export type NodeInfoError = (string);
-
 export type AgentAliveResponse = (apimodels_IsAliveResponse);
 
 export type AgentAliveError = unknown;
+
+export type AgentAuthconfigResponse = (apimodels_GetAgentNodeAuthConfigResponse);
+
+export type AgentAuthconfigError = (string);
 
 export type AgentConfigResponse = (types_Bacalhau);
 
@@ -1525,10 +1546,6 @@ export type AgentNodeError = (string);
 export type AgentVersionResponse = (apimodels_GetVersionResponse);
 
 export type AgentVersionError = (string);
-
-export type ApiServerDebugResponse = (string);
-
-export type ApiServerDebugError = (string);
 
 export type OrchestratorListJobsData = {
     query?: {
@@ -1747,6 +1764,19 @@ export type OrchestratorListNodesResponse = (apimodels_ListNodesResponse);
 
 export type OrchestratorListNodesError = (string);
 
+export type OrchestratorGetNodeData = {
+    path: {
+        /**
+         * ID of the orchestrator node to fetch for.
+         */
+        id: string;
+    };
+};
+
+export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
+
+export type OrchestratorGetNodeError = (string);
+
 export type OrchestratorUpdateNodeData = {
     /**
      * Put Node Request
@@ -1763,27 +1793,3 @@ export type OrchestratorUpdateNodeData = {
 export type OrchestratorUpdateNodeResponse = (apimodels_PutNodeResponse);
 
 export type OrchestratorUpdateNodeError = (string);
-
-export type OrchestratorGetNodeData = {
-    path: {
-        /**
-         * ID of the orchestrator node to fetch for.
-         */
-        id: string;
-    };
-};
-
-export type OrchestratorGetNodeResponse = (apimodels_GetNodeResponse);
-
-export type OrchestratorGetNodeError = (string);
-
-export type ApiServerVersionData = {
-    /**
-     * Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe <job-id>` and fetch the `ClientID` field.
-     */
-    body: shared_VersionRequest;
-};
-
-export type ApiServerVersionResponse = (shared_VersionResponse);
-
-export type ApiServerVersionError = (string);

@@ -52,7 +52,7 @@ make precommit
 ## Build Bacalhau
 
 You can check individual build targets in the [Makefile](../../Makefile) or build all of them together.
-Refer to [Key Concepts](https://docs.bacalhau.org/overview/architecture#core-components) to learn more about different Bacalhau components.
+Refer to [Key Concepts](https://docs.bacalhau.org/overview/key-concepts) to learn more about different Bacalhau components.
 
 To build all Bacalhau components:
 

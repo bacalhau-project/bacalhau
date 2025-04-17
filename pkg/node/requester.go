@@ -13,6 +13,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
+	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
@@ -33,7 +34,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
-	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
@@ -65,7 +65,7 @@ func NewRequesterNode(
 	transportLayer *nats_transport.NATSTransport,
 	metadataStore MetadataStore,
 	nodeInfoProvider models.DecoratorNodeInfoProvider,
-) (*Requester, error) {
+	reader licensing.Reader) (*Requester, error) {
 	jobStore, err := createJobStore(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -241,14 +241,17 @@ func NewRequesterNode(
 		discovery.NewDebugInfoProvider(nodesManager),
 	}
 
-	// TODO: delete this when we are ready to stop serving a deprecation notice.
-	requester_endpoint.NewEndpoint(apiServer.Router)
+	licenseManager, err := createLicenseManager(cfg, reader, nodesManager)
+	if err != nil {
+		return nil, err
+	}
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
-		Router:       apiServer.Router,
-		Orchestrator: endpointV2,
-		JobStore:     jobStore,
-		NodeManager:  nodesManager,
+		Router:         apiServer.Router,
+		Orchestrator:   endpointV2,
+		JobStore:       jobStore,
+		NodeManager:    nodesManager,
+		LicenseManager: licenseManager,
 	})
 
 	authenticators, err := cfg.DependencyInjector.AuthenticatorsFactory.Get(ctx, cfg)
@@ -308,6 +311,9 @@ func NewRequesterNode(
 		// stop the legacy connection manager
 		legacyConnectionManager.Stop(ctx)
 
+		// stop the license manager
+		licenseManager.Stop()
+
 		// stop the connection manager
 		if cleanupErr = connectionManager.Stop(ctx); cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown connection manager")
@@ -344,6 +350,22 @@ func NewRequesterNode(
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
+}
+
+func createLicenseManager(cfg NodeConfig, reader licensing.Reader, nodesManager nodes.Manager) (licensing.Manager, error) {
+	// license manager
+	licenseManager, err := licensing.NewManager(licensing.ManagerParams{
+		Reader:         reader,
+		NodesTracker:   nodesManager,
+		SkipValidation: cfg.SystemConfig.SkipLicenseValidation,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// start the license manager
+	licenseManager.Start()
+	return licenseManager, nil
 }
 
 func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {

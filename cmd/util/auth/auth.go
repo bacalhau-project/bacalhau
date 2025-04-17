@@ -45,6 +45,11 @@ func RunAuthenticationFlow(
 		return nil, err
 	}
 
+	if methods != nil && len(methods.Methods) == 0 {
+		return nil, fmt.Errorf("the orchestrator supports the" +
+			" new authentication method. Please login using username/password, API key, or thorugh SSO")
+	}
+
 	filteredMethods := make(map[string]authn.Requirement, len(methods.Methods))
 	clientTypes := maps.Keys(supportedMethods)
 	for name, req := range methods.Methods {
@@ -76,8 +81,9 @@ func RunAuthenticationFlow(
 		}
 
 		authnResponse, err := auth.Authenticate(ctx, &apimodels.AuthnRequest{
-			Name:       chosenMethodName,
-			MethodData: response,
+			Name:        chosenMethodName,
+			MethodData:  response,
+			BaseRequest: apimodels.BaseRequest{},
 		})
 		if err != nil {
 			return nil, err

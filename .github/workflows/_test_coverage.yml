@@ -1,0 +1,118 @@
+name: Combine Coverage Reports
+
+on:
+  workflow_call:
+    inputs:
+      coverage_reports:
+        description: 'JSON array of report names to combine (matches the test_name parameter from test workflow)'
+        required: true
+        type: string
+      output_name:
+        description: 'Name for the combined coverage report'
+        required: false
+        default: 'combined'
+        type: string
+      retention_days:
+        description: 'Number of days to retain the coverage artifacts'
+        required: false
+        default: 14
+        type: number
+
+jobs:
+  combine-coverage:
+    name: Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Install gocovmerge
+        run: go install github.com/wadey/gocovmerge@latest
+
+      - name: Create coverage directory
+        run: mkdir -p coverage
+
+      - name: Parse coverage report names
+        id: parse-reports
+        run: |
+          # Convert the JSON array to a space-separated list for use in bash
+          REPORT_NAMES=$(echo '${{ inputs.coverage_reports }}' | jq -r '.[]' | tr '\n' ' ' | xargs)
+          echo "report_names=$REPORT_NAMES" >> $GITHUB_OUTPUT
+          echo "Reports to combine: $REPORT_NAMES"
+
+      - name: Download coverage artifacts
+        run: |
+          # Download each report artifact to its own directory
+          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
+            echo "Downloading $report_name artifacts..."
+            mkdir -p artifacts/$report_name
+            
+            # Use GitHub CLI to download the artifacts
+            gh run download --name "${report_name}-reports" --dir artifacts/$report_name
+          done
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Combine coverage reports
+        id: combine
+        run: |
+          # Check for all coverage files and add to a list
+          COVERAGE_FILES=""
+          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
+            COVERAGE_FILE="artifacts/${report_name}/coverage/${report_name}.coverage"
+            if [ -f "$COVERAGE_FILE" ]; then
+              echo "Found coverage file: $COVERAGE_FILE"
+              COVERAGE_FILES="$COVERAGE_FILES $COVERAGE_FILE"
+            else
+              echo "Warning: Coverage file not found: $COVERAGE_FILE"
+              # List files in the directory to aid debugging
+              find artifacts/${report_name} -type f | sort
+            fi
+          done
+          
+          if [ -z "$COVERAGE_FILES" ]; then
+            echo "No coverage files found. Exiting."
+            exit 1
+          fi
+          
+          # Merge the coverage files
+          echo "Merging coverage files: $COVERAGE_FILES"
+          gocovmerge $COVERAGE_FILES > coverage/${{ inputs.output_name }}.coverage
+          
+          # Generate HTML report
+          go tool cover -html=coverage/${{ inputs.output_name }}.coverage -o coverage/${{ inputs.output_name }}.html
+          
+          # Generate functional coverage summary
+          go tool cover -func=coverage/${{ inputs.output_name }}.coverage | tee coverage/${{ inputs.output_name }}-summary.txt
+          
+          # Extract total coverage percentage for the job summary
+          TOTAL_COV=$(go tool cover -func=coverage/${{ inputs.output_name }}.coverage | grep total | awk '{print $3}')
+          echo "total_coverage=$TOTAL_COV" >> $GITHUB_OUTPUT
+
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_name }}-coverage-report
+          path: |
+            coverage/${{ inputs.output_name }}.coverage
+            coverage/${{ inputs.output_name }}.html
+            coverage/${{ inputs.output_name }}-summary.txt
+          retention-days: ${{ inputs.retention_days }}
+
+      - name: Write job summary
+        run: |
+          echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Total coverage: **${{ steps.combine.outputs.total_coverage }}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Reports Combined" >> $GITHUB_STEP_SUMMARY
+          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
+            echo "- $report_name" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Full coverage report is available as an artifact." >> $GITHUB_STEP_SUMMARY

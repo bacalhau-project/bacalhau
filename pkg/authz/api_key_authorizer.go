@@ -1,0 +1,139 @@
+package authz
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
+	"github.com/pkg/errors"
+)
+
+type apiKeyAuthorizer struct {
+	nodeID              string
+	apiKeyUsers         map[string]types.AuthUser // Key is API key
+	capabilityChecker   *CapabilityChecker
+	endpointPermissions map[string]string
+}
+
+// validateAPIKey validates an API key from a Bearer token
+func (a *apiKeyAuthorizer) validateAPIKey(authHeader string) (types.AuthUser, bool, error) {
+	// Extract the API key
+	apiKey := authHeader[7:] // Skip "Bearer "
+	if apiKey == "" {
+		return types.AuthUser{}, false, errors.New("empty API key provided")
+	}
+
+	// Look up the user by API key
+	user, exists := a.apiKeyUsers[apiKey]
+	if !exists {
+		return types.AuthUser{}, false, errors.New("invalid API key")
+	}
+
+	// Authentication successful
+	return user, true, nil
+}
+
+func NewAPIKeyAuthorizer(
+	nodeID string,
+	apiKeyUsers map[string]types.AuthUser,
+	capabilityChecker *CapabilityChecker,
+	endpointPermissions map[string]string,
+) Authorizer {
+	// Create the authorizer instance
+	authorizer := &apiKeyAuthorizer{
+		nodeID:              nodeID,
+		apiKeyUsers:         apiKeyUsers,
+		capabilityChecker:   capabilityChecker,
+		endpointPermissions: endpointPermissions,
+	}
+
+	return authorizer
+}
+
+// getUserIdentifier returns a string to identify the user in logs and error messages
+// It prefers alias if present, then username if present, then last 5 chars of API key
+func (a *apiKeyAuthorizer) getUserIdentifier(user types.AuthUser) string {
+	if user.Alias != "" {
+		return user.Alias
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	if user.APIKey != "" {
+		// Get last 5 characters of API key
+		const apiKeyMaskOffset = 5
+		if len(user.APIKey) > apiKeyMaskOffset {
+			return "API key ending in ..." + user.APIKey[len(user.APIKey)-5:]
+		}
+		return "API key " + user.APIKey
+	}
+	return "unknown user"
+}
+
+// Authorize implements the Authorizer interface
+func (a *apiKeyAuthorizer) Authorize(req *http.Request) (Authorization, error) {
+	if req.URL == nil {
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Request URL",
+		}, nil
+	}
+
+	// Check if the endpoint is open (doesn't require authentication)
+	reqPath := req.URL.Path
+	resourceType := MapEndpointToResourceType(reqPath, a.endpointPermissions)
+
+	// If endpoint is "open", approve without authentication
+	if resourceType == ResourceTypeOpen {
+		return Authorization{
+			Approved:   true,
+			TokenValid: true,
+		}, nil
+	}
+
+	// Get Authorization header
+	authorizationHeaders := req.Header["Authorization"]
+	if len(authorizationHeaders) == 0 {
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     "Missing Authorization header",
+		}, nil
+	}
+
+	authHeader := authorizationHeaders[0]
+	user, authenticated, authErr := a.validateAPIKey(authHeader)
+
+	// Handle authentication error
+	if authErr != nil {
+		return Authorization{
+			Approved:   false,
+			TokenValid: false,
+			Reason:     authErr.Error(),
+		}, nil
+	}
+
+	if authenticated {
+		hasCapability, requiredCapability := a.capabilityChecker.CheckUserAccess(user, resourceType, req)
+
+		if hasCapability {
+			return Authorization{Approved: true, TokenValid: true}, nil
+		} else {
+			return Authorization{
+				Approved:   false,
+				TokenValid: true,
+				Reason: fmt.Sprintf(
+					"user '%s' does not have the required capability '%s'",
+					a.getUserIdentifier(user), requiredCapability),
+			}, nil
+		}
+	}
+
+	// If we get here, something unexpected happened
+	return Authorization{
+		Approved:   false,
+		TokenValid: false,
+		Reason:     "Unknown authentication error",
+	}, nil
+}

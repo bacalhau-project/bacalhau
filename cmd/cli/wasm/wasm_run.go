@@ -27,16 +27,16 @@ import (
 var (
 	wasmRunLong = templates.LongDesc(`
 		Runs a job that was compiled to WASM.
-		
+
 		The entry module can be specified in three ways:
 		1. Local file path (e.g., ./main.wasm)
 		2. Storage spec (e.g., s3://bucket/main.wasm, http://example.com/main.wasm)
 		3. Target path (when the module is added via --input flag)
-		
+
 		You can override the target path for any of these using the path:target syntax:
 		- Local file: ./main.wasm:/app/custom.wasm
 		- Storage spec: s3://bucket/main.wasm:/app/custom.wasm
-		
+
 		Import modules must be added via the --input flag and referenced by their target paths.
 		`)
 
@@ -107,7 +107,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create v2 api client: %w", err)
 			}
@@ -156,8 +156,9 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 		return fmt.Errorf("failed to submit job: %w", err)
 	}
 
-	if len(resp.Warnings) > 0 {
-		helpers.PrintWarnings(cmd, resp.Warnings)
+	if !opts.RunTimeSettings.PrintJobIDOnly && len(resp.Warnings) > 0 {
+		printer.PrintWarnings(cmd, resp.Warnings)
+		cmd.Println()
 	}
 
 	job.ID = resp.JobID
