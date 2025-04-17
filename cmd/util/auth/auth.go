@@ -25,7 +25,6 @@ type Responder interface {
 	Respond(request *json.RawMessage) ([]byte, error)
 }
 
-// Where we query the auth endpoint, this is a frontend code on the CLI
 func RunAuthenticationFlow(
 	ctx context.Context,
 	cmd *cobra.Command,
@@ -41,14 +40,11 @@ func RunAuthenticationFlow(
 		authn.MethodTypeAsk:       &ask.Responder{Cmd: cmd},
 	}
 
-	//println("1- inside RunAuthenticationFlow method ")
-	// this is where we list the methods - API endpoint
 	methods, err := auth.Methods(ctx, &apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
 		return nil, err
 	}
 
-	//println("4- inside RunAuthenticationFlow method ")
 	if methods != nil && len(methods.Methods) == 0 {
 		return nil, fmt.Errorf("the orchestrator supports the" +
 			" new authentication method. Please login using username/password, API key, or thorugh SSO")
@@ -61,7 +57,7 @@ func RunAuthenticationFlow(
 			filteredMethods[name] = req
 		}
 	}
-	//println("4- inside RunAuthenticationFlow method ")
+
 	if len(filteredMethods) == 0 {
 		serverTypes := lo.Map(maps.Values(methods.Methods), func(r authn.Requirement, _ int) authn.MethodType { return r.Type })
 		return nil, fmt.Errorf("no common authentication method: client supports %v, server supports %v", clientTypes, serverTypes)
@@ -84,8 +80,6 @@ func RunAuthenticationFlow(
 			return nil, err
 		}
 
-		// This is where the authentication method is called
-		// in the CLI.
 		authnResponse, err := auth.Authenticate(ctx, &apimodels.AuthnRequest{
 			Name:        chosenMethodName,
 			MethodData:  response,
