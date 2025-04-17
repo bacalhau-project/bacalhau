@@ -1,0 +1,21 @@
+NameProvider: "uuid"
+API:
+  Port: 1234
+  Auth:
+    Oauth2:
+      ProviderId: "auth0"
+      ProviderName: "Auth0"
+      DeviceAuthorizationEndpoint: "https://example.com/oauth/device/code"
+      TokenEndpoint: "https://example.com/oauth/token"
+      Issuer: "https://example.com/.well-known"
+      JWKSUri: "https://example.com/.well-known/jwks.json"
+      DeviceClientId: "abc123abc123abc123"
+      PollingInterval: 5
+      Audience: "https://example.com/orchestrator"
+      Scopes:
+        - "openid"
+        - "profile"
+Orchestrator:
+  Enabled: true
+  Auth:
+    Token: "i_am_very_secret_token"

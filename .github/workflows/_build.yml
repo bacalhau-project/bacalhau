@@ -1,0 +1,46 @@
+name: Build Bacalhau Binaries
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            goarch: amd64
+          - os: linux
+            goarch: arm64
+          - os: linux
+            goarch: armv7
+          - os: linux
+            goarch: armv6
+          - os: darwin
+            goarch: amd64
+          - os: darwin
+            goarch: arm64
+          - os: windows
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Build
+        uses: ./.github/actions/build-bacalhau
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.goarch }}
+          mode: 'release'
+          upload_artifact: 'true'
+          private_pem: ${{ secrets.PRIVATE_PEM }}
+          public_pem: ${{ secrets.PUBLIC_PEM }}
+          passphrase: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}

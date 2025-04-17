@@ -35,6 +35,7 @@ func (tc networkAllowlistTestCase) String() string {
 
 var networkAllowlistTestCases []networkAllowlistTestCase = []networkAllowlistTestCase{
 	{models.NetworkNone, []string{}, true},
+	{models.NetworkDefault, []string{}, true},
 	{models.NetworkHost, []string{}, false},
 	{models.NetworkFull, []string{}, false},
 	{models.NetworkHTTP, []string{}, true},

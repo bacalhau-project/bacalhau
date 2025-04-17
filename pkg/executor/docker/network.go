@@ -71,6 +71,10 @@ func (e *Executor) setupNetworkForJob(
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
+	// In docker, if network is not specified, we default to bridge
+	if params.Network.Type == models.NetworkDefault {
+		params.Network.Type = models.NetworkBridge
+	}
 	containerConfig.NetworkDisabled = params.Network.Disabled()
 	switch params.Network.Type {
 	case models.NetworkNone:
