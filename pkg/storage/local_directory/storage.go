@@ -9,6 +9,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 )
@@ -38,7 +39,8 @@ func (driver *StorageProvider) HasStorageLocally(_ context.Context, volume model
 	if err != nil {
 		return false, err
 	}
-	if !driver.isInAllowedPaths(source) {
+
+	if _, err = driver.matchAllowedPath(source); err != nil {
 		return false, nil
 	}
 
@@ -53,9 +55,12 @@ func (driver *StorageProvider) GetVolumeSize(_ context.Context, _ *models.Execut
 	if err != nil {
 		return 0, err
 	}
-	if !driver.isInAllowedPaths(source) {
-		return 0, errors.New("volume not in allowed paths")
+
+	_, err = driver.matchAllowedPath(source)
+	if err != nil {
+		return 0, err
 	}
+
 	// check if the volume exists
 	if _, err := os.Stat(source.SourcePath); errors.Is(err, os.ErrNotExist) {
 		return 0, errors.New("volume does not exist")
@@ -75,9 +80,12 @@ func (driver *StorageProvider) PrepareStorage(
 	if err != nil {
 		return storage.StorageVolume{}, err
 	}
-	if !driver.isInAllowedPaths(source) {
-		return storage.StorageVolume{}, errors.New("volume not in allowed paths")
+
+	_, err = driver.matchAllowedPath(source)
+	if err != nil {
+		return storage.StorageVolume{}, err
 	}
+
 	return storage.StorageVolume{
 		Type:     storage.StorageVolumeConnectorBind,
 		ReadOnly: !source.ReadWrite,
@@ -96,17 +104,33 @@ func (driver *StorageProvider) Upload(context.Context, string) (models.SpecConfi
 	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
-func (driver *StorageProvider) isInAllowedPaths(storageSpec Source) bool {
-	for _, allowedPath := range driver.allowedPaths {
-		if storageSpec.ReadWrite && !allowedPath.ReadWrite {
-			continue
-		}
-		match, err := doublestar.PathMatch(allowedPath.Path, storageSpec.SourcePath)
+func (driver *StorageProvider) matchAllowedPath(storageSpec Source) (*AllowedPath, error) {
+	var insufficientPermissions bool
+
+	for _, driverAllowedPath := range driver.allowedPaths {
+		match, err := doublestar.PathMatch(driverAllowedPath.Path, storageSpec.SourcePath)
 		if match && err == nil {
-			return true
+			// If storage wants read-write access but driver only allows read-only,
+			// set a flag indicating there was a match but permissions are wrong.
+			if storageSpec.ReadWrite && !driverAllowedPath.ReadWrite {
+				insufficientPermissions = true
+				continue
+			}
+
+			// Found a match and the permissions are correct
+			return &driverAllowedPath, nil
 		}
 	}
-	return false
+
+	var err bacerrors.Error
+	if insufficientPermissions {
+		err = bacerrors.New("volume %s is not granted write access", storageSpec.SourcePath)
+	} else {
+		err = bacerrors.New("volume %s is not allowlisted", storageSpec.SourcePath)
+	}
+	err = err.WithCode(bacerrors.ConfigurationError).
+		WithHint("Verify Compute.AllowListedLocalPaths configuration property")
+	return nil, err
 }
 
 // Compile time interface check:
