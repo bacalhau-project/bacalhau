@@ -75,7 +75,7 @@ require (
 	go.opentelemetry.io/otel/log v0.11.0
 	go.opentelemetry.io/otel/metric v1.35.0
 	go.opentelemetry.io/otel/sdk v1.35.0
-	go.opentelemetry.io/otel/sdk/log v0.10.0
+	go.opentelemetry.io/otel/sdk/log v0.11.0
 	go.opentelemetry.io/otel/sdk/metric v1.34.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.ptx.dk/multierrgroup v0.0.3
