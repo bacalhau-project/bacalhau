@@ -125,7 +125,7 @@ func (e *APIError) ToBacError() bacerrors.Error {
 		details = make(map[string]string)
 	}
 	details["request_id"] = e.RequestID
-	return bacerrors.New("%s", e.Error()).
+	return bacerrors.New(e.Error()).
 		WithHTTPStatusCode(e.HTTPStatusCode).
 		WithCode(bacerrors.Code(e.Code)).
 		WithComponent(e.Component).

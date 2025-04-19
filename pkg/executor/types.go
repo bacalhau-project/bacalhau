@@ -80,5 +80,5 @@ const (
 )
 
 func NewExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).WithCode(code).WithComponent(ExecComponentName)
+	return bacerrors.New(message).WithCode(code).WithComponent(ExecComponentName)
 }

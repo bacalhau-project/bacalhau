@@ -47,11 +47,11 @@ func NewLocalPublisher(ctx context.Context, directory string, host string, port 
 	}
 
 	if info, err := os.Stat(p.baseDirectory); err != nil {
-		return nil, bacerrors.Wrap(err, "failed to create local publisher with path %s: path could not be read", directory).
+		return nil, bacerrors.Wrap(err, fmt.Sprintf("failed to create local publisher with path %s: path could not be read", directory)).
 			WithComponent(errComponent).
 			WithCode(bacerrors.ConfigurationError)
 	} else if !info.IsDir() {
-		return nil, bacerrors.Wrap(err, "failed to create local publisher with path %s: path is not a directory", directory).
+		return nil, bacerrors.Wrap(err, fmt.Sprintf("failed to create local publisher with path %s: path is not a directory", directory)).
 			WithComponent(errComponent).
 			WithCode(bacerrors.ConfigurationError)
 	}

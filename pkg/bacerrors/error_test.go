@@ -20,10 +20,9 @@ func (suite *ErrorTestSuite) TestNew() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithMessage() {
-	message := "TestMessage"
-	err := New(message)
+	err := New("TestMessage")
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -38,11 +37,10 @@ func (suite *ErrorTestSuite) TestErrorWithFormattedMessage() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithHint() {
-	message := "TestMessage"
 	hint := "TestHint"
-	err := New(message).WithHint(hint)
+	err := New("TestMessage").WithHint(hint)
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Equal(hint, err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -50,10 +48,9 @@ func (suite *ErrorTestSuite) TestErrorWithHint() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithRetryable() {
-	message := "TestMessage"
-	err := New(message).WithRetryable()
+	err := New("TestMessage").WithRetryable()
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Empty(err.Hint())
 	suite.True(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -61,10 +58,9 @@ func (suite *ErrorTestSuite) TestErrorWithRetryable() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithFailsExecution() {
-	message := "TestMessage"
-	err := New(message).WithFailsExecution()
+	err := New("TestMessage").WithFailsExecution()
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.True(err.FailsExecution())
@@ -72,11 +68,10 @@ func (suite *ErrorTestSuite) TestErrorWithFailsExecution() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithDetails() {
-	message := "TestMessage"
 	details := map[string]string{"key1": "value1", "key2": "value2"}
-	err := New(message).WithDetails(details)
+	err := New("TestMessage").WithDetails(details)
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -91,10 +86,9 @@ func (suite *ErrorTestSuite) TestErrorWithDetails() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithDetail() {
-	message := "TestMessage"
-	err := New(message).WithDetail("key1", "value1")
+	err := New("TestMessage").WithDetail("key1", "value1")
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -112,27 +106,24 @@ func (suite *ErrorTestSuite) TestErrorWithDetail() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithCode() {
-	message := "TestMessage"
-	err := New(message).WithCode(BadRequestError)
+	err := New("TestMessage").WithCode(BadRequestError)
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Equal(BadRequestError, err.Code())
 	suite.Equal(400, err.HTTPStatusCode()) // BadRequestError should map to 400
 }
 
 func (suite *ErrorTestSuite) TestErrorWithHTTPStatusCode() {
-	message := "TestMessage"
-	err := New(message).WithHTTPStatusCode(418) // I'm a teapot
+	err := New("TestMessage").WithHTTPStatusCode(418) // I'm a teapot
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Equal(418, err.HTTPStatusCode())
 }
 
 func (suite *ErrorTestSuite) TestErrorWithComponent() {
-	message := "TestMessage"
-	err := New(message).WithComponent("TestComponent")
+	err := New("TestMessage").WithComponent("TestComponent")
 
-	suite.Equal(message, err.Error())
+	suite.Equal("TestMessage", err.Error())
 	suite.Equal("TestComponent", err.Component())
 }
 

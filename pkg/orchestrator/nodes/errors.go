@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
@@ -17,7 +18,7 @@ const (
 
 // NewErrNodeNotFound returns a standardized error for when a node is not found
 func NewErrNodeNotFound(nodeID string) bacerrors.Error {
-	return bacerrors.New("node not found: %s", nodeID).
+	return bacerrors.New(fmt.Sprintf("node not found: %s", nodeID)).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(errComponent)
 }
@@ -28,7 +29,7 @@ func NewErrMultipleNodesFound(nodeIDPrefix string, matchingNodeIDs []string) bac
 		matchingNodeIDs = matchingNodeIDs[:3]
 		matchingNodeIDs = append(matchingNodeIDs, "...")
 	}
-	return bacerrors.New("multiple nodes found for prefix: %s, matching IDs: %v", nodeIDPrefix, matchingNodeIDs).
+	return bacerrors.New(fmt.Sprintf("multiple nodes found for prefix: %s, matching IDs: %v", nodeIDPrefix, matchingNodeIDs)).
 		WithCode(MultipleNodesFound).
 		WithHTTPStatusCode(http.StatusConflict).
 		WithComponent(errComponent).
@@ -37,7 +38,7 @@ func NewErrMultipleNodesFound(nodeIDPrefix string, matchingNodeIDs []string) bac
 
 // NewErrHandshakeRequired returns a standardized error for when a handshake is required
 func NewErrHandshakeRequired(nodeID string) bacerrors.Error {
-	return bacerrors.New("node %s not connected - handshake required", nodeID).
+	return bacerrors.New(fmt.Sprintf("node %s not connected - handshake required", nodeID)).
 		WithCode(HandshakeRequired).
 		WithComponent(errComponent).
 		WithHTTPStatusCode(http.StatusPreconditionRequired).
@@ -46,7 +47,7 @@ func NewErrHandshakeRequired(nodeID string) bacerrors.Error {
 
 // NewErrNodeAlreadyApproved returns a standardized error for when a node is already approved
 func NewErrNodeAlreadyApproved(nodeID string) bacerrors.Error {
-	return bacerrors.New("node %s already approved", nodeID).
+	return bacerrors.New(fmt.Sprintf("node %s already approved", nodeID)).
 		WithCode(ConflictNodeState).
 		WithHTTPStatusCode(http.StatusConflict).
 		WithComponent(errComponent)
@@ -54,7 +55,7 @@ func NewErrNodeAlreadyApproved(nodeID string) bacerrors.Error {
 
 // NewErrNodeAlreadyRejected returns a standardized error for when a node is already rejected
 func NewErrNodeAlreadyRejected(nodeID string) bacerrors.Error {
-	return bacerrors.New("node %s already rejected", nodeID).
+	return bacerrors.New(fmt.Sprintf("node %s already rejected", nodeID)).
 		WithCode(ConflictNodeState).
 		WithHTTPStatusCode(http.StatusConflict).
 		WithComponent(errComponent)

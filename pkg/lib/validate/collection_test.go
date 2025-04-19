@@ -158,9 +158,40 @@ func TestKeyNotInMap(t *testing.T) {
 	t.Run("Custom Error Message", func(t *testing.T) {
 		myMap := map[string]int{"a": 1, "b": 2, "c": 3}
 		key := "a"
-		err := KeyNotInMap(key, myMap, "key %s should not exist in map", key)
+		err := KeyNotInMapf(key, myMap, "key %s should not exist in map", key)
 		if err == nil || err.Error() != "key a should not exist in map" {
-			t.Errorf("KeyNotInMap failed: unexpected error message for custom error")
+			t.Errorf("KeyNotInMapf failed: unexpected error message for custom error")
 		}
 	})
+}
+
+// Add tests for the formatted versions
+func TestIsEmptyf(t *testing.T) {
+	slice := []int{1, 2, 3}
+	key := "test"
+	err := IsEmptyf(slice, "Error with %s", key)
+	if err == nil || err.Error() != "Error with test" {
+		t.Errorf("IsEmptyf failed: unexpected error message")
+	}
+
+	emptySlice := []int{}
+	err = IsEmptyf(emptySlice, "Error with %s", key)
+	if err != nil {
+		t.Errorf("IsEmptyf failed: expected nil error for empty slice")
+	}
+}
+
+func TestIsNotEmptyf(t *testing.T) {
+	slice := []int{}
+	key := "test"
+	err := IsNotEmptyf(slice, "Error with %s", key)
+	if err == nil || err.Error() != "Error with test" {
+		t.Errorf("IsNotEmptyf failed: unexpected error message")
+	}
+
+	nonEmptySlice := []int{1, 2, 3}
+	err = IsNotEmptyf(nonEmptySlice, "Error with %s", key)
+	if err != nil {
+		t.Errorf("IsNotEmptyf failed: expected nil error for non-empty slice")
+	}
 }

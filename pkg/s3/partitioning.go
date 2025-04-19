@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"fmt"
 	"hash/fnv"
 	"regexp"
 	"strings"
@@ -52,7 +53,7 @@ func (c *PartitionConfig) Validate() error {
 		// Valid types
 	default:
 		if c.Type != "" {
-			return NewS3InputSourceError(BadRequestErrorCode, "unsupported partition key type %s", c.Type)
+			return NewS3InputSourceError(BadRequestErrorCode, fmt.Sprintf("unsupported partition key type %s", c.Type))
 		}
 	}
 
@@ -63,7 +64,7 @@ func (c *PartitionConfig) Validate() error {
 			return NewS3InputSourceError(BadRequestErrorCode, "regex pattern cannot be empty")
 		}
 		if _, err := regexp.Compile(c.Pattern); err != nil {
-			return NewS3InputSourceError(BadRequestErrorCode, "invalid regex pattern: %s", err.Error())
+			return NewS3InputSourceError(BadRequestErrorCode, fmt.Sprintf("invalid regex pattern: %s", err.Error()))
 		}
 
 	case PartitionKeyTypeSubstring:
@@ -98,7 +99,7 @@ func validateDateFormat(layout string) error {
 	_, err := time.Parse(layout, s)
 	if err != nil {
 		// If parsing fails, the layout is invalid
-		return NewS3InputSourceError(BadRequestErrorCode, "invalid date format: %s", layout)
+		return NewS3InputSourceError(BadRequestErrorCode, fmt.Sprintf("invalid date format: %s", layout))
 	}
 
 	return nil
@@ -119,7 +120,7 @@ func PartitionObjects(
 	}
 	if partitionIndex < 0 || partitionIndex >= totalPartitions {
 		return nil, NewS3InputSourceError(
-			BadRequestErrorCode, "partition index must be between 0 and %d", totalPartitions-1)
+			BadRequestErrorCode, fmt.Sprintf("partition index must be between 0 and %d", totalPartitions-1))
 	}
 
 	// filter out directories
@@ -152,7 +153,7 @@ func PartitionObjects(
 		return partitionByDate(
 			objects, totalPartitions, partitionIndex, prefix, source.Partition.DateFormat)
 	default:
-		return nil, NewS3InputSourceError(BadRequestErrorCode, "unsupported partition key type: %s", source.Partition.Type)
+		return nil, NewS3InputSourceError(BadRequestErrorCode, fmt.Sprintf("unsupported partition key type: %s", source.Partition.Type))
 	}
 }
 
@@ -175,7 +176,7 @@ func partitionByRegex(objects []ObjectSummary, totalPartitions int, partitionInd
 	[]ObjectSummary, error) {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		return nil, NewS3InputSourceError(BadRequestErrorCode, "invalid regex pattern: %s", err.Error())
+		return nil, NewS3InputSourceError(BadRequestErrorCode, fmt.Sprintf("invalid regex pattern: %s", err.Error()))
 	}
 
 	var result []ObjectSummary

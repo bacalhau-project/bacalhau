@@ -23,19 +23,19 @@ const (
 )
 
 func NewS3PublisherError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+	return bacerrors.New(message).
 		WithCode(code).
 		WithComponent(PublisherComponent)
 }
 
-func NewS3InputSourceError(code bacerrors.ErrorCode, format string, a ...any) bacerrors.Error {
-	return bacerrors.New(format, a...).
+func NewS3InputSourceError(code bacerrors.ErrorCode, message string) bacerrors.Error {
+	return bacerrors.New(message).
 		WithCode(code).
 		WithComponent(InputSourceComponent)
 }
 
 func NewS3DownloaderError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+	return bacerrors.New(message).
 		WithCode(code).
 		WithComponent(DownloadComponent)
 }
@@ -54,7 +54,7 @@ func NewS3ResultSignerServiceError(err error) bacerrors.Error {
 
 func newS3ServiceError(err error, component string) bacerrors.Error {
 	errMetadata := extractErrorMetadata(err)
-	return bacerrors.New("%s", errMetadata.message).
+	return bacerrors.New(errMetadata.message).
 		WithComponent(component).
 		WithCode(errMetadata.errorCode).
 		WithHTTPStatusCode(errMetadata.statusCode).
