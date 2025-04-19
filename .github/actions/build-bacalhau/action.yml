@@ -37,7 +37,7 @@ inputs:
   artifact_retention:
     description: 'Retention days for the artifact'
     required: false
-    default: '30'
+    default: '7'
   binary_output_path:
     description: 'Where to output the built binary (for test mode)'
     required: false
@@ -184,7 +184,7 @@ runs:
       if: inputs.upload_artifact == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('{0}-{1}', inputs.os, inputs.arch) }}
+        name: ${{ inputs.artifact_name != '' && inputs.artifact_name || format('bacalhau-{0}-{1}', inputs.os, inputs.arch) }}
         path: ${{ inputs.binary_output_path != '' && inputs.binary_output_path || inputs.artifact_path }}
         retention-days: ${{ inputs.artifact_retention }}
 

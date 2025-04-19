@@ -245,6 +245,7 @@ push-http-gateway-image:
 
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
+BUILD_TYPE ?= default  # Options: main, nightly, release, pre-release
 
 # Only add latest tags if the release tag is a semver tag (e.g. v0.3.12)
 # and not a commit hash or a release candidate (e.g. v0.3.12-rc1)

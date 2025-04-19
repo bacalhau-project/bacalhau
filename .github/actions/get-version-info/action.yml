@@ -1,0 +1,83 @@
+name: 'Get Version Info'
+description: 'Extract version information from git and determine release type'
+outputs:
+  git_commit:
+    description: 'Full Git commit hash'
+    value: ${{ steps.version.outputs.git_commit }}
+  git_version:
+    description: 'Git version string from git describe'
+    value: ${{ steps.version.outputs.git_version }}
+  major:
+    description: 'Major version number'
+    value: ${{ steps.version.outputs.major }}
+  minor:
+    description: 'Minor version number'
+    value: ${{ steps.version.outputs.minor }}
+  build_date:
+    description: 'Build date based on commit timestamp in ISO format'
+    value: ${{ steps.version.outputs.build_date }}
+  release_type:
+    description: 'Determined release type (release, pre-release, or non-release)'
+    value: ${{ steps.version.outputs.release_type }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get version info
+      id: version
+      shell: bash
+      run: |
+        # Get version information
+        git_commit=$(git rev-parse HEAD)
+        git_version=$(git describe --tags --always)
+        
+        # Get commit timestamp (same logic as vcs.time in Go)
+        build_date=$(git show -s --format=%cI $git_commit)
+        
+        echo "==== VERSION INFO ===="
+        echo "Git commit: $git_commit"
+        echo "Git version: $git_version"
+        echo "Build date: $build_date"
+        
+        # Extract major/minor from git version
+        if [[ $git_version =~ ^v?([0-9]+)\.([0-9]+)\..*$ ]]; then
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+        else
+          major="0"
+          minor="0"
+        fi
+        
+        echo "Major version: $major"
+        echo "Minor version: $minor"
+        
+        # Set basic outputs
+        echo "git_commit=$git_commit" >> $GITHUB_OUTPUT
+        echo "git_version=$git_version" >> $GITHUB_OUTPUT
+        echo "build_date=$build_date" >> $GITHUB_OUTPUT
+        echo "major=$major" >> $GITHUB_OUTPUT
+        echo "minor=$minor" >> $GITHUB_OUTPUT
+        
+        # Determine release type using GitHub context variables
+        release_type="non-release"  # Default value
+        
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          # Use the manually specified release type
+          release_type="${{ github.event.inputs.release_type }}"
+        elif [ "${{ github.event_name }}" == "release" ]; then
+          if [ "${{ github.event.release.prerelease }}" == "true" ]; then
+            # This is a pre-release
+            release_type="pre-release"
+          else
+            if [[ "$git_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              # This is a full release
+              release_type="release"
+            else
+              # This is a pre-release
+              release_type="pre-release"
+            fi
+          fi
+        fi
+        
+        echo "release_type=$release_type" >> $GITHUB_OUTPUT
+        echo "Determined release type: $release_type"

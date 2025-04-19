@@ -31,6 +31,18 @@
     </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/bacalhau-project/bacalhau/actions/workflows/main.yml">
+    <img src="https://github.com/bacalhau-project/bacalhau/actions/workflows/main.yml/badge.svg" alt="Main Workflow" />
+  </a>
+  <a href="https://github.com/bacalhau-project/bacalhau/actions/workflows/release.yml">
+    <img src="https://github.com/bacalhau-project/bacalhau/actions/workflows/release.yml/badge.svg" alt="Release Workflow" />
+  </a>
+  <a href="https://github.com/bacalhau-project/bacalhau/actions/workflows/pr-checks.yml">
+    <img src="https://github.com/bacalhau-project/bacalhau/actions/workflows/pr-checks.yml/badge.svg" alt="PR Checks Workflow" />
+  </a>
+</p>
+
 ## What is Bacalhau?
 
 [Bacalhau](https://www.bacalhau.org/) is an open-source distributed compute orchestration framework designed to bring compute to the data. Instead of moving large datasets around networks, Bacalhau makes it easy to execute jobs close to the data's location, drastically reducing latency and resource overhead.

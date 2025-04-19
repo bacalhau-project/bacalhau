@@ -1,0 +1,233 @@
+name: Publish Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      target_type:
+        description: 'Target type for publishing (edge, nightly, release, non-release)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment for publishing (e.g. release)'
+        required: false
+        default: "release"
+        type: string
+
+jobs:
+  publish-docker-images:
+    name: Publish to GHCR
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: write # Required for pushing to GHCR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"  # Fetch all history for proper versioning
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bacalhau-linux-{amd64,arm64}
+          path: artifacts
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        run: |
+          echo "==== LISTING DOWNLOADED ARTIFACTS ===="
+          find artifacts -type f | sort
+          echo "Total files: $(find artifacts -type f | wc -l)"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version info
+        id: version
+        uses: ./.github/actions/get-version-info
+
+      - name: Extract binaries from artifacts
+        run: |
+          # Create directory structure for binaries
+          mkdir -p bin/linux/amd64
+          mkdir -p bin/linux/arm64
+          
+          # Find and extract amd64 tarball
+          AMD64_TARBALL=$(find artifacts -name "*_linux_amd64.tar.gz" | head -n 1)
+          if [ -n "$AMD64_TARBALL" ]; then
+            echo "Extracting AMD64 binary from $AMD64_TARBALL"
+            tar -xzf "$AMD64_TARBALL" -C bin/linux/amd64
+            chmod +x bin/linux/amd64/bacalhau
+          else
+            echo "Error: AMD64 tarball not found" >&2
+            exit 1
+          fi
+          
+          # Find and extract arm64 tarball
+          ARM64_TARBALL=$(find artifacts -name "*_linux_arm64.tar.gz" | head -n 1)
+          if [ -n "$ARM64_TARBALL" ]; then
+            echo "Extracting ARM64 binary from $ARM64_TARBALL"
+            tar -xzf "$ARM64_TARBALL" -C bin/linux/arm64
+            chmod +x bin/linux/arm64/bacalhau
+          else
+            echo "Error: ARM64 tarball not found" >&2
+            exit 1
+          fi
+          
+          # Verify extracted binaries
+          find bin -type f -name bacalhau -exec file {} \;
+
+      - name: Set Docker tags
+        id: docker_tags
+        run: |
+          BACALHAU_IMAGE="ghcr.io/${{ github.repository }}"
+          GIT_VERSION="${{ steps.version.outputs.git_version }}"
+
+          # Always include the git version tag
+          BASE_TAGS="${BACALHAU_IMAGE}:${GIT_VERSION}"
+          DIND_TAGS="${BACALHAU_IMAGE}:${GIT_VERSION}-dind"
+
+          # Apply additional tags based on target type
+          if [ "${{ inputs.target_type }}" == "edge" ]; then
+            # For edge builds, add 'edge' tag
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:edge"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:edge-dind"
+
+            echo "Adding 'edge' tags"
+
+          elif [ "${{ inputs.target_type }}" == "nightly" ]; then
+            # For nightly builds, add 'nightly' tag and date-specific tag
+            NIGHTLY_DATE=$(date -u +"%Y%m%d")
+            BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:nightly,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}"
+            DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:nightly-dind,${BACALHAU_IMAGE}:nightly-${NIGHTLY_DATE}-dind"
+            echo "Adding 'nightly' and 'nightly-${NIGHTLY_DATE}' tags"
+
+          elif [ "${{ inputs.target_type }}" == "release" ]; then
+            if [ "${{ steps.version.outputs.release_type }}" == "release" ]; then
+              # For stable releases, use 'latest' tag
+              BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:latest"
+              DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:latest-dind"
+              echo "Adding 'latest' tags"
+            else
+              # For pre-releases, use 'pre' tag
+              BASE_TAGS="${BASE_TAGS},${BACALHAU_IMAGE}:pre"
+              DIND_TAGS="${DIND_TAGS},${BACALHAU_IMAGE}:pre-dind"
+              echo "Adding 'pre' tags"
+            fi
+          fi
+
+          # Store all tags for use in the build step
+          echo "base_tags=${BASE_TAGS}" >> $GITHUB_OUTPUT
+          echo "dind_tags=${DIND_TAGS}" >> $GITHUB_OUTPUT
+          echo "image=${BACALHAU_IMAGE}" >> $GITHUB_OUTPUT
+          echo "git_version=${GIT_VERSION}" >> $GITHUB_OUTPUT
+
+          # For debugging: List all tags
+          echo "==== BASE IMAGE TAGS ===="
+          echo "$BASE_TAGS" | tr ',' '\n'
+          echo "==== DIND IMAGE TAGS ===="
+          echo "$DIND_TAGS" | tr ',' '\n'
+
+      - name: Build and push base image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/bacalhau-base/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.docker_tags.outputs.base_tags }}
+          provenance: false  # Disable default provenance attestation
+          cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest
+          labels: |
+            org.opencontainers.artifact.created=${{ steps.version.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.version.outputs.git_version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+
+      - name: Build and push DIND image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/bacalhau-dind/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.docker_tags.outputs.dind_tags }}
+          provenance: false  # Disable default provenance attestation
+          cache-from: type=registry,ref=${{ steps.docker_tags.outputs.image }}:latest-dind
+          labels: |
+            org.opencontainers.artifact.created=${{ steps.version.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.version.outputs.git_version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
+
+      # Run smoke tests on the built images
+      - name: Test base image
+        uses: ./.github/actions/docker-test-image
+        with:
+          image: ${{ steps.docker_tags.outputs.image }}
+          tag: ${{ steps.version.outputs.git_version }}
+
+      - name: Test DIND image
+        uses: ./.github/actions/docker-test-image
+        with:
+          image: ${{ steps.docker_tags.outputs.image }}
+          tag: ${{ steps.version.outputs.git_version }}-dind
+          privileged: true
+
+      - name: Generate docker summary
+        if: success()
+        run: |
+          echo "## Docker Images Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Successfully built and pushed Docker images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Format metadata as a table for better readability
+          echo "| Attribute | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | ${{ inputs.target_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Repository** | ${{ steps.docker_tags.outputs.image }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Add published images section
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Published Images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Extract image tags for better display
+          BASE_TAGS=$(echo "${{ steps.docker_tags.outputs.base_tags }}" | tr ',' '\n')
+          DIND_TAGS=$(echo "${{ steps.docker_tags.outputs.dind_tags }}" | tr ',' '\n')
+          
+          # Count how many platforms were published
+          PLATFORMS="2"  # We know it's amd64 and arm64 from the build step
+          echo "Images published for **$PLATFORMS** platforms (linux/amd64, linux/arm64):" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Create a table showing all image tags
+          echo "| Image Type | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|-----|" >> $GITHUB_STEP_SUMMARY
+          
+          # Add base image tags
+          for TAG in $BASE_TAGS; do
+            echo "| Base Image | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          done
+          
+          # Add DIND image tags
+          for TAG in $DIND_TAGS; do
+            echo "| DIND Image | \`$TAG\` |" >> $GITHUB_STEP_SUMMARY
+          done
