@@ -141,7 +141,7 @@ jobs:
           echo "$DIND_TAGS" | tr ',' '\n'
 
       - name: Build and push base image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/bacalhau-base/Dockerfile
@@ -157,7 +157,7 @@ jobs:
             org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
 
       - name: Build and push DIND image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/bacalhau-dind/Dockerfile
