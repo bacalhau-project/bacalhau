@@ -31,7 +31,7 @@ const (
 
 // NewModuleNotFoundError creates an error when a WASM module cannot be found in the filesystem.
 func NewModuleNotFoundError(path string) bacerrors.Error {
-	return bacerrors.New("module not found: %q", path).
+	return bacerrors.Newf("module not found: %q", path).
 		WithCode(ModuleNotFound).
 		WithHTTPStatusCode(http.StatusNotFound).
 		WithComponent(Component).
@@ -44,7 +44,7 @@ func NewModuleNotFoundError(path string) bacerrors.Error {
 
 // NewModuleCompileError creates an error when a WASM module fails to compile.
 func NewModuleCompileError(path string, err error) bacerrors.Error {
-	return bacerrors.Wrap(err, "failed to compile module at %q", path).
+	return bacerrors.Wrapf(err, "failed to compile module at %q", path).
 		WithCode(ModuleCompileError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).
@@ -53,7 +53,7 @@ func NewModuleCompileError(path string, err error) bacerrors.Error {
 
 // NewModuleLoadError creates an error when a WASM module fails to load.
 func NewModuleLoadError(path string, err error) bacerrors.Error {
-	return bacerrors.Wrap(err, "failed to load module at %q", path).
+	return bacerrors.Wrapf(err, "failed to load module at %q", path).
 		WithCode(ModuleLoadError).
 		WithHTTPStatusCode(http.StatusInternalServerError).
 		WithComponent(Component).
@@ -71,7 +71,7 @@ func NewWASIError(err error) bacerrors.Error {
 
 // NewUnknownModuleError creates an error when a module name cannot be resolved.
 func NewUnknownModuleError(moduleName string) bacerrors.Error {
-	return bacerrors.New("unknown module %q", moduleName).
+	return bacerrors.Newf("unknown module %q", moduleName).
 		WithCode(UnknownModuleError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).
@@ -102,7 +102,7 @@ func NewLogError(err error) bacerrors.Error {
 
 // NewEntrypointError creates an error when there's an issue with the entrypoint
 func NewEntrypointError(entrypoint string) bacerrors.Error {
-	return bacerrors.New("entrypoint '%s' not found", entrypoint).
+	return bacerrors.Newf("entrypoint '%s' not found", entrypoint).
 		WithCode(EntrypointError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).
@@ -111,7 +111,7 @@ func NewEntrypointError(entrypoint string) bacerrors.Error {
 
 // NewMemoryLimitError creates an error when memory limits are exceeded
 func NewMemoryLimitError(requested, max uint64) bacerrors.Error {
-	return bacerrors.New("requested memory exceeds the wasm limit - %.2f GB > %.2f GB",
+	return bacerrors.Newf("requested memory exceeds the wasm limit - %.2f GB > %.2f GB",
 		float64(requested)/float64(BytesInGB),
 		float64(max)/float64(BytesInGB)).
 		WithCode(MemoryLimitError).
@@ -122,7 +122,7 @@ func NewMemoryLimitError(requested, max uint64) bacerrors.Error {
 
 // NewFilesystemError creates an error when there's an issue with the filesystem
 func NewFilesystemError(path string, err error) bacerrors.Error {
-	return bacerrors.Wrap(err, "filesystem error at %q", path).
+	return bacerrors.Wrapf(err, "filesystem error at %q", path).
 		WithCode(FilesystemError).
 		WithHTTPStatusCode(http.StatusInternalServerError).
 		WithComponent(Component).
@@ -131,7 +131,7 @@ func NewFilesystemError(path string, err error) bacerrors.Error {
 
 // NewOutputError creates an error when there's an issue with output configuration
 func NewOutputError(msg string) bacerrors.Error {
-	return bacerrors.New("output configuration error: %s", msg).
+	return bacerrors.Newf("output configuration error: %s", msg).
 		WithCode(OutputConfigError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).
@@ -144,7 +144,7 @@ func NewOutputError(msg string) bacerrors.Error {
 
 // NewInputConfigError creates an error when there's an issue with input configuration
 func NewInputConfigError(msg string) bacerrors.Error {
-	return bacerrors.New("input configuration error: %s", msg).
+	return bacerrors.Newf("input configuration error: %s", msg).
 		WithCode(InputConfigError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).

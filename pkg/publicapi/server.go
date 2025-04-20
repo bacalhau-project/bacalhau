@@ -227,7 +227,7 @@ func (apiServer *Server) Shutdown(ctx context.Context) error {
 
 func (apiServer *Server) interceptListenError(err error) error {
 	if strings.Contains(err.Error(), "address already in use") {
-		return bacerrors.New("address %s is already in use", apiServer.GetURI()).
+		return bacerrors.Newf("address %s is already in use", apiServer.GetURI()).
 			WithComponent("APIServer").
 			WithCode(bacerrors.ConfigurationError).
 			WithHint("To resolve this, either:\n"+

@@ -101,11 +101,11 @@ func (s *ExecutorBuffer) Run(ctx context.Context, execution *models.Execution) e
 	}
 
 	if s.queuedTasks.Contains(execution.ID) {
-		err = bacerrors.New("execution %s already enqueued", execution.ID)
+		err = bacerrors.Newf("execution %s already enqueued", execution.ID)
 		return err
 	}
 	if _, ok := s.running[execution.ID]; ok {
-		err = bacerrors.New("execution %s already running", execution.ID)
+		err = bacerrors.Newf("execution %s already running", execution.ID)
 		return err
 	}
 	s.enqueuedCapacity.Add(ctx, *execution.TotalAllocatedResources())

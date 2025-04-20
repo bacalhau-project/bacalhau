@@ -365,14 +365,14 @@ func ValidatePath(path string) error {
 			WithCode(bacerrors.ValidationError)
 	}
 	if strings.Contains(path, "$") {
-		return bacerrors.New("data dir path %q contains a '$' character", path).
+		return bacerrors.Newf("data dir path %q contains a '$' character", path).
 			WithHint("Note that environment variables are not expanded will be used as-is").
 			WithComponent(errComponent).
 			WithCode(bacerrors.ValidationError)
 	}
 
 	if !filepath.IsAbs(path) {
-		return bacerrors.New("data dir path %q is not an absolute path", path).
+		return bacerrors.Newf("data dir path %q is not an absolute path", path).
 			WithHint("Use an absolute path for the data directory").
 			WithComponent(errComponent).
 			WithCode(bacerrors.ValidationError)
@@ -388,7 +388,8 @@ func checkFlagConfigConflicts(flags map[string][]*pflag.Flag, cfgValues map[stri
 		if cfgValue, exists := cfgValues[name]; exists {
 			for _, flag := range flagList {
 				if flag.Changed {
-					return bacerrors.New("flag: --%s and config flag key %q cannot both be provided. Only one may be used", flag.Name, name).
+					return bacerrors.Newf("flag: --%s and config flag key %q cannot both be provided. Only one may be used", flag.Name,
+						name).
 						WithHint("Remove --%s or --config/-c %s=%v from the command", flag.Name, name, cfgValue)
 				}
 			}

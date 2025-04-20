@@ -59,7 +59,7 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, NewS3InputSourceError(
 			BadRequestErrorCode,
-			"invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type)
+			fmt.Sprintf("invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type))
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -77,8 +77,8 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
 		return PreSignedResultSpec{}, NewS3InputSourceError(BadRequestErrorCode,
-			"invalid storage source type. expected %s but received: %s",
-			models.StorageSourceS3PreSigned, spec.Type)
+			fmt.Sprintf("invalid storage source type. expected %s but received: %s",
+				models.StorageSourceS3PreSigned, spec.Type))
 	}
 
 	inputParams := spec.Params

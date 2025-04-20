@@ -92,8 +92,7 @@ var _ Error = (*errorImpl)(nil)
 
 // New creates a new Error with only the message field set.
 // It initializes the error with a stack trace and sets the component to "Bacalhau" by default.
-func New(format string, a ...any) Error {
-	message := fmt.Sprintf(format, a...)
+func New(message string) Error {
 	return &errorImpl{
 		cause:     message,
 		component: "Bacalhau",
@@ -101,12 +100,17 @@ func New(format string, a ...any) Error {
 	}
 }
 
+// Newf is a convenience function for creating a new Error with a formatted message.
+// It behaves similarly to New but allows for formatted messages.
+func Newf(format string, a ...any) Error {
+	return New(fmt.Sprintf(format, a...))
+}
+
 // Wrap creates a new Error that wraps an existing error.
 // If the wrapped error is already a bacerrors.Error, it updates the wrapped error
 // while preserving the original error's information. Otherwise, it creates a new Error
 // that includes both the new message and the original error's message.
-func Wrap(err error, format string, a ...any) Error {
-	message := fmt.Sprintf(format, a...)
+func Wrap(err error, message string) Error {
 	var bacErr *errorImpl
 	if errors.As(err, &bacErr) {
 		// If it's already a bacerror, just update the wrapped error
@@ -116,10 +120,16 @@ func Wrap(err error, format string, a ...any) Error {
 		newErr.wrappingMsg = message
 		return &newErr
 	}
-	nErr := New("%s: %s", message, err.Error())
+	nErr := Newf("%s: %s", message, err.Error())
 	nErr.(*errorImpl).wrappedErr = err
 	nErr.(*errorImpl).wrappingMsg = message
 	return nErr
+}
+
+// Wrapf is a convenience function for wrapping an error with a formatted message.
+// It behaves similarly to Wrap but allows for formatted messages.
+func Wrapf(err error, format string, a ...any) Error {
+	return Wrap(err, fmt.Sprintf(format, a...))
 }
 
 // WithHint sets the hint field of Error and returns

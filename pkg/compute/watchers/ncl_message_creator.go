@@ -21,7 +21,7 @@ func NewNCLMessageCreator() *NCLMessageCreator {
 func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Message, error) {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return nil, bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return nil, bacerrors.Newf("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(nclDispatcherErrComponent)
 	}
 

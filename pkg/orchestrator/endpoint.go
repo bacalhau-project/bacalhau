@@ -121,7 +121,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		// no need to stop a job that is already stopped
 		return StopJobResponse{}, nil
 	case models.JobStateTypeCompleted:
-		return StopJobResponse{}, bacerrors.New("cannot stop job in state %s", job.State.StateType)
+		return StopJobResponse{}, bacerrors.Newf("cannot stop job in state %s", job.State.StateType)
 	default:
 		// continue
 	}

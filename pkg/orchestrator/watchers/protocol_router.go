@@ -50,7 +50,7 @@ func NewProtocolRouter(params ProtocolRouterParams) (*ProtocolRouter, error) {
 func (d *ProtocolRouter) PreferredProtocol(ctx context.Context, execution *models.Execution) (models.Protocol, error) {
 	nodeState, err := d.nodeStore.Get(ctx, execution.NodeID)
 	if err != nil {
-		return "", bacerrors.Wrap(err,
+		return "", bacerrors.Wrapf(err,
 			"failed to get node info for node %s to determine routing protocol for execution %s",
 			execution.NodeID, execution.ID).
 			WithComponent(protocolRouterErrComponent)
@@ -77,7 +77,7 @@ func (d *ProtocolRouter) PreferredProtocol(ctx context.Context, execution *model
 
 	// Validate protocol selection
 	if preferredProtocol == "" {
-		return "", bacerrors.New(
+		return "", bacerrors.Newf(
 			"no supported protocol found for node %s (execution %s) - available: %s, supported: %s",
 			execution.NodeID,
 			execution.ID,
