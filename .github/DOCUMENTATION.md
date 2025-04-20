@@ -7,7 +7,7 @@ This guide documents the CI/CD infrastructure for the Bacalhau project, implemen
 
 The Bacalhau project uses GitHub Actions for continuous integration, testing, and deployment. The CI/CD pipeline consists of:
 
-### **PR Checks**  
+### **PR Checks**
 Run on all pull requests to validate code quality and correctness
 
 ```mermaid
@@ -21,7 +21,7 @@ flowchart TD
         IntegrationTests --> CovReport
     end
 ```
-### **Main Branch Builds** 
+### **Main Branch Builds**
 Triggered on pushes to the main branch to build and publish "edge" artifacts
 ```mermaid
 flowchart TD
