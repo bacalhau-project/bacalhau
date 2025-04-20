@@ -32,7 +32,7 @@ func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerM
 
 	// If the port we want to use is already running (or the port is in use) then bail
 	if !network.IsPortOpen(opts.Port) {
-		return nil, bacerrors.New("orchestrator port %d is already in use", opts.Port).
+		return nil, bacerrors.Newf("orchestrator port %d is already in use", opts.Port).
 			WithComponent(transportServerComponent).
 			WithCode(bacerrors.ConfigurationError).
 			WithHint("To resolve this, either:\n"+
@@ -57,7 +57,7 @@ func NewServerManager(ctx context.Context, params ServerManagerParams) (*ServerM
 		params.ConnectionTimeout = ReadyForConnectionsTimeout
 	}
 	if !ns.ReadyForConnections(params.ConnectionTimeout) {
-		return nil, bacerrors.New("orchestrator NATS not ready for connection within %s", params.ConnectionTimeout).
+		return nil, bacerrors.Newf("orchestrator NATS not ready for connection within %s", params.ConnectionTimeout).
 			WithComponent(transportServerComponent).
 			WithCode(bacerrors.ConfigurationError)
 	}

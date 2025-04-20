@@ -93,7 +93,7 @@ func (fsr *FsRepo) Init() error {
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
-		return bacerrors.New("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
+		return bacerrors.Newf("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
 			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
 				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
 				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+

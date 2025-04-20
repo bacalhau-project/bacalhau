@@ -83,7 +83,7 @@ func NewNCLMessageCreator(params NCLMessageCreatorParams) (*NCLMessageCreator, e
 func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Message, error) {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return nil, bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return nil, bacerrors.Newf("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(nclDispatcherErrComponent)
 	}
 
@@ -104,7 +104,7 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 	execution := upsert.Current
 	preferredProtocol, err := d.protocolRouter.PreferredProtocol(context.Background(), execution)
 	if err != nil {
-		return nil, bacerrors.Wrap(err, "failed to determine preferred protocol for execution %s", execution.ID).
+		return nil, bacerrors.Wrapf(err, "failed to determine preferred protocol for execution %s", execution.ID).
 			WithComponent(bprotocolErrComponent)
 	}
 	if preferredProtocol != models.ProtocolNCLV1 {

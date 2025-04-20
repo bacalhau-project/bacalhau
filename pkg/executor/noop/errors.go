@@ -7,7 +7,7 @@ import (
 const NoopExecutorComponent = "Executor/Noop"
 
 func NewNoopExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+	return bacerrors.New(message).
 		WithCode(code).
 		WithComponent(NoopExecutorComponent)
 }

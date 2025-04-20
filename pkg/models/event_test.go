@@ -80,14 +80,15 @@ func (suite *EventTestSuite) TestEventWithDetail() {
 }
 
 func (suite *EventTestSuite) TestEventFromError() {
-	err := bacerrors.New("TestError").
+	errMessage := "TestError"
+	err := bacerrors.New(errMessage).
 		WithHint("TestHint").
 		WithRetryable().
 		WithFailsExecution().
 		WithDetails(map[string]string{"key1": "value1", "key2": "value2"})
 	event := models.EventFromError(suite.topic, err)
 
-	suite.Equal("TestError", event.Message)
+	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
 	suite.Equal("true", event.Details[models.DetailsKeyIsError])
 	suite.Equal("true", event.Details[models.DetailsKeyRetryable])
@@ -98,10 +99,11 @@ func (suite *EventTestSuite) TestEventFromError() {
 }
 
 func (suite *EventTestSuite) TestEventFromErrorNoDetails() {
-	err := bacerrors.New("TestError")
+	errMessage := "TestError"
+	err := bacerrors.New(errMessage)
 	event := models.EventFromError(suite.topic, err)
 
-	suite.Equal("TestError", event.Message)
+	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
 	suite.Equal("true", event.Details[models.DetailsKeyIsError])
 	suite.Contains(event.Details, models.DetailsKeyErrorCode)
@@ -109,10 +111,11 @@ func (suite *EventTestSuite) TestEventFromErrorNoDetails() {
 }
 
 func (suite *EventTestSuite) TestEventFromSimpleError() {
-	err := fmt.Errorf("TestError")
+	errMessage := "TestError"
+	err := fmt.Errorf(errMessage)
 	event := models.EventFromError(suite.topic, err)
 
-	suite.Equal("TestError", event.Message)
+	suite.Equal(errMessage, event.Message)
 	suite.Equal(suite.topic, event.Topic)
 	suite.Equal("true", event.Details[models.DetailsKeyIsError])
 	suite.Len(event.Details, 1)

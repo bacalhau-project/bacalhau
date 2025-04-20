@@ -400,7 +400,7 @@ func (c *httpClient) interceptError(
 			return bacerrors.New("host not found").
 				WithCode(bacerrors.BadRequestError)
 		case strings.Contains(urlErr.Err.Error(), "connection refused"):
-			return bacerrors.New("server is not running or not reachable at %s", c.address).
+			return bacerrors.Newf("server is not running or not reachable at %s", c.address).
 				WithCode(bacerrors.ServiceUnavailable)
 		}
 	}
@@ -417,7 +417,7 @@ func (c *httpClient) interceptError(
 		// Check specifically for "connection refused" error
 		if opErr, ok := netErr.(*net.OpError); ok && opErr.Op == "dial" {
 			if syscallErr, ok := opErr.Err.(*os.SyscallError); ok && syscallErr.Syscall == "connect" {
-				return bacerrors.New("server is not running or not accessible at %s", c.address).
+				return bacerrors.Newf("server is not running or not accessible at %s", c.address).
 					WithCode(bacerrors.ServiceUnavailable).
 					WithRetryable().
 					WithDetails(map[string]string{
@@ -428,7 +428,7 @@ func (c *httpClient) interceptError(
 		}
 
 		// For other network errors
-		return bacerrors.New("network error: %s", netErr).
+		return bacerrors.Newf("network error: %s", netErr).
 			WithCode(bacerrors.NetworkFailure)
 	}
 

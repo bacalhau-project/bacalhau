@@ -17,20 +17,20 @@ const (
 )
 
 func NewErrJobNotFound(id string) bacerrors.Error {
-	return bacerrors.New("job not found: %s", id).
+	return bacerrors.Newf("job not found: %s", id).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrMultipleJobsFound(id string) bacerrors.Error {
-	return bacerrors.New("multiple jobs found for id %s", id).
+	return bacerrors.Newf("multiple jobs found for id %s", id).
 		WithCode(MultipleJobsFound).
 		WithComponent(JobStoreComponent).
 		WithHint("Use full job ID")
 }
 
 func NewErrJobAlreadyExists(id string) bacerrors.Error {
-	return bacerrors.New("job already exists: %s", id).
+	return bacerrors.Newf("job already exists: %s", id).
 		WithCode(bacerrors.ResourceInUse).
 		WithComponent(JobStoreComponent)
 }
@@ -43,40 +43,40 @@ func NewErrInvalidJobState(id string, actual models.JobStateType, expected model
 		errorFormat = "job %s is in state %s but expected %s"
 	}
 
-	return bacerrors.New(errorFormat, id, actual).
+	return bacerrors.Newf(errorFormat, id, actual).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrInvalidJobVersion(id string, actual, expected uint64) bacerrors.Error {
 	errorMessage := fmt.Sprintf("job %s has version %d but expected %d", id, actual, expected)
-	return bacerrors.New("%s", errorMessage).
+	return bacerrors.Newf("%s", errorMessage).
 		WithCode(ConflictJobVersion).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrJobAlreadyTerminal(id string, actual models.JobStateType, newState models.JobStateType) bacerrors.Error {
 	errorMessage := fmt.Sprintf("job %s is in terminal state %s and cannot transition to %s", id, actual, newState)
-	return bacerrors.New("%s", errorMessage).
+	return bacerrors.Newf("%s", errorMessage).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrExecutionNotFound(id string) bacerrors.Error {
-	return bacerrors.New("execution not found: %s", id).
+	return bacerrors.Newf("execution not found: %s", id).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrMultipleExecutionsFound(id string) bacerrors.Error {
-	return bacerrors.New("multiple executions found for id %s", id).
+	return bacerrors.Newf("multiple executions found for id %s", id).
 		WithCode(MultipleExecutionsFound).
 		WithComponent(JobStoreComponent).
 		WithHint("Use full execution ID")
 }
 
 func NewErrExecutionAlreadyExists(id string) bacerrors.Error {
-	return bacerrors.New("execution already exists %s", id).
+	return bacerrors.Newf("execution already exists %s", id).
 		WithCode(bacerrors.ResourceInUse).
 		WithComponent(JobStoreComponent)
 }
@@ -88,7 +88,7 @@ func NewErrInvalidExecutionState(id string, actual models.ExecutionStateType, ex
 	} else {
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
 	}
-	return bacerrors.New("%s", errorMessage).
+	return bacerrors.New(errorMessage).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
@@ -101,50 +101,50 @@ func NewErrInvalidExecutionDesiredState(
 	} else {
 		errorMessage = fmt.Sprintf("execution %s is in state %s, but expected %s", id, actual, expected)
 	}
-	return bacerrors.New("%s", errorMessage).
+	return bacerrors.Newf("%s", errorMessage).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrInvalidExecutionVersion(id string, actual, expected uint64) bacerrors.Error {
-	return bacerrors.New("execution %s has version %d but expected %d", id, actual, expected).
+	return bacerrors.Newf("execution %s has version %d but expected %d", id, actual, expected).
 		WithCode(ConflictJobVersion).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrExecutionAlreadyTerminal(id string, actual models.ExecutionStateType, newState models.ExecutionStateType) bacerrors.Error {
-	return bacerrors.New("execution %s is in terminal state %s and cannot transition to %s", id, actual, newState).
+	return bacerrors.Newf("execution %s is in terminal state %s and cannot transition to %s", id, actual, newState).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrEvaluationAlreadyExists(id string) bacerrors.Error {
-	return bacerrors.New("evaluation already exists: %s", id).
+	return bacerrors.Newf("evaluation already exists: %s", id).
 		WithCode(bacerrors.ResourceInUse).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrEvaluationNotFound(id string) bacerrors.Error {
-	return bacerrors.New("evaluation not found: %s", id).
+	return bacerrors.Newf("evaluation not found: %s", id).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(JobStoreComponent)
 }
 
 func NewErrMultipleEvaluationsFound(id string) bacerrors.Error {
-	return bacerrors.New("multiple evaluations found for id %s", id).
+	return bacerrors.Newf("multiple evaluations found for id %s", id).
 		WithCode(MultipleEvaluationsFound).
 		WithComponent(JobStoreComponent).
 		WithHint("Use full evaluation ID")
 }
 
 func NewJobStoreError(message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+	return bacerrors.Newf("%s", message).
 		WithCode(bacerrors.BadRequestError).
 		WithComponent(JobStoreComponent)
 }
 
 func NewBadRequestError(message string) bacerrors.Error {
-	return bacerrors.New("%s", message).
+	return bacerrors.Newf("%s", message).
 		WithCode(bacerrors.BadRequestError).
 		WithComponent(JobStoreComponent)
 }

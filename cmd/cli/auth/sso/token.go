@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
-	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
+
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 )
@@ -72,13 +73,13 @@ func (o *SSOTokenOptions) runSSOToken(cmd *cobra.Command, cfg types.Bacalhau) er
 			return nil, nil // We're not verifying, just decoding
 		})
 		if err != nil && !strings.Contains(err.Error(), "key is of invalid type") {
-			return bacerrors.New("failed to parse token: %s", err)
+			return bacerrors.Newf("failed to parse token: %s", err)
 		}
 
 		// Pretty print the header
 		headerJSON, err := json.MarshalIndent(token.Header, "", "  ")
 		if err != nil {
-			return bacerrors.New("failed to marshal header: %s", err)
+			return bacerrors.Newf("failed to marshal header: %s", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), "Header:")
 		fmt.Fprintln(cmd.OutOrStdout(), string(headerJSON))
@@ -86,7 +87,7 @@ func (o *SSOTokenOptions) runSSOToken(cmd *cobra.Command, cfg types.Bacalhau) er
 		// Pretty print the claims
 		claimsJSON, err := json.MarshalIndent(token.Claims, "", "  ")
 		if err != nil {
-			return bacerrors.New("failed to marshal claims: %s", err)
+			return bacerrors.Newf("failed to marshal claims: %s", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), "\nClaims:")
 		fmt.Fprintln(cmd.OutOrStdout(), string(claimsJSON))

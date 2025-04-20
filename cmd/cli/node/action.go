@@ -57,7 +57,7 @@ func (n *NodeActionCmd) run(cmd *cobra.Command, args []string, api client.API) e
 		Message: n.message,
 	})
 	if err != nil {
-		return bacerrors.Wrap(err, "failed to %s node %s", n.action, nodeID)
+		return bacerrors.Wrapf(err, "failed to %s node %s", n.action, nodeID)
 	}
 
 	if response.Success {

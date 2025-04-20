@@ -20,9 +20,10 @@ func (suite *ErrorTestSuite) TestNew() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithMessage() {
-	err := New("TestMessage")
+	message := "TestMessage"
+	err := New(message)
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -32,15 +33,16 @@ func (suite *ErrorTestSuite) TestErrorWithMessage() {
 func (suite *ErrorTestSuite) TestErrorWithFormattedMessage() {
 	// test that New can accept a message with format specifiers
 	message := "TestMessage %s"
-	err := New(message, "withFormat")
+	err := Newf(message, "withFormat")
 	suite.Equal("TestMessage withFormat", err.Error())
 }
 
 func (suite *ErrorTestSuite) TestErrorWithHint() {
+	message := "TestMessage"
 	hint := "TestHint"
-	err := New("TestMessage").WithHint(hint)
+	err := New(message).WithHint(hint)
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Equal(hint, err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -48,9 +50,10 @@ func (suite *ErrorTestSuite) TestErrorWithHint() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithRetryable() {
-	err := New("TestMessage").WithRetryable()
+	message := "TestMessage"
+	err := New(message).WithRetryable()
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Empty(err.Hint())
 	suite.True(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -58,9 +61,10 @@ func (suite *ErrorTestSuite) TestErrorWithRetryable() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithFailsExecution() {
-	err := New("TestMessage").WithFailsExecution()
+	message := "TestMessage"
+	err := New(message).WithFailsExecution()
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.True(err.FailsExecution())
@@ -68,10 +72,11 @@ func (suite *ErrorTestSuite) TestErrorWithFailsExecution() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithDetails() {
+	message := "TestMessage"
 	details := map[string]string{"key1": "value1", "key2": "value2"}
-	err := New("TestMessage").WithDetails(details)
+	err := New(message).WithDetails(details)
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -86,9 +91,10 @@ func (suite *ErrorTestSuite) TestErrorWithDetails() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithDetail() {
-	err := New("TestMessage").WithDetail("key1", "value1")
+	message := "TestMessage"
+	err := New(message).WithDetail("key1", "value1")
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Empty(err.Hint())
 	suite.False(err.Retryable())
 	suite.False(err.FailsExecution())
@@ -106,24 +112,27 @@ func (suite *ErrorTestSuite) TestErrorWithDetail() {
 }
 
 func (suite *ErrorTestSuite) TestErrorWithCode() {
-	err := New("TestMessage").WithCode(BadRequestError)
+	message := "TestMessage"
+	err := New(message).WithCode(BadRequestError)
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Equal(BadRequestError, err.Code())
 	suite.Equal(400, err.HTTPStatusCode()) // BadRequestError should map to 400
 }
 
 func (suite *ErrorTestSuite) TestErrorWithHTTPStatusCode() {
-	err := New("TestMessage").WithHTTPStatusCode(418) // I'm a teapot
+	message := "TestMessage"
+	err := New(message).WithHTTPStatusCode(418) // I'm a teapot
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Equal(418, err.HTTPStatusCode())
 }
 
 func (suite *ErrorTestSuite) TestErrorWithComponent() {
-	err := New("TestMessage").WithComponent("TestComponent")
+	message := "TestMessage"
+	err := New(message).WithComponent("TestComponent")
 
-	suite.Equal("TestMessage", err.Error())
+	suite.Equal(message, err.Error())
 	suite.Equal("TestComponent", err.Component())
 }
 
@@ -198,7 +207,7 @@ func (suite *ErrorTestSuite) TestMultipleWraps() {
 
 func (suite *ErrorTestSuite) TestWrapWithFormat() {
 	originalErr := errors.New("original error")
-	wrappedErr := Wrap(originalErr, "wrapped error: %s", "with format")
+	wrappedErr := Wrapf(originalErr, "wrapped error: %s", "with format")
 
 	suite.Equal("wrapped error: with format: original error", wrappedErr.Error())
 	suite.Equal("wrapped error: with format: original error", wrappedErr.ErrorWrapped())

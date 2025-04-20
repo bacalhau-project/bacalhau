@@ -19,14 +19,14 @@ const transportClientComponent = "TransportClient"
 
 // NewConfigurationError creates a new error for a configuration error
 func NewConfigurationError(message string, args ...interface{}) bacerrors.Error {
-	return bacerrors.New(message, args...).
+	return bacerrors.Newf(message, args...).
 		WithComponent(transportComponent).
 		WithCode(bacerrors.ConfigurationError)
 }
 
 // NewConfigurationWrappedError creates a new error for a configuration error
 func NewConfigurationWrappedError(err error, message string, args ...interface{}) bacerrors.Error {
-	return bacerrors.Wrap(err, message, args...).
+	return bacerrors.Wrapf(err, message, args...).
 		WithComponent(transportComponent).
 		WithCode(bacerrors.ConfigurationError)
 }
@@ -47,12 +47,12 @@ func interceptConnectionError(err error, servers string) error {
 3. If you are trying to connect to the demo network, use 'bootstrap.demo.bacalhau.org:4222' as your address`
 		}
 
-		return bacerrors.New("no orchestrator available for connection at %s", servers).
+		return bacerrors.Newf("no orchestrator available for connection at %s", servers).
 			WithComponent(transportClientComponent).
 			WithCode(bacerrors.ConfigurationError).
 			WithHint(hint)
 	default:
-		return bacerrors.Wrap(err, "failed to connect to %s", servers).
+		return bacerrors.Wrapf(err, "failed to connect to %s", servers).
 			WithComponent(transportClientComponent).
 			WithCode(bacerrors.ConfigurationError)
 	}
