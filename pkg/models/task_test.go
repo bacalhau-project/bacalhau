@@ -113,6 +113,18 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 			errMsg:         "input source with target '/input' already exists",
 		},
 		{
+			name: "Missing input source target",
+			task: &Task{
+				Name:   "missing-target",
+				Engine: &SpecConfig{Type: "docker"},
+				InputSources: []*InputSource{
+					{Alias: "input1", Source: &SpecConfig{Type: "http"}},
+				},
+			},
+			validationMode: submissionError,
+			errMsg:         "invalid input sources",
+		},
+		{
 			name: "Duplicate result path name",
 			task: &Task{
 				Name:   "duplicate-result-name",
@@ -175,7 +187,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				},
 			},
 			validationMode: submissionError,
-			errMsg:         "task timeouts validation failed",
+			errMsg:         "invalid timeouts",
 		},
 		{
 			name: "Invalid resources",
@@ -187,7 +199,7 @@ func (suite *TaskTestSuite) TestTaskValidation() {
 				},
 			},
 			validationMode: submissionError,
-			errMsg:         "task resources validation failed",
+			errMsg:         "invalid resources",
 		},
 		{
 			name: "Environment variable starting with BACALHAU_",

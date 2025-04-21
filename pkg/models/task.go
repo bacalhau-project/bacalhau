@@ -129,22 +129,22 @@ func (t *Task) ValidateSubmission() error {
 	)
 
 	if err := t.Engine.Validate(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("engine validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid engine: %v", err))
 	}
 	if err := t.Publisher.ValidateAllowBlank(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("publisher validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid publisher: %v", err))
 	}
 	if err := t.Timeouts.ValidateSubmission(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("task timeouts validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid timeouts: %v", err))
 	}
 	if err := t.ResourcesConfig.Validate(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("task resources validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid resources: %v", err))
 	}
 	if err := ValidateSlice(t.InputSources); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("artifact validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid input sources: %v", err))
 	}
 	if err := ValidateSlice(t.ResultPaths); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("output validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid output: %v", err))
 	}
 
 	if err := t.validateInputSources(); err != nil {
@@ -156,7 +156,7 @@ func (t *Task) ValidateSubmission() error {
 	}
 
 	if err := t.Network.Validate(); err != nil {
-		mErr = errors.Join(mErr, fmt.Errorf("network validation failed: %v", err))
+		mErr = errors.Join(mErr, fmt.Errorf("invalid network: %v", err))
 	}
 
 	return mErr
