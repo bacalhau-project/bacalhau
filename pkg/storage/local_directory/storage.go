@@ -124,9 +124,9 @@ func (driver *StorageProvider) matchAllowedPath(storageSpec Source) (*AllowedPat
 
 	var err bacerrors.Error
 	if insufficientPermissions {
-		err = bacerrors.New("volume %s is not granted write access", storageSpec.SourcePath)
+		err = bacerrors.Newf("volume %s is not granted write access", storageSpec.SourcePath)
 	} else {
-		err = bacerrors.New("volume %s is not allowlisted", storageSpec.SourcePath)
+		err = bacerrors.Newf("volume %s is not allowlisted", storageSpec.SourcePath)
 	}
 	err = err.WithCode(bacerrors.ConfigurationError).
 		WithHint("Verify Compute.AllowListedLocalPaths configuration property")
