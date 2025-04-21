@@ -16,7 +16,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 	ipfs_storage "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 	noop_storage "github.com/bacalhau-project/bacalhau/pkg/storage/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/tracing"
@@ -62,15 +62,16 @@ func NewStandardStorageProvider(cfg types.Bacalhau) (storage.StorageProvider, er
 		))
 	}
 
-	if cfg.InputSources.IsNotDisabled(models.StorageSourceLocalDirectory) {
-		var err error
-		providers[models.StorageSourceLocalDirectory], err = localdirectory.NewStorageProvider(
+	if cfg.InputSources.IsNotDisabled(models.StorageSourceLocal) {
+		localStorage, err := local.NewStorageProvider(
 			localdirectory.StorageProviderParams{
 				AllowedPaths: localdirectory.ParseAllowPaths(cfg.Compute.AllowListedLocalPaths),
 			})
 		if err != nil {
 			return nil, err
 		}
+		providers[models.StorageSourceLocal] = localStorage
+		providers[models.StorageSourceLocalDirectory] = localStorage
 	}
 
 	if cfg.InputSources.IsNotDisabled(models.StorageSourceIPFS) {

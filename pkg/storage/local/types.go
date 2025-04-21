@@ -11,9 +11,47 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
+// localDirectory to local
+
+// my/path/log.txt
+// my/path/
+
+// my/path/logs
+// my/path/etc.d
+
 type Source struct {
 	SourcePath string
 	ReadWrite  bool
+
+	// option1
+	PathType string // inferred, directory, file
+
+	// option2
+	CreateIfNotExist string // no, asFile, asDir
+}
+
+type MountType int
+
+const (
+	// Don't create anything if path doesn't exist
+	NoCreate MountType = iota
+
+	// Create as directory if path doesn't exist
+	CreateAsDirectory
+
+	// Create as file if path doesn't exist
+	CreateAsFile
+
+	// Try to infer the type (file vs directory) from path
+	InferAndCreate
+)
+
+type Source struct {
+	SourcePath string
+	ReadWrite  bool
+
+	// Clear about creation intent
+	CreateBehavior MountType // Default: NoCreate
 }
 
 func (c Source) ToMap() map[string]interface{} {

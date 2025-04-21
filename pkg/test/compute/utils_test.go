@@ -8,7 +8,6 @@ import (
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
 )
 
 func addInput(execution *models.Execution, sourcePath string) *models.Execution {
