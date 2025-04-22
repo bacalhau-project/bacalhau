@@ -1,7 +1,8 @@
-package localdirectory
+package local
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 type Source struct {
 	SourcePath string
 	ReadWrite  bool
+	CreateAs   CreateStrategy
 }
 
 func (c Source) ToMap() map[string]interface{} {
@@ -21,9 +23,14 @@ func (c Source) ToMap() map[string]interface{} {
 }
 
 func DecodeSpec(spec *models.SpecConfig) (Source, error) {
-	if !spec.IsType(models.StorageSourceLocalDirectory) {
-		//nolint:lll
-		return Source{}, errors.New("invalid storage source type. expected " + models.StorageSourceLocalDirectory + ", but received: " + spec.Type)
+	if !spec.IsType(models.StorageSourceLocal) && !spec.IsType(models.StorageSourceLocalDirectory) {
+		errMsg := fmt.Sprintf(
+			"invalid storage source type. expected [%s, %s], but received: %s",
+			models.StorageSourceLocal,
+			models.StorageSourceLocalDirectory,
+			spec.Type,
+		)
+		return Source{}, errors.New(errMsg)
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -35,8 +42,17 @@ func DecodeSpec(spec *models.SpecConfig) (Source, error) {
 		inputParams["ReadWrite"] = inputParams["ReadWrite"] == "true"
 	}
 
-	var c Source
-	if err := mapstructure.Decode(spec.Params, &c); err != nil {
+	var (
+		c   Source
+		err error
+	)
+	if err = mapstructure.Decode(spec.Params, &c); err != nil {
+		return c, err
+	}
+
+	// here c.CreateAs is a string, try to convert it to CreateStrategy
+	c.CreateAs, err = CreateStrategyFromString(c.CreateAs.String())
+	if err != nil {
 		return c, err
 	}
 
@@ -50,7 +66,7 @@ func NewSpecConfig(source string, rw bool) (*models.SpecConfig, error) {
 	}
 	// TODO validate
 	return &models.SpecConfig{
-		Type:   models.StorageSourceLocalDirectory,
+		Type:   models.StorageSourceLocal,
 		Params: s.ToMap(),
 	}, nil
 }
