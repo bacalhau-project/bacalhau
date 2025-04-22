@@ -71,3 +71,4 @@ test_integration/common_assets/bacalhau_bin
 
 .flox
 webui/compiled/*
+webui/build/*
