@@ -27,12 +27,20 @@ const (
 const DefaultCreateStrategy = Infer
 const CreateStrategySpecKey = "CreateAs"
 
-func AllowedCreateStrategies() []string {
+func KnownCreateStrategies() []string {
 	return []string{
 		Infer.String(),
 		Dir.String(),
 		File.String(),
 		NoCreate.String(),
+	}
+}
+
+func PermissiveCreateStrategies() []string {
+	return []string{
+		Infer.String(),
+		Dir.String(),
+		File.String(),
 	}
 }
 
@@ -51,7 +59,7 @@ func CreateStrategyFromString(s string) (CreateStrategy, error) {
 	default:
 		// TODO: Create a constant for JobSpec to be used in WithComponent for this and similar errors
 		return "", bacerrors.Newf("invalid CreateAs value %s", s).
-			WithHint("CreateAs must be one of [%s]", strings.Join(AllowedCreateStrategies(), ", ")).
+			WithHint("%s must be one of [%s]", CreateStrategySpecKey, strings.Join(KnownCreateStrategies(), ", ")).
 			WithCode(bacerrors.ValidationError)
 	}
 }
@@ -64,7 +72,7 @@ func InferCreateStrategyFromPath(path string) CreateStrategy {
 	// Note that there are some noticeable exceptions for which this will return the wrong strategy,
 	// For example folders with a dot in the name (e.g. /etc/conf.d) and without a trailing slash
 	// will be considered files. However such paths are likely to be non-empty and CreateStrategy will not be called for them.
-	// Additinally, we can look at Target value to see if it gives more insight on whether we should create a file or directory.
+	// Additionally, we can look at Target value to see if it gives more insight on whether we should create a file or directory.
 	_, file := filepath.Split(path)
 	var inferredStrategy CreateStrategy
 	if file == "" {

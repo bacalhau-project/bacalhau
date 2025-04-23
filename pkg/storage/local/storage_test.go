@@ -169,6 +169,46 @@ func (s *LocalStorageSuite) TestHasStorageLocally() {
 	}
 }
 
+func (s *LocalStorageSuite) TestHasStorageLocally_NoCreate() {
+	tmpDir := s.T().TempDir()
+	tmpFile := filepath.Join(tmpDir, "file1")
+	file, err := os.Create(tmpFile)
+	s.Require().NoError(err)
+	s.Require().NoError(file.Close())
+
+	for _, tc := range []struct {
+		name              string
+		sourcePath        string
+		createAs          string
+		allowedPaths      []string
+		hasStorageLocally bool
+	}{
+		{
+			name:              "file doesn't exist and allows read-write permission, createAs is nocreate",
+			sourcePath:        filepath.Join(tmpDir, "unknown:rw"),
+			createAs:          NoCreate.String(),
+			allowedPaths:      []string{tmpDir + "/*:rw"},
+			hasStorageLocally: false,
+		},
+		{
+			name:              "file doesn't exist and allows read-write permission, createAs is permissive",
+			sourcePath:        filepath.Join(tmpDir, "unknown:rw"),
+			createAs:          File.String(),
+			allowedPaths:      []string{tmpDir + "/*:rw"},
+			hasStorageLocally: true,
+		},
+	} {
+		s.Run(tc.name, func() {
+			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
+			require.NoError(s.T(), err)
+
+			hasStorageLocally, err := storageProvider.HasStorageLocally(context.Background(), s.prepareStorageSpec(tc.sourcePath, tc.createAs))
+			require.NoError(s.T(), err)
+			require.Equal(s.T(), tc.hasStorageLocally, hasStorageLocally)
+		})
+	}
+}
+
 func (s *LocalStorageSuite) TestGetVolumeSize() {
 	tmpDir := s.T().TempDir()
 	file1 := filepath.Join(tmpDir, "file1")
@@ -228,7 +268,7 @@ func (s *LocalStorageSuite) TestGetVolumeSize() {
 			sourcePath:   filepath.Join(tmpDir, "unknown"),
 			allowedPaths: []string{tmpDir + "/*"},
 			shouldFail:   true,
-			errorMessage: "does not exist and read-write access is not allowed",
+			errorMessage: "oes not exist and creation is not allowed",
 		},
 		{
 			name:         "file doesn't exist, read-write permission is allowed",
@@ -238,15 +278,15 @@ func (s *LocalStorageSuite) TestGetVolumeSize() {
 		},
 		{
 			name:         "directory doesn't exist, read-write permission not allowed",
-			sourcePath:   filepath.Join(tmpDir, "unknown_dir/"),
-			allowedPaths: []string{tmpDir + "/*"},
+			sourcePath:   filepath.Join(tmpDir, "unknown_dir") + "/",
+			allowedPaths: []string{tmpDir + "/*/"},
 			shouldFail:   true,
-			errorMessage: "does not exist and read-write access is not allowed",
+			errorMessage: "does not exist and creation is not allowed",
 		},
 		{
 			name:         "directory doesn't exist, read-write permission is allowed",
-			sourcePath:   filepath.Join(tmpDir, "unknown_dir/") + ":rw",
-			allowedPaths: []string{tmpDir + "/*:rw"},
+			sourcePath:   filepath.Join(tmpDir, "unknown_dir") + "/:rw",
+			allowedPaths: []string{tmpDir + "/*/:rw"},
 			shouldFail:   false,
 		},
 	} {
@@ -258,6 +298,47 @@ func (s *LocalStorageSuite) TestGetVolumeSize() {
 			if tc.shouldFail {
 				require.Error(s.T(), err)
 				require.Truef(s.T(), strings.Contains(err.Error(), tc.errorMessage), "error message should contain %s, but got %s", tc.errorMessage, err.Error())
+				return
+			}
+			require.NoError(s.T(), err)
+			require.Equal(s.T(), tc.expectedVolumeSize, volumeSize)
+		})
+	}
+}
+
+func (s *LocalStorageSuite) TestGetVolumeSize_NoCreate() {
+	tmpDir := s.T().TempDir()
+
+	for _, tc := range []struct {
+		name               string
+		sourcePath         string
+		createAs           string
+		allowedPaths       []string
+		expectedVolumeSize uint64
+		shouldFail         bool
+	}{
+		{
+			name:         "directory doesn't exist, read-write permission is allowed, createAs is nocreate",
+			sourcePath:   filepath.Join(tmpDir, "unknown_dir") + "/:rw",
+			createAs:     NoCreate.String(),
+			allowedPaths: []string{tmpDir + "/*/:rw"},
+			shouldFail:   true,
+		},
+		{
+			name:         "directory doesn't exist, read-write permission is allowed, createAs is dir",
+			sourcePath:   filepath.Join(tmpDir, "unknown_dir") + "/:rw",
+			createAs:     Dir.String(),
+			allowedPaths: []string{tmpDir + "/*/:rw"},
+			shouldFail:   false,
+		},
+	} {
+		s.Run(tc.name, func() {
+			storageProvider, err := NewStorageProvider(StorageProviderParams{AllowedPaths: ParseAllowPaths(tc.allowedPaths)})
+			require.NoError(s.T(), err)
+
+			volumeSize, err := storageProvider.GetVolumeSize(context.Background(), mock.Execution(), s.prepareStorageSpec(tc.sourcePath, tc.createAs))
+			if tc.shouldFail {
+				require.Error(s.T(), err)
 				return
 			}
 			require.NoError(s.T(), err)
