@@ -12,6 +12,15 @@ on:
         required: false
         default: 'release'
         type: string
+      s3_base_prefix:
+        description: |
+          Base prefix for S3 objects (default: "public").
+          This prefix is included in S3 paths but excluded from manifest paths
+          because CloudFront serves this prefix as the root domain
+          (e.g., get.bacalhau.org/ maps to s3://bucket/public/)
+        required: false
+        default: 'public'
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -64,19 +73,29 @@ jobs:
       - name: Upload binaries to S3
         id: upload
         run: |
-          # Determine S3 prefix based on target type
+          # Define the S3 base prefix (typically "public")
+          S3_BASE_PREFIX="${{ inputs.s3_base_prefix }}"
+          
+          # Path structure constants
+          # 
+          # We use different paths for S3 storage vs the manifest:
+          # - S3 paths include the base prefix (typically "public") because that's how objects are stored in S3
+          # - Manifest paths exclude the base prefix because CloudFront maps the base prefix as the root
+          #   (e.g., get.bacalhau.org/ maps to s3://bucket/public/)
+          
+          # Define release type subdirectory based on target type
           case "${{ inputs.target_type }}" in
             edge)
-              S3_PREFIX="edge"
+              RELEASE_TYPE="edge"
               ;;
             nightly)
-              S3_PREFIX="nightly"
+              RELEASE_TYPE="nightly"
               ;;
             release)
               if [[ "${{ steps.version.outputs.release_type }}" == "release" ]]; then
-                S3_PREFIX="stable"
+                RELEASE_TYPE="stable"
               else
-                S3_PREFIX="pre"
+                RELEASE_TYPE="pre"
               fi
               ;;
             *)
@@ -85,8 +104,17 @@ jobs:
               ;;
           esac
           
-          echo "Publishing to S3 prefix: $S3_PREFIX"
-          echo "s3_prefix=$S3_PREFIX" >> $GITHUB_OUTPUT
+          echo "Publishing to release type: $RELEASE_TYPE"
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          
+          # Derive the S3 path (with base prefix) and manifest path (without base prefix)
+          S3_PATH="${S3_BASE_PREFIX}/releases/${RELEASE_TYPE}"
+          MANIFEST_PATH="releases/${RELEASE_TYPE}"
+          
+          echo "S3 path: $S3_PATH"
+          echo "Manifest path: $MANIFEST_PATH"
+          echo "s3_path=$S3_PATH" >> $GITHUB_OUTPUT
+          echo "manifest_path=$MANIFEST_PATH" >> $GITHUB_OUTPUT
           
           # Create a file to store the list of uploaded artifacts for the summary
           UPLOADS_LIST=""
@@ -128,10 +156,13 @@ jobs:
                 METADATA="BuildDate=$BUILD_DATE,GOOS=$OS,GOARCH=$ARCH,GitCommit=${{ steps.version.outputs.git_commit }},GitVersion=$GIT_VERSION,Major=${{ steps.version.outputs.major }},Minor=${{ steps.version.outputs.minor }}"
           
                 # Upload to target-specific path with original filename
-                TARGET_DEST="s3://${{ vars.S3_BUCKET }}/public/releases/$S3_PREFIX/$GIT_VERSION/$FILENAME"
-                echo "Uploading to target-specific path: $TARGET_DEST"
-                aws s3 cp "$ARTIFACT" "$TARGET_DEST" --metadata "$METADATA"
-                UPLOADS_LIST="${UPLOADS_LIST}public/releases/$S3_PREFIX/$GIT_VERSION/$FILENAME|$OS/$ARCH|$BUILD_DATE\n"
+                # Use the full S3 path (with base prefix)
+                TARGET_S3_DEST="s3://${{ vars.S3_BUCKET }}/${S3_PATH}/${GIT_VERSION}/${FILENAME}"
+                echo "Uploading to S3: $TARGET_S3_DEST"
+                aws s3 cp "$ARTIFACT" "$TARGET_S3_DEST" --metadata "$METADATA"
+                
+                # For the upload list, we use the full S3 path for clarity
+                UPLOADS_LIST="${UPLOADS_LIST}${S3_PATH}/${GIT_VERSION}/${FILENAME}|$OS/$ARCH|$BUILD_DATE\n"
               done
             fi
           done
@@ -142,11 +173,14 @@ jobs:
       - name: Generate and upload release manifest
         id: manifest
         run: |
-          S3_PREFIX="${{ steps.upload.outputs.s3_prefix }}"
+          RELEASE_TYPE="${{ steps.upload.outputs.release_type }}"
+          # This is the path we'll use in the manifest (without the base prefix)
+          MANIFEST_PATH="${{ steps.upload.outputs.manifest_path }}"
           GIT_VERSION="${{ steps.version.outputs.git_version }}"
           BUILD_DATE="${{ steps.version.outputs.build_date }}"
           
-          echo "Creating manifest for $GIT_VERSION (S3 prefix: $S3_PREFIX)"
+          echo "Creating manifest for $GIT_VERSION (Release type: $RELEASE_TYPE)"
+          echo "Manifest path base: $MANIFEST_PATH"
           
           # Create JSON manifest using jq
           jq -n \
@@ -177,15 +211,19 @@ jobs:
                 TARBALL=$(find "$dir" -name "*.tar.gz" | head -1)
                 if [ -n "$TARBALL" ]; then
                   FILENAME=$(basename "$TARBALL")
-                  # Create an entry that points to the target-specific path
-                  TARGET_PATH="/public/releases/$S3_PREFIX/$GIT_VERSION/$FILENAME"
+                  
+                  # Create the path for the manifest (without the base prefix)
+                  # This is the path as it will be accessed via CloudFront
+                  TARGET_PATH="${MANIFEST_PATH}/${GIT_VERSION}/${FILENAME}"
                   
                   # Check for signatures
                   SIGNATURES=()
                   SIG_FILES=$(find "$dir" -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc" -o -name "*.signature.sha256")
                   for SIG_FILE in $SIG_FILES; do
                     SIG_FILENAME=$(basename "$SIG_FILE")
-                    SIG_PATH="/public/releases/$S3_PREFIX/$GIT_VERSION/$SIG_FILENAME"
+                    
+                    # Path for signatures in the manifest (without the base prefix)
+                    SIG_PATH="${MANIFEST_PATH}/${GIT_VERSION}/${SIG_FILENAME}"
                     SIGNATURES+=("\"$SIG_PATH\"")
                   done
                   
@@ -220,10 +258,12 @@ jobs:
           cat latest-manifest.json
           
           # Upload manifest to the manifests directory
-          aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/public/manifests/$S3_PREFIX.json" \
+          # The manifests are still stored in the public/ prefix for S3
+          S3_BASE_PREFIX="${{ inputs.s3_base_prefix }}"
+          aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json" \
             --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
             --content-type "application/json"
-          echo "Created target-specific manifest at s3://${{ vars.S3_BUCKET }}/public/manifests/$S3_PREFIX.json"
+          echo "Created manifest at s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json"
 
       - name: Generate upload summary
         if: success()
@@ -240,16 +280,19 @@ jobs:
           echo "| **Release Type** | ${{ steps.version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **S3 Bucket** | ${{ vars.S3_BUCKET }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **S3 Region** | ${{ vars.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Base Prefix** | ${{ inputs.s3_base_prefix }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Git Version** | ${{ steps.version.outputs.git_version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Git Commit** | ${{ steps.version.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Build Date** | ${{ steps.version.outputs.build_date }} |" >> $GITHUB_STEP_SUMMARY
           
           # Add manifest paths section if applicable
+          RELEASE_TYPE="${{ steps.upload.outputs.release_type }}"
+          S3_BASE_PREFIX="${{ inputs.s3_base_prefix }}"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
-          echo "| Type | Manifest Path |" >> $GITHUB_STEP_SUMMARY
-          echo "|------|--------------|" >> $GITHUB_STEP_SUMMARY
-          echo "| ${{ inputs.target_type }} | \`s3://${{ vars.S3_BUCKET }}/public/manifests/${{ steps.upload.outputs.s3_prefix }}.json\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type | S3 Path | CloudFront URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|---------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| $RELEASE_TYPE | \`s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json\` | \`https://get.bacalhau.org/manifests/${RELEASE_TYPE}.json\` |" >> $GITHUB_STEP_SUMMARY
           
           # Add uploaded files section
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -263,19 +306,24 @@ jobs:
             echo "Artifacts published for **$PLATFORMS** platforms:" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           
-            # Create a simplified markdown table header with only Platform and S3 Path
-            echo "| Platform | S3 Path |" >> $GITHUB_STEP_SUMMARY
-            echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
+            # Create a markdown table with Platform, S3 Path, and CloudFront URL
+            echo "| Platform | S3 Path | CloudFront URL |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|---------|---------------|" >> $GITHUB_STEP_SUMMARY
           
-            # Sort by platform for better readability and only show platform and S3 path
+            # Sort by platform for better readability
             sort -t'|' -k2 uploads_list.txt | while IFS='|' read -r S3_PATH PLATFORM BUILD_DATE; do
               # Skip any empty lines that might cause formatting issues
               if [[ -z "$PLATFORM" || -z "$S3_PATH" ]]; then
                 continue
               fi
           
-              # Add table row with just platform and S3 path
-              echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` |" >> $GITHUB_STEP_SUMMARY
+              # Convert S3 path to CloudFront URL by removing the base prefix
+              # This assumes the base prefix is at the start of the path
+              S3_BASE_PREFIX="${{ inputs.s3_base_prefix }}"
+              CLOUDFRONT_PATH="${S3_PATH#$S3_BASE_PREFIX/}"
+          
+              # Add table row with platform, S3 path, and CloudFront URL
+              echo "| $PLATFORM | \`s3://${{ vars.S3_BUCKET }}/$S3_PATH\` | \`https://get.bacalhau.org/$CLOUDFRONT_PATH\` |" >> $GITHUB_STEP_SUMMARY
             done
           else
             echo "No files were uploaded." >> $GITHUB_STEP_SUMMARY
