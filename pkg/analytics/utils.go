@@ -8,11 +8,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-// GetDockerImageTelemetry returns the Docker image name for telemetry purposes.
+// getDockerImageTelemetry returns the Docker image name for telemetry purposes.
 // For trusted images (from Bacalhau or Expanso), it returns the original image name.
 // For non-trusted images, it returns a hashed version of the image name for privacy.
 // Returns an empty string if the engine is not Docker or no image information is found.
-func GetDockerImageTelemetry(engineParams *models.SpecConfig) string {
+func getDockerImageTelemetry(engineParams *models.SpecConfig) string {
 	// Only process Docker engines
 	if engineParams == nil || engineParams.Type != models.EngineDocker {
 		return ""
@@ -56,10 +56,26 @@ func GetDockerImageTelemetry(engineParams *models.SpecConfig) string {
 	}
 }
 
-// hashString creates a SHA-256 hash of the input string and returns its hexadecimal representation.
-// Used for privacy-preserving analytics.
-func hashString(in string) string {
+// hashString returns a SHA256 hash of the input string.
+func hashString(s string) string {
+	if s == "" {
+		return ""
+	}
 	hash := sha256.New()
-	hash.Write([]byte(in))
+	hash.Write([]byte(s))
 	return hex.EncodeToString(hash.Sum(nil))
+}
+
+// getInputSourceTypes extracts the source types from a task's input sources.
+// Returns an empty slice if the task has no input sources.
+func getInputSourceTypes(t *models.Task) []string {
+	if t == nil || len(t.InputSources) == 0 {
+		return []string{}
+	}
+
+	types := make([]string, len(t.InputSources))
+	for i, s := range t.InputSources {
+		types[i] = s.Source.Type
+	}
+	return types
 }

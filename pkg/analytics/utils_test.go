@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 type UtilsTestSuite struct {
@@ -30,7 +31,7 @@ func (s *UtilsTestSuite) TestHashString() {
 		{
 			name:     "empty string",
 			input:    "",
-			expected: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			expected: "",
 		},
 		{
 			name:     "simple string",
@@ -142,7 +143,7 @@ func (s *UtilsTestSuite) TestGetDockerImageTelemetry() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			result := GetDockerImageTelemetry(tc.engine)
+			result := getDockerImageTelemetry(tc.engine)
 			s.Equal(tc.expected, result)
 		})
 	}

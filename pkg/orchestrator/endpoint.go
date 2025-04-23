@@ -48,9 +48,10 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	job := request.Job
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
-	submitEvent := analytics.NewSubmitJobEvent(*job, warnings...)
+
+	var jobId string
 	defer func() {
-		analytics.EmitEvent(ctx, analytics.NewEvent(analytics.SubmitJobEventType, submitEvent))
+		analytics.Emit(analytics.NewSubmitJobEvent(*job, jobId, err, warnings...))
 	}()
 
 	if request.ClientInstallationID != "" {
@@ -60,11 +61,12 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		job.Meta[models.MetaClientInstanceID] = request.ClientInstanceID
 	}
 
-	if err := e.jobTransformer.Transform(ctx, job); err != nil {
-		submitEvent.Error = err.Error()
+	if err = e.jobTransformer.Transform(ctx, job); err != nil {
 		return nil, err
 	}
-	submitEvent.JobID = job.ID
+
+	// set jobId for telemetry purposes
+	jobId = job.ID
 
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
