@@ -96,9 +96,9 @@ The build process creates binaries for the following platforms:
 Artifacts are published to multiple destinations:
 
 1. **S3 Bucket**:
-    - Edge builds: `s3://{bucket}/versions/edge/{git_version}/`
-    - Pre-releases: `s3://{bucket}/versions/pre/{git_version}/`
-    - Stable releases: `s3://{bucket}/versions/stable/{git_version}/`
+    - Edge builds: `s3://{bucket}/public/releases/edge/{git_version}/`
+    - Pre-releases: `s3://{bucket}/public/releases/pre/{git_version}/`
+    - Stable releases: `s3://{bucket}/public/releases/stable/{git_version}/`
 
 2. **Docker Images (GHCR)**:
     - Base image: `ghcr.io/bacalhau-project/bacalhau:{tags}`
