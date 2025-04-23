@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAllowedCreateStrategies(t *testing.T) {
+func TestKnownCreateStrategies(t *testing.T) {
 	expected := []string{Infer.String(), Dir.String(), File.String(), NoCreate.String()}
-	actual := AllowedCreateStrategies()
+	actual := KnownCreateStrategies()
 
 	assert.Equal(t, expected, actual, "AllowedCreateStrategies should return all valid strategies")
 }
