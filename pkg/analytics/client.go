@@ -52,6 +52,7 @@ func Setup(opts ...Option) error {
 	client, err := posthog.NewWithConfig("", posthog.Config{
 		Endpoint:               TelemetryEndpoint,
 		DefaultEventProperties: posthog.Properties(attributes.Properties()),
+		Logger:                 NewZeroLogger(),
 	})
 	if err != nil {
 		return bacerrors.Newf("failed to create telemetry client: %s", err.Error()).
