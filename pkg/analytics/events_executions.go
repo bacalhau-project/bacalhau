@@ -56,6 +56,12 @@ func createExecutionEvent(e models.Execution, eventType string) Event {
 	// Extract error codes from state details
 	desiredStateErrorCode, computeStateErrorCode := extractStateErrorCodes(e)
 
+	// Extract publisher type
+	publisherType := ""
+	if e.PublishedResult != nil {
+		publisherType = e.PublishedResult.Type
+	}
+
 	// Build the complete properties map
 	props := EventProperties{
 		// ID fields
@@ -64,7 +70,7 @@ func createExecutionEvent(e models.Execution, eventType string) Event {
 		"evaluation_id": e.EvalID,
 
 		// Name fields
-		"name_set":       e.Name == "",
+		"name_set":       e.Name != "",
 		"node_name_hash": hashString(e.NodeID),
 		"namespace_hash": hashString(e.Namespace),
 
@@ -78,7 +84,7 @@ func createExecutionEvent(e models.Execution, eventType string) Event {
 		"compute_state_error_code": computeStateErrorCode,
 
 		// Publisher if any
-		"publisher_type": e.PublishedResult.Type,
+		"publisher_type": publisherType,
 
 		// Run results if any
 		"run_result_stdout_truncated": stdoutTruncated,
