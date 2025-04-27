@@ -54,6 +54,10 @@ inputs:
     description: 'Passphrase for private key'
     required: false
     default: ''
+  analytics_endpoint:
+    description: 'Analytics endpoint to build into the binary'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -92,6 +96,8 @@ runs:
     - name: Build for release
       if: inputs.mode == 'release'
       shell: bash
+      env:
+        ANALYTICS_ENDPOINT: ${{ inputs.analytics_endpoint }}
       run: |
         echo "::group::Building release binary"
         make build-bacalhau-tgz
