@@ -118,23 +118,44 @@ func WithSystemInfo() Option {
 	}
 }
 
+// In pkg/analytics/options.go
+
+import (
+    "os"
+    "runtime"
+    "strings"
+
+    "github.com/Masterminds/semver"
+    "github.com/bacalhau-project/bacalhau/pkg/models"
+)
+
 // detectDockerEnvironment checks if the current process is running
 // inside a Docker container by looking for container-specific markers.
 //
 // Returns true if running in Docker, false otherwise.
 func detectDockerEnvironment() bool {
-	// Check for .dockerenv file (the simplest and most reliable indicator)
-	_, err := os.Stat("/.dockerenv")
-	if err == nil {
-		return true
-	}
+    // Check for .dockerenv file (the simplest and most reliable indicator)
+    _, err := os.Stat("/.dockerenv")
+    if err == nil {
+        return true
+    }
 
-	// Check for docker cgroup as a fallback method
-	data, err := os.ReadFile("/proc/self/cgroup")
-	if err != nil && (os.IsNotExist(err) || os.IsPermission(err)) {
-		return false
-	}
+    // Check for docker cgroup as a fallback method
+    data, err := os.ReadFile("/proc/self/cgroup")
+    if err != nil && (os.IsNotExist(err) || os.IsPermission(err)) {
+        return false
+    }
 
-	// If we could read the file and it's not empty, check for docker markers
-	return err == nil && len(data) > 0 && string(data) != ""
+    // If we could read the file and it's not empty, check for docker markers
+    if err == nil && len(data) > 0 {
+        content := string(data)
+        // Look for Docker-specific markers in cgroup content
+        dockerMarkers := []string{"/docker/", "/docker-", ".scope"}
+        for _, marker := range dockerMarkers {
+            if strings.Contains(content, marker) {
+                return true
+            }
+        }
+    }
+    return false
 }
