@@ -1,6 +1,6 @@
 package analytics
 
-// Node identification property keys used in telemetry events
+// Node identification property keys used in analytics events
 const (
 	// NodeInstallationIDKey is the key for the installation ID property
 	NodeInstallationIDKey = "installation_id"
@@ -24,7 +24,7 @@ const (
 	AccountIDKey = "account_id"
 )
 
-// Environment property keys used in telemetry events
+// Environment property keys used in analytics events
 const (
 	// EnvKey is the key for the environment type property
 	EnvKey = "environment"
@@ -36,7 +36,7 @@ const (
 	EnvOSArchKey = "os_arch"
 )
 
-// Environment type values used in telemetry events
+// Environment type values used in analytics events
 const (
 	// EnvDockerVal indicates the node is running in a Docker container
 	EnvDockerVal = "docker"
@@ -49,11 +49,11 @@ const (
 )
 
 // ResourceAttributesKey is the container key for all resource attributes
-// in telemetry event properties
+// in analytics event properties
 const ResourceAttributesKey = "resource_attributes"
 
 // ResourceAttributes contains all the node-level properties that should be
-// included with every telemetry event. These attributes provide context
+// included with every analytics event. These attributes provide context
 // about the node's identity, environment, and configuration.
 type ResourceAttributes struct {
 	// Node identification
@@ -71,7 +71,7 @@ type ResourceAttributes struct {
 	OSArch      string `json:"os_arch,omitempty"`     // CPU architecture (amd64, arm64, etc.)
 }
 
-// DetermineDistinctID returns the distinct ID for telemetry events
+// DetermineDistinctID returns the distinct ID for analytics events
 // based on the node properties. It uses a fallback hierarchy:
 // 1. Account ID (highest priority)
 // 2. Network ID
@@ -104,7 +104,7 @@ func (attrs *ResourceAttributes) ApplyDefaults() {
 }
 
 // Properties converts the ResourceAttributes to a map structure suitable
-// for telemetry events. The attributes are nested under the ResourceAttributesKey
+// for analytics events. The attributes are nested under the ResourceAttributesKey
 // to keep them organized within the event properties.
 //
 // The returned structure is:

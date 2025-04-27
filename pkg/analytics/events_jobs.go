@@ -89,7 +89,7 @@ func createCommonJobProperties(j models.Job) EventProperties {
 		"task_meta_count":         len(t.Meta),
 		"task_input_source_types": getInputSourceTypes(t),
 		"task_result_path_count":  len(t.ResultPaths),
-		"task_docker_image":       getDockerImageTelemetry(t.Engine),
+		"task_docker_image":       getDockerImageAnalytics(t.Engine),
 		"resources":               newResourceFromConfig(t.ResourcesConfig),
 		"task_network_type":       t.Network.Type.String(),
 		"task_domains_count":      len(t.Network.Domains),

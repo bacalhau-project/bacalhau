@@ -10,7 +10,7 @@ import (
 )
 
 // Option is a function that configures ResourceAttributes.
-// Options are used with Setup to configure telemetry.
+// Options are used with Setup to configure analytics.
 type Option func(*ResourceAttributes)
 
 // WithNodeID sets the hashed node ID in the resource attributes.

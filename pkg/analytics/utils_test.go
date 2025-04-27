@@ -53,7 +53,7 @@ func (s *UtilsTestSuite) TestHashString() {
 	}
 }
 
-func (s *UtilsTestSuite) TestGetDockerImageTelemetry() {
+func (s *UtilsTestSuite) TestGetDockerImageAnalytics() {
 	testCases := []struct {
 		name     string
 		engine   *models.SpecConfig
@@ -143,7 +143,7 @@ func (s *UtilsTestSuite) TestGetDockerImageTelemetry() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			result := getDockerImageTelemetry(tc.engine)
+			result := getDockerImageAnalytics(tc.engine)
 			s.Equal(tc.expected, result)
 		})
 	}

@@ -45,4 +45,4 @@ jobs:
           private_pem: ${{ secrets.PRIVATE_PEM }}
           public_pem: ${{ secrets.PUBLIC_PEM }}
           passphrase: ${{ secrets.PRIVATE_KEY_PASSPHRASE }}
-          telemetry_endpoint: ${{ vars.TELEMETRY_ENDPOINT }}
+          analytics_endpoint: ${{ vars.ANALYTICS_ENDPOINT }}

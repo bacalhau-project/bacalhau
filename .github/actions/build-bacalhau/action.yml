@@ -54,8 +54,8 @@ inputs:
     description: 'Passphrase for private key'
     required: false
     default: ''
-  telemetry_endpoint:
-    description: 'Telemetry endpoint to build into the binary'
+  analytics_endpoint:
+    description: 'Analytics endpoint to build into the binary'
     required: false
     default: ''
 
@@ -97,7 +97,7 @@ runs:
       if: inputs.mode == 'release'
       shell: bash
       env:
-        TELEMETRY_ENDPOINT: ${{ inputs.telemetry_endpoint }}
+        ANALYTICS_ENDPOINT: ${{ inputs.analytics_endpoint }}
       run: |
         echo "::group::Building release binary"
         make build-bacalhau-tgz

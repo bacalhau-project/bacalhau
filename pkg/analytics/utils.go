@@ -8,11 +8,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
-// getDockerImageTelemetry returns the Docker image name for telemetry purposes.
+// getDockerImageAnalytics returns the Docker image name for analytics purposes.
 // For trusted images (from Bacalhau or Expanso), it returns the original image name.
 // For non-trusted images, it returns a hashed version of the image name for privacy.
 // Returns an empty string if the engine is not Docker or no image information is found.
-func getDockerImageTelemetry(engineParams *models.SpecConfig) string {
+func getDockerImageAnalytics(engineParams *models.SpecConfig) string {
 	// Only process Docker engines
 	if engineParams == nil || engineParams.Type != models.EngineDocker {
 		return ""

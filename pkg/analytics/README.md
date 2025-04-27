@@ -6,7 +6,7 @@ When a job is submitted or completed, data is collected about it to help track, 
 
 **As of April 2025, Bacalhau analytics now uses PostHog directly instead of OpenTelemetry.**
 
-The analytics system now sends data directly to PostHog, which improves performance and simplifies the analytics pipeline by removing the need for an intermediate OpenTelemetry collector. The telemetry endpoint URL is only injected at build time for official builds and is not included in development builds or source code.
+The analytics system now sends data directly to PostHog, which improves performance and simplifies the analytics pipeline by removing the need for an intermediate OpenTelemetry collector. The analytics endpoint URL is only injected at build time for official builds and is not included in development builds or source code.
 
 
 ## What information is collected on the bacalhau agent:

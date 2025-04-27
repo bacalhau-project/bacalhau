@@ -4,7 +4,7 @@ package analytics
 // to improve code readability and type clarity.
 type EventProperties map[string]interface{}
 
-// Event represents a telemetry event that can be sent to the analytics backend.
+// Event represents a analytics event that can be sent to the analytics backend.
 // Events have a type (name) and a set of properties.
 type Event interface {
 	// Type returns the type (name) of the event.
