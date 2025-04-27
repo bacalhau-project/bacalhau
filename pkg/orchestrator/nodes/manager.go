@@ -11,6 +11,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
@@ -31,6 +32,9 @@ const (
 	// Minimum and maximum heartbeat check frequencies to ensure reasonable bounds
 	minHeartbeatCheckFrequency = 1 * time.Second
 	maxHeartbeatCheckFrequency = 30 * time.Second
+
+	// DefaultAnalyticsInterval is the default interval for publishing analytics
+	defaultAnalyticsInterval = 1 * time.Hour
 )
 
 // nodesManager handles node lifecycle, health checking, and state management.
@@ -59,6 +63,7 @@ type nodesManager struct {
 	persistInterval         time.Duration              // For periodic persistence
 	persistTimeout          time.Duration
 	shutdownTimeout         time.Duration
+	analyticsInterval       time.Duration // How often to publish analytics
 
 	// Runtime state
 	liveState      *sync.Map // Thread-safe map of nodeID -> trackedLiveState
@@ -105,6 +110,9 @@ type ManagerParams struct {
 
 	// ShutdownTimeout is the timeout for graceful shutdown (optional)
 	ShutdownTimeout time.Duration
+
+	// AnalyticsInterval is how often to publish analytics (optional)
+	AnalyticsInterval time.Duration
 
 	// EventStore provides storage for events so that node manager can assign
 	// new nodes with latest sequence number in the store
@@ -153,6 +161,10 @@ func NewManager(params ManagerParams) (Manager, error) {
 		params.ShutdownTimeout = defaultShutdownTimeout
 	}
 
+	if params.AnalyticsInterval == 0 {
+		params.AnalyticsInterval = defaultAnalyticsInterval
+	}
+
 	if err := errors.Join(
 		validate.NotNil(params.Store, "store required"),
 		validate.NotNil(params.EventStore, "event store required"),
@@ -173,6 +185,7 @@ func NewManager(params ManagerParams) (Manager, error) {
 		persistInterval:         params.PersistInterval,
 		persistTimeout:          params.PersistTimeout,
 		shutdownTimeout:         params.ShutdownTimeout,
+		analyticsInterval:       params.AnalyticsInterval,
 		stopCh:                  make(chan struct{}),
 	}, nil
 }
@@ -205,6 +218,7 @@ func (n *nodesManager) Start(ctx context.Context) error {
 	// Start background tasks
 	n.startBackgroundTask("health-check", n.healthCheckLoop)
 	n.startBackgroundTask("state-persistence", n.persistenceLoop)
+	n.startBackgroundTask("analytics", n.analyticsLoop)
 
 	// Monitor parent context for cancellation
 	go func() {
@@ -400,6 +414,40 @@ func (n *nodesManager) persistLiveState() {
 		}
 		return true
 	})
+}
+
+// analyticsLoop periodically publishes analytics about connected nodes
+func (n *nodesManager) analyticsLoop() {
+	if !analytics.IsEnabled() {
+		log.Trace().Msg("Analytics is disabled, skipping nodes analytics")
+		return
+	}
+
+	ticker := n.clock.Ticker(n.analyticsInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-n.stopCh:
+			return
+		case <-ticker.C:
+			n.publishAnalytics()
+		}
+	}
+}
+
+// publishAnalytics collects and publishes analytics about connected nodes
+func (n *nodesManager) publishAnalytics() {
+	// Get all nodes
+	ctx := context.Background()
+	nodes, err := n.List(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to list nodes for analytics")
+		return
+	}
+
+	// Create and emit analytics event
+	analytics.Emit(analytics.NewNodeInfosEvent(nodes))
 }
 
 // Handshake handles initial node registration or reconnection.
