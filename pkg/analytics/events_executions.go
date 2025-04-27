@@ -131,7 +131,7 @@ func NewComputeMessageExecutionEvent(e models.Execution) Event {
 // Returns a map of hashed task names to resource information.
 func extractResourcesFromExecution(e models.Execution) map[string]resource {
 	if e.AllocatedResources == nil {
-		return nil
+		return map[string]resource{}
 	}
 	resources := make(map[string]resource, len(e.AllocatedResources.Tasks))
 

@@ -49,9 +49,9 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	job.Normalize()
 	warnings := job.SanitizeSubmission()
 
-	var jobId string
+	var jobID string
 	defer func() {
-		analytics.Emit(analytics.NewSubmitJobEvent(*job, jobId, err, warnings...))
+		analytics.Emit(analytics.NewSubmitJobEvent(*job, jobID, err, warnings...))
 	}()
 
 	if request.ClientInstallationID != "" {
@@ -66,7 +66,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 	}
 
 	// set jobId for telemetry purposes
-	jobId = job.ID
+	jobID = job.ID
 
 	txContext, err := e.store.BeginTx(ctx)
 	if err != nil {
