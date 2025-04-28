@@ -1114,7 +1114,7 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 	if job.IsTerminal() {
 		tx.OnCommit(func() {
 			// TODO to include execution telemetry
-			analytics.EmitEvent(context.TODO(), analytics.NewJobTerminalEvent(job))
+			analytics.Emit(analytics.NewJobTerminalEvent(job))
 		})
 		// Remove the job from the in progress index, first checking for legacy items
 		// and then removing the composite.  Once we are confident no legacy items
@@ -1280,7 +1280,7 @@ func (b *BoltJobStore) createExecution(
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartEventWrite)
 
 	tx.OnCommit(func() {
-		analytics.EmitEvent(context.TODO(), analytics.NewCreatedExecutionEvent(execution))
+		analytics.Emit(analytics.NewCreatedExecutionEvent(execution))
 	})
 	return nil
 }
@@ -1374,10 +1374,10 @@ func (b *BoltJobStore) updateExecution(
 
 	tx.OnCommit(func() {
 		if newExecution.IsTerminalState() {
-			analytics.EmitEvent(context.TODO(), analytics.NewTerminalExecutionEvent(newExecution))
+			analytics.Emit(analytics.NewTerminalExecutionEvent(newExecution))
 		}
 		if newExecution.IsDiscarded() {
-			analytics.EmitEvent(context.TODO(), analytics.NewComputeMessageExecutionEvent(newExecution))
+			analytics.Emit(analytics.NewComputeMessageExecutionEvent(newExecution))
 		}
 	})
 

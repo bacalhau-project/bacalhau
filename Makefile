@@ -53,6 +53,7 @@ BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDD
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
+ANALYTICS_ENDPOINT ?= ""
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -60,7 +61,8 @@ PUBLIC_KEY_FILE := /tmp/public.pem
 export MAKE := $(shell command -v make 2> /dev/null)
 
 define BUILD_FLAGS
--X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
+-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG) \
+-X github.com/bacalhau-project/bacalhau/pkg/analytics.Endpoint=$(ANALYTICS_ENDPOINT)
 endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
