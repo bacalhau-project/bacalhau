@@ -191,21 +191,20 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	if !cfg.DisableAnalytics {
-		err = analytics.SetupAnalyticsProvider(ctx,
+		err = analytics.Setup(
 			analytics.WithNodeID(sysmeta.NodeName),
 			analytics.WithInstallationID(system.InstallationID()),
 			analytics.WithInstanceID(sysmeta.InstanceID),
 			analytics.WithNodeType(cfg.Orchestrator.Enabled, cfg.Compute.Enabled),
-			analytics.WithVersion(version.Get()))
+			analytics.WithVersion(version.Get()),
+			analytics.WithSystemInfo(),
+		)
 
 		if err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
+		} else {
+			defer analytics.Shutdown()
 		}
-		defer func() {
-			if err := analytics.ShutdownAnalyticsProvider(ctx); err != nil {
-				log.Trace().Err(err).Msg("failed to shutdown analytics provider")
-			}
-		}()
 	}
 
 	isDebug := system.IsDebugMode()
