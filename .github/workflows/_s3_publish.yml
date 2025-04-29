@@ -160,7 +160,7 @@ jobs:
                 TARGET_S3_DEST="s3://${{ vars.S3_BUCKET }}/${S3_PATH}/${GIT_VERSION}/${FILENAME}"
                 echo "Uploading to S3: $TARGET_S3_DEST"
                 aws s3 cp "$ARTIFACT" "$TARGET_S3_DEST" --metadata "$METADATA"
-                
+          
                 # For the upload list, we use the full S3 path for clarity
                 UPLOADS_LIST="${UPLOADS_LIST}${S3_PATH}/${GIT_VERSION}/${FILENAME}|$OS/$ARCH|$BUILD_DATE\n"
               done
@@ -211,31 +211,31 @@ jobs:
                 TARBALL=$(find "$dir" -name "*.tar.gz" | head -1)
                 if [ -n "$TARBALL" ]; then
                   FILENAME=$(basename "$TARBALL")
-                  
+          
                   # Create the path for the manifest (without the base prefix)
                   # This is the path as it will be accessed via CloudFront
                   TARGET_PATH="${MANIFEST_PATH}/${GIT_VERSION}/${FILENAME}"
-                  
+          
                   # Check for signatures
                   SIGNATURES=()
                   SIG_FILES=$(find "$dir" -name "*.tar.gz.sig" -o -name "*.sig" -o -name "*.asc" -o -name "*.signature.sha256")
                   for SIG_FILE in $SIG_FILES; do
                     SIG_FILENAME=$(basename "$SIG_FILE")
-                    
+          
                     # Path for signatures in the manifest (without the base prefix)
                     SIG_PATH="${MANIFEST_PATH}/${GIT_VERSION}/${SIG_FILENAME}"
                     SIGNATURES+=("\"$SIG_PATH\"")
                   done
-                  
+          
                   # Join signature array into a comma-separated string
                   if [ ${#SIGNATURES[@]} -gt 0 ]; then
                     SIGNATURE_JSON="[$(echo "${SIGNATURES[@]}" | tr ' ' ',')]"
                   else
                     SIGNATURE_JSON="[]"
                   fi
-                  
+          
                   # Add to the JSON using jq
-                  jq --arg key "${OS}-${ARCH}" \
+                  jq --arg key "${OS}_${ARCH}" \
                      --arg filename "$FILENAME" \
                      --arg path "$TARGET_PATH" \
                      --arg os "$OS" \
@@ -265,6 +265,18 @@ jobs:
             --content-type "application/json"
           echo "Created manifest at s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json"
 
+          # For stable releases, also publish a version-specific manifest (e.g., v1.7.x.json)
+          if [[ "${{ inputs.target_type }}" == "release" && "${{ steps.version.outputs.release_type }}" == "release" ]]; then
+            MAJOR="${{ steps.version.outputs.major }}"
+            MINOR="${{ steps.version.outputs.minor }}"
+            VERSION_SPECIFIC_MANIFEST="v${MAJOR}.${MINOR}.x.json"
+            
+            aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${VERSION_SPECIFIC_MANIFEST}" \
+              --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
+              --content-type "application/json"
+            echo "Created version-specific manifest at s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${VERSION_SPECIFIC_MANIFEST}"
+          fi
+
       - name: Generate upload summary
         if: success()
         run: |
@@ -293,7 +305,15 @@ jobs:
           echo "| Type | S3 Path | CloudFront URL |" >> $GITHUB_STEP_SUMMARY
           echo "|------|---------|---------------|" >> $GITHUB_STEP_SUMMARY
           echo "| $RELEASE_TYPE | \`s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json\` | \`https://get.bacalhau.org/manifests/${RELEASE_TYPE}.json\` |" >> $GITHUB_STEP_SUMMARY
-          
+
+          # Add version-specific manifest if this is a stable release
+          if [[ "${{ inputs.target_type }}" == "release" && "${{ steps.version.outputs.release_type }}" == "release" ]]; then
+            MAJOR="${{ steps.version.outputs.major }}"
+            MINOR="${{ steps.version.outputs.minor }}"
+            VERSION_SPECIFIC_MANIFEST="v${MAJOR}.${MINOR}.x.json"
+            echo "| v${MAJOR}.${MINOR}.x | \`s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${VERSION_SPECIFIC_MANIFEST}\` | \`https://get.bacalhau.org/manifests/${VERSION_SPECIFIC_MANIFEST}\` |" >> $GITHUB_STEP_SUMMARY
+          fi
+
           # Add uploaded files section
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Uploaded Files" >> $GITHUB_STEP_SUMMARY
