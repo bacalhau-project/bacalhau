@@ -235,7 +235,7 @@ jobs:
                   fi
           
                   # Add to the JSON using jq
-                  jq --arg key "${OS}-${ARCH}" \
+                  jq --arg key "${OS}_${ARCH}" \
                      --arg filename "$FILENAME" \
                      --arg path "$TARGET_PATH" \
                      --arg os "$OS" \
