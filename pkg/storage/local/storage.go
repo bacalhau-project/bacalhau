@@ -171,14 +171,7 @@ func (driver *StorageProvider) createVolumeIfNotExists(source Source) error {
 			WithHint("If you want the job to create the volume, set the input Source ReadWrite property to true")
 	}
 
-	var inferredCreateStrategy CreateStrategy
-	if source.CreateAs == Infer {
-		inferredCreateStrategy = InferCreateStrategyFromPath(source.SourcePath)
-	} else {
-		inferredCreateStrategy = source.CreateAs
-	}
-
-	switch inferredCreateStrategy {
+	switch source.CreateAs {
 	case NoCreate:
 		// the volume does not exist and we can't create it, return error
 		return bacerrors.Newf("volume does not exist at %s and creation is not allowed", source.SourcePath).
