@@ -233,7 +233,7 @@ func (h *executionHandler) outputStream(ctx context.Context, request messages.Ex
 
 	// Read and filter container logs from the local file
 	logsDir := compute.ExecutionLogsDir(h.executionDir)
-	reader, err := logstream.NewReaderForRequest(ctx, logsDir, request)
+	reader, err := logstream.NewReaderForRequest(logsDir, request)
 	if err != nil {
 		return nil, err
 	}

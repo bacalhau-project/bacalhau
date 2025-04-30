@@ -1,7 +1,6 @@
 package logstream
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -16,7 +15,7 @@ import (
 )
 
 const (
-	executionLogFileMaxWaitTime = 5 * time.Second
+	executionLogFileMaxWaitTime = 60 * time.Second
 	executionLogWaitInterval    = 100 * time.Millisecond
 )
 
@@ -26,7 +25,6 @@ type ExecutionLogReaderParams struct {
 	logsDir string
 }
 type ExecutionLogReader struct {
-	ctx          context.Context
 	isClosed     bool
 	readCancelCh chan struct{}
 	pipeReader   io.ReadCloser
@@ -36,7 +34,7 @@ type ExecutionLogReader struct {
 	initPipeOnce sync.Once
 }
 
-func NewReaderForRequest(ctx context.Context, logsDir string, request messages.ExecutionLogsRequest) (*ExecutionLogReader, error) {
+func NewReaderForRequest(logsDir string, request messages.ExecutionLogsRequest) (*ExecutionLogReader, error) {
 	// TODO: This is a legacy way of intepreting the "Tail" parameter.
 	// It should be modified to return the last N frames from the log.
 	var since time.Time
@@ -47,7 +45,6 @@ func NewReaderForRequest(ctx context.Context, logsDir string, request messages.E
 	}
 
 	return &ExecutionLogReader{
-		ctx:          ctx,
 		readCancelCh: make(chan struct{}, 1),
 		params: &ExecutionLogReaderParams{
 			logsDir: logsDir,
@@ -124,9 +121,8 @@ func (rc *ExecutionLogReader) startReading(pipeWriter *io.PipeWriter, logFileRea
 }
 
 func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
-	// Create a context with a timeout to avoid waiting indefinitely
-	ctx, cancel := context.WithTimeout(rc.ctx, executionLogFileMaxWaitTime)
-	defer cancel()
+	// Set a timeout for waiting for the log file to be created
+	timeout := time.After(executionLogFileMaxWaitTime)
 
 	// Periodically check for the log file
 	ticker := time.NewTicker(executionLogWaitInterval)
@@ -151,16 +147,16 @@ func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
 		}
 
 		select {
-		case <-ctx.Done():
+		case <-timeout:
 			log.Debug().
-				Err(ctx.Err()).
 				Str("path", filePath).
-				Msg("context resolved while waiting for execution logs")
-			return nil, errors.New("context resolved while waiting for execution logs")
+				Str("wait_time", time.Since(waitStart).String()).
+				Msg("timeout while waiting for execution logs")
+			return nil, errors.New("timeout while waiting for execution logs")
 		case <-rc.readCancelCh:
 			log.Debug().
-				Err(ctx.Err()).
 				Str("path", filePath).
+				Str("wait_time", time.Since(waitStart).String()).
 				Msg("cancelled while waiting for execution logs")
 			return nil, errors.New("cancelled while waiting for execution logs")
 		case <-ticker.C:

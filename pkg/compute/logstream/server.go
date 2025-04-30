@@ -68,7 +68,7 @@ func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLog
 	}
 
 	logsDir := compute.ExecutionLogsDir(s.resultsPath.ExecutionOutputDir(execution.ID))
-	reader, err := NewReaderForRequest(ctx, logsDir, request)
+	reader, err := NewReaderForRequest(logsDir, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log reader: %w", err)
 	}
