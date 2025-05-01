@@ -16,7 +16,7 @@ const (
 	File CreateStrategy = "file"
 
 	// Don't create anything
-	NoCreate CreateStrategy = "nocreate"
+	NoCreate CreateStrategy = "noCreate"
 )
 
 const DefaultCreateStrategy = NoCreate
@@ -38,12 +38,12 @@ func PermissiveCreateStrategies() []string {
 }
 
 func CreateStrategyFromString(s string) (CreateStrategy, error) {
-	switch s {
-	case Dir.String():
+	switch strings.ToLower(s) {
+	case Dir.ToLowerString():
 		return Dir, nil
-	case File.String():
+	case File.ToLowerString():
 		return File, nil
-	case NoCreate.String():
+	case NoCreate.ToLowerString():
 		return NoCreate, nil
 	case "":
 		return DefaultCreateStrategy, nil
@@ -57,4 +57,8 @@ func CreateStrategyFromString(s string) (CreateStrategy, error) {
 
 func (c CreateStrategy) String() string {
 	return string(c)
+}
+
+func (c CreateStrategy) ToLowerString() string {
+	return strings.ToLower(c.String())
 }
