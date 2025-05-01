@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
@@ -25,7 +26,7 @@ type ExecutionLogReaderParams struct {
 	logsDir string
 }
 type ExecutionLogReader struct {
-	isClosed     bool
+	isClosed     atomic.Bool
 	readCancelCh chan struct{}
 	pipeReader   io.ReadCloser
 	pipeError    error
@@ -56,7 +57,7 @@ func NewReaderForRequest(logsDir string, request messages.ExecutionLogsRequest) 
 
 func (rc *ExecutionLogReader) Close() error {
 	rc.closeOnce.Do(func() {
-		rc.isClosed = true
+		rc.isClosed.Store(true)
 		close(rc.readCancelCh)
 	})
 	return nil
@@ -64,7 +65,7 @@ func (rc *ExecutionLogReader) Close() error {
 
 func (rc *ExecutionLogReader) Read(p []byte) (n int, err error) {
 	// If already closed, return EOF
-	if rc.isClosed {
+	if rc.isClosed.Load() {
 		return 0, io.EOF
 	}
 
