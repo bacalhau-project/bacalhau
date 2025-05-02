@@ -234,6 +234,7 @@ func NewComputeNode(
 		LogStreamServer: logstream.NewServer(logstream.ServerParams{
 			ExecutionStore: executionStore,
 			Executors:      executors,
+			ResultsPath:    *resultsPath,
 		}),
 	})
 	if err != nil {
