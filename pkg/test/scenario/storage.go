@@ -14,7 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	storage_inline "github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )

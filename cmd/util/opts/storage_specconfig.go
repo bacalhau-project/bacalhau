@@ -12,7 +12,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	storage_ipfs "github.com/bacalhau-project/bacalhau/pkg/storage/ipfs"
-	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 	storage_s3 "github.com/bacalhau-project/bacalhau/pkg/storage/s3"
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 )

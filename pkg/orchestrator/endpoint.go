@@ -177,8 +177,14 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
+// 1. Find the compute node on which the execution was run (regardless of its version).
+// 2. Ask it for logs.
+// 3. If it fails to provide logs:
+//   - For terminal executions that have un-truncated logs in RunOutput, return them.
+//   - For non-terminal executions, return an error.
 func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
+	// TODO: Handle the case when job is running, but there are no executions yet (e.g. they still sit in the queue).
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: request.JobID,
 	})
@@ -206,18 +212,15 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 			latestModifyTime = exec.ModifyTime
 			execution = &executions[i]
 		}
+
+		// TODO: A job can have a single cancelled execution that produced logs.
+		// 		We want to be able to read those.
 	}
 
 	if execution == nil {
 		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
 	}
 
-	if execution.IsTerminalState() {
-		streamer := logstream.NewCompletedStreamer(logstream.CompletedStreamerParams{
-			Execution: execution,
-		})
-		return streamer.Stream(ctx), nil
-	}
 	req := messages.ExecutionLogsRequest{
 		ExecutionID: execution.ID,
 		NodeID:      execution.NodeID,
@@ -225,6 +228,8 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 		Follow:      request.Follow,
 	}
 
+	// TODO: If the target node is not reachable or fails to provide logs, we should either return an error
+	// 		or fallback to logs from the execution run result (for terminal executions)
 	return e.logstreamServer.GetLogStream(ctx, req)
 }
 

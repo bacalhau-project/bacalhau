@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/node"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/retry"
-	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/test/scenario"
