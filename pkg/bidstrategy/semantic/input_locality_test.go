@@ -28,7 +28,7 @@ func (s *InputLocalityStrategySuite) SetupSuite() {
 	statefulJob := mock.Job()
 	statefulJob.Task().InputSources = []*models.InputSource{
 		{
-			Source: models.NewSpecConfig(models.StorageSourceLocalDirectory).WithParam("SourcePath", "/dummy/path"),
+			Source: models.NewSpecConfig(models.StorageSourceLocal).WithParam("SourcePath", "/dummy/path"),
 			Target: "target",
 		},
 	}

@@ -8,14 +8,14 @@ import (
 
 	_ "github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
-	localdirectory "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 )
 
 func addInput(execution *models.Execution, sourcePath string) *models.Execution {
 	execution.Job.Task().InputSources = append(execution.Job.Task().InputSources, &models.InputSource{
 		Source: &models.SpecConfig{
-			Type: models.StorageSourceLocalDirectory,
-			Params: localdirectory.Source{
+			Type: models.StorageSourceLocal,
+			Params: storage_local.Source{
 				SourcePath: sourcePath,
 			}.ToMap(),
 		},
