@@ -57,13 +57,15 @@ const (
 	StorageSourceS3             = "s3"
 	StorageSourceS3PreSigned    = "s3PreSigned"
 	StorageSourceInline         = "inline"
-	StorageSourceLocalDirectory = "localDirectory"
+	StorageSourceLocalDirectory = "localDirectory" // Deprecated: use StorageSourceLocal instead
+	StorageSourceLocal          = "local"
 )
 
 var StoragesNames = []string{
 	StorageSourceIPFS,
 	StorageSourceInline,
 	StorageSourceLocalDirectory,
+	StorageSourceLocal,
 	StorageSourceS3,
 	StorageSourceS3PreSigned,
 	StorageSourceURL,

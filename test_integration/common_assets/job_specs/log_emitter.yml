@@ -11,6 +11,6 @@ Tasks:
           - /bin/sh
         Parameters:
           - "-c"
-          - "x=1; while [ $x -le 10 ]; do [[ $((x % 2)) -eq 0 ]] && echo $x>&2 || echo $x; x=$((x+1)); sleep 0.5; done"
+          - "x=1; while [ $x -le 10 ]; do [[ $((x % 2)) -eq 0 ]] && echo STDERR $x $(date)>&2 || echo STDOUT $x $(date); x=$((x+1)); sleep 0.5; done"
     Publisher:
       Type: local

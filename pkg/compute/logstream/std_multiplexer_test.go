@@ -1,6 +1,6 @@
 //go:build unit || !integration
 
-package docker
+package logstream
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestTimestampedStdCopy_BasicOutput(t *testing.T) {
 	var output bytes.Buffer
 
 	// Call function under test
-	written, err := TimestampedStdCopy(&output, bytes.NewReader(frames), now.Add(-1*time.Hour), false)
+	written, err := TimestampedStdCopy(&output, bytes.NewReader(frames), nil, false, make(chan struct{}))
 
 	// Assert results
 	require.NoError(t, err)
@@ -46,7 +46,8 @@ func TestTimestampedStdCopy_TimestampFiltering(t *testing.T) {
 	// Setup test data with different timestamps
 	now := time.Now().UTC()
 	past := now.Add(-1 * time.Hour)
-	future := now.Add(1 * time.Hour)
+	nearFuture := now.Add(1 * time.Minute)
+	distantFuture := now.Add(1 * time.Hour)
 
 	pastContent := "This is past content"
 	nowContent := "This is current content"
@@ -56,25 +57,25 @@ func TestTimestampedStdCopy_TimestampFiltering(t *testing.T) {
 	frames := []byte{}
 	frames = append(frames, createTimestampedFrame(stdcopy.Stdout, past, pastContent)...)
 	frames = append(frames, createTimestampedFrame(stdcopy.Stdout, now, nowContent)...)
-	frames = append(frames, createTimestampedFrame(stdcopy.Stdout, future, futureContent)...)
+	frames = append(frames, createTimestampedFrame(stdcopy.Stdout, nearFuture, futureContent)...)
 
 	// Test 1: Filter out past content
 	var output1 bytes.Buffer
-	written1, err := TimestampedStdCopy(&output1, bytes.NewReader(frames), now, false)
+	written1, err := TimestampedStdCopy(&output1, bytes.NewReader(frames), &now, false, make(chan struct{}))
 	require.NoError(t, err)
 	assert.Equal(t, int64(stdWriterPrefixLen*2+len(nowContent)+len(futureContent)), written1)
 	assertStdCopyCompatibleOutput(t, &output1, append([]byte(nowContent), []byte(futureContent)...), nil)
 
 	// Test 2: Filter out everything
 	var output2 bytes.Buffer
-	written2, err := TimestampedStdCopy(&output2, bytes.NewReader(frames), future.Add(1*time.Hour), false)
+	written2, err := TimestampedStdCopy(&output2, bytes.NewReader(frames), &distantFuture, false, make(chan struct{}))
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), written2)
 	assertStdCopyCompatibleOutput(t, &output2, nil, nil)
 
 	// Test 3: Include all content
 	var output3 bytes.Buffer
-	written3, err := TimestampedStdCopy(&output3, bytes.NewReader(frames), past.Add(-1*time.Second), false)
+	written3, err := TimestampedStdCopy(&output3, bytes.NewReader(frames), &past, false, make(chan struct{}))
 	require.NoError(t, err)
 	assert.Equal(t, int64(stdWriterPrefixLen*3+len(pastContent)+len(nowContent)+len(futureContent)), written3)
 	assertStdCopyCompatibleOutput(t, &output3, append([]byte(pastContent), append([]byte(nowContent), []byte(futureContent)...)...), nil)
@@ -82,7 +83,7 @@ func TestTimestampedStdCopy_TimestampFiltering(t *testing.T) {
 
 func TestTimestampedStdCopy_EmptyInput(t *testing.T) {
 	var output bytes.Buffer
-	written, err := TimestampedStdCopy(&output, bytes.NewReader([]byte{}), time.Time{}, false)
+	written, err := TimestampedStdCopy(&output, bytes.NewReader([]byte{}), nil, false, make(chan struct{}))
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), written)
 	assertStdCopyCompatibleOutput(t, &output, nil, nil)
@@ -95,7 +96,7 @@ func TestTimestampedStdCopy_SystemError(t *testing.T) {
 	frame := createTimestampedFrame(stdcopy.Systemerr, now, errorMsg)
 
 	var output bytes.Buffer
-	_, err := TimestampedStdCopy(&output, bytes.NewReader(frame), now.Add(-1*time.Hour), false)
+	_, err := TimestampedStdCopy(&output, bytes.NewReader(frame), nil, false, make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), errorMsg)
@@ -116,7 +117,7 @@ func TestTimestampedStdCopy_PartialRead(t *testing.T) {
 	}
 
 	var output bytes.Buffer
-	written, err := TimestampedStdCopy(&output, partialReader, now.Add(-1*time.Hour), false)
+	written, err := TimestampedStdCopy(&output, partialReader, nil, false, make(chan struct{}))
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(stdWriterPrefixLen+len(content)), written)
@@ -137,7 +138,7 @@ func TestTimestampedStdCopy_InvalidTimestamp(t *testing.T) {
 	frame := append(header, []byte(data)...)
 
 	var output bytes.Buffer
-	_, err := TimestampedStdCopy(&output, bytes.NewReader(frame), time.Time{}, false)
+	_, err := TimestampedStdCopy(&output, bytes.NewReader(frame), nil, false, make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing time")
@@ -152,7 +153,7 @@ func TestTimestampedStdCopy_TooSmallFrame(t *testing.T) {
 	binary.BigEndian.PutUint32(header[stdWriterSizeIndex:], uint32(timestampLen-1))
 
 	var output bytes.Buffer
-	_, err := TimestampedStdCopy(&output, bytes.NewReader(header), time.Time{}, false)
+	_, err := TimestampedStdCopy(&output, bytes.NewReader(header), nil, false, make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "frame is too short")
@@ -168,7 +169,7 @@ func TestTimestampedStdCopy_WriterError(t *testing.T) {
 	// Create a writer that always returns an error
 	errorWriter := &errorWriter{err: io.ErrClosedPipe}
 
-	_, err := TimestampedStdCopy(errorWriter, bytes.NewReader(frame), now.Add(-1*time.Hour), false)
+	_, err := TimestampedStdCopy(errorWriter, bytes.NewReader(frame), nil, false, make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Equal(t, io.ErrClosedPipe, err)
@@ -182,7 +183,7 @@ func TestTimestampedStdCopy_LargeFrames(t *testing.T) {
 	frame := createTimestampedFrame(stdcopy.Stdout, now, largeContent)
 
 	var output bytes.Buffer
-	written, err := TimestampedStdCopy(&output, bytes.NewReader(frame), now.Add(-1*time.Hour), false)
+	written, err := TimestampedStdCopy(&output, bytes.NewReader(frame), nil, false, make(chan struct{}))
 
 	require.NoError(t, err)
 	assert.Equal(t, int64(stdWriterPrefixLen+len(largeContent)), written)
@@ -199,7 +200,7 @@ func TestTimestampedStdCopy_IncompleteFrame(t *testing.T) {
 	incompleteFrame := frame[:len(frame)-10]
 
 	var output bytes.Buffer
-	written, err := TimestampedStdCopy(&output, bytes.NewReader(incompleteFrame), now.Add(-1*time.Hour), false)
+	written, err := TimestampedStdCopy(&output, bytes.NewReader(incompleteFrame), nil, false, make(chan struct{}))
 
 	require.NoError(t, err)            // EOF with incomplete frame should just return
 	assert.Equal(t, int64(0), written) // Nothing should be written
@@ -215,10 +216,49 @@ func TestTimestampedStdCopy_ShortWrite(t *testing.T) {
 	// Create a writer that always writes less than requested
 	shortWriter := &shortWriter{}
 
-	_, err := TimestampedStdCopy(shortWriter, bytes.NewReader(frame), now.Add(-1*time.Hour), false)
+	_, err := TimestampedStdCopy(shortWriter, bytes.NewReader(frame), nil, false, make(chan struct{}))
 
 	require.Error(t, err)
 	assert.Equal(t, io.ErrShortWrite, err)
+}
+
+func TestTimestampedStdCopy_CancelChannel(t *testing.T) {
+	// Setup test data
+	now := time.Now()
+	stdoutContent := "stdout 1"
+
+	frames := []byte{}
+
+	cancelCh := make(chan struct{})
+	defer close(cancelCh)
+
+	// Setup output buffer
+	var output bytes.Buffer
+	// Start reading frames in a separate goroutine
+	errorCh := make(chan error)
+	go func() {
+		// This will block until an end frame is encountered in the source reader
+		_, err := TimestampedStdCopy(&output, bytes.NewReader(frames), nil, true, cancelCh)
+		errorCh <- err
+	}()
+
+	// Write a frame
+	frame := createTimestampedFrame(stdcopy.Stdout, now, stdoutContent)
+	frames = append(frames, frame...)
+
+	// Wait for a moment before sending a cancellation because there is a small chance TimestampedStdCopy
+	// sees it before copying the first frame.
+	time.Sleep(100 * time.Millisecond)
+
+	// Cancel the reading
+	cancelCh <- struct{}{}
+
+	// Wait for the result
+	err := <-errorCh
+
+	// We should receive a result eventually even though no end frame was written
+	require.NoError(t, err)
+	assertStdCopyCompatibleOutput(t, &output, []byte(stdoutContent), nil)
 }
 
 // Docker timestamps are RFC3339Nano in UTC timezone 0-padded for alignment.
