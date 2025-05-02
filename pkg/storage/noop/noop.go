@@ -99,7 +99,7 @@ func (s *NoopStorage) Upload(ctx context.Context, localPath string) (models.Spec
 		return handler(ctx, localPath)
 	}
 	return models.SpecConfig{
-		Type: models.StorageSourceLocalDirectory,
+		Type: models.StorageSourceLocal,
 		Params: map[string]interface{}{
 			"SourcePath": "/dummy/path",
 		},
