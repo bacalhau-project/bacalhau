@@ -258,7 +258,7 @@ func (e *Executor) makeFsFromStorage(
 
 		err = rootFs.Mount(v.Volume.Target, inputFs)
 		if err != nil {
-			return nil, NewInputConfigError(fmt.Sprintf("failed to mount input %q: %s", v.InputSource.Target, err))
+			return nil, NewInputConfigError(fmt.Sprintf("failed to mount input %q: %s", v.Volume.Target, err))
 		}
 	}
 
