@@ -77,8 +77,8 @@ func runURLTest(
 					Engine: wasmmodels.NewWasmEngineBuilder("/app/cat.wasm").
 						WithEntrypoint("_start").
 						WithParameters(
-							testCase.mount1,
-							testCase.mount2,
+							path.Join(testCase.mount1, testCase.file1),
+							path.Join(testCase.mount2, testCase.file2),
 						).MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
 				},
@@ -245,7 +245,7 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 					},
 					Engine: wasmmodels.NewWasmEngineBuilder("/app/cat.wasm").
 						WithEntrypoint("_start").
-						WithParameters(urlmount, path.Join(localMount, localFile)).
+						WithParameters(path.Join(urlmount, urlfile), path.Join(localMount, localFile)).
 						MustBuild(),
 					Publisher: publisher_local.NewSpecConfig(),
 				},

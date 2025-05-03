@@ -231,7 +231,7 @@ func (e *Executor) makeFsFromStorage(
 
 	// Validate input sources
 	for _, v := range volumes {
-		if v.InputSource.Target == "" {
+		if v.Volume.Target == "" {
 			return nil, NewInputConfigError("input source has no target path")
 		}
 		if v.Volume.Source == "" {
@@ -239,7 +239,7 @@ func (e *Executor) makeFsFromStorage(
 		}
 
 		log.Ctx(ctx).Debug().
-			Str("input", v.InputSource.Target).
+			Str("target", v.Volume.Target).
 			Str("source", v.Volume.Source).
 			Msg("Using input")
 
@@ -256,7 +256,7 @@ func (e *Executor) makeFsFromStorage(
 			inputFs = filefs.New(v.Volume.Source)
 		}
 
-		err = rootFs.Mount(v.InputSource.Target, inputFs)
+		err = rootFs.Mount(v.Volume.Target, inputFs)
 		if err != nil {
 			return nil, NewInputConfigError(fmt.Sprintf("failed to mount input %q: %s", v.InputSource.Target, err))
 		}
@@ -274,7 +274,7 @@ func (e *Executor) makeFsFromStorage(
 
 		// Check for conflicts with input paths
 		for _, v := range volumes {
-			if v.InputSource.Target == output.Name {
+			if v.Volume.Target == output.Name {
 				return nil, NewOutputError(fmt.Sprintf("output name %q conflicts with input target", output.Name))
 			}
 		}
