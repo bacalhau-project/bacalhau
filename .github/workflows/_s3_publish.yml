@@ -265,12 +265,12 @@ jobs:
             --content-type "application/json"
           echo "Created manifest at s3://${{ vars.S3_BUCKET }}/${S3_BASE_PREFIX}/manifests/${RELEASE_TYPE}.json"
 
+          S3_PATH="${{ steps.upload.outputs.s3_path }}"
           # Also upload manifest to the same folder as the artifacts
           aws s3 cp latest-manifest.json "s3://${{ vars.S3_BUCKET }}/${S3_PATH}/${GIT_VERSION}/manifest.json" \
             --metadata "LatestVersion=$GIT_VERSION,BuildDate=$BUILD_DATE" \
             --content-type "application/json"
           echo "Created manifest at s3://${{ vars.S3_BUCKET }}/${S3_PATH}/${GIT_VERSION}/manifest.json"
-
           # For stable releases, also publish a version-specific manifest (e.g., v1.7.x.json)
           if [[ "${{ inputs.target_type }}" == "release" && "${{ steps.version.outputs.release_type }}" == "release" ]]; then
             MAJOR="${{ steps.version.outputs.major }}"
