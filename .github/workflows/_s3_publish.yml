@@ -306,6 +306,7 @@ jobs:
           # Add manifest paths section if applicable
           RELEASE_TYPE="${{ steps.upload.outputs.release_type }}"
           S3_BASE_PREFIX="${{ inputs.s3_base_prefix }}"
+          S3_PATH="${{ steps.upload.outputs.s3_path }}"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Release Manifests" >> $GITHUB_STEP_SUMMARY
           echo "| Type | S3 Path | CloudFront URL |" >> $GITHUB_STEP_SUMMARY
