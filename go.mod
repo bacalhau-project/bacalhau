@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.74
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
 	github.com/aws/smithy-go v1.22.3
-	github.com/bmatcuk/doublestar/v4 v4.6.1
+	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
