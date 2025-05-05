@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.74
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.3
 	github.com/aws/smithy-go v1.22.3
-	github.com/bmatcuk/doublestar/v4 v4.6.1
+	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
@@ -40,7 +40,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/lestrrat-go/jwx v1.2.29
+	github.com/lestrrat-go/jwx v1.2.31
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-wordwrap v1.0.1
@@ -122,7 +122,7 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/google/go-tpm v0.9.3 // indirect
 	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
