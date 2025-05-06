@@ -437,7 +437,10 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 	})
 
 	if updateError != nil {
-		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+		var alreadyTerminalError store.ErrExecutionAlreadyTerminal
+		if !errors.As(updateError, &alreadyTerminalError) {
+			log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+		}
 	}
 }
 
