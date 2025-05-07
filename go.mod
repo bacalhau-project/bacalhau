@@ -77,7 +77,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.ptx.dk/multierrgroup v0.0.3
-	go.uber.org/mock v0.5.0
+	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
