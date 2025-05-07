@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
@@ -27,6 +28,7 @@ import (
 type StopSuite struct {
 	suite.Suite
 	requester     *node.Node
+	compute       *node.Node
 	client        clientv2.API
 	stateResolver *scenario.StateResolver
 }
@@ -43,6 +45,7 @@ func (s *StopSuite) SetupSuite() {
 		devstack.WithNumberOfHybridNodes(1),
 	)
 	s.requester = stack.Nodes[0]
+	s.compute = stack.Nodes[0] // hybrid node
 	s.client = clientv2.New(fmt.Sprintf("http://%s:%d", s.requester.APIServer.Address, s.requester.APIServer.Port))
 	s.stateResolver = scenario.NewStateResolverFromStore(s.requester.RequesterNode.JobStore)
 }
@@ -171,12 +174,29 @@ func (s *StopSuite) submitJob(sleepTime int) (string, error) {
 func (s *StopSuite) verifyJobState(jobID string, expectedState models.JobStateType, expectedMessage string) {
 	ctx := context.Background()
 	getResp, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID: jobID,
+		JobID:   jobID,
+		Include: "executions",
 	})
 	s.Require().NoError(err)
 	s.Require().Equal(expectedState, getResp.Job.State.StateType)
 	if expectedMessage != "" {
 		s.Require().Equal(expectedMessage, getResp.Job.State.Message)
+	}
+
+	if expectedState == models.JobStateTypeStopped {
+		// verify compute node state that the job stop request has been propagated and processed
+		// get execution id from the response
+		s.Require().NotNil(getResp.Executions)
+		s.Require().NotEmpty(getResp.Executions.Items)
+		executionID := getResp.Executions.Items[0].ID
+
+		s.Eventually(func() bool {
+			execution, err := s.compute.ComputeNode.ExecutionStore.GetExecution(ctx, executionID)
+			if err != nil {
+				return false
+			}
+			return execution.ComputeState.StateType == models.ExecutionStateCancelled
+		}, 5*time.Second, 50*time.Millisecond)
 	}
 }
 
