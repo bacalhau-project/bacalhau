@@ -32,7 +32,7 @@ jobs:
       - name: Codespell
         run: |
           # Install cspell for spell checking
-          yarn global add cspell@latest
+          yarn global add cspell@8.19.4
           make spellcheck-code
 
       # Run swagger validation to ensure API documentation is correct
