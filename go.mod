@@ -35,7 +35,7 @@ require (
 	github.com/ipfs/go-unixfsnode v1.10.0
 	github.com/ipfs/kubo v0.34.1
 	github.com/ipld/go-car/v2 v2.14.2
-	github.com/ipld/go-codec-dagpb v1.6.0
+	github.com/ipld/go-codec-dagpb v1.7.0
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/joho/godotenv v1.5.1
