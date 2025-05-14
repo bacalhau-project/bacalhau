@@ -31,7 +31,7 @@ require (
 	github.com/imdario/mergo v0.3.16
 	github.com/ipfs/boxo v0.30.0
 	github.com/ipfs/go-cid v0.5.0
-	github.com/ipfs/go-ipld-format v0.6.0
+	github.com/ipfs/go-ipld-format v0.6.1
 	github.com/ipfs/go-unixfsnode v1.10.0
 	github.com/ipfs/kubo v0.34.1
 	github.com/ipld/go-car/v2 v2.14.2
@@ -236,7 +236,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
-	github.com/ipfs/go-block-format v0.2.0 // indirect
+	github.com/ipfs/go-block-format v0.2.1 // indirect
 	github.com/ipfs/go-datastore v0.8.2 // indirect
 	github.com/ipfs/go-ds-measure v0.2.2 // indirect
 	github.com/ipfs/go-fs-lock v0.0.7 // indirect
