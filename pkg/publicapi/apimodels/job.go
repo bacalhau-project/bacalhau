@@ -10,7 +10,8 @@ import (
 
 type PutJobRequest struct {
 	BasePutRequest
-	Job *models.Job `json:"Job"`
+	Job   *models.Job `json:"Job"`
+	Force bool        `json:"Force"`
 }
 
 // Validate is used to validate fields in the PutJobRequest.
@@ -27,9 +28,10 @@ type PutJobResponse struct {
 
 type GetJobRequest struct {
 	BaseGetRequest
-	JobID   string
-	Include string `query:"include" validate:"omitempty,oneof=history executions"`
-	Limit   uint32 `query:"limit"`
+	JobID     string
+	Namespace string `query:"namespace,omitempty"`
+	Include   string `query:"include" validate:"omitempty,oneof=history executions"`
+	Limit     uint32 `query:"limit"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -41,6 +43,9 @@ func (o *GetJobRequest) ToHTTPRequest() *HTTPRequest {
 	}
 	if o.Limit > 0 {
 		r.Params.Set("limit", strconv.FormatUint(uint64(o.Limit), 10))
+	}
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
 	}
 	return r
 }
@@ -97,6 +102,7 @@ func (r *ListJobsResponse) Normalize() {
 type ListJobHistoryRequest struct {
 	BaseListRequest
 	JobID       string `query:"-"`
+	Namespace   string `query:"namespace" validate:"omitempty"`
 	Since       int64  `query:"since" validate:"min=0"`
 	EventType   string `query:"event_type" validate:"omitempty,oneof=all job execution"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
@@ -115,6 +121,9 @@ func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
 	if o.ExecutionID != "" {
 		r.Params.Set("execution_id", o.ExecutionID)
 	}
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
 	return r
 }
 
@@ -125,7 +134,25 @@ type ListJobHistoryResponse struct {
 
 type ListJobExecutionsRequest struct {
 	BaseListRequest
-	JobID string `query:"-"`
+	JobID      string `query:"-"`
+	Namespace  string `query:"namespace" validate:"omitempty"`
+	JobVersion uint64 `query:"job_version" validate:"omitempty"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *ListJobExecutionsRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseListRequest.ToHTTPRequest()
+
+	if o.Limit > 0 {
+		r.Params.Set("limit", strconv.FormatUint(uint64(o.Limit), 10))
+	}
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
+	if o.JobVersion != 0 {
+		r.Params.Set("job_version", strconv.FormatUint(o.JobVersion, 10))
+	}
+	return r
 }
 
 type ListJobExecutionsResponse struct {
@@ -138,6 +165,19 @@ type ListJobResultsRequest struct {
 	JobID string `query:"-"`
 }
 
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *ListJobResultsRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseListRequest.ToHTTPRequest()
+
+	if o.Limit > 0 {
+		r.Params.Set("limit", strconv.FormatUint(uint64(o.Limit), 10))
+	}
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
+	return r
+}
+
 type ListJobResultsResponse struct {
 	BaseListResponse
 	Items []*models.SpecConfig `json:"Items"`
@@ -145,8 +185,19 @@ type ListJobResultsResponse struct {
 
 type StopJobRequest struct {
 	BasePutRequest
-	JobID  string `json:"-"`
-	Reason string `json:"reason"`
+	JobID     string `json:"-"`
+	Namespace string `json:"namespace,omitempty"`
+	Reason    string `json:"reason"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *StopJobRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BasePutRequest.ToHTTPRequest()
+
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
+	return r
 }
 
 type StopJobResponse struct {
@@ -154,9 +205,32 @@ type StopJobResponse struct {
 	EvaluationID string `json:"EvaluationID"`
 }
 
+type RerunJobRequest struct {
+	BasePutRequest
+	JobID     string `json:"-"`
+	Namespace string `json:"namespace,omitempty"`
+	Reason    string `json:"reason"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *RerunJobRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BasePutRequest.ToHTTPRequest()
+
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
+	return r
+}
+
+type RerunJobResponse struct {
+	BasePutResponse
+	EvaluationID string `json:"EvaluationID"`
+}
+
 type GetLogsRequest struct {
 	BaseGetRequest
 	JobID       string `query:"-"`
+	Namespace   string `query:"namespace" validate:"omitempty"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
 	Tail        bool   `query:"tail"`
 	Follow      bool   `query:"follow"`
@@ -166,6 +240,9 @@ type GetLogsRequest struct {
 func (o *GetLogsRequest) ToHTTPRequest() *HTTPRequest {
 	r := o.BaseGetRequest.ToHTTPRequest()
 
+	if o.Namespace != "" {
+		r.Params.Set("namespace", o.Namespace)
+	}
 	if o.ExecutionID != "" {
 		r.Params.Set("execution_id", o.ExecutionID)
 	}

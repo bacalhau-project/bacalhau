@@ -23,7 +23,7 @@ func (j *Jobs) Put(ctx context.Context, r *apimodels.PutJobRequest) (*apimodels.
 	return &resp, nil
 }
 
-// Get is used to get a job by ID.
+// Get is used to get a job by ID or Name.
 func (j *Jobs) Get(ctx context.Context, r *apimodels.GetJobRequest) (*apimodels.GetJobResponse, error) {
 	var resp apimodels.GetJobResponse
 	if err := j.client.Get(ctx, jobsPath+"/"+r.JobID, r, &resp); err != nil {

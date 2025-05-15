@@ -122,7 +122,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
 
-	nodes, rejected, err := b.nodeSelector.MatchingNodes(ctx, job)
+	nodes, rejected, err := b.nodeSelector.MatchingNodes(ctx, job, plan.Eval)
 	if err != nil {
 		return newExecs, err
 	}
@@ -153,6 +153,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 			JobID:        job.ID,
 			Job:          job,
 			EvalID:       plan.EvalID,
+			Evaluation:   plan.Eval,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),

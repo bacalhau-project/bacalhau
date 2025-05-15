@@ -47,8 +47,9 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 func (n NodeSelector) MatchingNodes(
 	ctx context.Context,
 	job *models.Job,
+	currentEvaluation *models.Evaluation,
 ) (matchingNodes, rejectedNodes []orchestrator.NodeRank, err error) {
-	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job)
+	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job, currentEvaluation)
 	if err != nil {
 		return
 	}
@@ -62,6 +63,7 @@ func (n NodeSelector) MatchingNodes(
 func (n NodeSelector) rankAndFilterNodes(
 	ctx context.Context,
 	job *models.Job,
+	currentEvaluation *models.Evaluation,
 ) (selected, rejected []orchestrator.NodeRank, err error) {
 	listed, err := n.discoverer.List(ctx)
 	if err != nil {
@@ -93,6 +95,16 @@ func (n NodeSelector) rankAndFilterNodes(
 	for _, ns := range nodeStates {
 		nodeInfos = append(nodeInfos, ns.Info)
 	}
+
+	// if the evaluation is part of an update searies
+	ctx = context.WithValue(
+		ctx, "node-ranking/is-job-rerun",
+		currentEvaluation.TriggeredBy == models.EvalTriggerJobRerun,
+	)
+	ctx = context.WithValue(
+		ctx, "node-ranking/current-runtime-id",
+		currentEvaluation.RuntimeID,
+	)
 
 	rankedNodes, err := n.ranker.RankNodes(ctx, *job, nodeInfos)
 	if err != nil {

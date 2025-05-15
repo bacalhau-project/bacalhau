@@ -40,6 +40,7 @@ var (
 type ExecutionOptions struct {
 	output.OutputOptions
 	cliflags.ListOptions
+	JobVersion uint64
 }
 
 // NewExecutionOptions returns initialized Options
@@ -82,6 +83,8 @@ func NewExecutionCmd() *cobra.Command {
 	nodeCmd.SilenceUsage = true
 	nodeCmd.SilenceErrors = true
 
+	nodeCmd.Flags().Uint64Var(&o.JobVersion, "job-version", o.JobVersion,
+		"The job version to filter by. By default, the latest version is used.")
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
 	return nodeCmd
@@ -151,7 +154,8 @@ func (o *ExecutionOptions) run(cmd *cobra.Command, args []string, api client.API
 	ctx := cmd.Context()
 	jobID := args[0]
 	response, err := api.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
-		JobID: jobID,
+		JobID:      jobID,
+		JobVersion: o.JobVersion,
 		BaseListRequest: apimodels.BaseListRequest{
 			Limit:     o.Limit,
 			NextToken: o.NextToken,

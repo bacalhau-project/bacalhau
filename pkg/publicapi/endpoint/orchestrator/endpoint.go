@@ -43,6 +43,7 @@ func NewEndpoint(params EndpointParams) *Endpoint {
 	g.GET("/jobs", e.listJobs)
 	g.GET("/jobs/:id", e.getJob)
 	g.DELETE("/jobs/:id", e.stopJob)
+	g.PUT("/jobs/:id/rerun", e.rerunJob)
 	g.GET("/jobs/:id/history", e.listHistory)
 	g.GET("/jobs/:id/executions", e.jobExecutions)
 	g.GET("/jobs/:id/results", e.jobResults)
