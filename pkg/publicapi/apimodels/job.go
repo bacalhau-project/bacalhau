@@ -10,7 +10,8 @@ import (
 
 type PutJobRequest struct {
 	BasePutRequest
-	Job *models.Job `json:"Job"`
+	Job   *models.Job `json:"Job"`
+	Force bool        `json:"Force"`
 }
 
 // Validate is used to validate fields in the PutJobRequest.
@@ -27,15 +28,19 @@ type PutJobResponse struct {
 
 type GetJobRequest struct {
 	BaseGetRequest
-	JobID   string
-	Include string `query:"include" validate:"omitempty,oneof=history executions"`
-	Limit   uint32 `query:"limit"`
+	JobIDOrName string
+	JobVersion  uint64 `query:"job_version" validate:"omitempty"`
+	Include     string `query:"include" validate:"omitempty,oneof=history executions"`
+	Limit       uint32 `query:"limit"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
 func (o *GetJobRequest) ToHTTPRequest() *HTTPRequest {
 	r := o.BaseGetRequest.ToHTTPRequest()
 
+	if o.JobVersion != 0 {
+		r.Params.Set("job_version", strconv.FormatUint(o.JobVersion, 10))
+	}
 	if o.Include != "" {
 		r.Params.Set("include", o.Include)
 	}
@@ -95,8 +100,8 @@ func (r *ListJobsResponse) Normalize() {
 }
 
 type ListJobHistoryRequest struct {
-	BaseListRequest
-	JobID       string `query:"-"`
+	BaseVersionedListRequest
+	JobIDOrName string `query:"-"`
 	Since       int64  `query:"since" validate:"min=0"`
 	EventType   string `query:"event_type" validate:"omitempty,oneof=all job execution"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
@@ -104,7 +109,7 @@ type ListJobHistoryRequest struct {
 
 // ToHTTPRequest is used to convert the request to an HTTP request
 func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
-	r := o.BaseListRequest.ToHTTPRequest()
+	r := o.BaseVersionedListRequest.ToHTTPRequest()
 
 	if o.Since != 0 {
 		r.Params.Set("since", strconv.FormatInt(o.Since, 10))
@@ -124,8 +129,8 @@ type ListJobHistoryResponse struct {
 }
 
 type ListJobExecutionsRequest struct {
-	BaseListRequest
-	JobID string `query:"-"`
+	BaseVersionedListRequest
+	JobIDOrName string `query:"-"`
 }
 
 type ListJobExecutionsResponse struct {
@@ -154,12 +159,25 @@ type StopJobResponse struct {
 	EvaluationID string `json:"EvaluationID"`
 }
 
+type RerunJobRequest struct {
+	BasePutRequest
+	JobID  string `json:"-"`
+	Reason string `json:"reason"`
+}
+
+type RerunJobResponse struct {
+	BasePutResponse
+	EvaluationID string `json:"EvaluationID"`
+}
+
 type GetLogsRequest struct {
 	BaseGetRequest
-	JobID       string `query:"-"`
-	ExecutionID string `query:"execution_id" validate:"omitempty"`
-	Tail        bool   `query:"tail"`
-	Follow      bool   `query:"follow"`
+	JobID          string `query:"-"`
+	JobVersion     uint64 `query:"job_version" validate:"omitempty"`
+	AllJobVersions bool   `query:"all_job_versions" validate:"omitempty"`
+	ExecutionID    string `query:"execution_id" validate:"omitempty"`
+	Tail           bool   `query:"tail"`
+	Follow         bool   `query:"follow"`
 }
 
 // ToHTTPRequest is used to convert the request to an HTTP request
@@ -174,6 +192,12 @@ func (o *GetLogsRequest) ToHTTPRequest() *HTTPRequest {
 	}
 	if o.Follow {
 		r.Params.Set("follow", "true")
+	}
+	if o.JobVersion != 0 {
+		r.Params.Set("job_version", strconv.FormatUint(o.JobVersion, 10))
+	}
+	if o.AllJobVersions {
+		r.Params.Set("all_job_versions", strconv.FormatBool(o.AllJobVersions))
 	}
 	return r
 }

@@ -10,6 +10,7 @@ type SubmitJobRequest struct {
 	Job                  *models.Job
 	ClientInstanceID     string
 	ClientInstallationID string
+	Force                bool
 }
 
 type SubmitJobResponse struct {
@@ -20,6 +21,7 @@ type SubmitJobResponse struct {
 
 type StopJobRequest struct {
 	JobID         string
+	Namespace     string
 	Reason        string
 	UserTriggered bool
 }
@@ -28,11 +30,25 @@ type StopJobResponse struct {
 	EvaluationID string
 }
 
+type RerunJobRequest struct {
+	JobID         string
+	Namespace     string
+	Reason        string
+	UserTriggered bool
+}
+
+type RerunJobResponse struct {
+	EvaluationID string
+}
+
 type ReadLogsRequest struct {
-	JobID       string
-	ExecutionID string
-	Tail        bool
-	Follow      bool
+	JobID          string
+	Namespace      string
+	JobVersion     uint64
+	AllJobVersions bool
+	ExecutionID    string
+	Tail           bool
+	Follow         bool
 }
 
 type ReadLogsResponse struct {
@@ -41,7 +57,8 @@ type ReadLogsResponse struct {
 }
 
 type GetResultsRequest struct {
-	JobID string
+	JobID     string
+	Namespace string
 }
 
 type GetResultsResponse struct {
@@ -90,7 +107,8 @@ func (r NodeRank) MarshalZerologObject(e *zerolog.Event) {
 }
 
 type RetryRequest struct {
-	JobID string
+	JobID     string
+	Namespace string
 }
 
 type NodeSelectionConstraints struct {

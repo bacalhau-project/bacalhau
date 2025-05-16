@@ -10,6 +10,7 @@ type RoutingMetadata struct {
 type ExecutionMetadata struct {
 	ExecutionID string
 	JobID       string
+	JobVersion  uint64
 }
 
 func NewExecutionMetadata(execution *models.Execution) ExecutionMetadata {
@@ -22,5 +23,6 @@ func NewExecutionMetadata(execution *models.Execution) ExecutionMetadata {
 	return ExecutionMetadata{
 		ExecutionID: execution.ID,
 		JobID:       execution.Job.ID,
+		JobVersion:  execution.JobVersion,
 	}
 }

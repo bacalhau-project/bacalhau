@@ -65,7 +65,7 @@ func (s *ServerSuite) TestJobOperations() {
 	}
 
 	// list executions
-	executionsResponse, err := s.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobID: putResponse.
+	executionsResponse, err := s.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobIDOrName: putResponse.
 		JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(executionsResponse)

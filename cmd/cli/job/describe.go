@@ -43,6 +43,8 @@ var (
 // DescribeOptions is a struct to support job command
 type DescribeOptions struct {
 	OutputOpts output.NonTabularOutputOptions
+	JobVersion uint64
+	Namespace  string
 }
 
 // NewDescribeOptions returns initialized Options
@@ -77,6 +79,10 @@ func NewDescribeCmd() *cobra.Command {
 		},
 	}
 
+	jobCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+		"The job version to filter by. By default, the latest version is used.")
+	jobCmd.PersistentFlags().StringVar(&o.Namespace, "namespace", o.Namespace,
+		`Job Namespace. If not provided, it will be treated as default namespace.`)
 	jobCmd.Flags().AddFlagSet(cliflags.OutputNonTabularFormatFlags(&o.OutputOpts))
 	return jobCmd
 }
@@ -85,10 +91,14 @@ func (o *DescribeOptions) run(cmd *cobra.Command, args []string, api client.API)
 	ctx := cmd.Context()
 	jobID := args[0]
 
-	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID:   jobID,
-		Include: "executions,history",
-	})
+	request := &apimodels.GetJobRequest{
+		JobIDOrName: jobID,
+		JobVersion:  o.JobVersion,
+		Include:     "executions,history",
+	}
+	request.Namespace = o.Namespace
+
+	response, err := api.Jobs().Get(ctx, request)
 
 	if err != nil {
 		return err

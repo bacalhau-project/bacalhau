@@ -23,10 +23,10 @@ func (j *Jobs) Put(ctx context.Context, r *apimodels.PutJobRequest) (*apimodels.
 	return &resp, nil
 }
 
-// Get is used to get a job by ID.
+// Get is used to get a job by ID or Name.
 func (j *Jobs) Get(ctx context.Context, r *apimodels.GetJobRequest) (*apimodels.GetJobResponse, error) {
 	var resp apimodels.GetJobResponse
-	if err := j.client.Get(ctx, jobsPath+"/"+r.JobID, r, &resp); err != nil {
+	if err := j.client.Get(ctx, jobsPath+"/"+r.JobIDOrName, r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -44,7 +44,7 @@ func (j *Jobs) List(ctx context.Context, r *apimodels.ListJobsRequest) (*apimode
 // History returns history events for a job.
 func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) (*apimodels.ListJobHistoryResponse, error) {
 	var resp apimodels.ListJobHistoryResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobID+"/history", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/history", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -54,7 +54,7 @@ func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) 
 func (j *Jobs) Executions(ctx context.Context, r *apimodels.ListJobExecutionsRequest) (*apimodels.ListJobExecutionsResponse,
 	error) {
 	var resp apimodels.ListJobExecutionsResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobID+"/executions", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/executions", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
