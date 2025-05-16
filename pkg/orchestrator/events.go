@@ -21,9 +21,11 @@ const (
 
 const (
 	jobSubmittedMessage        = "Job submitted"
+	jobUpdatedMessage          = "Job updated"
 	jobTranslatedMessage       = "Job tasks translated to new type"
 	jobQueuedMessage           = "Job queued"
 	jobStopRequestedMessage    = "Job requested to stop before completion"
+	jobRerunRequestedMessage   = "Job rerun requested"
 	jobExhaustedRetriesMessage = "Job failed because it has been retried too many times"
 	JobTimeoutMessage          = "Job timed out"
 	jobExecutionsFailedMessage = "Job failed because one or more executions failed"
@@ -35,6 +37,7 @@ const (
 	execStoppedByNodeRejectedMessage     = "Execution stop requested because node has been rejected"
 	execStoppedByOversubscriptionMessage = "Execution stop requested because there are more executions than needed"
 	execStoppedDueToJobFailureMessage    = "Execution stopped due to job failure"
+	execStoppedForJobRerunMessage        = "Execution stopped for job rerun"
 
 	executionTimeoutMessage = "Execution timed out"
 
@@ -55,6 +58,10 @@ func JobSubmittedEvent() models.Event {
 	return event(EventTopicJobSubmission, jobSubmittedMessage, map[string]string{})
 }
 
+func JobUpdatedEvent() models.Event {
+	return event(EventTopicJobSubmission, jobUpdatedMessage, map[string]string{})
+}
+
 func JobTranslatedEvent(old, new *models.Job) models.Event {
 	return event(EventTopicJobSubmission, jobTranslatedMessage, map[string]string{
 		"PreviousTaskType": old.Task().Engine.Type,
@@ -73,6 +80,7 @@ func JobStateUpdateEvent(new models.JobStateType, message ...string) models.Even
 }
 
 func JobStoppedEvent(reason string) models.Event {
+	// Should be a different event
 	return event(EventTopicJobScheduling, jobStopRequestedMessage, map[string]string{
 		"Reason": reason,
 	})
@@ -100,6 +108,12 @@ func JobQueueingEvent(reason string) models.Event {
 		message = fmt.Sprintf("%s. %s", message, reason)
 	}
 	return *models.NewEvent(EventTopicJobQueueing).WithMessage(message)
+}
+
+func JobRerunEvent(reason string) models.Event {
+	return event(EventTopicJobSubmission, jobRerunRequestedMessage, map[string]string{
+		"Reason": reason,
+	})
 }
 
 func ExecCreatedEvent(execution *models.Execution) models.Event {
@@ -142,4 +156,8 @@ func ExecStoppedByOversubscriptionEvent() models.Event {
 
 func ExecStoppedDueToJobFailureEvent() models.Event {
 	return *models.NewEvent(EventTopicJobScheduling).WithMessage(execStoppedDueToJobFailureMessage)
+}
+
+func ExecStoppedForJobRerunEvent() models.Event {
+	return event(EventTopicJobScheduling, execStoppedForJobRerunMessage, map[string]string{})
 }

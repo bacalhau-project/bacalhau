@@ -43,6 +43,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	}
 
 	// Check license validation state
+	// TODO: Implement warnings for the name syntax if it is not DNS compliant
 	var warnings []string
 	if e.licenseManager != nil {
 		state := e.licenseManager.Validate()
@@ -55,6 +56,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
 	resp, err := e.orchestrator.SubmitJob(ctx, &orchestrator.SubmitJobRequest{
 		Job:                  args.Job,
+		Force:                args.Force,
 		ClientInstallationID: installationID,
 		ClientInstanceID:     instanceID,
 	})
@@ -85,12 +87,13 @@ func (e *Endpoint) putJob(c echo.Context) error {
 //	@Router			/api/v1/orchestrator/jobs/{id} [get]
 func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 	ctx := c.Request().Context()
-	jobID := c.Param("id")
+	jobIDOrName := c.Param("id")
 	var args apimodels.GetJobRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
-	job, err := e.store.GetJob(ctx, jobID)
+
+	job, err := e.store.GetJobByIDOrName(ctx, jobIDOrName, args.Namespace)
 	if err != nil {
 		return err
 	}
@@ -106,7 +109,7 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 			if response.History != nil {
 				continue
 			}
-			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, jobstore.JobHistoryQuery{})
+			jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, job.ID, jobstore.JobHistoryQuery{})
 			if err != nil {
 				return err
 			}
@@ -124,7 +127,7 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 				continue
 			}
 			executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-				JobID: jobID,
+				JobID: job.ID,
 			})
 			if err != nil {
 				return err
@@ -264,6 +267,7 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 	}
 	resp, err := e.orchestrator.StopJob(ctx, &orchestrator.StopJobRequest{
 		JobID:         jobID,
+		Namespace:     args.Namespace,
 		Reason:        args.Reason,
 		UserTriggered: true,
 	})
@@ -271,6 +275,31 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 		return err
 	}
 	return c.JSON(http.StatusOK, &apimodels.StopJobResponse{
+		EvaluationID: resp.EvaluationID,
+	})
+}
+
+func (e *Endpoint) rerunJob(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobID := c.Param("id")
+
+	var args apimodels.RerunJobRequest
+	if err := c.Bind(&args); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(&args); err != nil {
+		return err
+	}
+	resp, err := e.orchestrator.RerunJob(ctx, &orchestrator.RerunJobRequest{
+		JobID:         jobID,
+		Namespace:     args.Namespace,
+		Reason:        args.Reason,
+		UserTriggered: true,
+	})
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, &apimodels.RerunJobResponse{
 		EvaluationID: resp.EvaluationID,
 	})
 }
@@ -294,7 +323,7 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 //	@Router			/api/v1/orchestrator/jobs/{id}/history [get]
 func (e *Endpoint) listHistory(c echo.Context) error {
 	ctx := c.Request().Context()
-	jobID := c.Param("id")
+	jobIDOrName := c.Param("id")
 	var args apimodels.ListJobHistoryRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -303,7 +332,15 @@ func (e *Endpoint) listHistory(c echo.Context) error {
 		return err
 	}
 
+	job, err := e.store.GetJobByIDOrName(ctx, jobIDOrName, args.Namespace)
+	if err != nil {
+		return err
+	}
+
 	options := jobstore.JobHistoryQuery{
+		Namespace:             args.Namespace,
+		JobVersion:            args.JobVersion,
+		AllJobVersions:        args.AllJobVersions,
 		Since:                 args.Since,
 		ExcludeExecutionLevel: args.EventType == "job",
 		ExcludeJobLevel:       args.EventType == "execution",
@@ -312,7 +349,7 @@ func (e *Endpoint) listHistory(c echo.Context) error {
 		NextToken:             args.NextToken,
 	}
 
-	jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, jobID, options)
+	jobHistoryQueryResponse, err := e.store.GetJobHistory(ctx, job.ID, options)
 	if err != nil {
 		return err
 	}
@@ -352,7 +389,7 @@ func (e *Endpoint) listHistory(c echo.Context) error {
 //	@Router			/api/v1/orchestrator/jobs/{id}/executions [get]
 func (e *Endpoint) jobExecutions(c echo.Context) error {
 	ctx := c.Request().Context()
-	jobID := c.Param("id")
+	jobIDOrName := c.Param("id")
 	var args apimodels.ListJobExecutionsRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -361,12 +398,20 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 		return err
 	}
 
+	job, err := e.store.GetJobByIDOrName(ctx, jobIDOrName, args.Namespace)
+	if err != nil {
+		return err
+	}
+
 	// query executions
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:   jobID,
-		OrderBy: args.OrderBy,
-		Reverse: args.Reverse,
-		Limit:   int(args.Limit),
+		JobID:          job.ID,
+		JobVersion:     args.JobVersion,
+		AllJobVersions: args.AllJobVersions,
+		Namespace:      args.Namespace,
+		OrderBy:        args.OrderBy,
+		Reverse:        args.Reverse,
+		Limit:          int(args.Limit),
 	})
 	if err != nil {
 		return err
@@ -398,7 +443,7 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 //	@Router			/api/v1/orchestrator/jobs/{id}/results [get]
 func (e *Endpoint) jobResults(c echo.Context) error {
 	ctx := c.Request().Context()
-	jobID := c.Param("id")
+	jobIDOrName := c.Param("id")
 	var args apimodels.ListJobResultsRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -407,8 +452,14 @@ func (e *Endpoint) jobResults(c echo.Context) error {
 		return err
 	}
 
+	job, err := e.store.GetJobByIDOrName(ctx, jobIDOrName, args.Namespace)
+	if err != nil {
+		return err
+	}
+
 	resp, err := e.orchestrator.GetResults(ctx, &orchestrator.GetResultsRequest{
-		JobID: jobID,
+		JobID:     job.ID,
+		Namespace: args.Namespace,
 	})
 	if err != nil {
 		return err
@@ -458,7 +509,7 @@ func (e *Endpoint) logs(c echo.Context) error {
 }
 
 func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
-	jobID := c.Param("id")
+	jobIDOrName := c.Param("id")
 	var args apimodels.GetLogsRequest
 	if err := c.Bind(&args); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -467,14 +518,19 @@ func (e *Endpoint) logsWS(c echo.Context, ws *websocket.Conn) error {
 		return err
 	}
 
+	job, err := e.store.GetJobByIDOrName(c.Request().Context(), jobIDOrName, args.Namespace)
+	if err != nil {
+		return err
+	}
+
 	logstreamCh, err := e.orchestrator.ReadLogs(c.Request().Context(), orchestrator.ReadLogsRequest{
-		JobID:       jobID,
+		JobID:       job.ID,
 		ExecutionID: args.ExecutionID,
 		Tail:        args.Tail,
 		Follow:      args.Follow,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to open log stream for job %s: %w", jobID, err)
+		return fmt.Errorf("failed to open log stream for job %s: %w", job.ID, err)
 	}
 
 	for logMsg := range logstreamCh {

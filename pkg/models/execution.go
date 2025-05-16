@@ -87,6 +87,9 @@ type Execution struct {
 	// ID of the evaluation that generated this execution
 	EvalID string `json:"EvalID"`
 
+	// ID of the runtime that this execution was created in
+	RuntimeID string `json:"RuntimeID"`
+
 	// Name is a logical name of the execution.
 	Name string `json:"Name"`
 
@@ -99,6 +102,9 @@ type Execution struct {
 	JobID string `json:"JobID"`
 	// TODO: evaluate using a copy of the job instead of a pointer
 	Job *Job `json:"Job,omitempty"`
+
+	// JobVersion version of the job that this execution was created in
+	JobVersion uint64 `json:"JobVersion"`
 
 	// AllocatedResources is the total resources allocated for the execution tasks.
 	AllocatedResources *AllocatedResources `json:"AllocatedResources"`
@@ -138,6 +144,8 @@ type Execution struct {
 	CreateTime int64 `json:"CreateTime"`
 	// ModifyTime is the time the execution was last updated.
 	ModifyTime int64 `json:"ModifyTime"`
+
+	Evaluation *Evaluation `json:"Evaluation"`
 }
 
 func (e *Execution) String() string {

@@ -137,11 +137,14 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 			return
 		case <-ticker.C:
 			response, err := j.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
-				JobID:     job.ID,
-				EventType: "all",
-				BaseListRequest: apimodels.BaseListRequest{
-					NextToken: nextToken,
-					Limit:     10,
+				JobIDOrName: job.ID,
+				EventType:   "all",
+				BaseVersionedListRequest: apimodels.BaseVersionedListRequest{
+					JobVersion: job.Version,
+					BaseListRequest: apimodels.BaseListRequest{
+						NextToken: nextToken,
+						Limit:     10,
+					},
 				},
 			})
 			if err != nil {
@@ -216,7 +219,7 @@ func (j *JobProgressPrinter) printNodeDetails(ctx context.Context, cmd *cobra.Co
 		return nil
 	}
 
-	executions, err := j.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobID: job.ID})
+	executions, err := j.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobIDOrName: job.ID})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil

@@ -237,7 +237,13 @@ func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle s
 		log.Debug().Msgf("broker is not enabled, dropping evaluation %s for job %s", eval.ID, eval.JobID)
 		return nil
 	}
-	log.Debug().Msgf("enqueueing evaluation %s for job %s, triggered by: %s", eval.ID, eval.JobID, eval.TriggeredBy)
+	log.Debug().Msgf(
+		"enqueueing evaluation %s for job %s with runtime ID %s, triggered by: %s",
+		eval.ID,
+		eval.JobID,
+		eval.RuntimeID,
+		eval.TriggeredBy,
+	)
 
 	// Check if already enqueued
 	if _, ok := b.evals[eval.ID]; ok {

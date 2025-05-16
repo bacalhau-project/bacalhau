@@ -47,6 +47,9 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (_ *SubmitJobResponse, err error) {
 	job := request.Job
 	job.Normalize()
+
+	// TODO: Implement warnings for the name syntax if it is not DNS compliant
+	// Need to check here because a Job ID gets generated. We should be careful what to do here.
 	warnings := job.SanitizeSubmission()
 
 	var jobID string
@@ -61,8 +64,34 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		job.Meta[models.MetaClientInstanceID] = request.ClientInstanceID
 	}
 
+	// Job Transformer
+	// TODO: check what is happening in this transform, for updates especailly.
 	if err = e.jobTransformer.Transform(ctx, job); err != nil {
 		return nil, err
+	}
+
+	isUpdate := false
+	evalTriggeredBy := models.EvalTriggerJobRegister
+	// Try to see if a job with the same name and namespace exist, if yes, change the JOb ID
+	// to the ID if the Job
+	existingJob, existingErr := e.store.GetJobByName(ctx, job.Name, job.Namespace)
+	if existingErr == nil {
+		// This is an update
+		job.ID = existingJob.ID
+		isUpdate = true
+		evalTriggeredBy = models.EvalTriggerJobRerun
+
+		// Do a diff between jobs, and see if there is a difference
+		if !request.Force {
+			jobDiff := existingJob.CompareWith(job)
+			if jobDiff == "" {
+				return nil, bacerrors.Newf(
+					"no changes detected for new job spec. Job Name: '%s', Job Id: '%s'",
+					job.Name,
+					job.ID,
+				)
+			}
+		}
 	}
 
 	// set jobId for telemetry purposes
@@ -75,23 +104,65 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 
 	defer txContext.Rollback() //nolint:errcheck
 
-	if err = e.store.CreateJob(txContext, *job); err != nil {
-		return nil, err
-	}
-	if err = e.store.AddJobHistory(txContext, job.ID, JobSubmittedEvent()); err != nil {
-		return nil, err
+	// We need a runtime ID
+	// everytime there is a submission of a new job or expelcit update, it will create a new runtime id
+	//    and encodes that in the evaluation that an update is needed
+	// When the scheduler picks it up and sees that it is an update,
+	//    it will cancel all executions that do not have a runtime ID and not similar
+	//    and schedules new executions with this runtime same ID
+	// We should probably see if there is any evaluation going when submitting update,
+	// 	  do not allow update, i.e reject enqueing the evaluation
+	//
+
+	// Create or update the job based on whether it's a new job or an update
+	if isUpdate {
+		// For updates, use the UpdateJob method
+		if err = e.store.UpdateJob(txContext, *job); err != nil {
+			return nil, err
+		}
+
+		if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
+			JobID:    job.ID, // use the job ID from the store in case the request had a short ID
+			NewState: models.JobStateTypePending,
+			Message:  "",
+		}); err != nil {
+			return nil, err
+		}
+
+		// Add job history for the update
+		if err = e.store.AddJobHistory(txContext, job.ID, job.Version+1, JobUpdatedEvent()); err != nil {
+			return nil, err
+		}
+	} else {
+		// For new jobs, use the CreateJob method
+		if err = e.store.CreateJob(txContext, *job); err != nil {
+			return nil, err
+		}
+		// Add job history for the new submission
+		if err = e.store.AddJobHistory(txContext, job.ID, 1, JobSubmittedEvent()); err != nil {
+			return nil, err
+		}
 	}
 
+	// need to figure out the evaluation
+	// the evaluation is just a signal
+	// This is the evaluation that will trigger the flow it seems
+	// TODO: this type below is used to pick up the needed scheduler
 	eval := &models.Evaluation{
 		ID:          uuid.NewString(),
 		JobID:       job.ID,
-		TriggeredBy: models.EvalTriggerJobRegister,
+		TriggeredBy: evalTriggeredBy,
 		Type:        job.Type,
 		Status:      models.EvalStatusPending,
 		CreateTime:  job.CreateTime,
 		ModifyTime:  job.CreateTime,
+		IsUpdate:    isUpdate,
+		RuntimeID:   uuid.NewString(),
 	}
 
+	// maybe we should create an evalution that will update the jobs ?
+	// the evalution creation will create an event that notifies the watcher
+	// that the evaluation has been created
 	if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
 		return nil, err
 	}
@@ -114,7 +185,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}
 	defer txContext.Rollback() //nolint:errcheck
 
-	job, err := e.store.GetJob(txContext, request.JobID)
+	job, err := e.store.GetJobByIDOrName(txContext, request.JobID, request.Namespace)
 	if err != nil {
 		return StopJobResponse{}, err
 	}
@@ -128,10 +199,13 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		// continue
 	}
 
+	// ths is where the desired state is added
+	// this is only called for stop job not create job
 	// update the job state, except if the job is already completed
 	// we allow marking a failed job as canceled
 	if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
-		JobID: job.ID, // use the job ID from the store in case the request had a short ID
+		JobID: job.ID, // use the job ID from the store in case the request had a short ID, or it had a JobName
+		// the condition is that it is not complete
 		Condition: jobstore.UpdateJobCondition{
 			UnexpectedStates: []models.JobStateType{
 				models.JobStateTypeCompleted,
@@ -143,7 +217,7 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 		return StopJobResponse{}, err
 	}
 
-	if err = e.store.AddJobHistory(txContext, job.ID, JobStoppedEvent(request.Reason)); err != nil {
+	if err = e.store.AddJobHistory(txContext, job.ID, job.Version, JobStoppedEvent(request.Reason)); err != nil {
 		return StopJobResponse{}, err
 	}
 
@@ -160,8 +234,11 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			Status:      models.EvalStatusPending,
 			CreateTime:  now,
 			ModifyTime:  now,
+			IsUpdate:    false,
+			RuntimeID:   uuid.NewString(),
 		}
 
+		// an evaluation will be created similar to job creation
 		if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
 			return StopJobResponse{}, err
 		}
@@ -177,6 +254,74 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 	}, nil
 }
 
+func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (RerunJobResponse, error) {
+	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		return RerunJobResponse{}, jobstore.NewJobStoreError(err.Error())
+	}
+	defer txContext.Rollback() //nolint:errcheck
+
+	job, err := e.store.GetJobByIDOrName(txContext, request.JobID, request.Namespace)
+	if err != nil {
+		return RerunJobResponse{}, err
+	}
+
+	switch job.State.StateType {
+	case models.JobStateTypePending, models.JobStateTypeQueued, models.JobStateTypeUndefined:
+		return RerunJobResponse{}, bacerrors.Newf("cannot rerun job in state %s", job.State.StateType)
+	default:
+		// continue
+	}
+
+	if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
+		JobID: job.ID, // use the job ID from the store in case the request had a short ID, or passed as JobName
+		// the condition is that it is not complete
+		Condition: jobstore.UpdateJobCondition{
+			UnexpectedStates: []models.JobStateType{
+				models.JobStateTypePending,
+				models.JobStateTypeQueued,
+				models.JobStateTypeUndefined,
+			},
+		},
+		NewState: models.JobStateTypePending,
+		Message:  request.Reason,
+	}); err != nil {
+		return RerunJobResponse{}, err
+	}
+
+	if err = e.store.AddJobHistory(txContext, job.ID, job.Version, JobRerunEvent(request.Reason)); err != nil {
+		return RerunJobResponse{}, err
+	}
+
+	// enqueue evaluation to allow the scheduler to stop existing executions and start new ones
+	now := time.Now().UTC().UnixNano()
+	eval := &models.Evaluation{
+		ID:          uuid.NewString(),
+		JobID:       job.ID,
+		TriggeredBy: models.EvalTriggerJobRerun,
+		Type:        job.Type,
+		Status:      models.EvalStatusPending,
+		CreateTime:  now,
+		ModifyTime:  now,
+		IsUpdate:    true,
+		RuntimeID:   uuid.NewString(),
+	}
+
+	// an evaluation will be created similar to job creation
+	if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
+		return RerunJobResponse{}, err
+	}
+	evalID := eval.ID
+
+	if err = txContext.Commit(); err != nil {
+		return RerunJobResponse{}, err
+	}
+
+	return RerunJobResponse{
+		EvaluationID: evalID,
+	}, nil
+}
+
 // 1. Find the compute node on which the execution was run (regardless of its version).
 // 2. Ask it for logs.
 // 3. If it fails to provide logs:
@@ -185,15 +330,21 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	<-chan *concurrency.AsyncResult[models.ExecutionLog], error) {
 	// TODO: Handle the case when job is running, but there are no executions yet (e.g. they still sit in the queue).
+	job, err := e.store.GetJobByIDOrName(ctx, request.JobID, request.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: request.JobID,
+		JobID: job.ID,
+		// TODO: Add job version from request
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	if len(executions) == 0 {
-		return nil, fmt.Errorf("no executions found for job %s", request.JobID)
+		return nil, fmt.Errorf("no executions found for job %s", job.ID)
 	}
 
 	// TODO: support multiplexing logs from multiple executions. Might need a watermark to order the logs
@@ -218,7 +369,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	}
 
 	if execution == nil {
-		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, request.JobID)
+		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, job.ID)
 	}
 
 	req := messages.ExecutionLogsRequest{
@@ -235,7 +386,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 
 // GetResults returns the results of a job
 func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsRequest) (GetResultsResponse, error) {
-	job, err := e.store.GetJob(ctx, request.JobID)
+	job, err := e.store.GetJobByIDOrName(ctx, request.JobID, request.Namespace)
 	if err != nil {
 		return GetResultsResponse{}, err
 	}
@@ -245,7 +396,8 @@ func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsReques
 	}
 
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: job.ID,
+		JobID:      job.ID,
+		JobVersion: job.Version,
 	})
 	if err != nil {
 		return GetResultsResponse{}, err

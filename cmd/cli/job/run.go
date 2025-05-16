@@ -42,6 +42,7 @@ type RunOptions struct {
 	RunTimeSettings        *cliflags.RunTimeSettings // Run time settings for execution (e.g. follow, wait after submission)
 	HideWarnings           bool                      // Show warnings when submitting a job
 	NoTemplate             bool
+	Force                  bool
 	TemplateVars           map[string]string
 	TemplateEnvVarsPattern string
 }
@@ -82,6 +83,7 @@ func NewRunCmd() *cobra.Command {
 	runCmd.Flags().BoolVar(&o.HideWarnings, "hide-warnings", false, "Hide warnings when submitting a job")
 	runCmd.Flags().BoolVar(&o.NoTemplate, "no-template", false,
 		"Disable the templating feature. When this flag is set, the job spec will be used as-is, without any placeholder replacements")
+	runCmd.Flags().BoolVar(&o.Force, "force", false, "force run even if job spec did not change")
 	runCmd.Flags().StringToStringVarP(&o.TemplateVars, "template-vars", "V", nil,
 		"Replace a placeholder in the job spec with a value. e.g. --template-vars foo=bar")
 	runCmd.Flags().StringVarP(&o.TemplateEnvVarsPattern, "template-envs", "E", "",
@@ -140,7 +142,8 @@ func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) erro
 
 	// Submit the job
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{
-		Job: j,
+		Job:   j,
+		Force: o.Force,
 	})
 	if err != nil {
 		return fmt.Errorf("failed request: %w", err)

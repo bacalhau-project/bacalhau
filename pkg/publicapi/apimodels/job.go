@@ -10,7 +10,8 @@ import (
 
 type PutJobRequest struct {
 	BasePutRequest
-	Job *models.Job `json:"Job"`
+	Job   *models.Job `json:"Job"`
+	Force bool        `json:"Force"`
 }
 
 // Validate is used to validate fields in the PutJobRequest.
@@ -95,8 +96,8 @@ func (r *ListJobsResponse) Normalize() {
 }
 
 type ListJobHistoryRequest struct {
-	BaseListRequest
-	JobID       string `query:"-"`
+	BaseVersionedListRequest
+	JobIDOrName string `query:"-"`
 	Since       int64  `query:"since" validate:"min=0"`
 	EventType   string `query:"event_type" validate:"omitempty,oneof=all job execution"`
 	ExecutionID string `query:"execution_id" validate:"omitempty"`
@@ -104,7 +105,7 @@ type ListJobHistoryRequest struct {
 
 // ToHTTPRequest is used to convert the request to an HTTP request
 func (o *ListJobHistoryRequest) ToHTTPRequest() *HTTPRequest {
-	r := o.BaseListRequest.ToHTTPRequest()
+	r := o.BaseVersionedListRequest.ToHTTPRequest()
 
 	if o.Since != 0 {
 		r.Params.Set("since", strconv.FormatInt(o.Since, 10))
@@ -124,8 +125,8 @@ type ListJobHistoryResponse struct {
 }
 
 type ListJobExecutionsRequest struct {
-	BaseListRequest
-	JobID string `query:"-"`
+	BaseVersionedListRequest
+	JobIDOrName string `query:"-"`
 }
 
 type ListJobExecutionsResponse struct {
@@ -150,6 +151,17 @@ type StopJobRequest struct {
 }
 
 type StopJobResponse struct {
+	BasePutResponse
+	EvaluationID string `json:"EvaluationID"`
+}
+
+type RerunJobRequest struct {
+	BasePutRequest
+	JobID  string `json:"-"`
+	Reason string `json:"reason"`
+}
+
+type RerunJobResponse struct {
 	BasePutResponse
 	EvaluationID string `json:"EvaluationID"`
 }
