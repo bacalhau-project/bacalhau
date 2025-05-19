@@ -118,7 +118,22 @@ func (m *MessageHandler) OnBidComplete(ctx context.Context, metrics *telemetry.M
 	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler to either accept the bid, or find a new node
-	err = m.enqueueEvaluation(txContext, result.JobID, result.JobType)
+	jobExecutions, err := m.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: result.JobID,
+	})
+	if err != nil {
+		return err
+	}
+
+	runtimeID := ""
+	for _, jobExecution := range jobExecutions {
+		if jobExecution.ID == result.ExecutionID {
+			runtimeID = jobExecution.RuntimeID
+			break
+		}
+	}
+
+	err = m.enqueueEvaluation(txContext, result.JobID, result.JobType, runtimeID)
 	if err != nil {
 		return err
 	}
@@ -181,7 +196,22 @@ func (m *MessageHandler) OnRunComplete(ctx context.Context, metrics *telemetry.M
 	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler to mark the job as completed if all executions are completed
-	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType); err != nil {
+	jobExecutions, err := m.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: result.JobID,
+	})
+	if err != nil {
+		return err
+	}
+
+	runtimeID := ""
+	for _, jobExecution := range jobExecutions {
+		if jobExecution.ID == result.ExecutionID {
+			runtimeID = jobExecution.RuntimeID
+			break
+		}
+	}
+
+	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType, runtimeID); err != nil {
 		return err
 	}
 	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCreateEval)
@@ -225,7 +255,21 @@ func (m *MessageHandler) OnComputeFailure(ctx context.Context, metrics *telemetr
 	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartUpdateExec)
 
 	// enqueue evaluation to allow the scheduler find other nodes, or mark the job as failed
-	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType); err != nil {
+	jobExecutions, err := m.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID: result.JobID,
+	})
+	if err != nil {
+		return err
+	}
+
+	runtimeID := ""
+	for _, jobExecution := range jobExecutions {
+		if jobExecution.ID == result.ExecutionID {
+			runtimeID = jobExecution.RuntimeID
+			break
+		}
+	}
+	if err = m.enqueueEvaluation(txContext, result.JobID, result.JobType, runtimeID); err != nil {
 		return err
 	}
 	metrics.Latency(ctx, messageHandlerProcessPartDuration, AttrPartCreateEval)
@@ -236,7 +280,7 @@ func (m *MessageHandler) OnComputeFailure(ctx context.Context, metrics *telemetr
 }
 
 // enqueueEvaluation enqueues an evaluation to allow the scheduler to either accept the bid, or find a new node
-func (m *MessageHandler) enqueueEvaluation(ctx context.Context, jobID, jobType string) error {
+func (m *MessageHandler) enqueueEvaluation(ctx context.Context, jobID, jobType, runtimeId string) error {
 	now := time.Now().UTC().UnixNano()
 	eval := &models.Evaluation{
 		ID:          uuid.NewString(),
@@ -246,6 +290,7 @@ func (m *MessageHandler) enqueueEvaluation(ctx context.Context, jobID, jobType s
 		Status:      models.EvalStatusPending,
 		CreateTime:  now,
 		ModifyTime:  now,
+		RuntimeID:   runtimeId,
 	}
 
 	err := m.store.CreateEvaluation(ctx, *eval)

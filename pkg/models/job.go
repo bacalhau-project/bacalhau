@@ -12,6 +12,8 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 type JobStateType int
@@ -441,4 +443,48 @@ func (j *Job) UnmarshalJSON(data []byte) error {
 		}
 	}
 	return nil
+}
+
+// CompareWith returns a diff string between this job and another job.
+// The comparison ignores fields that are not relevant to job specification equivalence
+// such as ID, State, Version, Revision, CreateTime, and ModifyTime.
+// It also ignores internal metadata entries with keys starting with the reserved prefix,
+// and performs case-insensitive comparison of resource values.
+// Returns an empty string if jobs are equivalent, otherwise returns a human-readable diff.
+func (j *Job) CompareWith(otherJob *Job) string {
+	diffResult := cmp.Diff(j, otherJob,
+		// Ignoring these fields since they are not part of the comparison
+		cmpopts.IgnoreFields(
+			Job{}, "ID", "State", "Version", "Revision", "CreateTime", "ModifyTime",
+		),
+		cmp.FilterPath(func(p cmp.Path) bool {
+			// Check if we're looking at a Meta map entry
+			if len(p) >= 2 && p.Index(-2).String() == ".Meta" {
+				// Get the map key
+				if mapKey, ok := p.Index(-1).(cmp.MapIndex); ok {
+					// Check if the key starts with "bacalhau.org" which is reserved
+					// for internal bacalhau use, thus no need to compare.
+					if key, ok := mapKey.Key().Interface().(string); ok {
+						return strings.HasPrefix(key, MetaReservedPrefix)
+					}
+				}
+			}
+			return false
+		}, cmp.Ignore()),
+		// Case-insensitive comparison for ResourcesConfig string fields. These are
+		// treated as case-insensitive due units used.
+		cmp.Transformer("ResourcesConfigCaseInsensitive", func(r *ResourcesConfig) *ResourcesConfig {
+			if r == nil {
+				return nil
+			}
+			result := r.Copy()
+			result.CPU = strings.ToLower(result.CPU)
+			result.Memory = strings.ToLower(result.Memory)
+			result.Disk = strings.ToLower(result.Disk)
+			result.GPU = strings.ToLower(result.GPU)
+			return result
+		}),
+	)
+
+	return diffResult
 }

@@ -157,7 +157,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			execution.CreateTime = 0
 			execution.ModifyTime = 0
 			s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
-			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
+			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.JobVersion, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
 
 			for i, state := range executionStates {
 
@@ -182,7 +182,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 				}
 
 				s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
-				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
+				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.JobVersion, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
 			}
 		}
 
@@ -469,11 +469,11 @@ func (s *BoltJobstoreTestSuite) createJobWithHistory(makeJobTerminal bool) (stri
 	eventCount := 15
 	for i := 0; i < eventCount/3; i++ {
 		s.clock.Add(time.Second)
-		s.Require().NoError(s.store.AddJobHistory(s.ctx, job.ID, *models.NewEvent("job-event").WithMessage(fmt.Sprintf("Job event %d", i))))
+		s.Require().NoError(s.store.AddJobHistory(s.ctx, job.ID, job.Version, *models.NewEvent("job-event").WithMessage(fmt.Sprintf("Job event %d", i))))
 		s.clock.Add(time.Second)
-		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, executions[0], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, job.Version, executions[0], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
 		s.clock.Add(time.Second)
-		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, executions[1], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, job.ID, job.Version, executions[1], *models.NewEvent("exec-event").WithMessage(fmt.Sprintf("Execution event %d", i))))
 	}
 
 	// Make the first execution terminal
@@ -965,7 +965,7 @@ func (s *BoltJobstoreTestSuite) TestEvents() {
 			*models.NewEvent("test1").WithMessage("message1"),
 			*models.NewEvent("test2").WithMessage("message2"),
 		}
-		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, testJob.ID, testExec.ID, events...))
+		s.Require().NoError(s.store.AddExecutionHistory(s.ctx, testJob.ID, testExec.JobVersion, testExec.ID, events...))
 
 		// Update execution state
 		s.clock.Add(1 * time.Second)

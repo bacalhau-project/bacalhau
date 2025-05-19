@@ -69,43 +69,64 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
 
 	// Retrieve the job state
-	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: evaluation.JobID,
+	previouslyCreatedExecutionsList, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID:          evaluation.JobID,
+		AllJobVersions: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
-	metrics.Histogram(ctx, executionsExisting, float64(len(jobExecutions)))
+	metrics.Histogram(ctx, executionsExisting, float64(len(previouslyCreatedExecutionsList)))
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
 
-	existingExecs := execSetFromSliceOfValues(jobExecutions)
-	nonTerminalExecs := existingExecs.filterNonTerminal()
+	allPreviouslyCreatedExecutionsSetRaw := execSetFromSliceOfValues(previouslyCreatedExecutionsList)
+
+	currentRuntimeIDExecutionsSet := execSet{}
+	otherRuntimeIDExecutionsSet := execSet{} // These executions will be eventually marked for cancellation
+	if evaluation.RuntimeID != "" {
+		// A runtime ID was passed in the evaluation, make
+		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.filterByRuntimeID(evaluation.RuntimeID)
+		otherRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.excludeThisRuntimeID(evaluation.RuntimeID)
+	} else {
+		// In case no runtime ID was passed in the evaluation
+		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw
+	}
+
+	nonTerminalCurrentRuntimeIDExecutionsSet := currentRuntimeIDExecutionsSet.filterNonTerminal()
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
+		nonTerminalCurrentRuntimeIDExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeAlreadyTerminal))
 		return b.planner.Process(ctx, plan)
 	}
 
+	// If the evaluation was triggered by a Job Rerun/Update, mark otherRuntimeIDExecutionsSet to cancelled
+	if evaluation.TriggeredBy == models.EvalTriggerJobRerun {
+		log.Debug().Msgf("Processing job rerun for job %s, canceling any current active executions", evaluation.JobID)
+		nonTerminalOtherRuntimeIDsExecutionsSet := otherRuntimeIDExecutionsSet.filterNonTerminal()
+		nonTerminalOtherRuntimeIDsExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedForJobRerunEvent())
+		metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(nonTerminalOtherRuntimeIDsExecutionsSet)))
+	}
+
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalExecs)
+	nodeInfos, err := existingNodeInfos(ctx, b.nodeSelector, nonTerminalCurrentRuntimeIDExecutionsSet)
 	if err != nil {
 		return err
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetNodes)
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	_, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
+	_, lost := nonTerminalCurrentRuntimeIDExecutionsSet.groupByNodeHealth(nodeInfos)
 	lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 
 	// Look for new matching nodes and create new executions every time we evaluate the job
-	_, err = b.createMissingExecs(ctx, metrics, &job, plan, existingExecs)
+	_, err = b.createMissingExecs(ctx, metrics, &job, plan, currentRuntimeIDExecutionsSet)
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}
@@ -122,7 +143,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
 	newExecs := execSet{}
 
-	nodes, rejected, err := b.nodeSelector.MatchingNodes(ctx, job)
+	nodes, rejected, err := b.nodeSelector.MatchingNodes(ctx, job, plan.Eval)
 	if err != nil {
 		return newExecs, err
 	}
@@ -152,12 +173,15 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
+			JobVersion:   plan.Job.Version,
 			EvalID:       plan.EvalID,
+			Evaluation:   plan.Eval,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
 			NodeID:       node.NodeInfo.ID(),
+			RuntimeID:    plan.Eval.RuntimeID,
 		}
 		execution.Normalize()
 		newExecs[execution.ID] = execution

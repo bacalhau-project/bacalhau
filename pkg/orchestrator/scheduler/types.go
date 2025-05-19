@@ -83,6 +83,26 @@ func (set execSet) filterByState(state models.ExecutionStateType) execSet {
 	})
 }
 
+// filterByState filters out execs that were not initiate by the given evaluation ID
+func (set execSet) filterByEvaluationID(evaluationID string) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.EvalID == evaluationID
+	})
+}
+
+// runtimeID filters out execs with a given runtime ID
+func (set execSet) filterByRuntimeID(runtimeID string) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.RuntimeID == runtimeID
+	})
+}
+
+func (set execSet) excludeThisRuntimeID(runtimeID string) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.RuntimeID != runtimeID
+	})
+}
+
 // filterByDesiredState filters out execs that are not in the given desired state
 func (set execSet) filterByDesiredState(state models.ExecutionDesiredStateType) execSet {
 	return set.filterBy(func(execution *models.Execution) bool {
