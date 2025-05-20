@@ -27,7 +27,7 @@ var (
 		List versions for a job by submitting its id or name.
 `)
 
-	verionsExample = templates.Examples(`
+	versionsExample = templates.Examples(`
 		# All versions for a given job.
 		bacalhau job versions my-job
 `)
@@ -53,7 +53,7 @@ func NewVersionsCmd() *cobra.Command {
 		Use:           "versions",
 		Short:         versionsShort,
 		Long:          versionsLong,
-		Example:       verionsExample,
+		Example:       versionsExample,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ExactArgs(1),
