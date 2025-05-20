@@ -20,7 +20,7 @@ func (s *ServerSuite) TestJobOperations() {
 	s.Require().NotEmpty(putResponse.EvaluationID)
 
 	// retrieve the job
-	getResponse, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: putResponse.JobID})
+	getResponse, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: putResponse.JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(getResponse)
 	s.Require().Equal(putResponse.JobID, getResponse.Job.ID)
@@ -43,7 +43,7 @@ func (s *ServerSuite) TestJobOperations() {
 
 	// Wait for job executions to start, and for the job to complete
 	s.Eventually(func() bool {
-		res, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: putResponse.JobID})
+		res, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: putResponse.JobID})
 		if err != nil {
 			s.T().Logf("error getting job. will retry: %v", err)
 			return false
@@ -56,7 +56,7 @@ func (s *ServerSuite) TestJobOperations() {
 	}, 5*time.Second, 50*time.Millisecond)
 
 	// list the job history
-	historyResponse, err := s.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{JobID: putResponse.JobID})
+	historyResponse, err := s.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{JobIDOrName: putResponse.JobID})
 	s.Require().NoError(err)
 	s.Require().NotNil(historyResponse)
 	s.Require().NotEmpty(historyResponse.Items)
