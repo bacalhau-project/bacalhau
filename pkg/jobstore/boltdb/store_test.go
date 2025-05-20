@@ -48,6 +48,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 
 	jobFixtures := []struct {
 		id         string
+		version    uint64
 		jobType    string
 		client     string
 		tags       map[string]string
@@ -56,6 +57,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 	}{
 		{
 			id:        "110",
+			version:   1,
 			client:    "client1",
 			jobType:   "batch",
 			tags:      map[string]string{"gpu": "true", "fast": "true"},
@@ -66,6 +68,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		},
 		{
 			id:        "120",
+			version:   1,
 			client:    "client2",
 			jobType:   "batch",
 			tags:      map[string]string{},
@@ -76,6 +79,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		},
 		{
 			id:        "130",
+			version:   1,
 			client:    "client3",
 			jobType:   "batch",
 			tags:      map[string]string{"slow": "true", "max": "10"},
@@ -86,6 +90,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		},
 		{
 			id:        "140",
+			version:   1,
 			client:    "client4",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
@@ -96,6 +101,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		},
 		{
 			id:        "150",
+			version:   1,
 			client:    "client5",
 			jobType:   "daemon",
 			tags:      map[string]string{"max": "10"},
@@ -106,6 +112,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		},
 		{
 			id:        "160",
+			version:   1,
 			client:    "client6",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
@@ -127,7 +134,12 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.Labels = fixture.tags
 		job.Namespace = fixture.client
 		s.Require().NoError(s.store.CreateJob(s.ctx, *job))
-		s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage("job created")))
+		s.Require().NoError(s.store.AddJobHistory(
+			s.ctx,
+			fixture.id,
+			job.Version,
+			*models.NewEvent("test").WithMessage("job created")),
+		)
 
 		for i, state := range fixture.jobStates {
 			s.clock.Add(1 * time.Second)
@@ -146,7 +158,12 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 				},
 			}
 			s.Require().NoError(s.store.UpdateJobState(s.ctx, request))
-			s.Require().NoError(s.store.AddJobHistory(s.ctx, fixture.id, *models.NewEvent("test").WithMessage(state.String())))
+			s.Require().NoError(s.store.AddJobHistory(
+				s.ctx,
+				fixture.id,
+				fixture.version,
+				*models.NewEvent("test").WithMessage(state.String())),
+			)
 		}
 
 		for _, executionStates := range fixture.executions {
