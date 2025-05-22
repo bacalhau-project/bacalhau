@@ -103,7 +103,6 @@ type NodeSelector interface {
 	MatchingNodes(
 		ctx context.Context,
 		job *models.Job,
-		currentEvaluation *models.Evaluation,
 	) (matched []NodeRank, rejected []NodeRank, err error)
 }
 

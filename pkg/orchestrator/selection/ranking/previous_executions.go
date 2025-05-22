@@ -6,7 +6,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/selection/selector"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,28 +30,12 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
 
-	currentRuntimeID := ""
-	if passedIsRuntimeID, ok := ctx.Value(selector.NodeSelectorRuntimeIDContextKey).(string); ok {
-		currentRuntimeID = passedIsRuntimeID
-	}
-
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)
 	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: job.ID,
 	})
-
-	filteredExecutions := []models.Execution{}
-	if currentRuntimeID != "" {
-		for _, execution := range executions {
-			if execution.RuntimeID == currentRuntimeID {
-				filteredExecutions = append(filteredExecutions, execution)
-			}
-		}
-	}
-
-	executions = filteredExecutions
 
 	if err == nil {
 		for _, execution := range executions {
@@ -62,9 +45,9 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 			previousExecutors[execution.NodeID]++
 
 			// TODO: We do not need this anymore. Double check before we remove it
-			//if !execution.IsDiscarded() {
-			//	toFilterOut[execution.NodeID] = true
-			//}
+			if !execution.IsDiscarded() {
+				toFilterOut[execution.NodeID] = true
+			}
 
 			if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true

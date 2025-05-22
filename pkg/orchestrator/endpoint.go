@@ -44,6 +44,7 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 }
 
 // SubmitJob submits a job to the evaluation broker.
+// Return the Job Version as well in the response
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (_ *SubmitJobResponse, err error) {
 	job := request.Job
 	job.Normalize()
@@ -115,7 +116,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		}
 
 		// Add job history for the update, and bump the version number for this event.
-		if err = e.store.AddJobHistory(txContext, job.ID, job.Version+1, JobUpdatedEvent()); err != nil {
+		if err = e.store.AddJobHistory(txContext, job.ID, existingJob.Version+1, JobUpdatedEvent()); err != nil {
 			return nil, err
 		}
 	} else {
@@ -136,8 +137,6 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		Status:      models.EvalStatusPending,
 		CreateTime:  job.CreateTime,
 		ModifyTime:  job.CreateTime,
-		IsUpdate:    isUpdate,
-		RuntimeID:   uuid.NewString(),
 	}
 
 	if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
@@ -233,8 +232,6 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 			Status:      models.EvalStatusPending,
 			CreateTime:  now,
 			ModifyTime:  now,
-			IsUpdate:    false,
-			RuntimeID:   uuid.NewString(),
 		}
 
 		if err = e.store.CreateEvaluation(txContext, *eval); err != nil {
@@ -307,8 +304,6 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 		Status:      models.EvalStatusPending,
 		CreateTime:  now,
 		ModifyTime:  now,
-		IsUpdate:    true,
-		RuntimeID:   uuid.NewString(),
 	}
 
 	// an evaluation will be created similar to job creation

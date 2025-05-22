@@ -87,9 +87,6 @@ type Execution struct {
 	// ID of the evaluation that generated this execution
 	EvalID string `json:"EvalID"`
 
-	// ID of the runtime that this execution was created in
-	RuntimeID string `json:"RuntimeID"`
-
 	// Name is a logical name of the execution.
 	Name string `json:"Name"`
 
@@ -144,8 +141,6 @@ type Execution struct {
 	CreateTime int64 `json:"CreateTime"`
 	// ModifyTime is the time the execution was last updated.
 	ModifyTime int64 `json:"ModifyTime"`
-
-	Evaluation *Evaluation `json:"Evaluation"`
 }
 
 func (e *Execution) String() string {

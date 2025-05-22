@@ -726,6 +726,7 @@ func (s *BoltJobstoreTestSuite) TestDeleteJob() {
 		[]string{"sh", "-c", "echo hello"})
 	job.Labels = map[string]string{"tag": "value"}
 	job.ID = "deleteme"
+	job.Name = fmt.Sprintf("deleteme-%d", time.Now().UnixNano())
 	job.Namespace = "client1"
 
 	err := s.store.CreateJob(s.ctx, *job)
@@ -752,7 +753,8 @@ func (s *BoltJobstoreTestSuite) TestCreateExecution() {
 
 	// Ensure that the execution is created
 	exec, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID: job.ID,
+		JobID:      job.ID,
+		JobVersion: 1,
 	})
 	s.Require().NoError(err)
 	s.Require().Equal(1, len(exec))
@@ -761,6 +763,7 @@ func (s *BoltJobstoreTestSuite) TestCreateExecution() {
 	// Ensure that the execution is created and the job is included
 	exec, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
 		JobID:      job.ID,
+		JobVersion: 1,
 		IncludeJob: true,
 	})
 	s.Require().NoError(err)

@@ -13,8 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 )
 
-const NodeSelectorRuntimeIDContextKey = "node-ranking/current-runtime-id"
-
 type NodeSelector struct {
 	discoverer  nodes.Lookup
 	ranker      orchestrator.NodeRanker
@@ -49,9 +47,8 @@ func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
 func (n NodeSelector) MatchingNodes(
 	ctx context.Context,
 	job *models.Job,
-	currentEvaluation *models.Evaluation,
 ) (matchingNodes, rejectedNodes []orchestrator.NodeRank, err error) {
-	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job, currentEvaluation)
+	matchingNodes, rejectedNodes, err = n.rankAndFilterNodes(ctx, job)
 	if err != nil {
 		return
 	}
@@ -65,7 +62,6 @@ func (n NodeSelector) MatchingNodes(
 func (n NodeSelector) rankAndFilterNodes(
 	ctx context.Context,
 	job *models.Job,
-	currentEvaluation *models.Evaluation,
 ) (selected, rejected []orchestrator.NodeRank, err error) {
 	listed, err := n.discoverer.List(ctx)
 	if err != nil {
@@ -97,11 +93,6 @@ func (n NodeSelector) rankAndFilterNodes(
 	for _, ns := range nodeStates {
 		nodeInfos = append(nodeInfos, ns.Info)
 	}
-
-	ctx = context.WithValue(
-		ctx, NodeSelectorRuntimeIDContextKey,
-		currentEvaluation.RuntimeID,
-	)
 
 	rankedNodes, err := n.ranker.RankNodes(ctx, *job, nodeInfos)
 	if err != nil {

@@ -38,6 +38,7 @@ const (
 	execStoppedByOversubscriptionMessage = "Execution stop requested because there are more executions than needed"
 	execStoppedDueToJobFailureMessage    = "Execution stopped due to job failure"
 	execStoppedForJobRerunMessage        = "Execution stopped for job rerun"
+	execStoppedForJobUpdateMessage       = "Execution stopped for job update"
 
 	executionTimeoutMessage = "Execution timed out"
 
@@ -159,4 +160,8 @@ func ExecStoppedDueToJobFailureEvent() models.Event {
 
 func ExecStoppedForJobRerunEvent() models.Event {
 	return event(EventTopicJobScheduling, execStoppedForJobRerunMessage, map[string]string{})
+}
+
+func ExecStoppedForJobUpdateEvent() models.Event {
+	return event(EventTopicJobScheduling, execStoppedForJobUpdateMessage, map[string]string{})
 }

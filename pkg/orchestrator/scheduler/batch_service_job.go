@@ -105,80 +105,71 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 	}()
 
 	ctx = log.Ctx(ctx).With().Str("JobID", evaluation.JobID).Str("EvalID", evaluation.ID).Logger().WithContext(ctx)
-	job, previouslyCreatedExecutionsList, err := b.loadJobState(ctx, metrics, evaluation)
+
+	job, allJobExecutions, err := b.loadJobState(ctx, metrics, evaluation)
 	if err != nil {
 		return err
 	}
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
-	allPreviouslyCreatedExecutionsSetRaw := execSetFromSliceOfValues(previouslyCreatedExecutionsList)
+	existingExecs := execSetFromSliceOfValues(allJobExecutions)
+	nonTerminalExecs := existingExecs.filterNonTerminal()
 
-	currentRuntimeIDExecutionsSet := execSet{}
-	otherRuntimeIDExecutionsSet := execSet{} // These executions will be eventually marked for cancellation
-
-	if evaluation.RuntimeID != "" {
-		// A runtime ID was passed in the evaluation, make
-		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.filterByRuntimeID(evaluation.RuntimeID)
-		otherRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.excludeThisRuntimeID(evaluation.RuntimeID)
-	} else {
-		// In case no runtime ID was passed in the evaluation
-		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw
-	}
-
-	nonTerminalCurrentRuntimeIDExecutionsSet := currentRuntimeIDExecutionsSet.filterNonTerminal()
-
-	// If the job is already in a terminal state (Completed/Failed/Stopped),
-	// cancel any existing executions and exit
-	if job.IsTerminal() && evaluation.TriggeredBy != models.EvalTriggerJobRerun {
-		allPreviouslyCreatedExecutionsSetRaw.filterNonTerminal().markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
+	// early exit if the job is stopped
+	if job.IsTerminal() {
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		metrics.AddAttributes(AttrOutcomeKey.String(AttrOutcomeAlreadyTerminal))
 		return b.planner.Process(ctx, plan)
 	}
 
-	// If the evaluation was triggered by a Job Rerun/Update, mark otherRuntimeIDExecutionsSet to cancelled
-	if evaluation.TriggeredBy == models.EvalTriggerJobRerun {
-		log.Debug().Msgf("Processing job rerun for job %s, canceling any current active executions", evaluation.JobID)
-		nonTerminalOtherRuntimeIDsExecutionsSet := otherRuntimeIDExecutionsSet.filterNonTerminal()
-		nonTerminalOtherRuntimeIDsExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedForJobRerunEvent())
-		metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(nonTerminalOtherRuntimeIDsExecutionsSet)))
-	}
-
-	// Get current info about all nodes running executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalCurrentRuntimeIDExecutionsSet)
+	// Retrieve the info for all the nodes that have executions for this job
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetNodes)
 
-	// We'll use this for retry decisions later
-	allFailedExecs := currentRuntimeIDExecutionsSet.filterFailed()
+	// keep track of existing failed executions and those that will be marked as failed
+	allFailedExecs := existingExecs.filterFailed()
 
-	// Identify executions running on unhealthy/disconnected nodes
-	// and mark them as failed
-	nonTerminalCurrentRuntimeIDExecutionsSet, lost := nonTerminalCurrentRuntimeIDExecutionsSet.groupByNodeHealth(nodeInfos)
+	// Mark executions that are running on nodes that are not healthy as failed
+	nonTerminalExecs, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
 	if len(lost) > 0 {
 		lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 		metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 		allFailedExecs = allFailedExecs.union(lost)
 	}
 
-	// Check for job timeouts and execution timeouts
-	// and mark affected executions as failed
-	nonTerminalCurrentRuntimeIDExecutionsSet, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalCurrentRuntimeIDExecutionsSet, allFailedExecs)
+	// After this statement, nonTerminalExecs will include:
+	// 1- Running execs - Old Job Versions
+	// 2- Running Execs - New Job Version
+	// 3- Pending Execs - Old Job Versions (These will be later marked as cancelled)
+	// 4- Pending Execs - New Job Version
+	nonTerminalExecs, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalExecs, allFailedExecs)
 
-	// Identify "non-discarded" executions
-	// These are executions we consider valid for each partition:
-	// - For batch jobs: both active and completed executions
-	// - For service jobs: only active executions (they should run continuously)
-	nonDiscardedExecs := nonTerminalCurrentRuntimeIDExecutionsSet.union(currentRuntimeIDExecutionsSet.filterCompleted())
+	// After this statement, nonTerminalExecs will include:
+	//	Running execs - Old Job versions (those were left after rate limiting)
+	//  Running Execs - New Job version
+	//	Pending Execs - New Job version
+	nonTerminalExecs = b.handlePreviousVersionsExecutions(ctx, plan, nonTerminalExecs)
+
+	// nonDiscardedExec is the set of executions that are either active or successfully completed.
+	// But we should only care about the completed execs of the current JobID.
+	// The completed execs of the previous job versions should not be considered for the
+	// 	approval and rejection of nodes.
+	// after this statement, nonDiscardedExecs will include:
+	// 1- Running execs - Old Job versions (those were left after rate limiting)
+	// 2- Running Execs - New Job version
+	// 3- Pending Execs - New Job version
+	// 4- Completed Execs - New Job version
+	nonDiscardedExecs := nonTerminalExecs.union(existingExecs.filterCompleted().filterByJobVersion(job.Version))
 	if job.Type == models.JobTypeService {
 		// Service jobs run until the user stops the job, and would be a bug if an execution is marked completed.
-		nonDiscardedExecs = nonTerminalCurrentRuntimeIDExecutionsSet
+		nonDiscardedExecs = nonTerminalExecs
 	}
 
-	// For each partition, determine which execution(s) should be approved,
-	// rejected, or cancelled to ensure exactly one active execution per partition
+	// Approve/Reject nodes
 	b.approveRejectExecs(nonDiscardedExecs, plan)
 
 	// schedule remaining partitions and assign to new executions
@@ -189,9 +180,10 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 	// if the plan's job state if terminal, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalCurrentRuntimeIDExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
-		if b.isJobComplete(&job, currentRuntimeIDExecutionsSet) {
+		if b.isJobComplete(&job, existingExecs.filterByJobVersion(job.Version)) {
+			// If there are no remaining partitions to be done, mark the job as completed.
 			plan.MarkJobCompleted(orchestrator.JobStateUpdateEvent(models.JobStateTypeCompleted))
 		}
 		plan.MarkJobRunningIfEligible(orchestrator.JobStateUpdateEvent(models.JobStateTypeRunning))
@@ -204,6 +196,7 @@ func (b *BatchServiceJobScheduler) Process(ctx context.Context, evaluation *mode
 
 func (b *BatchServiceJobScheduler) loadJobState(ctx context.Context, metrics *telemetry.MetricRecorder,
 	evaluation *models.Evaluation) (models.Job, []models.Execution, error) {
+	// Job here will be the latest version
 	job, err := b.jobStore.GetJob(ctx, evaluation.JobID)
 	if err != nil {
 		return models.Job{}, nil, fmt.Errorf("failed to retrieve job %s: %w", evaluation.JobID, err)
@@ -211,7 +204,7 @@ func (b *BatchServiceJobScheduler) loadJobState(ctx context.Context, metrics *te
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetJob)
 	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
 
-	// Retrieve the job executions
+	// Retrieve all the job executions
 	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID:          evaluation.JobID,
 		AllJobVersions: true,
@@ -306,7 +299,7 @@ func (b *BatchServiceJobScheduler) scheduleRemainingPartitions(ctx context.Conte
 func (b *BatchServiceJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder, plan *models.Plan, remainingPartitions []int) error {
 	// find matching nodes for the job
-	matching, rejected, err := b.selector.MatchingNodes(ctx, plan.Job, plan.Eval)
+	matching, rejected, err := b.selector.MatchingNodes(ctx, plan.Job)
 	if err != nil {
 		return err
 	}
@@ -357,16 +350,14 @@ func (b *BatchServiceJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			NodeID:         matching[i].NodeInfo.ID(),
 			JobID:          plan.Job.ID,
-			JobVersion:     plan.Job.Version,
 			Job:            plan.Job,
+			JobVersion:     plan.Job.Version,
 			ID:             idgen.ExecutionIDPrefix + uuid.NewString(),
 			EvalID:         plan.EvalID,
-			Evaluation:     plan.Eval,
 			Namespace:      plan.Job.Namespace,
 			ComputeState:   models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState:   models.NewExecutionDesiredState(models.ExecutionDesiredStatePending),
 			PartitionIndex: remainingPartitions[i],
-			RuntimeID:      plan.Eval.RuntimeID,
 		}
 		execution.Normalize()
 		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
@@ -400,6 +391,31 @@ func (b *BatchServiceJobScheduler) isJobComplete(job *models.Job, existingExecs 
 		return false
 	}
 	return true
+}
+
+func (b *BatchServiceJobScheduler) handlePreviousVersionsExecutions(
+	ctx context.Context,
+	plan *models.Plan,
+	nonTerminalExecs execSet,
+) execSet {
+	// nonTerminalExecs are:
+	// 1- Running execs - Old versions
+	// 2- Running Execs - New version
+	// 3- Pending Execs - Old Versions
+	// 4- Pending Execs - New version
+
+	previousJobVersionsExecs := nonTerminalExecs.filterByOutdatedJobVersion(plan.Job.Version)
+	pendingExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStatePending)
+	pendingExecsWithOldJobVersions.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+
+	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
+	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
+
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(uint(countOfRunningExecsToCancel))
+	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
+
+	return remainingExecs
 }
 
 // compile-time assertion that BatchServiceJobScheduler satisfies the Scheduler interface

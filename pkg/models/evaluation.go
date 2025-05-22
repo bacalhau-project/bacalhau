@@ -66,9 +66,6 @@ type Evaluation struct {
 
 	CreateTime int64 `json:"CreateTime"`
 	ModifyTime int64 `json:"ModifyTime"`
-
-	RuntimeID string `json:"RuntimeID"`
-	IsUpdate  bool   `json:"IsUpdate"`
 }
 
 // NewEvaluation creates a new Evaluation.
@@ -151,7 +148,6 @@ func (e *Evaluation) NewDelayedEvaluation(waitUntil time.Time) *Evaluation {
 		Status:      EvalStatusPending,
 		CreateTime:  time.Now().UTC().UnixNano(),
 		ModifyTime:  time.Now().UTC().UnixNano(),
-		RuntimeID:   e.RuntimeID,
 	}
 }
 

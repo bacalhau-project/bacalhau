@@ -238,10 +238,9 @@ func (b *InMemoryBroker) processEnqueue(eval *models.Evaluation, receiptHandle s
 		return nil
 	}
 	log.Debug().Msgf(
-		"enqueueing evaluation %s for job %s with runtime ID %s, triggered by: %s",
+		"enqueueing evaluation %s for job %s triggered by: %s",
 		eval.ID,
 		eval.JobID,
-		eval.RuntimeID,
 		eval.TriggeredBy,
 	)
 

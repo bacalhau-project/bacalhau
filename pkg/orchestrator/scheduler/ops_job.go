@@ -78,7 +78,7 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
 
 	// Retrieve the job state
-	previouslyCreatedExecutionsList, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+	allJobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID:          evaluation.JobID,
 		AllJobVersions: true,
 	})
@@ -87,69 +87,53 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 			evaluation.JobID, evaluation, err)
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
-	metrics.Histogram(ctx, executionsExisting, float64(len(previouslyCreatedExecutionsList)))
+	metrics.Histogram(ctx, executionsExisting, float64(len(allJobExecutions)))
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
-	allPreviouslyCreatedExecutionsSetRaw := execSetFromSliceOfValues(previouslyCreatedExecutionsList)
 
-	currentRuntimeIDExecutionsSet := execSet{}
-	otherRuntimeIDExecutionsSet := execSet{} // These executions will be eventually marked for cancellation
-
-	if evaluation.RuntimeID != "" {
-		// A runtime ID was passed in the evaluation, make
-		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.filterByRuntimeID(evaluation.RuntimeID)
-		otherRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw.excludeThisRuntimeID(evaluation.RuntimeID)
-	} else {
-		// In case no runtime ID was passed in the evaluation
-		currentRuntimeIDExecutionsSet = allPreviouslyCreatedExecutionsSetRaw
-	}
-
-	nonTerminalCurrentRuntimeIDExecutionsSet := currentRuntimeIDExecutionsSet.filterNonTerminal()
+	existingExecs := execSetFromSliceOfValues(allJobExecutions)
+	nonTerminalExecs := existingExecs.filterNonTerminal()
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
-		nonTerminalCurrentRuntimeIDExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedByJobStopEvent())
 		return b.planner.Process(ctx, plan)
 	}
 
-	// If the evaluation was triggered by a Job Rerun/Update, mark otherRuntimeIDExecutionsSet to cancelled
-	if evaluation.TriggeredBy == models.EvalTriggerJobRerun {
-		log.Debug().Msgf("Processing job rerun for job %s, canceling any current active executions", evaluation.JobID)
-		nonTerminalOtherRuntimeIDsExecutionsSet := otherRuntimeIDExecutionsSet.filterNonTerminal()
-		nonTerminalOtherRuntimeIDsExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedForJobRerunEvent())
-		metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(nonTerminalOtherRuntimeIDsExecutionsSet)))
-	}
-
 	// Retrieve the info for all the nodes that have executions for this job
-	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalCurrentRuntimeIDExecutionsSet)
+	nodeInfos, err := existingNodeInfos(ctx, b.selector, nonTerminalExecs)
 	if err != nil {
 		return err
 	}
 
 	// keep track or existing failed executions, and those that will be marked as failed
-	allFailedExecs := currentRuntimeIDExecutionsSet.filterFailed()
+	allFailedExecs := existingExecs.filterFailed()
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	nonTerminalCurrentRuntimeIDExecutionsSet, lost := nonTerminalCurrentRuntimeIDExecutionsSet.groupByNodeHealth(nodeInfos)
+	nonTerminalExecs, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
 	lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 	allFailedExecs = allFailedExecs.union(lost)
 
-	nonTerminalCurrentRuntimeIDExecutionsSet, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalCurrentRuntimeIDExecutionsSet, allFailedExecs)
+	nonTerminalExecs, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalExecs, allFailedExecs)
+
+	// this will enqueue an evaluation and marks executions for cancellation rate limited
+	nonTerminalExecs = b.handlePreviousVersionsExecutions(ctx, plan, nonTerminalExecs)
 
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
-	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, currentRuntimeIDExecutionsSet); err != nil {
+	// Todo: this used to be the whole executions, not the non-terminal ones
+	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, nonTerminalExecs); err != nil {
 		return err // internal error
 	}
 
 	// if the plan's job state is failed, stop all active executions
 	if plan.IsJobFailed() {
-		nonTerminalCurrentRuntimeIDExecutionsSet.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
+		nonTerminalExecs.markCancelled(plan, orchestrator.ExecStoppedDueToJobFailureEvent())
 	} else {
 		// mark job as completed if there are no more active or new executions
-		if len(nonTerminalCurrentRuntimeIDExecutionsSet) == 0 && !plan.HasPendingWork() {
+		if len(nonTerminalExecs) == 0 && !plan.HasPendingWork() {
 			if len(allFailedExecs) > 0 {
 				plan.MarkJobFailed(orchestrator.JobExecutionsFailedEvent())
 			} else {
@@ -192,7 +176,7 @@ func (b *OpsJobScheduler) handleTimeouts(
 func (b *OpsJobScheduler) createMissingExecs(
 	ctx context.Context, metrics *telemetry.MetricRecorder,
 	job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
-	matching, rejected, err := b.selector.MatchingNodes(ctx, job, plan.Eval)
+	matching, rejected, err := b.selector.MatchingNodes(ctx, job)
 	if err != nil {
 		return nil, err
 	}
@@ -240,15 +224,13 @@ func (b *OpsJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
-			JobVersion:   plan.Job.Version,
+			JobVersion:   job.Version,
 			EvalID:       plan.EvalID,
-			Evaluation:   plan.Eval,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
 			ComputeState: models.NewExecutionState(models.ExecutionStateNew),
 			DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
 			NodeID:       node.NodeInfo.ID(),
-			RuntimeID:    plan.Eval.RuntimeID,
 		}
 		execution.Normalize()
 		plan.AppendExecution(execution, orchestrator.ExecCreatedEvent(execution))
@@ -256,6 +238,32 @@ func (b *OpsJobScheduler) createMissingExecs(
 	}
 	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(newExecs)))
 	return newExecs, nil
+}
+
+func (b *OpsJobScheduler) handlePreviousVersionsExecutions(
+	ctx context.Context,
+	plan *models.Plan,
+	nonTerminalExecs execSet,
+) execSet {
+	// nonTerminalExecs are:
+	// 1- Running execs - Old versions
+	// 2- Running Execs - New version
+	// 3- Pending Execs - Old Versions ==> we should mark them directly as cancelled
+	// 4- Pending Execs - New version
+
+	previousJobVersionsExecs := nonTerminalExecs.filterByOutdatedJobVersion(plan.Job.Version)
+	pendingExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStatePending)
+	pendingExecsWithOldJobVersions.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+
+	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
+
+	// The rate limiter will enqeue a delayed evaluation
+	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(uint(countOfRunningExecsToCancel))
+	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
+
+	return remainingExecs
 }
 
 // compile-time assertion that OpsJobScheduler satisfies the Scheduler interface
