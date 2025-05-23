@@ -257,7 +257,7 @@ func (b *OpsJobScheduler) handlePreviousVersionsExecutions(
 
 	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
 
-	// The rate limiter will enqeue a delayed evaluation
+	// The rate limiter will enqueue a delayed evaluation
 	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
 	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(uint(countOfRunningExecsToCancel))
 	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
