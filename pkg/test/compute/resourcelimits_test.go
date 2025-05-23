@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -141,8 +142,10 @@ func (suite *ComputeNodeResourceLimitsSuite) TestTotalResourceLimits() {
 
 		for _, jobResources := range testCase.jobs {
 			// what the job is doesn't matter - it will only end up
+			sanitizedName := strings.Replace(suite.T().Name(), "/", "-", -1)
+			jobName := fmt.Sprintf("%s-%d", sanitizedName, rand.Intn(10001))
 			j := &models.Job{
-				Name:  suite.T().Name(),
+				Name:  jobName,
 				Type:  models.JobTypeBatch,
 				Count: 1,
 				Tasks: []*models.Task{
@@ -330,7 +333,6 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 	nodeutils.WaitForNodeDiscovery(suite.T(), stack.Nodes[0].RequesterNode, nodeCount)
 
 	job := &models.Job{
-		Name:  suite.T().Name(),
 		Type:  models.JobTypeBatch,
 		Count: 1,
 		Tasks: []*models.Task{
@@ -357,8 +359,11 @@ func (suite *ComputeNodeResourceLimitsSuite) TestParallelGPU() {
 
 	resolver := scenario.NewStateResolverFromStore(stack.Nodes[0].RequesterNode.JobStore)
 
+	sanitizedJobName := strings.Replace(suite.T().Name(), "/", "-", -1)
+
 	for i := 0; i < nodeCount; i++ {
 		for j := 0; j < jobsPerNode; j++ {
+			job.Name = fmt.Sprintf("%s-%d-%d", sanitizedJobName, i, j)
 			submittedJob, err := stack.Nodes[0].RequesterNode.Endpoint.SubmitJob(ctx, &orchestrator.SubmitJobRequest{Job: job})
 			require.NoError(suite.T(), err)
 			jobIds = append(jobIds, submittedJob.JobID)

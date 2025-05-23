@@ -35,15 +35,19 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID: job.ID,
 	})
+
 	if err == nil {
 		for _, execution := range executions {
 			if _, ok := previousExecutors[execution.NodeID]; !ok {
 				previousExecutors[execution.NodeID] = 0
 			}
 			previousExecutors[execution.NodeID]++
+
+			// TODO: We do not need this anymore. Double check before we remove it
 			if !execution.IsDiscarded() {
 				toFilterOut[execution.NodeID] = true
 			}
+
 			if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true
 			}

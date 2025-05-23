@@ -361,8 +361,8 @@ func (s *DockerRunSuite) TestTruncateReturn() {
 
 			j := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 			info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{
-				JobID:   j.ID,
-				Include: "executions",
+				JobIDOrName: j.ID,
+				Include:     "executions",
 			})
 			s.Require().NoError(err)
 
@@ -479,8 +479,8 @@ func (s *DockerRunSuite) TestRun_InvalidImage() {
 	s.T().Log(job)
 
 	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID:   job.ID,
-		Include: "executions",
+		JobIDOrName: job.ID,
+		Include:     "executions",
 	})
 	s.Require().NoError(err)
 	s.T().Log(info)
@@ -537,7 +537,7 @@ func (s *DockerRunSuite) TestRun_NoPublisher() {
 	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 	s.T().Log(job)
 
-	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: job.ID, Include: "executions"})
+	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: job.ID, Include: "executions"})
 	s.Require().NoError(err)
 	s.T().Log(info)
 
@@ -557,7 +557,7 @@ func (s *DockerRunSuite) TestRun_LocalPublisher() {
 	job := testutils.GetJobFromTestOutput(ctx, s.T(), s.ClientV2, out)
 	s.T().Log(job)
 
-	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: job.ID, Include: "executions"})
+	info, err := s.ClientV2.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: job.ID, Include: "executions"})
 	s.Require().NoError(err)
 	s.T().Log(info)
 

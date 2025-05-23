@@ -22,7 +22,10 @@ var (
 
 	//nolint:lll // Documentation
 	getExample = templates.Examples(`
-		# Get the results of a job.
+		# Get the results of a job using its Name.
+		bacalhau job get my-job
+
+		# Get the results of a job using its ID.
 		bacalhau job get j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Get the results of a job, with a short ID.
@@ -31,6 +34,7 @@ var (
 )
 
 type GetOptions struct {
+	Namespace        string
 	DownloadSettings *cliflags.DownloaderSettings
 }
 
@@ -44,8 +48,8 @@ func NewGetCmd() *cobra.Command {
 	OG := NewGetOptions()
 
 	getCmd := &cobra.Command{
-		Use:           "get [id]",
-		Short:         "Get the results of a job",
+		Use:           "get",
+		Short:         "Get the results of a job by ID or Name",
 		Long:          getLong,
 		Example:       getExample,
 		Args:          cobra.ExactArgs(1),
@@ -67,6 +71,9 @@ func NewGetCmd() *cobra.Command {
 		},
 	}
 
+	getCmd.PersistentFlags().StringVar(&OG.Namespace, "namespace", OG.Namespace,
+		`Job Namespace. If not provided, default namespace will be used.`,
+	)
 	getCmd.PersistentFlags().AddFlagSet(cliflags.NewDownloadFlags(OG.DownloadSettings))
 
 	return getCmd
@@ -75,20 +82,21 @@ func NewGetCmd() *cobra.Command {
 func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalhau, OG *GetOptions) error {
 	ctx := cmd.Context()
 
-	jobID := cmdArgs[0]
-	if jobID == "" {
+	jobIDOrName := cmdArgs[0]
+	if jobIDOrName == "" {
 		byteResult, err := util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %w", err)
 		}
-		jobID = string(byteResult)
+		jobIDOrName = string(byteResult)
 	}
 
-	// Split the jobID on / to see if the request is for a single file or for the
+	// Split the jobIDOrName on / to see if the request is for a single file or for the
 	// entire jobid.
-	parts := strings.SplitN(jobID, "/", 2)
+	// TODO: Enforce certain syntax for JobName - only DNS compatible names should be allowed
+	parts := strings.SplitN(jobIDOrName, "/", 2)
 	if len(parts) == 2 {
-		jobID, OG.DownloadSettings.SingleFile = parts[0], parts[1]
+		jobIDOrName, OG.DownloadSettings.SingleFile = parts[0], parts[1]
 	}
 
 	if err := util.DownloadResultsHandler(
@@ -96,7 +104,8 @@ func get(cmd *cobra.Command, cmdArgs []string, api client.API, cfg types.Bacalha
 		cmd,
 		cfg,
 		api,
-		jobID,
+		jobIDOrName,
+		OG.Namespace,
 		OG.DownloadSettings,
 	); err != nil {
 		return err

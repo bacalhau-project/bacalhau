@@ -312,6 +312,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orchestrator/jobs/:id/diff": {
+            "put": {
+                "description": "Submits a job spec and diff it with the latest job version spec.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Submits a job spec and diff it with the latest job version spec.",
+                "operationId": "orchestrator/diffJob",
+                "parameters": [
+                    {
+                        "description": "Job to diff",
+                        "name": "diffJobRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orchestrator/jobs/{id}": {
             "get": {
                 "description": "Returns a job.",
@@ -671,6 +718,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/orchestrator/jobs/{id}/versions": {
+            "get": {
+                "description": "Returns the versions of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns the versions of a job.",
+                "operationId": "orchestrator/jobVersions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID or Name to get the job versions for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Namespace of the job",
+                        "name": "namespace",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of job versions returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to get the next page of job versions",
+                        "name": "next_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the job versions",
+                        "name": "reverse",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order the job versions by the given field",
+                        "name": "order_by",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobVersionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orchestrator/nodes": {
             "get": {
                 "description": "Returns a list of orchestrator nodes.",
@@ -850,6 +973,37 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "apimodels.DiffJobRequest": {
+            "type": "object",
+            "properties": {
+                "Job": {
+                    "$ref": "#/definitions/models.Job"
+                },
+                "credential": {
+                    "$ref": "#/definitions/apimodels.HTTPCredential"
+                },
+                "idempotencyToken": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.DiffJobResponse": {
+            "type": "object",
+            "properties": {
+                "Diff": {
+                    "type": "string"
+                },
+                "Warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "apimodels.GetAgentLicenseResponse": {
             "type": "object",
             "properties": {
@@ -1062,6 +1216,20 @@ const docTemplate = `{
                 }
             }
         },
+        "apimodels.ListJobVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Job"
+                    }
+                },
+                "NextToken": {
+                    "type": "string"
+                }
+            }
+        },
         "apimodels.ListJobsResponse": {
             "type": "object",
             "properties": {
@@ -1093,6 +1261,9 @@ const docTemplate = `{
         "apimodels.PutJobRequest": {
             "type": "object",
             "properties": {
+                "Force": {
+                    "type": "boolean"
+                },
                 "Job": {
                     "$ref": "#/definitions/models.Job"
                 },
@@ -1386,6 +1557,10 @@ const docTemplate = `{
                     "description": "Job is the parent job of the task being allocated.\nThis is copied at execution time to avoid issues if the job\ndefinition is updated.",
                     "type": "string"
                 },
+                "JobVersion": {
+                    "description": "JobVersion version of the job that this execution was created in",
+                    "type": "integer"
+                },
                 "ModifyTime": {
                     "description": "ModifyTime is the time the execution was last updated.",
                     "type": "integer"
@@ -1675,6 +1850,9 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.StateChange-models_JobStateType"
                         }
                     ]
+                },
+                "JobVersion": {
+                    "type": "integer"
                 },
                 "SeqNum": {
                     "type": "integer"

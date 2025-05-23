@@ -23,10 +23,19 @@ func (j *Jobs) Put(ctx context.Context, r *apimodels.PutJobRequest) (*apimodels.
 	return &resp, nil
 }
 
-// Get is used to get a job by ID.
+// Diff is used to diff the given spec with the latest Job spec in the cluster.
+func (j *Jobs) Diff(ctx context.Context, r *apimodels.DiffJobRequest) (*apimodels.DiffJobResponse, error) {
+	var resp apimodels.DiffJobResponse
+	if err := j.client.Put(ctx, jobsPath+"/"+r.Job.Name+"/diff", r, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Get is used to get a job by ID or Name.
 func (j *Jobs) Get(ctx context.Context, r *apimodels.GetJobRequest) (*apimodels.GetJobResponse, error) {
 	var resp apimodels.GetJobResponse
-	if err := j.client.Get(ctx, jobsPath+"/"+r.JobID, r, &resp); err != nil {
+	if err := j.client.Get(ctx, jobsPath+"/"+r.JobIDOrName, r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -44,7 +53,7 @@ func (j *Jobs) List(ctx context.Context, r *apimodels.ListJobsRequest) (*apimode
 // History returns history events for a job.
 func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) (*apimodels.ListJobHistoryResponse, error) {
 	var resp apimodels.ListJobHistoryResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobID+"/history", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/history", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -54,7 +63,22 @@ func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) 
 func (j *Jobs) Executions(ctx context.Context, r *apimodels.ListJobExecutionsRequest) (*apimodels.ListJobExecutionsResponse,
 	error) {
 	var resp apimodels.ListJobExecutionsResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobID+"/executions", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/executions", r, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Versions returns the versions of a job.
+func (j *Jobs) Versions(
+	ctx context.Context,
+	r *apimodels.ListJobVersionsRequest,
+) (
+	*apimodels.ListJobVersionsResponse,
+	error,
+) {
+	var resp apimodels.ListJobVersionsResponse
+	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/versions", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -73,6 +97,15 @@ func (j *Jobs) Results(ctx context.Context, r *apimodels.ListJobResultsRequest) 
 func (j *Jobs) Stop(ctx context.Context, r *apimodels.StopJobRequest) (*apimodels.StopJobResponse, error) {
 	var resp apimodels.StopJobResponse
 	if err := j.client.Delete(ctx, jobsPath+"/"+r.JobID, r, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// Rerun is used to rerun a job by ID or Name.
+func (j *Jobs) Rerun(ctx context.Context, r *apimodels.RerunJobRequest) (*apimodels.RerunJobResponse, error) {
+	var resp apimodels.RerunJobResponse
+	if err := j.client.Put(ctx, jobsPath+"/"+r.JobIDOrName+"/rerun", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

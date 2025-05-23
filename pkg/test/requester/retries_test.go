@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -356,8 +357,10 @@ func (s *RetriesSuite) TestRetry() {
 }
 
 func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *models.Job {
+	sanitizedName := strings.Replace(t.Name(), "/", "-", -1)
+	jobName := fmt.Sprintf("%s-%d", sanitizedName, rand.Intn(10001))
 	j := &models.Job{
-		Name:  t.Name(),
+		Name:  jobName,
 		Type:  models.JobTypeBatch,
 		Count: 1,
 		Tasks: []*models.Task{

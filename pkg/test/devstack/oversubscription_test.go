@@ -4,6 +4,7 @@ package devstack
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -142,6 +143,7 @@ func (s *OverSubscriptionTestSuite) TestOverSubscribeNode() {
 			jobs := make([]*models.Job, jobsCount)
 			for i := 0; i < jobsCount; i++ {
 				job := mock.Job()
+				job.Name = fmt.Sprintf("%s-%s", job.Name, job.ID)
 				job.Task().ResourcesConfig = &s.jobResources
 				jobs[i] = job
 			}

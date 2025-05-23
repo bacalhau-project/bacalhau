@@ -18,12 +18,18 @@ import (
 
 var (
 	stopLong = templates.LongDesc(`
-		Stop a previously submitted job.
+		Stop a previously submitted job. Either Job ID or Job Name can be specified.
 `)
 
 	//nolint:lll // Documentation
 	stopExample = templates.Examples(`
-		# Stop a previously submitted job
+		# Stop a previously submitted job using Job Name (default namespace)
+		bacalhau job stop my-job-name-a
+
+		# Stop a previously submitted job using Job Name and non default namespace
+		bacalhau job stop my-job-name-b --namespace=dev
+
+		# Stop a previously submitted job using Job ID (long ID version)
 		bacalhau job stop j-51225160-807e-48b8-88c9-28311c7899e1
 
 		# Stop a job, with a short ID.
@@ -44,7 +50,8 @@ The current state is: %s
 )
 
 type StopOptions struct {
-	Quiet bool
+	Quiet     bool
+	Namespace string
 }
 
 func NewStopOptions() *StopOptions {
@@ -57,7 +64,7 @@ func NewStopCmd() *cobra.Command {
 	o := NewStopOptions()
 
 	stopCmd := &cobra.Command{
-		Use:           "stop [id]",
+		Use:           "stop",
 		Short:         "Stop a previously submitted job",
 		Long:          stopLong,
 		Example:       stopExample,
@@ -84,6 +91,9 @@ func NewStopCmd() *cobra.Command {
 
 	stopCmd.PersistentFlags().BoolVar(&o.Quiet, "quiet", o.Quiet,
 		`Do not print anything to stdout or stderr`,
+	)
+	stopCmd.PersistentFlags().StringVar(&o.Namespace, "namespace", o.Namespace,
+		`Job Namespace. If not provided, it will be treated as default namespace.`,
 	)
 	return stopCmd
 }
@@ -116,14 +126,14 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string, api client.API) 
 	}
 	spinner.Run()
 
-	requestedJobID := cmdArgs[0]
-	if requestedJobID == "" {
+	requestedJobIdentifier := cmdArgs[0]
+	if requestedJobIdentifier == "" {
 		var byteResult []byte
 		byteResult, err = util.ReadFromStdinIfAvailable(cmd)
 		if err != nil {
 			return fmt.Errorf("unknown error reading from file: %s", err)
 		}
-		requestedJobID = string(byteResult)
+		requestedJobIdentifier = string(byteResult)
 	}
 
 	// Let the user know we are initiating the request
@@ -132,7 +142,12 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string, api client.API) 
 	// terminal or not. We will not send requests if it is.
 	spinner.NextStep(gettingJobMessage)
 	response, err := api.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID: requestedJobID,
+		JobIDOrName: requestedJobIdentifier,
+		BaseGetRequest: apimodels.BaseGetRequest{
+			BaseRequest: apimodels.BaseRequest{
+				Namespace: o.Namespace,
+			},
+		},
 	})
 	if err != nil {
 		spinner.Done(printer.StopFailed)
@@ -153,15 +168,20 @@ func (o *StopOptions) run(cmd *cobra.Command, cmdArgs []string, api client.API) 
 	spinner.NextStep(stoppingJobMessage)
 
 	stopResponse, err := api.Jobs().Stop(ctx, &apimodels.StopJobRequest{
-		JobID:  requestedJobID,
+		JobID:  requestedJobIdentifier,
 		Reason: "Stopped at user request",
+		BasePutRequest: apimodels.BasePutRequest{
+			BaseRequest: apimodels.BaseRequest{
+				Namespace: o.Namespace,
+			},
+		},
 	})
 	if err != nil {
 		spinner.Done(printer.StopFailed)
 		if bacerrors.IsError(err) {
 			return err
 		}
-		return fmt.Errorf("unknown error trying to stop job (ID: %s): %w", requestedJobID, err)
+		return fmt.Errorf("unknown error trying to stop job (ID: %s): %w", requestedJobIdentifier, err)
 	}
 
 	spinner.Done(printer.StopSuccess)

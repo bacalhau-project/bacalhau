@@ -174,8 +174,8 @@ func (s *StopSuite) submitJob(sleepTime int) (string, error) {
 func (s *StopSuite) verifyJobState(jobID string, expectedState models.JobStateType, expectedMessage string) {
 	ctx := context.Background()
 	getResp, err := s.client.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID:   jobID,
-		Include: "executions",
+		JobIDOrName: jobID,
+		Include:     "executions",
 	})
 	s.Require().NoError(err)
 	s.Require().Equal(expectedState, getResp.Job.State.StateType)

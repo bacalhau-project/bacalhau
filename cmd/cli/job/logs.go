@@ -28,9 +28,12 @@ var (
 )
 
 type LogCommandOptions struct {
-	ExecutionID string
-	Follow      bool
-	Tail        bool
+	ExecutionID    string
+	Follow         bool
+	Tail           bool
+	JobVersion     uint64
+	AllJobVersions bool
+	Namespace      string
 }
 
 func NewLogCmd() *cobra.Command {
@@ -45,10 +48,13 @@ func NewLogCmd() *cobra.Command {
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			opts := util.LogOptions{
-				JobID:       cmdArgs[0],
-				ExecutionID: options.ExecutionID,
-				Follow:      options.Follow,
-				Tail:        options.Tail,
+				JobID:          cmdArgs[0],
+				JobVersion:     options.JobVersion,
+				AllJobVersions: options.AllJobVersions,
+				Namespace:      options.Namespace,
+				ExecutionID:    options.ExecutionID,
+				Follow:         options.Follow,
+				Tail:           options.Tail,
 			}
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
 			cfg, err := util.SetupRepoConfig(cmd)
@@ -78,5 +84,15 @@ func NewLogCmd() *cobra.Command {
 		&options.Tail, "tail", "t", false,
 		"Tail the logs from the end of the log stream.",
 	)
+
+	logsCmd.Flags().Uint64Var(&options.JobVersion, "version", options.JobVersion,
+		"The job version to filter by. By default, the latest version is used.")
+	logsCmd.Flags().BoolVar(&options.AllJobVersions, "all-versions", options.AllJobVersions,
+		"Specifies that all job versions should be returned. "+
+			"By default, only the executions of the latest job version is returned.")
+	logsCmd.PersistentFlags().StringVar(&options.Namespace, "namespace", options.Namespace,
+		`Job Namespace. If not provided, default namespace will be used.`,
+	)
+
 	return logsCmd
 }

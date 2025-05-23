@@ -20,10 +20,13 @@ import (
 var LoggingMode = logger.LogModeDefault
 
 type LogOptions struct {
-	JobID       string
-	ExecutionID string
-	Follow      bool
-	Tail        bool
+	JobID          string
+	JobVersion     uint64
+	Namespace      string
+	AllJobVersions bool
+	ExecutionID    string
+	Follow         bool
+	Tail           bool
 }
 
 func Logs(cmd *cobra.Command, api clientv2.API, options LogOptions) error {
@@ -37,12 +40,17 @@ func Logs(cmd *cobra.Command, api clientv2.API, options LogOptions) error {
 		requestedJobID = string(byteResult)
 	}
 
-	ch, err := api.Jobs().Logs(cmd.Context(), &apimodels.GetLogsRequest{
-		JobID:       options.JobID,
-		ExecutionID: options.ExecutionID,
-		Follow:      options.Follow,
-		Tail:        options.Tail,
-	})
+	logsRequest := &apimodels.GetLogsRequest{
+		JobID:          options.JobID,
+		JobVersion:     options.JobVersion,
+		AllJobVersions: options.AllJobVersions,
+		ExecutionID:    options.ExecutionID,
+		Follow:         options.Follow,
+		Tail:           options.Tail,
+	}
+	logsRequest.Namespace = options.Namespace
+
+	ch, err := api.Jobs().Logs(cmd.Context(), logsRequest)
 	if err != nil {
 		if bacerrors.IsError(err) {
 			return err
