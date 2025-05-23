@@ -64,6 +64,7 @@ type BoltJobStore struct {
 	tagsIndex        *Index
 	executionsIndex  *Index
 	evaluationsIndex *Index
+	namesIndex       *Index
 }
 
 type Option func(store *BoltJobStore)
@@ -144,6 +145,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.tagsIndex = NewIndex(BucketTagsIndex)
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
+	store.namesIndex = NewIndex(BucketJobsNamesIndex)
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err = errors.Join(
@@ -504,6 +506,24 @@ func (b *BoltJobStore) getJobs(ctx context.Context, tx *bolt.Tx, recorder *telem
 	}
 
 	return response, nil
+}
+
+func (b *BoltJobStore) getJobIDByJobName(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobName string) (string, error) {
+	// Jamil, id is evaluation ID
+	jobIDs, err := b.namesIndex.List(tx, []byte(jobName))
+	if err != nil {
+		return "", err
+	}
+
+	if len(jobIDs) == 0 {
+		return "", jobstore.NewErrJobNameIndexNotFound(jobName)
+	}
+
+	if len(jobIDs) != 1 {
+		return "", jobstore.NewErrMultipleJobIDsForSameJobNameFound(jobName)
+	}
+
+	return string(jobIDs[0]), nil
 }
 
 // getJobsInitialSet returns the initial set of jobs to be considered for GetJobs response.
@@ -994,7 +1014,7 @@ func (b *BoltJobStore) createJob(
 
 	// Check if a job with this name already exists in the namespace
 	if b.jobExistsByName(ctx, tx, recorder, job.Name, job.Namespace) {
-		return jobstore.NewErrJobAlreadyExists(fmt.Sprintf("job with name %s in namespace %s", job.Name, job.Namespace))
+		return jobstore.NewErrJobNameAlreadyExists(job.Name, job.Namespace)
 	}
 
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartValidate)
@@ -1068,14 +1088,10 @@ func (b *BoltJobStore) createJob(
 		}
 	}
 
-	// Add job name to the job names bucket
+	// Add job name to the job names index bucket
 	jobNameKey := b.generateJobNameKey(job.Name, job.Namespace)
-	jobNamesBucket, err := NewBucketPath(BucketJobsNamesIndex).Get(tx, true)
-	if err != nil {
+	if err = b.namesIndex.Add(tx, jobIDKey, []byte(jobNameKey)); err != nil {
 		return NewBoltDBError(err)
-	}
-	if err = jobNamesBucket.Put([]byte(jobNameKey), jobIDKey); err != nil {
-		return err
 	}
 
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
@@ -1139,12 +1155,8 @@ func (b *BoltJobStore) deleteJob(
 
 	// Remove from job names bucket
 	jobNameKey := b.generateJobNameKey(job.Name, job.Namespace)
-	jobNamesBucket, err := NewBucketPath(BucketJobsNamesIndex).Get(tx, false)
-	if err != nil {
+	if err = b.namesIndex.Remove(tx, jobIDKey, []byte(jobNameKey)); err != nil {
 		return NewBoltDBError(err)
-	}
-	if err = jobNamesBucket.Delete([]byte(jobNameKey)); err != nil {
-		return err
 	}
 
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexDelete)
@@ -1185,23 +1197,35 @@ func (b *BoltJobStore) updateJob(
 
 	// Verify that this job exists in the names bucket
 	jobNameKey := b.generateJobNameKey(existingJob.Name, existingJob.Namespace)
-	jobNamesBucket, err := NewBucketPath(BucketJobsNamesIndex).Get(tx, true)
+	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
+
 	if err != nil {
-		return NewBoltDBError(err)
-	}
+		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
+			return NewBoltDBError(err)
+		}
 
-	jobIDBytes := jobNamesBucket.Get([]byte(jobNameKey))
-
-	// If the job isn't in the name bucket, add it now
-	if jobIDBytes == nil {
+		// If the job isn't in the names index bucket, add it now since it could an old Job
 		log.Ctx(ctx).Warn().
 			Str("job_id", existingJob.ID).
 			Str("job_name", existingJob.Name).
 			Str("namespace", existingJob.Namespace).
-			Msg("Job exists but not found in name bucket - adding it now")
+			Msg("Job exists but not found in names index bucket - adding it now")
 
-		if err = jobNamesBucket.Put([]byte(jobNameKey), []byte(existingJob.ID)); err != nil {
-			return err
+		if err = b.namesIndex.Add(tx, []byte(existingJob.ID), []byte(jobNameKey)); err != nil {
+			return NewBoltDBError(err)
+		}
+
+	} else {
+		if indexedJobID != existingJob.ID {
+			return jobstore.
+				NewJobStoreError(
+					fmt.Sprintf(
+						"inconsistency in job names index. Job name %s ID %s does not match stored job ID %s",
+						existingJob.Name,
+						existingJob.ID,
+						indexedJobID,
+					)).
+				WithHint("please check Job Names Index bucket for data integrity")
 		}
 	}
 
@@ -1866,21 +1890,13 @@ func (b *BoltJobStore) getJobByName(
 	// Create the job name key in the same format as in createJob
 	jobNameKey := b.generateJobNameKey(name, namespace)
 
-	// Look up the job ID from the job names bucket
-	jobNamesBucket, err := NewBucketPath(BucketJobsNamesIndex).Get(tx, false)
+	// Look up the job ID from the job names index bucket
+	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
 	if err != nil {
-		return job, NewBoltDBError(err)
+		return job, err
 	}
 
-	jobIDBytes := jobNamesBucket.Get([]byte(jobNameKey))
-	if jobIDBytes == nil {
-		return job, jobstore.NewErrJobNotFound(fmt.Sprintf("name: %s, namespace: %s", name, namespace))
-	}
-	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexRead)
-
-	// Get the job using the found ID
-	jobID := string(jobIDBytes)
-	return b.getJob(ctx, tx, recorder, jobID)
+	return b.getJob(ctx, tx, recorder, indexedJobID)
 }
 
 func (b *BoltJobStore) generateJobNameKey(name string, namespace string) string {

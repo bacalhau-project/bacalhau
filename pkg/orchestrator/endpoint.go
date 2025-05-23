@@ -378,7 +378,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 
 	if execution == nil {
 		return nil, fmt.Errorf(
-			"unable to find execution %s in job %s and job version %s",
+			"unable to find execution %s in job %s and job version %d",
 			request.ExecutionID,
 			job.ID,
 			job.Version,

@@ -9,15 +9,22 @@ import (
 
 const JobStoreComponent = "JobStore"
 const (
-	ConflictJobState         bacerrors.ErrorCode = "ConflictJobState"
-	MultipleJobsFound        bacerrors.ErrorCode = "MultipleJobsFound"
-	MultipleExecutionsFound  bacerrors.ErrorCode = "MultipleExecutionsFound"
-	MultipleEvaluationsFound bacerrors.ErrorCode = "MultipleEvaluationsFound"
-	ConflictJobVersion       bacerrors.ErrorCode = "ConflictJobVersion"
+	ConflictJobState               bacerrors.ErrorCode = "ConflictJobState"
+	MultipleJobsFound              bacerrors.ErrorCode = "MultipleJobsFound"
+	MultipleExecutionsFound        bacerrors.ErrorCode = "MultipleExecutionsFound"
+	MultipleEvaluationsFound       bacerrors.ErrorCode = "MultipleEvaluationsFound"
+	MultipleJobIDsForSameNameFound bacerrors.ErrorCode = "MultipleJobIDsForSameNameFound"
+	ConflictJobVersion             bacerrors.ErrorCode = "ConflictJobVersion"
 )
 
 func NewErrJobNotFound(id string) bacerrors.Error {
 	return bacerrors.Newf("job not found: %s", id).
+		WithCode(bacerrors.NotFoundError).
+		WithComponent(JobStoreComponent)
+}
+
+func NewErrJobNameIndexNotFound(jobName string) bacerrors.Error {
+	return bacerrors.Newf("job name index not found: %s", jobName).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(JobStoreComponent)
 }
@@ -29,8 +36,20 @@ func NewErrMultipleJobsFound(id string) bacerrors.Error {
 		WithHint("Use full job ID")
 }
 
+func NewErrMultipleJobIDsForSameJobNameFound(jobName string) bacerrors.Error {
+	return bacerrors.Newf("multiple job IDs found for same job name id %s", jobName).
+		WithCode(MultipleJobIDsForSameNameFound).
+		WithComponent(JobStoreComponent)
+}
+
 func NewErrJobAlreadyExists(id string) bacerrors.Error {
 	return bacerrors.Newf("job already exists: %s", id).
+		WithCode(bacerrors.ResourceInUse).
+		WithComponent(JobStoreComponent)
+}
+
+func NewErrJobNameAlreadyExists(name, namespace string) bacerrors.Error {
+	return bacerrors.Newf("job name %s already exists in namespace %s", name, namespace).
 		WithCode(bacerrors.ResourceInUse).
 		WithComponent(JobStoreComponent)
 }
