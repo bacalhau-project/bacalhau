@@ -81,12 +81,11 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		if !request.Force {
 			jobDiff := existingJob.CompareWith(job)
 			if jobDiff == "" {
-				// TODO: Propagate specifc error code to provide a warning
 				return nil, bacerrors.Newf(
 					"no changes detected for new job spec. Job Name: '%s', Job Id: '%s'",
 					job.Name,
 					job.ID,
-				)
+				).WithHint("Use the --force flag to override this warning")
 			}
 		}
 	}
@@ -378,7 +377,12 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	}
 
 	if execution == nil {
-		return nil, fmt.Errorf("unable to find execution %s in job %s", request.ExecutionID, job.ID)
+		return nil, fmt.Errorf(
+			"unable to find execution %s in job %s and job version %s",
+			request.ExecutionID,
+			job.ID,
+			job.Version,
+		)
 	}
 
 	req := messages.ExecutionLogsRequest{
