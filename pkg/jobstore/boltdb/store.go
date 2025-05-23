@@ -309,14 +309,12 @@ func (b *BoltJobStore) getExecutions(
 		return nil, err
 	}
 
+	// load latest job state if requested
 	jobModel, err := b.getJob(ctx, tx, recorder, jobID)
 	if err != nil {
 		return nil, err
 	}
-
-	if options.IncludeJob {
-		recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
-	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
 
 	// Sort By Given Order By
 	var sortFnc func(a, b models.Execution) int
@@ -364,8 +362,11 @@ func (b *BoltJobStore) getExecutions(
 		}
 		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
 
-		if b.filterJobExecutionItem(es, options, jobModel.Version) {
+		if options.IncludeJob {
 			es.Job = &jobModel
+		}
+
+		if b.filterJobExecutionItem(es, options, jobModel.Version) {
 			execs = append(execs, es)
 		}
 

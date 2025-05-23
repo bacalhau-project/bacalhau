@@ -384,9 +384,9 @@ func (mr *MockNodeSelectorMockRecorder) AllNodes(ctx interface{}) *gomock.Call {
 }
 
 // MatchingNodes mocks base method.
-func (m *MockNodeSelector) MatchingNodes(ctx context.Context, job *models.Job, currentEvaluation *models.Evaluation) ([]NodeRank, []NodeRank, error) {
+func (m *MockNodeSelector) MatchingNodes(ctx context.Context, job *models.Job) ([]NodeRank, []NodeRank, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MatchingNodes", ctx, job, currentEvaluation)
+	ret := m.ctrl.Call(m, "MatchingNodes", ctx, job)
 	ret0, _ := ret[0].([]NodeRank)
 	ret1, _ := ret[1].([]NodeRank)
 	ret2, _ := ret[2].(error)
