@@ -123,8 +123,10 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
-	// Todo: this used to be the whole executions, not the non-terminal ones
-	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, nonTerminalExecs); err != nil {
+	// For ops job, we need to pass all the execs with new job version no matter
+	//  their state, and also pass running execs with older job versions
+	allNewExecsAndOldRunningExecs := existingExecs.filterByJobVersion(job.Version).union(nonTerminalExecs)
+	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, allNewExecsAndOldRunningExecs); err != nil {
 		return err // internal error
 	}
 
