@@ -64,7 +64,7 @@ require (
 	github.com/tetratelabs/wazero v1.9.0
 	github.com/theckman/yacspin v0.13.12
 	github.com/vincent-petithory/dataurl v1.0.0
-	go.etcd.io/bbolt v1.3.8
+	go.etcd.io/bbolt v1.4.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.35.0
