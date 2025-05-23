@@ -339,6 +339,8 @@ func (set execSet) difference(other execSet) execSet {
 // splitByCount splits the execution set into two parts:
 // - first: contains up to count executions
 // - remaining: contains all other executions
+//
+//nolint:gosec // G115: version within reasonable bounds
 func (set execSet) splitByCount(count uint) (first execSet, remaining execSet) {
 	first = make(execSet)
 	remaining = make(execSet)
