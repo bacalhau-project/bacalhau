@@ -1223,7 +1223,6 @@ func (b *BoltJobStore) updateJob(
 		if err = b.namesIndex.Add(tx, []byte(existingJob.ID), []byte(jobNameKey)); err != nil {
 			return NewBoltDBError(err)
 		}
-
 	} else {
 		if indexedJobID != existingJob.ID {
 			return jobstore.

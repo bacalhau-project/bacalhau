@@ -351,7 +351,7 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
 		JobID:          job.ID,
 		JobVersion:     request.JobVersion,
-		AllJobVersions: request.AllJobVersions,
+		AllJobVersions: true, // Get all executions to help with filtering
 	})
 	if err != nil {
 		return nil, err
