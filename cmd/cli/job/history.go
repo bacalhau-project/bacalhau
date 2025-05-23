@@ -29,10 +29,10 @@ var (
 		bacalhau job history e3f8c209-d683-4a41-b840-f09b88d087b9
 
 		# Job level events
-		bacalhau job history --type job e3f8c209
+		bacalhau job history --event-type job e3f8c209
 
 		# Execution level events
-		bacalhau job history --type execution e3f8c209
+		bacalhau job history --event-type execution e3f8c209
 `)
 )
 
