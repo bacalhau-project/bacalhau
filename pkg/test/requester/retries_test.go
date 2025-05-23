@@ -52,7 +52,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "requester-node",
+					"node": "requester-node",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{},
@@ -60,7 +60,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bid-rejector",
+					"node": "bid-rejector",
 				},
 			},
 			SystemConfig: node.SystemConfig{
@@ -71,7 +71,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bad-executor",
+					"node": "bad-executor",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -85,7 +85,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bad-publisher",
+					"node": "bad-publisher",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -99,7 +99,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "slow-executor",
+					"node": "slow-executor",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -113,7 +113,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "good-guy1",
+					"node": "good-guy1",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -127,7 +127,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "good-guy2",
+					"node": "good-guy2",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -376,13 +376,13 @@ func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *models.Job {
 	}
 	req := []*models.LabelSelectorRequirement{
 		{
-			Key:      "favour_name",
+			Key:      "favour_node",
 			Operator: selection.NotIn,
 			Values:   []string{"good-guy1", "good-guy2"},
 		}}
 	if len(restrictedNodes) > 0 {
 		req = append(req, &models.LabelSelectorRequirement{
-			Key:      "name",
+			Key:      "node",
 			Operator: selection.In,
 			Values:   restrictedNodes,
 		})
