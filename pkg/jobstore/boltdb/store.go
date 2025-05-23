@@ -1315,11 +1315,6 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 		return err
 	}
 
-	// TODO: This is not needed anymore. DOuble check it though.
-	//if job.IsTerminal() {
-	//	return jobstore.NewErrJobAlreadyTerminal(request.JobID, job.State.StateType, request.NewState)
-	//}
-
 	// update the job state
 	// For state changes, we don't increment Version
 	job.State.StateType = request.NewState
@@ -1696,7 +1691,6 @@ func (b *BoltJobStore) createEvaluation(
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
-	// This is where the event is created, then the watcher listens to it
 	err = b.eventStore.StoreEventTx(tx, watcher.StoreEventRequest{
 		Operation:  watcher.OperationCreate,
 		ObjectType: jobstore.EventObjectEvaluation,
