@@ -72,14 +72,14 @@ func (e *Endpoint) putJob(c echo.Context) error {
 
 // godoc for Orchestrator PutJob
 //
-//	@ID				orchestrator/putJob
+//	@ID				orchestrator/diffJob
 //	@Summary		Submits a job spec and diff it with the latest job version spec.
 //	@Description	Submits a job spec and diff it with the latest job version spec.
 //	@Tags			Orchestrator
 //	@Accept			json
 //	@Produce		json
-//	@Param			putJobRequest	body		apimodels.PutJobRequest	true	"Job to submit"
-//	@Success		200				{object}	apimodels.PutJobResponse
+//	@Param			diffJobRequest	body		apimodels.DiffJobRequest	true	"Job to diff"
+//	@Success		200				{object}	apimodels.DiffJobResponse
 //	@Failure		400				{object}	string
 //	@Failure		500				{object}	string
 //	@Router			/api/v1/orchestrator/jobs/:id/diff [put]
