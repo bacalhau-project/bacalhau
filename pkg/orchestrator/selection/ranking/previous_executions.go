@@ -29,7 +29,6 @@ func NewPreviousExecutionsNodeRanker(params PreviousExecutionsNodeRankerParams) 
 // - Rank -1: Node has executed the job more than once or has rejected a bid
 func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	job models.Job, nodes []models.NodeInfo) ([]orchestrator.NodeRank, error) {
-
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)

@@ -411,7 +411,9 @@ func (b *BatchServiceJobScheduler) handlePreviousVersionsExecutions(
 	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
 	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
 
-	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(uint(countOfRunningExecsToCancel))
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(
+		uint(countOfRunningExecsToCancel), //nolint:gosec // G115: version within reasonable bounds
+	)
 	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
 	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
 

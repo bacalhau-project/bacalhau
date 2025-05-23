@@ -76,7 +76,13 @@ func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult)
 		return
 	}
 
-	if err = e.store.AddExecutionHistory(txContext, response.JobID, response.JobVersion, response.ExecutionID, executionEvents...); err != nil {
+	if err = e.store.AddExecutionHistory(
+		txContext,
+		response.JobID,
+		response.JobVersion,
+		response.ExecutionID,
+		executionEvents...,
+	); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to add execution history")
 		return
 	}

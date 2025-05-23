@@ -985,6 +985,7 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
+//nolint:gocyclo
 func (b *BoltJobStore) createJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, job models.Job) error {
 	if b.jobExists(ctx, tx, recorder, job.ID) {
@@ -1168,6 +1169,7 @@ func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
+//nolint:gocyclo
 func (b *BoltJobStore) updateJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, updatedJob models.Job) error {
 	// Get the existing job
@@ -1600,7 +1602,15 @@ func (b *BoltJobStore) updateExecution(
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	// Add execution history
-	if err = b.addExecutionHistory(ctx, tx, recorder, newExecution.JobID, newExecution.JobVersion, newExecution.ID, request.Events...); err != nil {
+	if err = b.addExecutionHistory(
+		ctx,
+		tx,
+		recorder,
+		newExecution.JobID,
+		newExecution.JobVersion,
+		newExecution.ID,
+		request.Events...,
+	); err != nil {
 		return err
 	}
 
@@ -1629,7 +1639,13 @@ func (b *BoltJobStore) updateExecution(
 }
 
 // AddExecutionHistory appends a new history entry to the execution history
-func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID string, jobVersion uint64, executionID string, events ...models.Event) (err error) {
+func (b *BoltJobStore) AddExecutionHistory(
+	ctx context.Context,
+	jobID string,
+	jobVersion uint64,
+	executionID string,
+	events ...models.Event,
+) (err error) {
 	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationCreate,
 		jobstore.AttrScopeKey.String(jobstore.AttrScopeExecution))
 	defer recorder.Done(ctx, jobstore.OperationDuration)
@@ -1875,7 +1891,7 @@ func (b *BoltJobStore) generateJobNameKey(name string, namespace string) string 
 func (b *BoltJobStore) GetJobVersion(ctx context.Context, jobID string, version uint64) (job models.Job, err error) {
 	recorder := b.metricRecorder(ctx, BucketJobVersions, jobstore.AttrOperationGet,
 		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob),
-		attribute.Int64("version", int64(version)))
+		attribute.Int64("version", int64(version))) //nolint:gosec // G115: version within reasonable bounds
 	defer recorder.Done(ctx, jobstore.OperationDuration)
 	defer recorder.Error(err)
 

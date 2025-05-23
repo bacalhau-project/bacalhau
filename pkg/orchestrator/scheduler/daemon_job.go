@@ -209,7 +209,9 @@ func (b *DaemonJobScheduler) handlePreviousVersionsExecutions(
 
 	// The rate limiter will enqueue a delayed evaluation
 	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
-	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(uint(countOfRunningExecsToCancel))
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(
+		uint(countOfRunningExecsToCancel), //nolint:gosec // G115: version within reasonable bounds
+	)
 	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
 	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
 

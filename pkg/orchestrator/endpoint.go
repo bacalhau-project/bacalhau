@@ -251,6 +251,9 @@ func (e *BaseEndpoint) StopJob(ctx context.Context, request *StopJobRequest) (St
 
 func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (*RerunJobResponse, error) {
 	txContext, err := e.store.BeginTx(ctx)
+	if err != nil {
+		return &RerunJobResponse{}, jobstore.NewJobStoreError(err.Error())
+	}
 	job, err := e.store.GetJobByIDOrName(txContext, request.JobIDOrName, request.Namespace)
 	if err != nil {
 		return nil, jobstore.NewJobStoreError(err.Error())
