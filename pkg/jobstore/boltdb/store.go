@@ -508,7 +508,12 @@ func (b *BoltJobStore) getJobs(ctx context.Context, tx *bolt.Tx, recorder *telem
 	return response, nil
 }
 
-func (b *BoltJobStore) getJobIDByJobName(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobNameKey string) (string, error) {
+func (b *BoltJobStore) getJobIDByJobName(
+	ctx context.Context,
+	tx *bolt.Tx,
+	recorder *telemetry.MetricRecorder,
+	jobNameKey string,
+) (string, error) {
 	jobIDs, err := b.namesIndex.List(tx, []byte(jobNameKey))
 	if err != nil {
 		return "", err
@@ -1185,7 +1190,7 @@ func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
-//nolint:gocyclo
+//nolint:funlen,gocyclo
 func (b *BoltJobStore) updateJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, updatedJob models.Job) error {
 	// Get the existing job

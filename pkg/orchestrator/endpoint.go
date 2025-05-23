@@ -47,6 +47,8 @@ func NewBaseEndpoint(params *BaseEndpointParams) *BaseEndpoint {
 
 // SubmitJob submits a job to the evaluation broker.
 // Return the Job Version as well in the response
+//
+//nolint:funlen
 func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest) (_ *SubmitJobResponse, err error) {
 	job := request.Job
 	job.Normalize()
