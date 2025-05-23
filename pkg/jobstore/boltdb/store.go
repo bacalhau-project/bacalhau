@@ -508,19 +508,18 @@ func (b *BoltJobStore) getJobs(ctx context.Context, tx *bolt.Tx, recorder *telem
 	return response, nil
 }
 
-func (b *BoltJobStore) getJobIDByJobName(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobName string) (string, error) {
-	// Jamil, id is evaluation ID
-	jobIDs, err := b.namesIndex.List(tx, []byte(jobName))
+func (b *BoltJobStore) getJobIDByJobName(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobNameKey string) (string, error) {
+	jobIDs, err := b.namesIndex.List(tx, []byte(jobNameKey))
 	if err != nil {
 		return "", err
 	}
 
 	if len(jobIDs) == 0 {
-		return "", jobstore.NewErrJobNameIndexNotFound(jobName)
+		return "", jobstore.NewErrJobNameIndexNotFound(jobNameKey)
 	}
 
 	if len(jobIDs) != 1 {
-		return "", jobstore.NewErrMultipleJobIDsForSameJobNameFound(jobName)
+		return "", jobstore.NewErrMultipleJobIDsForSameJobNameFound(jobNameKey)
 	}
 
 	return string(jobIDs[0]), nil
@@ -768,6 +767,11 @@ func splitInProgressIndexKey(key string) (string, string) {
 // createInProgressIndexKey will create a composite key for the in-progress index
 func createInProgressIndexKey(job *models.Job) string {
 	return fmt.Sprintf("%s:%s", job.Type, job.ID)
+}
+
+// createJobNameIndexKey will create a composite key for the job-names index
+func createJobNameIndexKey(name string, namespace string) string {
+	return fmt.Sprintf("%s:%s", name, namespace)
 }
 
 // GetJobHistory retrieves the paginated job history for a given job ID based on the specified query.
@@ -1089,7 +1093,7 @@ func (b *BoltJobStore) createJob(
 	}
 
 	// Add job name to the job names index bucket
-	jobNameKey := b.generateJobNameKey(job.Name, job.Namespace)
+	jobNameKey := createJobNameIndexKey(job.Name, job.Namespace)
 	if err = b.namesIndex.Add(tx, jobIDKey, []byte(jobNameKey)); err != nil {
 		return NewBoltDBError(err)
 	}
@@ -1154,7 +1158,7 @@ func (b *BoltJobStore) deleteJob(
 	}
 
 	// Remove from job names bucket
-	jobNameKey := b.generateJobNameKey(job.Name, job.Namespace)
+	jobNameKey := createJobNameIndexKey(job.Name, job.Namespace)
 	if err = b.namesIndex.Remove(tx, jobIDKey, []byte(jobNameKey)); err != nil {
 		return NewBoltDBError(err)
 	}
@@ -1196,7 +1200,7 @@ func (b *BoltJobStore) updateJob(
 	}
 
 	// Verify that this job exists in the names bucket
-	jobNameKey := b.generateJobNameKey(existingJob.Name, existingJob.Namespace)
+	jobNameKey := createJobNameIndexKey(existingJob.Name, existingJob.Namespace)
 	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
 
 	if err != nil {
@@ -1884,11 +1888,11 @@ func (b *BoltJobStore) getJobByName(
 	var job models.Job
 
 	if namespace == "" {
-		namespace = "default"
+		namespace = models.DefaultNamespace
 	}
 
 	// Create the job name key in the same format as in createJob
-	jobNameKey := b.generateJobNameKey(name, namespace)
+	jobNameKey := createJobNameIndexKey(name, namespace)
 
 	// Look up the job ID from the job names index bucket
 	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
@@ -1897,10 +1901,6 @@ func (b *BoltJobStore) getJobByName(
 	}
 
 	return b.getJob(ctx, tx, recorder, indexedJobID)
-}
-
-func (b *BoltJobStore) generateJobNameKey(name string, namespace string) string {
-	return fmt.Sprintf("%s.j.%s.n", name, namespace)
 }
 
 // GetJobVersion retrieves a specific version of a job by its ID and version number
@@ -1936,7 +1936,7 @@ func (b *BoltJobStore) getJobVersion(
 	versionKey := []byte(fmt.Sprintf("%d", version))
 	data := versionBkt.Get(versionKey)
 	if data == nil {
-		return job, fmt.Errorf("job version not found: job ID %s, version %d", jobID, version)
+		return job, jobstore.NewErrJobVersionNotFound(jobID, version)
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
 	recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))

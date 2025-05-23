@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
@@ -15,7 +13,11 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
+	"github.com/google/uuid"
 )
+
+const initialJobVersion = 1
+const jobVersionIncrement = 1
 
 type BaseEndpointParams struct {
 	ID                string
@@ -70,12 +72,13 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 
 	isUpdate := false
 	evalTriggeredBy := models.EvalTriggerJobRegister
-	existingJob, existingErr := e.store.GetJobByName(ctx, job.Name, job.Namespace)
-	if existingErr == nil {
+	existingJob, existingJobErr := e.store.GetJobByName(ctx, job.Name, job.Namespace)
+
+	if existingJobErr == nil {
 		// This is an update, the job name already exist
 		job.ID = existingJob.ID
 		isUpdate = true
-		evalTriggeredBy = models.EvalTriggerJobRerun
+		evalTriggeredBy = models.EvalTriggerJobUpdate
 
 		// Do a diff between jobs, and see if there is a difference
 		if !request.Force {
@@ -87,6 +90,10 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 					job.ID,
 				).WithHint("Use the --force flag to override this warning")
 			}
+		}
+	} else {
+		if !bacerrors.IsErrorWithCode(existingJobErr, bacerrors.NotFoundError) {
+			return nil, err
 		}
 	}
 
@@ -115,7 +122,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		}
 
 		// Add job history for the update, and bump the version number for this event.
-		if err = e.store.AddJobHistory(txContext, job.ID, existingJob.Version+1, JobUpdatedEvent()); err != nil {
+		if err = e.store.AddJobHistory(txContext, job.ID, existingJob.Version+jobVersionIncrement, JobUpdatedEvent()); err != nil {
 			return nil, err
 		}
 	} else {
@@ -123,7 +130,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 			return nil, err
 		}
 
-		if err = e.store.AddJobHistory(txContext, job.ID, 1, JobSubmittedEvent()); err != nil {
+		if err = e.store.AddJobHistory(txContext, job.ID, initialJobVersion, JobSubmittedEvent()); err != nil {
 			return nil, err
 		}
 	}
@@ -268,7 +275,8 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 
 	switch job.State.StateType {
 	case models.JobStateTypePending, models.JobStateTypeQueued, models.JobStateTypeUndefined:
-		return nil, bacerrors.Newf("cannot rerun job in state %s", job.State.StateType)
+		return nil, bacerrors.Newf("cannot rerun job in state %s", job.State.StateType).
+			WithHint("try to use the job run command instead of the job rerun command")
 	default:
 		// continue
 	}
@@ -292,7 +300,7 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 		return nil, err
 	}
 
-	if err = e.store.AddJobHistory(txContext, job.ID, job.Version+1, JobRerunEvent("job rerun")); err != nil {
+	if err = e.store.AddJobHistory(txContext, job.ID, job.Version+jobVersionIncrement, JobRerunEvent("job rerun")); err != nil {
 		return nil, err
 	}
 
@@ -319,7 +327,7 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 
 	return &RerunJobResponse{
 		JobID:        job.ID,
-		JobVersion:   job.Version + 1,
+		JobVersion:   job.Version + jobVersionIncrement,
 		EvaluationID: eval.ID,
 		Warnings:     nil,
 	}, nil

@@ -20,6 +20,7 @@ const (
 	EvalTriggerJobRegister = "job-register"
 	EvalTriggerJobCancel   = "job-cancel"
 	EvalTriggerJobRerun    = "job-rerun"
+	EvalTriggerJobUpdate   = "job-update"
 	EvalTriggerJobQueue    = "job-queue"
 	EvalTriggerJobTimeout  = "job-timeout"
 

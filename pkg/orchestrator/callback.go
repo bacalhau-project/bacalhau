@@ -76,6 +76,12 @@ func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult)
 		return
 	}
 
+	if response.JobVersion == 0 {
+		log.Ctx(ctx).Warn().Msgf(
+			"[OnBidComplete] received bid response for job %s, but job version is 0 (Old Compute Node?)",
+			response.JobID,
+		)
+	}
 	if err = e.store.AddExecutionHistory(
 		txContext,
 		response.JobID,

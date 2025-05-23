@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -258,6 +259,22 @@ func (j *Job) ValidateSubmission() error {
 	}
 
 	var mErr error
+
+	// Validate job name
+	if j.Name == "" {
+		mErr = errors.Join(mErr, errors.New("job name cannot be empty"))
+	} else {
+		if len(j.Name) > 255 {
+			mErr = errors.Join(mErr, errors.New("job name cannot exceed 255 characters"))
+		}
+
+		// Check that name only contains alphanumeric characters and dashes
+		validName := regexp.MustCompile(`^[a-zA-Z0-9-]+$`).MatchString
+		if !validName(j.Name) {
+			mErr = errors.Join(mErr, errors.New("job name can only contain alphanumeric characters and dashes"))
+		}
+	}
+
 	switch j.Type {
 	case JobTypeService, JobTypeBatch, JobTypeDaemon, JobTypeOps:
 	case "":

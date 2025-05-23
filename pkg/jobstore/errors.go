@@ -29,6 +29,12 @@ func NewErrJobNameIndexNotFound(jobName string) bacerrors.Error {
 		WithComponent(JobStoreComponent)
 }
 
+func NewErrJobVersionNotFound(jobId string, jobVersion uint64) bacerrors.Error {
+	return bacerrors.Newf("job version %d not found for job %s", jobVersion, jobId).
+		WithCode(bacerrors.NotFoundError).
+		WithComponent(JobStoreComponent)
+}
+
 func NewErrMultipleJobsFound(id string) bacerrors.Error {
 	return bacerrors.Newf("multiple jobs found for id %s", id).
 		WithCode(MultipleJobsFound).
