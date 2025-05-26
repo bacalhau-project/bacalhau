@@ -2,7 +2,9 @@ package apimodels
 
 import (
 	"strconv"
+	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -31,8 +33,15 @@ type DiffJobRequest struct {
 	Job *models.Job `json:"Job"`
 }
 
-// Validate is used to validate fields in the PutJobRequest.
+// Validate is used to validate fields in the DiffJobRequest.
 func (r *DiffJobRequest) Validate() error {
+	// Ensure that the job name is not empty. This validation applies to Job Diffs.
+	if strings.TrimSpace(r.Job.Name) == "" {
+		return bacerrors.Newf("invalid job spec: name is missing").
+			WithCode(bacerrors.ValidationError).
+			WithHint("Job name must be provided in the job spec for diff operations")
+	}
+
 	return r.Job.ValidateSubmission()
 }
 

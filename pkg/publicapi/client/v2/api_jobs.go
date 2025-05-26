@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/bacalhau-project/bacalhau/pkg/lib/concurrency"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -26,7 +27,7 @@ func (j *Jobs) Put(ctx context.Context, r *apimodels.PutJobRequest) (*apimodels.
 // Diff is used to diff the given spec with the latest Job spec in the cluster.
 func (j *Jobs) Diff(ctx context.Context, r *apimodels.DiffJobRequest) (*apimodels.DiffJobResponse, error) {
 	var resp apimodels.DiffJobResponse
-	if err := j.client.Put(ctx, jobsPath+"/"+r.Job.Name+"/diff", r, &resp); err != nil {
+	if err := j.client.Put(ctx, jobsPath+"/diff", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -35,7 +36,7 @@ func (j *Jobs) Diff(ctx context.Context, r *apimodels.DiffJobRequest) (*apimodel
 // Get is used to get a job by ID or Name.
 func (j *Jobs) Get(ctx context.Context, r *apimodels.GetJobRequest) (*apimodels.GetJobResponse, error) {
 	var resp apimodels.GetJobResponse
-	if err := j.client.Get(ctx, jobsPath+"/"+r.JobIDOrName, r, &resp); err != nil {
+	if err := j.client.Get(ctx, jobsPath+"/"+url.PathEscape(r.JobIDOrName), r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -53,7 +54,7 @@ func (j *Jobs) List(ctx context.Context, r *apimodels.ListJobsRequest) (*apimode
 // History returns history events for a job.
 func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) (*apimodels.ListJobHistoryResponse, error) {
 	var resp apimodels.ListJobHistoryResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/history", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+url.PathEscape(r.JobIDOrName)+"/history", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -63,7 +64,7 @@ func (j *Jobs) History(ctx context.Context, r *apimodels.ListJobHistoryRequest) 
 func (j *Jobs) Executions(ctx context.Context, r *apimodels.ListJobExecutionsRequest) (*apimodels.ListJobExecutionsResponse,
 	error) {
 	var resp apimodels.ListJobExecutionsResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/executions", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+url.PathEscape(r.JobIDOrName)+"/executions", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -78,7 +79,7 @@ func (j *Jobs) Versions(
 	error,
 ) {
 	var resp apimodels.ListJobVersionsResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobIDOrName+"/versions", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+url.PathEscape(r.JobIDOrName)+"/versions", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -87,7 +88,7 @@ func (j *Jobs) Versions(
 // Results returns results for a job.
 func (j *Jobs) Results(ctx context.Context, r *apimodels.ListJobResultsRequest) (*apimodels.ListJobResultsResponse, error) {
 	var resp apimodels.ListJobResultsResponse
-	if err := j.client.List(ctx, jobsPath+"/"+r.JobID+"/results", r, &resp); err != nil {
+	if err := j.client.List(ctx, jobsPath+"/"+url.PathEscape(r.JobID)+"/results", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -96,7 +97,7 @@ func (j *Jobs) Results(ctx context.Context, r *apimodels.ListJobResultsRequest) 
 // Stop is used to stop a job by ID.
 func (j *Jobs) Stop(ctx context.Context, r *apimodels.StopJobRequest) (*apimodels.StopJobResponse, error) {
 	var resp apimodels.StopJobResponse
-	if err := j.client.Delete(ctx, jobsPath+"/"+r.JobID, r, &resp); err != nil {
+	if err := j.client.Delete(ctx, jobsPath+"/"+url.PathEscape(r.JobID), r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
@@ -105,7 +106,7 @@ func (j *Jobs) Stop(ctx context.Context, r *apimodels.StopJobRequest) (*apimodel
 // Rerun is used to rerun a job by ID or Name.
 func (j *Jobs) Rerun(ctx context.Context, r *apimodels.RerunJobRequest) (*apimodels.RerunJobResponse, error) {
 	var resp apimodels.RerunJobResponse
-	if err := j.client.Put(ctx, jobsPath+"/"+r.JobIDOrName+"/rerun", r, &resp); err != nil {
+	if err := j.client.Put(ctx, jobsPath+"/"+url.PathEscape(r.JobIDOrName)+"/rerun", r, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

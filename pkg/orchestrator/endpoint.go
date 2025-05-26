@@ -95,7 +95,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		}
 	} else {
 		if !bacerrors.IsErrorWithCode(existingJobErr, bacerrors.NotFoundError) {
-			return nil, err
+			return nil, existingJobErr
 		}
 	}
 

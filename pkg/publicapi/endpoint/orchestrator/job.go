@@ -82,7 +82,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 //	@Success		200				{object}	apimodels.DiffJobResponse
 //	@Failure		400				{object}	string
 //	@Failure		500				{object}	string
-//	@Router			/api/v1/orchestrator/jobs/:id/diff [put]
+//	@Router			/api/v1/orchestrator/jobs/{id}/diff [put]
 func (e *Endpoint) diffJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.DiffJobRequest

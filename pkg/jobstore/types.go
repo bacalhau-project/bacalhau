@@ -33,9 +33,13 @@ type JobQueryResponse struct {
 }
 
 type JobHistoryQuery struct {
-	Namespace             string `json:"namespace"`
-	JobVersion            uint64 `json:"job_version"`
-	LatestJobVersion      uint64 `json:"latest_job_version"`
+	Namespace string `json:"namespace"`
+	// The version of the job to query history for. Takes precedence over LatestJobVersion.
+	JobVersion uint64 `json:"job_version"`
+	// The latest version of the job. Used for interpreting the job history internally.
+	LatestJobVersion uint64 `json:"latest_job_version"`
+	// If true, all job versions will be returned, otherwise only the latest job version.
+	// This is mutually exclusive with JobVersion, where the latter takes precedence if both are set.
 	AllJobVersions        bool   `json:"all_job_versions"`
 	Since                 int64  `json:"since"`
 	Limit                 uint32 `json:"limit"`

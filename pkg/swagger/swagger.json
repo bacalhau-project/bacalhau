@@ -308,53 +308,6 @@
                 }
             }
         },
-        "/api/v1/orchestrator/jobs/:id/diff": {
-            "put": {
-                "description": "Submits a job spec and diff it with the latest job version spec.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orchestrator"
-                ],
-                "summary": "Submits a job spec and diff it with the latest job version spec.",
-                "operationId": "orchestrator/diffJob",
-                "parameters": [
-                    {
-                        "description": "Job to diff",
-                        "name": "diffJobRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.DiffJobRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.DiffJobResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/orchestrator/jobs/{id}": {
             "get": {
                 "description": "Returns a job.",
@@ -444,6 +397,53 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.StopJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}/diff": {
+            "put": {
+                "description": "Submits a job spec and diff it with the latest job version spec.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Submits a job spec and diff it with the latest job version spec.",
+                "operationId": "orchestrator/diffJob",
+                "parameters": [
+                    {
+                        "description": "Job to diff",
+                        "name": "diffJobRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobResponse"
                         }
                     },
                     "400": {

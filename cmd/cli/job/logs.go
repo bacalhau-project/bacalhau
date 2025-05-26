@@ -87,9 +87,6 @@ func NewLogCmd() *cobra.Command {
 
 	logsCmd.Flags().Uint64Var(&options.JobVersion, "version", options.JobVersion,
 		"The job version to filter by. By default, the latest version is used.")
-	logsCmd.Flags().BoolVar(&options.AllJobVersions, "all-versions", options.AllJobVersions,
-		"Specifies that all job versions should be returned. "+
-			"By default, only the executions of the latest job version is returned.")
 	logsCmd.PersistentFlags().StringVar(&options.Namespace, "namespace", options.Namespace,
 		`Job Namespace. If not provided, default namespace will be used.`,
 	)
