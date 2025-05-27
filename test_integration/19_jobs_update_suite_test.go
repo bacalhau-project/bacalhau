@@ -443,7 +443,7 @@ func (s *JobsUpdateSuite) TestHelloWorldJob() {
 	count = strings.Count(resultDescriptionByName, "hello bacalhau world2")
 	s.Require().Equal(2, count, "Expected exactly 2 occurrences of 'hello bacalhau world2' "+
 		"in job description, but found %d", count)
-	s.Require().NotContains(resultDescriptionByName, "hello bacalhau world1", resultDescription)
+	s.Require().NotContains(resultDescriptionByName, "hello bacalhau world1")
 
 	resultJobVersionsByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
 		"bacalhau",
