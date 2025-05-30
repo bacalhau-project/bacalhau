@@ -76,7 +76,19 @@ func (e *Callback) OnBidComplete(ctx context.Context, response legacy.BidResult)
 		return
 	}
 
-	if err = e.store.AddExecutionHistory(txContext, response.JobID, response.ExecutionID, executionEvents...); err != nil {
+	if response.JobVersion == 0 {
+		log.Ctx(ctx).Warn().Msgf(
+			"[OnBidComplete] received bid response for job %s, but job version is 0 (Old Compute Node?)",
+			response.JobID,
+		)
+	}
+	if err = e.store.AddExecutionHistory(
+		txContext,
+		response.JobID,
+		response.JobVersion,
+		response.ExecutionID,
+		executionEvents...,
+	); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnBidComplete] failed to add execution history")
 		return
 	}
@@ -143,7 +155,7 @@ func (e *Callback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 		return
 	}
 
-	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.ExecutionID, ExecCompletedEvent()); err != nil {
+	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.JobVersion, result.ExecutionID, ExecCompletedEvent()); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnRunComplete] failed to add execution history")
 		return
 	}
@@ -192,7 +204,7 @@ func (e *Callback) OnComputeFailure(ctx context.Context, result legacy.ComputeEr
 	// enqueue evaluation to allow the scheduler find other nodes, or mark the job as failed
 	e.enqueueEvaluation(txContext, result.JobID, "OnComputeFailure")
 
-	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.ExecutionID, result.Event); err != nil {
+	if err = e.store.AddExecutionHistory(txContext, result.JobID, result.JobVersion, result.ExecutionID, result.Event); err != nil {
 		log.Ctx(ctx).Error().Err(err).Msgf("[OnComputeFailure] failed to add execution history")
 		return
 	}

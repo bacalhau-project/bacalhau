@@ -135,7 +135,7 @@ func (s *ScenarioRunner) RunScenario(scenario Scenario) string {
 	}
 
 	getResp, err := api.Jobs().Get(s.Ctx, &apimodels.GetJobRequest{
-		JobID: putResp.JobID,
+		JobIDOrName: putResp.JobID,
 	})
 	s.Require().NoError(err)
 	jobID := getResp.Job.ID

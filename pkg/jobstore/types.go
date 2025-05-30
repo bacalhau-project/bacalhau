@@ -33,6 +33,14 @@ type JobQueryResponse struct {
 }
 
 type JobHistoryQuery struct {
+	Namespace string `json:"namespace"`
+	// The version of the job to query history for. Takes precedence over LatestJobVersion.
+	JobVersion uint64 `json:"job_version"`
+	// The latest version of the job. Used for interpreting the job history internally.
+	LatestJobVersion uint64 `json:"latest_job_version"`
+	// If true, all job versions will be returned, otherwise only the latest job version.
+	// This is mutually exclusive with JobVersion, where the latter takes precedence if both are set.
+	AllJobVersions        bool   `json:"all_job_versions"`
 	Since                 int64  `json:"since"`
 	Limit                 uint32 `json:"limit"`
 	ExcludeExecutionLevel bool   `json:"exclude_execution_level"`
@@ -64,6 +72,16 @@ type Store interface {
 	// it does not exist.
 	GetJob(ctx context.Context, id string) (models.Job, error)
 
+	// GetJobByName returns a job, identified by name and namespace, or an error if
+	// it does not exist.
+	GetJobByName(ctx context.Context, name, namespace string) (models.Job, error)
+
+	// GetJobByIDOrName returns a job, identified by id, or name and namespace, or an error if
+	// it does not exist.
+	GetJobByIDOrName(ctx context.Context, idOrName, namespace string) (models.Job, error)
+
+	GetJobVersion(ctx context.Context, jobID string, version uint64) (job models.Job, err error)
+
 	// GetJobs retrieves a slice of jobs defined by the contents of the
 	// [JobQuery]. If it fails, it will return an error
 	GetJobs(ctx context.Context, query JobQuery) (*JobQueryResponse, error)
@@ -81,6 +99,12 @@ type Store interface {
 	// CreateJob will create a new job and persist it in the store.
 	CreateJob(ctx context.Context, j models.Job) error
 
+	// UpdateJob will update an existing job in the store.
+	// Only specific fields will be updated, and the job must exist.
+	UpdateJob(ctx context.Context, j models.Job) error
+
+	GetJobVersions(ctx context.Context, jobID string) (versions []models.Job, err error)
+
 	// GetExecutions retrieves all executions for the specified job.
 	GetExecutions(ctx context.Context, options GetExecutionsOptions) ([]models.Execution, error)
 
@@ -89,7 +113,7 @@ type Store interface {
 	UpdateJobState(ctx context.Context, request UpdateJobStateRequest) error
 
 	// AddJobHistory adds a new history entry for the specified job
-	AddJobHistory(ctx context.Context, jobID string, events ...models.Event) error
+	AddJobHistory(ctx context.Context, jobID string, jobVersion uint64, events ...models.Event) error
 
 	// CreateExecution creates a new execution
 	CreateExecution(ctx context.Context, execution models.Execution) error
@@ -99,7 +123,7 @@ type Store interface {
 	UpdateExecution(ctx context.Context, request UpdateExecutionRequest) error
 
 	// AddExecutionHistory adds a new history entry for the specified execution
-	AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) error
+	AddExecutionHistory(ctx context.Context, jobID string, jobVersion uint64, executionID string, events ...models.Event) error
 
 	// DeleteJob removes all trace of the provided job from storage
 	DeleteJob(ctx context.Context, jobID string) error
@@ -210,9 +234,13 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 }
 
 type GetExecutionsOptions struct {
-	JobID      string `json:"job_id"`
-	IncludeJob bool   `json:"include_job"`
-	OrderBy    string `json:"order_by"`
-	Reverse    bool   `json:"reverse"`
-	Limit      int    `json:"limit"`
+	JobID                   string `json:"job_id"`
+	JobVersion              uint64 `json:"job_version"`
+	AllJobVersions          bool   `json:"all_job_versions"`
+	CurrentLatestJobVersion uint64 `json:"current_latest_job_version"`
+	Namespace               string `json:"namespace"`
+	IncludeJob              bool   `json:"include_job"`
+	OrderBy                 string `json:"order_by"`
+	Reverse                 bool   `json:"reverse"`
+	Limit                   int    `json:"limit"`
 }

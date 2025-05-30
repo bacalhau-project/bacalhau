@@ -438,7 +438,7 @@ func WasmGetHTTP(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://google.com/"},
 					InputSources: []*models.InputSource{
 						InlineDataWithTarget(http.Program(), "main.wasm"),
 					},
@@ -468,7 +468,7 @@ func WasmGetHTTPAllowList(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://google.com/"},
 					InputSources: []*models.InputSource{
 						InlineDataWithTarget(http.Program(), "main.wasm"),
 					},
@@ -477,7 +477,7 @@ func WasmGetHTTPAllowList(t testing.TB) Scenario {
 						MustBuild(),
 					Network: &models.NetworkConfig{
 						Type:    models.NetworkHTTP,
-						Domains: []string{"httpbin.org"},
+						Domains: []string{"google.com"},
 					},
 				},
 			},
@@ -499,7 +499,7 @@ func WasmGetHTTPNotAllowList(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://google.com/"},
 					InputSources: []*models.InputSource{
 						InlineDataWithTarget(http.Program(), "main.wasm"),
 					},
@@ -526,7 +526,7 @@ func WasmNoNetworking(t testing.TB) Scenario {
 			Tasks: []*models.Task{
 				{
 					Name: t.Name(),
-					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://httpbin.org/get"},
+					Env:  map[string]models.EnvVarValue{"HTTP_METHOD": "get", "HTTP_URL": "http://google.com/"},
 					InputSources: []*models.InputSource{
 						InlineDataWithTarget(http.Program(), "main.wasm"),
 					},

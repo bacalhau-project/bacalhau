@@ -75,6 +75,22 @@ func PrintWarnings(cmd *cobra.Command, warnings []string) {
 	}
 }
 
+func PrintDiff(cmd *cobra.Command, diff string) {
+	if diff == "" {
+		return
+	}
+
+	for _, line := range strings.Split(diff, "\n") {
+		if strings.HasPrefix(line, "+") {
+			cmd.Println(output.GreenStr(line))
+		} else if strings.HasPrefix(line, "-") {
+			cmd.Println(output.RedStr(line))
+		} else {
+			cmd.Println(line)
+		}
+	}
+}
+
 // Groups the executions in the job state, returning a map of printable messages
 // to node(s) that generated that message.
 func SummariseExecutions(executions []*models.Execution) map[string][]string {

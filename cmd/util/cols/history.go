@@ -2,6 +2,7 @@ package cols
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -25,6 +26,14 @@ var (
 	HistoryLevel = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{Name: "Level", WidthMax: 15, WidthMaxEnforcer: text.WrapText},
 		Value:        func(jwi *models.JobHistory) string { return jwi.Type.String() },
+	}
+	HistoryJobVersionLevel = output.TableColumn[*models.JobHistory]{
+		ColumnConfig: table.ColumnConfig{
+			Name:             "Job Version",
+			WidthMax:         11,
+			WidthMaxEnforcer: text.WrapText,
+		},
+		Value: func(jh *models.JobHistory) string { return strconv.FormatUint(jh.JobVersion, 10) },
 	}
 	HistoryExecID = output.TableColumn[*models.JobHistory]{
 		ColumnConfig: table.ColumnConfig{

@@ -25,6 +25,15 @@ type RunTimeSettings struct {
 const DefaultRunWaitSeconds = 600
 
 func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
+	flagSet := NewRunTimeSettingsFlagsWithoutDryRun(settings)
+	flagSet.BoolVar(
+		&settings.DryRun, "dry-run", settings.DryRun,
+		`Do not submit the job, but instead print out what will be submitted`)
+
+	return flagSet
+}
+
+func NewRunTimeSettingsFlagsWithoutDryRun(settings *RunTimeSettings) *pflag.FlagSet {
 	flags := pflag.NewFlagSet("Runtime settings", pflag.ContinueOnError)
 	flags.BoolVar(&settings.WaitForJobToFinish, "wait", settings.WaitForJobToFinish,
 		`Wait for the job to finish. Use --wait=false to return as soon as the job is submitted.`)
@@ -36,9 +45,6 @@ func NewRunTimeSettingsFlags(settings *RunTimeSettings) *pflag.FlagSet {
 		`Print out details of all nodes (overridden by --id-only).`)
 	flags.BoolVarP(&settings.Follow, "follow", "f", settings.Follow,
 		`When specified will follow the output from the job as it runs`)
-	flags.BoolVar(
-		&settings.DryRun, "dry-run", settings.DryRun,
-		`Do not submit the job, but instead print out what will be submitted`)
 	flags.BoolVar(&settings.GroupEvents, "group-events", false,
 		"Group events by execution")
 
