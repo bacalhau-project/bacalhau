@@ -822,8 +822,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Order the job versions by the given field",
                         "name": "order_by",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {

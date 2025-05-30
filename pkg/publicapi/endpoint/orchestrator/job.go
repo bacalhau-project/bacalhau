@@ -514,7 +514,7 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 //	@Param			limit		query		int		false	"Limit the number of job versions returned"
 //	@Param			next_token	query		string	false	"Token to get the next page of job versions"
 //	@Param			reverse		query		bool	false	"Reverse the order of the job versions"
-//	@Param			order_by	query		string	true	"Order the job versions by the given field"
+//	@Param			order_by	query		string	false	"Order the job versions by the given field"
 //	@Success		200			{object}	apimodels.ListJobVersionsResponse
 //	@Failure		400			{object}	string
 //	@Failure		500			{object}	string
