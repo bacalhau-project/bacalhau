@@ -669,6 +669,60 @@
                 }
             }
         },
+        "/api/v1/orchestrator/jobs/{id}/rerun": {
+            "put": {
+                "description": "Reruns a job with the specified job ID or name.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Reruns a job.",
+                "operationId": "orchestrator/rerunJob",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID or name of the job to rerun",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request to rerun job",
+                        "name": "rerunJobRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.RerunJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.RerunJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orchestrator/jobs/{id}/results": {
             "get": {
                 "description": "Returns the results of a job.",
@@ -1322,6 +1376,46 @@
                 },
                 "Success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "apimodels.RerunJobRequest": {
+            "type": "object",
+            "properties": {
+                "credential": {
+                    "$ref": "#/definitions/apimodels.HTTPCredential"
+                },
+                "idempotencyToken": {
+                    "type": "string"
+                },
+                "job_version": {
+                    "type": "integer"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.RerunJobResponse": {
+            "type": "object",
+            "properties": {
+                "EvaluationID": {
+                    "type": "string"
+                },
+                "JobID": {
+                    "type": "string"
+                },
+                "JobVersion": {
+                    "type": "integer"
+                },
+                "Warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
