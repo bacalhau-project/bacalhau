@@ -73,16 +73,16 @@ func (e *Endpoint) putJob(c echo.Context) error {
 // godoc for Orchestrator DiffJob
 //
 //	@ID				orchestrator/diffJob
-//	@Summary		Submits a job spec and diff it with the latest job version spec.
-//	@Description	Submits a job spec and diff it with the latest job version spec.
+//	@Summary		Compares a job spec with an existing job of the same name.
+//	@Description	Compares a submitted job spec with the existing job that has the same name in the same namespace, and returns the differences between them.
 //	@Tags			Orchestrator
 //	@Accept			json
 //	@Produce		json
-//	@Param			diffJobRequest	body		apimodels.DiffJobRequest	true	"Job to diff"
+//	@Param			diffJobRequest	body		apimodels.DiffJobRequest	true	"Job spec to compare with existing job"
 //	@Success		200				{object}	apimodels.DiffJobResponse
 //	@Failure		400				{object}	string
 //	@Failure		500				{object}	string
-//	@Router			/api/v1/orchestrator/jobs/{id}/diff [put]
+//	@Router			/api/v1/orchestrator/jobs/diff [put]
 func (e *Endpoint) diffJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	var args apimodels.DiffJobRequest
