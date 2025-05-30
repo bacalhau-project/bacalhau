@@ -314,7 +314,7 @@ const docTemplate = `{
         },
         "/api/v1/orchestrator/jobs/diff": {
             "put": {
-                "description": "Compares a submitted job spec with the existing job that has the same name in the same namespace, and returns the differences between them.",
+                "description": "Compares a submitted job spec with the existing job that has the same name, and returns the differences between them.",
                 "consumes": [
                     "application/json"
                 ],

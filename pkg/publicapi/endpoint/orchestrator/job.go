@@ -74,7 +74,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 //
 //	@ID				orchestrator/diffJob
 //	@Summary		Compares a job spec with an existing job of the same name.
-//	@Description	Compares a submitted job spec with the existing job that has the same name in the same namespace, and returns the differences between them.
+//	@Description	Compares a submitted job spec with the existing job that has the same name, and returns the differences between them.
 //	@Tags			Orchestrator
 //	@Accept			json
 //	@Produce		json
