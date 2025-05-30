@@ -118,7 +118,7 @@ func (e *BaseEndpoint) SubmitJob(ctx context.Context, request *SubmitJobRequest)
 		if err = e.store.UpdateJobState(txContext, jobstore.UpdateJobStateRequest{
 			JobID:    job.ID, // use the job ID from the store in case the request had a short ID
 			NewState: models.JobStateTypePending,
-			Message:  "",
+			Message:  "Job update requested by user",
 		}); err != nil {
 			return nil, err
 		}
@@ -275,12 +275,9 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 
 	defer txContext.Rollback() //nolint:errcheck
 
-	switch job.State.StateType {
-	case models.JobStateTypePending, models.JobStateTypeQueued, models.JobStateTypeUndefined:
+	if !job.IsRerunnable() {
 		return nil, bacerrors.Newf("cannot rerun job in state %s", job.State.StateType).
 			WithHint("try to use the job run command instead of the job rerun command")
-	default:
-		// continue
 	}
 
 	if err = e.store.UpdateJob(txContext, job); err != nil {

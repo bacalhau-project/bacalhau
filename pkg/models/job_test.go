@@ -379,6 +379,123 @@ func (suite *JobTestSuite) TestJobJSONHandling() {
 	}
 }
 
+func (suite *JobTestSuite) TestJobStateTypeIsRerunnable() {
+	testCases := []struct {
+		name     string
+		state    models.JobStateType
+		expected bool
+	}{
+		{
+			name:     "pending state should be rerunnable",
+			state:    models.JobStateTypePending,
+			expected: true,
+		},
+		{
+			name:     "queued state should be rerunnable",
+			state:    models.JobStateTypeQueued,
+			expected: true,
+		},
+		{
+			name:     "undefined state should be rerunnable",
+			state:    models.JobStateTypeUndefined,
+			expected: true,
+		},
+		{
+			name:     "running state should not be rerunnable",
+			state:    models.JobStateTypeRunning,
+			expected: false,
+		},
+		{
+			name:     "completed state should not be rerunnable",
+			state:    models.JobStateTypeCompleted,
+			expected: false,
+		},
+		{
+			name:     "failed state should not be rerunnable",
+			state:    models.JobStateTypeFailed,
+			expected: false,
+		},
+		{
+			name:     "stopped state should not be rerunnable",
+			state:    models.JobStateTypeStopped,
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			result := tc.state.IsRerunnable()
+			suite.Equal(tc.expected, result, "IsRerunnable() result mismatch for state %s", tc.state.String())
+		})
+	}
+}
+
+func (suite *JobTestSuite) TestJobIsRerunnable() {
+	testCases := []struct {
+		name     string
+		state    models.JobStateType
+		expected bool
+	}{
+		{
+			name:     "job with pending state should be rerunnable",
+			state:    models.JobStateTypePending,
+			expected: true,
+		},
+		{
+			name:     "job with queued state should be rerunnable",
+			state:    models.JobStateTypeQueued,
+			expected: true,
+		},
+		{
+			name:     "job with undefined state should be rerunnable",
+			state:    models.JobStateTypeUndefined,
+			expected: true,
+		},
+		{
+			name:     "job with running state should not be rerunnable",
+			state:    models.JobStateTypeRunning,
+			expected: false,
+		},
+		{
+			name:     "job with completed state should not be rerunnable",
+			state:    models.JobStateTypeCompleted,
+			expected: false,
+		},
+		{
+			name:     "job with failed state should not be rerunnable",
+			state:    models.JobStateTypeFailed,
+			expected: false,
+		},
+		{
+			name:     "job with stopped state should not be rerunnable",
+			state:    models.JobStateTypeStopped,
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			// Create a standalone job for this test
+			job := &models.Job{
+				ID:        "rerunnable-test-job-" + tc.state.String(),
+				Name:      "rerunnable-test-job",
+				Namespace: "test-namespace",
+				Type:      models.JobTypeBatch,
+				Count:     1,
+				State:     models.State[models.JobStateType]{StateType: tc.state},
+				Tasks: []*models.Task{
+					{
+						Name: "test-task",
+					},
+				},
+			}
+
+			result := job.IsRerunnable()
+			suite.Equal(tc.expected, result, "Job.IsRerunnable() result mismatch for job with state %s", tc.state.String())
+		})
+	}
+}
+
 // Helper function to create pointer to int
 func ptr(i int) *int {
 	return &i

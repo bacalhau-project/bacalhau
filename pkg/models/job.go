@@ -59,6 +59,16 @@ func (s JobStateType) IsTerminal() bool {
 	}
 }
 
+// IsRerunnable returns true if the job in a state to be re-runed
+func (s JobStateType) IsRerunnable() bool {
+	switch s {
+	case JobStateTypePending, JobStateTypeQueued, JobStateTypeUndefined:
+		return true
+	default:
+		return false
+	}
+}
+
 func JobStateTypes() []JobStateType {
 	var res []JobStateType
 	for typ := JobStateTypePending; typ <= JobStateTypeStopped; typ++ {
@@ -355,6 +365,11 @@ func (j *Job) SanitizeSubmission() (warnings []string) {
 // IsTerminal returns true if the job is in a terminal state
 func (j *Job) IsTerminal() bool {
 	return j.State.StateType.IsTerminal()
+}
+
+// IsRerunnable returns true if the job in a state to be re-runed
+func (j *Job) IsRerunnable() bool {
+	return j.State.StateType.IsRerunnable()
 }
 
 // Task returns the job task
