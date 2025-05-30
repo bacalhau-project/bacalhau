@@ -167,7 +167,8 @@ func (h *Housekeeping) fetchActiveExecutions(ctx context.Context) []*models.Exec
 			continue
 		}
 		executions, err := h.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-			JobID: job.ID,
+			JobID:                   job.ID,
+			CurrentLatestJobVersion: job.Version,
 		})
 		if err != nil {
 			// log error and avoid having a single job failure affect the housekeeping of other jobs

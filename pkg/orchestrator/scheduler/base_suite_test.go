@@ -41,7 +41,14 @@ func (s *BaseTestSuite) SetupTest() {
 // to return scenario job and executions
 func (s *BaseTestSuite) mockJobStore(scenario *Scenario) {
 	s.jobStore.EXPECT().GetJob(gomock.Any(), scenario.job.ID).Return(*scenario.job, nil)
-	s.jobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: scenario.job.ID, AllJobVersions: true}).Return(scenario.executions, nil)
+	s.jobStore.EXPECT().GetExecutions(
+		gomock.Any(),
+		jobstore.GetExecutionsOptions{
+			JobID:                   scenario.job.ID,
+			AllJobVersions:          true,
+			CurrentLatestJobVersion: scenario.job.Version,
+		},
+	).Return(scenario.executions, nil)
 }
 
 func (s *BaseTestSuite) mockAllNodes(nodeIDs ...string) []models.NodeInfo {

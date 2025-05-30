@@ -349,9 +349,10 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	}
 
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:          job.ID,
-		JobVersion:     request.JobVersion,
-		AllJobVersions: true, // Get all executions to help with filtering
+		JobID:                   job.ID,
+		JobVersion:              request.JobVersion,
+		AllJobVersions:          true, // Get all executions to help with filtering
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return nil, err
@@ -419,8 +420,9 @@ func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsReques
 	}
 
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:      job.ID,
-		JobVersion: job.Version,
+		JobID:                   job.ID,
+		JobVersion:              job.Version,
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return GetResultsResponse{}, err

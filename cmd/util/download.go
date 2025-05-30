@@ -125,5 +125,8 @@ func GetDefaultJobFolder(jobIDOrName, namespace string) string {
 	if namespace == "" {
 		namespace = "default"
 	}
+	if namespace == "default" {
+		return fmt.Sprintf("job-%s", jobIDOrName)
+	}
 	return fmt.Sprintf("job-%s-%s", namespace, jobIDOrName)
 }

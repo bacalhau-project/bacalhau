@@ -178,8 +178,9 @@ func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
 				continue
 			}
 			executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-				JobID:      job.ID,
-				JobVersion: args.JobVersion,
+				JobID:                   job.ID,
+				JobVersion:              args.JobVersion,
+				CurrentLatestJobVersion: job.Version,
 			})
 			if err != nil {
 				return err
@@ -463,13 +464,14 @@ func (e *Endpoint) jobExecutions(c echo.Context) error {
 
 	// query executions
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:          job.ID,
-		JobVersion:     args.JobVersion,
-		AllJobVersions: args.AllJobVersions,
-		Namespace:      args.Namespace,
-		OrderBy:        args.OrderBy,
-		Reverse:        args.Reverse,
-		Limit:          int(args.Limit),
+		JobID:                   job.ID,
+		JobVersion:              args.JobVersion,
+		AllJobVersions:          args.AllJobVersions,
+		Namespace:               args.Namespace,
+		OrderBy:                 args.OrderBy,
+		Reverse:                 args.Reverse,
+		Limit:                   int(args.Limit),
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return err

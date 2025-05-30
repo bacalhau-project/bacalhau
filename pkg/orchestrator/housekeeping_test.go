@@ -238,7 +238,13 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 				if tc.enqueuedJobTimeouts > 0 {
 					continue
 				}
-				s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job.ID}).Return(jobsMap[job.ID], nil)
+				s.mockJobStore.EXPECT().GetExecutions(
+					gomock.Any(),
+					jobstore.GetExecutionsOptions{
+						JobID:                   job.ID,
+						CurrentLatestJobVersion: job.Version,
+					},
+				).Return(jobsMap[job.ID], nil)
 			}
 
 			// assert evaluation enqueued for each job
@@ -276,8 +282,20 @@ func (s *HousekeepingTestSuite) TestMultipleHousekeepingRounds() {
 	s.mockJobStore.EXPECT().GetInProgressJobs(gomock.Any(), "").AnyTimes().Return([]models.Job{}, nil)
 
 	// mock executions call for each job
-	s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job1.ID}).Return(executions1, nil)
-	s.mockJobStore.EXPECT().GetExecutions(gomock.Any(), jobstore.GetExecutionsOptions{JobID: job2.ID}).Return(executions2, nil)
+	s.mockJobStore.EXPECT().GetExecutions(
+		gomock.Any(),
+		jobstore.GetExecutionsOptions{
+			JobID:                   job1.ID,
+			CurrentLatestJobVersion: job1.Version,
+		},
+	).Return(executions1, nil)
+	s.mockJobStore.EXPECT().GetExecutions(
+		gomock.Any(),
+		jobstore.GetExecutionsOptions{
+			JobID:                   job2.ID,
+			CurrentLatestJobVersion: job2.Version,
+		},
+	).Return(executions2, nil)
 
 	// assert evaluation enqueued for each job
 	s.assertEvaluationEnqueued(*job1, models.EvalTriggerExecTimeout)

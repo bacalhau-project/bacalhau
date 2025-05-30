@@ -206,8 +206,9 @@ func (b *BatchServiceJobScheduler) loadJobState(ctx context.Context, metrics *te
 
 	// Retrieve all the job executions
 	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:          evaluation.JobID,
-		AllJobVersions: true,
+		JobID:                   evaluation.JobID,
+		AllJobVersions:          true,
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return models.Job{}, nil, fmt.Errorf("failed to retrieve executions for job %s when evaluating %s: %w",

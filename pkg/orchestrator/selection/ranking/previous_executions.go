@@ -33,7 +33,8 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)
 	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: job.ID,
+		JobID:                   job.ID,
+		CurrentLatestJobVersion: job.Version,
 	})
 
 	if err == nil {

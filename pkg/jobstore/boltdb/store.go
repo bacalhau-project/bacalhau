@@ -311,11 +311,17 @@ func (b *BoltJobStore) getExecutions(
 		return nil, err
 	}
 
-	// load latest job state if requested
-	jobModel, err := b.getJob(ctx, tx, recorder, jobID)
-	if err != nil {
-		return nil, err
+	resolvedJobLatestVersion := options.CurrentLatestJobVersion
+	var jobModel models.Job
+	if options.IncludeJob {
+		jobModel, err = b.getJob(ctx, tx, recorder, jobID)
+		if err != nil {
+			return nil, err
+		}
+		// Since we are loading the job, we can use the fresh latest job version
+		resolvedJobLatestVersion = jobModel.Version
 	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
 
 	// Sort By Given Order By
@@ -368,7 +374,7 @@ func (b *BoltJobStore) getExecutions(
 			es.Job = &jobModel
 		}
 
-		if b.filterJobExecutionItem(es, options, jobModel.Version) {
+		if b.filterJobExecutionItem(es, options, resolvedJobLatestVersion) {
 			execs = append(execs, es)
 		}
 
@@ -950,7 +956,8 @@ func (b *BoltJobStore) filterJobExecutionItem(
 			return true
 		}
 
-		if item.JobVersion == latestJobVersion {
+		// Here we only care about the latest job version if it is not zero
+		if item.JobVersion == latestJobVersion && latestJobVersion != 0 {
 			return true
 		}
 		return false
