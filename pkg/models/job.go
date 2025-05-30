@@ -59,7 +59,7 @@ func (s JobStateType) IsTerminal() bool {
 	}
 }
 
-// IsRerunnable returns true if the job in a state to be re-runed
+// IsRerunnable returns true if the job in a state to be re-run
 func (s JobStateType) IsRerunnable() bool {
 	switch s {
 	case JobStateTypePending, JobStateTypeQueued, JobStateTypeUndefined:
@@ -367,7 +367,7 @@ func (j *Job) IsTerminal() bool {
 	return j.State.StateType.IsTerminal()
 }
 
-// IsRerunnable returns true if the job in a state to be re-runed
+// IsRerunnable returns true if the job in a state to be re-run
 func (j *Job) IsRerunnable() bool {
 	return j.State.StateType.IsRerunnable()
 }

@@ -70,7 +70,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	})
 }
 
-// godoc for Orchestrator PutJob
+// godoc for Orchestrator DiffJob
 //
 //	@ID				orchestrator/diffJob
 //	@Summary		Submits a job spec and diff it with the latest job version spec.
@@ -332,7 +332,20 @@ func (e *Endpoint) stopJob(c echo.Context) error {
 	})
 }
 
-// TODO: Add API Doc
+// godoc for Orchestrator RerunJob
+//
+//	@ID				orchestrator/rerunJob
+//	@Summary		Reruns a job.
+//	@Description	Reruns a job with the specified job ID or name.
+//	@Tags			Orchestrator
+//	@Accept			json
+//	@Produce		json
+//	@Param			id				path		string					true	"ID or name of the job to rerun"
+//	@Param			rerunJobRequest	body		apimodels.RerunJobRequest	true	"Request to rerun job"
+//	@Success		200				{object}	apimodels.RerunJobResponse
+//	@Failure		400				{object}	string
+//	@Failure		500				{object}	string
+//	@Router			/api/v1/orchestrator/jobs/{id}/rerun [put]
 func (e *Endpoint) rerunJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobIDOrName := c.Param("id")
