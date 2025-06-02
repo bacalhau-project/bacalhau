@@ -1385,19 +1385,19 @@ const docTemplate = `{
         "apimodels.RerunJobRequest": {
             "type": "object",
             "properties": {
+                "JobVersion": {
+                    "type": "integer"
+                },
+                "Reason": {
+                    "type": "string"
+                },
                 "credential": {
                     "$ref": "#/definitions/apimodels.HTTPCredential"
                 },
                 "idempotencyToken": {
                     "type": "string"
                 },
-                "job_version": {
-                    "type": "integer"
-                },
                 "namespace": {
-                    "type": "string"
-                },
-                "reason": {
                     "type": "string"
                 }
             }
