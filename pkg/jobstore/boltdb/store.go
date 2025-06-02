@@ -1181,7 +1181,8 @@ func (b *BoltJobStore) deleteJob(
 }
 
 // UpdateJob updates an existing job in the data store
-// Only specific fields are updated, and the current job is saved as a version
+// Only specific fields are updated, and the current job is saved as a new version,
+// and the job state is updated to pending.
 func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error) {
 	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationUpdate)
 	defer recorder.Done(ctx, jobstore.OperationDuration)
@@ -1265,6 +1266,7 @@ func (b *BoltJobStore) updateJob(
 	// Update only the specified fields
 	existingJob.Priority = updatedJob.Priority
 	existingJob.Count = updatedJob.Count
+	existingJob.State = models.NewJobState(models.JobStateTypePending)
 	existingJob.Constraints = updatedJob.Constraints
 	existingJob.Meta = updatedJob.Meta
 	existingJob.Labels = updatedJob.Labels
@@ -1354,6 +1356,10 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 	// check the expected state
 	if err = request.Condition.Validate(job); err != nil {
 		return err
+	}
+
+	if job.IsTerminal() {
+		return jobstore.NewErrJobAlreadyTerminal(request.JobID, job.State.StateType, request.NewState)
 	}
 
 	// update the job state
