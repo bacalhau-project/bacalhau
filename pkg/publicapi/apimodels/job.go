@@ -197,8 +197,8 @@ type StopJobResponse struct {
 type RerunJobRequest struct {
 	BasePutRequest
 	JobIDOrName string `json:"-"`
-	JobVersion  uint64 `json:"job_version"`
-	Reason      string `json:"reason"`
+	JobVersion  uint64 `json:"JobVersion"`
+	Reason      string `json:"Reason"`
 }
 
 type RerunJobResponse struct {
