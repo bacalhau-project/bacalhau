@@ -63,9 +63,9 @@ func (s JobStateType) IsTerminal() bool {
 func (s JobStateType) IsRerunnable() bool {
 	switch s {
 	case JobStateTypePending, JobStateTypeQueued, JobStateTypeUndefined:
-		return true
-	default:
 		return false
+	default:
+		return true
 	}
 }
 

@@ -386,39 +386,39 @@ func (suite *JobTestSuite) TestJobStateTypeIsRerunnable() {
 		expected bool
 	}{
 		{
-			name:     "pending state should be rerunnable",
+			name:     "pending state should not be rerunnable",
 			state:    models.JobStateTypePending,
-			expected: true,
+			expected: false,
 		},
 		{
-			name:     "queued state should be rerunnable",
+			name:     "queued state should not be rerunnable",
 			state:    models.JobStateTypeQueued,
-			expected: true,
+			expected: false,
 		},
 		{
-			name:     "undefined state should be rerunnable",
+			name:     "undefined state should not be rerunnable",
 			state:    models.JobStateTypeUndefined,
+			expected: false,
+		},
+		{
+			name:     "running state should be rerunnable",
+			state:    models.JobStateTypeRunning,
 			expected: true,
 		},
 		{
-			name:     "running state should not be rerunnable",
-			state:    models.JobStateTypeRunning,
-			expected: false,
-		},
-		{
-			name:     "completed state should not be rerunnable",
+			name:     "completed state should be rerunnable",
 			state:    models.JobStateTypeCompleted,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "failed state should not be rerunnable",
+			name:     "failed state should be rerunnable",
 			state:    models.JobStateTypeFailed,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "stopped state should not be rerunnable",
+			name:     "stopped state should be rerunnable",
 			state:    models.JobStateTypeStopped,
-			expected: false,
+			expected: true,
 		},
 	}
 
@@ -437,39 +437,39 @@ func (suite *JobTestSuite) TestJobIsRerunnable() {
 		expected bool
 	}{
 		{
-			name:     "job with pending state should be rerunnable",
+			name:     "job with pending state should not be rerunnable",
 			state:    models.JobStateTypePending,
-			expected: true,
+			expected: false,
 		},
 		{
-			name:     "job with queued state should be rerunnable",
+			name:     "job with queued state should not be rerunnable",
 			state:    models.JobStateTypeQueued,
-			expected: true,
+			expected: false,
 		},
 		{
-			name:     "job with undefined state should be rerunnable",
+			name:     "job with undefined state should not be rerunnable",
 			state:    models.JobStateTypeUndefined,
+			expected: false,
+		},
+		{
+			name:     "job with running state should be rerunnable",
+			state:    models.JobStateTypeRunning,
 			expected: true,
 		},
 		{
-			name:     "job with running state should not be rerunnable",
-			state:    models.JobStateTypeRunning,
-			expected: false,
-		},
-		{
-			name:     "job with completed state should not be rerunnable",
+			name:     "job with completed state should be rerunnable",
 			state:    models.JobStateTypeCompleted,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "job with failed state should not be rerunnable",
+			name:     "job with failed state should be rerunnable",
 			state:    models.JobStateTypeFailed,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "job with stopped state should not be rerunnable",
+			name:     "job with stopped state should be rerunnable",
 			state:    models.JobStateTypeStopped,
-			expected: false,
+			expected: true,
 		},
 	}
 
