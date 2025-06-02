@@ -117,8 +117,7 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	nonTerminalExecs = b.handlePreviousVersionsExecutions(ctx, plan, nonTerminalExecs)
 
 	// Look for new matching nodes and create new executions every time we evaluate the job
-	allNewExecsAndOldRunningExecs := allJobVersionsExistingExecs.filterByJobVersion(job.Version).union(nonTerminalExecs)
-	_, err = b.createMissingExecs(ctx, metrics, &job, plan, allNewExecsAndOldRunningExecs)
+	_, err = b.createMissingExecs(ctx, metrics, &job, plan, nonTerminalExecs)
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}

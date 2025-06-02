@@ -113,6 +113,13 @@ func (s *DaemonJobSchedulerTestSuite) TestProcess_ShouldNOTMarkJobAsFailed() {
 
 	matcher := NewPlanMatcher(s.T(), PlanMatcherParams{
 		Evaluation: scenario.evaluation,
+		JobState:   models.JobStateTypeRunning,
+		NewExecutions: []*models.Execution{
+			{
+				NodeID:       "node1",
+				DesiredState: models.NewExecutionDesiredState(models.ExecutionDesiredStateRunning),
+			},
+		},
 		UpdatedExecutions: []ExecutionStateUpdate{
 			{
 				ExecutionID:  scenario.executions[0].ID,
