@@ -1,0 +1,13 @@
+Name: basic-daemon-job
+Type: daemon
+Tasks:
+  - Name: main
+    Engine:
+      Type: docker
+      Params:
+        Image: busybox:1.37.0
+        Entrypoint:
+          - /bin/sh
+        Parameters:
+          - "-c"
+          - "echo IAmDaemonJobStartV1 && sleep 900 &&  echo IAmDaemonJobEndV1"

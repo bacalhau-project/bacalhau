@@ -288,9 +288,7 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 		JobID: job.ID,
 		Condition: jobstore.UpdateJobCondition{
 			UnexpectedStates: []models.JobStateType{
-				models.JobStateTypePending,
 				models.JobStateTypeQueued,
-				models.JobStateTypeUndefined,
 			},
 		},
 		NewState: models.JobStateTypePending,
