@@ -78,20 +78,22 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
 
 	// Retrieve the job state
-	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: evaluation.JobID,
+	allJobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID:                   evaluation.JobID,
+		AllJobVersions:          true,
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
-	metrics.Histogram(ctx, executionsExisting, float64(len(jobExecutions)))
+	metrics.Histogram(ctx, executionsExisting, float64(len(allJobExecutions)))
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
 
-	existingExecs := execSetFromSliceOfValues(jobExecutions)
+	existingExecs := execSetFromSliceOfValues(allJobExecutions)
 	nonTerminalExecs := existingExecs.filterNonTerminal()
 
 	// early exit if the job is stopped
@@ -117,9 +119,15 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	nonTerminalExecs, allFailedExecs = b.handleTimeouts(ctx, metrics, plan, nonTerminalExecs, allFailedExecs)
 
+	// this will enqueue an evaluation and marks executions for cancellation rate limited
+	nonTerminalExecs = b.handlePreviousVersionsExecutions(ctx, plan, nonTerminalExecs)
+
 	// Look for matching nodes and create new executions if this is
 	// the first time we are evaluating the job
-	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, existingExecs); err != nil {
+	// For ops job, we need to pass all the execs with new job version no matter
+	//  their state, and also pass running execs with older job versions
+	allNewExecsAndOldRunningExecs := existingExecs.filterByJobVersion(job.Version).union(nonTerminalExecs)
+	if _, err = b.createMissingExecs(ctx, metrics, &job, plan, allNewExecsAndOldRunningExecs); err != nil {
 		return err // internal error
 	}
 
@@ -219,6 +227,7 @@ func (b *OpsJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
+			JobVersion:   job.Version,
 			EvalID:       plan.EvalID,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
@@ -232,6 +241,34 @@ func (b *OpsJobScheduler) createMissingExecs(
 	}
 	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(newExecs)))
 	return newExecs, nil
+}
+
+func (b *OpsJobScheduler) handlePreviousVersionsExecutions(
+	ctx context.Context,
+	plan *models.Plan,
+	nonTerminalExecs execSet,
+) execSet {
+	// nonTerminalExecs are:
+	// 1- Running execs - Old versions
+	// 2- Running Execs - New version
+	// 3- Pending Execs - Old Versions ==> we should mark them directly as cancelled
+	// 4- Pending Execs - New version
+
+	previousJobVersionsExecs := nonTerminalExecs.filterByOutdatedJobVersion(plan.Job.Version)
+	pendingExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStatePending)
+	pendingExecsWithOldJobVersions.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+
+	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
+
+	// The rate limiter will enqueue a delayed evaluation
+	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(
+		uint(countOfRunningExecsToCancel), //nolint:gosec // G115: version within reasonable bounds
+	)
+	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
+
+	return remainingExecs
 }
 
 // compile-time assertion that OpsJobScheduler satisfies the Scheduler interface

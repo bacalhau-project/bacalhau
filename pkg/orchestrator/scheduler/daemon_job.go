@@ -69,21 +69,26 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	metrics.AddAttributes(attribute.String(AttrJobType, job.Type))
 
 	// Retrieve the job state
-	jobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: evaluation.JobID,
+	allJobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID:                   evaluation.JobID,
+		AllJobVersions:          true,
+		CurrentLatestJobVersion: job.Version,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",
 			evaluation.JobID, evaluation, err)
 	}
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetExecs)
-	metrics.Histogram(ctx, executionsExisting, float64(len(jobExecutions)))
+	metrics.Histogram(ctx, executionsExisting, float64(len(allJobExecutions)))
 
 	// Plan to hold the actions to be taken
 	plan := models.NewPlan(evaluation, &job)
 
-	existingExecs := execSetFromSliceOfValues(jobExecutions)
-	nonTerminalExecs := existingExecs.filterNonTerminal()
+	allJobVersionsExistingExecs := execSetFromSliceOfValues(allJobExecutions)
+
+	// nonTerminalExecs will include:
+	// 1 - executions that are in a terminal state
+	nonTerminalExecs := allJobVersionsExistingExecs.filterNonTerminal()
 
 	// early exit if the job is stopped
 	if job.IsTerminal() {
@@ -100,12 +105,19 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 	metrics.Latency(ctx, processPartDuration, AttrOperationPartGetNodes)
 
 	// Mark executions that are running on nodes that are not healthy as failed
-	_, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
+	nonTerminalExecs, lost := nonTerminalExecs.groupByNodeHealth(nodeInfos)
 	lost.markFailed(plan, orchestrator.ExecStoppedByNodeUnhealthyEvent())
 	metrics.CountAndHistogram(ctx, executionsLostTotal, executionsLost, float64(len(lost)))
 
+	// After this call, nonTerminalExecs will now include:
+	//	Running execs - Old Job versions (those were left after rate limiting)
+	//  Running Execs - New Job version
+	//	Pending Execs - New Job version
+	// this will enqueue an evaluation and marks executions for cancellation rate limited
+	nonTerminalExecs = b.handlePreviousVersionsExecutions(ctx, plan, nonTerminalExecs)
+
 	// Look for new matching nodes and create new executions every time we evaluate the job
-	_, err = b.createMissingExecs(ctx, metrics, &job, plan, existingExecs)
+	_, err = b.createMissingExecs(ctx, metrics, &job, plan, nonTerminalExecs)
 	if err != nil {
 		return fmt.Errorf("failed to find/create missing executions: %w", err)
 	}
@@ -119,7 +131,12 @@ func (b *DaemonJobScheduler) Process(ctx context.Context, evaluation *models.Eva
 }
 
 func (b *DaemonJobScheduler) createMissingExecs(
-	ctx context.Context, metrics *telemetry.MetricRecorder, job *models.Job, plan *models.Plan, existingExecs execSet) (execSet, error) {
+	ctx context.Context,
+	metrics *telemetry.MetricRecorder,
+	job *models.Job,
+	plan *models.Plan,
+	allJobVersionsExistingExecs execSet,
+) (execSet, error) {
 	newExecs := execSet{}
 
 	nodes, rejected, err := b.nodeSelector.MatchingNodes(ctx, job)
@@ -131,7 +148,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 
 	// map for existing NodeIDs for faster lookup and filtering of existing executions
 	existingNodes := make(map[string]struct{})
-	for _, exec := range existingExecs {
+	for _, exec := range allJobVersionsExistingExecs {
 		existingNodes[exec.NodeID] = struct{}{}
 	}
 
@@ -143,7 +160,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		}
 	}
 
-	// Apply rate limiting
+	// Apply rate limiting, which will enqueue evaluation.
 	execsToCreate := b.rateLimiter.Apply(ctx, plan, len(nodesToSchedule))
 
 	// Create executions up to the limit
@@ -152,6 +169,7 @@ func (b *DaemonJobScheduler) createMissingExecs(
 		execution := &models.Execution{
 			JobID:        job.ID,
 			Job:          job,
+			JobVersion:   job.Version,
 			EvalID:       plan.EvalID,
 			ID:           idgen.ExecutionIDPrefix + uuid.NewString(),
 			Namespace:    job.Namespace,
@@ -168,6 +186,36 @@ func (b *DaemonJobScheduler) createMissingExecs(
 	}
 	metrics.CountAndHistogram(ctx, executionsCreatedTotal, executionsCreated, float64(len(newExecs)))
 	return newExecs, nil
+}
+
+func (b *DaemonJobScheduler) handlePreviousVersionsExecutions(
+	ctx context.Context,
+	plan *models.Plan,
+	nonTerminalExecs execSet,
+) execSet {
+	// nonTerminalExecs are:
+	// 1- Running execs - Old versions
+	// 2- Running Execs - New version
+	// 3- Pending Execs - Old Versions ==> we should mark them directly as cancelled
+	// 4- Pending Execs - New version
+
+	// Previous versions execs
+	previousJobVersionsExecs := nonTerminalExecs.filterByOutdatedJobVersion(plan.Job.Version)
+
+	pendingExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStatePending)
+	pendingExecsWithOldJobVersions.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+
+	runningExecsWithOldJobVersions := previousJobVersionsExecs.filterByDesiredState(models.ExecutionDesiredStateRunning)
+
+	// The rate limiter will enqueue a delayed evaluation
+	countOfRunningExecsToCancel := b.rateLimiter.Apply(ctx, plan, len(runningExecsWithOldJobVersions))
+	runningExecsToCancel, remainingRunningExecutions := runningExecsWithOldJobVersions.splitByCount(
+		uint(countOfRunningExecsToCancel), //nolint:gosec // G115: version within reasonable bounds
+	)
+	runningExecsToCancel.markCancelled(plan, orchestrator.ExecStoppedForJobUpdateEvent())
+	remainingExecs := nonTerminalExecs.difference(previousJobVersionsExecs).union(remainingRunningExecutions)
+
+	return remainingExecs
 }
 
 // compile-time assertion that DaemonJobScheduler satisfies the Scheduler interface

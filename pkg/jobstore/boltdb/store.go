@@ -37,12 +37,14 @@ const (
 	BucketJobExecutions  = "executions"
 	BucketJobEvaluations = "evaluations"
 	BucketJobHistory     = "history"
+	BucketJobVersions    = "versions" // bucket for job versions
 
 	BucketTagsIndex        = "idx_tags"        // tag -> Job id
 	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
 	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
 	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
 	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
+	BucketJobsNamesIndex   = "idx_job_names"   // job-name -> Job id
 
 	// Event-related buckets
 	eventsBucket      = "v1_events"
@@ -62,6 +64,7 @@ type BoltJobStore struct {
 	tagsIndex        *Index
 	executionsIndex  *Index
 	evaluationsIndex *Index
+	namesIndex       *Index
 }
 
 type Option func(store *BoltJobStore)
@@ -123,6 +126,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 			BucketNamespacesIndex,
 			BucketExecutionsIndex,
 			BucketEvaluationsIndex,
+			BucketJobsNamesIndex,
 		}
 		for _, ib := range indexBuckets {
 			_, err := tx.CreateBucketIfNotExists([]byte(ib))
@@ -141,6 +145,7 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.tagsIndex = NewIndex(BucketTagsIndex)
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
+	store.namesIndex = NewIndex(BucketJobsNamesIndex)
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err = errors.Join(
@@ -306,16 +311,18 @@ func (b *BoltJobStore) getExecutions(
 		return nil, err
 	}
 
-	// load latest job state if requested
-	var job *models.Job
+	resolvedJobLatestVersion := options.CurrentLatestJobVersion
+	var jobModel models.Job
 	if options.IncludeJob {
-		j, err := b.getJob(ctx, tx, recorder, options.JobID)
+		jobModel, err = b.getJob(ctx, tx, recorder, jobID)
 		if err != nil {
 			return nil, err
 		}
-		job = &j
-		recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
+		// Since we are loading the job, we can use the fresh latest job version
+		resolvedJobLatestVersion = jobModel.Version
 	}
+
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
 
 	// Sort By Given Order By
 	var sortFnc func(a, b models.Execution) int
@@ -363,8 +370,14 @@ func (b *BoltJobStore) getExecutions(
 		}
 		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
 
-		es.Job = job
-		execs = append(execs, es)
+		if options.IncludeJob {
+			es.Job = &jobModel
+		}
+
+		if b.filterJobExecutionItem(es, options, resolvedJobLatestVersion) {
+			execs = append(execs, es)
+		}
+
 		return nil
 	})
 
@@ -383,6 +396,13 @@ func (b *BoltJobStore) getExecutions(
 func (b *BoltJobStore) jobExists(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) bool {
 	_, err := b.getJob(ctx, tx, recorder, jobID)
+	return err == nil
+}
+
+// jobExistsByName checks if a job with the specified name exists in the given namespace
+func (b *BoltJobStore) jobExistsByName(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, name, namespace string) bool {
+	_, err := b.getJobByName(ctx, tx, recorder, name, namespace)
 	return err == nil
 }
 
@@ -492,6 +512,28 @@ func (b *BoltJobStore) getJobs(ctx context.Context, tx *bolt.Tx, recorder *telem
 	}
 
 	return response, nil
+}
+
+func (b *BoltJobStore) getJobIDByJobName(
+	ctx context.Context,
+	tx *bolt.Tx,
+	recorder *telemetry.MetricRecorder,
+	jobNameKey string,
+) (string, error) {
+	jobIDs, err := b.namesIndex.List(tx, []byte(jobNameKey))
+	if err != nil {
+		return "", err
+	}
+
+	if len(jobIDs) == 0 {
+		return "", jobstore.NewErrJobNameIndexNotFound(jobNameKey)
+	}
+
+	if len(jobIDs) != 1 {
+		return "", jobstore.NewErrMultipleJobIDsForSameJobNameFound(jobNameKey)
+	}
+
+	return string(jobIDs[0]), nil
 }
 
 // getJobsInitialSet returns the initial set of jobs to be considered for GetJobs response.
@@ -738,6 +780,11 @@ func createInProgressIndexKey(job *models.Job) string {
 	return fmt.Sprintf("%s:%s", job.Type, job.ID)
 }
 
+// createJobNameIndexKey will create a composite key for the job-names index
+func createJobNameIndexKey(name string, namespace string) string {
+	return fmt.Sprintf("%s:%s", name, namespace)
+}
+
 // GetJobHistory retrieves the paginated job history for a given job ID based on the specified query.
 //
 // This method performs a read transaction on the Bolt DB and fetches the job history
@@ -880,6 +927,45 @@ func (b *BoltJobStore) filterHistoryItem(item models.JobHistory, query jobstore.
 	if query.ExcludeExecutionLevel && item.Type == models.JobHistoryTypeExecutionLevel {
 		return false
 	}
+	// If the requested job version is zero, return only the latest version items
+	if query.JobVersion == 0 {
+		// We explicitly are including all job versions
+		if query.AllJobVersions {
+			return true
+		}
+
+		// Only include latest job version
+		return item.JobVersion == query.LatestJobVersion
+	}
+
+	if item.JobVersion != query.JobVersion {
+		return false
+	}
+
+	return true
+}
+
+func (b *BoltJobStore) filterJobExecutionItem(
+	item models.Execution,
+	query jobstore.GetExecutionsOptions,
+	latestJobVersion uint64,
+) bool {
+	// If job version is zero, return only latest version
+	if query.JobVersion == 0 {
+		if query.AllJobVersions {
+			return true
+		}
+
+		// Here we only care about the latest job version if it is not zero
+		if item.JobVersion == latestJobVersion && latestJobVersion != 0 {
+			return true
+		}
+		return false
+	}
+
+	if item.JobVersion != query.JobVersion {
+		return false
+	}
 	return true
 }
 
@@ -922,6 +1008,7 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) (err error
 
 	job.State = models.NewJobState(models.JobStateTypePending)
 	job.Revision = 1
+	job.Version = 1
 	job.CreateTime = b.clock.Now().UTC().UnixNano()
 	job.ModifyTime = b.clock.Now().UTC().UnixNano()
 	job.Normalize()
@@ -934,11 +1021,18 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
+//nolint:gocyclo
 func (b *BoltJobStore) createJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, job models.Job) error {
 	if b.jobExists(ctx, tx, recorder, job.ID) {
 		return jobstore.NewErrJobAlreadyExists(job.ID)
 	}
+
+	// Check if a job with this name already exists in the namespace
+	if b.jobExistsByName(ctx, tx, recorder, job.Name, job.Namespace) {
+		return jobstore.NewErrJobNameAlreadyExists(job.Name, job.Namespace)
+	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartValidate)
 
 	jobIDKey := []byte(job.ID)
@@ -955,6 +1049,10 @@ func (b *BoltJobStore) createJob(
 		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobHistory)); err != nil {
 			return NewBoltDBError(err)
 		}
+		// Create the versions bucket for storing job versions
+		if _, err := bkt.CreateBucketIfNotExists([]byte(BucketJobVersions)); err != nil {
+			return NewBoltDBError(err)
+		}
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartBucketWrite)
 
@@ -969,7 +1067,20 @@ func (b *BoltJobStore) createJob(
 	if bkt, err := NewBucketPath(BucketJobs, job.ID).Get(tx, false); err != nil {
 		return NewBoltDBError(err)
 	} else {
+		// Write the current job spec
 		if err = bkt.Put(SpecKey, jobData); err != nil {
+			return err
+		}
+
+		// Store the initial version in the version bucket
+		versionBkt, err := NewBucketPath(BucketJobs, job.ID, BucketJobVersions).Get(tx, false)
+		if err != nil {
+			return NewBoltDBError(err)
+		}
+
+		// Use the job's Version as the key for the version, and update current version
+		versionKey := []byte(fmt.Sprintf("%d", job.Version))
+		if err = versionBkt.Put(versionKey, jobData); err != nil {
 			return err
 		}
 	}
@@ -992,6 +1103,13 @@ func (b *BoltJobStore) createJob(
 			return err
 		}
 	}
+
+	// Add job name to the job names index bucket
+	jobNameKey := createJobNameIndexKey(job.Name, job.Namespace)
+	if err = b.namesIndex.Add(tx, jobIDKey, []byte(jobNameKey)); err != nil {
+		return NewBoltDBError(err)
+	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
 	return nil
@@ -1050,7 +1168,163 @@ func (b *BoltJobStore) deleteJob(
 			return err
 		}
 	}
+
+	// Remove from job names bucket
+	jobNameKey := createJobNameIndexKey(job.Name, job.Namespace)
+	if err = b.namesIndex.Remove(tx, jobIDKey, []byte(jobNameKey)); err != nil {
+		return NewBoltDBError(err)
+	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexDelete)
+
+	return nil
+}
+
+// UpdateJob updates an existing job in the data store
+// Only specific fields are updated, and the current job is saved as a new version,
+// and the job state is updated to pending.
+func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationUpdate)
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	// Ensure the job has a valid ID
+	if job.ID == "" {
+		return jobstore.NewJobStoreError("cannot update job without an ID")
+	}
+
+	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		return b.updateJob(ctx, tx, recorder, job)
+	})
+}
+
+//nolint:funlen,gocyclo
+func (b *BoltJobStore) updateJob(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, updatedJob models.Job) error {
+	// Get the existing job
+	existingJob, err := b.getJob(ctx, tx, recorder, updatedJob.ID)
+	if err != nil {
+		return err
+	}
+
+	// If name has changed, ensure the new name doesn't already exist
+	if updatedJob.Name != existingJob.Name || updatedJob.Namespace != existingJob.Namespace {
+		return jobstore.NewJobStoreError("cannot change job name or namespace during update")
+	}
+
+	// Verify that this job exists in the names bucket
+	jobNameKey := createJobNameIndexKey(existingJob.Name, existingJob.Namespace)
+	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
+
+	if err != nil {
+		if !bacerrors.IsErrorWithCode(err, bacerrors.NotFoundError) {
+			return NewBoltDBError(err)
+		}
+
+		// If the job isn't in the names index bucket, add it now since it could an old Job
+		log.Ctx(ctx).Warn().
+			Str("job_id", existingJob.ID).
+			Str("job_name", existingJob.Name).
+			Str("namespace", existingJob.Namespace).
+			Msg("Job exists but not found in names index bucket - adding it now")
+
+		if err = b.namesIndex.Add(tx, []byte(existingJob.ID), []byte(jobNameKey)); err != nil {
+			return NewBoltDBError(err)
+		}
+	} else {
+		if indexedJobID != existingJob.ID {
+			return jobstore.
+				NewJobStoreError(
+					fmt.Sprintf(
+						"inconsistency in job names index. Job name %s ID %s does not match stored job ID %s",
+						existingJob.Name,
+						existingJob.ID,
+						indexedJobID,
+					)).
+				WithHint("please check Job Names Index bucket for data integrity")
+		}
+	}
+
+	// Store the existing job in the versions bucket before updating it
+	versionBkt, err := NewBucketPath(BucketJobs, existingJob.ID, BucketJobVersions).Get(tx, false)
+	if err != nil {
+		return NewBoltDBError(err)
+	}
+
+	// Save the current version
+	existingJobData, err := b.marshaller.Marshal(existingJob)
+	if err != nil {
+		return err
+	}
+
+	versionKey := []byte(fmt.Sprintf("%d", existingJob.Version))
+	if err = versionBkt.Put(versionKey, existingJobData); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+
+	// Update only the specified fields
+	existingJob.Priority = updatedJob.Priority
+	existingJob.Count = updatedJob.Count
+	existingJob.State = models.NewJobState(models.JobStateTypePending)
+	existingJob.Constraints = updatedJob.Constraints
+	existingJob.Meta = updatedJob.Meta
+	existingJob.Labels = updatedJob.Labels
+	existingJob.Tasks = updatedJob.Tasks
+
+	// Increment version and update modification time
+	existingJob.Version++
+	existingJob.ModifyTime = b.clock.Now().UTC().UnixNano()
+
+	// Normalize and validate the updated job
+	existingJob.Normalize()
+	if err = existingJob.Validate(); err != nil {
+		return jobstore.NewJobStoreError(err.Error())
+	}
+
+	// Marshal and write the updated job
+	updatedJobData, err := b.marshaller.Marshal(existingJob)
+	if err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartMarshal)
+	recorder.CountN(ctx, jobstore.DataWritten, int64(len(updatedJobData)))
+
+	// Get the job bucket
+	bucket, err := NewBucketPath(BucketJobs, existingJob.ID).Get(tx, false)
+	if err != nil {
+		return NewBoltDBError(err)
+	}
+
+	// Update the job in the store
+	if err = bucket.Put(SpecKey, updatedJobData); err != nil {
+		return err
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+
+	// Store the new version in the versions bucket
+	versionKey = []byte(fmt.Sprintf("%d", existingJob.Version))
+	if err = versionBkt.Put(versionKey, updatedJobData); err != nil {
+		return err
+	}
+
+	// Update tags index - first remove all existing tags
+	jobIDKey := []byte(existingJob.ID)
+	for tag := range existingJob.Labels {
+		tagBytes := []byte(strings.ToLower(tag))
+		if err = b.tagsIndex.Remove(tx, jobIDKey, tagBytes); err != nil {
+			return err
+		}
+	}
+
+	// Then add all new tags
+	for tag := range existingJob.Labels {
+		tagBytes := []byte(strings.ToLower(tag))
+		if err = b.tagsIndex.Add(tx, jobIDKey, tagBytes); err != nil {
+			return err
+		}
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
 	return nil
 }
@@ -1089,6 +1363,7 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 	}
 
 	// update the job state
+	// For state changes, we don't increment Version
 	job.State.StateType = request.NewState
 	job.State.Message = request.Message
 	job.Revision++
@@ -1105,10 +1380,24 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 	if err != nil {
 		return err
 	}
+
+	// Update current job spec
 	err = bucket.Put(SpecKey, jobStateData)
 	if err != nil {
 		return err
 	}
+
+	// Store the new version in the versions bucket
+	versionBkt, err := NewBucketPath(BucketJobs, request.JobID, BucketJobVersions).Get(tx, false)
+	if err != nil {
+		return NewBoltDBError(err)
+	}
+
+	versionKey := []byte(fmt.Sprintf("%d", job.Version))
+	if err = versionBkt.Put(versionKey, jobStateData); err != nil {
+		return err
+	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	if job.IsTerminal() {
@@ -1133,7 +1422,7 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 }
 
 // AddJobHistory appends a new history entry to the job history
-func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events ...models.Event) (err error) {
+func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, jobVersion uint64, events ...models.Event) (err error) {
 	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationCreate,
 		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob))
 	defer recorder.Done(ctx, jobstore.OperationDuration)
@@ -1141,7 +1430,7 @@ func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events .
 
 	return boltdblib.Update(ctx, b.database, func(tx *bolt.Tx) (err error) {
 		for _, event := range events {
-			if err = b.addJobHistory(ctx, tx, recorder, jobID, event); err != nil {
+			if err = b.addJobHistory(ctx, tx, recorder, jobID, jobVersion, event); err != nil {
 				return err
 			}
 		}
@@ -1150,22 +1439,24 @@ func (b *BoltJobStore) AddJobHistory(ctx context.Context, jobID string, events .
 }
 
 func (b *BoltJobStore) addJobHistory(
-	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string, event models.Event) error {
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string, jobVersion uint64, event models.Event) error {
 	return b.addHistory(ctx, tx, recorder, jobID, models.JobHistory{
-		Type:  models.JobHistoryTypeJobLevel,
-		JobID: jobID,
-		Event: event,
-		Time:  b.clock.Now().UTC(),
+		Type:       models.JobHistoryTypeJobLevel,
+		JobID:      jobID,
+		JobVersion: jobVersion,
+		Event:      event,
+		Time:       b.clock.Now().UTC(),
 	})
 }
 
 func (b *BoltJobStore) addExecutionHistory(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
-	jobID, executionID string, events ...*models.Event) error {
+	jobID string, jobVersion uint64, executionID string, events ...*models.Event) error {
 	now := b.clock.Now().UTC()
 	for _, event := range events {
 		if err := b.addHistory(ctx, tx, recorder, jobID, models.JobHistory{
 			Type:        models.JobHistoryTypeExecutionLevel,
 			JobID:       jobID,
+			JobVersion:  jobVersion,
 			ExecutionID: executionID,
 			Event:       *event,
 			Time:        now,
@@ -1356,7 +1647,15 @@ func (b *BoltJobStore) updateExecution(
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	// Add execution history
-	if err = b.addExecutionHistory(ctx, tx, recorder, newExecution.JobID, newExecution.ID, request.Events...); err != nil {
+	if err = b.addExecutionHistory(
+		ctx,
+		tx,
+		recorder,
+		newExecution.JobID,
+		newExecution.JobVersion,
+		newExecution.ID,
+		request.Events...,
+	); err != nil {
 		return err
 	}
 
@@ -1385,7 +1684,13 @@ func (b *BoltJobStore) updateExecution(
 }
 
 // AddExecutionHistory appends a new history entry to the execution history
-func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, executionID string, events ...models.Event) (err error) {
+func (b *BoltJobStore) AddExecutionHistory(
+	ctx context.Context,
+	jobID string,
+	jobVersion uint64,
+	executionID string,
+	events ...models.Event,
+) (err error) {
 	recorder := b.metricRecorder(ctx, BucketJobHistory, jobstore.AttrOperationCreate,
 		jobstore.AttrScopeKey.String(jobstore.AttrScopeExecution))
 	defer recorder.Done(ctx, jobstore.OperationDuration)
@@ -1396,7 +1701,7 @@ func (b *BoltJobStore) AddExecutionHistory(ctx context.Context, jobID, execution
 		for i := range events {
 			eventsValues[i] = &events[i]
 		}
-		return b.addExecutionHistory(ctx, tx, recorder, jobID, executionID, eventsValues...)
+		return b.addExecutionHistory(ctx, tx, recorder, jobID, jobVersion, executionID, eventsValues...)
 	})
 }
 
@@ -1577,3 +1882,153 @@ func (b *BoltJobStore) Close(ctx context.Context) error {
 
 // Static check to ensure that BoltJobStore implements jobstore.Store
 var _ jobstore.Store = (*BoltJobStore)(nil)
+
+// GetJobByName retrieves a Job identified by its name and namespace. If the job isn't found
+// it will return an error indicating that it was not found.
+func (b *BoltJobStore) GetJobByName(ctx context.Context, name, namespace string) (job models.Job, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobs, jobstore.AttrOperationGet,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob),
+		attribute.String("name", name),
+		attribute.String("namespace", namespace))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		job, err = b.getJobByName(ctx, tx, recorder, name, namespace)
+		return
+	})
+	return job, err
+}
+
+func (b *BoltJobStore) getJobByName(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, name, namespace string) (models.Job, error) {
+	var job models.Job
+
+	if namespace == "" {
+		namespace = models.DefaultNamespace
+	}
+
+	// Create the job name key in the same format as in createJob
+	jobNameKey := createJobNameIndexKey(name, namespace)
+
+	// Look up the job ID from the job names index bucket
+	indexedJobID, err := b.getJobIDByJobName(ctx, tx, recorder, jobNameKey)
+	if err != nil {
+		return job, err
+	}
+
+	return b.getJob(ctx, tx, recorder, indexedJobID)
+}
+
+// GetJobVersion retrieves a specific version of a job by its ID and version number
+func (b *BoltJobStore) GetJobVersion(ctx context.Context, jobID string, version uint64) (job models.Job, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobVersions, jobstore.AttrOperationGet,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob),
+		attribute.Int64("version", int64(version))) //nolint:gosec // G115: version within reasonable bounds
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		job, err = b.getJobVersion(ctx, tx, recorder, jobID, version)
+		return
+	})
+	return job, err
+}
+
+func (b *BoltJobStore) getJobVersion(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string, version uint64) (models.Job, error) {
+	var job models.Job
+
+	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
+	if err != nil {
+		return job, err
+	}
+
+	// Get the version from the versions bucket
+	versionBkt, err := NewBucketPath(BucketJobs, jobID, BucketJobVersions).Get(tx, false)
+	if err != nil {
+		return job, NewBoltDBError(err)
+	}
+
+	versionKey := []byte(fmt.Sprintf("%d", version))
+	data := versionBkt.Get(versionKey)
+	if data == nil {
+		return job, jobstore.NewErrJobVersionNotFound(jobID, version)
+	}
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+	recorder.CountN(ctx, jobstore.DataRead, int64(len(data)))
+	recorder.Count(ctx, jobstore.RowsRead)
+
+	err = b.marshaller.Unmarshal(data, &job)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
+
+	return job, err
+}
+
+// GetJobVersions returns all available versions of a job
+func (b *BoltJobStore) GetJobVersions(ctx context.Context, jobID string) (versions []models.Job, err error) {
+	recorder := b.metricRecorder(ctx, BucketJobVersions, jobstore.AttrOperationList,
+		jobstore.AttrScopeKey.String(jobstore.AttrScopeJob))
+	defer recorder.Done(ctx, jobstore.OperationDuration)
+	defer recorder.Error(err)
+
+	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
+		versions, err = b.getJobVersions(ctx, tx, recorder, jobID)
+		return
+	})
+	return versions, err
+}
+
+func (b *BoltJobStore) getJobVersions(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) ([]models.Job, error) {
+	var versions []models.Job
+
+	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the versions bucket
+	versionBkt, err := NewBucketPath(BucketJobs, jobID, BucketJobVersions).Get(tx, false)
+	if err != nil {
+		return nil, NewBoltDBError(err)
+	}
+
+	// Iterate through all versions
+	err = versionBkt.ForEach(func(k, v []byte) error {
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+		recorder.CountN(ctx, jobstore.DataRead, int64(len(v)))
+		recorder.Count(ctx, jobstore.RowsRead)
+
+		var job models.Job
+		err := b.marshaller.Unmarshal(v, &job)
+		if err != nil {
+			return err
+		}
+		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
+
+		versions = append(versions, job)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Sort versions by Version in ascending order
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].Version < versions[j].Version
+	})
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
+
+	return versions, nil
+}
+
+// GetJobByIDOrName retrieves a Job identified by either its name or ID.
+func (b *BoltJobStore) GetJobByIDOrName(ctx context.Context, idOrName, namespace string) (job models.Job, err error) {
+	// First try to get by name
+	job, err = b.GetJobByName(ctx, idOrName, namespace)
+	if err != nil {
+		job, err = b.GetJob(ctx, idOrName)
+	}
+	return job, err
+}

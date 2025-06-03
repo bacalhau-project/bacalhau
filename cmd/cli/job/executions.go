@@ -24,15 +24,23 @@ import (
 var executionsOrderByFields = []string{"modified_at", "created_at"}
 
 var (
-	executionShort = `List executions for a job by id.`
+	executionShort = `List executions for a job`
 
 	executionLong = templates.LongDesc(`
-		List executions for a job by id.
+		List executions for a job by job name or id.
 `)
 
 	executionExample = templates.Examples(`
-		# All executions for a given job.
-		bacalhau job executions j-e3f8c209-d683-4a41-b840-f09b88d087b9
+		# All executions for the latest version of job with name my-job.
+		bacalhau job executions my-job
+
+		# All executions for a specific version of job with name my-job.
+		bacalhau job executions my-job --version=3
+
+		# All executions for a specific version of job with name my-job.
+		bacalhau job executions my-job --all-versions
+
+		# Note that Job ID can be used as well instead of name
 `)
 )
 
@@ -40,6 +48,9 @@ var (
 type ExecutionOptions struct {
 	output.OutputOptions
 	cliflags.ListOptions
+	JobVersion     uint64
+	AllJobVersions bool
+	Namespace      string
 }
 
 // NewExecutionOptions returns initialized Options
@@ -56,8 +67,8 @@ func NewExecutionOptions() *ExecutionOptions {
 func NewExecutionCmd() *cobra.Command {
 	o := NewExecutionOptions()
 
-	nodeCmd := &cobra.Command{
-		Use:           "executions [id]",
+	jobExecutionsCmd := &cobra.Command{
+		Use:           "executions",
 		Short:         executionShort,
 		Long:          executionLong,
 		Example:       executionExample,
@@ -79,12 +90,21 @@ func NewExecutionCmd() *cobra.Command {
 		},
 	}
 
-	nodeCmd.SilenceUsage = true
-	nodeCmd.SilenceErrors = true
+	jobExecutionsCmd.SilenceUsage = true
+	jobExecutionsCmd.SilenceErrors = true
 
-	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
-	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
-	return nodeCmd
+	jobExecutionsCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+		"The job version to filter by. By default, the latest version is used.")
+	jobExecutionsCmd.Flags().BoolVar(&o.AllJobVersions, "all-versions", o.AllJobVersions,
+		"Specifies that all job versions should be returned. "+
+			"By default, only the executions of the latest job version is returned. Note: this flag is mutually "+
+			"exclusive with --version, where the latter takes precedence if both are set.")
+	jobExecutionsCmd.PersistentFlags().StringVar(&o.Namespace, "namespace", o.Namespace,
+		`Job Namespace. If not provided, default namespace will be used.`,
+	)
+	jobExecutionsCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
+	jobExecutionsCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
+	return jobExecutionsCmd
 }
 
 var (
@@ -110,6 +130,14 @@ var (
 			WidthMax:         idgen.ShortIDLengthWithPrefix,
 			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(e *models.Execution) string { return e.ID },
+	}
+	jobVersionColumn = output.TableColumn[*models.Execution]{
+		ColumnConfig: table.ColumnConfig{
+			Name:             "Job Version",
+			WidthMax:         11,
+			WidthMaxEnforcer: text.WrapText,
+		},
+		Value: func(e *models.Execution) string { return strconv.FormatUint(e.JobVersion, 10) },
 	}
 	executionColumnNodeID = output.TableColumn[*models.Execution]{
 		ColumnConfig: table.ColumnConfig{
@@ -141,6 +169,7 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 	executionColumnCreated,
 	executionColumnModified,
 	executionColumnID,
+	jobVersionColumn,
 	executionColumnNodeID,
 	executionColumnRev,
 	executionColumnState,
@@ -149,16 +178,22 @@ var executionColumns = []output.TableColumn[*models.Execution]{
 
 func (o *ExecutionOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
-	jobID := args[0]
-	response, err := api.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{
-		JobID: jobID,
-		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.Limit,
-			NextToken: o.NextToken,
-			OrderBy:   o.OrderBy,
-			Reverse:   o.Reverse,
+	jobIDOrName := args[0]
+	request := &apimodels.ListJobExecutionsRequest{
+		JobIDOrName: jobIDOrName,
+		BaseVersionedListRequest: apimodels.BaseVersionedListRequest{
+			JobVersion:     o.JobVersion,
+			AllJobVersions: o.AllJobVersions,
 		},
-	})
+	}
+
+	request.Limit = o.Limit
+	request.NextToken = o.NextToken
+	request.OrderBy = o.OrderBy
+	request.Reverse = o.Reverse
+	request.Namespace = o.Namespace
+
+	response, err := api.Jobs().Executions(ctx, request)
 	if err != nil {
 		return errors.New(err.Error())
 	}

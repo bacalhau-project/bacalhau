@@ -44,6 +44,7 @@ type JobHistory struct {
 	SeqNum      uint64         `json:"SeqNum"`
 	Type        JobHistoryType `json:"Type"`
 	JobID       string         `json:"JobID"`
+	JobVersion  uint64         `json:"JobVersion"`
 	ExecutionID string         `json:"ExecutionID,omitempty"`
 	Event       Event          `json:"Event,omitempty"`
 	Time        time.Time      `json:"Time"`

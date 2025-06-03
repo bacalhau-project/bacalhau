@@ -165,19 +165,14 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 			[]string{"bacalhau", "job", "describe", "--output=json", jobID},
 			execOptions...,
 		)
-		if err != nil {
-			return time.Since(startTime), err
+		if err == nil {
+			jobState, err := utils.ExtractJobStateType(jobDescriptionResultJson)
+			if err == nil && jobState == "Completed" {
+				return time.Since(startTime), nil
+			}
 		}
 
-		jobState, err := utils.ExtractJobStateType(jobDescriptionResultJson)
-		if err != nil {
-			return time.Since(startTime), err
-		}
-
-		if jobState == "Completed" {
-			return time.Since(startTime), nil
-		}
-
+		// If any error occurred or job is not yet complete, wait and try again
 		time.Sleep(time.Second)
 	}
 

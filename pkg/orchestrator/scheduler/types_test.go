@@ -354,3 +354,191 @@ func TestExecSet_RemainingPartitions(t *testing.T) {
 	assert.Len(t, remaining, 2) // Should have partitions 1 and 3 remaining
 	assert.ElementsMatch(t, remaining, []int{1, 3})
 }
+
+func TestExecSet_Difference(t *testing.T) {
+	t.Run("basic difference operation", func(t *testing.T) {
+		executions1 := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
+		}
+
+		executions2 := []*models.Execution{
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+			{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateRunning)},
+		}
+
+		set1 := execSetFromSlice(executions1)
+		set2 := execSetFromSlice(executions2)
+
+		diff := set1.difference(set2)
+
+		assert.Len(t, diff, 2)
+		assert.ElementsMatch(t, diff.keys(), []string{"exec1", "exec3"})
+	})
+
+	t.Run("no overlap between sets", func(t *testing.T) {
+		executions1 := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		}
+
+		executions2 := []*models.Execution{
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateFailed)},
+			{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateRunning)},
+		}
+
+		set1 := execSetFromSlice(executions1)
+		set2 := execSetFromSlice(executions2)
+
+		diff := set1.difference(set2)
+
+		assert.Len(t, diff, 2)
+		assert.ElementsMatch(t, diff.keys(), []string{"exec1", "exec2"})
+	})
+
+	t.Run("complete overlap", func(t *testing.T) {
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		}
+
+		set1 := execSetFromSlice(executions)
+		set2 := execSetFromSlice(executions)
+
+		diff := set1.difference(set2)
+
+		assert.Len(t, diff, 0)
+		assert.Empty(t, diff.keys())
+	})
+
+	t.Run("difference with empty other set", func(t *testing.T) {
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		}
+
+		set1 := execSetFromSlice(executions)
+		set2 := execSet{}
+
+		diff := set1.difference(set2)
+
+		assert.Len(t, diff, 2)
+		assert.ElementsMatch(t, diff.keys(), []string{"exec1", "exec2"})
+	})
+
+	t.Run("difference with empty original set", func(t *testing.T) {
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted)},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted)},
+		}
+
+		set1 := execSet{}
+		set2 := execSetFromSlice(executions)
+
+		diff := set1.difference(set2)
+
+		assert.Len(t, diff, 0)
+		assert.Empty(t, diff.keys())
+	})
+}
+
+func TestExecSet_SplitByCount(t *testing.T) {
+	t.Run("split with count less than total", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.Add(time.Second).UnixNano()},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateFailed), ModifyTime: now.Add(2 * time.Second).UnixNano()},
+			{ID: "exec4", ComputeState: models.NewExecutionState(models.ExecutionStateRunning), ModifyTime: now.Add(3 * time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		first, remaining := set.splitByCount(2)
+
+		assert.Len(t, first, 2)
+		assert.Len(t, remaining, 2)
+
+		// Since splitByCount uses ordered() which sorts by ModifyTime,
+		// the first set should contain the two oldest executions
+		assert.ElementsMatch(t, first.keys(), []string{"exec1", "exec2"})
+		assert.ElementsMatch(t, remaining.keys(), []string{"exec3", "exec4"})
+	})
+
+	t.Run("split with count equal to total", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.Add(time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		first, remaining := set.splitByCount(2)
+
+		assert.Len(t, first, 2)
+		assert.Len(t, remaining, 0)
+		assert.ElementsMatch(t, first.keys(), []string{"exec1", "exec2"})
+		assert.Empty(t, remaining.keys())
+	})
+
+	t.Run("split with count greater than total", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.Add(time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		first, remaining := set.splitByCount(5)
+
+		assert.Len(t, first, 2)
+		assert.Len(t, remaining, 0)
+		assert.ElementsMatch(t, first.keys(), []string{"exec1", "exec2"})
+		assert.Empty(t, remaining.keys())
+	})
+
+	t.Run("split with count of zero", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.Add(time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		first, remaining := set.splitByCount(0)
+
+		assert.Len(t, first, 0)
+		assert.Len(t, remaining, 2)
+		assert.Empty(t, first.keys())
+		assert.ElementsMatch(t, remaining.keys(), []string{"exec1", "exec2"})
+	})
+
+	t.Run("split with empty set", func(t *testing.T) {
+		set := execSet{}
+		first, remaining := set.splitByCount(3)
+
+		assert.Len(t, first, 0)
+		assert.Len(t, remaining, 0)
+		assert.Empty(t, first.keys())
+		assert.Empty(t, remaining.keys())
+	})
+
+	t.Run("split maintains consistent order", func(t *testing.T) {
+		now := time.Now()
+		executions := []*models.Execution{
+			{ID: "exec1", ComputeState: models.NewExecutionState(models.ExecutionStateBidAccepted), ModifyTime: now.Add(2 * time.Second).UnixNano()},
+			{ID: "exec2", ComputeState: models.NewExecutionState(models.ExecutionStateCompleted), ModifyTime: now.UnixNano()},
+			{ID: "exec3", ComputeState: models.NewExecutionState(models.ExecutionStateFailed), ModifyTime: now.Add(time.Second).UnixNano()},
+		}
+
+		set := execSetFromSlice(executions)
+		first, remaining := set.splitByCount(1)
+
+		assert.Len(t, first, 1)
+		assert.Len(t, remaining, 2)
+
+		// The oldest execution (exec2) should be in the first set
+		assert.ElementsMatch(t, first.keys(), []string{"exec2"})
+		assert.ElementsMatch(t, remaining.keys(), []string{"exec3", "exec1"})
+	})
+}

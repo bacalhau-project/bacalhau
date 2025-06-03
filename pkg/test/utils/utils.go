@@ -20,7 +20,7 @@ func GetJobFromTestOutput(ctx context.Context, t *testing.T, c clientv2.API, out
 	require.Regexp(t, uuidRegex, jobID, "Job ID should be a UUID")
 
 	j, err := c.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID: jobID,
+		JobIDOrName: jobID,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, j, "Failed to get job with ID: %s", out)

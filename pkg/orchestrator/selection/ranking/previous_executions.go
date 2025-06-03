@@ -32,18 +32,22 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	ranks := make([]orchestrator.NodeRank, len(nodes))
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)
-	executions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID: job.ID,
+	latestJobVersionExecutions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
+		JobID:                   job.ID,
+		CurrentLatestJobVersion: job.Version,
 	})
+
 	if err == nil {
-		for _, execution := range executions {
+		for _, execution := range latestJobVersionExecutions {
 			if _, ok := previousExecutors[execution.NodeID]; !ok {
 				previousExecutors[execution.NodeID] = 0
 			}
 			previousExecutors[execution.NodeID]++
+
 			if !execution.IsDiscarded() {
 				toFilterOut[execution.NodeID] = true
 			}
+
 			if execution.ComputeState.StateType == models.ExecutionStateAskForBidRejected {
 				toFilterOut[execution.NodeID] = true
 			}

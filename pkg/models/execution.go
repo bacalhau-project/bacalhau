@@ -100,6 +100,9 @@ type Execution struct {
 	// TODO: evaluate using a copy of the job instead of a pointer
 	Job *Job `json:"Job,omitempty"`
 
+	// JobVersion version of the job that this execution was created in
+	JobVersion uint64 `json:"JobVersion"`
+
 	// AllocatedResources is the total resources allocated for the execution tasks.
 	AllocatedResources *AllocatedResources `json:"AllocatedResources"`
 
