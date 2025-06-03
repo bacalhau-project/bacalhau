@@ -41,23 +41,7 @@ func (s *JobsUpdateSuite) TearDownSuite() {
 	s.BaseDockerComposeTestSuite.TearDownSuite()
 }
 
-func (s *JobsUpdateSuite) TestDockerRunHelloWorld() {
-	result, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "docker", "run", "hello-world"})
-
-	s.Require().NoError(err, "Error running hello world")
-
-	jobID := utils.ExtractJobIDFromOutput(result, &s.Suite)
-
-	completedIn, err := s.waitForJobToComplete(jobID, 30*time.Second)
-	s.Require().NoErrorf(err, "Error waiting for job to complete, waited %s: %q", completedIn, err)
-
-	resultDescription, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobID})
-
-	s.Require().NoError(err, "Error running job description")
-	s.Require().Contains(resultDescription, "Hello from Docker", resultDescription)
-}
-
-func (s *JobsUpdateSuite) TestHelloWorldJob() {
+func (s *JobsUpdateSuite) TestBatchJobUpdate() {
 	jobName := "basic-hello-world"
 
 	result, err := s.executeCommandInDefaultJumpbox(
@@ -491,6 +475,311 @@ func (s *JobsUpdateSuite) TestHelloWorldJob() {
 	s.Require().NoError(err, "Error running hello world from job spec")
 	s.Require().Contains(result, "echo hello bacalhau world1")
 	s.Require().Contains(result, "echo hello bacalhau world2")
+}
+
+func (s *JobsUpdateSuite) TestDaemonJobUpdate() {
+	jobName := "basic-daemon-job"
+
+	result, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"job",
+			"run",
+			"--wait=false",
+			"--id-only",
+			"/bacalhau_integration_tests/common_assets/job_specs/19-basic-daemon-job-v1.yml",
+		})
+	s.Require().NoError(err, "Error running hello world from job spec")
+
+	jobID, err := utils.ExtractJobIDFromShortOutput(result)
+	s.Require().NoErrorf(err, "error extracting Job ID after running it: %q", err)
+
+	completedIn, err := s.waitForJobToBeRunning(jobName, 30*time.Second)
+	s.Require().NoErrorf(err, "Error waiting for job to be running, waited %s: %q", completedIn, err)
+
+	resultDescription, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobID})
+	s.Require().NoError(err, "Error getting job description by ID")
+	s.Require().NotContains(resultDescription, "IAmDaemonJobStartV1", resultDescription)
+
+	resultDescriptionByName, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobName})
+	s.Require().NoError(err, "Error getting job description by name")
+	s.Require().NotContains(resultDescriptionByName, "IAmDaemonJobStartV1", resultDescription)
+
+	resultDescriptionByNameJSON, err := s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"describe",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err := s.convertStringToDynamicJSON(resultDescriptionByNameJSON)
+	s.Require().NoError(err)
+
+	jobVersion, err := dynamicJSONOutput.Query("$.Job.Version")
+	s.Require().NoError(err)
+	s.Require().Equal(1, jobVersion.Int())
+
+	executionsList, err := dynamicJSONOutput.Query("$.Executions.Items")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err := dynamicJSONOutput.Query("$.Executions.Items[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err := dynamicJSONOutput.Query("$.Executions.Items[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Update the Job and run it
+	result, err = s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"job",
+			"run",
+			"--wait=false",
+			"--id-only",
+			"/bacalhau_integration_tests/common_assets/job_specs/19-basic-daemon-job-v2.yml",
+		})
+	s.Require().NoError(err, "Error updating basic daemon from job spec")
+
+	jobID, err = utils.ExtractJobIDFromShortOutput(result)
+	s.Require().NoErrorf(err, "error extracting Job ID after running it: %q", err)
+
+	// TODO: This is a workaround for the fact that the job is running in daemon mode,
+	// TODO: We need to wait for the job version to change and the new executions to be created with th
+	// new job version.
+	time.Sleep(10 * time.Second) // Wait a bit for the job to be updated
+	// This wait will not work as expected because the job is running in daemon mode,
+	completedIn, err = s.waitForJobToBeRunning(jobName, 30*time.Second)
+	s.Require().NoErrorf(err, "Error waiting for job to be running, waited %s: %q", completedIn, err)
+
+	resultDescription, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobID})
+	s.Require().NoError(err, "Error getting job description by ID")
+	s.Require().NotContains(resultDescription, "IAmDaemonJobStartV1", resultDescription)
+	s.Require().NotContains(resultDescription, "IAmDaemonJobStartV2", resultDescription)
+
+	resultDescriptionByName, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobName})
+	s.Require().NoError(err, "Error getting job description by name")
+	s.Require().NotContains(resultDescriptionByName, "IAmDaemonJobStartV1", resultDescriptionByName)
+	s.Require().NotContains(resultDescriptionByName, "IAmDaemonJobStartV2", resultDescriptionByName)
+
+	resultDescriptionByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"describe",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultDescriptionByNameJSON)
+	s.Require().NoError(err)
+
+	jobVersion, err = dynamicJSONOutput.Query("$.Job.Version")
+	s.Require().NoError(err)
+	s.Require().Equal(2, jobVersion.Int())
+
+	executionsList, err = dynamicJSONOutput.Query("$.Executions.Items")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Describe version 1 of the job
+	resultDescriptionByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"describe",
+		jobName,
+		"--version=1",
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultDescriptionByNameJSON)
+	s.Require().NoError(err)
+
+	jobVersion, err = dynamicJSONOutput.Query("$.Job.Version")
+	s.Require().NoError(err)
+	s.Require().Equal(1, jobVersion.Int())
+
+	executionsList, err = dynamicJSONOutput.Query("$.Executions.Items")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Describe version 2 of the job
+	resultDescriptionByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"describe",
+		jobName,
+		"--version=2",
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultDescriptionByNameJSON)
+	s.Require().NoError(err)
+
+	jobVersion, err = dynamicJSONOutput.Query("$.Job.Version")
+	s.Require().NoError(err)
+	s.Require().Equal(2, jobVersion.Int())
+
+	executionsList, err = dynamicJSONOutput.Query("$.Executions.Items")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err = dynamicJSONOutput.Query("$.Executions.Items[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Display Job executions for latest job
+	resultExecutionsByNameJSON, err := s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"executions",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultExecutionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err = dynamicJSONOutput.Query("$[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err = dynamicJSONOutput.Query("$[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(2, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Display Job executions version 2
+	resultExecutionsByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"executions",
+		jobName,
+		"--version=1",
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultExecutionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second execution job version value
+	firstExecutionJobVersion, err = dynamicJSONOutput.Query("$[0].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, firstExecutionJobVersion.Int())
+
+	secondExecutionJobVersion, err = dynamicJSONOutput.Query("$[1].JobVersion")
+	s.Require().NoError(err)
+	s.Require().Equal(1, secondExecutionJobVersion.Int())
+
+	// =======================================================================
+	// =======================================================================
+	// Display Job executions all-versions
+	resultExecutionsByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"executions",
+		jobName,
+		"--all-versions",
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultExecutionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(4, len(executionsList.Array()))
+
+	// check that we have 4 executions with 2 for each version, the order is not guaranteed, do not rely on it
+	// Count versions to ensure we have 2 executions with version 1 and 2 with version 2
+	// This approach doesn't rely on order of results which isn't guaranteed
+	versionCounts := map[int]int{1: 0, 2: 0}
+
+	for i := 0; i < 4; i++ {
+		version, err := dynamicJSONOutput.Query(fmt.Sprintf("$[%d].JobVersion", i))
+		s.Require().NoError(err)
+		versionCounts[version.Int()]++
+	}
+
+	s.Require().Equal(2, versionCounts[1], "Expected exactly 2 executions with version 1")
+	s.Require().Equal(2, versionCounts[2], "Expected exactly 2 executions with version 2")
+
+	// =======================================================================
+	// =======================================================================
+	// Display job versions
+
+	resultJobVersionsByNameJSON, err := s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"versions",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultJobVersionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(2, len(executionsList.Array()))
+
+	// Check the first and second job version value there should be 2 versions,
+	firstJobVersion, err := dynamicJSONOutput.Query("$[0].Version")
+	s.Require().NoError(err)
+	secondJobVersion, err := dynamicJSONOutput.Query("$[1].Version")
+	s.Require().NoError(err)
+	s.Require().True((firstJobVersion.Int() == 1 && secondJobVersion.Int() == 2) ||
+		(firstJobVersion.Int() == 2 && secondJobVersion.Int() == 1),
+		"Expected job versions to be 1 and 2, but got %d and %d", firstJobVersion.Int(), secondJobVersion.Int())
+
+	// ==========================================================================
+	// ==========================================================================
+	// Resubmitting the job with no changes, it should not create a new job version
+	result, err = s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"job",
+			"run",
+			"/bacalhau_integration_tests/common_assets/job_specs/19-basic-daemon-job-v2.yml",
+		})
+	s.Require().ErrorContains(err, "no changes detected for new job spec. Job Name: 'basic-daemon-job'")
+	s.Require().ErrorContains(err, "Use the --force flag to override this warning")
 }
 
 func TestJobsUpdateSuite(t *testing.T) {

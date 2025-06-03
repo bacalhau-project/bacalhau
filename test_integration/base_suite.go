@@ -157,6 +157,14 @@ func (s *BaseDockerComposeTestSuite) executeCommandInDefaultJumpbox(cmd []string
 }
 
 func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
+	return s.waitForJobState(jobID, "Completed", timeout, execOptions...)
+}
+
+func (s *BaseDockerComposeTestSuite) waitForJobToBeRunning(jobID string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
+	return s.waitForJobState(jobID, "Running", timeout, execOptions...)
+}
+
+func (s *BaseDockerComposeTestSuite) waitForJobState(jobID, desiredJobState string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
 	startTime := time.Now()
 	endTime := startTime.Add(timeout)
 
@@ -167,7 +175,7 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 		)
 		if err == nil {
 			jobState, err := utils.ExtractJobStateType(jobDescriptionResultJson)
-			if err == nil && jobState == "Completed" {
+			if err == nil && jobState == desiredJobState {
 				return time.Since(startTime), nil
 			}
 		}
@@ -176,7 +184,10 @@ func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout 
 		time.Sleep(time.Second)
 	}
 
-	return timeout, fmt.Errorf("job did not finish within allowed time limit %s", timeout.String())
+	return timeout, fmt.Errorf(
+		"job did not convert into desired state %s within allowed time limit %s",
+		desiredJobState, timeout.String(),
+	)
 }
 
 func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string, expectedType JSONResponseType) (interface{}, error) {
