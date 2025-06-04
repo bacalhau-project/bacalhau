@@ -39,7 +39,7 @@ require (
 	github.com/ipld/go-ipld-prime v0.21.0
 	github.com/jedib0t/go-pretty/v6 v6.6.7
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo/v4 v4.13.3
+	github.com/labstack/echo/v4 v4.13.4
 	github.com/lestrrat-go/jwx v1.2.31
 	github.com/libp2p/go-libp2p v0.41.1
 	github.com/mattn/go-isatty v0.0.20
@@ -272,7 +272,7 @@ require (
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-netroute v0.2.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/miekg/dns v1.1.66 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
