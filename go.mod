@@ -45,7 +45,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.15.0
-	github.com/nats-io/nats-server/v2 v2.11.3
+	github.com/nats-io/nats-server/v2 v2.11.4
 	github.com/nats-io/nats.go v1.42.0
 	github.com/nats-io/nuid v1.0.1
 	github.com/open-policy-agent/opa v0.60.0
@@ -135,7 +135,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20231225225746-43d5d4cd4e0e // indirect
-	github.com/google/go-tpm v0.9.3 // indirect
+	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/google/pprof v0.0.0-20250208200701-d0013a598941 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
