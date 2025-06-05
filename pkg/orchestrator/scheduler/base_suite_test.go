@@ -44,9 +44,8 @@ func (s *BaseTestSuite) mockJobStore(scenario *Scenario) {
 	s.jobStore.EXPECT().GetExecutions(
 		gomock.Any(),
 		jobstore.GetExecutionsOptions{
-			JobID:                   scenario.job.ID,
-			AllJobVersions:          true,
-			CurrentLatestJobVersion: scenario.job.Version,
+			JobID:          scenario.job.ID,
+			AllJobVersions: true,
 		},
 	).Return(scenario.executions, nil)
 }

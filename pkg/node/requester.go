@@ -305,9 +305,35 @@ func NewRequesterNode(
 		return nil, err
 	}
 
+	// Create ReEvaluator for automatic job re-evaluation on node state changes
+	reEvaluator, err := nodes.NewReEvaluator(nodes.ReEvaluatorParams{
+		JobStore: jobStore,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create re-evaluator: %w", err)
+	}
+
+	// Register ReEvaluator with node manager for connection state events
+	nodesManager.OnConnectionStateChange(reEvaluator.HandleNodeConnectionEvent)
+
+	// Start the ReEvaluator
+	if err = reEvaluator.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	if err = nodesManager.Start(ctx); err != nil {
+		return nil, err
+	}
+
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		var cleanupErr error
+
+		// stop the node reEvaluator
+		if cleanupErr = reEvaluator.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown re-evaluator")
+		}
+
 		// stop the legacy connection manager
 		legacyConnectionManager.Stop(ctx)
 
@@ -429,10 +455,6 @@ func createNodeManager(ctx context.Context,
 
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "failed to create node manager")
-	}
-
-	if err = nodeManager.Start(ctx); err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
 	}
 
 	return nodeManager, nodeInfoStore, nil

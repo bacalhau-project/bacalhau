@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/logstream"
@@ -13,7 +15,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/transformer"
-	"github.com/google/uuid"
 )
 
 const initialJobVersion = 1
@@ -344,10 +345,9 @@ func (e *BaseEndpoint) ReadLogs(ctx context.Context, request ReadLogsRequest) (
 	}
 
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:                   job.ID,
-		JobVersion:              request.JobVersion,
-		AllJobVersions:          true, // Get all executions to help with filtering
-		CurrentLatestJobVersion: job.Version,
+		JobID:          job.ID,
+		JobVersion:     request.JobVersion,
+		AllJobVersions: true, // Get all executions to help with filtering
 	})
 	if err != nil {
 		return nil, err
@@ -415,9 +415,8 @@ func (e *BaseEndpoint) GetResults(ctx context.Context, request *GetResultsReques
 	}
 
 	executions, err := e.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:                   job.ID,
-		JobVersion:              job.Version,
-		CurrentLatestJobVersion: job.Version,
+		JobID:      job.ID,
+		JobVersion: job.Version,
 	})
 	if err != nil {
 		return GetResultsResponse{}, err

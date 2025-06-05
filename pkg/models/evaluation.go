@@ -28,6 +28,8 @@ const (
 	EvalTriggerExecUpdate     = "exec-update"
 	EvalTriggerExecTimeout    = "exec-timeout"
 	EvalTriggerExecutionLimit = "exec-limit"
+	EvalTriggerNodeJoin       = "node-join"
+	EvalTriggerNodeLeave      = "node-leave"
 )
 
 // Evaluation is just to ask the scheduler to reassess if additional job instances must be
