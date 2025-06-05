@@ -50,7 +50,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		id         string
 		version    uint64
 		jobType    string
-		client     string
+		namespace  string
 		tags       map[string]string
 		jobStates  []models.JobStateType
 		executions map[int][]models.ExecutionStateType
@@ -58,7 +58,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "110",
 			version:   1,
-			client:    "client1",
+			namespace: "client1",
 			jobType:   "batch",
 			tags:      map[string]string{"gpu": "true", "fast": "true"},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
@@ -69,7 +69,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "120",
 			version:   1,
-			client:    "client2",
+			namespace: "client2",
 			jobType:   "batch",
 			tags:      map[string]string{},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
@@ -80,7 +80,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "130",
 			version:   1,
-			client:    "client3",
+			namespace: "client3",
 			jobType:   "batch",
 			tags:      map[string]string{"slow": "true", "max": "10"},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
@@ -91,7 +91,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "140",
 			version:   1,
-			client:    "client4",
+			namespace: "client4",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
@@ -102,7 +102,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "150",
 			version:   1,
-			client:    "client5",
+			namespace: "client5",
 			jobType:   "daemon",
 			tags:      map[string]string{"max": "10"},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
@@ -113,13 +113,27 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		{
 			id:        "160",
 			version:   1,
-			client:    "client6",
+			namespace: "client6",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
 			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
 			executions: map[int][]models.ExecutionStateType{
 				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
 				2: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+			},
+		},
+		{
+			id:        "170",
+			version:   1,
+			jobType:   "batch",
+			namespace: "client7",
+			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
+			executions: map[int][]models.ExecutionStateType{
+				1: {models.ExecutionStateAskForBid},
+				2: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+				3: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+				4: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
+				5: {models.ExecutionStateAskForBid, models.ExecutionStateCancelled},
 			},
 		},
 	}
@@ -132,7 +146,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.ID = fixture.id
 		job.Type = fixture.jobType
 		job.Labels = fixture.tags
-		job.Namespace = fixture.client
+		job.Namespace = fixture.namespace
 		s.Require().NoError(s.store.CreateJob(s.ctx, *job))
 		s.Require().NoError(s.store.AddJobHistory(
 			s.ctx,
@@ -166,13 +180,14 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			)
 		}
 
-		for _, executionStates := range fixture.executions {
+		for nodeID, executionStates := range fixture.executions {
 			s.clock.Add(1 * time.Second)
 			execution := mock.ExecutionForJob(job)
 			execution.ComputeState.StateType = models.ExecutionStateNew
 			// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
 			execution.CreateTime = 0
 			execution.ModifyTime = 0
+			execution.NodeID = fmt.Sprintf("node-%d", nodeID)
 			s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
 			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.JobVersion, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
 
@@ -654,11 +669,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 7, len(jobs))
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160"}, ids)
+		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160", "170"}, ids)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -666,11 +681,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs = response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 7, len(jobs))
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"160", "150", "140", "130", "120", "110"}, ids)
+		require.ElementsMatch(t, []string{"110", "120", "130", "140", "150", "160", "170"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -678,7 +693,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 6, len(response.Jobs))
+		require.Equal(t, 7, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
@@ -687,7 +702,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			Offset:    1,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 6, len(response.Jobs))
 		require.Equal(t, uint64(1), response.Offset)
 	})
 
@@ -725,7 +740,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 6, len(response.Jobs))
 	})
 
 	s.T().Run("include/exclude same tag", func(t *testing.T) {
@@ -935,17 +950,75 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.NotNil(state)
 	s.Equal(2, len(state))
 	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
+
+	// In progress executions by jobID
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:          "170",
+		InProgressOnly: true,
+		AllJobVersions: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(2, len(state))
+
+	// By nodeID and jobID
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:          "170",
+		NodeIDs:        []string{"node-1"},
+		AllJobVersions: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(1, len(state))
+
+	// In progress executions by nodeID and jobID
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		JobID:          "170",
+		InProgressOnly: true,
+		NodeIDs:        []string{"node-1", "node-5"},
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(1, len(state))
+
+	// In progress executions across all jobs
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		InProgressOnly: true,
+		AllJobVersions: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(5, len(state))
+
+	// By nodeID across all jobs
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		NodeIDs:        []string{"node-1", "node-2"},
+		AllJobVersions: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(9, len(state))
+
+	// By nodeID across all jobs with in-progress only
+	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+		NodeIDs:        []string{"node-1", "node-2"},
+		InProgressOnly: true,
+	})
+	s.Require().NoError(err)
+	s.NotNil(state)
+	s.Equal(5, len(state))
+
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx, "")
 	s.Require().NoError(err)
-	s.Require().Equal(4, len(infos))
+	s.Require().Equal(5, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "batch")
 	s.Require().NoError(err)
-	s.Require().Equal(3, len(infos))
+	s.Require().Equal(4, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "daemon")

@@ -13,6 +13,7 @@ import (
 	"github.com/benbjohnson/clock"
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
+	"github.com/samber/lo"
 	bolt "go.etcd.io/bbolt"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -39,12 +40,14 @@ const (
 	BucketJobHistory     = "history"
 	BucketJobVersions    = "versions" // bucket for job versions
 
-	BucketTagsIndex        = "idx_tags"        // tag -> Job id
-	BucketProgressIndex    = "idx_inprogress"  // job-id -> {}
-	BucketNamespacesIndex  = "idx_namespaces"  // namespace -> Job id
-	BucketExecutionsIndex  = "idx_executions"  // execution-id -> Job id
-	BucketEvaluationsIndex = "idx_evaluations" // evaluation-id -> Job id
-	BucketJobsNamesIndex   = "idx_job_names"   // job-name -> Job id
+	BucketTagsIndex                 = "idx_tags"                  // tag -> Job id
+	BucketProgressIndex             = "idx_inprogress"            // job-id -> {}
+	BucketNamespacesIndex           = "idx_namespaces"            // namespace -> Job id
+	BucketExecutionsIndex           = "idx_executions"            // execution-id -> Job id
+	BucketEvaluationsIndex          = "idx_evaluations"           // evaluation-id -> Job id
+	BucketJobsNamesIndex            = "idx_job_names"             // job-name -> Job id
+	BucketInProgressExecutionsIndex = "idx_inprogress_executions" // execution-id -> {}
+	BucketExecutionsByNodeIndex     = "idx_executions_by_node"    // node-id -> execution-id
 
 	// Event-related buckets
 	eventsBucket      = "v1_events"
@@ -59,12 +62,14 @@ type BoltJobStore struct {
 	clock      clock.Clock
 	marshaller marshaller.Marshaller
 
-	inProgressIndex  *Index
-	namespacesIndex  *Index
-	tagsIndex        *Index
-	executionsIndex  *Index
-	evaluationsIndex *Index
-	namesIndex       *Index
+	inProgressIndex           *Index
+	namespacesIndex           *Index
+	tagsIndex                 *Index
+	executionsIndex           *Index
+	evaluationsIndex          *Index
+	namesIndex                *Index
+	inProgressExecutionsIndex *Index
+	executionsByNodeIndex     *Index
 }
 
 type Option func(store *BoltJobStore)
@@ -127,6 +132,8 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 			BucketExecutionsIndex,
 			BucketEvaluationsIndex,
 			BucketJobsNamesIndex,
+			BucketInProgressExecutionsIndex,
+			BucketExecutionsByNodeIndex,
 		}
 		for _, ib := range indexBuckets {
 			_, err := tx.CreateBucketIfNotExists([]byte(ib))
@@ -146,6 +153,8 @@ func NewBoltJobStore(dbPath string, options ...Option) (*BoltJobStore, error) {
 	store.executionsIndex = NewIndex(BucketExecutionsIndex)
 	store.evaluationsIndex = NewIndex(BucketEvaluationsIndex)
 	store.namesIndex = NewIndex(BucketJobsNamesIndex)
+	store.inProgressExecutionsIndex = NewIndex(BucketInProgressExecutionsIndex)
+	store.executionsByNodeIndex = NewIndex(BucketExecutionsByNodeIndex)
 
 	eventObjectSerializer := watcher.NewJSONSerializer()
 	err = errors.Join(
@@ -306,31 +315,79 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 
 func (b *BoltJobStore) getExecutions(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
-	jobID, err := b.reifyJobID(ctx, tx, recorder, options.JobID)
+
+	// Get execution IDs based on query type
+	executionIDs, err := b.getExecutionIDsForQuery(ctx, tx, recorder, options)
 	if err != nil {
 		return nil, err
 	}
 
-	resolvedJobLatestVersion := options.CurrentLatestJobVersion
-	var jobModel models.Job
-	if options.IncludeJob {
-		jobModel, err = b.getJob(ctx, tx, recorder, jobID)
-		if err != nil {
-			return nil, err
-		}
-		// Since we are loading the job, we can use the fresh latest job version
-		resolvedJobLatestVersion = jobModel.Version
+	if len(executionIDs) == 0 {
+		return []models.Execution{}, nil
 	}
 
-	recorder.Latency(ctx, jobstore.OperationPartDuration, "load_job")
+	// Prepare for execution filtering and loading
+	// cache for loaded jobs and versions to be included in executions if options.IncludeJob is true
+	loadedJobs := make(map[string]models.Job)
+	// cache for latest version of each job to filter executions if not all or specific version  requested
+	latestVersions := make(map[string]uint64)
+	// set of node IDs for faster lookups
+	nodeSet := lo.SliceToMap(options.NodeIDs, func(nodeID string) (string, struct{}) {
+		return nodeID, struct{}{}
+	})
 
-	// Sort By Given Order By
+	// helper function to generate job version keys
+	jobVersionKey := func(jobID string, version uint64) string {
+		return fmt.Sprintf("%s::%d", jobID, version)
+	}
+
+	// Convert execution IDs to executions with filtering
+	var execs []models.Execution
+	for _, executionID := range executionIDs {
+		execution, err := b.getExecution(ctx, tx, recorder, executionID)
+		if err != nil {
+			// Skip executions that can't be found (might have been deleted)
+			log.Ctx(ctx).Warn().Err(err).Str("execution_id", executionID).Msg("Failed to load execution, skipping")
+			continue
+		}
+
+		var latestJobVersion uint64
+		if options.JobVersion > 0 || !options.AllJobVersions {
+			if v, ok := latestVersions[execution.JobID]; ok {
+				latestJobVersion = v
+			} else {
+				latestJobVersion, err = b.getLatestJobVersion(ctx, tx, recorder, execution.JobID)
+				if err != nil {
+					return []models.Execution{}, err
+				}
+				latestVersions[execution.JobID] = latestJobVersion
+			}
+		}
+
+		// Apply all filters
+		if b.filterJobExecutionItem(execution, options, nodeSet, latestJobVersion) {
+			// Add job if requested
+			if options.IncludeJob {
+				loadedJob, ok := loadedJobs[jobVersionKey(execution.JobID, execution.JobVersion)]
+				if !ok {
+					// Load job if we don't have it cached
+					loadedJob, err = b.getJobVersion(ctx, tx, recorder, execution.JobID, execution.JobVersion)
+					if err != nil {
+						return nil, err
+					}
+					loadedJobs[jobVersionKey(execution.JobID, execution.JobVersion)] = loadedJob
+				}
+				execution.Job = &loadedJob
+			}
+			execs = append(execs, execution)
+		}
+	}
+
+	// Sort executions
 	var sortFnc func(a, b models.Execution) int
 	switch options.OrderBy {
-	// create_time will eventually be deprectated. It is being used for backward compatibility.
-	case "create_time", "created_at", "": //nolint: goconst
+	case "create_time", "created_at", "":
 		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
-	// modify_time will eventually be deprecated. It is being used for backward compatibility.
 	case "modify_time", "modified_at":
 		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
 	default:
@@ -351,46 +408,113 @@ func (b *BoltJobStore) getExecutions(
 		}
 	}
 
+	slices.SortFunc(execs, sortFnc)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
+
+	// Apply limit
+	if options.Limit > 0 && len(execs) > options.Limit {
+		execs = execs[:options.Limit]
+	}
+
+	return execs, nil
+}
+
+// getExecutionIDsForQuery gets execution IDs based on the query parameters
+func (b *BoltJobStore) getExecutionIDsForQuery(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]string, error) {
+
+	// If JobID is specified, get executions for that job
+	if options.JobID != "" {
+		return b.getExecutionIDsForJob(ctx, tx, recorder, options.JobID)
+	}
+
+	// Otherwise use indexes
+	return b.getExecutionIDsFromIndexes(ctx, tx, recorder, options)
+}
+
+// getExecutionIDsForJob gets all execution IDs for a specific job
+func (b *BoltJobStore) getExecutionIDsForJob(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) ([]string, error) {
+
+	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
+	if err != nil {
+		return nil, err
+	}
+
 	bkt, err := NewBucketPath(BucketJobs, jobID, BucketJobExecutions).Get(tx, false)
 	if err != nil {
 		return nil, NewBoltDBError(err)
 	}
 
-	var execs []models.Execution
-
-	err = bkt.ForEach(func(_ []byte, v []byte) error {
-		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
-		recorder.CountN(ctx, jobstore.DataRead, int64(len(v)))
-		recorder.Count(ctx, jobstore.RowsRead)
-
-		var es models.Execution
-		err = b.marshaller.Unmarshal(v, &es)
-		if err != nil {
-			return err
-		}
-		recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartUnmarshal)
-
-		if options.IncludeJob {
-			es.Job = &jobModel
-		}
-
-		if b.filterJobExecutionItem(es, options, resolvedJobLatestVersion) {
-			execs = append(execs, es)
-		}
-
+	var executionIDs []string
+	err = bkt.ForEach(func(k []byte, v []byte) error {
+		executionIDs = append(executionIDs, string(k))
 		return nil
 	})
 
-	// sort executions
-	slices.SortFunc(execs, sortFnc)
-	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
+	return executionIDs, err
+}
 
-	// apply limit
-	if options.Limit > 0 && len(execs) > options.Limit {
-		execs = execs[:options.Limit]
+// getExecutionIDsFromIndexes gets execution IDs from the appropriate indexes based on options
+func (b *BoltJobStore) getExecutionIDsFromIndexes(
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]string, error) {
+
+	var executionIDSets []map[string]struct{}
+
+	// Get execution IDs from node index if NodeIDs specified
+	if len(options.NodeIDs) > 0 {
+		nodeExecutionIDs := make(map[string]struct{})
+		for _, nodeID := range options.NodeIDs {
+			execIDs, err := b.executionsByNodeIndex.List(tx, []byte(nodeID))
+			if err != nil {
+				return nil, NewBoltDBError(err)
+			}
+			for _, execID := range execIDs {
+				nodeExecutionIDs[string(execID)] = struct{}{}
+			}
+		}
+		executionIDSets = append(executionIDSets, nodeExecutionIDs)
+		recorder.Latency(ctx, jobstore.OperationPartDuration, "index_read_by_node")
 	}
 
-	return execs, err
+	// Get execution IDs from in-progress index if InProgressOnly specified
+	if options.InProgressOnly {
+		inProgressExecutionIDs := make(map[string]struct{})
+		execIDs, err := b.inProgressExecutionsIndex.List(tx)
+		if err != nil {
+			return nil, NewBoltDBError(err)
+		}
+		for _, execID := range execIDs {
+			inProgressExecutionIDs[string(execID)] = struct{}{}
+		}
+		executionIDSets = append(executionIDSets, inProgressExecutionIDs)
+		recorder.Latency(ctx, jobstore.OperationPartDuration, "index_read_in_progress")
+	}
+
+	// If no indexes were used, return empty
+	if len(executionIDSets) == 0 {
+		return []string{}, nil
+	}
+
+	// Find intersection of all sets
+	result := executionIDSets[0]
+	for i := 1; i < len(executionIDSets); i++ {
+		intersection := make(map[string]struct{})
+		for execID := range result {
+			if _, exists := executionIDSets[i][execID]; exists {
+				intersection[execID] = struct{}{}
+			}
+		}
+		result = intersection
+	}
+
+	// Convert map to slice
+	var executionIDs []string
+	for execID := range result {
+		executionIDs = append(executionIDs, execID)
+	}
+
+	return executionIDs, nil
 }
 
 func (b *BoltJobStore) jobExists(
@@ -704,6 +828,11 @@ func (b *BoltJobStore) GetExecutions(
 	defer recorder.Done(ctx, jobstore.OperationDuration)
 	defer recorder.Error(err)
 
+	if err = options.Validate(); err != nil {
+		recorder.Error(err)
+		return nil, err
+	}
+
 	err = boltdblib.View(ctx, b.database, func(tx *bolt.Tx) (err error) {
 		state, err = b.getExecutions(ctx, tx, recorder, options)
 		return
@@ -948,24 +1077,34 @@ func (b *BoltJobStore) filterHistoryItem(item models.JobHistory, query jobstore.
 func (b *BoltJobStore) filterJobExecutionItem(
 	item models.Execution,
 	query jobstore.GetExecutionsOptions,
+	nodeSet map[string]struct{},
 	latestJobVersion uint64,
 ) bool {
-	// If job version is zero, return only latest version
-	if query.JobVersion == 0 {
-		if query.AllJobVersions {
-			return true
-		}
-
-		// Here we only care about the latest job version if it is not zero
-		if item.JobVersion == latestJobVersion && latestJobVersion != 0 {
-			return true
-		}
+	// filter by job version if specified
+	if query.JobVersion > 0 && item.JobVersion != query.JobVersion {
 		return false
 	}
 
-	if item.JobVersion != query.JobVersion {
+	// filter by latest job version if not all versions are requested
+	if !query.AllJobVersions && item.JobVersion != latestJobVersion {
 		return false
 	}
+
+	// filter by namespace if specified
+	if query.Namespace != "" && item.Namespace != query.Namespace {
+		return false
+	}
+
+	// filter by execution state if specified
+	if query.InProgressOnly && item.IsTerminalState() {
+		return false
+	}
+
+	// filter by node ID if specified
+	if len(nodeSet) > 0 && !lo.HasKey(nodeSet, item.NodeID) {
+		return false
+	}
+
 	return true
 }
 
@@ -1079,8 +1218,7 @@ func (b *BoltJobStore) createJob(
 		}
 
 		// Use the job's Version as the key for the version, and update current version
-		versionKey := []byte(fmt.Sprintf("%d", job.Version))
-		if err = versionBkt.Put(versionKey, jobData); err != nil {
+		if err = versionBkt.Put(uint64ToBytes(job.Version), jobData); err != nil {
 			return err
 		}
 	}
@@ -1136,6 +1274,27 @@ func (b *BoltJobStore) deleteJob(
 			return err
 		}
 		return NewBoltDBError(err)
+	}
+
+	// Get all executions for this job before deleting the job
+	executions, err := b.getExecutions(ctx, tx, recorder, jobstore.GetExecutionsOptions{JobID: jobID})
+	if err != nil {
+		return err
+	}
+
+	// Clean up execution indexes
+	for _, execution := range executions {
+		// Remove from node index
+		if err = b.executionsByNodeIndex.Remove(tx, []byte(execution.ID), []byte(execution.NodeID)); err != nil {
+			return err
+		}
+
+		// Remove from in-progress index if it was in progress
+		if !execution.IsTerminalState() {
+			if err = b.inProgressExecutionsIndex.Remove(tx, []byte(execution.ID)); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Delete the Job bucket (and everything within it)
@@ -1393,8 +1552,7 @@ func (b *BoltJobStore) updateJobState(ctx context.Context, tx *bolt.Tx, recorder
 		return NewBoltDBError(err)
 	}
 
-	versionKey := []byte(fmt.Sprintf("%d", job.Version))
-	if err = versionBkt.Put(versionKey, jobStateData); err != nil {
+	if err = versionBkt.Put(uint64ToBytes(job.Version), jobStateData); err != nil {
 		return err
 	}
 
@@ -1558,6 +1716,19 @@ func (b *BoltJobStore) createExecution(
 	if err = b.executionsIndex.Add(tx, []byte(execution.JobID), []byte(execution.ID)); err != nil {
 		return err
 	}
+
+	// Update new indexes
+	if err = b.executionsByNodeIndex.Add(tx, []byte(execution.ID), []byte(execution.NodeID)); err != nil {
+		return err
+	}
+
+	// Add to in-progress index if execution is not terminal
+	if !execution.IsTerminalState() {
+		if err = b.inProgressExecutionsIndex.Add(tx, []byte(execution.ID)); err != nil {
+			return err
+		}
+	}
+
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartIndexWrite)
 
 	// Record event
@@ -1645,6 +1816,28 @@ func (b *BoltJobStore) updateExecution(
 		return err
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
+
+	// Update in-progress index based on state changes
+	wasInProgress := !existingExecution.IsTerminalState()
+	isInProgress := !newExecution.IsTerminalState()
+
+	if wasInProgress && !isInProgress {
+		// Execution became terminal, remove from in-progress index
+		if err = b.inProgressExecutionsIndex.Remove(tx, []byte(newExecution.ID)); err != nil {
+			log.Ctx(ctx).Error().Err(err).
+				Str("execution_id", newExecution.ID).
+				Msg("Failed to remove execution from in-progress index")
+			return err
+		}
+	} else if !wasInProgress && isInProgress {
+		// Execution became non-terminal (unlikely but possible), add to in-progress index
+		if err = b.inProgressExecutionsIndex.Add(tx, []byte(newExecution.ID)); err != nil {
+			log.Ctx(ctx).Error().Err(err).
+				Str("execution_id", newExecution.ID).
+				Msg("Failed to add execution to in-progress index")
+			return err
+		}
+	}
 
 	// Add execution history
 	if err = b.addExecutionHistory(
@@ -1950,8 +2143,7 @@ func (b *BoltJobStore) getJobVersion(
 		return job, NewBoltDBError(err)
 	}
 
-	versionKey := []byte(fmt.Sprintf("%d", version))
-	data := versionBkt.Get(versionKey)
+	data := versionBkt.Get(uint64ToBytes(version))
 	if data == nil {
 		return job, jobstore.NewErrJobVersionNotFound(jobID, version)
 	}
@@ -2021,6 +2213,33 @@ func (b *BoltJobStore) getJobVersions(
 	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
 
 	return versions, nil
+}
+
+// getLatestJobVersion retrieves the latest version of a job by its ID without loading the full job object.
+func (b *BoltJobStore) getLatestJobVersion(ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) (
+	version uint64, err error) {
+	jobID, err = b.reifyJobID(ctx, tx, recorder, jobID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get the version bucket
+	versionBkt, err := NewBucketPath(BucketJobs, jobID, BucketJobVersions).Get(tx, false)
+	if err != nil {
+		return 0, NewBoltDBError(err)
+	}
+
+	// Get the latest version key
+	c := versionBkt.Cursor()
+	latestKey, _ := c.Last()
+	if latestKey == nil {
+		return 0, jobstore.NewErrJobNotFound(jobID)
+	}
+
+	version = bytesToUint64(latestKey)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartRead)
+
+	return version, nil
 }
 
 // GetJobByIDOrName retrieves a Job identified by either its name or ID.
