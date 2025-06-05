@@ -79,9 +79,8 @@ func (b *OpsJobScheduler) Process(ctx context.Context, evaluation *models.Evalua
 
 	// Retrieve the job state
 	allJobExecutions, err := b.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:                   evaluation.JobID,
-		AllJobVersions:          true,
-		CurrentLatestJobVersion: job.Version,
+		JobID:          evaluation.JobID,
+		AllJobVersions: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to retrieve job state for job %s when evaluating %s: %w",

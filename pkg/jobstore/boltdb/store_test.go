@@ -955,7 +955,6 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
 		JobID:          "170",
 		InProgressOnly: true,
-		AllJobVersions: true,
 	})
 	s.Require().NoError(err)
 	s.NotNil(state)
@@ -980,6 +979,8 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 	s.Require().NoError(err)
 	s.NotNil(state)
 	s.Equal(1, len(state))
+
+	//
 
 	// In progress executions across all jobs
 	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{

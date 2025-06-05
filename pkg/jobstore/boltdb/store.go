@@ -315,7 +315,6 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 
 func (b *BoltJobStore) getExecutions(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
-
 	// Get execution IDs based on query type
 	executionIDs, err := b.getExecutionIDsForQuery(ctx, tx, recorder, options)
 	if err != nil {
@@ -384,32 +383,7 @@ func (b *BoltJobStore) getExecutions(
 	}
 
 	// Sort executions
-	var sortFnc func(a, b models.Execution) int
-	switch options.OrderBy {
-	case "create_time", "created_at", "":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
-	case "modify_time", "modified_at":
-		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
-	default:
-		return nil, fmt.Errorf("OrderBy %s not supported for getExecutions", options.OrderBy)
-	}
-
-	if options.Reverse {
-		baseSortFnc := sortFnc
-		sortFnc = func(a, b models.Execution) int {
-			r := baseSortFnc(a, b)
-			if r == -1 {
-				return 1
-			}
-			if r == 1 {
-				return -1
-			}
-			return 0
-		}
-	}
-
-	slices.SortFunc(execs, sortFnc)
-	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
+	b.sortExecutions(ctx, recorder, options, execs)
 
 	// Apply limit
 	if options.Limit > 0 && len(execs) > options.Limit {
@@ -422,7 +396,6 @@ func (b *BoltJobStore) getExecutions(
 // getExecutionIDsForQuery gets execution IDs based on the query parameters
 func (b *BoltJobStore) getExecutionIDsForQuery(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]string, error) {
-
 	// If JobID is specified, get executions for that job
 	if options.JobID != "" {
 		return b.getExecutionIDsForJob(ctx, tx, recorder, options.JobID)
@@ -435,7 +408,6 @@ func (b *BoltJobStore) getExecutionIDsForQuery(
 // getExecutionIDsForJob gets all execution IDs for a specific job
 func (b *BoltJobStore) getExecutionIDsForJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) ([]string, error) {
-
 	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
 	if err != nil {
 		return nil, err
@@ -458,7 +430,6 @@ func (b *BoltJobStore) getExecutionIDsForJob(
 // getExecutionIDsFromIndexes gets execution IDs from the appropriate indexes based on options
 func (b *BoltJobStore) getExecutionIDsFromIndexes(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]string, error) {
-
 	var executionIDSets []map[string]struct{}
 
 	// Get execution IDs from node index if NodeIDs specified
@@ -515,6 +486,41 @@ func (b *BoltJobStore) getExecutionIDsFromIndexes(
 	}
 
 	return executionIDs, nil
+}
+
+func (b *BoltJobStore) sortExecutions(ctx context.Context, recorder *telemetry.MetricRecorder,
+	options jobstore.GetExecutionsOptions,
+	execs []models.Execution,
+) {
+	var sortFnc func(a, b models.Execution) int
+	switch options.OrderBy {
+	// create_time will eventually be deprecated. It is being used for backward compatibility.
+	case "create_time", "created_at", "": //nolint: goconst
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.CreateTime, b.CreateTime) }
+	// modify_time will eventually be deprecated. It is being used for backward compatibility.
+	case "modify_time", "modified_at":
+		sortFnc = func(a, b models.Execution) int { return util.Compare[int64]{}.Cmp(a.ModifyTime, b.ModifyTime) }
+	default:
+		// This should be handled by the caller, but for safety:
+		return
+	}
+
+	if options.Reverse {
+		baseSortFnc := sortFnc
+		sortFnc = func(a, b models.Execution) int {
+			r := baseSortFnc(a, b)
+			if r == -1 {
+				return 1
+			}
+			if r == 1 {
+				return -1
+			}
+			return 0
+		}
+	}
+
+	slices.SortFunc(execs, sortFnc)
+	recorder.Latency(ctx, jobstore.OperationPartDuration, "sort")
 }
 
 func (b *BoltJobStore) jobExists(
@@ -1416,8 +1422,7 @@ func (b *BoltJobStore) updateJob(
 		return err
 	}
 
-	versionKey := []byte(fmt.Sprintf("%d", existingJob.Version))
-	if err = versionBkt.Put(versionKey, existingJobData); err != nil {
+	if err = versionBkt.Put(uint64ToBytes(existingJob.Version), existingJobData); err != nil {
 		return err
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
@@ -1462,8 +1467,7 @@ func (b *BoltJobStore) updateJob(
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
 	// Store the new version in the versions bucket
-	versionKey = []byte(fmt.Sprintf("%d", existingJob.Version))
-	if err = versionBkt.Put(versionKey, updatedJobData); err != nil {
+	if err = versionBkt.Put(uint64ToBytes(existingJob.Version), updatedJobData); err != nil {
 		return err
 	}
 
@@ -1817,26 +1821,8 @@ func (b *BoltJobStore) updateExecution(
 	}
 	recorder.Latency(ctx, jobstore.OperationPartDuration, jobstore.AttrOperationPartWrite)
 
-	// Update in-progress index based on state changes
-	wasInProgress := !existingExecution.IsTerminalState()
-	isInProgress := !newExecution.IsTerminalState()
-
-	if wasInProgress && !isInProgress {
-		// Execution became terminal, remove from in-progress index
-		if err = b.inProgressExecutionsIndex.Remove(tx, []byte(newExecution.ID)); err != nil {
-			log.Ctx(ctx).Error().Err(err).
-				Str("execution_id", newExecution.ID).
-				Msg("Failed to remove execution from in-progress index")
-			return err
-		}
-	} else if !wasInProgress && isInProgress {
-		// Execution became non-terminal (unlikely but possible), add to in-progress index
-		if err = b.inProgressExecutionsIndex.Add(tx, []byte(newExecution.ID)); err != nil {
-			log.Ctx(ctx).Error().Err(err).
-				Str("execution_id", newExecution.ID).
-				Msg("Failed to add execution to in-progress index")
-			return err
-		}
+	if err = b.updateInProgressExecutionsIndex(ctx, tx, existingExecution, newExecution); err != nil {
+		return err
 	}
 
 	// Add execution history
@@ -1873,6 +1859,26 @@ func (b *BoltJobStore) updateExecution(
 		}
 	})
 
+	return nil
+}
+
+func (b *BoltJobStore) updateInProgressExecutionsIndex(ctx context.Context, tx *bolt.Tx,
+	existingExecution, newExecution models.Execution,
+) error {
+	wasInProgress := !existingExecution.IsTerminalState()
+	isInProgress := !newExecution.IsTerminalState()
+
+	if wasInProgress && !isInProgress {
+		// Execution became terminal, remove from in-progress index
+		if err := b.inProgressExecutionsIndex.Remove(tx, []byte(newExecution.ID)); err != nil {
+			return err
+		}
+	} else if !wasInProgress && isInProgress {
+		// Execution became non-terminal (unlikely but possible), add to in-progress index
+		if err := b.inProgressExecutionsIndex.Add(tx, []byte(newExecution.ID)); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

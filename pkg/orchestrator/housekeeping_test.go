@@ -241,8 +241,7 @@ func (s *HousekeepingTestSuite) TestHousekeepingTasks() {
 				s.mockJobStore.EXPECT().GetExecutions(
 					gomock.Any(),
 					jobstore.GetExecutionsOptions{
-						JobID:                   job.ID,
-						CurrentLatestJobVersion: job.Version,
+						JobID: job.ID,
 					},
 				).Return(jobsMap[job.ID], nil)
 			}
@@ -285,15 +284,13 @@ func (s *HousekeepingTestSuite) TestMultipleHousekeepingRounds() {
 	s.mockJobStore.EXPECT().GetExecutions(
 		gomock.Any(),
 		jobstore.GetExecutionsOptions{
-			JobID:                   job1.ID,
-			CurrentLatestJobVersion: job1.Version,
+			JobID: job1.ID,
 		},
 	).Return(executions1, nil)
 	s.mockJobStore.EXPECT().GetExecutions(
 		gomock.Any(),
 		jobstore.GetExecutionsOptions{
-			JobID:                   job2.ID,
-			CurrentLatestJobVersion: job2.Version,
+			JobID: job2.ID,
 		},
 	).Return(executions2, nil)
 

@@ -234,17 +234,16 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 }
 
 type GetExecutionsOptions struct {
-	JobID                   string   `json:"job_id"`
-	JobVersion              uint64   `json:"job_version"`
-	AllJobVersions          bool     `json:"all_job_versions"`
-	CurrentLatestJobVersion uint64   `json:"current_latest_job_version"`
-	Namespace               string   `json:"namespace"`
-	IncludeJob              bool     `json:"include_job"`
-	OrderBy                 string   `json:"order_by"`
-	Reverse                 bool     `json:"reverse"`
-	Limit                   int      `json:"limit"`
-	NodeIDs                 []string `json:"node_ids,omitempty"`         // Filter by one or multiple nodes
-	InProgressOnly          bool     `json:"in_progress_only,omitempty"` // Filter to non-terminal executions only
+	JobID          string   `json:"job_id"`
+	JobVersion     uint64   `json:"job_version"`
+	AllJobVersions bool     `json:"all_job_versions"`
+	Namespace      string   `json:"namespace"`
+	IncludeJob     bool     `json:"include_job"`
+	OrderBy        string   `json:"order_by"`
+	Reverse        bool     `json:"reverse"`
+	Limit          int      `json:"limit"`
+	NodeIDs        []string `json:"node_ids,omitempty"`         // Filter by one or multiple nodes
+	InProgressOnly bool     `json:"in_progress_only,omitempty"` // Filter to non-terminal executions only
 }
 
 // Validate checks if the options are valid
