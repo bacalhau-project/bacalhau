@@ -131,8 +131,8 @@ func NewErrInvalidExecutionDesiredState(
 		WithComponent(JobStoreComponent)
 }
 
-func NewErrInvalidExecutionVersion(id string, actual, expected uint64) bacerrors.Error {
-	return bacerrors.Newf("execution %s has version %d but expected %d", id, actual, expected).
+func NewErrInvalidExecutionRevision(id string, actual, expected uint64) bacerrors.Error {
+	return bacerrors.Newf("execution %s has revision %d but expected %d", id, actual, expected).
 		WithCode(ConflictJobRevision).
 		WithComponent(JobStoreComponent)
 }

@@ -221,7 +221,7 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 	}
 
 	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != execution.Revision {
-		return NewErrInvalidExecutionVersion(execution.ID, execution.Revision, condition.ExpectedRevision)
+		return NewErrInvalidExecutionRevision(execution.ID, execution.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
