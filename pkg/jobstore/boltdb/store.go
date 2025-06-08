@@ -46,8 +46,8 @@ const (
 	BucketExecutionsIndex           = "idx_executions"            // execution-id -> Job id
 	BucketEvaluationsIndex          = "idx_evaluations"           // evaluation-id -> Job id
 	BucketJobsNamesIndex            = "idx_job_names"             // job-name -> Job id
-	BucketInProgressExecutionsIndex = "idx_inprogress_executions" // execution-id -> {}
-	BucketExecutionsByNodeIndex     = "idx_executions_by_node"    // node-id -> execution-id
+	BucketInProgressExecutionsIndex = "idx_inprogress_executions" // executionID:jobID -> {}
+	BucketExecutionsByNodeIndex     = "idx_executions_by_node"    // node-id -> executionID:jobID
 
 	// Event-related buckets
 	eventsBucket      = "v1_events"
@@ -406,27 +406,27 @@ func (b *BoltJobStore) getExecutionsForQuery(
 	}
 
 	// Otherwise use indexes
-	executionIDs, err := b.getExecutionIDsFromIndexes(ctx, tx, recorder, options)
+	executionPairs, err := b.getExecutionIDsFromIndexes(ctx, tx, recorder, options)
 	if err != nil {
 		return nil, err
 	}
-	execs := make([]models.Execution, 0, len(executionIDs))
-	for _, execID := range executionIDs {
-		exec, err := b.getExecution(ctx, tx, recorder, execID)
+	execs := make([]models.Execution, 0, len(executionPairs))
+	for _, execPair := range executionPairs {
+		exec, err := b.getExecutionWithJobID(ctx, tx, recorder, execPair.JobID, execPair.ExecutionID)
 		if err != nil {
-			if errors.Is(err, jobstore.NewErrExecutionNotFound(execID)) {
-				log.Warn().Str("execution_id", execID).Msg("Execution in index but not found in store")
+			if errors.Is(err, jobstore.NewErrExecutionNotFound(execPair.ExecutionID)) {
+				log.Warn().Str("execution_id", execPair.ExecutionID).Msg("Execution in index but not found in store")
 				continue // Skip missing executions
 			}
 			return nil, err
 		}
 		execs = append(execs, exec)
 	}
-	return execs, nil
 
+	return execs, nil
 }
 
-// getExecutionsForJob gets all executions for a specific job
+// getExecutionsForJob gets all executions for a specific job.
 func (b *BoltJobStore) getExecutionsForJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, jobID string) ([]models.Execution, error) {
 	jobID, err := b.reifyJobID(ctx, tx, recorder, jobID)
@@ -458,21 +458,21 @@ func (b *BoltJobStore) getExecutionsForJob(
 	return executions, err
 }
 
-// getExecutionIDsFromIndexes gets execution IDs from the appropriate indexes based on options
+// getExecutionIDsFromIndexes gets execution ID and job ID pairs from the appropriate indexes based on options
 func (b *BoltJobStore) getExecutionIDsFromIndexes(
-	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]string, error) {
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]ExecutionJobPair, error) {
 	var executionIDSets []map[string]struct{}
 
 	// Get execution IDs from node index if NodeIDs specified
 	if len(options.NodeIDs) > 0 {
 		nodeExecutionIDs := make(map[string]struct{})
 		for _, nodeID := range options.NodeIDs {
-			execIDs, err := b.executionsByNodeIndex.List(tx, []byte(nodeID))
+			compositeKeys, err := b.executionsByNodeIndex.List(tx, []byte(nodeID))
 			if err != nil {
 				return nil, NewBoltDBError(err)
 			}
-			for _, execID := range execIDs {
-				nodeExecutionIDs[string(execID)] = struct{}{}
+			for _, compositeKey := range compositeKeys {
+				nodeExecutionIDs[string(compositeKey)] = struct{}{}
 			}
 		}
 		executionIDSets = append(executionIDSets, nodeExecutionIDs)
@@ -482,12 +482,12 @@ func (b *BoltJobStore) getExecutionIDsFromIndexes(
 	// Get execution IDs from in-progress index if InProgressOnly specified
 	if options.InProgressOnly {
 		inProgressExecutionIDs := make(map[string]struct{})
-		execIDs, err := b.inProgressExecutionsIndex.List(tx)
+		compositeKeys, err := b.inProgressExecutionsIndex.List(tx)
 		if err != nil {
 			return nil, NewBoltDBError(err)
 		}
-		for _, execID := range execIDs {
-			inProgressExecutionIDs[string(execID)] = struct{}{}
+		for _, compositeKey := range compositeKeys {
+			inProgressExecutionIDs[string(compositeKey)] = struct{}{}
 		}
 		executionIDSets = append(executionIDSets, inProgressExecutionIDs)
 		recorder.Latency(ctx, jobstore.OperationPartDuration, "index_read_in_progress")
@@ -495,28 +495,36 @@ func (b *BoltJobStore) getExecutionIDsFromIndexes(
 
 	// If no indexes were used, return empty
 	if len(executionIDSets) == 0 {
-		return []string{}, nil
+		return []ExecutionJobPair{}, nil
 	}
 
 	// Find intersection of all sets
 	result := executionIDSets[0]
 	for i := 1; i < len(executionIDSets); i++ {
 		intersection := make(map[string]struct{})
-		for execID := range result {
-			if _, exists := executionIDSets[i][execID]; exists {
-				intersection[execID] = struct{}{}
+		for compositeKey := range result {
+			if _, exists := executionIDSets[i][compositeKey]; exists {
+				intersection[compositeKey] = struct{}{}
 			}
 		}
 		result = intersection
 	}
 
-	// Convert map to slice
-	var executionIDs []string
-	for execID := range result {
-		executionIDs = append(executionIDs, execID)
+	// Convert map to slice and decode composite keys
+	var executionPairs []ExecutionJobPair
+	for compositeKey := range result {
+		executionID, jobID, err := decodeExecutionJobKey(compositeKey)
+		if err != nil {
+			log.Warn().Str("composite_key", compositeKey).Err(err).Msg("Failed to decode composite key")
+			continue // Skip invalid keys
+		}
+		executionPairs = append(executionPairs, ExecutionJobPair{
+			ExecutionID: executionID,
+			JobID:       jobID,
+		})
 	}
 
-	return executionIDs, nil
+	return executionPairs, nil
 }
 
 func (b *BoltJobStore) sortExecutions(ctx context.Context, recorder *telemetry.MetricRecorder,
@@ -927,30 +935,6 @@ func (b *BoltJobStore) getInProgressJobs(
 	return infos, nil
 }
 
-// splitInProgressIndexKey returns the job type and the job index from
-// the in-progress index key. If no delimiter is found, then this index
-// was created before this feature was implemented, and we are unable
-// to filter on its type so will return "" as the type.
-func splitInProgressIndexKey(key string) (string, string) {
-	parts := strings.Split(key, ":")
-	if len(parts) == 1 {
-		return key, ""
-	}
-
-	k, typ := parts[1], parts[0]
-	return k, typ
-}
-
-// createInProgressIndexKey will create a composite key for the in-progress index
-func createInProgressIndexKey(job *models.Job) string {
-	return fmt.Sprintf("%s:%s", job.Type, job.ID)
-}
-
-// createJobNameIndexKey will create a composite key for the job-names index
-func createJobNameIndexKey(name string, namespace string) string {
-	return fmt.Sprintf("%s:%s", name, namespace)
-}
-
 // GetJobHistory retrieves the paginated job history for a given job ID based on the specified query.
 //
 // This method performs a read transaction on the Bolt DB and fetches the job history
@@ -1329,14 +1313,16 @@ func (b *BoltJobStore) deleteJob(
 
 	// Clean up execution indexes
 	for _, execution := range executions {
+		compositeKey := encodeExecutionJobKey(execution.ID, execution.JobID)
+
 		// Remove from node index
-		if err = b.executionsByNodeIndex.Remove(tx, []byte(execution.ID), []byte(execution.NodeID)); err != nil {
+		if err = b.executionsByNodeIndex.Remove(tx, []byte(compositeKey), []byte(execution.NodeID)); err != nil {
 			return err
 		}
 
 		// Remove from in-progress index if it was in progress
 		if !execution.IsTerminalState() {
-			if err = b.inProgressExecutionsIndex.Remove(tx, []byte(execution.ID)); err != nil {
+			if err = b.inProgressExecutionsIndex.Remove(tx, []byte(compositeKey)); err != nil {
 				return err
 			}
 		}
@@ -1766,14 +1752,15 @@ func (b *BoltJobStore) createExecution(
 		return err
 	}
 
-	// Update new indexes
-	if err = b.executionsByNodeIndex.Add(tx, []byte(execution.ID), []byte(execution.NodeID)); err != nil {
+	// Update new indexes - use composite keys
+	compositeKey := encodeExecutionJobKey(execution.ID, execution.JobID)
+	if err = b.executionsByNodeIndex.Add(tx, []byte(compositeKey), []byte(execution.NodeID)); err != nil {
 		return err
 	}
 
-	// Add to in-progress index if execution is not terminal
+	// Add to in-progress index if execution is not terminal - use composite key
 	if !execution.IsTerminalState() {
-		if err = b.inProgressExecutionsIndex.Add(tx, []byte(execution.ID)); err != nil {
+		if err = b.inProgressExecutionsIndex.Add(tx, []byte(compositeKey)); err != nil {
 			return err
 		}
 	}
@@ -1913,14 +1900,16 @@ func (b *BoltJobStore) updateInProgressExecutionsIndex(ctx context.Context, tx *
 	wasInProgress := !existingExecution.IsTerminalState()
 	isInProgress := !newExecution.IsTerminalState()
 
+	compositeKey := encodeExecutionJobKey(newExecution.ID, newExecution.JobID)
+
 	if wasInProgress && !isInProgress {
 		// Execution became terminal, remove from in-progress index
-		if err := b.inProgressExecutionsIndex.Remove(tx, []byte(newExecution.ID)); err != nil {
+		if err := b.inProgressExecutionsIndex.Remove(tx, []byte(compositeKey)); err != nil {
 			return err
 		}
 	} else if !wasInProgress && isInProgress {
 		// Execution became non-terminal (unlikely but possible), add to in-progress index
-		if err := b.inProgressExecutionsIndex.Add(tx, []byte(newExecution.ID)); err != nil {
+		if err := b.inProgressExecutionsIndex.Add(tx, []byte(compositeKey)); err != nil {
 			return err
 		}
 	}
