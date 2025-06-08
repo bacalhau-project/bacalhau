@@ -171,7 +171,7 @@ func (condition UpdateJobCondition) Validate(job models.Job) error {
 		return NewErrInvalidJobState(job.ID, job.State.StateType, condition.ExpectedState)
 	}
 	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != job.Revision {
-		return NewErrInvalidJobVersion(job.ID, job.Revision, condition.ExpectedRevision)
+		return NewErrInvalidJobRevision(job.ID, job.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
