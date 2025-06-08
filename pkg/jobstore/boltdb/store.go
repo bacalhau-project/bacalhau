@@ -351,7 +351,7 @@ func (b *BoltJobStore) getExecutions(
 		}
 
 		var latestJobVersion uint64
-		if options.JobVersion > 0 || !options.AllJobVersions {
+		if options.JobVersion == 0 || !options.AllJobVersions {
 			if v, ok := latestVersions[execution.JobID]; ok {
 				latestJobVersion = v
 			} else {
@@ -419,7 +419,7 @@ func (b *BoltJobStore) getExecutionIDsForJob(
 	}
 
 	var executionIDs []string
-	err = bkt.ForEach(func(k []byte, v []byte) error {
+	err = bkt.ForEach(func(k []byte, _ []byte) error {
 		executionIDs = append(executionIDs, string(k))
 		return nil
 	})
@@ -1080,6 +1080,14 @@ func (b *BoltJobStore) filterHistoryItem(item models.JobHistory, query jobstore.
 	return true
 }
 
+// filterJobExecutionItem applies filtering logic to an execution based on the provided query options.
+// It returns true if the execution should be included in the result set, or false if it should be filtered out.
+// The filters applied are, in order:
+//   - If JobVersion is specified, only executions with that version are included.
+//   - If AllJobVersions is not set, only executions with the latest job version are included.
+//   - If Namespace is specified, only executions in that namespace are included.
+//   - If InProgressOnly is set, only executions not in a terminal state are included.
+//   - If NodeIDs are specified, only executions on those nodes are included.
 func (b *BoltJobStore) filterJobExecutionItem(
 	item models.Execution,
 	query jobstore.GetExecutionsOptions,
