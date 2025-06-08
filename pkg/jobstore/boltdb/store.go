@@ -458,7 +458,7 @@ func (b *BoltJobStore) getExecutionsForJob(
 	return executions, err
 }
 
-// getExecutionIDsFromIndexes gets execution ID and job ID pairs from the appropriate indexes based on options
+// getExecutionIDsFromIndexes retrieves execution ID and job ID pairs that match ALL specified filter options (AND relationship)
 func (b *BoltJobStore) getExecutionIDsFromIndexes(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]ExecutionJobPair, error) {
 	var executionIDSets []map[string]struct{}

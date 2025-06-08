@@ -233,17 +233,22 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 	return nil
 }
 
+// GetExecutionsOptions defines filters for retrieving executions.
+// At least one of JobID, NodeIDs, or InProgressOnly must be set (see Validate).
+// When multiple are set, they are combined with an AND relationship:
+// executions must match all specified filters.
 type GetExecutionsOptions struct {
-	JobID          string   `json:"job_id"`
-	JobVersion     uint64   `json:"job_version"`
-	AllJobVersions bool     `json:"all_job_versions"`
-	Namespace      string   `json:"namespace"`
-	IncludeJob     bool     `json:"include_job"`
-	OrderBy        string   `json:"order_by"`
-	Reverse        bool     `json:"reverse"`
-	Limit          int      `json:"limit"`
+	JobID          string   `json:"job_id"`                     // Filter by job ID
+	JobVersion     uint64   `json:"job_version"`                // Filter by job version. Will fetch the latest job version if not set.
+	AllJobVersions bool     `json:"all_job_versions"`           // Request all job versions, otherwise only the latest job version.
+	Namespace      string   `json:"namespace"`                  // Filter by namespace
 	NodeIDs        []string `json:"node_ids,omitempty"`         // Filter by one or multiple nodes
 	InProgressOnly bool     `json:"in_progress_only,omitempty"` // Filter to non-terminal executions only
+
+	IncludeJob bool   `json:"include_job"`
+	OrderBy    string `json:"order_by"`
+	Reverse    bool   `json:"reverse"`
+	Limit      int    `json:"limit"`
 }
 
 // Validate checks if the options are valid
