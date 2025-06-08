@@ -83,6 +83,12 @@ func Shutdown() {
 	}
 }
 
+// IsEnabled checks if the analytics client is initialized and ready to send events.
+// Returns true if the client is initialized, false otherwise.
+func IsEnabled() bool {
+	return posthogClient != nil
+}
+
 // Emit sends an analytics event to the analytics backend.
 // If the analytics client is not initialized, this is a no-op.
 //
@@ -91,6 +97,11 @@ func Shutdown() {
 func Emit(event Event) {
 	// Skip if client is not initialized
 	if posthogClient == nil {
+		return
+	}
+
+	// Skip if event is a no-op event
+	if event.Type() == NoopEventType {
 		return
 	}
 
