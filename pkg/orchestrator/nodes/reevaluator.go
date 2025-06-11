@@ -44,7 +44,7 @@ type ReEvaluatorParams struct {
 //
 //   - When nodes join/change specs: enqueue evaluations for all daemon jobs (new node might fit)
 //     and for batch/service jobs that have executions on that node (compatibility check)
-//   - When nodes disappear: enqueue evaluations for all executions that node was active on
+//   - When nodes disappear: enqueue evaluations for all jobs that had active executions on that node
 //
 // The component implements rate limiting to prevent evaluation floods during node churn.
 //
