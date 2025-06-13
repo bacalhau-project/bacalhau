@@ -53,9 +53,8 @@ func (s *storeWrapper) GetJob(ctx context.Context, id string) (*JobState, error)
 		return nil, fmt.Errorf("getting job from store: %w", err)
 	}
 	executions, err := s.store.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:                   id,
-		IncludeJob:              false,
-		CurrentLatestJobVersion: job.Version,
+		JobID:      id,
+		IncludeJob: false,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting job executions from store: %w", err)

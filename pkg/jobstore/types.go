@@ -171,7 +171,7 @@ func (condition UpdateJobCondition) Validate(job models.Job) error {
 		return NewErrInvalidJobState(job.ID, job.State.StateType, condition.ExpectedState)
 	}
 	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != job.Revision {
-		return NewErrInvalidJobVersion(job.ID, job.Revision, condition.ExpectedRevision)
+		return NewErrInvalidJobRevision(job.ID, job.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
@@ -221,7 +221,7 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 	}
 
 	if condition.ExpectedRevision != 0 && condition.ExpectedRevision != execution.Revision {
-		return NewErrInvalidExecutionVersion(execution.ID, execution.Revision, condition.ExpectedRevision)
+		return NewErrInvalidExecutionRevision(execution.ID, execution.Revision, condition.ExpectedRevision)
 	}
 	if len(condition.UnexpectedStates) > 0 {
 		for _, s := range condition.UnexpectedStates {
@@ -233,14 +233,39 @@ func (condition UpdateExecutionCondition) Validate(execution models.Execution) e
 	return nil
 }
 
+// GetExecutionsOptions defines filters for retrieving executions.
+// At least one of JobID, NodeIDs, or InProgressOnly must be set (see Validate).
+// When multiple are set, they are combined with an AND relationship:
+// executions must match all specified filters.
 type GetExecutionsOptions struct {
-	JobID                   string `json:"job_id"`
-	JobVersion              uint64 `json:"job_version"`
-	AllJobVersions          bool   `json:"all_job_versions"`
-	CurrentLatestJobVersion uint64 `json:"current_latest_job_version"`
-	Namespace               string `json:"namespace"`
-	IncludeJob              bool   `json:"include_job"`
-	OrderBy                 string `json:"order_by"`
-	Reverse                 bool   `json:"reverse"`
-	Limit                   int    `json:"limit"`
+	JobID          string   `json:"job_id"`                     // Filter by job ID
+	JobVersion     uint64   `json:"job_version"`                // Filter by job version. Will fetch the latest job version if not set.
+	AllJobVersions bool     `json:"all_job_versions"`           // Request all job versions, otherwise only the latest job version.
+	Namespace      string   `json:"namespace"`                  // Filter by namespace
+	NodeIDs        []string `json:"node_ids,omitempty"`         // Filter by one or multiple nodes
+	InProgressOnly bool     `json:"in_progress_only,omitempty"` // Filter to non-terminal executions only
+
+	IncludeJob bool   `json:"include_job"`
+	OrderBy    string `json:"order_by"`
+	Reverse    bool   `json:"reverse"`
+	Limit      int    `json:"limit"`
+}
+
+// Validate checks if the options are valid
+// - JobID, NodeIDs or InProgressOnly must be set
+// - If JobVersion is set, AllJobVersions must be false
+// - if JobID is not set, then JobVersion cannot be set
+func (opts GetExecutionsOptions) Validate() error {
+	if opts.JobID == "" && len(opts.NodeIDs) == 0 && !opts.InProgressOnly {
+		return NewBadRequestError("bad GetExecutions request: JobID, NodeIDs or InProgressOnly must be set")
+	}
+
+	if opts.JobVersion != 0 && opts.AllJobVersions {
+		return NewBadRequestError("bad GetExecutions request: JobVersion cannot be set when AllJobVersions is true")
+	}
+
+	if opts.JobVersion > 0 && opts.JobID == "" {
+		return NewBadRequestError("bad GetExecutions request: JobVersion cannot be set without JobID")
+	}
+	return nil
 }

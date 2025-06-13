@@ -3,10 +3,11 @@ package ranking
 import (
 	"context"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
-	"github.com/rs/zerolog/log"
 )
 
 type PreviousExecutionsNodeRankerParams struct {
@@ -33,8 +34,7 @@ func (s *PreviousExecutionsNodeRanker) RankNodes(ctx context.Context,
 	previousExecutors := make(map[string]int)
 	toFilterOut := make(map[string]bool)
 	latestJobVersionExecutions, err := s.jobStore.GetExecutions(ctx, jobstore.GetExecutionsOptions{
-		JobID:                   job.ID,
-		CurrentLatestJobVersion: job.Version,
+		JobID: job.ID,
 	})
 
 	if err == nil {

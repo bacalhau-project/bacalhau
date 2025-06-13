@@ -33,6 +33,19 @@ type BoltJobstoreTestSuite struct {
 	clock  *clock.Mock
 }
 
+// ExecutionData represents the data for an execution
+type ExecutionData struct {
+	NodeID string
+	States []models.ExecutionStateType
+}
+
+// JobVersionData represents the data for a specific version of a job
+type JobVersionData struct {
+	Version    uint64
+	JobStates  []models.JobStateType
+	Executions []ExecutionData
+}
+
 func TestBoltJobstoreTestSuite(t *testing.T) {
 	suite.Run(t, new(BoltJobstoreTestSuite))
 }
@@ -47,79 +60,173 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 	s.ctx = context.Background()
 
 	jobFixtures := []struct {
-		id         string
-		version    uint64
-		jobType    string
-		client     string
-		tags       map[string]string
-		jobStates  []models.JobStateType
-		executions map[int][]models.ExecutionStateType
+		id        string
+		jobType   string
+		namespace string
+		tags      map[string]string
+		versions  []JobVersionData
 	}{
 		{
 			id:        "110",
-			version:   1,
-			client:    "client1",
+			namespace: "client1",
 			jobType:   "batch",
 			tags:      map[string]string{"gpu": "true", "fast": "true"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning, models.JobStateTypeStopped},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+						},
+					},
+				},
 			},
 		},
 		{
 			id:        "120",
-			version:   1,
-			client:    "client2",
+			namespace: "client2",
 			jobType:   "batch",
 			tags:      map[string]string{},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning, models.JobStateTypeStopped},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning, models.JobStateTypeStopped},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCancelled},
+						},
+					},
+				},
 			},
 		},
 		{
 			id:        "130",
-			version:   1,
-			client:    "client3",
+			namespace: "client3",
 			jobType:   "batch",
 			tags:      map[string]string{"slow": "true", "max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+						},
+					},
+				},
 			},
 		},
 		{
 			id:        "140",
-			version:   1,
-			client:    "client4",
+			namespace: "client4",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+						},
+					},
+				},
 			},
 		},
 		{
 			id:        "150",
-			version:   1,
-			client:    "client5",
+			namespace: "client5",
 			jobType:   "daemon",
 			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+						},
+					},
+				},
 			},
 		},
 		{
 			id:        "160",
-			version:   1,
-			client:    "client6",
+			namespace: "client6",
 			jobType:   "batch",
 			tags:      map[string]string{"max": "10"},
-			jobStates: []models.JobStateType{models.JobStateTypePending, models.JobStateTypeRunning},
-			executions: map[int][]models.ExecutionStateType{
-				1: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
-				2: {models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
+						},
+						{
+							NodeID: "node-2",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+						},
+					},
+				},
+			},
+		},
+		{
+			id:        "170",
+			jobType:   "batch",
+			namespace: "client7",
+			versions: []JobVersionData{
+				{
+					Version:   1,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning, models.JobStateTypeStopped},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+						},
+						{
+							NodeID: "node-2",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+						},
+						{
+							NodeID: "node-3",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateCancelled},
+						},
+					},
+				},
+				{
+					Version:   2,
+					JobStates: []models.JobStateType{models.JobStateTypeRunning},
+					Executions: []ExecutionData{
+						{
+							NodeID: "node-1",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid},
+						},
+						{
+							NodeID: "node-2",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted},
+						},
+						{
+							NodeID: "node-3",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateCompleted},
+						},
+						{
+							NodeID: "node-4",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateAskForBidAccepted, models.ExecutionStateFailed},
+						},
+						{
+							NodeID: "node-5",
+							States: []models.ExecutionStateType{models.ExecutionStateAskForBid, models.ExecutionStateCancelled},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -132,7 +239,7 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 		job.ID = fixture.id
 		job.Type = fixture.jobType
 		job.Labels = fixture.tags
-		job.Namespace = fixture.client
+		job.Namespace = fixture.namespace
 		s.Require().NoError(s.store.CreateJob(s.ctx, *job))
 		s.Require().NoError(s.store.AddJobHistory(
 			s.ctx,
@@ -141,68 +248,88 @@ func (s *BoltJobstoreTestSuite) SetupTest() {
 			*models.NewEvent("test").WithMessage("job created")),
 		)
 
-		for i, state := range fixture.jobStates {
-			s.clock.Add(1 * time.Second)
-
-			oldState := models.JobStateTypePending
+		revision := uint64(1)
+		for i, versionData := range fixture.versions {
+			// For version 1, we already created the job above, no need to update
 			if i > 0 {
-				oldState = fixture.jobStates[i-1]
+				// For versions beyond 1, use UpdateJob
+				updatedJob := *job
+				s.clock.Add(1 * time.Second)
+				s.Require().NoError(s.store.UpdateJob(s.ctx, updatedJob))
+				s.Require().NoError(s.store.AddJobHistory(
+					s.ctx,
+					fixture.id,
+					versionData.Version,
+					*models.NewEvent("test").WithMessage(fmt.Sprintf("job updated to version %d", versionData.Version))),
+				)
 			}
 
-			request := jobstore.UpdateJobStateRequest{
-				JobID:    fixture.id,
-				NewState: state,
-				Condition: jobstore.UpdateJobCondition{
-					ExpectedState:    oldState,
-					ExpectedRevision: uint64(i + 1),
-				},
-			}
-			s.Require().NoError(s.store.UpdateJobState(s.ctx, request))
-			s.Require().NoError(s.store.AddJobHistory(
-				s.ctx,
-				fixture.id,
-				fixture.version,
-				*models.NewEvent("test").WithMessage(state.String())),
-			)
-		}
-
-		for _, executionStates := range fixture.executions {
-			s.clock.Add(1 * time.Second)
-			execution := mock.ExecutionForJob(job)
-			execution.ComputeState.StateType = models.ExecutionStateNew
-			// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
-			execution.CreateTime = 0
-			execution.ModifyTime = 0
-			s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
-			s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.JobVersion, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
-
-			for i, state := range executionStates {
-
+			for i, state := range versionData.JobStates {
 				s.clock.Add(1 * time.Second)
 
-				oldState := models.ExecutionStateNew
+				oldState := models.JobStateTypePending
 				if i > 0 {
-					oldState = executionStates[i-1]
+					oldState = versionData.JobStates[i-1]
 				}
 
-				// We are pretending this is a new execution struct
-				execution.ComputeState.StateType = state
-				execution.ModifyTime = s.clock.Now().UTC().UnixNano()
-
-				request := jobstore.UpdateExecutionRequest{
-					ExecutionID: execution.ID,
-					Condition: jobstore.UpdateExecutionCondition{
-						ExpectedStates:   []models.ExecutionStateType{oldState},
-						ExpectedRevision: uint64(i + 1),
+				request := jobstore.UpdateJobStateRequest{
+					JobID:    fixture.id,
+					NewState: state,
+					Condition: jobstore.UpdateJobCondition{
+						ExpectedState:    oldState,
+						ExpectedRevision: revision,
 					},
-					NewValues: *execution,
 				}
 
-				s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
-				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, execution.JobVersion, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
+				s.Require().NoErrorf(s.store.UpdateJobState(s.ctx, request),
+					"Failed to update job state for job %s with version %d to %s", fixture.id, versionData.Version, state)
+				s.Require().NoError(s.store.AddJobHistory(
+					s.ctx,
+					fixture.id,
+					versionData.Version,
+					*models.NewEvent("test").WithMessage(state.String())),
+				)
+				revision++
+			}
+
+			for _, executionData := range versionData.Executions {
+				s.clock.Add(1 * time.Second)
+				execution := mock.ExecutionForJob(job)
+				execution.ComputeState.StateType = models.ExecutionStateNew
+				// clear out CreateTime and ModifyTime from the mocked execution to let the job store fill those
+				execution.CreateTime = 0
+				execution.ModifyTime = 0
+				execution.NodeID = executionData.NodeID
+				execution.JobVersion = versionData.Version
+				s.Require().NoError(s.store.CreateExecution(s.ctx, *execution))
+				s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, versionData.Version, execution.ID, *models.NewEvent("test").WithMessage("execution created")))
+
+				for i, state := range executionData.States {
+					s.clock.Add(1 * time.Second)
+
+					oldState := models.ExecutionStateNew
+					if i > 0 {
+						oldState = executionData.States[i-1]
+					}
+
+					// We are pretending this is a new execution struct
+					execution.ComputeState.StateType = state
+					execution.ModifyTime = s.clock.Now().UTC().UnixNano()
+
+					request := jobstore.UpdateExecutionRequest{
+						ExecutionID: execution.ID,
+						Condition: jobstore.UpdateExecutionCondition{
+							ExpectedStates:   []models.ExecutionStateType{oldState},
+							ExpectedRevision: uint64(i + 1),
+						},
+						NewValues: *execution,
+					}
+
+					s.Require().NoError(s.store.UpdateExecution(s.ctx, request))
+					s.Require().NoError(s.store.AddExecutionHistory(s.ctx, fixture.id, versionData.Version, execution.ID, *models.NewEvent("test").WithMessage(state.String())))
+				}
 			}
 		}
-
 	}
 }
 
@@ -216,7 +343,7 @@ func (s *BoltJobstoreTestSuite) TestUnfilteredJobHistory() {
 		AllJobVersions: true,
 	})
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(8, len(jobHistoryQueryResponse.JobHistory))
+	s.Require().Equal(7, len(jobHistoryQueryResponse.JobHistory))
 
 	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "11", jobstore.JobHistoryQuery{
 		AllJobVersions: true,
@@ -241,7 +368,7 @@ func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
 
 	// There are 6 history entries that we created directly, and 2 created by
 	// CreateJob and CreateExecution
-	require.Equal(s.T(), 8, len(jobHistoryQueryResponse.JobHistory))
+	require.Equal(s.T(), 7, len(jobHistoryQueryResponse.JobHistory))
 
 	// Make sure they come back in order
 	values := make([]int64, len(jobHistoryQueryResponse.JobHistory))
@@ -250,7 +377,7 @@ func (s *BoltJobstoreTestSuite) TestJobHistoryOrdering() {
 		s.Require().Equal(uint64(i+1), h.SeqNum, "Sequence numbers should be in order")
 	}
 
-	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7, 8}, values)
+	require.Equal(s.T(), []int64{1, 2, 3, 4, 5, 6, 7}, values)
 }
 
 func (s *BoltJobstoreTestSuite) TestJobHistoryOffset() {
@@ -530,7 +657,7 @@ func (s *BoltJobstoreTestSuite) TestTimeFilteredJobHistory() {
 
 	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", options)
 	require.NoError(s.T(), err, "failed to get job history")
-	require.Equal(s.T(), 4, len(jobHistoryQueryResponse.JobHistory))
+	require.Equal(s.T(), 3, len(jobHistoryQueryResponse.JobHistory))
 }
 
 func (s *BoltJobstoreTestSuite) TestExecutionFilteredJobHistory() {
@@ -574,7 +701,7 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 
 	jobHistoryQueryResponse, err := s.store.GetJobHistory(s.ctx, "110", jobOptions)
 	s.Require().NoError(err, "failed to get job history")
-	s.Require().Equal(4, len(jobHistoryQueryResponse.JobHistory))
+	s.Require().Equal(3, len(jobHistoryQueryResponse.JobHistory))
 
 	count := lo.Reduce(jobHistoryQueryResponse.JobHistory, func(agg int, item models.JobHistory, _ int) int {
 		if item.Type == models.JobHistoryTypeJobLevel {
@@ -582,7 +709,7 @@ func (s *BoltJobstoreTestSuite) TestLevelFilteredJobHistory() {
 		}
 		return agg
 	}, 0)
-	s.Require().Equal(count, 4)
+	s.Require().Equal(count, 3)
 
 	jobHistoryQueryResponse, err = s.store.GetJobHistory(s.ctx, "110", execOptions)
 	s.Require().NoError(err, "failed to get job history")
@@ -654,11 +781,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs := response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 7, len(jobs))
 		ids := lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160"}, ids)
+		require.EqualValues(t, []string{"110", "120", "130", "140", "150", "160", "170"}, ids)
 
 		response, err = s.store.GetJobs(s.ctx, jobstore.JobQuery{
 			ReturnAll:   true,
@@ -666,11 +793,11 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 		})
 		require.NoError(t, err)
 		jobs = response.Jobs
-		require.Equal(t, 6, len(jobs))
+		require.Equal(t, 7, len(jobs))
 		ids = lo.Map(jobs, func(item models.Job, _ int) string {
 			return item.ID
 		})
-		require.EqualValues(t, []string{"160", "150", "140", "130", "120", "110"}, ids)
+		require.ElementsMatch(t, []string{"110", "120", "130", "140", "150", "160", "170"}, ids)
 	})
 
 	s.T().Run("everything", func(t *testing.T) {
@@ -678,7 +805,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ReturnAll: true,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 6, len(response.Jobs))
+		require.Equal(t, 7, len(response.Jobs))
 	})
 
 	s.T().Run("everything offset", func(t *testing.T) {
@@ -687,7 +814,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			Offset:    1,
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 6, len(response.Jobs))
 		require.Equal(t, uint64(1), response.Offset)
 	})
 
@@ -725,7 +852,7 @@ func (s *BoltJobstoreTestSuite) TestSearchJobs() {
 			ExcludeTags: []string{"fast"},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 5, len(response.Jobs))
+		require.Equal(t, 6, len(response.Jobs))
 	})
 
 	s.T().Run("include/exclude same tag", func(t *testing.T) {
@@ -791,161 +918,377 @@ func (s *BoltJobstoreTestSuite) TestCreateExecution() {
 }
 
 func (s *BoltJobstoreTestSuite) TestGetExecutions() {
-	state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "110",
-		AllJobVersions: true,
+	s.Run("Get execution for existing job", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "110",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(1, len(state))
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(1, len(state))
 
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "110",
-		IncludeJob:     true,
-		AllJobVersions: true,
+	s.Run("Get execution with included job", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:      "110",
+			IncludeJob: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(len(state), 1)
+		s.NotNil(state[0].Job)
+		s.Equal("110", state[0].Job.ID)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(len(state), 1)
-	s.NotNil(state[0].Job)
-	s.Equal("110", state[0].Job.ID)
 
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "100",
-		AllJobVersions: true,
+	s.Run("Error on non-existent job ID", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "100",
+		})
+		s.Require().Error(err)
+		s.Require().True(bacerrors.IsError(err))
+		s.Require().Nil(state)
 	})
-	s.Require().Error(err)
-	s.Require().True(bacerrors.IsError(err))
-	s.Require().Nil(state)
 
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "11",
-		AllJobVersions: true,
+	s.Run("Find executions using prefix job ID", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "11",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Require().Equal("110", state[0].JobID)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Require().Equal("110", state[0].JobID)
 
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "1",
-		AllJobVersions: true,
+	s.Run("Error on ambiguous job ID prefix", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "1",
+		})
+		s.Require().Error(err)
+		s.Require().True(bacerrors.IsError(err))
+		s.Require().Nil(state)
 	})
-	s.Require().Error(err)
-	s.Require().True(bacerrors.IsError(err))
-	s.Require().Nil(state)
 
-	// Created At Ascending Order Sort
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "created_at",
-		AllJobVersions: true,
+	s.Run("Created At Ascending Order Sort", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "created_at",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 
-	// Created At Descending Order Sort
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "created_at",
-		Reverse:        true,
-		AllJobVersions: true,
+	s.Run("Created At Descending Order Sort", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "created_at",
+			Reverse: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
 
-	// Created Time Backward Compatibility Ascending Order Sort
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "create_time",
-		AllJobVersions: true,
+	s.Run("Create Time Backward Compatibility Ascending", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "create_time",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 
-	// Create Time Backward Compatibility Descending Order Sort
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "create_time",
-		Reverse:        true,
-		AllJobVersions: true,
+	s.Run("Create Time Backward Compatibility Descending", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "create_time",
+			Reverse: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetCreateTime().After(state[1].GetCreateTime()), true)
 
-	// When OrderBy Empty, Created At Used as Default
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		AllJobVersions: true,
+	s.Run("Default Sort is Created At Ascending", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "160",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetCreateTime().Before(state[1].GetCreateTime()), true)
 
-	// When OrderBy is set to Modified At
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "modified_at",
-		AllJobVersions: true,
+	s.Run("Modified At Ascending Order Sort", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "modified_at",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
 
-	// When OrderBy is set to Modified At With Reverse
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "modified_at",
-		Reverse:        true,
-		AllJobVersions: true,
+	s.Run("Modified At Descending Order Sort", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "modified_at",
+			Reverse: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
 
-	// When OrderBy is set to Modify Time (Backward Compatibility)
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "modify_time",
-		AllJobVersions: true,
+	s.Run("Modify Time Backward Compatibility Ascending", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "modify_time",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetModifyTime().Before(state[1].GetModifyTime()), true)
 
-	// When OrderBy is set to Modify Time (Backward Compatibility)
-	state, err = s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
-		JobID:          "160",
-		OrderBy:        "modify_time",
-		Reverse:        true,
-		AllJobVersions: true,
+	s.Run("Modify Time Backward Compatibility Descending", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "160",
+			OrderBy: "modify_time",
+			Reverse: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
 	})
-	s.Require().NoError(err)
-	s.NotNil(state)
-	s.Equal(2, len(state))
-	s.Equal(state[0].GetModifyTime().After(state[1].GetModifyTime()), true)
+
+	s.Run("No job version defined, get latest", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID: "170",
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(5, len(state))
+	})
+
+	s.Run("Get older job version", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:      "170",
+			JobVersion: 1,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(3, len(state))
+		s.Equal(uint64(1), state[0].JobVersion)
+	})
+
+	s.Run("Get latest job version", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:      "170",
+			JobVersion: 2,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(5, len(state))
+		s.Equal(uint64(2), state[0].JobVersion)
+	})
+
+	s.Run("Get all job versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			AllJobVersions: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(8, len(state))
+	})
+
+	s.Run("In progress executions by jobID", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			InProgressOnly: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+	})
+
+	s.Run("In progress executions by jobID for older job version", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			InProgressOnly: true,
+			JobVersion:     1,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(1, len(state))
+		s.Equal(uint64(1), state[0].JobVersion)
+	})
+
+	s.Run("In progress executions by jobID across all versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			InProgressOnly: true,
+			AllJobVersions: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(3, len(state))
+	})
+
+	s.Run("By nodeID and jobID", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:   "170",
+			NodeIDs: []string{"node-1"},
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(1, len(state))
+		s.Equal("node-1", state[0].NodeID)
+		s.Equal(uint64(2), state[0].JobVersion)
+	})
+
+	s.Run("By nodeID and jobID with job version", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:      "170",
+			NodeIDs:    []string{"node-1"},
+			JobVersion: 1,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(1, len(state))
+		s.Equal("node-1", state[0].NodeID)
+		s.Equal(uint64(1), state[0].JobVersion)
+	})
+
+	s.Run("By nodeID and jobID with all versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			NodeIDs:        []string{"node-1"},
+			AllJobVersions: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+		s.Equal("node-1", state[0].NodeID)
+		s.Equal("node-1", state[1].NodeID)
+		s.Equal(uint64(1), state[0].JobVersion)
+		s.Equal(uint64(2), state[1].JobVersion)
+	})
+
+	s.Run("In progress executions by nodeID and jobID", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			InProgressOnly: true,
+			NodeIDs:        []string{"node-1", "node-2"},
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(2, len(state))
+	})
+
+	s.Run("In progress executions by nodeID and jobID across all versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			InProgressOnly: true,
+			AllJobVersions: true,
+			NodeIDs:        []string{"node-1", "node-2"},
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(3, len(state))
+	})
+
+	s.Run("In progress executions across all jobs", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			InProgressOnly: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(5, len(state))
+	})
+
+	s.Run("In progress executions across all jobs with all versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			InProgressOnly: true,
+			AllJobVersions: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(6, len(state))
+	})
+
+	s.Run("By nodeID across all jobs", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			NodeIDs: []string{"node-1", "node-2"},
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(9, len(state))
+	})
+
+	s.Run("By nodeID across all jobs and all versions", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			NodeIDs:        []string{"node-1", "node-2"},
+			AllJobVersions: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(11, len(state))
+	})
+
+	s.Run("By nodeID across all jobs with in-progress only", func() {
+		state, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			NodeIDs:        []string{"node-1", "node-2"},
+			InProgressOnly: true,
+		})
+		s.Require().NoError(err)
+		s.NotNil(state)
+		s.Equal(5, len(state))
+	})
+
+	// test bad combinations
+	s.Run("Bad request: no job ID, no node IDs, no in-progress only", func() {
+		_, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{})
+		s.Require().Error(err)
+		s.Require().True(bacerrors.IsError(err), "Expected an error for no job ID, no node IDs, and no in-progress only")
+	})
+
+	s.Run("Bad request: job version defined without job ID", func() {
+		_, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobVersion: 1,
+		})
+		s.Require().Error(err)
+		s.Require().True(bacerrors.IsError(err), "Expected an error for job version defined without job ID")
+	})
+
+	s.Run("Bad request: job version and all job versions defined", func() {
+		_, err := s.store.GetExecutions(s.ctx, jobstore.GetExecutionsOptions{
+			JobID:          "170",
+			JobVersion:     1,
+			AllJobVersions: true,
+		})
+		s.Require().Error(err)
+		s.Require().True(bacerrors.IsError(err), "Expected an error for job version and all job versions defined")
+	})
+
 }
 
 func (s *BoltJobstoreTestSuite) TestInProgressJobs() {
 	infos, err := s.store.GetInProgressJobs(s.ctx, "")
 	s.Require().NoError(err)
-	s.Require().Equal(4, len(infos))
+	s.Require().Equal(5, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "batch")
 	s.Require().NoError(err)
-	s.Require().Equal(3, len(infos))
+	s.Require().Equal(4, len(infos))
 	s.Require().Equal("130", infos[0].ID)
 
 	infos, err = s.store.GetInProgressJobs(s.ctx, "daemon")

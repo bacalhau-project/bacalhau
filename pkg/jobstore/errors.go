@@ -14,7 +14,7 @@ const (
 	MultipleExecutionsFound        bacerrors.ErrorCode = "MultipleExecutionsFound"
 	MultipleEvaluationsFound       bacerrors.ErrorCode = "MultipleEvaluationsFound"
 	MultipleJobIDsForSameNameFound bacerrors.ErrorCode = "MultipleJobIDsForSameNameFound"
-	ConflictJobVersion             bacerrors.ErrorCode = "ConflictJobVersion"
+	ConflictJobRevision            bacerrors.ErrorCode = "ConflictJobRevision"
 )
 
 func NewErrJobNotFound(id string) bacerrors.Error {
@@ -61,22 +61,22 @@ func NewErrJobNameAlreadyExists(name, namespace string) bacerrors.Error {
 }
 
 func NewErrInvalidJobState(id string, actual models.JobStateType, expected models.JobStateType) bacerrors.Error {
-	var errorFormat string
+	var errorMsg string
 	if expected.IsUndefined() {
-		errorFormat = "job %s is in unexpected state %s"
+		errorMsg = fmt.Sprintf("job %s is in unexpected state %s", id, actual)
 	} else {
-		errorFormat = "job %s is in state %s but expected %s"
+		errorMsg = fmt.Sprintf("job %s is in state %s but expected %s", id, actual, expected)
 	}
 
-	return bacerrors.Newf(errorFormat, id, actual).
+	return bacerrors.New(errorMsg).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
-func NewErrInvalidJobVersion(id string, actual, expected uint64) bacerrors.Error {
-	errorMessage := fmt.Sprintf("job %s has version %d but expected %d", id, actual, expected)
+func NewErrInvalidJobRevision(id string, actual, expected uint64) bacerrors.Error {
+	errorMessage := fmt.Sprintf("job %s has revision %d but expected %d", id, actual, expected)
 	return bacerrors.Newf("%s", errorMessage).
-		WithCode(ConflictJobVersion).
+		WithCode(ConflictJobRevision).
 		WithComponent(JobStoreComponent)
 }
 
@@ -131,9 +131,9 @@ func NewErrInvalidExecutionDesiredState(
 		WithComponent(JobStoreComponent)
 }
 
-func NewErrInvalidExecutionVersion(id string, actual, expected uint64) bacerrors.Error {
-	return bacerrors.Newf("execution %s has version %d but expected %d", id, actual, expected).
-		WithCode(ConflictJobVersion).
+func NewErrInvalidExecutionRevision(id string, actual, expected uint64) bacerrors.Error {
+	return bacerrors.Newf("execution %s has revision %d but expected %d", id, actual, expected).
+		WithCode(ConflictJobRevision).
 		WithComponent(JobStoreComponent)
 }
 
