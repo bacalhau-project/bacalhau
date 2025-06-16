@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
 	"github.com/bacalhau-project/bacalhau/pkg/licensing"
@@ -95,14 +96,18 @@ type NodeDependencyInjector struct {
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
 	AuthenticatorsFactory   AuthenticatorsFactory
+	LazyPublisherProvider   *ncl.LazyPublisherProvider
 }
 
-func NewStandardNodeDependencyInjector(cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(
+	cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+	lazyPublisherProvider := ncl.NewLazyPublisherProvider()
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
-		PublishersFactory:       NewStandardPublishersFactory(cfg),
+		PublishersFactory:       NewStandardPublishersFactory(cfg, lazyPublisherProvider),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
+		LazyPublisherProvider:   lazyPublisherProvider,
 	}
 }
 

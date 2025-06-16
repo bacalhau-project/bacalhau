@@ -7,6 +7,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -23,6 +24,7 @@ import (
 func NewPublisherProvider(
 	ctx context.Context,
 	cfg types.Bacalhau,
+	nclPublisherProvider ncl.PublisherProvider,
 ) (publisher.PublisherProvider, error) {
 	storagePath, err := cfg.ResultsStorageDir()
 	if err != nil {

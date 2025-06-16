@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -75,7 +76,7 @@ func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.Bacalhau) PublishersFactory {
+func NewStandardPublishersFactory(cfg types.Bacalhau, nclPublisherProvider ncl.PublisherProvider) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
@@ -83,6 +84,7 @@ func NewStandardPublishersFactory(cfg types.Bacalhau) PublishersFactory {
 			pr, err := publisher_util.NewPublisherProvider(
 				ctx,
 				cfg,
+				nclPublisherProvider,
 			)
 			if err != nil {
 				return nil, err
