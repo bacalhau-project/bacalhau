@@ -29,7 +29,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/imdario/mergo v0.3.16
-	github.com/ipfs/boxo v0.30.0
+	github.com/ipfs/boxo v0.31.0
 	github.com/ipfs/go-cid v0.5.0
 	github.com/ipfs/go-ipld-format v0.6.1
 	github.com/ipfs/go-unixfsnode v1.10.1
