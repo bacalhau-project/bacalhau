@@ -413,6 +413,86 @@ func (s *EndpointTestSuite) TestRerunJob_ValidatesUpdateJobStateRequest() {
 	s.NotNil(response)
 }
 
+func (s *EndpointTestSuite) TestRerunJob_VerifiesJobVersion() {
+	ctx := context.Background()
+	jobID := uuid.NewString()
+	jobVersion := uint64(3)
+	namespace := "default-namespace"
+
+	// Create a job in a rerunnable state (completed)
+	job := s.createTestJob(jobID, models.JobStateTypeCompleted)
+	job.Version = jobVersion
+
+	request := &RerunJobRequest{
+		JobIDOrName: jobID,
+		JobVersion:  0, // Use latest version
+		Namespace:   namespace,
+		Reason:      "Test rerun version",
+	}
+
+	// Setup expectations
+	s.mockJobStore.EXPECT().BeginTx(ctx).Return(s.mockTxCtx, nil)
+	s.mockJobStore.EXPECT().GetJobByIDOrName(s.mockTxCtx, jobID, namespace).Return(job, nil)
+	s.mockJobStore.EXPECT().UpdateJob(s.mockTxCtx, job).Return(nil)
+	s.mockJobStore.EXPECT().UpdateJobState(s.mockTxCtx, gomock.Any()).Return(nil)
+	s.mockJobStore.EXPECT().AddJobHistory(s.mockTxCtx, jobID, jobVersion+jobVersionIncrement, gomock.Any()).Return(nil)
+	s.mockJobStore.EXPECT().CreateEvaluation(s.mockTxCtx, gomock.Any()).Return(nil)
+	s.mockTxCtx.EXPECT().Commit().Return(nil)
+	s.mockTxCtx.EXPECT().Rollback().Return(nil)
+
+	response, err := s.endpoint.RerunJob(ctx, request)
+
+	s.NoError(err)
+	s.NotNil(response)
+	s.Equal(jobID, response.JobID)
+	s.Equal(jobVersion+jobVersionIncrement, response.JobVersion, "JobVersion should be incremented by jobVersionIncrement")
+	s.NotEmpty(response.EvaluationID)
+	s.Nil(response.Warnings)
+}
+
+func (s *EndpointTestSuite) TestRerunJob_VerifiesJobVersionWithSpecificVersion() {
+	ctx := context.Background()
+	jobID := uuid.NewString()
+	latestVersion := uint64(5)
+	requestedVersion := uint64(2)
+	namespace := "default-namespace"
+
+	// Create a job in a rerunnable state (completed) with latest version
+	latestJob := s.createTestJob(jobID, models.JobStateTypeCompleted)
+	latestJob.Version = latestVersion
+
+	// Create a specific version of the job to rerun
+	specificVersionJob := s.createTestJob(jobID, models.JobStateTypeCompleted)
+	specificVersionJob.Version = requestedVersion
+
+	request := &RerunJobRequest{
+		JobIDOrName: jobID,
+		JobVersion:  requestedVersion,
+		Namespace:   namespace,
+		Reason:      "Test rerun specific version",
+	}
+
+	// Setup expectations
+	s.mockJobStore.EXPECT().BeginTx(ctx).Return(s.mockTxCtx, nil)
+	s.mockJobStore.EXPECT().GetJobByIDOrName(s.mockTxCtx, jobID, namespace).Return(latestJob, nil)
+	s.mockJobStore.EXPECT().GetJobVersion(s.mockTxCtx, jobID, requestedVersion).Return(specificVersionJob, nil)
+	s.mockJobStore.EXPECT().UpdateJob(s.mockTxCtx, specificVersionJob).Return(nil)
+	s.mockJobStore.EXPECT().UpdateJobState(s.mockTxCtx, gomock.Any()).Return(nil)
+	s.mockJobStore.EXPECT().AddJobHistory(s.mockTxCtx, jobID, requestedVersion+jobVersionIncrement, gomock.Any()).Return(nil)
+	s.mockJobStore.EXPECT().CreateEvaluation(s.mockTxCtx, gomock.Any()).Return(nil)
+	s.mockTxCtx.EXPECT().Commit().Return(nil)
+	s.mockTxCtx.EXPECT().Rollback().Return(nil)
+
+	response, err := s.endpoint.RerunJob(ctx, request)
+
+	s.NoError(err)
+	s.NotNil(response)
+	s.Equal(jobID, response.JobID)
+	s.Equal(latestVersion+jobVersionIncrement, response.JobVersion, "JobVersion should be based on latest version plus increment")
+	s.NotEmpty(response.EvaluationID)
+	s.Nil(response.Warnings)
+}
+
 // createTestJob creates a test job with the specified ID and state
 func (s *EndpointTestSuite) createTestJob(jobID string, state models.JobStateType) models.Job {
 	job := mock.Job()
