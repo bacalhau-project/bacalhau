@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -34,6 +35,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3managed"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
@@ -183,15 +185,16 @@ func NewRequesterNode(
 		worker.Start(ctx)
 	}
 
+	s3Config, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
 	if !cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLDisabled {
 		// S3 result signer
-		s3Config, err := s3helper.DefaultAWSConfig()
-		if err != nil {
-			return nil, err
-		}
 		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
@@ -199,6 +202,17 @@ func NewRequesterNode(
 			Expiration: cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLExpiration.AsTimeDuration(),
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
+	}
+
+	managedS3PublisherURLGenerator := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
+		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
+		PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,
+	})
+
+	if managedS3PublisherURLGenerator.IsInstalled() {
+		// S3 managed publisher result transformer
+		managedS3Transformer := s3managed.NewResultTransformer(managedS3PublisherURLGenerator)
+		resultTransformers = append(resultTransformers, managedS3Transformer)
 	}
 
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
@@ -298,6 +312,22 @@ func NewRequesterNode(
 
 	if err = connectionManager.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start connection manager: %w", err)
+	}
+
+	if managedS3PublisherURLGenerator.IsInstalled() {
+		// Register the pre-signed URL request handler for the managed S3 publisher
+		managedS3PublisherURLGenerator := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
+			ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
+			PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,
+		})
+		err = connectionManager.RegisterDataPlaneHandler(
+			ctx,
+			messages.ManagedPublisherPreSignURLRequestType,
+			s3managed.NewPreSignedURLRequestHandler(managedS3PublisherURLGenerator),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to register S3 managed publisher message handler: %w", err)
+		}
 	}
 
 	watcherRegistry, err := setupOrchestratorWatchers(ctx, jobStore, evalBroker)

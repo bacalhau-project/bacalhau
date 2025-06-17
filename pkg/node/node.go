@@ -101,13 +101,13 @@ type NodeDependencyInjector struct {
 
 func NewStandardNodeDependencyInjector(
 	cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
-	lazyPublisherProvider := ncl.NewLazyPublisherProvider()
+	lazyNclPublisherProvider := ncl.NewLazyPublisherProvider()
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
-		PublishersFactory:       NewStandardPublishersFactory(cfg, lazyPublisherProvider),
+		PublishersFactory:       NewStandardPublishersFactory(cfg, lazyNclPublisherProvider),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
-		LazyPublisherProvider:   lazyPublisherProvider,
+		LazyPublisherProvider:   lazyNclPublisherProvider,
 	}
 }
 
@@ -412,6 +412,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.AuthenticatorsFactory == nil {
 		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
+	}
+	if injector.LazyPublisherProvider == nil {
+		injector.LazyPublisherProvider = defaultInjector.LazyPublisherProvider
 	}
 	return injector
 }

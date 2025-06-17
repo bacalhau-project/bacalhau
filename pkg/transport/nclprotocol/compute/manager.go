@@ -560,3 +560,6 @@ func (cm *ConnectionManager) GetPublisher() (ncl.Publisher, error) {
 	}
 	return cm.dataPlane.Requester, nil
 }
+
+// ConnectionManager should implement ncl.PublisherProvider
+var _ ncl.PublisherProvider = (*ConnectionManager)(nil)

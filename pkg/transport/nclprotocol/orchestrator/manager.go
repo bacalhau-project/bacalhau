@@ -137,9 +137,8 @@ func (cm *ComputeManager) setupDataPlaneResponder(ctx context.Context) error {
 	return nil
 }
 
-// RegisterDataPlaneHandlers registers the handlers for data plane messages.
-// It accepts ctx, messageType, and handler function.
-func (cm *ComputeManager) RegisterDataPlaneHandlers(
+// RegisterDataPlaneHandler registers a handler for data plane messages.
+func (cm *ComputeManager) RegisterDataPlaneHandler(
 	ctx context.Context,
 	messageType string,
 	handler ncl.RequestHandler) error {

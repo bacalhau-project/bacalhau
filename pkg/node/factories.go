@@ -76,16 +76,15 @@ func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.Bacalhau, nclPublisherProvider ncl.PublisherProvider) PublishersFactory {
+func NewStandardPublishersFactory(
+	cfg types.Bacalhau,
+	nclPublisherProvider ncl.PublisherProvider,
+) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			pr, err := publisher_util.NewPublisherProvider(
-				ctx,
-				cfg,
-				nclPublisherProvider,
-			)
+			pr, err := publisher_util.NewPublisherProvider(ctx, cfg, nclPublisherProvider)
 			if err != nil {
 				return nil, err
 			}
