@@ -22,19 +22,23 @@ type PreSignedURLGenerator struct {
 	publisherConfig *types.S3ManagedPublisher
 }
 
-func NewPreSignedURLGenerator(params PreSignedURLGeneratorParams) *PreSignedURLGenerator {
+func NewPreSignedURLGenerator(params PreSignedURLGeneratorParams) (*PreSignedURLGenerator, error) {
+	if err := params.PublisherConfig.Validate(); err != nil {
+		return nil, err
+	}
 	return &PreSignedURLGenerator{
 		clientProvider:  params.ClientProvider,
 		publisherConfig: params.PublisherConfig,
-	}
+	}, nil
 }
 
 // From the orchestrator's point of view the managed publisher is installed if the S3 client is available
 // and mandatory configuration properties are set.
 func (p *PreSignedURLGenerator) IsInstalled() bool {
-	return p.clientProvider.IsInstalled() &&
+	return p.clientProvider != nil &&
 		p.publisherConfig != nil &&
-		p.publisherConfig.BucketName != ""
+		p.clientProvider.IsInstalled() &&
+		p.publisherConfig.Validate() == nil
 }
 
 func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(
@@ -46,12 +50,7 @@ func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(
 		return "", fmt.Errorf("jobID and executionID must be provided")
 	}
 
-	// Create key with prefix if available
-	key := fmt.Sprintf("%s/%s.tar.gz", jobID, executionID)
-	if p.publisherConfig.KeyPrefix != "" {
-		prefix := strings.TrimSuffix(p.publisherConfig.KeyPrefix, "/")
-		key = fmt.Sprintf("%s/%s", prefix, key)
-	}
+	key := p.generateObjectKey(jobID, executionID)
 
 	// TODO: Use default expiration if not configured
 	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
@@ -61,14 +60,14 @@ func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(
 	// Create PUT request
 	// Do not provide a body because we do not have the full execution result file.
 	request := &s3.PutObjectInput{
-		Bucket: &p.publisherConfig.BucketName,
+		Bucket: &p.publisherConfig.Bucket,
 		Key:    &key,
 	}
 
 	log.Ctx(ctx).Debug().
 		Str("job_id", jobID).
 		Str("execution_id", executionID).
-		Str("bucket", p.publisherConfig.BucketName).
+		Str("bucket", p.publisherConfig.Bucket).
 		Str("key", key).
 		Msgf("Generating pre-signed PUT URL for S3 object")
 
@@ -90,12 +89,7 @@ func (p *PreSignedURLGenerator) GeneratePresignedGetURL(
 		return "", fmt.Errorf("jobID and executionID must be provided")
 	}
 
-	// Create key with prefix if available
-	key := fmt.Sprintf("%s/%s.tar.gz", jobID, executionID)
-	if p.publisherConfig.KeyPrefix != "" {
-		prefix := strings.TrimSuffix(p.publisherConfig.KeyPrefix, "/")
-		key = fmt.Sprintf("%s/%s", prefix, key)
-	}
+	key := p.generateObjectKey(jobID, executionID)
 
 	// Use configured expiration time
 	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
@@ -104,14 +98,14 @@ func (p *PreSignedURLGenerator) GeneratePresignedGetURL(
 
 	// Create GET request for downloading the result
 	request := &s3.GetObjectInput{
-		Bucket: &p.publisherConfig.BucketName,
+		Bucket: &p.publisherConfig.Bucket,
 		Key:    &key,
 	}
 
 	log.Ctx(ctx).Debug().
 		Str("job_id", jobID).
 		Str("execution_id", executionID).
-		Str("bucket", p.publisherConfig.BucketName).
+		Str("bucket", p.publisherConfig.Bucket).
 		Str("key", key).
 		Msgf("Generating pre-signed GET URL for S3 object")
 
@@ -122,4 +116,16 @@ func (p *PreSignedURLGenerator) GeneratePresignedGetURL(
 	}
 
 	return resp.URL, nil
+}
+
+// generateObjectKey constructs the S3 object key based on job and execution IDs.
+func (p *PreSignedURLGenerator) generateObjectKey(jobID, executionID string) string {
+	// Create key with prefix if available
+	key := fmt.Sprintf("%s/%s.tar.gz", jobID, executionID)
+	if p.publisherConfig.Key != "" {
+		prefix := strings.TrimSuffix(p.publisherConfig.Key, "/")
+		key = fmt.Sprintf("%s/%s", prefix, key)
+	}
+
+	return key
 }

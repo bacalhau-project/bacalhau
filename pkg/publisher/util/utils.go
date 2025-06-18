@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -115,6 +116,10 @@ func configureS3ManagedPublisher(
 	storagePath string,
 	nclPublisherProvider ncl.PublisherProvider,
 ) (*s3managed.Publisher, error) {
+	if nclPublisherProvider == nil {
+		return nil, fmt.Errorf("S3Managed publisher requires an NCL publisher provider")
+	}
+
 	path := filepath.Join(storagePath, "s3managed-publisher")
 	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
 		return nil, err

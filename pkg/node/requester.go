@@ -190,6 +190,15 @@ func NewRequesterNode(
 		return nil, err
 	}
 
+	// S3 managed publisher URL generator
+	s3ManagedPublisherURLGenerator, err := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
+		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
+		PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
@@ -204,16 +213,8 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
-	managedS3PublisherURLGenerator := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
-		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
-		PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,
-	})
-
-	if managedS3PublisherURLGenerator.IsInstalled() {
-		// S3 managed publisher result transformer
-		managedS3Transformer := s3managed.NewResultTransformer(managedS3PublisherURLGenerator)
-		resultTransformers = append(resultTransformers, managedS3Transformer)
-	}
+	// S3 managed publisher result transformer
+	resultTransformers = append(resultTransformers, s3managed.NewResultTransformer(s3ManagedPublisherURLGenerator))
 
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
@@ -314,20 +315,18 @@ func NewRequesterNode(
 		return nil, fmt.Errorf("failed to start connection manager: %w", err)
 	}
 
-	if managedS3PublisherURLGenerator.IsInstalled() {
-		// Register the pre-signed URL request handler for the managed S3 publisher
-		managedS3PublisherURLGenerator := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
-			ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
-			PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,
-		})
-		err = connectionManager.RegisterDataPlaneHandler(
-			ctx,
-			messages.ManagedPublisherPreSignURLRequestType,
-			s3managed.NewPreSignedURLRequestHandler(managedS3PublisherURLGenerator),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to register S3 managed publisher message handler: %w", err)
-		}
+	// Register S3 managed publisher handlers.
+	// We want to always register these, even if the managed S3 publisher is not enabled,
+	// so the orchestrator can return meaningful errors to compute nodes that try to use the managed publisher.
+
+	// Message handler for generating pre-signed URLs for S3 managed publisher
+	err = connectionManager.RegisterDataPlaneHandler(
+		ctx,
+		messages.ManagedPublisherPreSignURLRequestType,
+		s3managed.NewPreSignedURLRequestHandler(s3ManagedPublisherURLGenerator),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register a handler for S3 managed publisher pre-sign url messages: %w", err)
 	}
 
 	watcherRegistry, err := setupOrchestratorWatchers(ctx, jobStore, evalBroker)

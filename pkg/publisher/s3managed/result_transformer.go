@@ -23,7 +23,12 @@ func NewResultTransformer(urlGenerator *PreSignedURLGenerator) *ResultTransforme
 // and transforms it to use a pre-signed URL.
 func (t *ResultTransformer) Transform(ctx context.Context, spec *models.SpecConfig) error {
 	// Skip transformation if not a managed S3 publisher
-	if spec.Type != models.PublisherS3Managed {
+	if spec.Type != models.StorageSourceS3Managed {
+		return nil
+	}
+
+	// Skip if the URL generator is not installed
+	if !t.urlGenerator.IsInstalled() {
 		return nil
 	}
 

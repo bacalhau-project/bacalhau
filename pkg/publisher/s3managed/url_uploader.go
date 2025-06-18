@@ -12,7 +12,7 @@ import (
 
 // Upload uploads a file to the specified URL
 type URLUploader interface {
-	Upload(ctx context.Context, url string, file *os.File) error
+	Upload(ctx context.Context, url string, filePath string) error
 }
 
 const (
@@ -32,15 +32,22 @@ func NewS3PreSignedURLUploader(httpClient *http.Client) URLUploader {
 	}
 }
 
-func (u *S3PreSignedURLUploader) Upload(ctx context.Context, url string, file *os.File) error {
-	return u.uploadWithRetry(ctx, url, file, u.retryCount)
+func (u *S3PreSignedURLUploader) Upload(ctx context.Context, url string, filePath string) error {
+	return u.uploadWithRetry(ctx, url, filePath, u.retryCount)
 }
 
 func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 	ctx context.Context,
-	file *os.File,
+	filePath string,
 	presignedURL string,
 ) error {
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file for upload: %w", err)
+	}
+	defer file.Close()
+
 	// Get file info for logging
 	fileInfo, err := file.Stat()
 	if err != nil {
@@ -49,7 +56,7 @@ func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 
 	// Log the upload attempt
 	log.Ctx(ctx).Debug().
-		Str("file", file.Name()).
+		Str("file", filePath).
 		Int64("size", fileInfo.Size()).
 		Msg("Uploading file to S3 using pre-signed URL")
 
@@ -80,7 +87,7 @@ func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 func (u *S3PreSignedURLUploader) uploadWithRetry(
 	ctx context.Context,
 	url string,
-	file *os.File,
+	filePath string,
 	retryCount int,
 ) error {
 	var lastErr error
@@ -97,7 +104,7 @@ func (u *S3PreSignedURLUploader) uploadWithRetry(
 			}
 
 			log.Ctx(ctx).Debug().
-				Str("file", file.Name()).
+				Str("file", filePath).
 				Int("attempt", attempt).
 				Int("maxRetries", retryCount).
 				Dur("backoffTime", backoffTime).
@@ -114,12 +121,12 @@ func (u *S3PreSignedURLUploader) uploadWithRetry(
 		}
 
 		// Attempt upload
-		err := u.uploadWithPreSignedURL(ctx, file, url)
+		err := u.uploadWithPreSignedURL(ctx, filePath, url)
 		if err == nil {
 			// Success
 			if attempt > 0 {
 				log.Ctx(ctx).Debug().
-					Str("file", file.Name()).
+					Str("file", filePath).
 					Int("attempt", attempt+1).
 					Msg("Upload succeeded after retries")
 			}

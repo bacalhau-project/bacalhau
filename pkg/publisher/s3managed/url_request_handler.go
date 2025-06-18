@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/envelope"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
@@ -26,14 +27,20 @@ func (rh *PreSignedURLRequestHandler) HandleRequest(ctx context.Context, message
 	if !ok {
 		return nil, envelope.NewErrUnexpectedPayloadType("ManagedPublisherPreSignURLRequest", reflect.TypeOf(message.Payload).String())
 	}
+
+	if !rh.urlGenerator.IsInstalled() {
+		return nil, bacerrors.New("Managed S3 publisher is not available").
+			WithCode(bacerrors.BadRequestError)
+	}
+
 	if request.JobID == "" || request.ExecutionID == "" {
-		return nil, envelope.NewErrBadMessage("JobID and ExecutionID must be provided")
+		return nil, envelope.NewErrBadPayload("JobID and ExecutionID must be provided")
 	}
 
 	log.Ctx(ctx).Debug().
 		Str("job_id", request.JobID).
 		Str("execution_id", request.ExecutionID).
-		Msg("Receivead a request to generate pre-signed URL for S3 managed publisher")
+		Msg("Received a request to generate pre-signed URL for S3 managed publisher")
 
 	url, err := rh.urlGenerator.GeneratePreSignedPutURL(ctx, request.JobID, request.ExecutionID)
 	if err != nil {

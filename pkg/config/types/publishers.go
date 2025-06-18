@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -39,16 +40,38 @@ type S3Publisher struct {
 }
 
 type S3ManagedPublisher struct {
-	// BucketName specifies the S3 bucket name for managed storage
-	BucketName string `yaml:"BucketName,omitempty" json:"BucketName,omitempty"`
-	// KeyPrefix specifies an optional prefix for keys stored in the bucket
-	KeyPrefix string `yaml:"KeyPrefix,omitempty" json:"KeyPrefix,omitempty"`
+	// Bucket specifies the S3 bucket name for managed publisher
+	Bucket string `yaml:"Bucket,omitempty" json:"Bucket,omitempty"`
+	// Key specifies an optional prefix for objects stored in the bucket
+	Key string `yaml:"Key,omitempty" json:"Key,omitempty"`
 	// Region specifies the region the S3 bucket is in
 	Region string `yaml:"Region,omitempty" json:"Region,omitempty"`
 	// Endpoint specifies an optional custom S3 endpoint
 	Endpoint string `yaml:"Endpoint,omitempty" json:"Endpoint,omitempty"`
 	// PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty" json:"PreSignedURLExpiration,omitempty"`
+}
+
+func (p *S3ManagedPublisher) Validate() error {
+	var errs []string
+
+	if p.Bucket == "" {
+		errs = append(errs, "bucket cannot be empty")
+	}
+
+	if p.Region == "" {
+		errs = append(errs, "region cannot be empty")
+	}
+
+	if p.PreSignedURLExpiration.AsTimeDuration() <= 0 {
+		errs = append(errs, "pre-signed URL expiration must be greater than zero")
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("invalid publisher configuration: %s", strings.Join(errs, ", "))
+	}
+
+	return nil
 }
 
 type LocalPublisher struct {
