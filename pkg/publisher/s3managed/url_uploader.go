@@ -41,7 +41,6 @@ func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 	filePath string,
 	presignedURL string,
 ) error {
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file for upload: %w", err)

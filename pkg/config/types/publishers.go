@@ -74,6 +74,13 @@ func (p *S3ManagedPublisher) Validate() error {
 	return nil
 }
 
+// IsConfigured returns true if ANY specific configuration has been provided,
+// even if incomplete. This helps distinguish between "not configured at all" and
+// "incorrectly configured".
+func (p *S3ManagedPublisher) IsConfigured() bool {
+	return p != nil && (p.Bucket != "" || p.Region != "" || p.Key != "" || p.Endpoint != "")
+}
+
 type LocalPublisher struct {
 	// Address specifies the endpoint the publisher serves on.
 	Address string `yaml:"Address,omitempty" json:"Address,omitempty"`

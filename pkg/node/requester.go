@@ -191,6 +191,9 @@ func NewRequesterNode(
 	}
 
 	// S3 managed publisher URL generator
+	// This will return an error if the configuration is provided but incorrect,
+	// If the configuration is not provided, we still create the generator
+	// so we can return meaningful errors to compute nodes that try to use the managed publisher.
 	s3ManagedPublisherURLGenerator, err := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
 		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
 		PublisherConfig: &cfg.BacalhauConfig.Publishers.Types.S3Managed,

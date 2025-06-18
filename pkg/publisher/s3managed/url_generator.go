@@ -22,14 +22,26 @@ type PreSignedURLGenerator struct {
 	publisherConfig *types.S3ManagedPublisher
 }
 
+// NewPreSignedURLGenerator creates a new PreSignedURLGenerator with the given parameters.
+// This method distinguishes between:
+// 1. Not configured at all - no specific configuration provided (creates generator, no error)
+// 2. Incorrectly configured - some config is provided but invalid (does not creates generator, returns error)
 func NewPreSignedURLGenerator(params PreSignedURLGeneratorParams) (*PreSignedURLGenerator, error) {
-	if err := params.PublisherConfig.Validate(); err != nil {
-		return nil, err
+	// If publisher config is configured, check if it's valid.
+	if params.PublisherConfig != nil && params.PublisherConfig.IsConfigured() {
+		if err := params.PublisherConfig.Validate(); err != nil {
+			return nil, err
+		}
 	}
-	return &PreSignedURLGenerator{
+
+	// Here the publisher is either not configured at all or is correctly configured.
+	// We create the generator regardless, IsInstalled will handle the "not configured" case.
+	generator := &PreSignedURLGenerator{
 		clientProvider:  params.ClientProvider,
 		publisherConfig: params.PublisherConfig,
-	}, nil
+	}
+
+	return generator, nil
 }
 
 // From the orchestrator's point of view the managed publisher is installed if the S3 client is available
@@ -52,11 +64,6 @@ func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(
 
 	key := p.generateObjectKey(jobID, executionID)
 
-	// TODO: Use default expiration if not configured
-	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
-
-	client := p.clientProvider.GetClient(p.publisherConfig.Endpoint, p.publisherConfig.Region)
-
 	// Create PUT request
 	// Do not provide a body because we do not have the full execution result file.
 	request := &s3.PutObjectInput{
@@ -70,6 +77,9 @@ func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(
 		Str("bucket", p.publisherConfig.Bucket).
 		Str("key", key).
 		Msgf("Generating pre-signed PUT URL for S3 object")
+
+	client := p.clientProvider.GetClient(p.publisherConfig.Endpoint, p.publisherConfig.Region)
+	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
 
 	resp, err := client.PresignClient().PresignPutObject(ctx, request, s3.WithPresignExpires(expiration))
 	if err != nil {
@@ -91,11 +101,6 @@ func (p *PreSignedURLGenerator) GeneratePresignedGetURL(
 
 	key := p.generateObjectKey(jobID, executionID)
 
-	// Use configured expiration time
-	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
-
-	client := p.clientProvider.GetClient(p.publisherConfig.Endpoint, p.publisherConfig.Region)
-
 	// Create GET request for downloading the result
 	request := &s3.GetObjectInput{
 		Bucket: &p.publisherConfig.Bucket,
@@ -109,7 +114,9 @@ func (p *PreSignedURLGenerator) GeneratePresignedGetURL(
 		Str("key", key).
 		Msgf("Generating pre-signed GET URL for S3 object")
 
-	// Generate pre-signed URL for GET operation
+	expiration := p.publisherConfig.PreSignedURLExpiration.AsTimeDuration()
+	client := p.clientProvider.GetClient(p.publisherConfig.Endpoint, p.publisherConfig.Region)
+
 	resp, err := client.PresignClient().PresignGetObject(ctx, request, s3.WithPresignExpires(expiration))
 	if err != nil {
 		return "", err
