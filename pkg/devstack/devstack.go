@@ -22,10 +22,12 @@ import (
 )
 
 type DevStack struct {
-	Nodes []*node.Node
+	Nodes                 []*node.Node
+	config                *DevStackConfig
+	nextNodeID            int
+	orchestratorEndpoints []string
 }
 
-//nolint:funlen,gocyclo
 func Setup(
 	ctx context.Context,
 	cm *system.CleanupManager,
@@ -55,134 +57,178 @@ func Setup(
 
 	log.Ctx(ctx).Info().Object("Config", stackConfig).Msg("Starting Devstack")
 
-	var nodes []*node.Node
+	// Create empty devstack to start adding nodes to
+	stack := &DevStack{
+		Nodes:                 []*node.Node{},
+		config:                stackConfig,
+		nextNodeID:            0,
+		orchestratorEndpoints: []string{},
+	}
+
 	totalNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes + stackConfig.NumberOfComputeOnlyNodes
 	requesterNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfRequesterOnlyNodes
 	computeNodeCount := stackConfig.NumberOfHybridNodes + stackConfig.NumberOfComputeOnlyNodes
 
-	cfg := stackConfig.BacalhauConfig
-
-	// if running with local orchestrator, we clear the orchestrator list from the config
-	if requesterNodeCount > 0 {
-		cfg.Compute.Orchestrators = []string{}
-	}
-
 	for i := 0; i < totalNodeCount; i++ {
-		nodeID := fmt.Sprintf("node-%d", i)
-		ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
-
 		isRequesterNode := i < requesterNodeCount
 		isComputeNode := (totalNodeCount - i) <= computeNodeCount
-		log.Ctx(ctx).Debug().Msgf(`Creating Node #%d as {RequesterNode: %t, ComputeNode: %t}`, i+1, isRequesterNode, isComputeNode)
-
-		if isRequesterNode {
-			if stackConfig.UseStandardPorts {
-				cfg.Orchestrator.Port = cfg.Orchestrator.Port + i
-			} else {
-				if cfg.Orchestrator.Port, err = network.GetFreePort(); err != nil {
-					return nil, errors.Wrap(err, "failed to get free port for nats server")
-				}
-			}
-			cfg.Compute.Orchestrators = append(cfg.Compute.Orchestrators, fmt.Sprintf("127.0.0.1:%d", cfg.Orchestrator.Port))
-		}
-
-		// ////////////////////////////////////
-		// port for API
-		// ////////////////////////////////////
-		if stackConfig.UseStandardPorts {
-			cfg.API.Port = cfg.API.Port + i
-			// add one more if using an external orchestrator to avoid port conflict
-			if requesterNodeCount == 0 {
-				cfg.API.Port += 1
-			}
-		} else {
-			if cfg.API.Port, err = network.GetFreePort(); err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for API server")
-			}
-		}
-
-		// ////////////////////////////////////
-		// Create and Run Node
-		// ////////////////////////////////////
-
-		// here is where we can parse string based CLI stackConfig
-		// into more meaningful model.FailureInjectionConfig values
 		isBadComputeActor := (stackConfig.NumberOfBadComputeActors > 0) && (i >= computeNodeCount-stackConfig.NumberOfBadComputeActors)
-
-		if isComputeNode {
-			// We have multiple process on the same machine, all wanting to listen on a HTTP port
-			// and so we will give each compute node a random open port to listen on.
-			freePort, err := network.GetFreePort()
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to get free port for local publisher")
-			}
-			cfg.Publishers.Types.Local.Port = freePort
+		var nodeOverride *node.NodeConfig
+		if i < len(stackConfig.NodeOverrides) {
+			nodeOverride = &stackConfig.NodeOverrides[i]
 		}
 
-		cfg.Orchestrator.Enabled = isRequesterNode
-		cfg.Compute.Enabled = isComputeNode
-		cfg, err = cfg.MergeNew(types.Bacalhau{
-			DataDir: filepath.Join(stackConfig.BasePath, nodeID),
-			Labels: map[string]string{
-				"id":   nodeID,
-				"name": fmt.Sprintf("node-%d", i),
-				"env":  "devstack",
-			},
+		_, err := stack.JoinNode(ctx, cm, JoinNodeOptions{
+			IsRequester:     isRequesterNode,
+			IsCompute:       isComputeNode,
+			BadComputeActor: isBadComputeActor,
+			ConfigOverride:  nodeOverride,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to merge new config")
-		}
-
-		// create node data dir path
-		if err = os.MkdirAll(cfg.DataDir, util.OS_USER_RWX); err != nil {
-			return nil, errors.Wrap(err, "failed to create node data directory")
-		}
-
-		nodeConfig := node.NodeConfig{
-			NodeID:             nodeID,
-			CleanupManager:     cm,
-			BacalhauConfig:     cfg,
-			SystemConfig:       stackConfig.SystemConfig,
-			DependencyInjector: stackConfig.NodeDependencyInjector,
-			FailureInjectionConfig: models.FailureInjectionConfig{
-				IsBadActor: isBadComputeActor,
-			},
-		}
-
-		// allow overriding configs of some nodes
-		if i < len(stackConfig.NodeOverrides) {
-			originalConfig := nodeConfig
-			nodeConfig = stackConfig.NodeOverrides[i]
-			err = mergo.Merge(&nodeConfig, originalConfig)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		var n *node.Node
-		n, err = node.NewNode(ctx, nodeConfig, NewMetadataStore())
-		if err != nil {
 			return nil, err
 		}
-
-		// start the node
-		err = n.Start(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		nodes = append(nodes, n)
 	}
+
+	// Add hybrid nodes first (they can act as both orchestrator and compute)
 
 	// only start profiling after we've set everything up!
-	profiler := startProfiling(ctx, stackConfig.CPUProfilingFile, stackConfig.MemoryProfilingFile)
-	if profiler != nil {
-		cm.RegisterCallbackWithContext(profiler.Close)
+	p := startProfiling(ctx, stackConfig.CPUProfilingFile, stackConfig.MemoryProfilingFile)
+	if p != nil {
+		cm.RegisterCallbackWithContext(p.Close)
 	}
 
-	return &DevStack{
-		Nodes: nodes,
-	}, nil
+	return stack, nil
+}
+
+type JoinNodeOptions struct {
+	IsRequester     bool
+	IsCompute       bool
+	BadComputeActor bool // Make this node a bad compute actor for testing
+	ConfigOverride  *node.NodeConfig
+}
+
+func (stack *DevStack) JoinComputeNode(ctx context.Context, cm *system.CleanupManager) (*node.Node, error) {
+	return stack.JoinNode(ctx, cm, JoinNodeOptions{IsCompute: true})
+}
+
+func (stack *DevStack) JoinOrchestratorNode(ctx context.Context, cm *system.CleanupManager) (*node.Node, error) {
+	return stack.JoinNode(ctx, cm, JoinNodeOptions{IsRequester: true})
+}
+
+func (stack *DevStack) JoinHybridNode(ctx context.Context, cm *system.CleanupManager) (*node.Node, error) {
+	return stack.JoinNode(ctx, cm, JoinNodeOptions{IsRequester: true, IsCompute: true})
+}
+
+func (stack *DevStack) JoinNode(ctx context.Context, cm *system.CleanupManager, options JoinNodeOptions) (*node.Node, error) {
+	nodeID := fmt.Sprintf("node-%d", stack.nextNodeID)
+	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
+
+	log.Ctx(ctx).Debug().Msgf("Creating joined node %s as {RequesterNode: %t, ComputeNode: %t}", nodeID, options.IsRequester, options.IsCompute)
+
+	// Clone the base config from the devstack
+	cfg := stack.config.BacalhauConfig
+	var err error
+
+	// Get orchestrator endpoints from existing orchestrator nodes for compute nodes
+	if options.IsCompute && !options.IsRequester {
+		orchestrators := stack.orchestratorEndpoints
+		if len(orchestrators) == 0 {
+			return nil, fmt.Errorf("cannot add compute node: no orchestrators found in the existing devstack")
+		}
+		cfg.Compute.Orchestrators = orchestrators
+	}
+
+	// Configure ports - always use random ports to avoid conflicts
+	if options.IsRequester {
+		if stack.config.UseStandardPorts {
+			cfg.Orchestrator.Port = cfg.Orchestrator.Port + stack.nextNodeID
+		} else {
+			if cfg.Orchestrator.Port, err = network.GetFreePort(); err != nil {
+				return nil, errors.Wrap(err, "failed to get free port for nats server")
+			}
+		}
+		// Store the new orchestrator endpoint for future compute nodes
+		newOrchestratorEndpoint := fmt.Sprintf("127.0.0.1:%d", cfg.Orchestrator.Port)
+		stack.orchestratorEndpoints = append(stack.orchestratorEndpoints, newOrchestratorEndpoint)
+	}
+
+	if stack.config.UseStandardPorts {
+		cfg.API.Port = cfg.API.Port + stack.nextNodeID
+		// add one more if using an external orchestrator to avoid port conflict
+		if len(stack.orchestratorEndpoints) == 0 {
+			cfg.API.Port += 1
+		}
+	} else {
+		if cfg.API.Port, err = network.GetFreePort(); err != nil {
+			return nil, errors.Wrap(err, "failed to get free port for API server")
+		}
+	}
+
+	if options.IsCompute {
+		freePort, err := network.GetFreePort()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get free port for local publisher")
+		}
+		cfg.Publishers.Types.Local.Port = freePort
+	}
+
+	// Configure node capabilities
+	cfg.Orchestrator.Enabled = options.IsRequester
+	cfg.Compute.Enabled = options.IsCompute
+
+	// Set data directory and labels
+	cfg, err = cfg.MergeNew(types.Bacalhau{
+		DataDir: filepath.Join(stack.config.BasePath, nodeID),
+		Labels: map[string]string{
+			"id":   nodeID,
+			"name": nodeID,
+			"env":  "devstack",
+		},
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to merge config")
+	}
+
+	// Create node data directory
+	if err = os.MkdirAll(cfg.DataDir, util.OS_USER_RWX); err != nil {
+		return nil, errors.Wrap(err, "failed to create node data directory")
+	}
+
+	// Create node config
+	nodeConfig := node.NodeConfig{
+		NodeID:             nodeID,
+		CleanupManager:     cm,
+		BacalhauConfig:     cfg,
+		SystemConfig:       stack.config.SystemConfig,
+		DependencyInjector: stack.config.NodeDependencyInjector,
+		FailureInjectionConfig: models.FailureInjectionConfig{
+			IsBadActor: options.BadComputeActor,
+		},
+	}
+
+	// allow overriding configs of some nodes
+	if options.ConfigOverride != nil {
+		originalConfig := nodeConfig
+		nodeConfig = *options.ConfigOverride
+		err = mergo.Merge(&nodeConfig, originalConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Create and start the node
+	n, err := node.NewNode(ctx, nodeConfig, NewMetadataStore())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create node %s: %w", nodeID, err)
+	}
+
+	if err = n.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start node %s: %w", nodeID, err)
+	}
+
+	stack.Nodes = append(stack.Nodes, n)
+	stack.nextNodeID++
+	return n, nil
 }
 
 //nolint:funlen
