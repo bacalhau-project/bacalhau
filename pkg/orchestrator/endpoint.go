@@ -267,6 +267,10 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 	if err != nil {
 		return nil, jobstore.NewJobStoreError(err.Error())
 	}
+
+	// We need to keep a record of the job latest version
+	jobLatestVersion := job.Version
+
 	if request.JobVersion != 0 {
 		job, err = e.store.GetJobVersion(txContext, job.ID, request.JobVersion)
 		if err != nil {
@@ -298,7 +302,8 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 		return nil, err
 	}
 
-	if err = e.store.AddJobHistory(txContext, job.ID, job.Version+jobVersionIncrement, JobRerunEvent("job rerun")); err != nil {
+	newJobVersion := jobLatestVersion + jobVersionIncrement
+	if err = e.store.AddJobHistory(txContext, job.ID, newJobVersion, JobRerunEvent("job rerun")); err != nil {
 		return nil, err
 	}
 
@@ -325,7 +330,7 @@ func (e *BaseEndpoint) RerunJob(ctx context.Context, request *RerunJobRequest) (
 
 	return &RerunJobResponse{
 		JobID:        job.ID,
-		JobVersion:   job.Version + jobVersionIncrement,
+		JobVersion:   newJobVersion,
 		EvaluationID: eval.ID,
 		Warnings:     nil,
 	}, nil

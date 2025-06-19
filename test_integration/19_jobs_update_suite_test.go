@@ -475,6 +475,143 @@ func (s *JobsUpdateSuite) TestBatchJobUpdate() {
 	s.Require().NoError(err, "Error running hello world from job spec")
 	s.Require().Contains(result, "echo hello bacalhau world1")
 	s.Require().Contains(result, "echo hello bacalhau world2")
+
+	// ==========================================================================
+	// ==========================================================================
+	// rerun a job using name to rerun the latest version of the job.
+	// At this point, we have 3 versions only.
+
+	// Rerun the latest version
+	_, err = s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"job",
+			"rerun",
+			"basic-hello-world",
+			"--wait=false",
+			"--id-only",
+		})
+	s.Require().NoError(err, "Error running hello world from job spec")
+
+	completedIn, err = s.waitForJobToComplete(jobName, 30*time.Second)
+	s.Require().NoErrorf(err, "Error waiting for job to complete, waited %s: %q", completedIn, err)
+
+	resultDescriptionByName, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobName})
+	s.Require().NoError(err, "Error getting job description by name")
+
+	count = strings.Count(resultDescriptionByName, "hello bacalhau world2")
+	s.Require().Equal(2, count, "Expected exactly 2 occurrences of 'hello bacalhau world2' "+
+		"in job description, but found %d", count)
+	s.Require().NotContains(resultDescriptionByName, "hello bacalhau world1")
+
+	resultJobVersionsByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"versions",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultJobVersionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(4, len(executionsList.Array()))
+
+	// Check the first and second job version value there should be 2 versions,
+	firstJobVersion, err = dynamicJSONOutput.Query("$[0].Version")
+	s.Require().NoError(err)
+	secondJobVersion, err = dynamicJSONOutput.Query("$[1].Version")
+	s.Require().NoError(err)
+	thirdJobVersion, err = dynamicJSONOutput.Query("$[2].Version")
+	s.Require().NoError(err)
+	forthJobVersion, err := dynamicJSONOutput.Query("$[3].Version")
+	s.Require().NoError(err)
+
+	// inject the 3 versions in a list and make sure the count of each version is 1
+	jobVersions = []int{firstJobVersion.Int(), secondJobVersion.Int(), thirdJobVersion.Int(), forthJobVersion.Int()}
+	versionCounts = map[int]int{1: 0, 2: 0, 3: 0, 4: 0}
+	for _, version := range jobVersions {
+		versionCounts[version]++
+	}
+	s.Require().Equal(1, versionCounts[1], "Expected exactly 1 execution with version 1")
+	s.Require().Equal(1, versionCounts[2], "Expected exactly 1 execution with version 2")
+	s.Require().Equal(1, versionCounts[3], "Expected exactly 1 execution with version 3")
+	s.Require().Equal(1, versionCounts[4], "Expected exactly 1 execution with version 4")
+
+	// ==========================================================================
+	// ==========================================================================
+	// rerun a job using name to rerun a specific version of the job.
+	// At this point, we have 4 versions only.
+
+	// Rerun version 1
+	_, err = s.executeCommandInDefaultJumpbox(
+		[]string{
+			"bacalhau",
+			"job",
+			"rerun",
+			"basic-hello-world",
+			"--version=1",
+			"--wait=false",
+			"--id-only",
+		})
+	s.Require().NoError(err, "Error running hello world from job spec")
+
+	completedIn, err = s.waitForJobToComplete(jobName, 30*time.Second)
+	s.Require().NoErrorf(err, "Error waiting for job to complete, waited %s: %q", completedIn, err)
+
+	resultDescriptionByName, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", jobName})
+	s.Require().NoError(err, "Error getting job description by name")
+
+	count = strings.Count(resultDescriptionByName, "hello bacalhau world1")
+	s.Require().Equal(2, count, "Expected exactly 2 occurrences of 'hello bacalhau world1' "+
+		"in job description, but found %d", count)
+	s.Require().NotContains(resultDescriptionByName, "hello bacalhau world2")
+
+	resultJobVersionsByNameJSON, err = s.executeCommandInDefaultJumpbox([]string{
+		"bacalhau",
+		"job",
+		"versions",
+		jobName,
+		"--output=json",
+	})
+	dynamicJSONOutput, err = s.convertStringToDynamicJSON(resultJobVersionsByNameJSON)
+	s.Require().NoError(err)
+
+	executionsList, err = dynamicJSONOutput.Query("$")
+	s.Require().NoError(err)
+	s.Require().Equal(5, len(executionsList.Array()))
+
+	// Check the first and second job version value there should be 2 versions,
+	firstJobVersion, err = dynamicJSONOutput.Query("$[0].Version")
+	s.Require().NoError(err)
+	secondJobVersion, err = dynamicJSONOutput.Query("$[1].Version")
+	s.Require().NoError(err)
+	thirdJobVersion, err = dynamicJSONOutput.Query("$[2].Version")
+	s.Require().NoError(err)
+	forthJobVersion, err = dynamicJSONOutput.Query("$[3].Version")
+	s.Require().NoError(err)
+	fifthJobVersion, err := dynamicJSONOutput.Query("$[4].Version")
+	s.Require().NoError(err)
+
+	// inject the 3 versions in a list and make sure the count of each version is 1
+	jobVersions = []int{
+		firstJobVersion.Int(),
+		secondJobVersion.Int(),
+		thirdJobVersion.Int(),
+		forthJobVersion.Int(),
+		fifthJobVersion.Int(),
+	}
+	versionCounts = map[int]int{1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+	for _, version := range jobVersions {
+		versionCounts[version]++
+	}
+	s.Require().Equal(1, versionCounts[1], "Expected exactly 1 execution with version 1")
+	s.Require().Equal(1, versionCounts[2], "Expected exactly 1 execution with version 2")
+	s.Require().Equal(1, versionCounts[3], "Expected exactly 1 execution with version 3")
+	s.Require().Equal(1, versionCounts[4], "Expected exactly 1 execution with version 4")
+	s.Require().Equal(1, versionCounts[5], "Expected exactly 1 execution with version 5")
+
 }
 
 func (s *JobsUpdateSuite) TestDaemonJobUpdate() {
