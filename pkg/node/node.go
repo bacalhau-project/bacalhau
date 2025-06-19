@@ -181,8 +181,9 @@ func NewNode(
 		BacalhauVersion:    *version.Get(),
 		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
 	})
-	nodeInfoProvider.RegisterLabelProvider(&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels})
-	nodeInfoProvider.RegisterLabelProvider(&RuntimeLabelsProvider{})
+	nodeInfoProvider.RegisterLabelProvider(NewConfigLabelsProvider(cfg.BacalhauConfig.Labels))
+	nodeInfoProvider.RegisterLabelProvider(NewRuntimeLabelsProvider())
+	nodeInfoProvider.RegisterLabelProvider(NewNameLabelsProvider(cfg.NodeID))
 
 	// setup requester node
 	if cfg.BacalhauConfig.Orchestrator.Enabled {

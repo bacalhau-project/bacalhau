@@ -160,14 +160,14 @@ func (s *StateUpdater) processEvents(
 	}
 
 	if len(plan.JobEvents) > 0 {
-		if err := s.store.AddJobHistory(txContext, plan.Job.ID, plan.JobEvents...); err != nil {
+		if err := s.store.AddJobHistory(txContext, plan.Job.ID, plan.Job.Version, plan.JobEvents...); err != nil {
 			return err
 		}
 	}
 
 	if len(plan.ExecutionEvents) > 0 {
 		for executionID, events := range plan.ExecutionEvents {
-			if err := s.store.AddExecutionHistory(txContext, plan.Job.ID, executionID, events...); err != nil {
+			if err := s.store.AddExecutionHistory(txContext, plan.Job.ID, plan.Job.Version, executionID, events...); err != nil {
 				return err
 			}
 		}

@@ -83,6 +83,27 @@ func (o *BaseListRequest) ToHTTPRequest() *HTTPRequest {
 	return r
 }
 
+// BaseVersionedListRequest is the base request used for all list requests
+type BaseVersionedListRequest struct {
+	BaseListRequest
+	JobVersion     uint64 `query:"job_version" validate:"omitempty"`
+	AllJobVersions bool   `query:"all_job_versions" validate:"omitempty"`
+}
+
+// ToHTTPRequest is used to convert the request to an HTTP request
+func (o *BaseVersionedListRequest) ToHTTPRequest() *HTTPRequest {
+	r := o.BaseListRequest.ToHTTPRequest()
+
+	if o.JobVersion != 0 {
+		r.Params.Set("job_version", strconv.FormatUint(o.JobVersion, 10))
+	}
+	if o.AllJobVersions {
+		r.Params.Set("all_job_versions", strconv.FormatBool(o.AllJobVersions))
+	}
+
+	return r
+}
+
 // BasePostRequest is the base request used for all POST requests
 type BasePostRequest struct {
 	BaseRequest

@@ -2,7 +2,6 @@ package boltjobstore
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -104,29 +103,4 @@ func (bp *BucketPath) Sub(names ...[]byte) *BucketPath {
 		path = fmt.Sprintf("%s%s%s", path, BucketPathDelimiter, s)
 	}
 	return NewBucketPath(path)
-}
-
-// BucketSequenceString returns the next sequence in the provided
-// bucket, formatted as a 16 character padded string to ensure that
-// bolt's lexicographic ordering will return them in the correct
-// order
-func BucketSequenceString(_ *bolt.Tx, bucket *bolt.Bucket) string {
-	seqNum, err := bucket.NextSequence()
-	if err != nil {
-		return ""
-	}
-	return fmt.Sprintf("%016d", seqNum)
-}
-
-// uint64ToBytes converts an uint64 to a byte slice
-func uint64ToBytes(i uint64) []byte {
-	//nolint:mnd
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, i)
-	return buf
-}
-
-// bytesToUint64 converts a byte slice to an uint64
-func bytesToUint64(b []byte) uint64 {
-	return binary.BigEndian.Uint64(b)
 }

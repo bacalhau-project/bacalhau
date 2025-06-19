@@ -9,15 +9,28 @@ import (
 
 const JobStoreComponent = "JobStore"
 const (
-	ConflictJobState         bacerrors.ErrorCode = "ConflictJobState"
-	MultipleJobsFound        bacerrors.ErrorCode = "MultipleJobsFound"
-	MultipleExecutionsFound  bacerrors.ErrorCode = "MultipleExecutionsFound"
-	MultipleEvaluationsFound bacerrors.ErrorCode = "MultipleEvaluationsFound"
-	ConflictJobVersion       bacerrors.ErrorCode = "ConflictJobVersion"
+	ConflictJobState               bacerrors.ErrorCode = "ConflictJobState"
+	MultipleJobsFound              bacerrors.ErrorCode = "MultipleJobsFound"
+	MultipleExecutionsFound        bacerrors.ErrorCode = "MultipleExecutionsFound"
+	MultipleEvaluationsFound       bacerrors.ErrorCode = "MultipleEvaluationsFound"
+	MultipleJobIDsForSameNameFound bacerrors.ErrorCode = "MultipleJobIDsForSameNameFound"
+	ConflictJobRevision            bacerrors.ErrorCode = "ConflictJobRevision"
 )
 
 func NewErrJobNotFound(id string) bacerrors.Error {
 	return bacerrors.Newf("job not found: %s", id).
+		WithCode(bacerrors.NotFoundError).
+		WithComponent(JobStoreComponent)
+}
+
+func NewErrJobNameIndexNotFound(jobName string) bacerrors.Error {
+	return bacerrors.Newf("job name index not found: %s", jobName).
+		WithCode(bacerrors.NotFoundError).
+		WithComponent(JobStoreComponent)
+}
+
+func NewErrJobVersionNotFound(jobID string, jobVersion uint64) bacerrors.Error {
+	return bacerrors.Newf("job version %d not found for job %s", jobVersion, jobID).
 		WithCode(bacerrors.NotFoundError).
 		WithComponent(JobStoreComponent)
 }
@@ -29,29 +42,41 @@ func NewErrMultipleJobsFound(id string) bacerrors.Error {
 		WithHint("Use full job ID")
 }
 
+func NewErrMultipleJobIDsForSameJobNameFound(jobName string) bacerrors.Error {
+	return bacerrors.Newf("multiple job IDs found for same job name id %s", jobName).
+		WithCode(MultipleJobIDsForSameNameFound).
+		WithComponent(JobStoreComponent)
+}
+
 func NewErrJobAlreadyExists(id string) bacerrors.Error {
 	return bacerrors.Newf("job already exists: %s", id).
 		WithCode(bacerrors.ResourceInUse).
 		WithComponent(JobStoreComponent)
 }
 
+func NewErrJobNameAlreadyExists(name, namespace string) bacerrors.Error {
+	return bacerrors.Newf("job name %s already exists in namespace %s", name, namespace).
+		WithCode(bacerrors.ResourceInUse).
+		WithComponent(JobStoreComponent)
+}
+
 func NewErrInvalidJobState(id string, actual models.JobStateType, expected models.JobStateType) bacerrors.Error {
-	var errorFormat string
+	var errorMsg string
 	if expected.IsUndefined() {
-		errorFormat = "job %s is in unexpected state %s"
+		errorMsg = fmt.Sprintf("job %s is in unexpected state %s", id, actual)
 	} else {
-		errorFormat = "job %s is in state %s but expected %s"
+		errorMsg = fmt.Sprintf("job %s is in state %s but expected %s", id, actual, expected)
 	}
 
-	return bacerrors.Newf(errorFormat, id, actual).
+	return bacerrors.New(errorMsg).
 		WithCode(ConflictJobState).
 		WithComponent(JobStoreComponent)
 }
 
-func NewErrInvalidJobVersion(id string, actual, expected uint64) bacerrors.Error {
-	errorMessage := fmt.Sprintf("job %s has version %d but expected %d", id, actual, expected)
+func NewErrInvalidJobRevision(id string, actual, expected uint64) bacerrors.Error {
+	errorMessage := fmt.Sprintf("job %s has revision %d but expected %d", id, actual, expected)
 	return bacerrors.Newf("%s", errorMessage).
-		WithCode(ConflictJobVersion).
+		WithCode(ConflictJobRevision).
 		WithComponent(JobStoreComponent)
 }
 
@@ -106,9 +131,9 @@ func NewErrInvalidExecutionDesiredState(
 		WithComponent(JobStoreComponent)
 }
 
-func NewErrInvalidExecutionVersion(id string, actual, expected uint64) bacerrors.Error {
-	return bacerrors.Newf("execution %s has version %d but expected %d", id, actual, expected).
-		WithCode(ConflictJobVersion).
+func NewErrInvalidExecutionRevision(id string, actual, expected uint64) bacerrors.Error {
+	return bacerrors.Newf("execution %s has revision %d but expected %d", id, actual, expected).
+		WithCode(ConflictJobRevision).
 		WithComponent(JobStoreComponent)
 }
 

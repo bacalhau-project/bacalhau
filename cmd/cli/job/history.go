@@ -29,10 +29,10 @@ var (
 		bacalhau job history e3f8c209-d683-4a41-b840-f09b88d087b9
 
 		# Job level events
-		bacalhau job history --type job e3f8c209
+		bacalhau job history --event-type job e3f8c209
 
 		# Execution level events
-		bacalhau job history --type execution e3f8c209
+		bacalhau job history --event-type execution e3f8c209
 `)
 )
 
@@ -40,8 +40,11 @@ var (
 type HistoryOptions struct {
 	output.OutputOptions
 	cliflags.ListOptions
-	EventType   string
-	ExecutionID string
+	EventType      string
+	ExecutionID    string
+	JobVersion     uint64
+	AllJobVersions bool
+	Namespace      string
 }
 
 // NewHistoryOptions returns initialized Options
@@ -81,6 +84,15 @@ func NewHistoryCmd() *cobra.Command {
 		"The type of history events to return. One of: all, job, execution")
 	nodeCmd.Flags().StringVar(&o.ExecutionID, "execution-id", o.ExecutionID,
 		"The execution id to filter by.")
+	nodeCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+		"The job version to filter by. By default, the latest version is used.")
+	nodeCmd.Flags().BoolVar(&o.AllJobVersions, "all-versions", o.AllJobVersions,
+		"Specifies that all job versions should be returned. "+
+			"By default, only the executions of the latest job version is returned. Note: this flag is mutually "+
+			"exclusive with --version, where the latter takes precedence if both are set.")
+	nodeCmd.PersistentFlags().StringVar(&o.Namespace, "namespace", o.Namespace,
+		`Job Namespace. If not provided, default namespace will be used.`,
+	)
 	nodeCmd.Flags().AddFlagSet(cliflags.ListFlags(&o.ListOptions))
 	nodeCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&o.OutputOptions))
 	return nodeCmd
@@ -89,6 +101,7 @@ func NewHistoryCmd() *cobra.Command {
 var historyColumns = []output.TableColumn[*models.JobHistory]{
 	cols.HistoryDateTime,
 	cols.HistoryLevel,
+	cols.HistoryJobVersionLevel,
 	cols.HistoryExecID,
 	cols.HistoryTopic,
 	cols.HistoryEvent,
@@ -96,18 +109,22 @@ var historyColumns = []output.TableColumn[*models.JobHistory]{
 
 func (o *HistoryOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
-	jobID := args[0]
-	response, err := api.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
-		JobID:       jobID,
+	JobIDOrName := args[0]
+
+	request := &apimodels.ListJobHistoryRequest{
+		JobIDOrName: JobIDOrName,
 		EventType:   o.EventType,
 		ExecutionID: o.ExecutionID,
-		BaseListRequest: apimodels.BaseListRequest{
-			Limit:     o.Limit,
-			NextToken: o.NextToken,
-			OrderBy:   o.OrderBy,
-			Reverse:   o.Reverse,
-		},
-	})
+	}
+	request.Limit = o.Limit
+	request.NextToken = o.NextToken
+	request.OrderBy = o.OrderBy
+	request.Reverse = o.Reverse
+	request.Namespace = o.Namespace
+	request.JobVersion = o.JobVersion
+	request.AllJobVersions = o.AllJobVersions
+
+	response, err := api.Jobs().History(ctx, request)
 	if err != nil {
 		return errors.New(err.Error())
 	}

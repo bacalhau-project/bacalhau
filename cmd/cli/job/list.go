@@ -113,6 +113,14 @@ var listColumns = []output.TableColumn[*models.Job]{
 		Value: func(jwi *models.Job) string { return jwi.ID },
 	},
 	{
+		ColumnConfig: table.ColumnConfig{
+			Name:             "name",
+			WidthMax:         40,
+			WidthMaxEnforcer: text.WrapText,
+		},
+		Value: func(j *models.Job) string { return j.Name },
+	},
+	{
 		ColumnConfig: table.ColumnConfig{Name: "job", WidthMax: listMaxDescWidth, WidthMaxEnforcer: text.WrapText},
 		Value: func(j *models.Job) string {
 			finalStr := fmt.Sprintf("%v", j.Task().Engine.Type)

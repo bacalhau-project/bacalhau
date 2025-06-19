@@ -75,7 +75,7 @@ func (j *JobProgressPrinter) followLogs(ctx context.Context, job *models.Job, cm
 	// Wait until the job has actually been accepted and started, otherwise this will fail waiting for
 	// the execution to appear.
 	for i := 0; i < 10; i++ {
-		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: job.ID})
+		resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: job.ID})
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return nil
@@ -137,11 +137,14 @@ func (j *JobProgressPrinter) fetchEvents(ctx context.Context, job *models.Job, e
 			return
 		case <-ticker.C:
 			response, err := j.client.Jobs().History(ctx, &apimodels.ListJobHistoryRequest{
-				JobID:     job.ID,
-				EventType: "all",
-				BaseListRequest: apimodels.BaseListRequest{
-					NextToken: nextToken,
-					Limit:     10,
+				JobIDOrName: job.ID,
+				EventType:   "all",
+				BaseVersionedListRequest: apimodels.BaseVersionedListRequest{
+					JobVersion: job.Version,
+					BaseListRequest: apimodels.BaseListRequest{
+						NextToken: nextToken,
+						Limit:     10,
+					},
 				},
 			})
 			if err != nil {
@@ -191,7 +194,7 @@ func (j *JobProgressPrinter) handleEvents(
 }
 
 func (j *JobProgressPrinter) checkFinalJobState(ctx context.Context, job *models.Job, cmd *cobra.Command) error {
-	resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobID: job.ID})
+	resp, err := j.client.Jobs().Get(ctx, &apimodels.GetJobRequest{JobIDOrName: job.ID})
 	if err != nil {
 		return fmt.Errorf("failed getting job: %w", err)
 	}
@@ -216,7 +219,7 @@ func (j *JobProgressPrinter) printNodeDetails(ctx context.Context, cmd *cobra.Co
 		return nil
 	}
 
-	executions, err := j.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobID: job.ID})
+	executions, err := j.client.Jobs().Executions(ctx, &apimodels.ListJobExecutionsRequest{JobIDOrName: job.ID})
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil
@@ -249,7 +252,7 @@ func (j *JobProgressPrinter) printJobDetailsInstructions(cmd *cobra.Command, job
 
 	// query the server for the job spec to get any server side defaults and transformations,
 	// such as if a default publisher was applied
-	resp, err := j.client.Jobs().Get(cmd.Context(), &apimodels.GetJobRequest{JobID: job.ID})
+	resp, err := j.client.Jobs().Get(cmd.Context(), &apimodels.GetJobRequest{JobIDOrName: job.ID})
 	if err != nil {
 		// just log and continue with the existing job details
 		PrintWarning(cmd, fmt.Sprintf("Failed to get updated job details: %v", err))
