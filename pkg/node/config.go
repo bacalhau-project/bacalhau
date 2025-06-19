@@ -50,33 +50,9 @@ type SystemConfig struct {
 	//  but we still need to validate the behaviour is a job without resource limits land on a compute node
 	DefaultComputeJobResourceLimits models.Resources
 
-func (c *SystemConfig) applyDefaults() {
-	defaults := DefaultSystemConfig()
-	if c.OverSubscriptionFactor == 0 {
-		c.OverSubscriptionFactor = defaults.OverSubscriptionFactor
-	}
-	if c.NodeRankRandomnessRange == 0 {
-		c.NodeRankRandomnessRange = defaults.NodeRankRandomnessRange
-	}
-	if c.MaxExecutionsPerEval == 0 {
-		c.MaxExecutionsPerEval = defaults.MaxExecutionsPerEval
-	}
-	if c.ExecutionLimitBackoff == 0 {
-		c.ExecutionLimitBackoff = defaults.ExecutionLimitBackoff
-	}
-	if c.NodeReEvaluatorBatchDelay == 0 {
-		c.NodeReEvaluatorBatchDelay = defaults.NodeReEvaluatorBatchDelay
-	}
-	if c.NodeReEvaluatorMaxBatchSize == 0 {
-		c.NodeReEvaluatorMaxBatchSize = defaults.NodeReEvaluatorMaxBatchSize
-	}
-	if c.DefaultComputeJobResourceLimits.IsZero() {
-		c.DefaultComputeJobResourceLimits = defaults.DefaultComputeJobResourceLimits
-	}
-	if !c.SkipLicenseValidation {
-		c.SkipLicenseValidation = defaults.SkipLicenseValidation
-	}
-}
+	NodeReEvaluatorBatchDelay time.Duration
+
+	NodeReEvaluatorMaxBatchSize int
 }
 
 func DefaultSystemConfig() SystemConfig {
