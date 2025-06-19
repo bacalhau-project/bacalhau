@@ -147,6 +147,21 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestEchoHTTPError() {
 				Component:      "APIServer",
 			},
 		},
+		{
+			name:      "404 not found error with custom handling",
+			err:       echo.NewHTTPError(http.StatusNotFound, "not found"),
+			debugMode: false,
+			want: apimodels.APIError{
+				HTTPStatusCode: http.StatusNotFound,
+				Message:        "The requested resource/URL was not found.",
+				Code:           string(bacerrors.NotFoundError),
+				Component:      "APIServer",
+				Hint:           "The server version may be older than this CLI version and does not support the endpoint yet.",
+				Details: map[string]string{
+					"cli_usage": "If you are using the CLI, try updating your server to a newer version or check if the command is supported in your server version.",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -167,6 +182,10 @@ func (suite *CustomHTTPErrorHandlerTestSuite) TestEchoHTTPError() {
 			suite.Equal(tt.want.Message, apiError.Message)
 			suite.Equal(tt.want.Code, apiError.Code)
 			suite.Equal(tt.want.Component, apiError.Component)
+			suite.Equal(tt.want.Hint, apiError.Hint)
+			if tt.want.Details != nil {
+				suite.Equal(tt.want.Details, apiError.Details)
+			}
 		})
 	}
 }

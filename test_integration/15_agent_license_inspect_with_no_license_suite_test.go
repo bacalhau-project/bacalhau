@@ -45,7 +45,9 @@ func (s *AgentLicenseInspectWithNoLicenseSuite) TestValidateRemoteLicenseWithNoL
 		},
 	)
 
-	s.Require().ErrorContains(err, "Error inspecting orchestrator license: No license configured for orchestrator.")
+	s.Require().ErrorContains(err, "License not found")
+	s.Require().ErrorContains(err, "Orchestrator was not configured with a license. A license can "+
+		"be obtained from https://cloud.expanso.io/")
 }
 
 func TestAgentLicenseInspectWithNoLicenseSuite(t *testing.T) {
