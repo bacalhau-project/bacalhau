@@ -21,20 +21,32 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 	switch e := err.(type) {
 	case bacerrors.Error:
 		apiError = apimodels.FromBacError(e)
-
 	case *echo.HTTPError:
 		// This is needed, in case any other middleware throws an error. In
 		// such a scenario we just use it as the error code and the message.
 		// One such example being when request body size is larger then the max
 		// size accepted
-		apiError = &apimodels.APIError{
-			HTTPStatusCode: e.Code,
-			Code:           string(bacerrors.InternalError),
-			Message:        e.Message.(string),
-			Component:      "APIServer",
-		}
-		if c.Echo().Debug && e.Internal != nil {
-			apiError.Message += ". " + e.Internal.Error()
+		if e.Code == http.StatusNotFound {
+			apiError = &apimodels.APIError{
+				HTTPStatusCode: http.StatusNotFound,
+				Code:           string(bacerrors.NotFoundError),
+				Message:        "The requested resource/URL was not found.",
+				Component:      "APIServer",
+				Hint:           "The server version may be older than this CLI version and does not support the endpoint yet.",
+				Details: map[string]string{
+					"cli_usage": "If you are using the CLI, try updating your server to a newer version or check if the command is supported in your server version.",
+				},
+			}
+		} else {
+			apiError = &apimodels.APIError{
+				HTTPStatusCode: e.Code,
+				Code:           string(bacerrors.InternalError),
+				Message:        e.Message.(string),
+				Component:      "APIServer",
+			}
+			if c.Echo().Debug && e.Internal != nil {
+				apiError.Message += ". " + e.Internal.Error()
+			}
 		}
 
 	default:
