@@ -101,4 +101,10 @@ func (c *SystemConfig) applyDefaults() {
 	if !c.SkipLicenseValidation {
 		c.SkipLicenseValidation = defaults.SkipLicenseValidation
 	}
+	if c.NodeReEvaluatorBatchDelay == 0 {
+		c.NodeReEvaluatorBatchDelay = defaults.NodeReEvaluatorBatchDelay
+	}
+	if c.NodeReEvaluatorMaxBatchSize == 0 {
+		c.NodeReEvaluatorMaxBatchSize = defaults.NodeReEvaluatorMaxBatchSize
+	}
 }
