@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 
@@ -156,10 +157,12 @@ func (e *Endpoint) config(c echo.Context) error {
 func (e *Endpoint) license(c echo.Context) error {
 	licenseClaims := e.licenseReader.License()
 	if licenseClaims == nil {
-		return echo.NewHTTPError(
-			http.StatusNotFound,
-			"Error inspecting orchestrator license: No license configured for orchestrator.",
-		)
+		return bacerrors.Newf("License not found.").
+			WithComponent("License").
+			WithCode(bacerrors.NotFoundError).
+			WithHTTPStatusCode(http.StatusNotFound).
+			WithHint("Orchestrator was not configured with a license. A license can " +
+				"be obtained from https://cloud.expanso.io/")
 	}
 
 	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{

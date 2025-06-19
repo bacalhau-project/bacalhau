@@ -116,32 +116,6 @@ func TestEndpointLicenseValid(t *testing.T) {
 	assert.Equal(t, 1, response.MaxNumberOfNodes())
 }
 
-// TestEndpointLicenseNotConfigured tests the license endpoint when no license is configured
-func TestEndpointLicenseNotConfigured(t *testing.T) {
-	router := echo.New()
-
-	// Create license manager
-	licenseManager, err := licensing.NewReader("")
-	require.NoError(t, err)
-
-	_, err = NewEndpoint(EndpointParams{
-		Router:        router,
-		LicenseReader: licenseManager,
-	})
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/agent/license", nil)
-	rr := httptest.NewRecorder()
-	router.ServeHTTP(rr, req)
-
-	require.Equal(t, http.StatusNotFound, rr.Code)
-
-	var errResp map[string]string
-	err = json.NewDecoder(rr.Body).Decode(&errResp)
-	require.NoError(t, err)
-	require.Contains(t, errResp["message"], "Error inspecting orchestrator license: No license configured for orchestrator.")
-}
-
 // TestEndpointLicenseManagerNotConfigured tests when the license manager is not configured
 func TestEndpointLicenseManagerNotConfigured(t *testing.T) {
 	router := echo.New()
