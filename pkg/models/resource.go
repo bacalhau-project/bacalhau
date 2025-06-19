@@ -230,21 +230,30 @@ func (r *Resources) Sub(other Resources) *Resources {
 
 	usage.GPUs, _ = lo.Difference(r.GPUs, other.GPUs)
 
-	if r.LessThan(other) {
-		log.Warn().Msgf("Subtracting larger resource usage %s from %s. Replacing negative values with zeros",
+	// Check for negative values and replace with zeros
+	hasNegativeValues := false
+
+	if other.CPU > r.CPU {
+		usage.CPU = 0
+		hasNegativeValues = true
+	}
+	if other.Memory > r.Memory {
+		usage.Memory = 0
+		hasNegativeValues = true
+	}
+	if other.Disk > r.Disk {
+		usage.Disk = 0
+		hasNegativeValues = true
+	}
+	if other.GPU > r.GPU {
+		usage.GPU = 0
+		hasNegativeValues = true
+	}
+
+	// Log once if any negative values were encountered
+	if hasNegativeValues {
+		log.Warn().Msgf("Subtracting larger resource usage %s from %s. Replaced negative values with zeros",
 			other.String(), r.String())
-		if other.CPU > r.CPU {
-			usage.CPU = 0
-		}
-		if other.Memory > r.Memory {
-			usage.Memory = 0
-		}
-		if other.Disk > r.Disk {
-			usage.Disk = 0
-		}
-		if other.GPU > r.GPU {
-			usage.GPU = 0
-		}
 	}
 
 	return usage
