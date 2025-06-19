@@ -122,6 +122,11 @@ type Store interface {
 // NodeStateFilter defines a function type for filtering node states.
 type NodeStateFilter func(models.NodeState) bool
 
+// HealthyNodeFilter is a filter that returns only nodes that are healthy and connected.
+func HealthyNodeFilter(state models.NodeState) bool {
+	return state.ConnectionState.Status == models.NodeStates.CONNECTED
+}
+
 // NodeConnectionEvent represents a change in a node's connection state.
 type NodeConnectionEvent struct {
 	// NodeID is the identifier of the node whose state changed

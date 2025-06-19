@@ -118,10 +118,35 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
+
+	transportLayer *nats_transport.NATSTransport
+	cancelFunc     context.CancelFunc
 }
 
 func (n *Node) Start(ctx context.Context) error {
 	return n.APIServer.ListenAndServe(ctx)
+}
+
+func (n *Node) Stop(ctx context.Context) error {
+	if n.ComputeNode != nil {
+		n.ComputeNode.Cleanup(ctx)
+	}
+	if n.RequesterNode != nil {
+		n.RequesterNode.cleanup(ctx)
+	}
+
+	var err error
+	// Assuming transportLayer and apiServer are accessible via Node struct
+	if n.transportLayer != nil {
+		err = errors.Join(err, n.transportLayer.Close(ctx))
+	}
+	if n.APIServer != nil {
+		err = errors.Join(err, n.APIServer.Shutdown(ctx))
+	}
+	if n.cancelFunc != nil {
+		n.cancelFunc()
+	}
+	return err
 }
 
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
@@ -245,38 +270,23 @@ func NewNode(
 	)
 
 	// Cleanup libp2p resources in the desired order
-	cfg.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
-		if computeNode != nil {
-			computeNode.Cleanup(ctx)
-		}
-		if requesterNode != nil {
-			requesterNode.cleanup(ctx)
-		}
-
-		var err error
-		if transportLayer != nil {
-			err = errors.Join(err, transportLayer.Close(ctx))
-		}
-
-		if apiServer != nil {
-			err = errors.Join(err, apiServer.Shutdown(ctx))
-		}
-		cancel()
-		return err
-	})
-
-	metrics.NodeInfo.Add(ctx, 1,
-		attribute.String("node_id", cfg.NodeID),
-		attribute.Bool("node_is_compute", cfg.BacalhauConfig.Compute.Enabled),
-		attribute.Bool("node_is_orchestrator", cfg.BacalhauConfig.Orchestrator.Enabled),
-	)
 	node := &Node{
 		ID:             cfg.NodeID,
 		CleanupManager: cfg.CleanupManager,
 		APIServer:      apiServer,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
+		transportLayer: transportLayer,
+		cancelFunc:     cancel,
 	}
+
+	cfg.CleanupManager.RegisterCallbackWithContext(node.Stop)
+
+	metrics.NodeInfo.Add(ctx, 1,
+		attribute.String("node_id", cfg.NodeID),
+		attribute.Bool("node_is_compute", cfg.BacalhauConfig.Compute.Enabled),
+		attribute.Bool("node_is_orchestrator", cfg.BacalhauConfig.Orchestrator.Enabled),
+	)
 
 	return node, nil
 }

@@ -340,8 +340,11 @@ func NewRequesterNode(
 
 	// Create ReEvaluator for automatic job re-evaluation on node state changes
 	reEvaluator, err := nodes.NewReEvaluator(nodes.ReEvaluatorParams{
-		JobStore: jobStore,
+		JobStore:     jobStore,
+		BatchDelay:   cfg.SystemConfig.NodeReEvaluatorBatchDelay,
+		MaxBatchSize: cfg.SystemConfig.NodeReEvaluatorMaxBatchSize,
 	})
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create re-evaluator: %w", err)
 	}
