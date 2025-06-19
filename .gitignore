@@ -71,3 +71,5 @@ test_integration/common_assets/bacalhau_bin
 
 .flox
 webui/compiled/*
+
+.claude/settings.local.json

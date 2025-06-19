@@ -2,6 +2,8 @@ package analytics
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -156,11 +158,11 @@ func (s *NodeTestSuite) TestNodeInfosEvent() {
 	s.Equal(2.5, props["utilization_avg_running_executions"])
 	s.Equal(1.0, props["utilization_avg_enqueued_executions"])
 
-	// Utilization percentages
-	s.InDelta(83.33, props["utilization_cpu_percent"], 0.01)
-	s.InDelta(0.061, props["utilization_memory_percent"], 0.001)
-	s.InDelta(0.031, props["utilization_disk_percent"], 0.001)
-	s.InDelta(125.0, props["utilization_gpu_percent"], 0.1)
+	// Utilization percentages (based on used/total capacity)
+	s.InDelta(41.67, props["utilization_cpu_percent"], 0.01)
+	s.InDelta(25.0, props["utilization_memory_percent"], 0.1)
+	s.InDelta(25.0, props["utilization_disk_percent"], 0.1)
+	s.InDelta(50.0, props["utilization_gpu_percent"], 0.1)
 }
 
 func (s *NodeTestSuite) TestEmptyNodeInfosEvent() {
@@ -231,4 +233,141 @@ func (s *NodeTestSuite) TestMultiNodeStdDevCalculation() {
 
 	// Standard deviation should be 2.0
 	s.InDelta(2.0, props["resource_stats_std_dev_cpu"], 0.00001)
+}
+
+func (s *NodeTestSuite) TestCapabilitiesSortingByCount() {
+	// Create nodes with different execution engines to test sorting
+	node1 := s.createTestNodeState()
+	node2 := s.createTestNodeState()
+	node3 := s.createTestNodeState()
+	node4 := s.createTestNodeState()
+
+	// Set up different execution engines with varying counts
+	node1.Info.ComputeNodeInfo.ExecutionEngines = []string{"docker", "wasm"}   // docker: 4, wasm: 2
+	node2.Info.ComputeNodeInfo.ExecutionEngines = []string{"docker", "podman"} // podman: 1
+	node3.Info.ComputeNodeInfo.ExecutionEngines = []string{"docker", "wasm"}
+	node4.Info.ComputeNodeInfo.ExecutionEngines = []string{"docker"}
+
+	nodes := []models.NodeState{node1, node2, node3, node4}
+	event := NewNodeInfosEvent(nodes)
+
+	props := event.Properties()
+
+	// Verify capabilities are sorted by count (docker=4, wasm=2, podman=1)
+	s.Equal(4, props["capabilities_execution_engines_docker"])
+	s.Equal(2, props["capabilities_execution_engines_wasm"])
+	s.Equal(1, props["capabilities_execution_engines_podman"])
+	s.Equal(3, props["capabilities_execution_engines_count"])
+}
+
+func (s *NodeTestSuite) TestLargeResourceValuesNoOverflow() {
+	// Test with very large resource values that could cause overflow
+	node1 := s.createTestNodeState()
+	node2 := s.createTestNodeState()
+
+	// Set very large resource values (close to uint64 max for memory/disk)
+	largeMemory := uint64(1 << 60) // 1 exabyte
+	largeDisk := uint64(1 << 61)   // 2 exabytes
+
+	node1.Info.ComputeNodeInfo.MaxCapacity.Memory = largeMemory
+	node1.Info.ComputeNodeInfo.MaxCapacity.Disk = largeDisk
+	node1.Info.ComputeNodeInfo.AvailableCapacity.Memory = largeMemory / 2
+	node1.Info.ComputeNodeInfo.AvailableCapacity.Disk = largeDisk / 2
+
+	node2.Info.ComputeNodeInfo.MaxCapacity.Memory = largeMemory
+	node2.Info.ComputeNodeInfo.MaxCapacity.Disk = largeDisk
+	node2.Info.ComputeNodeInfo.AvailableCapacity.Memory = largeMemory / 3
+	node2.Info.ComputeNodeInfo.AvailableCapacity.Disk = largeDisk / 3
+
+	nodes := []models.NodeState{node1, node2}
+	event := NewNodeInfosEvent(nodes)
+
+	props := event.Properties()
+
+	// Should not panic and should produce reasonable values
+	s.Equal(largeMemory*2, props["resources_total_memory"])
+	s.Equal(largeDisk*2, props["resources_total_disk"])
+
+	// Standard deviation should be calculated without overflow
+	s.NotNil(props["resource_stats_std_dev_memory"])
+	s.NotNil(props["resource_stats_std_dev_disk"])
+
+	// Values should be finite (not NaN or Inf)
+	memStdDev, ok := props["resource_stats_std_dev_memory"].(uint64)
+	s.True(ok)
+	s.True(memStdDev < uint64(largeMemory)) // Reasonable value
+}
+
+func (s *NodeTestSuite) TestNoopEventFiltering() {
+	// Test that NoopEvent has the correct type
+	s.Equal(NoopEventType, NoopEvent.Type())
+	s.NotNil(NoopEvent.Properties())
+	s.Equal(EventProperties{}, NoopEvent.Properties())
+}
+
+func (s *NodeTestSuite) TestMixedComputeAndRequesterNodes() {
+	// Test filtering works correctly with mixed node types
+	computeNode := s.createTestNodeState()
+	requesterNode := s.createTestNodeState()
+	requesterNode.Info.NodeType = models.NodeTypeRequester
+
+	// Mix of compute and requester nodes
+	nodes := []models.NodeState{computeNode, requesterNode}
+	event := NewNodeInfosEvent(nodes)
+
+	props := event.Properties()
+
+	// Should only count the compute node
+	s.Equal(1, props["total_nodes"])
+	s.Equal(2.0, props["resources_total_cpu"]) // Only from compute node
+}
+
+func (s *NodeTestSuite) TestUtilizationCalculationEdgeCases() {
+	// Test edge case where available > max capacity (shouldn't happen but handle gracefully)
+	node := s.createTestNodeState()
+
+	// Set available higher than max (edge case)
+	node.Info.ComputeNodeInfo.AvailableCapacity.CPU = 5.0
+	node.Info.ComputeNodeInfo.MaxCapacity.CPU = 2.0
+
+	nodes := []models.NodeState{node}
+	event := NewNodeInfosEvent(nodes)
+
+	props := event.Properties()
+
+	// The existing Sub method should handle this by setting used capacity to 0
+	// when available > max, resulting in 0% utilization
+	utilization, ok := props["utilization_cpu_percent"].(float64)
+	s.True(ok)
+	s.Equal(0.0, utilization) // Should be 0% when available > max
+}
+
+func (s *NodeTestSuite) TestMaxCapabilitiesLimit() {
+	// Test that we don't exceed maxEnginesToReport (10) capabilities
+	node := s.createTestNodeState()
+
+	// Create more than 10 execution engines
+	engines := make([]string, 15)
+	for i := 0; i < 15; i++ {
+		engines[i] = fmt.Sprintf("engine%d", i)
+	}
+	node.Info.ComputeNodeInfo.ExecutionEngines = engines
+
+	nodes := []models.NodeState{node}
+	event := NewNodeInfosEvent(nodes)
+
+	props := event.Properties()
+
+	// Should report exactly 15 distinct engines
+	s.Equal(15, props["capabilities_execution_engines_count"])
+
+	// But should only include details for max 10
+	engineCount := 0
+	for key := range props {
+		if strings.HasPrefix(key, "capabilities_execution_engines_") &&
+			key != "capabilities_execution_engines_count" {
+			engineCount++
+		}
+	}
+	s.Equal(10, engineCount) // Should be limited to maxEnginesToReport
 }

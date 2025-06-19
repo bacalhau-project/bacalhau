@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -134,8 +135,9 @@ func populateResourceProperties(nodes []models.NodeState, properties EventProper
 func populateResourceStatsProperties(nodes []models.NodeState, properties EventProperties) {
 	var minResources models.Resources
 	var maxResources models.Resources
-	var sumSquaredResources models.Resources
 	var sumResources models.Resources
+	// Use float64 to prevent integer overflow when squaring large values
+	var sumSquaredCPU, sumSquaredMemory, sumSquaredDisk, sumSquaredGPU float64
 	nodesWithResources := 0
 
 	// Gather resource information
@@ -183,12 +185,11 @@ func populateResourceStatsProperties(nodes []models.NodeState, properties EventP
 
 		// Track for average and standard deviation calculation
 		sumResources = *sumResources.Add(resources)
-		sumSquaredResources = *sumSquaredResources.Add(models.Resources{
-			CPU:    resources.CPU * resources.CPU,
-			Memory: resources.Memory * resources.Memory,
-			Disk:   resources.Disk * resources.Disk,
-			GPU:    resources.GPU * resources.GPU,
-		})
+		// Use float64 to prevent overflow when squaring large uint64 values
+		sumSquaredCPU += resources.CPU * resources.CPU
+		sumSquaredMemory += float64(resources.Memory) * float64(resources.Memory)
+		sumSquaredDisk += float64(resources.Disk) * float64(resources.Disk)
+		sumSquaredGPU += float64(resources.GPU) * float64(resources.GPU)
 	}
 
 	// Add min resource stats to properties
@@ -212,13 +213,13 @@ func populateResourceStatsProperties(nodes []models.NodeState, properties EventP
 		properties["resource_stats_avg_gpu"] = uint64(float64(sumResources.GPU) / float64(nodesWithResources))
 
 		// Calculate and add standard deviation resource stats
-		properties["resource_stats_std_dev_cpu"] = calculateStdDev(sumSquaredResources.CPU, sumResources.CPU, nodesWithResources)
+		properties["resource_stats_std_dev_cpu"] = calculateStdDev(sumSquaredCPU, sumResources.CPU, nodesWithResources)
 		properties["resource_stats_std_dev_memory"] =
-			uint64(calculateStdDev(float64(sumSquaredResources.Memory), float64(sumResources.Memory), nodesWithResources))
+			uint64(calculateStdDev(sumSquaredMemory, float64(sumResources.Memory), nodesWithResources))
 		properties["resource_stats_std_dev_disk"] =
-			uint64(calculateStdDev(float64(sumSquaredResources.Disk), float64(sumResources.Disk), nodesWithResources))
+			uint64(calculateStdDev(sumSquaredDisk, float64(sumResources.Disk), nodesWithResources))
 		properties["resource_stats_std_dev_gpu"] =
-			uint64(calculateStdDev(float64(sumSquaredResources.GPU), float64(sumResources.GPU), nodesWithResources))
+			uint64(calculateStdDev(sumSquaredGPU, float64(sumResources.GPU), nodesWithResources))
 	} else {
 		// Set zero values if no nodes with resources
 		properties["resource_stats_avg_cpu"] = 0.0
@@ -284,16 +285,37 @@ func populateCapabilitiesProperties(nodes []models.NodeState, properties EventPr
 	addCapabilityDetails(versions, "capabilities_versions_", properties)
 }
 
+// capabilityCount represents a capability name and its count for sorting
+type capabilityCount struct {
+	name  string
+	count int
+}
+
 // addCapabilityDetails adds top capabilities of a specific type to properties
-// For each capability in the map, adds a property with key <prefix><capability_name> = count
+// Sorts capabilities by count (descending) and adds the top N to properties
 func addCapabilityDetails(capMap map[string]int, prefix string, properties EventProperties) {
-	count := 0
-	for name, num := range capMap {
-		properties[prefix+name] = num
-		count++
-		if count >= maxEnginesToReport { // Limit to top 10 to avoid event size issues
-			break
+	// Convert map to slice for sorting
+	capabilities := make([]capabilityCount, 0, len(capMap))
+	for name, count := range capMap {
+		capabilities = append(capabilities, capabilityCount{name: name, count: count})
+	}
+
+	// Sort by count descending, then by name for consistent ordering
+	sort.Slice(capabilities, func(i, j int) bool {
+		if capabilities[i].count == capabilities[j].count {
+			return capabilities[i].name < capabilities[j].name // Secondary sort by name
 		}
+		return capabilities[i].count > capabilities[j].count // Primary sort by count descending
+	})
+
+	// Add top N capabilities to properties
+	maxToAdd := maxEnginesToReport
+	if len(capabilities) < maxToAdd {
+		maxToAdd = len(capabilities)
+	}
+
+	for i := 0; i < maxToAdd; i++ {
+		properties[prefix+capabilities[i].name] = capabilities[i].count
 	}
 }
 
@@ -331,27 +353,34 @@ func populateUtilizationProperties(nodes []models.NodeState, totalResources mode
 		properties["utilization_avg_enqueued_executions"] = 0.0
 	}
 
+	// Calculate resource utilization based on used vs total capacity
+	var usedResources models.Resources
+	for _, node := range nodes {
+		usedCapacity := *node.Info.ComputeNodeInfo.MaxCapacity.Sub(node.Info.ComputeNodeInfo.AvailableCapacity)
+		usedResources = *usedResources.Add(usedCapacity)
+	}
+
 	// Calculate and add utilization percentages with divide-by-zero protection
 	if totalResources.CPU > 0 {
-		properties["utilization_cpu_percent"] = float64(totalRunningExecutions) / float64(totalResources.CPU) * 100
+		properties["utilization_cpu_percent"] = usedResources.CPU / totalResources.CPU * 100
 	} else {
 		properties["utilization_cpu_percent"] = 0.0
 	}
 
 	if totalResources.Memory > 0 {
-		properties["utilization_memory_percent"] = float64(totalRunningExecutions) / float64(totalResources.Memory) * 100
+		properties["utilization_memory_percent"] = float64(usedResources.Memory) / float64(totalResources.Memory) * 100
 	} else {
 		properties["utilization_memory_percent"] = 0.0
 	}
 
 	if totalResources.Disk > 0 {
-		properties["utilization_disk_percent"] = float64(totalRunningExecutions) / float64(totalResources.Disk) * 100
+		properties["utilization_disk_percent"] = float64(usedResources.Disk) / float64(totalResources.Disk) * 100
 	} else {
 		properties["utilization_disk_percent"] = 0.0
 	}
 
 	if totalResources.GPU > 0 {
-		properties["utilization_gpu_percent"] = float64(totalRunningExecutions) / float64(totalResources.GPU) * 100
+		properties["utilization_gpu_percent"] = float64(usedResources.GPU) / float64(totalResources.GPU) * 100
 	} else {
 		properties["utilization_gpu_percent"] = 0.0
 	}
