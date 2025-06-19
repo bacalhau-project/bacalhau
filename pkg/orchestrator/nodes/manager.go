@@ -852,16 +852,30 @@ func (n *nodesManager) GetByPrefix(ctx context.Context, prefix string) (models.N
 }
 
 func (n *nodesManager) List(ctx context.Context, filters ...NodeStateFilter) ([]models.NodeState, error) {
-	states, err := n.store.List(ctx, filters...)
+	states, err := n.store.List(ctx) // fetch all states, no filters
 	if err != nil {
 		return nil, err
 	}
 
-	for i := range states {
-		n.enrichState(&states[i])
+	// Create a mega filter that combines all the filters into one
+	megaFilter := func(state models.NodeState) bool {
+		for _, filter := range filters {
+			if !filter(state) {
+				return false
+			}
+		}
+		return true
 	}
 
-	return states, nil
+	filtered := make([]models.NodeState, 0, len(states))
+	for i := range states {
+		n.enrichState(&states[i])
+		if megaFilter(states[i]) {
+			filtered = append(filtered, states[i])
+		}
+	}
+
+	return filtered, nil
 }
 
 // resolveStartingOrchestratorSeqNum determines where a node should start receiving messages from.

@@ -49,16 +49,22 @@ type SystemConfig struct {
 	// TODO: remove compute level resource defaults. This should be handled at the orchestrator,
 	//  but we still need to validate the behaviour is a job without resource limits land on a compute node
 	DefaultComputeJobResourceLimits models.Resources
+
+	NodeReEvaluatorBatchDelay time.Duration
+
+	NodeReEvaluatorMaxBatchSize int
 }
 
 func DefaultSystemConfig() SystemConfig {
 	skipLicenseValidation := os.Getenv(SkipLicenseValidationEnvVar) == "true"
 	return SystemConfig{
-		OverSubscriptionFactor:  1.5,
-		NodeRankRandomnessRange: 5,
-		MaxExecutionsPerEval:    20,
-		ExecutionLimitBackoff:   100 * time.Millisecond,
-		SkipLicenseValidation:   skipLicenseValidation,
+		OverSubscriptionFactor:      1.5,
+		NodeRankRandomnessRange:     5,
+		MaxExecutionsPerEval:        20,
+		ExecutionLimitBackoff:       100 * time.Millisecond,
+		SkipLicenseValidation:       skipLicenseValidation,
+		NodeReEvaluatorBatchDelay:   15 * time.Second,
+		NodeReEvaluatorMaxBatchSize: 50,
 		DefaultComputeJobResourceLimits: models.Resources{
 			CPU:    0.1,               // 100m
 			Memory: 100 * 1024 * 1024, // 100Mi
@@ -69,6 +75,7 @@ func DefaultSystemConfig() SystemConfig {
 func TestSystemConfig() SystemConfig {
 	config := DefaultSystemConfig()
 	config.SkipLicenseValidation = true
+	config.NodeReEvaluatorMaxBatchSize = 1
 	return config
 }
 

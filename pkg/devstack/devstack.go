@@ -123,7 +123,8 @@ func (stack *DevStack) JoinNode(ctx context.Context, cm *system.CleanupManager, 
 	nodeID := fmt.Sprintf("node-%d", stack.nextNodeID)
 	ctx = logger.ContextWithNodeIDLogger(ctx, nodeID)
 
-	log.Ctx(ctx).Debug().Msgf("Creating joined node %s as {RequesterNode: %t, ComputeNode: %t}", nodeID, options.IsRequester, options.IsCompute)
+	log.Ctx(ctx).Debug().Msgf("Creating joined node %s as {RequesterNode: %t, ComputeNode: %t}",
+		nodeID, options.IsRequester, options.IsCompute)
 
 	// Clone the base config from the devstack
 	cfg := stack.config.BacalhauConfig

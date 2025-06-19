@@ -32,7 +32,7 @@ func NewNodeSelector(
 }
 
 func (n NodeSelector) AllNodes(ctx context.Context) ([]models.NodeInfo, error) {
-	nodeStates, err := n.discoverer.List(ctx)
+	nodeStates, err := n.discoverer.List(ctx, nodes.HealthyNodeFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list discovered nodes: %w", err)
 	}
