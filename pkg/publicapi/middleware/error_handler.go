@@ -34,7 +34,8 @@ func CustomHTTPErrorHandler(err error, c echo.Context) {
 				Component:      "APIServer",
 				Hint:           "The server version may be older than this CLI version and does not support the endpoint yet.",
 				Details: map[string]string{
-					"cli_usage": "If you are using the CLI, try updating your server to a newer version or check if the command is supported in your server version.",
+					"cli_usage": "If you are using the CLI, try updating your server to a newer version or check " +
+						"if the command is supported in your server version.",
 				},
 			}
 		} else {
