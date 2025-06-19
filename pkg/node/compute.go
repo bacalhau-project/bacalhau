@@ -240,6 +240,7 @@ func NewComputeNode(
 	if err != nil {
 		return nil, err
 	}
+	cfg.DependencyInjector.LazyPublisherProvider.SetProvider(connectionManager)
 
 	// First we attempt to start the legacy connection manager to maintain backward compatibility
 	// with older orchestrator nodes. If it fails, or we receive an upgrade available message, we

@@ -550,3 +550,16 @@ func (cm *ConnectionManager) GetHealth() nclprotocol.ConnectionHealth {
 func (cm *ConnectionManager) getState() nclprotocol.ConnectionState {
 	return cm.GetHealth().CurrentState
 }
+
+// GetRequester returns the publisher used for data plane requests.
+func (cm *ConnectionManager) GetPublisher() (ncl.Publisher, error) {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	if cm.dataPlane == nil {
+		return nil, nil
+	}
+	return cm.dataPlane.Requester, nil
+}
+
+// ConnectionManager should implement ncl.PublisherProvider
+var _ ncl.PublisherProvider = (*ConnectionManager)(nil)
