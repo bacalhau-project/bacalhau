@@ -1426,12 +1426,13 @@ func (b *BoltJobStore) updateJob(
 			return jobstore.
 				NewJobStoreError(
 					fmt.Sprintf(
-						"inconsistency in job names index. Job name %s ID %s does not match stored job ID %s",
+						"inconsistency between the Job name and its ID. Job name %s with ID %s does not match stored job ID %s",
 						existingJob.Name,
 						existingJob.ID,
 						indexedJobID,
 					)).
-				WithHint("please check Job Names Index bucket for data integrity")
+				WithHint("This usually happens if you try to rerun a job, using its ID, that was created before " +
+					"version 1.8")
 		}
 	}
 
