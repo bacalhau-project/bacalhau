@@ -70,13 +70,6 @@ func (p Publisher) PublishResult(ctx context.Context, execution *models.Executio
 	// Get the pre-signed URL for uploading the result file
 	preSignedURL, err := p.getUploadURL(ctx, execution)
 	if err != nil {
-		log.Ctx(ctx).Error().
-			Err(err).
-			Str("execution_id", execution.ID).
-			Str("job_id", execution.Job.ID).
-			Str("result_path", resultPath).
-			Msg("Failed to get pre-signed URL for managed S3 publisher")
-
 		return models.SpecConfig{}, bacerrors.New("failed to get pre-signed URL for managed S3 publisher").
 			WithHint("Ensure that the node is connected to an orchestrator and the orchestrator is configured to support managed S3 publisher")
 	}

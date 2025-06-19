@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -50,28 +49,6 @@ type S3ManagedPublisher struct {
 	Endpoint string `yaml:"Endpoint,omitempty" json:"Endpoint,omitempty"`
 	// PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty" json:"PreSignedURLExpiration,omitempty"`
-}
-
-func (p *S3ManagedPublisher) Validate() error {
-	var errs []string
-
-	if p.Bucket == "" {
-		errs = append(errs, "bucket cannot be empty")
-	}
-
-	if p.Region == "" {
-		errs = append(errs, "region cannot be empty")
-	}
-
-	if p.PreSignedURLExpiration.AsTimeDuration() <= 0 {
-		errs = append(errs, "pre-signed URL expiration must be greater than zero")
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("invalid publisher configuration: %s", strings.Join(errs, ", "))
-	}
-
-	return nil
 }
 
 // IsConfigured returns true if ANY specific configuration has been provided,

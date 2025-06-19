@@ -13,13 +13,13 @@ import (
 
 type PreSignedURLGeneratorParams struct {
 	ClientProvider  *s3helper.ClientProvider
-	PublisherConfig *types.S3ManagedPublisher
+	PublisherConfig types.S3ManagedPublisher
 }
 
 // PreSignedURLGenerator is responsible for generating pre-signed URLs for the managed S3 publisher.
 type PreSignedURLGenerator struct {
 	clientProvider  *s3helper.ClientProvider
-	publisherConfig *types.S3ManagedPublisher
+	publisherConfig types.S3ManagedPublisher
 }
 
 // NewPreSignedURLGenerator creates a new PreSignedURLGenerator with the given parameters.
@@ -27,9 +27,9 @@ type PreSignedURLGenerator struct {
 // 1. Not configured at all - no specific configuration provided (creates generator, no error)
 // 2. Incorrectly configured - some config is provided but invalid (does not creates generator, returns error)
 func NewPreSignedURLGenerator(params PreSignedURLGeneratorParams) (*PreSignedURLGenerator, error) {
-	// If publisher config is configured, check if it's valid.
-	if params.PublisherConfig != nil && params.PublisherConfig.IsConfigured() {
-		if err := params.PublisherConfig.Validate(); err != nil {
+	// If publisher is configured, check if the configuration is valid.
+	if params.PublisherConfig.IsConfigured() {
+		if err := ValidatePublisherConfig(params.PublisherConfig); err != nil {
 			return nil, err
 		}
 	}
@@ -48,9 +48,8 @@ func NewPreSignedURLGenerator(params PreSignedURLGeneratorParams) (*PreSignedURL
 // and mandatory configuration properties are set.
 func (p *PreSignedURLGenerator) IsInstalled() bool {
 	return p.clientProvider != nil &&
-		p.publisherConfig != nil &&
 		p.clientProvider.IsInstalled() &&
-		p.publisherConfig.Validate() == nil
+		ValidatePublisherConfig(p.publisherConfig) == nil
 }
 
 func (p *PreSignedURLGenerator) GeneratePreSignedPutURL(

@@ -3,6 +3,7 @@ package s3managed
 import (
 	"context"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/s3"
 )
@@ -27,9 +28,10 @@ func (t *ResultTransformer) Transform(ctx context.Context, spec *models.SpecConf
 		return nil
 	}
 
-	// Skip if the URL generator is not installed
 	if !t.urlGenerator.IsInstalled() {
-		return nil
+		return bacerrors.Newf("S3 managed publisher is not available, cannot fetch execution results").
+			WithCode(bacerrors.ConfigurationError).
+			WithHint("Ensure the S3 managed publisher is configured in orchestrator")
 	}
 
 	sourceSpec, err := DecodeSourceSpec(spec)
