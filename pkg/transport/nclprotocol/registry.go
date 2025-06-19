@@ -30,6 +30,10 @@ func CreateMessageRegistry() (*envelope.Registry, error) {
 		reg.Register(messages.HeartbeatResponseType, messages.HeartbeatResponse{}),
 		reg.Register(messages.NodeInfoUpdateResponseType, messages.UpdateNodeInfoResponse{}),
 		reg.Register(messages.ShutdownNoticeResponseType, messages.ShutdownNoticeResponse{}),
+
+		// Managed publisher messages
+		reg.Register(messages.ManagedPublisherPreSignURLRequestType, messages.ManagedPublisherPreSignURLRequest{}),
+		reg.Register(messages.ManagedPublisherPreSignURLResponseType, messages.ManagedPublisherPreSignURLResponse{}),
 	)
 	return reg, err
 }

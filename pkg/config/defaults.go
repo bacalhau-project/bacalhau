@@ -121,6 +121,9 @@ var Default = types.Bacalhau{
 				Address: "127.0.0.1",
 				Port:    6001,
 			},
+			S3Managed: types.S3ManagedPublisher{
+				PreSignedURLExpiration: types.Duration(1 * time.Hour),
+			},
 		},
 	},
 	JobAdmissionControl: types.JobAdmissionControl{

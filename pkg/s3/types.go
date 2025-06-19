@@ -42,13 +42,17 @@ func (c SourceSpec) ToMap() map[string]interface{} {
 type PreSignedResultSpec struct {
 	SourceSpec
 	PreSignedURL string
+	Managed      bool
 }
 
 func (c PreSignedResultSpec) Validate() error {
 	if c.PreSignedURL == "" {
 		return NewS3DownloaderError(BadRequestErrorCode, "invalid s3 signed storage params: signed url cannot be empty")
 	}
-	return c.SourceSpec.Validate()
+	if !c.Managed {
+		return c.SourceSpec.Validate()
+	}
+	return nil
 }
 
 func (c PreSignedResultSpec) ToMap() map[string]interface{} {

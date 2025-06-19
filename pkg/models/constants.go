@@ -55,6 +55,7 @@ const (
 	StorageSourceIPFS           = "ipfs"
 	StorageSourceURL            = "urlDownload"
 	StorageSourceS3             = "s3"
+	StorageSourceS3Managed      = "s3managed"
 	StorageSourceS3PreSigned    = "s3PreSigned"
 	StorageSourceInline         = "inline"
 	StorageSourceLocalDirectory = "localDirectory" // Deprecated: use StorageSourceLocal instead
@@ -72,16 +73,18 @@ var StoragesNames = []string{
 }
 
 const (
-	PublisherNoop  = "noop"
-	PublisherIPFS  = "ipfs"
-	PublisherS3    = "s3"
-	PublisherLocal = "local"
+	PublisherNoop      = "noop"
+	PublisherIPFS      = "ipfs"
+	PublisherS3        = "s3"
+	PublisherS3Managed = "s3managed"
+	PublisherLocal     = "local"
 )
 
 var PublisherNames = []string{
 	PublisherNoop,
 	PublisherIPFS,
 	PublisherS3,
+	PublisherS3Managed,
 	PublisherLocal,
 }
 

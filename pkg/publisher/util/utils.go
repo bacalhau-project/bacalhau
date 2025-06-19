@@ -2,11 +2,14 @@ package util
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	ipfs_client "github.com/bacalhau-project/bacalhau/pkg/ipfs"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -14,6 +17,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/local"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/noop"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3managed"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher/tracing"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
@@ -23,6 +27,7 @@ import (
 func NewPublisherProvider(
 	ctx context.Context,
 	cfg types.Bacalhau,
+	nclPublisherProvider ncl.PublisherProvider,
 ) (publisher.PublisherProvider, error) {
 	storagePath, err := cfg.ResultsStorageDir()
 	if err != nil {
@@ -40,6 +45,14 @@ func NewPublisherProvider(
 			return nil, err
 		}
 		providers[models.PublisherS3] = tracing.Wrap(s3Publisher)
+	}
+
+	if cfg.Publishers.IsNotDisabled(models.PublisherS3Managed) {
+		s3ManagedPublisher, err := configureS3ManagedPublisher(storagePath, nclPublisherProvider)
+		if err != nil {
+			return nil, err
+		}
+		providers[models.PublisherS3Managed] = tracing.Wrap(s3ManagedPublisher)
 	}
 
 	if cfg.Publishers.IsNotDisabled(models.PublisherLocal) {
@@ -96,6 +109,26 @@ func configureS3Publisher(storagePath string) (*s3.Publisher, error) {
 	return s3.NewPublisher(s3.PublisherParams{
 		LocalDir:       path,
 		ClientProvider: clientProvider,
+	}), nil
+}
+
+func configureS3ManagedPublisher(
+	storagePath string,
+	nclPublisherProvider ncl.PublisherProvider,
+) (*s3managed.Publisher, error) {
+	if nclPublisherProvider == nil {
+		return nil, fmt.Errorf("S3Managed publisher requires an NCL publisher provider")
+	}
+
+	path := filepath.Join(storagePath, "s3managed-publisher")
+	if err := os.MkdirAll(path, util.OS_USER_RWX); err != nil {
+		return nil, err
+	}
+
+	return s3managed.NewPublisher(s3managed.PublisherParams{
+		NCLPublisherProvider: nclPublisherProvider,
+		LocalDir:             path,
+		URLUploader:          s3managed.NewS3PreSignedURLUploader(http.DefaultClient),
 	}), nil
 }
 

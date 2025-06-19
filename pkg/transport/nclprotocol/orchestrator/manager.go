@@ -27,9 +27,10 @@ type ComputeManager struct {
 	config Config
 
 	// Core components
-	natsConn   *nats.Conn    // NATS connection
-	responder  ncl.Responder // Handles control plane requests
-	dataPlanes sync.Map      // map[string]*DataPlane
+	natsConn           *nats.Conn    // NATS connection
+	responder          ncl.Responder // Handles control plane requests
+	dataPlaneResponder ncl.Responder // Handles requests from compute nodes
+	dataPlanes         sync.Map      // map[string]*DataPlane
 
 	// Node management
 	nodeManager nodes.Manager // Tracks node state and health
@@ -73,6 +74,11 @@ func (cm *ComputeManager) Start(ctx context.Context) error {
 		return err
 	}
 
+	// Set up data plane responder for compute nodes
+	if err = cm.setupDataPlaneResponder(ctx); err != nil {
+		return err
+	}
+
 	// Register for node state changes
 	cm.nodeManager.OnConnectionStateChange(cm.handleConnectionStateChange)
 
@@ -113,6 +119,33 @@ func (cm *ComputeManager) setupControlPlane(ctx context.Context) error {
 		cm.responder.Listen(ctx, messages.ShutdownNoticeRequestMessageType,
 			ncl.RequestHandlerFunc(cm.handleShutdownRequest)),
 	)
+}
+
+func (cm *ComputeManager) setupDataPlaneResponder(ctx context.Context) error {
+	var err error
+
+	// Create responder for control messages
+	cm.dataPlaneResponder, err = ncl.NewResponder(cm.natsConn, ncl.ResponderConfig{
+		Name:              "orchestrator-data-plane-responder",
+		MessageRegistry:   cm.config.MessageRegistry,
+		MessageSerializer: cm.config.MessageSerializer,
+		Subject:           nclprotocol.NatsSubjectOrchestratorInRequests(),
+	})
+	if err != nil {
+		return fmt.Errorf("create data plane responder: %w", err)
+	}
+	return nil
+}
+
+// RegisterDataPlaneHandler registers a handler for data plane messages.
+func (cm *ComputeManager) RegisterDataPlaneHandler(
+	ctx context.Context,
+	messageType string,
+	handler ncl.RequestHandler) error {
+	if cm.dataPlaneResponder == nil {
+		return fmt.Errorf("data plane responder not initialized")
+	}
+	return cm.dataPlaneResponder.Listen(ctx, messageType, handler)
 }
 
 // Stop gracefully shuts down the manager and all compute node connections.

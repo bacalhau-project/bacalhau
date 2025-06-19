@@ -15,6 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -34,6 +35,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3managed"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
@@ -183,15 +185,29 @@ func NewRequesterNode(
 		worker.Start(ctx)
 	}
 
+	s3Config, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// S3 managed publisher URL generator
+	// This will return an error if the configuration is provided but incorrect,
+	// If the configuration is not provided, we still create the generator
+	// so we can return meaningful errors to compute nodes that try to use the managed publisher.
+	s3ManagedPublisherURLGenerator, err := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
+		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
+		PublisherConfig: cfg.BacalhauConfig.Publishers.Types.S3Managed,
+	})
+	if err != nil {
+		return nil, bacerrors.Wrap(err, "failed to create S3 managed publisher URL generator").
+			WithHint("Check if the S3 managed publisher configuration is correct and if the S3 client is available")
+	}
+
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
 	if !cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLDisabled {
 		// S3 result signer
-		s3Config, err := s3helper.DefaultAWSConfig()
-		if err != nil {
-			return nil, err
-		}
 		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
@@ -200,6 +216,9 @@ func NewRequesterNode(
 		})
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
+
+	// S3 managed publisher result transformer
+	resultTransformers = append(resultTransformers, s3managed.NewResultTransformer(s3ManagedPublisherURLGenerator))
 
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
@@ -298,6 +317,20 @@ func NewRequesterNode(
 
 	if err = connectionManager.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start connection manager: %w", err)
+	}
+
+	// Register S3 managed publisher handlers.
+	// We want to always register these, even if the managed S3 publisher is not enabled,
+	// so the orchestrator can return meaningful errors to compute nodes that try to use the managed publisher.
+
+	// Message handler for generating pre-signed URLs for S3 managed publisher
+	err = connectionManager.RegisterDataPlaneHandler(
+		ctx,
+		messages.ManagedPublisherPreSignURLRequestType,
+		s3managed.NewPreSignedURLRequestHandler(s3ManagedPublisherURLGenerator),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register a handler for S3 managed publisher pre-sign url messages: %w", err)
 	}
 
 	watcherRegistry, err := setupOrchestratorWatchers(ctx, jobStore, evalBroker)
