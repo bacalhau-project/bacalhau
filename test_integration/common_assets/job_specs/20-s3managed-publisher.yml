@@ -1,0 +1,16 @@
+name: A Simple S3 Managed Publisher Job
+type: batch
+count: 1
+tasks:
+  - name: main
+    engine:
+      type: docker
+      params:
+        image: busybox:1.37.0
+        entrypoint:
+          - /bin/sh
+        parameters:
+          - -c
+          - echo S3 Managed Publisher!
+    publisher:
+      type: s3managed
