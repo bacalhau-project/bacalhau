@@ -4,6 +4,7 @@ package boltjobstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -3842,4 +3843,86 @@ func (s *BoltJobstoreTestSuite) TestJobExistsByNameMultipleJobs() {
 		return nil
 	})
 	s.Require().NoError(err)
+}
+
+func (s *BoltJobstoreTestSuite) TestUpdateJobJobNameIndexInconsistency() {
+	// Create the first job normally
+	job1 := mock.Job()
+	job1.ID = "job-id-123"
+	job1.Name = "test-job-inconsistency"
+	job1.Namespace = "test"
+	job1.Type = models.JobTypeBatch
+	job1.Tasks = []*models.Task{
+		{
+			Name: "task1",
+			Engine: &models.SpecConfig{
+				Type: models.EngineDocker,
+			},
+		},
+	}
+	job1.Labels = map[string]string{"version": "1"}
+
+	// Create the job
+	err := s.store.CreateJob(s.ctx, *job1)
+	s.Require().NoError(err)
+
+	// Create a second job that will be used to corrupt the name index
+	job2 := mock.Job()
+	job2.ID = "job-id-456"
+	job2.Name = "different-job"
+	job2.Namespace = "test"
+	job2.Type = models.JobTypeBatch
+	job2.Tasks = []*models.Task{
+		{
+			Name: "task2",
+			Engine: &models.SpecConfig{
+				Type: models.EngineDocker,
+			},
+		},
+	}
+	job2.Labels = map[string]string{"version": "1"}
+
+	// Create the second job
+	err = s.store.CreateJob(s.ctx, *job2)
+	s.Require().NoError(err)
+
+	// Manually corrupt the names index to create the inconsistency
+	// This simulates the scenario mentioned in the error message where
+	// a job created before version 1.8 might have index inconsistencies
+	err = boltdblib.Update(s.ctx, s.store.database, func(tx *bolt.Tx) error {
+		// Create a fake entry in the names index that points job1's name
+		// to job2's ID, creating the inconsistency
+		jobNameKey := createJobNameIndexKey(job1.Name, job1.Namespace)
+
+		// Remove the correct entry for job1
+		if err := s.store.namesIndex.Remove(tx, []byte(job1.ID), []byte(jobNameKey)); err != nil {
+			return err
+		}
+
+		// Add an incorrect entry that maps job1's name to job2's ID
+		if err := s.store.namesIndex.Add(tx, []byte(job2.ID), []byte(jobNameKey)); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	s.Require().NoError(err)
+
+	// Now try to update job1 - this should trigger the inconsistency error
+	updatedJob1 := *job1
+	updatedJob1.Labels["version"] = "2"
+	updatedJob1.Meta = map[string]string{"updated": "true"}
+
+	err = s.store.UpdateJob(s.ctx, updatedJob1)
+	s.Require().Error(err)
+
+	// Verify that the error is of the expected type and contains the expected message
+	s.Require().Contains(err.Error(), "inconsistency between the Job name and its ID")
+	s.Require().Contains(err.Error(), fmt.Sprintf("Job name %s with ID %s does not match stored job ID %s",
+		job1.Name, job1.ID, job2.ID))
+
+	// Verify it's a bacerrors.Error with the hint
+	var bacErr bacerrors.Error
+	s.Require().True(errors.As(err, &bacErr))
+	s.Require().Contains(bacErr.Hint(), "This usually happens if you try to rerun a job, using its ID, that was created before version 1.8")
 }
