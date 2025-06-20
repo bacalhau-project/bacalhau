@@ -85,7 +85,7 @@ func NewLogCmd() *cobra.Command {
 		"Tail the logs from the end of the log stream.",
 	)
 
-	logsCmd.Flags().Uint64Var(&options.JobVersion, "version", options.JobVersion,
+	logsCmd.Flags().VarP(util.NewUintValue(0, &options.JobVersion), "version", "v",
 		"The job version to filter by. By default, the latest version is used.")
 	logsCmd.PersistentFlags().StringVar(&options.Namespace, "namespace", options.Namespace,
 		`Job Namespace. If not provided, default namespace will be used.`,

@@ -84,9 +84,9 @@ func NewHistoryCmd() *cobra.Command {
 		"The type of history events to return. One of: all, job, execution")
 	nodeCmd.Flags().StringVar(&o.ExecutionID, "execution-id", o.ExecutionID,
 		"The execution id to filter by.")
-	nodeCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+	nodeCmd.Flags().VarP(util.NewUintValue(0, &o.JobVersion), "version", "v",
 		"The job version to filter by. By default, the latest version is used.")
-	nodeCmd.Flags().BoolVar(&o.AllJobVersions, "all-versions", o.AllJobVersions,
+	nodeCmd.Flags().Var(util.NewBoolValue(false, &o.AllJobVersions), "all-versions",
 		"Specifies that all job versions should be returned. "+
 			"By default, only the executions of the latest job version is returned. Note: this flag is mutually "+
 			"exclusive with --version, where the latter takes precedence if both are set.")
