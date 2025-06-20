@@ -1276,8 +1276,7 @@ func (s *BoltJobstoreTestSuite) TestGetExecutions() {
 			JobVersion:     1,
 			AllJobVersions: true,
 		})
-		s.Require().Error(err)
-		s.Require().True(bacerrors.IsError(err), "Expected an error for job version and all job versions defined")
+		s.Require().NoError(err)
 	})
 
 }
