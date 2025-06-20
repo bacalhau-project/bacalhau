@@ -260,10 +260,6 @@ func (opts GetExecutionsOptions) Validate() error {
 		return NewBadRequestError("bad GetExecutions request: JobID, NodeIDs or InProgressOnly must be set")
 	}
 
-	if opts.JobVersion != 0 && opts.AllJobVersions {
-		return NewBadRequestError("bad GetExecutions request: JobVersion cannot be set when AllJobVersions is true")
-	}
-
 	if opts.JobVersion > 0 && opts.JobID == "" {
 		return NewBadRequestError("bad GetExecutions request: JobVersion cannot be set without JobID")
 	}
