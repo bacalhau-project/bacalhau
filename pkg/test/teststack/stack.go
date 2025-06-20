@@ -49,7 +49,7 @@ func Setup(
 	//nolint:mnd
 	require.Eventually(t,
 		func() bool {
-			return allNodesDiscovered(t, stack)
+			return AllNodesDiscovered(t, stack)
 		}, 100*time.Second, 100*time.Millisecond, "failed to discover all nodes") //nolint:mnd
 
 	return stack
@@ -67,7 +67,7 @@ func WithNoopExecutor(noopConfig noop_executor.ExecutorConfig, cfg types.EngineC
 // Returns whether the requester node(s) in the stack have discovered all of the
 // other nodes in the stack and have complete information for them (i.e. each
 // node has actually announced itself.)
-func allNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
+func AllNodesDiscovered(t testing.TB, stack *devstack.DevStack) bool {
 	for _, node := range stack.Nodes {
 		ctx := logger.ContextWithNodeIDLogger(context.Background(), node.ID)
 
