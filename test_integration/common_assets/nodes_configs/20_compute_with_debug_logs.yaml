@@ -1,0 +1,11 @@
+NameProvider: "uuid"
+API:
+  Port: 1234
+Compute:
+  Enabled: true
+  Orchestrators:
+    - nats://bacalhau-orchestrator-node:4222
+  Auth:
+    Token: "i_am_very_secret_token"
+Logging:
+  Level: "debug"

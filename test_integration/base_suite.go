@@ -190,6 +190,11 @@ func (s *BaseDockerComposeTestSuite) waitForJobState(jobID, desiredJobState stri
 	)
 }
 
+func (s *BaseDockerComposeTestSuite) fetchJobResults(jobID string, outputDir string, execOptions ...exec.ProcessOption) (string, error) {
+	cmd := []string{"bacalhau", "job", "get", jobID, "--output-dir=" + outputDir}
+	return s.executeCommandInDefaultJumpbox(cmd, execOptions...)
+}
+
 func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string, expectedType JSONResponseType) (interface{}, error) {
 	// Cleanup the Json output. Unfortunate that the CLI prints extra
 	// characters at the beginning and at the end
