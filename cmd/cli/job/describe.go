@@ -79,7 +79,7 @@ func NewDescribeCmd() *cobra.Command {
 		},
 	}
 
-	jobCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+	jobCmd.Flags().VarP(util.NewUintValue(0, &o.JobVersion), "version", "v",
 		"The job version to filter by. By default, the latest version is used.")
 	jobCmd.PersistentFlags().StringVar(&o.Namespace, "namespace", o.Namespace,
 		`Job Namespace. If not provided, it will be treated as default namespace.`)

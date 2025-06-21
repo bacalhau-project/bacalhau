@@ -49,7 +49,7 @@ func NewRerunCmd() *cobra.Command {
 		},
 	}
 
-	rerunCmd.Flags().Uint64Var(&o.JobVersion, "version", o.JobVersion,
+	rerunCmd.Flags().VarP(util.NewUintValue(0, &o.JobVersion), "version", "v",
 		"The job version to rerun. Defaults to latest version.")
 	rerunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlagsWithoutDryRun(o.RunTimeSettings))
 
