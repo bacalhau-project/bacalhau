@@ -82,7 +82,7 @@ require (
 	golang.org/x/crypto v0.39.0
 	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476
 	golang.org/x/oauth2 v0.30.0
-	k8s.io/apimachinery v0.33.1
+	k8s.io/apimachinery v0.33.2
 	sigs.k8s.io/yaml v1.4.0
 )
 
