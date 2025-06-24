@@ -119,6 +119,7 @@ func (e *Endpoint) diffJob(c echo.Context) error {
 //	@Param			id		path		string	true	"ID to get the job for"
 //	@Param			include	query		string	false	"Takes history and executions as options. If empty will not include anything else."
 //	@Param			limit	query		int		false	"Number of history or executions to fetch. Should be used in conjugation with include"
+//	@Param      job_version		query		int		0		"Job version to get. Defaults to 0."
 //	@Success		200		{object}	apimodels.GetJobResponse
 //	@Failure		400		{object}	string
 //	@Failure		500		{object}	string
