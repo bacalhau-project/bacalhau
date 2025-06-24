@@ -392,6 +392,12 @@ const docTemplate = `{
                         "description": "Number of history or executions to fetch. Should be used in conjugation with include",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Job version to get. Defaults to 0.",
+                        "name": "job_version",
+                        "in": "query"
                     }
                 ],
                 "responses": {
