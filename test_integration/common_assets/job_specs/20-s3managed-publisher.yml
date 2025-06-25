@@ -11,6 +11,6 @@ tasks:
           - /bin/sh
         parameters:
           - -c
-          - echo S3 Managed Publisher!
+          - echo expected execution stdout
     publisher:
       type: s3managed

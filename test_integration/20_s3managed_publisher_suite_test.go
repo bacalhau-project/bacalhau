@@ -25,18 +25,36 @@ func NewS3ManagedPublisherSuite() *S3ManagedPublisherTestSuite {
 }
 
 func (s *S3ManagedPublisherTestSuite) SetupSuite() {
-	rawDockerComposeFilePath := "./common_assets/docker_compose_files/deployment-with-managed-publisher.yml"
+	rawDockerComposeFilePath := "./common_assets/docker_compose_files/deployment-with-minio-and-registry.yml"
 	s.Context, s.Cancel = context.WithCancel(context.Background())
 
 	orchestratorConfigFile := s.commonAssets("nodes_configs/20_orchestrator_with_minio_managed_publisher.yaml")
 	orchestratorStartCommand := fmt.Sprintf("bacalhau serve --config=%s", orchestratorConfigFile)
-	computeConfigFile := s.commonAssets("nodes_configs/20_compute_with_debug_logs.yaml")
-	computeStartCommand := fmt.Sprintf("bacalhau serve --config=%s", computeConfigFile)
 	extraRenderingData := map[string]interface{}{
 		"OrchestratorStartCommand": orchestratorStartCommand,
-		"ComputeStartCommand":      computeStartCommand,
 	}
 	s.BaseDockerComposeTestSuite.SetupSuite(rawDockerComposeFilePath, extraRenderingData)
+
+	mcAlias := "bacalhau-minio"
+
+	// Create MinIO alias using the environment variables
+	// We use sh -c to enable shell expansion of environment variables
+	_, err := s.executeCommandInDefaultJumpbox(
+		[]string{
+			"sh", "-c",
+			fmt.Sprintf("mc alias set %s http://$BACALHAU_MINIO_NODE_HOST:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD", mcAlias),
+		})
+	s.Require().NoErrorf(err, "Error creating minio alias: %q", err)
+
+	// Create the bucket
+	_, err = s.executeCommandInDefaultJumpbox(
+		[]string{
+			"mc",
+			"mb",
+			"--ignore-existing",
+			mcAlias + "/bacalhau-managed-publisher",
+		})
+	s.Require().NoErrorf(err, "Error creating bucket for managed publisher: %q", err)
 }
 
 func (s *S3ManagedPublisherTestSuite) TearDownSuite() {
@@ -74,7 +92,7 @@ func (s *S3ManagedPublisherTestSuite) TestS3ManagedPublisherJobCompletes() {
 
 	jobGetResult, err := s.fetchJobResults(jobID, outputDir)
 	s.Require().NoErrorf(err, "Error getting job results: %q", err)
-	s.Require().NotEmpty(jobGetResult, "Error getting job results: %q", err)
+	s.Require().Contains(jobGetResult, fmt.Sprintf("Results for job '%s' have been written", jobID))
 
 	result, err = s.executeCommandInDefaultJumpbox(
 		[]string{
@@ -82,7 +100,7 @@ func (s *S3ManagedPublisherTestSuite) TestS3ManagedPublisherJobCompletes() {
 			path.Join(outputDir, "stdout"),
 		})
 	s.Require().NoErrorf(err, "Error reading job results: %q", err)
-	s.Require().Contains(result, "S3 Managed Publisher")
+	s.Require().Contains(result, "expected execution stdout")
 }
 
 func TestS3ManagedPublisherTestSuite(t *testing.T) {
