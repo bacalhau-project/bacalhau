@@ -45,7 +45,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.16.0
-	github.com/nats-io/nats-server/v2 v2.11.4
+	github.com/nats-io/nats-server/v2 v2.11.5
 	github.com/nats-io/nats.go v1.43.0
 	github.com/nats-io/nuid v1.0.1
 	github.com/open-policy-agent/opa v0.60.0
