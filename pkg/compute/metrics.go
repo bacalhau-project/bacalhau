@@ -29,4 +29,23 @@ var (
 		metric.WithDescription("Duration of a job on the compute node in milliseconds."),
 		metric.WithUnit("ms"),
 	))
+
+	// Execution error metrics
+	ExecutionBiddingErrors = lo.Must(meter.Int64Counter(
+		"execution_bidding_errors",
+		metric.WithDescription("Number of errors encountered during execution bidding."),
+		metric.WithUnit("1"),
+	))
+
+	ExecutionRunErrors = lo.Must(meter.Int64Counter(
+		"execution_run_errors",
+		metric.WithDescription("Number of errors encountered during execution running."),
+		metric.WithUnit("1"),
+	))
+
+	ExecutionCancelErrors = lo.Must(meter.Int64Counter(
+		"execution_cancel_errors",
+		metric.WithDescription("Number of errors encountered during execution cancellation."),
+		metric.WithUnit("1"),
+	))
 )
