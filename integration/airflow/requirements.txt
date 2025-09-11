@@ -158,7 +158,7 @@ flask==2.2.5
     #   flask-session
     #   flask-sqlalchemy
     #   flask-wtf
-flask-appbuilder==4.4.1
+flask-appbuilder==4.8.1
     # via apache-airflow
 flask-babel==2.0.0
     # via flask-appbuilder
