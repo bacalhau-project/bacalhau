@@ -527,7 +527,7 @@ unicodecsv==0.14.1
     # via apache-airflow
 universal-pathlib==0.2.2
     # via apache-airflow
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   requests
     #   twine
