@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { BacalhauLogo } from './BacalhauLogo'
 import { NavLinkProps, navLinkItems } from './navItems'
-import { EnterpriseSupportCard } from './EnterpriseSupportCard'
 
 export function NavLink({ href, icon: Icon, label, badge }: NavLinkProps) {
   const handleClick = () => {
@@ -54,9 +53,6 @@ export function InnerSidebar() {
             <NavLink key={item.href} {...item} />
           ))}
         </nav>
-      </div>
-      <div className="mt-auto p-4">
-        <EnterpriseSupportCard />
       </div>
     </div>
   )
