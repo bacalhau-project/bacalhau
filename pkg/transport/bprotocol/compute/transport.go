@@ -194,7 +194,7 @@ func (cm *ConnectionManager) Stop(ctx context.Context) {
 		cm.heartbeatPublisher = nil
 	}
 	if cm.natsConn != nil {
-		cm.natsConn.Close()
+		_ = cm.natsConn.Close()
 		cm.natsConn = nil
 	}
 }

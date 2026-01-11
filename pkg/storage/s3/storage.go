@@ -182,7 +182,7 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	defer func() { _ = outputFile.Close() }() //nolint:errcheck
+	defer func() { _ = outputFile.Close() }()
 
 	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
 		source.Bucket, aws.ToString(object.Key), aws.ToString(object.VersionID), aws.ToString(object.ETag), outputFile.Name())

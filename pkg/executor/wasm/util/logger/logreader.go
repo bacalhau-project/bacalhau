@@ -156,7 +156,7 @@ func (r *LogReader) readFile(b []byte) (int, error) {
 }
 
 func (r *LogReader) Close() error {
-	r.file.Close()
+	_ = r.file.Close()
 	if r.subscribed {
 		r.broadcaster.Unsubscribe(r.subscriptionCh)
 	}

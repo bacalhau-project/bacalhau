@@ -33,7 +33,7 @@ func StartUpdateCheck(cmd *cobra.Command, cfg types.Bacalhau, store version.Upda
 // succeeds and should only have visible output if the message is non-empty.
 func PrintUpdateCheck(cmd *cobra.Command, args []string) {
 	if printMessage != nil && *printMessage != "" {
-		_, _= fmt.Fprintln(cmd.ErrOrStderr())
-		_, _= fmt.Fprintln(cmd.ErrOrStderr(), *printMessage)
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), *printMessage)
 	}
 }

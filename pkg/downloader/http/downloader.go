@@ -110,7 +110,7 @@ func checkHTTPResponse(resp *http.Response, url string) error {
 	}
 
 	// Close the body before returning the error
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Return an error with the status code and the body content for context
 	return fmt.Errorf("request to %s failed with status code %d: %s", url, resp.StatusCode, string(bodyBytes))

@@ -153,7 +153,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	defer file.Close()
+	_ = defer file.Close()
 
 	// Get the file info to check if it's a directory and for modification time
 	stat, err := file.Stat()
@@ -171,7 +171,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		indexFile, err := buildFiles.Open(indexPath)
 		if err == nil {
 			// If we found an index.html in this directory, serve it
-			defer indexFile.Close()
+			_ = defer indexFile.Close()
 			message = "Served index.html from directory"
 			s.serveFileContent(w, r, indexFile, "index.html")
 			return
@@ -218,7 +218,7 @@ func (s *Server) serve404(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	defer notFoundFile.Close()
+	_ = defer notFoundFile.Close()
 
 	// Read the content of the 404 page
 	content, err := io.ReadAll(notFoundFile)

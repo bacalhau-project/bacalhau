@@ -238,7 +238,7 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 			}
 			// manually close here after each file operation; deferring would cause each file close
 			// to wait until all operations have completed.
-			fileToWrite.Close()
+			_ = _ = fileToWrite.Close()
 		}
 	}
 

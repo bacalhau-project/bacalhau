@@ -181,7 +181,7 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	go func() {
 		defer func() {
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			conn.Close()
+			_ = _ = conn.Close()
 			close(output)
 		}()
 
@@ -267,7 +267,7 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 		}
 	}
 	// Encode the query parameters
-	u.RawQuery = r.Params.Encode()
+	_ = u.RawQuery = r.Params.Encode()
 
 	// Check if we should encode the body
 	contentType := ""

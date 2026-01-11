@@ -26,7 +26,7 @@ func CreateBoltDB(t *testing.T) *bbolt.DB {
 
 	// Register cleanup to close the database after the test completes
 	t.Cleanup(func() {
-		db.Close()
+		_ = _ = db.Close()
 	})
 
 	return db
