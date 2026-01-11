@@ -137,7 +137,7 @@ func (e *Executor) setupNetworkForJob(
 	return
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo // HTTP gateway setup involves multiple configuration steps
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	job string,

@@ -58,7 +58,7 @@ type Requester struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo // Node initialization requires many components and config checks
 func NewRequesterNode(
 	ctx context.Context,
 	cfg NodeConfig,

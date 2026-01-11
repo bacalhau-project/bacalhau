@@ -1390,7 +1390,7 @@ func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
-//nolint:funlen
+//nolint:funlen,gocyclo // Job update involves multiple index and bucket operations
 func (b *BoltJobStore) updateJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, updatedJob models.Job) error {
 	// Get the existing job

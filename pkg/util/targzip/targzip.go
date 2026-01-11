@@ -65,7 +65,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 //
-//nolint:funlen,gosec
+//nolint:funlen,gosec,gocyclo // Tar compression with size limits requires complex file walking
 func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize, stripPath bool) error {
 	_, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()

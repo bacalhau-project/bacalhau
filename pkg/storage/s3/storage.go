@@ -216,6 +216,7 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
+//nolint:gocyclo // S3 key expansion involves multiple listing and filtering operations
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) (
 	[]s3helper.ObjectSummary, error) {

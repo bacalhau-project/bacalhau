@@ -164,7 +164,7 @@ type FieldInfo struct {
 	CapitalizedPath string
 }
 
-//nolint:funlen // TODO: Function is very long and complex
+//nolint:funlen,gocyclo // TODO: Function is very long and complex
 func processStruct(
 	prefix string,
 	capPrefix string,
