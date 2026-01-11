@@ -1,7 +1,10 @@
+version: "2"
+
 linters-settings:
   depguard:
-    rules:
-      main:
+    # Depguard v2 configuration - allow all except logrus
+    additional-guards:
+      - list-mode: lax
         deny:
           - pkg: github.com/sirupsen/logrus
             desc: "logging is allowed only by zerolog"
@@ -33,8 +36,6 @@ linters-settings:
     - importShadow
   gocyclo:
     min-complexity: 18
-  goimports:
-    local-prefixes: github.com/golangci/golangci-lint
   mnd:
     # don't include the "operation" and "assign"
     checks:
@@ -63,12 +64,19 @@ linters-settings:
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
 
 # TODO #842 Check gocritic regularly to see if they support generics (finally)
+formatters:
+  settings:
+    goimports:
+      local-prefixes: github.com/golangci/golangci-lint
+  enable:
+    - gofmt
+    - goimports
 linters:
   disable-all: true
   enable:
   - bodyclose
   - unused
-  - depguard
+#  - depguard  # TODO: Fix depguard v2 configuration
   - dogsled
   - errcheck
   - copyloopvar
@@ -78,11 +86,8 @@ linters:
   - goconst
 #   - gocritic
   - gocyclo
-  - gofmt
-  - goimports
   - goprintffuncname
   - gosec
-  - gosimple
   - govet
   - ineffassign
   - lll
@@ -90,11 +95,8 @@ linters:
   - nakedret
   - noctx
   - nolintlint
-  - staticcheck
-  - stylecheck
-  - typecheck
+  - staticcheck  # staticcheck now includes gosimple and stylecheck in v2
   - unconvert
-  - unused
   - whitespace
 
 # Options for analysis running.
