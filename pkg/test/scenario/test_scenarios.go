@@ -272,7 +272,7 @@ func WasmEnvVars(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"AWESOME=definitely", "TEST=yes", "BACALHAU_PARTITION_INDEX=0"},
-			-1, //nolint:mnd // magic number appropriate for test
+			-1,
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -399,7 +399,7 @@ func WasmLogTest(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"https://www.gutenberg.org"}, // end of the file
-			-1,                                    //nolint:mnd // magic number appropriate for test
+			-1,
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -429,7 +429,7 @@ func WasmGetHTTP(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"Status Code: 200"},
-			-1, //nolint:mnd // magic number appropriate for test
+			-1,
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -459,7 +459,7 @@ func WasmGetHTTPAllowList(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"Status Code: 200"},
-			-1, //nolint:mnd // magic number appropriate for test
+			-1,
 		),
 		Job: &models.Job{
 			Name:  t.Name(),
@@ -490,7 +490,7 @@ func WasmGetHTTPNotAllowList(t testing.TB) Scenario {
 		ResultsChecker: FileContains(
 			"stdout",
 			[]string{"host not allowed"},
-			-1, //nolint:mnd // magic number appropriate for test
+			-1,
 		),
 		Job: &models.Job{
 			Name:  t.Name(),

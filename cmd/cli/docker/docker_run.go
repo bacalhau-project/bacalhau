@@ -78,7 +78,7 @@ func NewCmd() *cobra.Command {
 	return dockerCmd
 }
 
-func newDockerRunCmd() *cobra.Command { //nolint:funlen
+func newDockerRunCmd() *cobra.Command {
 	opts := NewDockerRunOptions()
 
 	dockerRunCmd := &cobra.Command{

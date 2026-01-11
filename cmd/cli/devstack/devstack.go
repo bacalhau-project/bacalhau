@@ -27,7 +27,6 @@ var (
 		Start a cluster of nodes and run a job on them.
 `)
 
-	//nolint:lll // Documentation
 	devstackExample = templates.Examples(`
 		# Create a devstack cluster with a single requester node and 3 compute nodes (Default values)
 		bacalhau devstack

@@ -50,7 +50,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 		}
 
 		// Check for overflow before adding
-		//nolint:gosec // G115: negative values already checked
+
 		newSize := size + datasize.ByteSize(header.Size)
 		if newSize < size { // If newSize wrapped around
 			return 0, fmt.Errorf("total uncompressed size exceeds maximum value")
@@ -230,7 +230,7 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 				return err
 			}
 			// copy over contents (max 10MB per file!)
-			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil { //nolint:mnd
+			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil {
 				// io.EOF is expected
 				if err != io.EOF {
 					return err

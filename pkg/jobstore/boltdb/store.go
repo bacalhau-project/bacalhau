@@ -1189,7 +1189,6 @@ func (b *BoltJobStore) CreateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
-//nolint:gocyclo
 func (b *BoltJobStore) createJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, job models.Job) error {
 	if b.jobExists(ctx, tx, recorder, job.ID) {

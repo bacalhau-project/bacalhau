@@ -57,8 +57,8 @@ func Get() *models.BuildVersionInfo {
 	}
 
 	versionInfo := &models.BuildVersionInfo{
-		Major:      strconv.FormatInt(s.Major(), 10), //nolint:mnd // base10, magic number appropriate
-		Minor:      strconv.FormatInt(s.Minor(), 10), //nolint:mnd // base10, magic number appropriate
+		Major:      strconv.FormatInt(s.Major(), 10),
+		Minor:      strconv.FormatInt(s.Minor(), 10),
 		GitVersion: GITVERSION,
 		GitCommit:  revision,
 		BuildDate:  revisionTime,

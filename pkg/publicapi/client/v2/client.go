@@ -65,7 +65,7 @@ type httpClient struct {
 func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetRequest, out apimodels.GetResponse) error {
 	r := in.ToHTTPRequest()
 
-	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r) //nolint:bodyclose // this is being closed
+	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 		r.BodyObj = in
 	}
 
-	_, resp, err := c.doRequest(ctx, verb, endpoint, r) //nolint:bodyclose // this is being closed
+	_, resp, err := c.doRequest(ctx, verb, endpoint, r)
 	if err != nil {
 		return err
 	}

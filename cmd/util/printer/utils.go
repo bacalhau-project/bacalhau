@@ -33,7 +33,6 @@ const (
 
 var terminalWidth int
 
-//nolint:gosec    // terminalWidth is used for spacing and won't exceed reasonable values
 func getTerminalWidth(cmd *cobra.Command) uint {
 	if terminalWidth == 0 {
 		var err error

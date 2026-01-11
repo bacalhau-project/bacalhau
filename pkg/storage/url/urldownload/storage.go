@@ -112,7 +112,6 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ *models.Executio
 		return 0, ErrNoContentLengthFound
 	}
 
-	//nolint:gosec // G115: negative memory values already checked above
 	return uint64(res.ContentLength), nil
 }
 

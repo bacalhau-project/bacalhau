@@ -113,7 +113,6 @@ func (o *StorageSpecConfigOpt) Values() []*models.InputSource {
 	return o.values
 }
 
-//nolint:gocyclo
 func storageStringToSpecConfig(sourceURI, destinationPath, alias string, options map[string]string) (*models.InputSource, error) {
 	sourceURI = strings.Trim(sourceURI, " '\"")
 	destinationPath = strings.Trim(destinationPath, " '\"")

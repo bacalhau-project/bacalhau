@@ -469,7 +469,6 @@ func createNodeManager(ctx context.Context,
 	return nodeManager, nodeInfoStore, nil
 }
 
-//nolint:funlen
 func setupOrchestratorWatchers(
 	ctx context.Context,
 	jobStore jobstore.Store,

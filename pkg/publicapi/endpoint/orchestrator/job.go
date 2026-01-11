@@ -116,7 +116,7 @@ func (e *Endpoint) diffJob(c echo.Context) error {
 //	@Failure		400		{object}	string
 //	@Failure		500		{object}	string
 //	@Router			/api/v1/orchestrator/jobs/{id} [get]
-func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
+func (e *Endpoint) getJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobIDOrName := c.Param("id")
 	var args apimodels.GetJobRequest

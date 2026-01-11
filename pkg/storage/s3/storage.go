@@ -91,12 +91,11 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, execution *models.E
 
 		// Check for overflow
 		// MaxUint64 - size = remaining space before overflow
-		//nolint:gosec // G115: negative values already checked
+
 		if object.Size > 0 && uint64(object.Size) > math.MaxUint64-size {
 			return 0, fmt.Errorf("total size exceeds uint64 maximum")
 		}
 
-		//nolint:gosec // G115: Already checked above
 		size += uint64(object.Size)
 	}
 	return size, nil
@@ -216,7 +215,6 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
-//nolint:gocyclo
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) (
 	[]s3helper.ObjectSummary, error) {
