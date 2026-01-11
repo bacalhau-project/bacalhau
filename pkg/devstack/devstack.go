@@ -41,9 +41,6 @@ func Setup(
 		opt(stackConfig)
 	}
 
-	// always skip license validation in devstack
-	stackConfig.SystemConfig.SkipLicenseValidation = true
-
 	if stackConfig.BasePath == "" {
 		stackConfig.BasePath, err = os.MkdirTemp("", "bacalhau-devstack")
 		if err != nil {
