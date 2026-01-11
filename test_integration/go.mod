@@ -4,8 +4,8 @@ go 1.24.9
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
-	github.com/docker/compose/v2 v2.40.2
-	github.com/docker/docker v28.5.1+incompatible
+	github.com/docker/compose/v2 v2.28.1
+	github.com/docker/docker v28.0.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.33.0
