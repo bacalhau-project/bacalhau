@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/_static-analysis.yml
     with:
       go_version_file: go.work
-      golangci_lint_version: v1.64.5
+      golangci_lint_version: v2.8.0
 
   unit-tests:
     name: Unit Tests
