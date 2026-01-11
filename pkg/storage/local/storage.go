@@ -214,7 +214,7 @@ func createEmptyFile(filePath string) error {
 	if err != nil {
 		return bacerrors.Wrapf(err, "could not create source file at %s", filePath)
 	}
-	_ = _ = fileHandle.Close()
+	_ = fileHandle.Close()
 	return nil
 }
 

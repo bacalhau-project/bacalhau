@@ -111,7 +111,7 @@ func (rc *ExecutionLogReader) startReading(pipeWriter *io.PipeWriter, logFileRea
 			log.Error().Err(err).Msg("error reading execution log")
 			pipeWriter.CloseWithError(err)
 		} else {
-			_ = _ = pipeWriter.Close()
+			_ = pipeWriter.Close()
 		}
 	}()
 

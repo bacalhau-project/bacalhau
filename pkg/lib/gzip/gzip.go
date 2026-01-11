@@ -156,10 +156,10 @@ func DecompressWithMaxBytes(tarGzPath, destDir string, maxDecompressSize int64) 
 			}
 			// Copy the file data from the archive, enforcing the file size limit.
 			if _, err := io.CopyN(fileToWrite, tr, header.Size); err != nil {
-				_ = _ = fileToWrite.Close()
+				_ = fileToWrite.Close()
 				return fmt.Errorf("failed to copy file data: %w", err)
 			}
-			_ = _ = fileToWrite.Close()
+			_ = fileToWrite.Close()
 		}
 	}
 

@@ -163,7 +163,7 @@ func (pa *portAllocator) allocateDynamicPortLocked() (int, error) {
 		if err != nil {
 			continue
 		}
-		_ = _ = listener.Close()
+		_ = listener.Close()
 
 		pa.usedPorts[port] = true
 		pa.lastAllocated = port

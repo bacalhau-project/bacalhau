@@ -111,6 +111,6 @@ func IsPortOpen(port int) bool {
 	if err != nil {
 		return false
 	}
-	_ = _ = ln.Close()
+	_ = ln.Close()
 	return true
 }

@@ -78,7 +78,7 @@ func (s *server) GetLogStream(ctx context.Context, request messages.ExecutionLog
 	go func() {
 		<-ctx.Done()
 		log.Trace().Str("execution", execution.ID).Msg("closing execution log reader")
-		_ = _ = reader.Close()
+		_ = reader.Close()
 	}()
 
 	streamer := NewLiveStreamer(LiveStreamerParams{
