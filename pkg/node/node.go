@@ -18,7 +18,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
@@ -171,12 +170,6 @@ func NewNode(
 	cfg.SystemConfig.applyDefaults()
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
-	// Initialize license reader
-	licenseReader, err := licensing.NewReader(cfg.BacalhauConfig.Orchestrator.License.LocalPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create license reader: %w", err)
-	}
-
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
 	if err != nil {
 		return nil, err
@@ -224,7 +217,6 @@ func NewNode(
 			transportLayer,
 			metadataStore,
 			nodeInfoProvider,
-			licenseReader,
 		)
 		if err != nil {
 			return nil, err
@@ -254,7 +246,6 @@ func NewNode(
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
-		LicenseReader:      licenseReader,
 	})
 	if err != nil {
 		return nil, err

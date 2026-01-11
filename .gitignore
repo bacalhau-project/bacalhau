@@ -2,6 +2,7 @@ outputs
 vendor
 data
 .cache
+.worktrees
 node_modules
 yarn-error.log
 lib
