@@ -187,7 +187,7 @@ func ManyStores(stores ...SetupStorage) SetupStorage {
 
 // copyDir copies the contents of the src directory to the dest directory.
 func copyDir(src string, dest string) error {
-	err := os.MkdirAll(dest, os.ModePerm)
+	err := os.MkdirAll(dest, 0750)
 	if err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dest, err)
 	}

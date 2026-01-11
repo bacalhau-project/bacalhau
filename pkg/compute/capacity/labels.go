@@ -22,12 +22,12 @@ func (p gpuLabelsProvider) GetLabels(ctx context.Context) map[string]string {
 	for i, gpu := range p.resources.GPUs {
 		// Model label e.g. GPU-0: Tesla-T1
 		key := fmt.Sprintf("GPU-%d", i)
-		name := strings.Replace(gpu.Name, " ", "-", -1) // Replace spaces with dashes
+		name := strings.ReplaceAll(gpu.Name, " ", "-") // Replace spaces with dashes
 		labels[key] = name
 
 		// Memory label e.g. GPU-0-Memory: 15360-MiB
 		key = fmt.Sprintf("GPU-%d-Memory", i)
-		memory := strings.Replace(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-", -1) // Replace spaces with dashes
+		memory := strings.ReplaceAll(fmt.Sprintf("%d MiB", gpu.Memory), " ", "-") // Replace spaces with dashes
 		labels[key] = memory
 	}
 	return labels

@@ -22,7 +22,7 @@ func main() {
 
 	fieldInfos := ConfigFieldMap(pkgPath)
 	// Generate constants file
-	constantsFile, err := os.Create(filepath.Join(pkgPath, "generated_constants.go"))
+	constantsFile, err := os.Create(filepath.Join(pkgPath, "generated_constants.go")) //nolint:gosec // G304: pkgPath from build system args, trusted input
 	if err != nil {
 		panic(err)
 	}

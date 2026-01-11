@@ -37,7 +37,7 @@ func MustHaveIPFS(t testing.TB, cfg types.Bacalhau) {
 	publisherConfigured := cfg.Publishers.IsNotDisabled(models.PublisherIPFS) &&
 		cfg.Publishers.Types.IPFS.Endpoint != ""
 
-	if !(downloaderConfigured && inputSourceConfigured && publisherConfigured) {
+	if !downloaderConfigured || !inputSourceConfigured || !publisherConfigured {
 		t.Skip("Cannot run this test because it IPFS Connect is not configured")
 	}
 }

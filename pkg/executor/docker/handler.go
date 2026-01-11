@@ -130,7 +130,7 @@ func (h *executionHandler) run(ctx context.Context) {
 			}
 			return
 		}
-		if containerJSON.ContainerJSONBase.State.OOMKilled {
+		if containerJSON.State.OOMKilled {
 			containerError = errors.New(`memory limit exceeded`) //nolint:lll
 			h.result = &models.RunCommandResult{
 				ExitCode: int(containerExitStatusCode),

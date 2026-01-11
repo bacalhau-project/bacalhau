@@ -137,7 +137,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 
 	ctx = logger.ContextWithNodeIDLogger(ctx, sysmeta.NodeName)
 
-	if !(cfg.Compute.Enabled || cfg.Orchestrator.Enabled) {
+	if !cfg.Compute.Enabled && !cfg.Orchestrator.Enabled {
 		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
 		cfg.Orchestrator.Enabled = true
 	}

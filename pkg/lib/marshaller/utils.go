@@ -49,15 +49,16 @@ func genericMarshalWithMax[T any](t T, marshalType int, indentSpaces int) ([]byt
 			MaxNumberOfObjectsToSerialize,
 			reflect.TypeOf(t).String())
 	}
-	if marshalType == jsonMarshal {
+	switch marshalType {
+	case jsonMarshal:
 		return json.Marshal(t)
-	} else if marshalType == jsonMarshalIndent {
+	case jsonMarshalIndent:
 		return json.MarshalIndent(t, "", strings.Repeat(" ", indentSpaces))
-	} else if marshalType == yamlMarshal {
+	case yamlMarshal:
 		return yaml.Marshal(t)
+	default:
+		return nil, fmt.Errorf("unknown marshal type %d", marshalType)
 	}
-
-	return nil, fmt.Errorf("unknown marshal type %d", marshalType)
 }
 
 func JSONUnmarshalWithMax[T any](b []byte, t *T) error {
@@ -74,13 +75,15 @@ func genericUnmarshalWithMax[T any](b []byte, t *T, unmarshalType int) error {
 			len(b),
 			MaxSerializedStringInput)
 	}
-	if unmarshalType == jsonUnmarshal {
+	switch unmarshalType {
+	case jsonUnmarshal:
 		return json.Unmarshal(b, t)
-	} else if unmarshalType == yamlUnmarshal {
+	case yamlUnmarshal:
 		// Our format requires that we use the 	"sigs.k8s.io/yaml" library
 		return yaml.Unmarshal(b, t)
+	default:
+		return fmt.Errorf("unknown unmarshal type")
 	}
-	return fmt.Errorf("unknown unmarshal type")
 }
 
 func ConfirmMaxSliceSize[T any](t T, maxSize int) error {

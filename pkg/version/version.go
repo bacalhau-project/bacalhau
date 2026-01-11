@@ -80,9 +80,10 @@ func getBuildInformation() (string, time.Time, error) {
 	revisionTimeStr := "1970-01-01T00:00:00Z"
 
 	for _, setting := range info.Settings {
-		if setting.Key == "vcs.revision" {
+		switch setting.Key {
+		case "vcs.revision":
 			revision = setting.Value
-		} else if setting.Key == "vcs.time" {
+		case "vcs.time":
 			revisionTimeStr = setting.Value
 		}
 	}
