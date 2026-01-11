@@ -120,32 +120,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/agent/license": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Ops"
-                ],
-                "summary": "Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured",
-                "operationId": "agent/license",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.GetAgentLicenseResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/agent/node": {
             "get": {
                 "produces": [
@@ -1063,82 +1037,6 @@ const docTemplate = `{
                 }
             }
         },
-        "apimodels.GetAgentLicenseResponse": {
-            "type": "object",
-            "properties": {
-                "aud": {
-                    "description": "the ` + "`" + `aud` + "`" + ` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "capabilities": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "customer_id": {
-                    "type": "string"
-                },
-                "exp": {
-                    "description": "the ` + "`" + `exp` + "`" + ` (Expiration Time) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "iat": {
-                    "description": "the ` + "`" + `iat` + "`" + ` (Issued At) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.6",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "iss": {
-                    "description": "the ` + "`" + `iss` + "`" + ` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1",
-                    "type": "string"
-                },
-                "jti": {
-                    "description": "the ` + "`" + `jti` + "`" + ` (JWT ID) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7",
-                    "type": "string"
-                },
-                "license_id": {
-                    "type": "string"
-                },
-                "license_type": {
-                    "type": "string"
-                },
-                "license_version": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "nbf": {
-                    "description": "the ` + "`" + `nbf` + "`" + ` (Not Before) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "product": {
-                    "description": "Add your custom license claims here",
-                    "type": "string"
-                },
-                "sub": {
-                    "description": "the ` + "`" + `sub` + "`" + ` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
-                    "type": "string"
-                }
-            }
-        },
         "apimodels.GetAgentNodeAuthConfigResponse": {
             "type": "object",
             "properties": {
@@ -1432,14 +1330,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "EvaluationID": {
-                    "type": "string"
-                }
-            }
-        },
-        "jwt.NumericDate": {
-            "type": "object",
-            "properties": {
-                "time.Time": {
                     "type": "string"
                 }
             }
@@ -1766,6 +1656,20 @@ const docTemplate = `{
             "x-enum-comments": {
                 "ExecutionStateBidAccepted": "aka running"
             },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "aka running",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
             "x-enum-varnames": [
                 "ExecutionStateUndefined",
                 "ExecutionStateNew",
@@ -1786,11 +1690,13 @@ const docTemplate = `{
             "properties": {
                 "index": {
                     "description": "Self-reported index of the device in the system",
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "memory": {
                     "description": "Total GPU memory in mebibytes (MiB)",
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "name": {
                     "description": "Model name of the GPU e.g. Tesla T4",
@@ -1979,6 +1885,7 @@ const docTemplate = `{
         },
         "models.JobSelectionDataLocality": {
             "type": "integer",
+            "format": "int64",
             "enum": [
                 0,
                 1
@@ -1987,6 +1894,10 @@ const docTemplate = `{
                 "Anywhere": "anywhere",
                 "Local": "local"
             },
+            "x-enum-descriptions": [
+                "local",
+                "anywhere"
+            ],
             "x-enum-varnames": [
                 "Local",
                 "Anywhere"
@@ -3030,15 +2941,6 @@ const docTemplate = `{
                 }
             }
         },
-        "types.License": {
-            "type": "object",
-            "properties": {
-                "LocalPath": {
-                    "description": "LocalPath specifies the local license file path",
-                    "type": "string"
-                }
-            }
-        },
         "types.LocalPublisher": {
             "type": "object",
             "properties": {
@@ -3185,14 +3087,6 @@ const docTemplate = `{
                 "Host": {
                     "description": "Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.",
                     "type": "string"
-                },
-                "License": {
-                    "description": "License specifies license configuration for orchestrator node",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/types.License"
-                        }
-                    ]
                 },
                 "NodeManager": {
                     "$ref": "#/definitions/types.NodeManager"
