@@ -87,7 +87,7 @@ func (s *ParallelStorageSuite) TestURLCleanup() {
 		_, err := w.Write([]byte("hello world"))
 		s.NoError(err)
 	}))
-	defer func() { _ = ts.Close() }()
+	defer ts.Close()
 
 	artifact := &models.InputSource{
 		Source: &models.SpecConfig{

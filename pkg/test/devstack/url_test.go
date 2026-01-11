@@ -47,7 +47,7 @@ func runURLTest(
 	testCase URLBasedTestCase,
 ) {
 	svr := httptest.NewServer(http.HandlerFunc(handler))
-	defer func() { _ = svr.Close() }()
+	defer svr.Close()
 
 	allContent := testCase.files[fmt.Sprintf("/%s", testCase.file1)] + testCase.files[fmt.Sprintf("/%s", testCase.file2)]
 	testScenario := scenario.Scenario{
@@ -215,7 +215,7 @@ func (s *URLTestSuite) TestLocalURLCombo() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(URLContent))
 	}))
-	defer func() { _ = svr.Close() }()
+	defer svr.Close()
 
 	rootSourceDir := s.T().TempDir()
 	testScenario := scenario.Scenario{
