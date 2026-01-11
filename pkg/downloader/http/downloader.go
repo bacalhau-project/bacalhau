@@ -66,7 +66,7 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, item download
 
 // fetch makes an HTTP GET request to the given URL and writes the response to the given filepath.
 func (httpDownloader *Downloader) fetch(ctx context.Context, url string, filepath string) error {
-	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, downloader.DownloadFilePerm)
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, downloader.DownloadFilePerm) //nolint:gosec // G304: filepath validated by caller
 	if err != nil {
 		return err
 	}

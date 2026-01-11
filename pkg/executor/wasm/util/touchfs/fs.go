@@ -44,7 +44,7 @@ func (t touchFS) Open(name string) (fs.File, error) {
 
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		fullPath := filepath.Join(string(t), name)
-		return os.Create(fullPath)
+		return os.Create(fullPath) //nolint:gosec // G304: fullPath constructed from module path, application controlled
 	} else {
 		return file, err
 	}

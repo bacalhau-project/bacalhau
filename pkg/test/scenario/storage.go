@@ -52,7 +52,7 @@ func StoredText(
 		}
 
 		// Open/create a file at the given path.
-		file, err := os.Create(sourcePath)
+		file, err := os.Create(sourcePath) //nolint:gosec // G304: sourcePath from CreateSourcePath, test fixture controlled
 		if err != nil {
 			return nil, err
 		}
@@ -219,13 +219,13 @@ func copyDir(src string, dest string) error {
 
 // copyFile copies a file from src to dest.
 func copyFile(src string, dest string) error {
-	srcFile, err := os.Open(src)
+	srcFile, err := os.Open(src) //nolint:gosec // G304: src parameter in test helper, application controlled
 	if err != nil {
 		return fmt.Errorf("failed to open source file %s: %w", src, err)
 	}
 	defer func() { _ = srcFile.Close() }()
 
-	destFile, err := os.Create(dest)
+	destFile, err := os.Create(dest) //nolint:gosec // G304: dest parameter in test helper, application controlled
 	if err != nil {
 		return fmt.Errorf("failed to create destination file %s: %w", dest, err)
 	}

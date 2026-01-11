@@ -132,7 +132,7 @@ func (rc *ExecutionLogReader) logFileWait() (io.ReadCloser, error) {
 	waitStart := time.Now()
 	filePath := filepath.Join(rc.params.logsDir, compute.ExecutionLogFileName)
 	for {
-		file, err := os.Open(filePath)
+		file, err := os.Open(filePath) //nolint:gosec // G304: filePath from logsDir, application controlled
 		if err == nil {
 			log.Debug().
 				Str("path", filePath).

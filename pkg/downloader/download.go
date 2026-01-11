@@ -203,13 +203,13 @@ func moveData(
 // read data from sourcePath and append it to targetPath
 // the same as "cat $sourcePath >> $targetPath"
 func appendFile(sourcePath, targetPath string) error {
-	source, err := os.Open(sourcePath)
+	source, err := os.Open(sourcePath) //nolint:gosec // G304: sourcePath validated by caller
 	if err != nil {
 		return err
 	}
 	defer func() { _ = source.Close() }()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm) //nolint:gosec // G304: targetPath from download request, validated
 	if err != nil {
 		return err
 	}

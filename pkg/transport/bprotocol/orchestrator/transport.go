@@ -171,7 +171,7 @@ func (cm *ConnectionManager) Stop(ctx context.Context) {
 		cm.dispatcherWatcher = nil
 	}
 	if cm.heartbeatSubscriber != nil {
-		cm.heartbeatSubscriber.Close(ctx)
+		_ = cm.heartbeatSubscriber.Close(ctx)
 		cm.heartbeatSubscriber = nil
 	}
 }

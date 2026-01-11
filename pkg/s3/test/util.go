@@ -55,7 +55,7 @@ func AssertEqualDirectories(t *testing.T, dir1, dir2 string) {
 }
 
 func ReadFile(t *testing.T, path string) string {
-	content, err := os.ReadFile(path)
+	content, err := os.ReadFile(path) //nolint:gosec // G304: path from test fixture, controlled
 	require.NoError(t, err)
 	return string(content)
 }

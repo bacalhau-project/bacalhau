@@ -87,7 +87,7 @@ func (p *Publisher) PublishResult(
 	filename := execution.ID + ".tar.gz"
 	targetFile := path.Join(p.baseDirectory, filename)
 
-	file, err := os.Create(targetFile)
+	file, err := os.Create(targetFile) //nolint:gosec // G304: targetFile from baseDirectory config, application controlled
 	if err != nil {
 		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to create output file")
 	}

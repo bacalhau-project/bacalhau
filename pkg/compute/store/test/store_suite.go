@@ -1,6 +1,3 @@
-//go:build unit || !integration
-
-//nolint:all // Test suite file
 package test
 
 import (

@@ -274,7 +274,7 @@ func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
 		log.Error().Err(err).Any("response", response).Msg("Proxy error")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}
 	return proxy
 }

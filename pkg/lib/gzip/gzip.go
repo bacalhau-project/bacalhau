@@ -49,7 +49,7 @@ func Compress(sourcePath string, targetFile *os.File) error {
 				return nil
 			}
 			// Open the file for reading.
-			file, err := os.Open(path)
+			file, err := os.Open(path) //nolint:gosec // G304: path from tar archive, validated by caller
 			if err != nil {
 				return err
 			}

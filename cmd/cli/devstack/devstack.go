@@ -241,7 +241,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 
 	cmd.Println(stack.GetStackInfo(ctx))
 
-	f, err := os.Create(portFileName)
+	f, err := os.Create(portFileName) //nolint:gosec // G304: portFileName from devstack config, application controlled
 	if err != nil {
 		return fmt.Errorf("error writing out port file to %v: %w", portFileName, err)
 	}
@@ -252,7 +252,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 		return fmt.Errorf("error writing out port file: %v: %w", portFileName, err)
 	}
 
-	fPid, err := os.Create(pidFileName)
+	fPid, err := os.Create(pidFileName) //nolint:gosec // G304: pidFileName from devstack config, application controlled
 	if err != nil {
 		return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err)
 	}

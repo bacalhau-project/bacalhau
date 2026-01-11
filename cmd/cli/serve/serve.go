@@ -247,7 +247,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(riPath)
+	defer func() { _ = os.Remove(riPath) }()
 
 	<-ctx.Done() // block until killed
 	log.Info().Msg("bacalhau node shutting down...")

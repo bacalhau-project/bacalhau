@@ -32,7 +32,7 @@ func FileContains(
 			return err
 		}
 		outputFile := filepath.Join(resultsDir, outputFilePath)
-		resultsContent, err := os.ReadFile(outputFile)
+		resultsContent, err := os.ReadFile(outputFile) //nolint:gosec // G304: outputFile from test fixture, controlled
 		if err != nil {
 			return err
 		}
@@ -63,7 +63,7 @@ func FileEquals(
 			return err
 		}
 		outputFile := filepath.Join(resultsDir, outputFilePath)
-		resultsContent, err := os.ReadFile(outputFile)
+		resultsContent, err := os.ReadFile(outputFile) //nolint:gosec // G304: outputFile from test fixture, controlled
 		if err != nil {
 			return err
 		}

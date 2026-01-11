@@ -80,7 +80,7 @@ func (p Publisher) PublishResult(ctx context.Context, execution *models.Executio
 		return models.SpecConfig{}, err
 	}
 	defer func() { _ = targetFile.Close() }()
-	defer os.Remove(targetFile.Name())
+	defer func() { _ = os.Remove(targetFile.Name()) }()
 
 	err = gzip.Compress(resultPath, targetFile)
 	if err != nil {

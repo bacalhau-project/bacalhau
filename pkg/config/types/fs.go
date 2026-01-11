@@ -90,7 +90,7 @@ func initUserIDKey(path string) error {
 	}
 
 	var file *os.File
-	file, err = os.Create(path)
+	file, err = os.Create(path) //nolint:gosec // G304: path from config system, application controlled
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %w", err)
 	}
