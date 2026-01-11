@@ -13,7 +13,6 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
-	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
@@ -66,8 +65,7 @@ func NewRequesterNode(
 	apiServer *publicapi.Server,
 	transportLayer *nats_transport.NATSTransport,
 	metadataStore MetadataStore,
-	nodeInfoProvider models.DecoratorNodeInfoProvider,
-	reader licensing.Reader) (*Requester, error) {
+	nodeInfoProvider models.DecoratorNodeInfoProvider) (*Requester, error) {
 	jobStore, err := createJobStore(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -260,17 +258,11 @@ func NewRequesterNode(
 		discovery.NewDebugInfoProvider(nodesManager),
 	}
 
-	licenseManager, err := createLicenseManager(cfg, reader, nodesManager)
-	if err != nil {
-		return nil, err
-	}
-
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
-		Router:         apiServer.Router,
-		Orchestrator:   endpointV2,
-		JobStore:       jobStore,
-		NodeManager:    nodesManager,
-		LicenseManager: licenseManager,
+		Router:       apiServer.Router,
+		Orchestrator: endpointV2,
+		JobStore:     jobStore,
+		NodeManager:  nodesManager,
 	})
 
 	authenticators, err := cfg.DependencyInjector.AuthenticatorsFactory.Get(ctx, cfg)
@@ -373,9 +365,6 @@ func NewRequesterNode(
 		// stop the legacy connection manager
 		legacyConnectionManager.Stop(ctx)
 
-		// stop the license manager
-		licenseManager.Stop()
-
 		// stop the connection manager
 		if cleanupErr = connectionManager.Stop(ctx); cleanupErr != nil {
 			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown connection manager")
@@ -412,22 +401,6 @@ func NewRequesterNode(
 		cleanupFunc:        cleanupFunc,
 		debugInfoProviders: debugInfoProviders,
 	}, nil
-}
-
-func createLicenseManager(cfg NodeConfig, reader licensing.Reader, nodesManager nodes.Manager) (licensing.Manager, error) {
-	// license manager
-	licenseManager, err := licensing.NewManager(licensing.ManagerParams{
-		Reader:         reader,
-		NodesTracker:   nodesManager,
-		SkipValidation: cfg.SystemConfig.SkipLicenseValidation,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// start the license manager
-	licenseManager.Start()
-	return licenseManager, nil
 }
 
 func createNodeRanker(cfg NodeConfig, jobStore jobstore.Store) (orchestrator.NodeRanker, error) {

@@ -103,7 +103,6 @@ var ConfigDescriptions = map[string]string{
 	OrchestratorEvaluationBrokerMaxRetryCountKey:      "MaxRetryCount specifies the maximum number of times an evaluation can be retried before being marked as failed.",
 	OrchestratorEvaluationBrokerVisibilityTimeoutKey:  "VisibilityTimeout specifies how long an evaluation can be claimed before it's returned to the queue.",
 	OrchestratorHostKey:                               "Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.",
-	OrchestratorLicenseLocalPathKey:                   "LocalPath specifies the local license file path",
 	OrchestratorNodeManagerDisconnectTimeoutKey:       "DisconnectTimeout specifies how long to wait before considering a node disconnected.",
 	OrchestratorNodeManagerManualApprovalKey:          "ManualApproval, if true, requires manual approval for new compute nodes joining the cluster.",
 	OrchestratorPortKey:                               "Host specifies the port number on which the Orchestrator server listens for compute node connections.",
