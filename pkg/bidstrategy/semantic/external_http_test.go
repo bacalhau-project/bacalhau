@@ -71,7 +71,7 @@ func TestJobSelectionHttp(t *testing.T) {
 				w.WriteHeader(test.status)
 				w.Write(test.body)
 			}))
-			defer svr.Close()
+			defer func() { _ = svr.Close() }()
 
 			params := semantic.ExternalHTTPStrategyParams{URL: svr.URL}
 			strategy := semantic.NewExternalHTTPStrategy(params)

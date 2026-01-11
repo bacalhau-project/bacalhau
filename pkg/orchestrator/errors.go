@@ -43,16 +43,16 @@ func (e ErrNotEnoughNodes) Error() string {
 	reasons := lo.GroupBy(e.AvailableNodes, func(rank NodeRank) string { return rank.Reason })
 
 	var message strings.Builder
-	fmt.Fprint(&message, "not enough nodes to run job. ")
-	fmt.Fprintf(&message, "requested: %d, available: %d, suitable: %d.", e.RequestedNodes, len(e.AvailableNodes), e.SuitableNodes())
+	_, _ = fmt.Fprint(&message, "not enough nodes to run job. ")
+	_, _ = fmt.Fprintf(&message, "requested: %d, available: %d, suitable: %d.", e.RequestedNodes, len(e.AvailableNodes), e.SuitableNodes())
 	for reason, nodes := range reasons {
-		fmt.Fprint(&message, "\n• ")
+		_, _ = fmt.Fprint(&message, "\n• ")
 		if len(nodes) > 1 {
-			fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
+			_, _ = fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
 		} else {
-			fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
+			_, _ = fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
 		}
-		fmt.Fprintf(&message, ": %s", reason)
+		_, _ = fmt.Fprintf(&message, ": %s", reason)
 	}
 	return message.String()
 }
@@ -86,15 +86,15 @@ func (e ErrNoMatchingNodes) Error() string {
 	reasons := lo.GroupBy(e.AvailableNodes, func(rank NodeRank) string { return rank.Reason })
 
 	var message strings.Builder
-	fmt.Fprintf(&message, "not matching nodes to run job out of %d available nodes.", len(e.AvailableNodes))
+	_, _ = fmt.Fprintf(&message, "not matching nodes to run job out of %d available nodes.", len(e.AvailableNodes))
 	for reason, nodes := range reasons {
-		fmt.Fprint(&message, "\n• ")
+		_, _ = fmt.Fprint(&message, "\n• ")
 		if len(nodes) > 1 {
-			fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
+			_, _ = fmt.Fprintf(&message, "%d of %d nodes", len(nodes), len(e.AvailableNodes))
 		} else {
-			fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
+			_, _ = fmt.Fprintf(&message, "Node %s", idgen.ShortNodeID(nodes[0].NodeInfo.ID()))
 		}
-		fmt.Fprintf(&message, ": %s", reason)
+		_, _ = fmt.Fprintf(&message, ": %s", reason)
 	}
 	return message.String()
 }

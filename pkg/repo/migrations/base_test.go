@@ -57,11 +57,11 @@ func (suite *BaseMigrationTestSuite) copyDir(src, dst string) {
 func (suite *BaseMigrationTestSuite) copyFile(src, dst string) {
 	srcFile, err := os.Open(src)
 	suite.Require().NoError(err)
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	dstFile, err := os.Create(dst)
 	suite.Require().NoError(err)
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	_, err = io.Copy(dstFile, srcFile)
 	suite.Require().NoError(err)

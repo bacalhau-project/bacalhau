@@ -45,7 +45,7 @@ func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 	if err != nil {
 		return fmt.Errorf("failed to open file for upload: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Get file info for logging
 	fileInfo, err := file.Stat()
@@ -74,7 +74,7 @@ func (u *S3PreSignedURLUploader) uploadWithPreSignedURL(
 	if err != nil {
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("upload failed with status code: %d", resp.StatusCode)

@@ -63,7 +63,7 @@ func (o *SSOTokenOptions) runSSOToken(cmd *cobra.Command, cfg types.Bacalhau) er
 	}
 
 	if existingCred == nil {
-		fmt.Fprintln(cmd.OutOrStdout(), "No authentication token found")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No authentication token found")
 		return nil
 	}
 
@@ -81,18 +81,18 @@ func (o *SSOTokenOptions) runSSOToken(cmd *cobra.Command, cfg types.Bacalhau) er
 		if err != nil {
 			return bacerrors.Newf("failed to marshal header: %s", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "Header:")
-		fmt.Fprintln(cmd.OutOrStdout(), string(headerJSON))
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Header:")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(headerJSON))
 
 		// Pretty print the claims
 		claimsJSON, err := json.MarshalIndent(token.Claims, "", "  ")
 		if err != nil {
 			return bacerrors.Newf("failed to marshal claims: %s", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "\nClaims:")
-		fmt.Fprintln(cmd.OutOrStdout(), string(claimsJSON))
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "\nClaims:")
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(claimsJSON))
 	} else {
-		fmt.Fprintln(cmd.OutOrStdout(), existingCred.Value)
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), existingCred.Value)
 	}
 
 	return nil

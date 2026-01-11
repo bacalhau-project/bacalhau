@@ -27,7 +27,7 @@ func mockStdin(t *testing.T, input string) func() {
 
 	// Write input asynchronously
 	go func() {
-		defer writer.Close()
+		defer func() { _ = writer.Close() }()
 		io.WriteString(writer, input)
 	}()
 

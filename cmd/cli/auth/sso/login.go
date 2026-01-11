@@ -124,24 +124,24 @@ func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg ty
 			WithHint(errorHint)
 	}
 
-	fmt.Fprintf(os.Stderr, "\nSuccessfully authenticated with %s!\n", nodeAuthConfig.Config.ProviderName)
+	_, _ = fmt.Fprintf(os.Stderr, "\nSuccessfully authenticated with %s!\n", nodeAuthConfig.Config.ProviderName)
 
 	return nil
 }
 
 // printDeviceCodeInstructions prints instructions for the user to complete the device code flow
 func printDeviceCodeInstructions(deviceCode *sso.DeviceCodeResponse, providerName string, cmdOutput io.Writer) {
-	_, _ = fmt.Fprintln(cmdOutput, "")
-	_, _ = fmt.Fprintln(cmdOutput, "To login, please:")
-	_, _ = fmt.Fprintf(cmdOutput, "  1. Open this URL in your browser: %s\n", deviceCode.VerificationURI)
-	_, _ = fmt.Fprintf(cmdOutput, "  2. Enter this code: %s\n", deviceCode.UserCode)
+	_, _= fmt.Fprintln(cmdOutput, "")
+	_, _= fmt.Fprintln(cmdOutput, "To login, please:")
+	_, _= fmt.Fprintf(cmdOutput, "  1. Open this URL in your browser: %s\n", deviceCode.VerificationURI)
+	_, _= fmt.Fprintf(cmdOutput, "  2. Enter this code: %s\n", deviceCode.UserCode)
 
 	if deviceCode.VerificationURIComplete != "" {
-		_, _ = fmt.Fprintln(cmdOutput, "")
-		_, _ = fmt.Fprintln(cmdOutput, "Or, open this URL in your browser:")
-		_, _ = fmt.Fprintf(cmdOutput, "  %s\n", deviceCode.VerificationURIComplete)
-		_, _ = fmt.Fprintln(cmdOutput, "")
+		_, _= fmt.Fprintln(cmdOutput, "")
+		_, _= fmt.Fprintln(cmdOutput, "Or, open this URL in your browser:")
+		_, _= fmt.Fprintf(cmdOutput, "  %s\n", deviceCode.VerificationURIComplete)
+		_, _= fmt.Fprintln(cmdOutput, "")
 	}
 
-	fmt.Fprintf(cmdOutput, "Waiting for authentication with %s... (press Ctrl+C to cancel)\n", providerName)
+	_, _ = fmt.Fprintf(cmdOutput, "Waiting for authentication with %s... (press Ctrl+C to cancel)\n", providerName)
 }

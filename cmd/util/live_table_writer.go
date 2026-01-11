@@ -72,5 +72,5 @@ func (w *LiveTableWriter) Write(buf []byte) (n int, err error) {
 }
 
 func (w *LiveTableWriter) clearRows() {
-	_, _ = fmt.Fprint(w.Out, strings.Repeat(clear, w.rowCount))
+	_, _= fmt.Fprint(w.Out, strings.Repeat(clear, w.rowCount))
 }

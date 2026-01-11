@@ -56,7 +56,7 @@ func StoredText(
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		// Write the contents to the file.
 		_, err = file.WriteString(fileContents)
@@ -223,13 +223,13 @@ func copyFile(src string, dest string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open source file %s: %w", src, err)
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	destFile, err := os.Create(dest)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file %s: %w", dest, err)
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	_, err = io.Copy(destFile, srcFile)
 	if err != nil {

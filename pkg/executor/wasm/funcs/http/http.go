@@ -179,7 +179,7 @@ func (m *module) httpRequest(
 		}
 		return StatusNetworkError
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Calculate maximum allowed response size and read response with limit
 	maxSize := m.calculateMaxResponseSize(mod)

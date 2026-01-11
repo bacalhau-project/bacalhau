@@ -91,7 +91,7 @@ func (p *Publisher) PublishResult(
 	if err != nil {
 		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to create output file")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	err = gzip.Compress(resultPath, file)
 	if err != nil {

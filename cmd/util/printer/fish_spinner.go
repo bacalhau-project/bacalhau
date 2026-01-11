@@ -130,22 +130,22 @@ func (s *FishSpinner) print() {
 	dots := strings.Repeat(".", s.width)
 	animation := dots[:s.position] + frame + dots[s.position+1:]
 
-	_, _ = fmt.Fprintf(s.writer, "\r%s %s", s.spinnerText, animation)
+	_, _= fmt.Fprintf(s.writer, "\r%s %s", s.spinnerText, animation)
 }
 
 // Clear removes the spinner from the console
 func (s *FishSpinner) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, _ = fmt.Fprint(s.writer, "\r"+strings.Repeat(" ", len(s.spinnerText)+s.width+2)+"\r")
+	_, _= fmt.Fprint(s.writer, "\r"+strings.Repeat(" ", len(s.spinnerText)+s.width+2)+"\r")
 }
 
 // hideCursor hides the cursor
 func (s *FishSpinner) hideCursor() {
-	_, _ = fmt.Fprint(s.writer, hideCursor)
+	_, _= fmt.Fprint(s.writer, hideCursor)
 }
 
 // showCursor shows the cursor
 func (s *FishSpinner) showCursor() {
-	_, _ = fmt.Fprint(s.writer, showCursor)
+	_, _= fmt.Fprint(s.writer, showCursor)
 }

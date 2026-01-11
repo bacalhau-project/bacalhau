@@ -93,7 +93,7 @@ func (s *APIServerTestSuite) TestTimeout() {
 
 	res, err := http.Get(s.server.GetURI().JoinPath(endpoint).String())
 	s.Require().NoError(err)
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	s.validateResponse(res, http.StatusServiceUnavailable, "Server Timeout!")
 }
 
@@ -125,7 +125,7 @@ func (s *APIServerTestSuite) TestMaxBodyReader() {
 			request := strings.Repeat("a", tc.size)
 			res, err := http.Post(s.server.GetURI().JoinPath(endpoint).String(), "text/plain", strings.NewReader(request))
 			s.Require().NoError(err)
-			defer res.Body.Close()
+			defer func() { _ = res.Body.Close() }()
 			if tc.expectError {
 				s.validateResponse(res, http.StatusRequestEntityTooLarge, "Request Entity Too Large")
 			} else {

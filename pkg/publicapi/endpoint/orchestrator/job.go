@@ -607,7 +607,7 @@ func (e *Endpoint) logs(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade websocket connection: %w", err)
 	}
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	err = e.logsWS(c, ws)
 	if err != nil {

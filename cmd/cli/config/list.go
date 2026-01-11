@@ -66,7 +66,7 @@ func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error 
 			return err
 		}
 		stdout := cmd.OutOrStdout()
-		if _, err := fmt.Fprintln(stdout, string(bytes)); err != nil {
+		if _, err := _, _ = fmt.Fprintln(stdout, string(bytes)); err != nil {
 			return err
 		}
 		return nil

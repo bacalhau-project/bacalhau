@@ -36,7 +36,7 @@ func AddTextToNodes(ctx context.Context, fileContent []byte, clients ...Client) 
 	if err != nil {
 		return "", err
 	}
-	defer func() { _ = os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	testFilePath := filepath.Join(tempDir, "test.txt")
 	err = os.WriteFile(testFilePath, fileContent, util.OS_USER_RW|util.OS_ALL_R)

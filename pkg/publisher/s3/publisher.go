@@ -80,7 +80,7 @@ func (publisher *Publisher) publishArchive(
 	if err != nil {
 		return models.SpecConfig{}, err
 	}
-	defer targetFile.Close()
+	defer func() { _ = targetFile.Close() }()
 	defer os.Remove(targetFile.Name())
 
 	err = gzip.Compress(resultPath, targetFile)
@@ -148,7 +148,7 @@ func (publisher *Publisher) publishDirectory(
 		if err != nil {
 			return err
 		}
-		defer data.Close()
+		defer func() { _ = data.Close() }()
 
 		relativePath, err := filepath.Rel(resultPath, path)
 		if err != nil {

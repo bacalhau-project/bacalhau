@@ -27,7 +27,7 @@ func (s *PortAllocatorTestSuite) TestGetFreePort() {
 	// Verify we can listen on the port
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	s.Require().NoError(err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 }
 
 // TestEvictionAndReservation tests both the TTL eviction and reservation mechanism
@@ -115,7 +115,7 @@ func (s *PortAllocatorTestSuite) TestIsPortOpen() {
 	// Listen on the port
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	s.Require().NoError(err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 
 	// Port should now be in use
 	s.False(IsPortOpen(port), "port should be in use")

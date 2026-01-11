@@ -46,7 +46,7 @@ func (r *Responder) Respond(request *json.RawMessage) ([]byte, error) {
 			return nil, fmt.Errorf("invalid schema: property %q has non-scalar type", name)
 		}
 
-		fmt.Fprintf(r.Cmd.ErrOrStderr(), "%s: ", name)
+		_, _ = fmt.Fprintf(r.Cmd.ErrOrStderr(), "%s: ", name)
 
 		inputChan := make(chan []byte, 1)
 		errChan := make(chan error, 1)

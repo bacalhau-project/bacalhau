@@ -77,7 +77,7 @@ func (s *BasicCacheSuite) TestBasicCache() {
 
 	c, err := s.createTestCache("TestBasicCache", 2, oneHour, nil)
 	require.NoError(s.T(), err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	err = c.Set(k, "value", 1, int64(oneSecond.Seconds()))
 	require.NoError(s.T(), err)
@@ -92,7 +92,7 @@ func (s *BasicCacheSuite) TestTooCostly() {
 
 	c, err := s.createTestCache("TestTooCostly", 1, oneHour, nil)
 	require.NoError(s.T(), err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	err = c.Set(k, "value", 10, int64(oneSecond.Seconds()))
 	require.Error(s.T(), err)
@@ -113,7 +113,7 @@ func (s *BasicCacheSuite) TestExpiry() {
 
 	c, err := s.createTestCache("TestExpiry", 1, 100*time.Millisecond, f)
 	require.NoError(s.T(), err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	err = c.Set(k, "value", 1, 1)
 	require.NoError(s.T(), err)
@@ -147,7 +147,7 @@ func (s *BasicCacheSuite) TestExpiryDefaultTTL() {
 
 	c, err := s.createTestCacheWithDefaultTTL("TestExpiry", 1, 100*time.Millisecond, 1*time.Second, f)
 	require.NoError(s.T(), err)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 
 	err = c.SetWithDefaultTTL(k, "value", 1)
 	require.NoError(s.T(), err)

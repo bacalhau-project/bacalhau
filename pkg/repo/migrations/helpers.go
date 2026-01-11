@@ -72,7 +72,7 @@ func copyFile(srcPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	// Get the file info of the source file to retrieve its permissions
 	srcFileInfo, err := srcFile.Stat()
@@ -85,7 +85,7 @@ func copyFile(srcPath, dstPath string) error {
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	// Copy the contents from source to destination
 	_, err = io.Copy(dstFile, srcFile)
