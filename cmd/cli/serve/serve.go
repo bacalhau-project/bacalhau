@@ -99,7 +99,7 @@ func NewCmd() *cobra.Command {
 	return serveCmd
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)

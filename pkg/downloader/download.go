@@ -39,7 +39,7 @@ var specialFiles = map[string]bool{
 // * iterate over each output volume
 // * make new folder for output volume
 // * iterate over each result and merge files in output folder to results dir
-func DownloadResults( //nolint:funlen,gocyclo
+func DownloadResults( //nolint:funlen
 	ctx context.Context,
 	publishedResults []*models.SpecConfig,
 	downloadProvider DownloaderProvider,

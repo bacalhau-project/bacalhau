@@ -1387,7 +1387,7 @@ func (b *BoltJobStore) UpdateJob(ctx context.Context, job models.Job) (err error
 	})
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func (b *BoltJobStore) updateJob(
 	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, updatedJob models.Job) error {
 	// Get the existing job

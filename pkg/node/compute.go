@@ -49,7 +49,7 @@ type Compute struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func NewComputeNode(
 	ctx context.Context,
 	cfg NodeConfig,

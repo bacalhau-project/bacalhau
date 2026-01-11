@@ -308,7 +308,7 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 	return req, nil
 }
 
-//nolint:funlen,gocyclo // TODO: This functions is complex and should be simplified
+//nolint:funlen // TODO: This functions is complex and should be simplified
 func (c *httpClient) interceptError(
 	ctx context.Context,
 	err error,

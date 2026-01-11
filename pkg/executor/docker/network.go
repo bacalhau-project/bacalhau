@@ -137,7 +137,7 @@ func (e *Executor) setupNetworkForJob(
 	return
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func (e *Executor) createHTTPGateway(
 	ctx context.Context,
 	job string,

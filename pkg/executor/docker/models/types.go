@@ -58,7 +58,6 @@ func (c EngineSpec) ToMap() map[string]interface{} {
 
 func DecodeSpec(spec *models.SpecConfig) (EngineSpec, error) {
 	if !spec.IsType(models.EngineDocker) {
-
 		return EngineSpec{}, errors.New("invalid docker engine type. expected " + models.EngineDocker + ", but received: " + spec.Type)
 	}
 	inputParams := spec.Params

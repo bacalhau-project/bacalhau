@@ -58,7 +58,7 @@ type Requester struct {
 	debugInfoProviders []models.DebugInfoProvider
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func NewRequesterNode(
 	ctx context.Context,
 	cfg NodeConfig,

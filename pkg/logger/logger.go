@@ -348,7 +348,7 @@ func marshalZapCoreLogLevel(level zapcore.Level) zerolog.Level {
 	return zerolog.PanicLevel
 }
 
-//nolint:gocyclo,gosec
+//nolint:gosec
 func marshalZapCoreFields[T zerologFields[T]](fields []zapcore.Field, handler T) T {
 	keyPrefix := ""
 

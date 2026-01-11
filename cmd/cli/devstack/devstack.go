@@ -80,7 +80,7 @@ func newOptions() *options {
 	}
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen
 func NewCmd() *cobra.Command {
 	ODs := newOptions()
 
@@ -174,7 +174,7 @@ func NewCmd() *cobra.Command {
 	return devstackCmd
 }
 
-//nolint:gocyclo,funlen
+//nolint:funlen
 func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 	ctx := cmd.Context()
 

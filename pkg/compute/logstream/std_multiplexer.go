@@ -51,7 +51,7 @@ const (
 //
 // See also discussions on timestamp timezone github.com/moby/moby/pull/35051#issuecomment-334117784
 //
-//nolint:gocyclo,funlen
+//nolint:funlen
 func TimestampedStdCopy(
 	dstout io.Writer,
 	src io.Reader,
