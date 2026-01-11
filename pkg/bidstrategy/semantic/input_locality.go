@@ -53,7 +53,8 @@ func (s *InputLocalityStrategy) ShouldBid(
 		}
 		hasStorage, err := strg.HasStorageLocally(ctx, *input)
 		if err != nil {
-			return bidstrategy.BidStrategyResponse{}, fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
+			return bidstrategy.BidStrategyResponse{},
+				fmt.Errorf("InputLocalityStrategy: failed to check for storage resource locality: %w", err)
 		}
 		if hasStorage {
 			foundInputs++

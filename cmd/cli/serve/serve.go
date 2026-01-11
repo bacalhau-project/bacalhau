@@ -130,7 +130,8 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		}
 	} else {
 		// Warn if the flag was provided but node name already exists
-		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != sysmeta.NodeName {
+		flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if flagNodeName != "" && flagNodeName != sysmeta.NodeName {
 			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, sysmeta.NodeName)
 		}
 	}

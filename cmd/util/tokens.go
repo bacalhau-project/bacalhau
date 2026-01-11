@@ -37,7 +37,8 @@ func readTokens(path string) (tokens, error) {
 }
 
 func writeTokens(path string, t tokens) error {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, util.OS_USER_RW) //nolint:gosec // G304: path from token storage, application controlled
+	//nolint:gosec // G304: path from token storage, application controlled
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, util.OS_USER_RW)
 	if err != nil {
 		return err
 	}

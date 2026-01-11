@@ -178,7 +178,8 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	}
 
 	// create the file to download to
-	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, models.DownloadFilePerm) //nolint:gosec // G304: Caller responsible for validating output path
+	//nolint:gosec // G304: Caller responsible for validating output path
+	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, models.DownloadFilePerm)
 	if err != nil {
 		return err
 	}

@@ -209,7 +209,8 @@ func appendFile(sourcePath, targetPath string) error {
 	}
 	defer func() { _ = source.Close() }()
 
-	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm) //nolint:gosec // G304: targetPath from download request, validated
+	//nolint:gosec // G304: targetPath from download request, validated
+	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
 	if err != nil {
 		return err
 	}

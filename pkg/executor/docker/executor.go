@@ -137,9 +137,11 @@ func (e *Executor) Start(ctx context.Context, request *executor.RunCommandReques
 		// failing that will create a new container.
 		if handler, found := e.handlers.Get(request.ExecutionID); found {
 			if handler.active() {
-				return executor.NewExecutorError(executor.ExecutionAlreadyStarted, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
+				return executor.NewExecutorError(executor.ExecutionAlreadyStarted,
+					fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			} else {
-				return executor.NewExecutorError(executor.ExecutionAlreadyComplete, fmt.Sprintf("starting execution (%s)", request.ExecutionID))
+				return executor.NewExecutorError(executor.ExecutionAlreadyComplete,
+					fmt.Sprintf("starting execution (%s)", request.ExecutionID))
 			}
 		}
 
@@ -280,7 +282,8 @@ func (e *Executor) GetLogStream(ctx context.Context, request messages.ExecutionL
 		chExit <- struct{}{}
 	}
 
-	return nil, executor.NewExecutorError(executor.ExecutionNotFound, fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
+	return nil, executor.NewExecutorError(executor.ExecutionNotFound,
+		fmt.Sprintf("getting outputs for execution (%s)", request.ExecutionID))
 }
 
 // Run initiates and waits for the completion of an execution in one call.

@@ -67,7 +67,8 @@ func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Ctx(ctx).Error().Err(err).Msgf("local publisher not installed because the base directory %s does not exist", p.baseDirectory)
+			log.Ctx(ctx).Error().Err(err).Msgf(
+				"local publisher not installed because the base directory %s does not exist", p.baseDirectory)
 		} else {
 			log.Ctx(ctx).Error().Err(err).Msgf("local publisher failed to check if the base directory %s exists", p.baseDirectory)
 		}

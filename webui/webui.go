@@ -72,7 +72,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:mnd // standard graceful shutdown timeout
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Error().Err(err).Msg("Server shutdown error")
@@ -116,7 +116,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		logger := logEvent.Logger()
 
 		switch {
-		case statusCode >= 500:
+		case statusCode >= 500: //nolint:mnd // HTTP 5xx server error range
 			logger.Error().Msg(message)
 		case statusCode == http.StatusNotFound:
 			logger.Warn().Msg(message)

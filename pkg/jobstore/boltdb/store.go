@@ -325,7 +325,8 @@ func (b *BoltJobStore) getExecutionJobID(tx *bolt.Tx, id string) (string, error)
 }
 
 func (b *BoltJobStore) getExecutions(
-	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
 	// Get execution IDs based on query type
 	executions, err := b.getExecutionsForQuery(ctx, tx, recorder, options)
 	if err != nil {
@@ -399,7 +400,8 @@ func (b *BoltJobStore) getExecutions(
 
 // getExecutionsForQuery gets execution IDs based on the query parameters
 func (b *BoltJobStore) getExecutionsForQuery(
-	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	options jobstore.GetExecutionsOptions) ([]models.Execution, error) {
 	// If JobID is specified, get executions for that job
 	if options.JobID != "" {
 		return b.getExecutionsForJob(ctx, tx, recorder, options.JobID)
@@ -460,7 +462,8 @@ func (b *BoltJobStore) getExecutionsForJob(
 
 // getExecutionIDsFromIndexes retrieves execution ID and job ID pairs that match ALL specified filter options (AND relationship)
 func (b *BoltJobStore) getExecutionIDsFromIndexes(
-	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder, options jobstore.GetExecutionsOptions) ([]ExecutionJobPair, error) {
+	ctx context.Context, tx *bolt.Tx, recorder *telemetry.MetricRecorder,
+	options jobstore.GetExecutionsOptions) ([]ExecutionJobPair, error) {
 	var executionIDSets []map[string]struct{}
 
 	// Get execution IDs from node index if NodeIDs specified

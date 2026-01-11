@@ -170,9 +170,9 @@ func (e *Executor) createHTTPGateway(
 	subnet := internalNetwork.IPAM.Config[0].Subnet
 
 	if len(networkConfig.DomainSet()) == 0 {
-		return nil,
-			nil,
-			fmt.Errorf("invalid networking configuration, at least one domain is required when %s networking is enabled", models.NetworkHTTP)
+		return nil, nil,
+			fmt.Errorf("invalid networking configuration, at least one domain is required when %s "+
+				"networking is enabled", models.NetworkHTTP)
 	}
 
 	// Create the gateway container initially attached to the *host* network

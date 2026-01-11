@@ -42,6 +42,16 @@ linters:
       - text: 'shadow: declaration of "err" shadows declaration at'
         linters:
           - govet
+      # Generated files don't need line length checks
+      - path: pkg/swagger/docs\.go
+        linters:
+          - lll
+      - path: pkg/config/types/generated_descriptions\.go
+        linters:
+          - lll
+      - path: pkg/config/types/gen/generate\.go
+        linters:
+          - lll
 
   settings:
     depguard:
