@@ -1,6 +1,6 @@
 module github.com/bacalhau-project/bacalhau
 
-go 1.24.0
+go 1.25.5
 
 require (
 	github.com/BTBurke/k8sresource v1.2.0

@@ -1,7 +1,7 @@
 python 3.10.5
 nodejs 21.5.0
 direnv 2.33.0
-golang 1.21.11
+golang 1.25.5
 pre-commit 3.6.0
 golangci-lint 1.64.2
 earthly 0.8.3
