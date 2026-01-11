@@ -1,17 +1,12 @@
 package node
 
 import (
-	"os"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bidstrategy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 )
-
-// SkipLicenseValidationEnvVar is the environment variable name for skipping license validation
-// This should only be used for testing purposes, and in expanso cloud which is usage based.
-const SkipLicenseValidationEnvVar = "BACALHAU_SKIP_LICENSE_VALIDATION"
 
 // SystemConfig is node configuration that cannot be specified by the user.
 // They are meant for internal use only and to override the node's behaviour for testing purposes
@@ -34,9 +29,6 @@ type SystemConfig struct {
 	// ExecutionLimitBackoff is the duration to wait before creating a new evaluation when hitting execution limits
 	ExecutionLimitBackoff time.Duration
 
-	// SKipLicenseValidation skips the license validation
-	SkipLicenseValidation bool
-
 	///////////////////////////////
 	// Compute Specific Config
 	///////////////////////////////
@@ -56,13 +48,11 @@ type SystemConfig struct {
 }
 
 func DefaultSystemConfig() SystemConfig {
-	skipLicenseValidation := os.Getenv(SkipLicenseValidationEnvVar) == "true"
 	return SystemConfig{
 		OverSubscriptionFactor:      1.5,
 		NodeRankRandomnessRange:     5,
 		MaxExecutionsPerEval:        20,
 		ExecutionLimitBackoff:       100 * time.Millisecond,
-		SkipLicenseValidation:       skipLicenseValidation,
 		NodeReEvaluatorBatchDelay:   15 * time.Second,
 		NodeReEvaluatorMaxBatchSize: 50,
 		DefaultComputeJobResourceLimits: models.Resources{
@@ -74,7 +64,6 @@ func DefaultSystemConfig() SystemConfig {
 
 func TestSystemConfig() SystemConfig {
 	config := DefaultSystemConfig()
-	config.SkipLicenseValidation = true
 	config.NodeReEvaluatorMaxBatchSize = 1
 	return config
 }
@@ -97,9 +86,6 @@ func (c *SystemConfig) applyDefaults() {
 
 	if c.DefaultComputeJobResourceLimits.IsZero() {
 		c.DefaultComputeJobResourceLimits = defaults.DefaultComputeJobResourceLimits
-	}
-	if !c.SkipLicenseValidation {
-		c.SkipLicenseValidation = defaults.SkipLicenseValidation
 	}
 	if c.NodeReEvaluatorBatchDelay == 0 {
 		c.NodeReEvaluatorBatchDelay = defaults.NodeReEvaluatorBatchDelay
