@@ -17,8 +17,7 @@ The analytics system now sends data directly to PostHog, which improves performa
 - **Installation ID**: The identifier associated with the installation of bacalhau.
 - **Instance ID**: An identifier of the specific bacalhau node instance.
 - **Network ID**: The identifier of the network this node belongs to.
-- **Account ID**: The identifier of the account (for Expanso Cloud users).
-- **Environment**: The environment type (docker, expanso, local).
+- **Environment**: The environment type (docker, local).
 - **Operating System Type**: The name of the operating system the bacalhau node is running on.
 - **Operating System Architecture**: The CPU architecture the bacalhau node is running on.
 
