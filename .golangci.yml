@@ -1,72 +1,5 @@
 version: "2"
 
-linters-settings:
-  depguard:
-    # Depguard v2 configuration - allow all except logrus
-    additional-guards:
-      - list-mode: lax
-        deny:
-          - pkg: github.com/sirupsen/logrus
-            desc: "logging is allowed only by zerolog"
-  dupl:
-    threshold: 100
-  forbidigo:
-    forbid:
-      - 'fmt\.Print.*'  # This will catch Printf, Println, Print
-  funlen:
-    lines: 100
-    statements: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-  gocritic:
-    enabled-tags:
-    - diagnostic
-    - experimental
-    - opinionated
-    - performance
-    - style
-    disabled-checks:
-    - dupImport # https://github.com/go-critic/go-critic/issues/845
-    - ifElseChain
-    - octalLiteral
-    - whyNoLint
-    - wrapperFunc
-    - hugeParam
-    - importShadow
-  gocyclo:
-    min-complexity: 18
-  mnd:
-    # don't include the "operation" and "assign"
-    checks:
-    - argument
-    - case
-    - condition
-    - return
-    ignored-numbers:
-    - "0"
-    - "1"
-    - "2"
-    - "3"
-    ignored-functions:
-    - strings.SplitN
-    - time.Duration
-    - types.Duration
-
-  govet:
-    enable:
-      - shadow
-  lll:
-    # Maximum line length
-    line-length: 140
-    # Tab width in spaces
-    tab-width: 4
-  nolintlint:
-    allow-unused: true # report any unused nolint directives
-    require-explanation: false # don't require an explanation for nolint directives
-    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
-
-# TODO #842 Check gocritic regularly to see if they support generics (finally)
 formatters:
   settings:
     goimports:
@@ -74,6 +7,7 @@ formatters:
   enable:
     - gofmt
     - goimports
+
 linters:
   disable-all: true
   enable:
@@ -84,7 +18,7 @@ linters:
   - errcheck
   - copyloopvar
   - forbidigo
-#  - funlen  # Disabled: Style preference, would require significant refactoring
+  - funlen
   - gochecknoinits
   - goconst
 #   - gocritic
@@ -93,14 +27,89 @@ linters:
   - gosec
   - govet
   - ineffassign
-#  - lll  # Disabled: v2 not respecting line-length:140 config, using default 120
-#  - mnd  # Disabled: Style preference for named constants vs magic numbers
+  - lll
+  - mnd
   - nakedret
   - noctx
   - nolintlint
   - staticcheck  # staticcheck now includes gosimple and stylecheck in v2
   - unconvert
   - whitespace
+
+  exclusions:
+    rules:
+      # Naming of `error` variables as `err` is standard practice for Go
+      - text: 'shadow: declaration of "err" shadows declaration at'
+        linters:
+          - govet
+
+  settings:
+    depguard:
+      # Depguard v2 configuration - allow all except logrus
+      additional-guards:
+        - list-mode: lax
+          deny:
+            - pkg: github.com/sirupsen/logrus
+              desc: "logging is allowed only by zerolog"
+    dupl:
+      threshold: 100
+    forbidigo:
+      forbid:
+        - pattern: 'fmt\.Print.*'
+          msg: 'Do not commit print statements'
+    funlen:
+      lines: 100
+      statements: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+      disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      - hugeParam
+      - importShadow
+    gocyclo:
+      min-complexity: 18
+    mnd:
+      # don't include the "operation" and "assign"
+      checks:
+      - argument
+      - case
+      - condition
+      - return
+      ignored-numbers:
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+      ignored-functions:
+      - strings.SplitN
+      - time.Duration
+      - types.Duration
+    govet:
+      enable:
+        - shadow
+    lll:
+      # Maximum line length
+      line-length: 140
+      # Tab width in spaces
+      tab-width: 4
+    nolintlint:
+      allow-unused: true # report any unused nolint directives
+      require-explanation: false # don't require an explanation for nolint directives
+      require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+# TODO #842 Check gocritic regularly to see if they support generics (finally)
 
 # Options for analysis running.
 run:
@@ -159,7 +168,3 @@ issues:
   # If invoked with -mod=vendor, the go command assumes that the vendor
   # directory holds the correct copies of dependencies and ignores
   # the dependency descriptions in go.mod.
-  #
-  exclude:
-  # Naming of `error` variables as `err` is standard practise for Go
-  - 'shadow: declaration of "err" shadows declaration at'

@@ -175,11 +175,11 @@ func (p *BufferingPubSub[T]) antiStarvationTask() {
 		case <-p.antiStarvationTicker.C:
 			if p.currentBuffer.Size() > 0 && time.Since(p.oldestMessageTime) > p.maxBufferAge {
 				func() {
-					ctx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask")
+					spanCtx, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/pubsub.BufferingPubSub.antiStarvationTask")
 					defer span.End()
 					p.flushMutex.Lock()
 					defer p.flushMutex.Unlock()
-					go p.flushBuffer(ctx, p.currentBuffer, p.oldestMessageTime)
+					go p.flushBuffer(spanCtx, p.currentBuffer, p.oldestMessageTime)
 					p.currentBuffer = BufferingEnvelope{} // reset the buffer
 				}()
 			}
