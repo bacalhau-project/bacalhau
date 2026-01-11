@@ -19,9 +19,6 @@ const (
 
 	// NetworkIDKey is the key for the network ID property
 	NetworkIDKey = "network_id"
-
-	// AccountIDKey is the key for the account ID property (in Expanso Cloud)
-	AccountIDKey = "account_id"
 )
 
 // Environment property keys used in analytics events
@@ -40,9 +37,6 @@ const (
 const (
 	// EnvDockerVal indicates the node is running in a Docker container
 	EnvDockerVal = "docker"
-
-	// EnvExpansoCloudVal indicates the node is running in Expanso Cloud
-	EnvExpansoCloudVal = "expanso"
 
 	// EnvLocalVal indicates the node is running in a local environment
 	EnvLocalVal = "local"
@@ -63,25 +57,20 @@ type ResourceAttributes struct {
 	NodeIDHash     string `json:"node_id_hash,omitempty"`    // Hashed node ID for anonymity
 	NodeType       string `json:"node_type,omitempty"`       // Role of the node (hybrid, orchestrator, compute)
 	NetworkID      string `json:"network_id,omitempty"`      // ID of the network this node belongs to
-	AccountID      string `json:"account_id,omitempty"`      // ID of the account (for Expanso Cloud)
 
 	// Environment information
-	Environment string `json:"environment,omitempty"` // Environment type (docker, expanso, local)
+	Environment string `json:"environment,omitempty"` // Environment type (docker, local)
 	OSType      string `json:"os_type,omitempty"`     // Operating system type (linux, darwin, windows)
 	OSArch      string `json:"os_arch,omitempty"`     // CPU architecture (amd64, arm64, etc.)
 }
 
 // DetermineDistinctID returns the distinct ID for analytics events
 // based on the node properties. It uses a fallback hierarchy:
-// 1. Account ID (highest priority)
-// 2. Network ID
-// 3. Installation ID
-// 4. Instance ID
-// 5. "unknown" (if no IDs are available)
+// 1. Network ID (highest priority)
+// 2. Installation ID
+// 3. Instance ID
+// 4. "unknown" (if no IDs are available)
 func (attrs *ResourceAttributes) DetermineDistinctID() string {
-	if attrs.AccountID != "" {
-		return attrs.AccountID
-	}
 	if attrs.NetworkID != "" {
 		return attrs.NetworkID
 	}
@@ -137,9 +126,6 @@ func (attrs *ResourceAttributes) Properties() EventProperties {
 	}
 	if attrs.NetworkID != "" {
 		props[NetworkIDKey] = attrs.NetworkID
-	}
-	if attrs.AccountID != "" {
-		props[AccountIDKey] = attrs.AccountID
 	}
 	if attrs.Environment != "" {
 		props[EnvKey] = attrs.Environment

@@ -94,7 +94,7 @@ func WithVersion(bv *models.BuildVersionInfo) Option {
 
 // WithSystemInfo adds system information to the resource attributes.
 // This includes OS type, architecture, and environment detection
-// (Docker, Expanso Cloud, or local).
+// (Docker or local).
 //
 // This option reads environment variables and performs system checks,
 // so it should be used with care in performance-sensitive contexts.
@@ -104,14 +104,8 @@ func WithSystemInfo() Option {
 		r.OSType = runtime.GOOS
 		r.OSArch = runtime.GOARCH
 
-		// Check for Expanso Cloud environment variables
-		r.AccountID = os.Getenv("EXPANSO_ACCOUNT_ID")
-		r.NetworkID = os.Getenv("EXPANSO_NETWORK_ID")
-
 		// Determine environment type
-		if r.AccountID != "" {
-			r.Environment = EnvExpansoCloudVal
-		} else if detectDockerEnvironment() {
+		if detectDockerEnvironment() {
 			r.Environment = EnvDockerVal
 		} else {
 			r.Environment = EnvLocalVal
