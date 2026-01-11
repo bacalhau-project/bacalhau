@@ -4,35 +4,31 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/bacalhau-project/bacalhau/pkg/jobstore"
-	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator"
 	"github.com/bacalhau-project/bacalhau/pkg/orchestrator/nodes"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
 )
 
 type EndpointParams struct {
-	Router         *echo.Echo
-	Orchestrator   *orchestrator.BaseEndpoint
-	JobStore       jobstore.Store
-	NodeManager    nodes.Manager
-	LicenseManager licensing.Manager
+	Router       *echo.Echo
+	Orchestrator *orchestrator.BaseEndpoint
+	JobStore     jobstore.Store
+	NodeManager  nodes.Manager
 }
 
 type Endpoint struct {
-	router         *echo.Echo
-	orchestrator   *orchestrator.BaseEndpoint
-	store          jobstore.Store
-	nodeManager    nodes.Manager
-	licenseManager licensing.Manager
+	router       *echo.Echo
+	orchestrator *orchestrator.BaseEndpoint
+	store        jobstore.Store
+	nodeManager  nodes.Manager
 }
 
 func NewEndpoint(params EndpointParams) *Endpoint {
 	e := &Endpoint{
-		router:         params.Router,
-		orchestrator:   params.Orchestrator,
-		store:          params.JobStore,
-		nodeManager:    params.NodeManager,
-		licenseManager: params.LicenseManager,
+		router:       params.Router,
+		orchestrator: params.Orchestrator,
+		store:        params.JobStore,
+		nodeManager:  params.NodeManager,
 	}
 
 	// JSON group
