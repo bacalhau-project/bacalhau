@@ -41,7 +41,7 @@ func LoadSystemMetadata(path string) (*SystemMetadata, error) {
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to read system metadata at path %s: %w", metaPath, err)
 	}
-	metaBytes, err := os.ReadFile(metaPath)
+	metaBytes, err := os.ReadFile(metaPath) //nolint:gosec // G304: metaPath from repo path, application controlled
 	if err != nil {
 		return nil, err
 	}

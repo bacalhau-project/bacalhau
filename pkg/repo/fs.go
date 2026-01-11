@@ -154,7 +154,7 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	// Use os.Create to truncate the file if it already exists
-	f, err := os.Create(runInfoPath)
+	f, err := os.Create(runInfoPath) //nolint:gosec // G304: runInfoPath from repo path, application controlled
 	if err != nil {
 		return "", err
 	}

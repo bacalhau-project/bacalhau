@@ -182,7 +182,7 @@ func (apiServer *Server) GetURI() *url.URL {
 
 func (apiServer *Server) ListenAndServe(ctx context.Context) error {
 	addr := fmt.Sprintf("%s:%d", apiServer.Address, apiServer.Port)
-	listener, err := net.Listen("tcp", addr)
+	listener, err := net.Listen("tcp", addr) //nolint:noctx // Server lifecycle managed by caller, context used for shutdown
 	if err != nil {
 		return apiServer.interceptListenError(err)
 	}

@@ -32,7 +32,7 @@ func main() {
 		panic(err)
 	}
 
-	commentsFile, err := os.Create(filepath.Join(pkgPath, "generated_descriptions.go"))
+	commentsFile, err := os.Create(filepath.Join(pkgPath, "generated_descriptions.go")) //nolint:gosec // G304: pkgPath from build system args, trusted input
 	if err != nil {
 		panic(err)
 	}
