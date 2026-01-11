@@ -11,7 +11,7 @@ on:
       golangci_lint_version:
         description: 'Version of golangci-lint to use'
         required: false
-        default: 'v1.64.5'
+        default: 'v2.8.0'
         type: string
 
 jobs:
