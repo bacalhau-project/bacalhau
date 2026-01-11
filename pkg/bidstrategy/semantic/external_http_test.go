@@ -71,7 +71,7 @@ func TestJobSelectionHttp(t *testing.T) {
 				w.WriteHeader(test.status)
 				w.Write(test.body)
 			}))
-			defer func() { _ = svr.Close() }()
+			defer svr.Close() // httptest.Server.Close() doesn't return error
 
 			params := semantic.ExternalHTTPStrategyParams{URL: svr.URL}
 			strategy := semantic.NewExternalHTTPStrategy(params)
