@@ -42,15 +42,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 		return err
 	}
 
-	// Check license validation state
 	// TODO: Implement warnings for the name syntax if it is not DNS compliant
-	var warnings []string
-	if e.licenseManager != nil {
-		state := e.licenseManager.Validate()
-		if !state.Type.IsValid() {
-			warnings = append(warnings, state.Message)
-		}
-	}
 
 	instanceID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstanceID)
 	installationID := c.Request().Header.Get(apimodels.HTTPHeaderBacalhauInstallationID)
@@ -66,7 +58,7 @@ func (e *Endpoint) putJob(c echo.Context) error {
 	return c.JSON(http.StatusOK, apimodels.PutJobResponse{
 		JobID:        resp.JobID,
 		EvaluationID: resp.EvaluationID,
-		Warnings:     append(resp.Warnings, warnings...),
+		Warnings:     resp.Warnings,
 	})
 }
 
