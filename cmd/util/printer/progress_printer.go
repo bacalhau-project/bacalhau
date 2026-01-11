@@ -174,7 +174,7 @@ func (j *JobProgressPrinter) handleEvents(
 	eventChan <-chan *models.JobHistory,
 	errChan <-chan error,
 ) error {
-	defer printer.close() // close the printer to clear any spinner before exiting
+	defer func() { _ = printer.close() }() // close the printer to clear any spinner before exiting
 
 	for {
 		select {

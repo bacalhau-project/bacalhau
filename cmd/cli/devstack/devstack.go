@@ -207,7 +207,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 		// do this because we know it is a temporary directory. Do not delete the
 		// configured repo if `--stack-repo` was specified
 		baseRepoPath, _ = os.MkdirTemp("", "")
-		defer os.RemoveAll(baseRepoPath)
+		defer func() { _ = os.RemoveAll(baseRepoPath) }()
 	}
 
 	stack, err := devstack.Setup(ctx, cm, opts...)
@@ -245,7 +245,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 	if err != nil {
 		return fmt.Errorf("error writing out port file to %v: %w", portFileName, err)
 	}
-	defer os.Remove(portFileName)
+	defer func() { _ = os.Remove(portFileName) }()
 	firstNode := stack.Nodes[0]
 	_, err = f.WriteString(strconv.FormatUint(uint64(firstNode.APIServer.Port), 10))
 	if err != nil {
@@ -256,7 +256,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 	if err != nil {
 		return fmt.Errorf("error writing out pid file to %v: %w", pidFileName, err)
 	}
-	defer os.Remove(pidFileName)
+	defer func() { _ = os.Remove(pidFileName) }()
 
 	_, err = fPid.WriteString(strconv.Itoa(os.Getpid()))
 	if err != nil {

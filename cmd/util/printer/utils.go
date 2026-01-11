@@ -139,7 +139,7 @@ func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *co
 	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
 
 	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
-	prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
+	_, _ = prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
 	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
 		if i > 0 {
 			cmd.PrintErr(strings.Repeat(" ", blockIndent))

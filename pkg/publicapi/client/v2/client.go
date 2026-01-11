@@ -80,7 +80,7 @@ func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetR
 		}
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if out != nil {
 		if err := decodeBody(resp, &out); err != nil {
@@ -104,7 +104,7 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return apimodels.ErrInvalidToken
@@ -172,7 +172,7 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Read messages from the server, and send them until the conn is closed or
 	// the context is cancelled. We have to read them here because the reader

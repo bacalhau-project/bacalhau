@@ -26,7 +26,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer constantsFile.Close()
+	defer func() { _ = constantsFile.Close() }()
 
 	if err := WriteConstants(fieldInfos, constantsFile); err != nil {
 		panic(err)
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer commentsFile.Close()
+	defer func() { _ = commentsFile.Close() }()
 
 	if err := WriteComments(fieldInfos, commentsFile); err != nil {
 		panic(err)

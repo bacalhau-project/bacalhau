@@ -94,7 +94,7 @@ func initUserIDKey(path string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err = pem.Encode(file, &keyBlock); err != nil {
 		return fmt.Errorf("failed to encode key file: %w", err)

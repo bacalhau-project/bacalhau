@@ -49,7 +49,7 @@ func ReadFromFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening job file (%q): %w", path, err)
 	}
-	defer fileContent.Close()
+	defer func() { _ = fileContent.Close() }()
 
 	result, err := io.ReadAll(fileContent)
 	if err != nil {

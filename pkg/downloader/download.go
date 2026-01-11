@@ -207,13 +207,13 @@ func appendFile(sourcePath, targetPath string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer func() { _ = source.Close() }()
 
 	sink, err := os.OpenFile(targetPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, DownloadFilePerm)
 	if err != nil {
 		return err
 	}
-	defer sink.Close()
+	defer func() { _ = sink.Close() }()
 
 	_, err = io.Copy(sink, source)
 	if err != nil {

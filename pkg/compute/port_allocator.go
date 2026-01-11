@@ -121,7 +121,7 @@ func (pa *portAllocator) allocateStaticPortLocked(port int) error {
 	if err != nil {
 		return fmt.Errorf("port %d is in use", port)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	pa.usedPorts[port] = true
 	return nil
