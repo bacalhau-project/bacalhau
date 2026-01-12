@@ -27,7 +27,7 @@ func TestAWSNodeNameProvider(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("aws-instance-id"))
 	}))
-	defer func() { _ = mockServer.Close() }()
+	defer mockServer.Close() // httptest.Server.Close() doesn't return error
 
 	awsProvider := NewAWSNodeNameProvider()
 	awsProvider.httpProvider.URL = mockServer.URL // Replace the URL with the mock server's URL
@@ -41,7 +41,7 @@ func TestGCPNodeNameProvider(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("gcp-instance-name"))
 	}))
-	defer func() { _ = mockServer.Close() }()
+	defer mockServer.Close() // httptest.Server.Close() doesn't return error
 
 	gcpProvider := NewGCPNodeNameProvider()
 	gcpProvider.httpProvider.URL = mockServer.URL // Replace the URL with the mock server's URL
