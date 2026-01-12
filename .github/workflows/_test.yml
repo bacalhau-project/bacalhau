@@ -156,7 +156,7 @@ jobs:
           echo "✅ HTML coverage report generated"
 
       - name: Upload Test Reports as Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: "!cancelled()"
         with:
           name: ${{ inputs.test_name }}-reports

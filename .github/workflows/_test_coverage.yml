@@ -95,7 +95,7 @@ jobs:
           echo "total_coverage=$TOTAL_COV" >> $GITHUB_OUTPUT
 
       - name: Upload combined coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.output_name }}-coverage-report
           path: |
