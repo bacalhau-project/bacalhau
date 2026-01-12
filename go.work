@@ -2,7 +2,7 @@ go 1.24.9
 
 use (
 	.
-	./test_integration
 	pkg/executor/wasm/funcs/http/client
 	pkg/executor/wasm/funcs/http/testdata/src
+	test_integration
 )
