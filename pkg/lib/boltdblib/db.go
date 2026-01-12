@@ -16,7 +16,7 @@ const defaultDatabasePermissions = 0600
 func Open(path string) (*bolt.DB, error) {
 	database, err := bolt.Open(path, defaultDatabasePermissions, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		if errors.Is(err, bolt.ErrTimeout) {
+		if errors.Is(err, bolt.ErrTimeout) { //nolint:staticcheck // TODO: migrate to bbolt/errors package
 			return nil, newBoltDBInUseError(path)
 		}
 		return nil, bacerrors.Wrapf(err, "failed to open database at %s", path)

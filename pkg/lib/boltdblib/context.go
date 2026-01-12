@@ -47,7 +47,7 @@ func (t *txContext) Commit() error {
 
 // Rollback rolls back the transaction
 func (t *txContext) Rollback() error {
-	if err := t.tx.Rollback(); err != nil && !errors.Is(err, bolt.ErrTxClosed) {
+	if err := t.tx.Rollback(); err != nil && !errors.Is(err, bolt.ErrTxClosed) { //nolint:staticcheck // TODO: migrate to bbolt/errors package
 		return err
 	}
 	return nil
