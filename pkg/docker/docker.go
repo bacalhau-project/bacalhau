@@ -261,7 +261,8 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	return []v1.Platform{platform}, nil
 }
 
-func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool { //nolint:staticcheck // TODO: migrate to image.InspectResponse
+//nolint:staticcheck // TODO: migrate types.ImageInspect to image.InspectResponse
+func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool {
 	// If any fields are "unknown", the platform info is not reliable
 	if info.Os == unknownPlatform || info.Architecture == unknownPlatform {
 		log.Debug().

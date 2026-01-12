@@ -56,18 +56,20 @@ func (c TracedClient) ContainerCreate(
 	)
 }
 
-func (c TracedClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) { //nolint:staticcheck // TODO: migrate to container.InspectResponse
+//nolint:staticcheck // TODO: migrate types.ContainerJSON to container.InspectResponse
+func (c TracedClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
 	ctx, span := c.span(ctx, "container.inspect")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[types.ContainerJSON](span)(c.client.ContainerInspect(ctx, containerID)) //nolint:staticcheck // TODO: migrate to container.InspectResponse
+	return telemetry.RecordErrorOnSpanTwo[types.ContainerJSON](span)(c.client.ContainerInspect(ctx, containerID))
 }
 
-func (c TracedClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) { //nolint:staticcheck // TODO: migrate to container.Summary
+//nolint:staticcheck // TODO: migrate types.Container to container.Summary
+func (c TracedClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 	ctx, span := c.span(ctx, "container.list")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanTwo[[]types.Container](span)(c.client.ContainerList(ctx, options)) //nolint:staticcheck // TODO: migrate to container.Summary
+	return telemetry.RecordErrorOnSpanTwo[[]types.Container](span)(c.client.ContainerList(ctx, options))
 }
 
 func (c TracedClient) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
@@ -121,11 +123,12 @@ func (c TracedClient) CopyFromContainer(ctx context.Context, containerID, srcPat
 	)
 }
 
-func (c TracedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) { //nolint:staticcheck // TODO: migrate to image.InspectResponse
+//nolint:staticcheck // TODO: migrate types.ImageInspect to image.InspectResponse
+func (c TracedClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
 	ctx, span := c.span(ctx, "image.inspect")
 	defer span.End()
 
-	return telemetry.RecordErrorOnSpanThree[types.ImageInspect, []byte](span)(c.client.ImageInspectWithRaw(ctx, imageID)) //nolint:staticcheck // TODO: migrate to image.InspectResponse
+	return telemetry.RecordErrorOnSpanThree[types.ImageInspect, []byte](span)(c.client.ImageInspectWithRaw(ctx, imageID))
 }
 
 func (c TracedClient) DistributionInspect(ctx context.Context, imageID string, authToken string) (registry.DistributionInspect, error) {
