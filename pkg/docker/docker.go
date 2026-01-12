@@ -261,7 +261,7 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	return []v1.Platform{platform}, nil
 }
 
-func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool {
+func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool { //nolint:staticcheck // TODO: migrate to image.InspectResponse
 	// If any fields are "unknown", the platform info is not reliable
 	if info.Os == unknownPlatform || info.Architecture == unknownPlatform {
 		log.Debug().
@@ -367,7 +367,7 @@ func (c *Client) ImageDistribution(
 				Str("host_platform", platformString(hostPlatform)).
 				Msg("Local image platform mismatch, checking registry")
 		}
-	} else if !dockerclient.IsErrNotFound(err) {
+	} else if !dockerclient.IsErrNotFound(err) { //nolint:staticcheck // TODO: migrate to cerrdefs.IsNotFound
 		return nil, NewDockerImageError(err, image)
 	}
 
@@ -404,7 +404,7 @@ func (c *Client) PullImage(ctx context.Context, img string) error {
 		if c.isPlatformCompatible(info, hostPlatform) {
 			return nil
 		}
-	} else if !dockerclient.IsErrNotFound(err) {
+	} else if !dockerclient.IsErrNotFound(err) { //nolint:staticcheck // TODO: migrate to cerrdefs.IsNotFound
 		return NewDockerImageError(err, img)
 	} else {
 		log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")

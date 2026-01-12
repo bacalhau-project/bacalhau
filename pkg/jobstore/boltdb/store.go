@@ -981,7 +981,7 @@ func (b *BoltJobStore) getJobHistory(ctx context.Context, tx *bolt.Tx, recorder 
 		// If the bucket doesn't exist, then we return an empty response to maintain compatibility
 		// with < v1.5.0 versions as the history bucket name was renamed in v1.5.0 without migration
 		// as migration is not worth the complexity
-		if errors.Is(err, bolt.ErrBucketNotFound) {
+		if errors.Is(err, bolt.ErrBucketNotFound) { //nolint:staticcheck // TODO: migrate to bbolt/errors package
 			return &jobstore.JobHistoryQueryResponse{}, nil
 		}
 		return nil, NewBoltDBError(err)

@@ -44,38 +44,38 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 		}
 	}()
 	switch {
-	case errdefs.IsNotFound(err):
+	case errdefs.IsNotFound(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsNotFound
 		return handleNotFoundError(err)
-	case errdefs.IsConflict(err):
+	case errdefs.IsConflict(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsConflict
 		return bacerrors.Newf("%s", err).
 			WithCode(Conflict).
 			WithHTTPStatusCode(http.StatusConflict)
-	case errdefs.IsUnauthorized(err):
+	case errdefs.IsUnauthorized(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsUnauthorized
 		return bacerrors.Newf("%s", err).
 			WithCode(Unauthorized).
 			WithHTTPStatusCode(http.StatusUnauthorized).
 			WithHint("Ensure you have the necessary permissions and that your credentials are correct. " +
 				"You may need to log in to Docker again.")
-	case errdefs.IsForbidden(err):
+	case errdefs.IsForbidden(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsPermissionDenied
 		return bacerrors.Newf("%s", err).
 			WithCode(Forbidden).
 			WithHTTPStatusCode(http.StatusForbidden).
 			WithHint(fmt.Sprintf("You don't have permission to perform this action. "+
 				"Supply the node with valid Docker login credentials using the %s and %s environment variables",
 				UsernameEnvVar, PasswordEnvVar))
-	case errdefs.IsDataLoss(err):
+	case errdefs.IsDataLoss(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsDataLoss
 		return bacerrors.Newf("%s", err).
 			WithCode(DataLoss).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithFailsExecution()
-	case errdefs.IsDeadline(err):
+	case errdefs.IsDeadline(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsDeadlineExceeded
 		return bacerrors.Newf("%s", err).
 			WithCode(Deadline).
 			WithHTTPStatusCode(http.StatusGatewayTimeout).
 			WithHint("The operation timed out. This could be due to network issues or high system load. " +
 				"Try again later or check your network connection.").
 			WithRetryable()
-	case errdefs.IsCancelled(err):
+	case errdefs.IsCancelled(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsCanceled
 		return bacerrors.Newf("%s", err).
 			WithCode(Cancelled).
 			WithHTTPStatusCode(http.StatusRequestTimeout).
