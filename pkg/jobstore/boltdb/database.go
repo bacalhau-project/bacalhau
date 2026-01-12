@@ -88,7 +88,7 @@ func (bp *BucketPath) Get(tx *bolt.Tx, create bool) (*bolt.Bucket, error) {
 			return nil, err
 		}
 		if sub == nil {
-			return nil, bolt.ErrBucketNotFound
+			return nil, bolt.ErrBucketNotFound //nolint:staticcheck // TODO: migrate to bbolt/errors package
 		}
 		bucket = sub
 		bucketMaker = sub

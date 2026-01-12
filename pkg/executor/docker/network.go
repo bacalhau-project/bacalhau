@@ -222,7 +222,7 @@ func (e *Executor) createHTTPGateway(
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stderr").Logger().WithContext(ctx), stderr)
 
 	// Look up the IP address of the gateway container and attach it to the spec
-	var containerDetails types.ContainerJSON
+	var containerDetails types.ContainerJSON //nolint:staticcheck // TODO: migrate to container.InspectResponse
 	for {
 		containerDetails, err = e.client.ContainerInspect(ctx, gatewayContainer.ID)
 		if err != nil {

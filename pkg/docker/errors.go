@@ -81,21 +81,21 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 			WithHTTPStatusCode(http.StatusRequestTimeout).
 			WithHint("The operation was cancelled. " +
 				"This is often due to user intervention or a competing operation.")
-	case errdefs.IsUnavailable(err):
+	case errdefs.IsUnavailable(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsUnavailable
 		return bacerrors.Newf("%s", err).
 			WithCode(Unavailable).
 			WithHTTPStatusCode(http.StatusServiceUnavailable).
 			WithHint("The Docker daemon or a required service is unavailable. " +
 				"Check if the Docker daemon is running and healthy.").
 			WithRetryable()
-	case errdefs.IsSystem(err):
+	case errdefs.IsSystem(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsInternal
 		return bacerrors.Newf("%s", err).
 			WithCode(SystemError).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithHint("An internal system error occurred. This could be due to resource constraints. " +
 				"Check system resources and Docker logs for more information.").
 			WithFailsExecution()
-	case errdefs.IsNotImplemented(err):
+	case errdefs.IsNotImplemented(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsNotImplemented
 		return bacerrors.Newf("%s", err).
 			WithCode(NotImplemented).
 			WithHTTPStatusCode(http.StatusNotImplemented).
@@ -118,14 +118,14 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 	}()
 
 	switch {
-	case errdefs.IsNotFound(err) || errdefs.IsForbidden(err):
+	case errdefs.IsNotFound(err) || errdefs.IsForbidden(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs
 		return bacerrors.Newf("image not available: %q", image).
 			WithHint(fmt.Sprintf(`To resolve this, either:
 1. Check if the image exists in the registry and the name is correct
 2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
 				UsernameEnvVar, PasswordEnvVar)).
 			WithCode(ImageNotFound)
-	case errdefs.IsInvalidParameter(err):
+	case errdefs.IsInvalidParameter(err): //nolint:staticcheck // TODO: migrate to containerd cerrdefs.IsInvalidArgument
 		return bacerrors.Newf("invalid image format: %q", image).
 			WithHint("Ensure the image name is valid and the image is available in the registry").
 			WithCode(ImageInvalid)

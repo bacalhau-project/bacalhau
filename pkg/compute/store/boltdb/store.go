@@ -490,7 +490,7 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 
 		// Delete execution events, if any
 		err = bucket(tx, executionEventsBucket).DeleteBucket(strToBytes(executionID))
-		if err != nil && !errors.Is(err, bolt.ErrBucketNotFound) {
+		if err != nil && !errors.Is(err, bolt.ErrBucketNotFound) { //nolint:staticcheck // TODO: migrate to bbolt/errors package
 			return fmt.Errorf("failed to delete execution events: %w", err)
 		}
 
