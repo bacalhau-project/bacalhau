@@ -65,7 +65,7 @@ type httpClient struct {
 func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetRequest, out apimodels.GetResponse) error {
 	r := in.ToHTTPRequest()
 
-	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r) //nolint:bodyclose // this is being closed
+	_, resp, err := c.doRequest(ctx, http.MethodGet, endpoint, r)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *httpClient) Get(ctx context.Context, endpoint string, in apimodels.GetR
 		}
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if out != nil {
 		if err := decodeBody(resp, &out); err != nil {
@@ -100,11 +100,11 @@ func (c *httpClient) write(ctx context.Context, verb, endpoint string, in apimod
 		r.BodyObj = in
 	}
 
-	_, resp, err := c.doRequest(ctx, verb, endpoint, r) //nolint:bodyclose // this is being closed
+	_, resp, err := c.doRequest(ctx, verb, endpoint, r)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusUnauthorized {
 		return apimodels.ErrInvalidToken
@@ -172,7 +172,7 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Read messages from the server, and send them until the conn is closed or
 	// the context is cancelled. We have to read them here because the reader
@@ -181,7 +181,7 @@ func (c *httpClient) Dial(ctx context.Context, endpoint string, in apimodels.Req
 	go func() {
 		defer func() {
 			_ = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			conn.Close()
+			_ = conn.Close()
 			close(output)
 		}()
 
@@ -308,7 +308,7 @@ func (c *httpClient) toHTTP(ctx context.Context, method, endpoint string, r *api
 	return req, nil
 }
 
-//nolint:funlen,gocyclo // TODO: This functions is complex and should be simplified
+//nolint:funlen,gocyclo // TODO: This function is complex and should be simplified
 func (c *httpClient) interceptError(
 	ctx context.Context,
 	err error,

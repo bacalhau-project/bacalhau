@@ -88,7 +88,7 @@ func (r ReadyEvaluations) Len() int {
 // highest priority
 func (r ReadyEvaluations) Less(i, j int) bool {
 	if r[i].JobID != r[j].JobID && r[i].Priority != r[j].Priority {
-		return !(r[i].Priority < r[j].Priority)
+		return r[i].Priority >= r[j].Priority
 	}
 	return r[i].CreateTime < r[j].CreateTime
 }
@@ -135,9 +135,9 @@ func (p PendingEvaluations) Len() int {
 // highest priority or highest modify index
 func (p PendingEvaluations) Less(i, j int) bool {
 	if p[i].Priority != p[j].Priority {
-		return !(p[i].Priority < p[j].Priority)
+		return p[i].Priority >= p[j].Priority
 	}
-	return !(p[i].ModifyTime < p[j].ModifyTime)
+	return p[i].ModifyTime >= p[j].ModifyTime
 }
 
 // Swap is for the sorting interface

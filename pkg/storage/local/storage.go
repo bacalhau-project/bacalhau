@@ -210,11 +210,12 @@ func createEmptyFile(filePath string) error {
 	}
 
 	// create the file
+	//nolint:gosec // G304: filePath from storage source, validated
 	fileHandle, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDONLY, util.OS_USER_RWX)
 	if err != nil {
 		return bacerrors.Wrapf(err, "could not create source file at %s", filePath)
 	}
-	fileHandle.Close()
+	_ = fileHandle.Close()
 	return nil
 }
 

@@ -80,8 +80,8 @@ func (publisher *Publisher) publishArchive(
 	if err != nil {
 		return models.SpecConfig{}, err
 	}
-	defer targetFile.Close()
-	defer os.Remove(targetFile.Name())
+	defer func() { _ = targetFile.Close() }()
+	defer func() { _ = os.Remove(targetFile.Name()) }()
 
 	err = gzip.Compress(resultPath, targetFile)
 	if err != nil {
@@ -144,11 +144,11 @@ func (publisher *Publisher) publishDirectory(
 			return nil // skip directories
 		}
 		// Read the file contents.
-		data, err := os.Open(path)
+		data, err := os.Open(path) //nolint:gosec // G304: path from local result storage, application controlled
 		if err != nil {
 			return err
 		}
-		defer data.Close()
+		defer func() { _ = data.Close() }()
 
 		relativePath, err := filepath.Rel(resultPath, path)
 		if err != nil {

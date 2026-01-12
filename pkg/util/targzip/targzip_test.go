@@ -75,7 +75,7 @@ func TestRoundTrip(t *testing.T) {
 	} {
 		t.Run(mode, func(t *testing.T) {
 			tgzFile, tgzInput := setup(t, datasize.KB, mode)
-			defer tgzFile.Close()
+			defer func() { _ = tgzFile.Close() }()
 
 			err := Compress(context.Background(), tgzInput, tgzFile)
 			require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestCompressionSizeLimiting(t *testing.T) {
 		for size, errorChecker := range testSizes {
 			t.Run(mode+"/"+size.String(), func(t *testing.T) {
 				tgzFile, tgzInput := setup(t, size, mode)
-				defer tgzFile.Close()
+				defer func() { _ = tgzFile.Close() }()
 
 				err := Compress(context.Background(), tgzInput, tgzFile)
 				errorChecker(t, err)
@@ -110,7 +110,7 @@ func TestDecompressionSizeLimiting(t *testing.T) {
 		for size, errorChecker := range testSizes {
 			t.Run(mode+"/"+size.String(), func(t *testing.T) {
 				tgzFile, tgzInput := setup(t, size, mode)
-				defer tgzFile.Close()
+				defer func() { _ = tgzFile.Close() }()
 
 				err := compress(context.Background(), tgzInput, tgzFile, size*2, false)
 				require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestUncompressedSize(t *testing.T) {
 		for size := range testSizes {
 			t.Run(mode+"/"+size.String(), func(t *testing.T) {
 				tgzFile, tgzInput := setup(t, size, mode)
-				defer tgzFile.Close()
+				defer func() { _ = tgzFile.Close() }()
 
 				err := compress(context.Background(), tgzInput, tgzFile, size*2, false)
 				require.NoError(t, err)

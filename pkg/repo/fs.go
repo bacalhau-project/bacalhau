@@ -96,8 +96,10 @@ func (fsr *FsRepo) Init() error {
 		return bacerrors.Newf("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
 			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
 				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
-				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+
-				"\tIf present, ensure the config file in %s contains a valid DataDir field path", filepath.Join(fsr.path, config.DefaultFileName))
+				"\tIf present, ensure the config file provided by the --config flag contains a "+
+				"valid DataDir field path\n"+
+				"\tIf present, ensure the config file in %s contains a valid DataDir field path",
+				filepath.Join(fsr.path, config.DefaultFileName))
 	}
 
 	// TODO this should be a part of the config.
@@ -154,7 +156,7 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	// Use os.Create to truncate the file if it already exists
-	f, err := os.Create(runInfoPath)
+	f, err := os.Create(runInfoPath) //nolint:gosec // G304: runInfoPath from repo path, application controlled
 	if err != nil {
 		return "", err
 	}

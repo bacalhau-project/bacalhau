@@ -54,7 +54,7 @@ func (s *ExternalCommandStrategy) ShouldBid(
 			fmt.Errorf("ExternalCommandStrategy: error marshaling job selection policy probe data: %w", err)
 	}
 
-	cmd := exec.Command("bash", "-c", s.command) //nolint:gosec
+	cmd := exec.CommandContext(ctx, "bash", "-c", s.command) //nolint:gosec
 	cmd.Env = []string{
 		"BACALHAU_JOB_SELECTION_PROBE_DATA=" + string(jsonData),
 		"PATH=" + os.Getenv("PATH"),

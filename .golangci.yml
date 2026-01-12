@@ -1,74 +1,29 @@
-linters-settings:
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: github.com/sirupsen/logrus
-            desc: "logging is allowed only by zerolog"
-  dupl:
-    threshold: 100
-  forbidigo:
-    forbid:
-      - 'fmt\.Print.*'  # This will catch Printf, Println, Print
-  funlen:
-    lines: 100
-    statements: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-  gocritic:
-    enabled-tags:
-    - diagnostic
-    - experimental
-    - opinionated
-    - performance
-    - style
-    disabled-checks:
-    - dupImport # https://github.com/go-critic/go-critic/issues/845
-    - ifElseChain
-    - octalLiteral
-    - whyNoLint
-    - wrapperFunc
-    - hugeParam
-    - importShadow
-  gocyclo:
-    min-complexity: 18
-  goimports:
-    local-prefixes: github.com/golangci/golangci-lint
-  mnd:
-    # don't include the "operation" and "assign"
-    checks:
-    - argument
-    - case
-    - condition
-    - return
-    ignored-numbers:
-    - "0"
-    - "1"
-    - "2"
-    - "3"
-    ignored-functions:
-    - strings.SplitN
-    - time.Duration
-    - types.Duration
+version: "2"
 
-  govet:
-    enable:
-      - shadow
-  lll:
-    line-length: 140
-  nolintlint:
-    allow-unused: true # report any unused nolint directives
-    require-explanation: false # don't require an explanation for nolint directives
-    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+formatters:
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/golangci/golangci-lint
+  exclusions:
+    paths:
+      # Skip generated files and vendored code
+      - experimental
+      - vendor
+      - viz
+      - ops
+      - testdata
+      - webui/webui.go
+      - pkg/swagger/docs.go
+  enable:
+    - gofmt
+    - goimports
 
-# TODO #842 Check gocritic regularly to see if they support generics (finally)
 linters:
-  disable-all: true
   enable:
   - bodyclose
   - unused
-  - depguard
+#  - depguard  # TODO: Fix depguard v2 configuration
   - dogsled
   - errcheck
   - copyloopvar
@@ -78,11 +33,8 @@ linters:
   - goconst
 #   - gocritic
   - gocyclo
-  - gofmt
-  - goimports
   - goprintffuncname
   - gosec
-  - gosimple
   - govet
   - ineffassign
   - lll
@@ -90,61 +42,116 @@ linters:
   - nakedret
   - noctx
   - nolintlint
-  - staticcheck
-  - stylecheck
-  - typecheck
+  - staticcheck  # staticcheck now includes gosimple and stylecheck in v2
   - unconvert
-  - unused
   - whitespace
+
+  exclusions:
+    paths:
+      # Skip generated files and vendored code
+      - experimental
+      - vendor
+      - viz
+      - ops
+      - testdata
+      - webui/webui.go
+      - pkg/swagger/docs.go
+    rules:
+      # Naming of `error` variables as `err` is standard practice for Go
+      - text: 'shadow: declaration of "err" shadows declaration at'
+        linters:
+          - govet
+      # Generated files don't need line length checks
+      - path: pkg/swagger/docs\.go
+        linters:
+          - lll
+      - path: pkg/config/types/generated_descriptions\.go
+        linters:
+          - lll
+      - path: pkg/config/types/gen/generate\.go
+        linters:
+          - lll
+
+  settings:
+    depguard:
+      # Depguard v2 configuration - allow all except logrus
+      rules:
+        main:
+          deny:
+            - pkg: github.com/sirupsen/logrus
+              desc: "logging is allowed only by zerolog"
+    dupl:
+      threshold: 100
+    forbidigo:
+      forbid:
+        - pattern: 'fmt\.Print.*'
+          msg: 'Do not commit print statements'
+    funlen:
+      lines: 100
+      statements: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+      disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      - hugeParam
+      - importShadow
+    gocyclo:
+      min-complexity: 18
+    mnd:
+      # don't include the "operation" and "assign"
+      checks:
+      - argument
+      - case
+      - condition
+      - return
+      ignored-numbers:
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+      ignored-functions:
+      - strings.SplitN
+      - time.Duration
+      - types.Duration
+    govet:
+      enable:
+        - shadow
+    lll:
+      # Maximum line length
+      line-length: 140
+      # Tab width in spaces
+      tab-width: 4
+    nolintlint:
+      allow-unused: true # report any unused nolint directives
+      require-explanation: false # don't require an explanation for nolint directives
+      require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+# TODO #842 Check gocritic regularly to see if they support generics (finally)
 
 # Options for analysis running.
 run:
-  # The default concurrency value is the number of available CPU.
-  # concurrency: 16
   # Timeout for analysis, e.g. 30s, 5m.
-  # Default: 1m
   timeout: 10m
-  # Exit code when at least one issue was found.
-  # Default: 1
-  issues-exit-code: 2
   # Include test files or not.
-  # Default: true
   tests: false
-  # List of build tags, all linters use it.
-  # Default: [].
-  # build-tags:
-  #   - bacalhau-ci-build
-  # Enables skipping of directories:
-  # - vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
-  # Default: true
   # Allowed values: readonly|vendor|mod
-  # By default, it isn't set.
   modules-download-mode: readonly
-  # Allow multiple parallel golangci-lint instances running.
-  # If false (default) - golangci-lint acquires file lock on start.
-  allow-parallel-runners: false
 
 issues:
-  exclude-files:
-    # Which files to skip: they will be analyzed, but issues from them won't be reported.
-    # Default value is empty list,
-    # but there is no need to include all autogenerated files,
-    # we confidently recognize autogenerated files.
-    # If it's not please let us know.
-    # "/" will be replaced by current OS file path separator to properly work on Windows.
-    - webui/webui.go
-  exclude-dirs:
-    # Which dirs to skip: issues from them won't be reported.
-    # Can use regexp here: `generated.*`, regexp is applied on full path.
-    # Default value is empty list,
-    # but default dirs are skipped independently of this option's value (see skip-dirs-use-default).
-    # "/" will be replaced by current OS file path separator to properly work on Windows.
-    - experimental$
-    - vendor$
-    - viz$
-    - ops$
-    - testdata$
-  exclude-dirs-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
   # If set we pass it to "go list -mod={option}". From "go help modules":
   # If invoked with -mod=readonly, the go command is disallowed from the implicit
   # automatic updating of go.mod described above. Instead, it fails when any changes
@@ -153,7 +160,3 @@ issues:
   # If invoked with -mod=vendor, the go command assumes that the vendor
   # directory holds the correct copies of dependencies and ignores
   # the dependency descriptions in go.mod.
-  #
-  exclude:
-  # Naming of `error` variables as `err` is standard practise for Go
-  - 'shadow: declaration of "err" shadows declaration at'

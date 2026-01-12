@@ -229,7 +229,6 @@ func (stack *DevStack) JoinNode(ctx context.Context, cm *system.CleanupManager, 
 	return n, nil
 }
 
-//nolint:funlen
 func (stack *DevStack) GetStackInfo(ctx context.Context) string {
 	logString := ""
 	devStackAPIPort := fmt.Sprintf("%d", stack.Nodes[0].APIServer.Port)

@@ -61,7 +61,7 @@ func (suite *touchFsSuite) TestWritingToNewFile() {
 	touchFs := New(suite.testDir)
 	file, err := touchFs.Open("new.txt")
 	require.NoError(suite.T(), err)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer, ok := file.(io.Writer)
 	require.True(suite.T(), ok)

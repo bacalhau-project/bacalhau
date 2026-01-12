@@ -17,10 +17,10 @@ const DefaultMaxDecompressSize = 100 * 1024 * 1024 * 1024 // 100 GB
 // the file headers within the archive to preserve the directory structure.
 func Compress(sourcePath string, targetFile *os.File) error {
 	gw := gzip.NewWriter(targetFile)
-	defer gw.Close()
+	defer func() { _ = gw.Close() }()
 
 	tarWriter := tar.NewWriter(gw)
-	defer tarWriter.Close()
+	defer func() { _ = tarWriter.Close() }()
 
 	info, err := os.Stat(sourcePath)
 	if err != nil {
@@ -49,11 +49,11 @@ func Compress(sourcePath string, targetFile *os.File) error {
 				return nil
 			}
 			// Open the file for reading.
-			file, err := os.Open(path)
+			file, err := os.Open(path) //nolint:gosec // G304: path from tar archive, validated by caller
 			if err != nil {
 				return err
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			// Write the file contents to the GZIP archive.
 			_, err = io.Copy(tarWriter, file)
@@ -78,7 +78,7 @@ func Compress(sourcePath string, targetFile *os.File) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		// Write the file contents to the GZIP archive.
 		_, err = io.Copy(tarWriter, file)
@@ -106,14 +106,14 @@ func DecompressWithMaxBytes(tarGzPath, destDir string, maxDecompressSize int64) 
 	if err != nil {
 		return fmt.Errorf("failed to open tar.gz file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Create a gzip reader.
 	gzr, err := gzip.NewReader(file)
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader: %w", err)
 	}
-	defer gzr.Close()
+	defer func() { _ = gzr.Close() }()
 
 	// Create a tar reader.
 	tr := tar.NewReader(gzr)
@@ -156,10 +156,10 @@ func DecompressWithMaxBytes(tarGzPath, destDir string, maxDecompressSize int64) 
 			}
 			// Copy the file data from the archive, enforcing the file size limit.
 			if _, err := io.CopyN(fileToWrite, tr, header.Size); err != nil {
-				fileToWrite.Close()
+				_ = fileToWrite.Close()
 				return fmt.Errorf("failed to copy file data: %w", err)
 			}
-			fileToWrite.Close()
+			_ = fileToWrite.Close()
 		}
 	}
 

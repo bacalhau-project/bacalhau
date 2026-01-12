@@ -13,31 +13,31 @@ import (
 const saltLength = 32
 
 func main() {
-	fmt.Fprintf(os.Stderr, "Password: ")
+	_, _ = fmt.Fprintf(os.Stderr, "Password: ")
 
 	password, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	salt := make([]byte, saltLength)
 	_, err = rand.Read(salt)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	hash, err := policy.Scrypt(password, salt)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	output := [][]byte{hash, salt}
 	err = json.NewEncoder(os.Stdout).Encode(output)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }

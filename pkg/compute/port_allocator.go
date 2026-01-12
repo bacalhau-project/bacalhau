@@ -117,11 +117,12 @@ func (pa *portAllocator) allocateStaticPortLocked(port int) error {
 	}
 
 	// Try to actually bind to the port to ensure it's available
+	//nolint:noctx // Quick port availability check, context would require API change
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return fmt.Errorf("port %d is in use", port)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	pa.usedPorts[port] = true
 	return nil
@@ -159,11 +160,12 @@ func (pa *portAllocator) allocateDynamicPortLocked() (int, error) {
 		}
 
 		// Try to actually bind to the port
+		//nolint:noctx // Quick port availability check, context would require API change
 		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 		if err != nil {
 			continue
 		}
-		listener.Close()
+		_ = listener.Close()
 
 		pa.usedPorts[port] = true
 		pa.lastAllocated = port

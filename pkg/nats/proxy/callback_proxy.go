@@ -33,15 +33,15 @@ func NewCallbackProxy(params CallbackProxyParams) *CallbackProxy {
 }
 
 func (p *CallbackProxy) OnBidComplete(ctx context.Context, result legacy.BidResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnBidComplete, result)
+	proxyCallbackRequest(ctx, p.conn, result.TargetPeerID, OnBidComplete, result)
 }
 
 func (p *CallbackProxy) OnRunComplete(ctx context.Context, result legacy.RunResult) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnRunComplete, result)
+	proxyCallbackRequest(ctx, p.conn, result.TargetPeerID, OnRunComplete, result)
 }
 
 func (p *CallbackProxy) OnComputeFailure(ctx context.Context, result legacy.ComputeError) {
-	proxyCallbackRequest(ctx, p.conn, result.RoutingMetadata.TargetPeerID, OnComputeFailure, result)
+	proxyCallbackRequest(ctx, p.conn, result.TargetPeerID, OnComputeFailure, result)
 }
 
 func proxyCallbackRequest(

@@ -30,6 +30,7 @@ func (tool *ToolBasedProvider) GetAvailableCapacity(ctx context.Context) (models
 		return models.Resources{}, errors.Wrapf(err, "tool %q is not installed or not on PATH", tool.Command)
 	}
 
+	//nolint:gosec // G204: toolPath validated by exec.LookPath, Args from trusted config
 	cmd := exec.CommandContext(ctx, toolPath, tool.Args...)
 	resp, err := cmd.Output()
 	if err != nil {

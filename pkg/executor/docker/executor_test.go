@@ -679,7 +679,7 @@ func (s *ExecutorTestSuite) TestPortMappingInHostMode() {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -716,7 +716,7 @@ func (s *ExecutorTestSuite) TestPortMappingInBridgeMode() {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -764,13 +764,13 @@ func (s *ExecutorTestSuite) TestMultiplePortMappingsInBridgeMode() {
 		if err != nil {
 			return false
 		}
-		defer resp1.Body.Close()
+		defer func() { _ = resp1.Body.Close() }()
 
 		resp2, err := http.Get(fmt.Sprintf("http://localhost:%d", port2))
 		if err != nil {
 			return false
 		}
-		defer resp2.Body.Close()
+		defer func() { _ = resp2.Body.Close() }()
 
 		return resp1.StatusCode == http.StatusOK && resp2.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
@@ -785,11 +785,11 @@ func (s *ExecutorTestSuite) TestAccessToHostService() {
 
 	listener, err := net.Listen("tcp", ":0") // Let OS choose port
 	s.Require().NoError(err)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	server := &http.Server{Handler: handler}
 	go server.Serve(listener)
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	// Get the port that was assigned
 	hostPort := listener.Addr().(*net.TCPAddr).Port

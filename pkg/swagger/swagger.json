@@ -353,13 +353,13 @@
                     },
                     {
                         "type": "string",
-                        "description": "Takes history and executions as options. If empty will not include anything else.",
+                        "description": "history and executions options. Empty includes nothing",
                         "name": "include",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Number of history or executions to fetch. Should be used in conjugation with include",
+                        "description": "Number of items to fetch. Use with include parameter",
                         "name": "limit",
                         "in": "query"
                     },

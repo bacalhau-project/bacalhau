@@ -68,11 +68,11 @@ func readConfig(r repo.FsRepo) (*viper.Viper, types.Bacalhau, error) {
 // ensures that the destination file's contents are flushed to disk before returning.
 func copyFile(srcPath, dstPath string) error {
 	// Open the source file
-	srcFile, err := os.Open(srcPath)
+	srcFile, err := os.Open(srcPath) //nolint:gosec // G304: srcPath from migration source, application controlled
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	// Get the file info of the source file to retrieve its permissions
 	srcFileInfo, err := srcFile.Stat()
@@ -81,11 +81,11 @@ func copyFile(srcPath, dstPath string) error {
 	}
 
 	// Create the destination file
-	dstFile, err := os.Create(dstPath)
+	dstFile, err := os.Create(dstPath) //nolint:gosec // G304: dstPath from migration destination, application controlled
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	// Copy the contents from source to destination
 	_, err = io.Copy(dstFile, srcFile)

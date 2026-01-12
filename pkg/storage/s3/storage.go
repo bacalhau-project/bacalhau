@@ -91,12 +91,11 @@ func (s *StorageProvider) GetVolumeSize(ctx context.Context, execution *models.E
 
 		// Check for overflow
 		// MaxUint64 - size = remaining space before overflow
-		//nolint:gosec // G115: negative values already checked
+
 		if object.Size > 0 && uint64(object.Size) > math.MaxUint64-size {
 			return 0, fmt.Errorf("total size exceeds uint64 maximum")
 		}
 
-		//nolint:gosec // G115: Already checked above
 		size += uint64(object.Size)
 	}
 	return size, nil
@@ -179,11 +178,12 @@ func (s *StorageProvider) downloadObject(ctx context.Context,
 	}
 
 	// create the file to download to
+	//nolint:gosec // G304: Caller responsible for validating output path
 	outputFile, err := os.OpenFile(outputPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, models.DownloadFilePerm)
 	if err != nil {
 		return err
 	}
-	defer outputFile.Close() //nolint:errcheck
+	defer func() { _ = outputFile.Close() }()
 
 	log.Debug().Msgf("Downloading s3://%s/%s versionID:%s, eTag:%s to %s.",
 		source.Bucket, aws.ToString(object.Key), aws.ToString(object.VersionID), aws.ToString(object.ETag), outputFile.Name())
@@ -216,7 +216,7 @@ func (s *StorageProvider) Upload(_ context.Context, _ string) (models.SpecConfig
 	return models.SpecConfig{}, fmt.Errorf("not implemented")
 }
 
-//nolint:gocyclo
+//nolint:gocyclo // S3 key expansion involves multiple listing and filtering operations
 func (s *StorageProvider) explodeKey(
 	ctx context.Context, client *s3helper.ClientWrapper, storageSpec s3helper.SourceSpec) (
 	[]s3helper.ObjectSummary, error) {

@@ -113,7 +113,7 @@ func (o *StorageSpecConfigOpt) Values() []*models.InputSource {
 	return o.values
 }
 
-//nolint:gocyclo
+//nolint:gocyclo // Storage spec parsing requires handling multiple storage types
 func storageStringToSpecConfig(sourceURI, destinationPath, alias string, options map[string]string) (*models.InputSource, error) {
 	sourceURI = strings.Trim(sourceURI, " '\"")
 	destinationPath = strings.Trim(destinationPath, " '\"")

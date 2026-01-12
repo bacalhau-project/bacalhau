@@ -33,7 +33,6 @@ const (
 
 var terminalWidth int
 
-//nolint:gosec    // terminalWidth is used for spacing and won't exceed reasonable values
 func getTerminalWidth(cmd *cobra.Command) uint {
 	if terminalWidth == 0 {
 		var err error
@@ -140,7 +139,7 @@ func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *co
 	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
 
 	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
-	prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
+	_, _ = prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
 	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {
 		if i > 0 {
 			cmd.PrintErr(strings.Repeat(" ", blockIndent))

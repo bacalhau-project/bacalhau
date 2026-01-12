@@ -71,7 +71,8 @@ func (p Publisher) PublishResult(ctx context.Context, execution *models.Executio
 	preSignedURL, err := p.getUploadURL(ctx, execution)
 	if err != nil {
 		return models.SpecConfig{}, bacerrors.New("failed to get pre-signed URL for managed S3 publisher").
-			WithHint("Ensure that the node is connected to an orchestrator and the orchestrator is configured to support managed S3 publisher")
+			WithHint("Ensure that the node is connected to an orchestrator and the orchestrator is " +
+				"configured to support managed S3 publisher")
 	}
 
 	// Archive and compress the results
@@ -79,8 +80,8 @@ func (p Publisher) PublishResult(ctx context.Context, execution *models.Executio
 	if err != nil {
 		return models.SpecConfig{}, err
 	}
-	defer targetFile.Close()
-	defer os.Remove(targetFile.Name())
+	defer func() { _ = targetFile.Close() }()
+	defer func() { _ = os.Remove(targetFile.Name()) }()
 
 	err = gzip.Compress(resultPath, targetFile)
 	if err != nil {
@@ -135,7 +136,8 @@ func (p Publisher) getUploadURL(ctx context.Context, execution *models.Execution
 		return "", fmt.Errorf("failed to get NCL publisher: %w", err)
 	}
 	if nclMessagePublisher == nil {
-		return "", fmt.Errorf("node is disconnected from the orchestrator, or the managed S3 publisher is not supported by the orchestrator")
+		return "", fmt.Errorf("node is disconnected from the orchestrator, or the managed S3 publisher " +
+			"is not supported by the orchestrator")
 	}
 
 	message := envelope.NewMessage(messages.ManagedPublisherPreSignURLRequest{

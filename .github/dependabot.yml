@@ -1,9 +1,10 @@
 version: 2
 updates:
+  # Go modules - main project
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     labels:
       - "lang/go"
       - "dependencies"
@@ -12,6 +13,119 @@ updates:
       prefix: "deps"
       prefix-development: "dev-deps"
       include: "scope"
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Go modules - test_integration
+  - package-ecosystem: "gomod"
+    directory: "/test_integration"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "lang/go"
+      - "dependencies"
+      - "test"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      go-test-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # npm/yarn - webui
+  - package-ecosystem: "npm"
+    directory: "/webui"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "lang/javascript"
+      - "dependencies"
+      - "webui"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Python/pip - integration/airflow
+  - package-ecosystem: "pip"
+    directory: "/integration/airflow"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "lang/python"
+      - "dependencies"
+      - "integration"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      pip-airflow-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Python/pip - ops
+  - package-ecosystem: "pip"
+    directory: "/ops"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "lang/python"
+      - "dependencies"
+      - "ops"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      pip-ops-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Python/pip - root (if requirements.txt exists)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "lang/python"
+      - "dependencies"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      pip-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -23,6 +137,10 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]

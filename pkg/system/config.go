@@ -51,7 +51,7 @@ func (r *realGlobalConfig) ConfigDir() string {
 // If the file doesn't exist or can't be read, it returns an empty string.
 func (r *realGlobalConfig) InstallationID() string {
 	idFile := filepath.Join(r.ConfigDir(), InstallationIDFile)
-	idBytes, err := os.ReadFile(idFile)
+	idBytes, err := os.ReadFile(idFile) //nolint:gosec // G304: idFile from repo path, application controlled
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Debug().Err(err).Msg("Failed to read installation ID file")

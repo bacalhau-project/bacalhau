@@ -47,7 +47,7 @@ func LoadUserKey(path string) (*UserKey, error) {
 }
 
 func LoadPKCS1KeyFile(keyFile string) (*rsa.PrivateKey, error) {
-	file, err := os.Open(keyFile)
+	file, err := os.Open(keyFile) //nolint:gosec // G304: Caller responsible for validating key file path
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open key file %q", keyFile)
 	}

@@ -150,7 +150,8 @@ func (a *entryPointAuthorizer) checkForDuplicates(
 	if user.Username != "" {
 		usernameLower := strings.ToLower(user.Username)
 		if originalUsername, exists := seenUsernames[usernameLower]; exists {
-			return fmt.Errorf("duplicate username detected: '%s' and '%s' (usernames are case-insensitive)", originalUsername, user.Username)
+			return fmt.Errorf("duplicate username detected: '%s' and '%s' (usernames are case-insensitive)",
+				originalUsername, user.Username)
 		}
 	}
 

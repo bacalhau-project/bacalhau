@@ -14,7 +14,7 @@ import (
 type tokens map[string]string
 
 func readTokens(path string) (tokens, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(path) //nolint:gosec // G304: path from token storage, application controlled
 	if os.IsNotExist(err) {
 		return map[string]string{}, nil
 	} else if err != nil {
@@ -37,6 +37,7 @@ func readTokens(path string) (tokens, error) {
 }
 
 func writeTokens(path string, t tokens) error {
+	//nolint:gosec // G304: path from token storage, application controlled
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, util.OS_USER_RW)
 	if err != nil {
 		return err

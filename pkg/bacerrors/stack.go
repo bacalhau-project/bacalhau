@@ -21,7 +21,7 @@ func (s *stack) String() string {
 	for {
 		frame, more := frames.Next()
 		if frame.Function != "" {
-			fmt.Fprintf(&builder, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+			_, _ = fmt.Fprintf(&builder, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
 		}
 		if !more {
 			break

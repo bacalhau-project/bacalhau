@@ -97,7 +97,7 @@ func getFreePortFromSystem() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
@@ -107,10 +107,10 @@ func getFreePortFromSystem() (int, error) {
 // this check returns.
 func IsPortOpen(port int) bool {
 	addr := net.JoinHostPort("", strconv.Itoa(port))
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", addr) //nolint:noctx // Simple utility function, context would require API change
 	if err != nil {
 		return false
 	}
-	ln.Close()
+	_ = ln.Close()
 	return true
 }

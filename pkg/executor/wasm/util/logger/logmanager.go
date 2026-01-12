@@ -231,6 +231,6 @@ func (lm *LogManager) Close() {
 		<-tensecs
 
 		log.Ctx(ctx).Debug().Msgf("logmanager removing logfile for %s: %s", executionID, filename)
-		os.Remove(lm.filename)
+		_ = os.Remove(lm.filename)
 	}(util.NewDetachedContext(lm.ctx), lm.executionID, lm.filename)
 }

@@ -90,11 +90,11 @@ func initUserIDKey(path string) error {
 	}
 
 	var file *os.File
-	file, err = os.Create(path)
+	file, err = os.Create(path) //nolint:gosec // G304: path from config system, application controlled
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err = pem.Encode(file, &keyBlock); err != nil {
 		return fmt.Errorf("failed to encode key file: %w", err)

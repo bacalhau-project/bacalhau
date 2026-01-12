@@ -11,7 +11,7 @@ on:
       golangci_lint_version:
         description: 'Version of golangci-lint to use'
         required: false
-        default: 'v1.64.5'
+        default: 'v2.8.0'
         type: string
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
 
       # Run golangci-lint
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6.5.1
+        uses: golangci/golangci-lint-action@v9.2.0
         with:
           version: ${{ inputs.golangci_lint_version }}
           args: --timeout=5m --verbose

@@ -17,7 +17,6 @@ var (
 		Job Specification: https://docs.bacalhau.org/cli-api/specifications/job
 `)
 
-	//nolint:lll // Documentation
 	validateExample = templates.Examples(`
 		# Validate a job using the data in job.yaml
 		bacalhau job validate ./job.yaml
