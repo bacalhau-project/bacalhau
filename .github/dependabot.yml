@@ -13,9 +13,17 @@ updates:
       prefix-development: "dev-deps"
       include: "scope"
     groups:
-      go-dependencies:
+      go-dependencies-major:
         patterns:
           - "*"
+        update-types:
+          - "major"
+      go-dependencies-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
