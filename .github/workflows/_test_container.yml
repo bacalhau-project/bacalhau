@@ -72,7 +72,7 @@ jobs:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ${{ inputs.go_version_file }}
 
