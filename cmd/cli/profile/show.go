@@ -13,6 +13,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 )
 
+// minTokenLengthForPartialRedaction is the minimum token length to show partial content
+// Tokens shorter than this are fully redacted
+const minTokenLengthForPartialRedaction = 8
+
 // ShowOptions contains options for the show command
 type ShowOptions struct {
 	showToken bool
@@ -126,7 +130,7 @@ func (o *ShowOptions) run(cmd *cobra.Command, cfg *config.Config, name string) e
 
 // redactToken redacts a token for display, showing only first and last 4 characters
 func redactToken(token string) string {
-	if len(token) <= 8 {
+	if len(token) <= minTokenLengthForPartialRedaction {
 		return "****"
 	}
 	return token[:4] + "****" + token[len(token)-4:]

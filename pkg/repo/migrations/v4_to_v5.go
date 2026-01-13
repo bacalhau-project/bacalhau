@@ -113,7 +113,7 @@ func migrateTokensFile(store *profile.Store, tokensPath string) ([]string, error
 		profileName := endpointToProfileName(endpoint)
 		p := &profile.Profile{
 			Endpoint:    endpoint,
-			Description: fmt.Sprintf("Migrated from tokens.json"),
+			Description: "Migrated from tokens.json",
 		}
 		if token != "" {
 			p.Auth = &profile.AuthConfig{

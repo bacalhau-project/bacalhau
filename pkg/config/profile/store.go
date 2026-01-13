@@ -14,6 +14,7 @@ import (
 const (
 	profileExtension = ".yaml"
 	currentSymlink   = "current"
+	dirPermissions   = 0755
 )
 
 // Store handles profile persistence operations.
@@ -28,7 +29,7 @@ func NewStore(dir string) *Store {
 
 // ensureDir creates the profiles directory if it doesn't exist.
 func (s *Store) ensureDir() error {
-	return os.MkdirAll(s.dir, 0755)
+	return os.MkdirAll(s.dir, dirPermissions)
 }
 
 // validateName checks that a profile name is valid.
