@@ -247,9 +247,8 @@ func (s *WorkerTestSuite) onDequeue() *gomock.Call {
 
 func (s *WorkerTestSuite) waitUntilStopped() {
 	s.Eventually(func() bool {
-		s.Equal(WorkerStatusStopped, s.worker.Status())
-		return true
-	}, 100*time.Millisecond, 10*time.Millisecond)
+		return s.worker.Status() == WorkerStatusStopped
+	}, 500*time.Millisecond, 10*time.Millisecond)
 }
 
 func (s *WorkerTestSuite) stopAfterDequeue() func(schedulers []string, timeout time.Duration) (*models.Evaluation, string, error) {
