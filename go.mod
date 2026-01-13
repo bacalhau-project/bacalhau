@@ -14,6 +14,7 @@ require (
 	github.com/aws/smithy-go v1.22.4
 	github.com/bmatcuk/doublestar/v4 v4.8.1
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
+	github.com/containerd/errdefs v1.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v28.0.0+incompatible
