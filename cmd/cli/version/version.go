@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 
@@ -65,12 +64,7 @@ func NewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			// create an api client
-			api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
-			if err != nil {
-				return fmt.Errorf("failed to create api client: %w", err)
-			}
-			return runVersion(cmd, cfg, r, api, oV)
+			return runVersion(cmd, cfg, r, oV)
 		},
 	}
 
@@ -80,10 +74,10 @@ func NewCmd() *cobra.Command {
 	return versionCmd
 }
 
-func runVersion(cmd *cobra.Command, cfg types.Bacalhau, r *repo.FsRepo, api clientv2.API, oV *VersionOptions) error {
+func runVersion(cmd *cobra.Command, cfg types.Bacalhau, r *repo.FsRepo, oV *VersionOptions) error {
 	ctx := cmd.Context()
 
-	err := oV.Run(ctx, cmd, cfg, r, api)
+	err := oV.Run(ctx, cmd, cfg, r)
 	if err != nil {
 		return fmt.Errorf("error running version: %w", err)
 	}
@@ -116,7 +110,6 @@ func (oV *VersionOptions) Run(
 	cmd *cobra.Command,
 	cfg types.Bacalhau,
 	r *repo.FsRepo,
-	api clientv2.API,
 ) error {
 	var (
 		versions util.Versions
@@ -126,15 +119,22 @@ func (oV *VersionOptions) Run(
 	if oV.ClientOnly {
 		versions.ClientVersion = version.Get()
 	} else {
-		// NB(forrest): since `GetAllVersions` is an API call - in the event the server is un-reachable
-		// we timeout after 3 seconds to avoid waiting on an unavailable server to return its version information.
-		vCtx, cancel := context.WithTimeout(ctx, time.Second*3)
-		defer cancel()
-		var err error
-		versions, err = util.GetAllVersions(vCtx, cfg, api, r)
+		// Only create API client when we need to contact the server
+		api, err := util.NewAPIClientManager(cmd, cfg).GetUnauthenticatedAPIClient()
 		if err != nil {
-			// No error on fail of version check. Just print as much as we can.
-			log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")
+			// Fall back to client-only mode if we can't create an API client
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to create API client, showing client version only")
+			versions.ClientVersion = version.Get()
+		} else {
+			// NB(forrest): since `GetAllVersions` is an API call - in the event the server is un-reachable
+			// we timeout after 3 seconds to avoid waiting on an unavailable server to return its version information.
+			vCtx, cancel := context.WithTimeout(ctx, time.Second*3)
+			defer cancel()
+			versions, err = util.GetAllVersions(vCtx, cfg, api, r)
+			if err != nil {
+				// No error on fail of version check. Just print as much as we can.
+				log.Ctx(ctx).Warn().Err(err).Msg("failed to get updated versions")
+			}
 		}
 	}
 
