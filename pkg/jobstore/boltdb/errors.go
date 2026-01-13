@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
@@ -23,34 +23,34 @@ const (
 
 func NewBoltDBError(err error) bacerrors.Error {
 	switch {
-	case errors.Is(err, bbolt.ErrBucketNotFound): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrBucketNotFound):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBBucketNotFound).
 			WithHTTPStatusCode(http.StatusNotFound).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrBucketExists): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrBucketExists):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBBucketExists).
 			WithHTTPStatusCode(http.StatusConflict).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrTxNotWritable): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrTxNotWritable):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBTxNotWritable).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrIncompatibleValue): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrIncompatibleValue):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBIncompatibleValue).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrKeyRequired): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrKeyRequired):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBKeyRequired).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrKeyTooLarge): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrKeyTooLarge):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBKeyTooLarge).
 			WithComponent(BoltDBComponent)
-	case errors.Is(err, bbolt.ErrValueTooLarge): //nolint:staticcheck // TODO: migrate to bbolt/errors package
+	case errors.Is(err, bbolterrors.ErrValueTooLarge):
 		return bacerrors.Newf("%s", err).
 			WithCode(BoltDBValueTooLarge).
 			WithComponent(BoltDBComponent)

@@ -15,13 +15,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/registry"
-	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/opencontainers/go-digest"
@@ -261,8 +261,7 @@ func (c *Client) SupportedPlatforms(ctx context.Context) ([]v1.Platform, error) 
 	return []v1.Platform{platform}, nil
 }
 
-//nolint:staticcheck // TODO: migrate types.ImageInspect to image.InspectResponse
-func (c *Client) isPlatformCompatible(info types.ImageInspect, hostPlatform v1.Platform) bool {
+func (c *Client) isPlatformCompatible(info image.InspectResponse, hostPlatform v1.Platform) bool {
 	// If any fields are "unknown", the platform info is not reliable
 	if info.Os == unknownPlatform || info.Architecture == unknownPlatform {
 		log.Debug().
@@ -335,7 +334,7 @@ func (c *Client) ImageDistribution(
 	}
 
 	// Check local image first
-	info, _, err := c.ImageInspectWithRaw(ctx, image)
+	info, err := c.ImageInspect(ctx, image)
 	if err == nil {
 		// If image matches our platform and has a digest, we can trust it
 		if c.isPlatformCompatible(info, hostPlatform) {
@@ -368,7 +367,7 @@ func (c *Client) ImageDistribution(
 				Str("host_platform", platformString(hostPlatform)).
 				Msg("Local image platform mismatch, checking registry")
 		}
-	} else if !dockerclient.IsErrNotFound(err) { //nolint:staticcheck // TODO: migrate to cerrdefs.IsNotFound
+	} else if !errdefs.IsNotFound(err) {
 		return nil, NewDockerImageError(err, image)
 	}
 
@@ -400,12 +399,12 @@ func (c *Client) PullImage(ctx context.Context, img string) error {
 	}
 
 	// Check if we already have this image locally and it matches our platform
-	info, _, err := c.ImageInspectWithRaw(ctx, img)
+	info, err := c.ImageInspect(ctx, img)
 	if err == nil {
 		if c.isPlatformCompatible(info, hostPlatform) {
 			return nil
 		}
-	} else if !dockerclient.IsErrNotFound(err) { //nolint:staticcheck // TODO: migrate to cerrdefs.IsNotFound
+	} else if !errdefs.IsNotFound(err) {
 		return NewDockerImageError(err, img)
 	} else {
 		log.Ctx(ctx).Debug().Str("image", img).Msg("Pulling image as it wasn't found")

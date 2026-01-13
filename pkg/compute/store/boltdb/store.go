@@ -11,6 +11,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
@@ -490,7 +491,7 @@ func (s *Store) DeleteExecution(ctx context.Context, executionID string) error {
 
 		// Delete execution events, if any
 		err = bucket(tx, executionEventsBucket).DeleteBucket(strToBytes(executionID))
-		if err != nil && !errors.Is(err, bolt.ErrBucketNotFound) { //nolint:staticcheck // TODO: migrate to bbolt/errors package
+		if err != nil && !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 			return fmt.Errorf("failed to delete execution events: %w", err)
 		}
 
