@@ -52,18 +52,20 @@ func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManag
 		log.Debug().Err(err).Msg("Failed to load profile")
 	}
 
-	if p != nil {
+	// Priority: explicit --api-host/--api-port flags > profile > default
+	// This ensures CLI flags always take precedence over profiles
+	if apiEndpointExplicitlySet(cfg.API) {
+		// Use explicit --api-host/--api-port flags if provided
+		cm.baseURL, _ = ConstructAPIEndpoint(cfg.API)
+		log.Debug().Str("endpoint", cm.baseURL).Msg("Using explicit API flags for connection")
+	} else if p != nil {
 		// Use profile for connection
 		cm.profile = p
 		cm.profileName = name
 		cm.baseURL = p.Endpoint
 		log.Debug().Str("profile", name).Str("endpoint", p.Endpoint).Msg("Using profile for API connection")
-	} else if apiEndpointExplicitlySet(cfg.API) {
-		// Fall back to --api-host/--api-port flags if explicitly provided
-		cm.baseURL, _ = ConstructAPIEndpoint(cfg.API)
-		log.Debug().Str("endpoint", cm.baseURL).Msg("Using explicit API flags for connection")
 	}
-	// If neither profile nor explicit flags are set, baseURL will be empty
+	// If neither explicit flags nor profile are set, baseURL will be empty
 	// and client calls will fail with a clear error message.
 
 	return cm
