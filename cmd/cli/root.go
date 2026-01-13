@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/profile"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
@@ -58,12 +59,22 @@ func NewRootCmd() *cobra.Command {
 		util.Fatal(RootCmd, err, 1)
 	}
 
+	// Add global profile flag
+	RootCmd.PersistentFlags().StringP("profile", "p", "", "Use a specific profile for this command")
+
 	// logic that must run before any child command executes
 	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// context of the command
 		ctx := cmd.Context()
 		ctx = util.InjectCleanupManager(ctx)
 		ctx = injectRootSpan(cmd, ctx)
+
+		// Profile selection - store flag and env var in context
+		profileFlagValue, _ := cmd.Flags().GetString("profile")
+		profileEnvValue := os.Getenv("BACALHAU_PROFILE")
+		ctx = context.WithValue(ctx, util.ProfileFlagKey, profileFlagValue)
+		ctx = context.WithValue(ctx, util.ProfileEnvKey, profileEnvValue)
+
 		cmd.SetContext(ctx)
 
 		// Binds flags with a corresponding config file value to the root command.
@@ -105,6 +116,7 @@ func NewRootCmd() *cobra.Command {
 		job.NewCmd(),
 		auth.NewCmd(),
 		node.NewCmd(),
+		profile.NewCmd(),
 		serve.NewCmd(),
 		version.NewCmd(),
 		wasm.NewCmd(),
