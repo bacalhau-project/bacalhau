@@ -59,8 +59,8 @@ func NewRootCmd() *cobra.Command {
 		util.Fatal(RootCmd, err, 1)
 	}
 
-	// Add global profile flag
-	RootCmd.PersistentFlags().StringP("profile", "p", "", "Use a specific profile for this command")
+	// Add global profile flag (no shorthand to avoid conflict with -p for publisher in run commands)
+	RootCmd.PersistentFlags().String("profile", "", "Use a specific profile for this command")
 
 	// logic that must run before any child command executes
 	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {

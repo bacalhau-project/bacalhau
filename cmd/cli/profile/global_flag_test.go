@@ -45,19 +45,6 @@ func TestGlobalProfileFlag(t *testing.T) {
 		require.Contains(t, output, "http://localhost:1234")
 	})
 
-	t.Run("-p short flag works", func(t *testing.T) {
-		cmd := cli.NewRootCmd()
-		buf := new(bytes.Buffer)
-		cmd.SetOut(buf)
-		cmd.SetArgs([]string{"-p", "dev", "profile", "show"})
-
-		err := cmd.Execute()
-		require.NoError(t, err)
-
-		output := buf.String()
-		require.Contains(t, output, "dev")
-	})
-
 	t.Run("flag takes precedence over current profile", func(t *testing.T) {
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
