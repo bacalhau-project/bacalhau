@@ -536,7 +536,7 @@ virtualenv==20.26.6
     #   bacalhau-sdk
     #   pre-commit
     #   tox
-werkzeug==3.1.4
+werkzeug==3.1.5
     # via
     #   apache-airflow
     #   connexion
