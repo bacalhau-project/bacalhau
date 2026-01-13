@@ -8,7 +8,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	pkgerrors "github.com/pkg/errors"
@@ -222,18 +221,18 @@ func (e *Executor) createHTTPGateway(
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stderr").Logger().WithContext(ctx), stderr)
 
 	// Look up the IP address of the gateway container and attach it to the spec
-	var containerDetails types.ContainerJSON
+	var containerDetails container.InspectResponse
 	for {
 		containerDetails, err = e.client.ContainerInspect(ctx, gatewayContainer.ID)
 		if err != nil {
 			return nil, nil, pkgerrors.Wrap(err, "error getting gateway container details")
 		}
 		switch containerDetails.State.Health.Status {
-		case types.NoHealthcheck:
+		case container.NoHealthcheck:
 			return nil, nil, errors.New("expecting gateway image to have healthcheck defined")
-		case types.Unhealthy:
+		case container.Unhealthy:
 			return nil, nil, errors.New("gateway container failed to start")
-		case types.Starting:
+		case container.Starting:
 			time.Sleep(httpGatewayHealthcheckInterval)
 			continue
 		}

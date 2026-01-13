@@ -5,6 +5,7 @@ import (
 	"time"
 
 	bolt "go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
@@ -16,7 +17,7 @@ const defaultDatabasePermissions = 0600
 func Open(path string) (*bolt.DB, error) {
 	database, err := bolt.Open(path, defaultDatabasePermissions, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		if errors.Is(err, bolt.ErrTimeout) {
+		if errors.Is(err, bbolterrors.ErrTimeout) {
 			return nil, newBoltDBInUseError(path)
 		}
 		return nil, bacerrors.Wrapf(err, "failed to open database at %s", path)

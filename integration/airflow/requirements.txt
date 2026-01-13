@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
-aiohttp==3.10.11
+aiohttp==3.12.14
     # via apache-airflow-providers-http
 aiosignal==1.3.1
     # via aiohttp
@@ -158,7 +158,7 @@ flask==2.2.5
     #   flask-session
     #   flask-sqlalchemy
     #   flask-wtf
-flask-appbuilder==4.4.1
+flask-appbuilder==4.8.1
     # via apache-airflow
 flask-babel==2.0.0
     # via flask-appbuilder
@@ -527,7 +527,7 @@ unicodecsv==0.14.1
     # via apache-airflow
 universal-pathlib==0.2.2
     # via apache-airflow
-urllib3==2.5.0
+urllib3==2.6.0
     # via
     #   requests
     #   twine
@@ -536,7 +536,7 @@ virtualenv==20.26.6
     #   bacalhau-sdk
     #   pre-commit
     #   tox
-werkzeug==3.0.6
+werkzeug==3.1.4
     # via
     #   apache-airflow
     #   connexion

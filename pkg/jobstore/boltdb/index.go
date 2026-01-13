@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	bolt "go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 )
 
 // Index is a bucket type that encodes both a label and an identifier,
@@ -49,7 +50,7 @@ func (i *Index) Add(tx *bolt.Tx, identifier []byte, subpath ...[]byte) error {
 
 func (i *Index) List(tx *bolt.Tx, subpath ...[]byte) ([][]byte, error) {
 	bkt, err := i.rootBucketPath.Sub(subpath...).Get(tx, false)
-	if err != nil && !errors.Is(err, bolt.ErrBucketNotFound) {
+	if err != nil && !errors.Is(err, bbolterrors.ErrBucketNotFound) {
 		return nil, err
 	}
 

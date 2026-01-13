@@ -75,7 +75,7 @@ jobs:
           sudo chmod +t /tmp
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Go
         uses: actions/setup-go@v5

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	bolt "go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 )
 
 const (
@@ -88,7 +89,7 @@ func (bp *BucketPath) Get(tx *bolt.Tx, create bool) (*bolt.Bucket, error) {
 			return nil, err
 		}
 		if sub == nil {
-			return nil, bolt.ErrBucketNotFound
+			return nil, bbolterrors.ErrBucketNotFound
 		}
 		bucket = sub
 		bucketMaker = sub
