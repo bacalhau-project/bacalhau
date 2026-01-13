@@ -61,7 +61,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/swaggo/swag v1.16.4
+	github.com/swaggo/swag v1.16.6
 	github.com/tetratelabs/wazero v1.9.0
 	github.com/theckman/yacspin v0.13.12
 	github.com/vincent-petithory/dataurl v1.0.0
