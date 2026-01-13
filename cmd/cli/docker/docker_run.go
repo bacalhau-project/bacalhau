@@ -14,10 +14,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	engine_docker "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 var (
@@ -94,11 +94,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
-			if err != nil {
-				return fmt.Errorf("failed to create v2 api client: %w", err)
-			}
-			return run(cmd, cmdArgs, api, opts)
+			return run(cmd, cmdArgs, cfg, opts)
 		},
 	}
 
@@ -118,7 +114,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	return dockerRunCmd
 }
 
-func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOptions) error {
+func run(cmd *cobra.Command, args []string, cfg types.Bacalhau, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
 	job, err := build(args, opts)
@@ -133,6 +129,12 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOpt
 		}
 		cmd.Print(out)
 		return nil
+	}
+
+	// Only create API client when actually needed (not for dry-run)
+	api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
+	if err != nil {
+		return fmt.Errorf("failed to create api client: %w", err)
 	}
 
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
