@@ -53,15 +53,28 @@ func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManag
 	}
 
 	if p != nil {
+		// Use profile for connection
 		cm.profile = p
 		cm.profileName = name
 		cm.baseURL = p.Endpoint
 		log.Debug().Str("profile", name).Str("endpoint", p.Endpoint).Msg("Using profile for API connection")
+	} else if apiEndpointExplicitlySet(cfg.API) {
+		// Fall back to --api-host/--api-port flags if explicitly provided
+		cm.baseURL, _ = ConstructAPIEndpoint(cfg.API)
+		log.Debug().Str("endpoint", cm.baseURL).Msg("Using explicit API flags for connection")
 	}
-	// If no profile is available, baseURL will be empty and client calls will fail
-	// with a clear error message. Users must create a profile first.
+	// If neither profile nor explicit flags are set, baseURL will be empty
+	// and client calls will fail with a clear error message.
 
 	return cm
+}
+
+// apiEndpointExplicitlySet returns true if the API endpoint was explicitly set
+// via flags or environment variables (not just default values from config).
+func apiEndpointExplicitlySet(api types.API) bool {
+	// Default values from pkg/config/defaults.go are Host="0.0.0.0" Port=1234
+	// If either is different, explicit values were provided
+	return api.Host != "0.0.0.0" || api.Port != 1234
 }
 
 var ErrNoProfile = fmt.Errorf("no profile configured. Create one with: bacalhau profile save <name> --endpoint <url>")
@@ -173,18 +186,23 @@ func (cm *APIClientManager) GetAuthenticatedAPIClient() (clientv2.API, error) {
 	), nil
 }
 
-// generateAPIRequestsOptions creates HTTP client options using profile TLS settings.
+// generateAPIRequestsOptions creates HTTP client options using profile or explicit flag TLS settings.
 func (cm *APIClientManager) generateAPIRequestsOptions() ([]clientv2.OptionFn, error) {
 	var useTLS, insecure bool
 	var caFile string
 
-	// Use profile TLS settings
 	if cm.profile != nil {
+		// Use profile TLS settings
 		insecure = cm.profile.IsInsecure()
-		// Determine if TLS should be used based on endpoint scheme
 		useTLS = strings.HasPrefix(cm.baseURL, "https://")
+	} else if apiEndpointExplicitlySet(cm.cfg.API) {
+		// Use explicit flag TLS settings
+		tlsCfg := cm.cfg.API.TLS
+		useTLS = tlsCfg.UseTLS
+		insecure = tlsCfg.Insecure
+		caFile = tlsCfg.CAFile
 	}
-	// If no profile, useTLS and insecure default to false, which is safe
+	// If neither, useTLS and insecure default to false, which is safe
 
 	if caFile != "" {
 		if _, err := os.Stat(caFile); os.IsNotExist(err) {
