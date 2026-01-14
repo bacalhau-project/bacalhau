@@ -59,9 +59,6 @@ func NewRootCmd() *cobra.Command {
 		util.Fatal(RootCmd, err, 1)
 	}
 
-	// Add global profile flag (no shorthand to avoid conflict with -p for publisher in run commands)
-	RootCmd.PersistentFlags().String("profile", "", "Use a specific profile for this command")
-
 	// logic that must run before any child command executes
 	RootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// context of the command
@@ -70,7 +67,11 @@ func NewRootCmd() *cobra.Command {
 		ctx = injectRootSpan(cmd, ctx)
 
 		// Profile selection - store flag and env var in context
-		profileFlagValue, _ := cmd.Flags().GetString("profile")
+		// The --profile flag is only registered on client commands via cliflags.RegisterProfileFlag
+		var profileFlagValue string
+		if flag := cmd.Flags().Lookup("profile"); flag != nil {
+			profileFlagValue = flag.Value.String()
+		}
 		profileEnvValue := os.Getenv("BACALHAU_PROFILE")
 		ctx = context.WithValue(ctx, util.ProfileFlagKey, profileFlagValue)
 		ctx = context.WithValue(ctx, util.ProfileEnvKey, profileEnvValue)

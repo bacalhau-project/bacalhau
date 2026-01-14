@@ -30,12 +30,12 @@ func TestGlobalProfileFlag(t *testing.T) {
 	err = store.SetCurrent("prod")
 	require.NoError(t, err)
 
-	t.Run("--profile flag overrides current", func(t *testing.T) {
+	t.Run("explicit profile arg overrides current", func(t *testing.T) {
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
-		// Use profile show to verify which profile is loaded
-		cmd.SetArgs([]string{"--profile", "dev", "profile", "show"})
+		// Use profile show with explicit profile name
+		cmd.SetArgs([]string{"profile", "show", "dev"})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -45,12 +45,12 @@ func TestGlobalProfileFlag(t *testing.T) {
 		require.Contains(t, output, "http://localhost:1234")
 	})
 
-	t.Run("flag takes precedence over current profile", func(t *testing.T) {
+	t.Run("explicit arg takes precedence over current profile", func(t *testing.T) {
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
-		// Current is prod, but we use --profile dev
-		cmd.SetArgs([]string{"--profile", "dev", "profile", "show"})
+		// Current is prod, but we use explicit "dev" arg
+		cmd.SetArgs([]string{"profile", "show", "dev"})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -82,7 +82,7 @@ func TestGlobalProfileFlag(t *testing.T) {
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
 		cmd.SetErr(buf)
-		cmd.SetArgs([]string{"--profile", "nonexistent", "profile", "show"})
+		cmd.SetArgs([]string{"profile", "show", "nonexistent"})
 
 		err := cmd.Execute()
 		require.Error(t, err)
@@ -123,20 +123,20 @@ func TestProfileEnvVar(t *testing.T) {
 		require.Contains(t, output, "http://localhost:1234")
 	})
 
-	t.Run("flag takes precedence over env var", func(t *testing.T) {
+	t.Run("explicit arg takes precedence over env var", func(t *testing.T) {
 		t.Setenv("BACALHAU_PROFILE", "dev")
 
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
-		// Flag specifies prod, env var specifies dev
-		cmd.SetArgs([]string{"--profile", "prod", "profile", "show"})
+		// Explicit arg specifies prod, env var specifies dev
+		cmd.SetArgs([]string{"profile", "show", "prod"})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
 
 		output := buf.String()
-		// Flag should take precedence
+		// Explicit arg should take precedence
 		require.Contains(t, output, "prod")
 		require.Contains(t, output, "https://prod.example.com:443")
 	})
@@ -195,15 +195,15 @@ func TestProfilePrecedence(t *testing.T) {
 	err = store.SetCurrent("current-profile")
 	require.NoError(t, err)
 
-	t.Run("precedence order: flag > env > current", func(t *testing.T) {
+	t.Run("explicit arg takes precedence over env and current", func(t *testing.T) {
 		// Set env var
 		t.Setenv("BACALHAU_PROFILE", "env-profile")
 
-		// With flag, env, and current all set, flag wins
+		// With explicit arg, env, and current all set, explicit arg wins
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
-		cmd.SetArgs([]string{"--profile", "flag-profile", "profile", "show"})
+		cmd.SetArgs([]string{"profile", "show", "flag-profile"})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
@@ -213,21 +213,21 @@ func TestProfilePrecedence(t *testing.T) {
 		require.Contains(t, output, "https://flag.example.com:443")
 	})
 
-	t.Run("explicit arg takes precedence over everything", func(t *testing.T) {
+	t.Run("env var takes precedence over current when no explicit arg", func(t *testing.T) {
 		// Set env var
 		t.Setenv("BACALHAU_PROFILE", "env-profile")
 
-		// With explicit arg, flag, and env all present, explicit arg wins
+		// With env and current set but no explicit arg, env wins
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)
 		cmd.SetOut(buf)
-		cmd.SetArgs([]string{"--profile", "flag-profile", "profile", "show", "current-profile"})
+		cmd.SetArgs([]string{"profile", "show"})
 
 		err := cmd.Execute()
 		require.NoError(t, err)
 
 		output := buf.String()
-		require.Contains(t, output, "current-profile")
-		require.Contains(t, output, "https://current.example.com:443")
+		require.Contains(t, output, "env-profile")
+		require.Contains(t, output, "https://env.example.com:443")
 	})
 }

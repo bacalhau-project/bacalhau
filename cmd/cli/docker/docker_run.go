@@ -74,6 +74,9 @@ func NewCmd() *cobra.Command {
 		Short: "Run a docker job on the network (see run subcommand)",
 	}
 
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(dockerCmd)
+
 	dockerCmd.AddCommand(newDockerRunCmd())
 	return dockerCmd
 }

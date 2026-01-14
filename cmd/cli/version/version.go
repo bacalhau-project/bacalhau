@@ -68,6 +68,9 @@ func NewCmd() *cobra.Command {
 		},
 	}
 
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(versionCmd)
+
 	versionCmd.Flags().BoolVar(&oV.ClientOnly, "client", oV.ClientOnly, "If true, shows client version only (no server required).")
 	versionCmd.Flags().AddFlagSet(cliflags.OutputFormatFlags(&oV.OutputOpts))
 

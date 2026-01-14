@@ -87,6 +87,9 @@ func NewCmd() *cobra.Command {
 		Short: "Run and prepare WASM jobs on the network",
 	}
 
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(wasmCmd)
+
 	wasmCmd.AddCommand(newRunCmd())
 	return wasmCmd
 }
