@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/profile"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/rs/zerolog/log"
@@ -124,6 +129,28 @@ func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg ty
 			WithHint(errorHint)
 	}
 
+	// Save token to profile (non-fatal errors - don't break login flow)
+	profilesDir := filepath.Join(cfg.DataDir, "profiles")
+	store := profile.NewStore(profilesDir)
+	profileName := endpointToProfileName(apiURL)
+	loader := profile.NewLoader(store, "", "")
+
+	p, err := loader.LoadOrCreate(profileName, apiURL)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to create/load profile for SSO token")
+	} else {
+		p.Auth = &profile.AuthConfig{Token: token.AccessToken}
+		if err := store.Save(profileName, p); err != nil {
+			log.Warn().Err(err).Msg("Failed to save SSO token to profile")
+		} else {
+			// Set as current if no current profile
+			if current, _ := store.GetCurrent(); current == "" {
+				_ = store.SetCurrent(profileName)
+			}
+			log.Debug().Str("profile", profileName).Msg("Saved SSO token to profile")
+		}
+	}
+
 	fmt.Fprintf(os.Stderr, "\nSuccessfully authenticated with %s!\n", nodeAuthConfig.Config.ProviderName)
 
 	return nil
@@ -144,4 +171,48 @@ func printDeviceCodeInstructions(deviceCode *sso.DeviceCodeResponse, providerNam
 	}
 
 	fmt.Fprintf(cmdOutput, "Waiting for authentication with %s... (press Ctrl+C to cancel)\n", providerName)
+}
+
+// endpointToProfileName converts an endpoint URL to a valid profile name.
+// Example: "https://prod.example.com:443" -> "prod_example_com_443"
+func endpointToProfileName(endpoint string) string {
+	// Parse as URL to extract meaningful parts
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		// Fallback to simple sanitization
+		return sanitizeProfileName(endpoint)
+	}
+
+	// Build profile name from host and port
+	name := u.Hostname()
+	if u.Port() != "" {
+		name = name + "_" + u.Port()
+	}
+
+	return sanitizeProfileName(name)
+}
+
+// sanitizeProfileName converts a string to a valid profile name.
+// Replaces invalid characters with underscores.
+func sanitizeProfileName(name string) string {
+	// Replace common URL separators and invalid characters
+	name = strings.ReplaceAll(name, "://", "_")
+	name = strings.ReplaceAll(name, ":", "_")
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, ".", "_")
+	name = strings.ReplaceAll(name, "-", "_")
+
+	// Remove consecutive underscores
+	re := regexp.MustCompile(`_+`)
+	name = re.ReplaceAllString(name, "_")
+
+	// Trim leading/trailing underscores
+	name = strings.Trim(name, "_")
+
+	// Ensure non-empty
+	if name == "" {
+		return "default"
+	}
+
+	return name
 }

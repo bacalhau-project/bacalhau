@@ -17,10 +17,10 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/opts"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	engine_wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/inline"
 )
 
@@ -87,6 +87,9 @@ func NewCmd() *cobra.Command {
 		Short: "Run and prepare WASM jobs on the network",
 	}
 
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(wasmCmd)
+
 	wasmCmd.AddCommand(newRunCmd())
 	return wasmCmd
 }
@@ -107,11 +110,7 @@ func newRunCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
-			if err != nil {
-				return fmt.Errorf("failed to create v2 api client: %w", err)
-			}
-			return run(cmd, cmdArgs, api, opts)
+			return run(cmd, cmdArgs, cfg, opts)
 		},
 	}
 
@@ -134,7 +133,7 @@ func newRunCmd() *cobra.Command {
 	return wasmRunCmd
 }
 
-func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptions) error {
+func run(cmd *cobra.Command, args []string, cfg types.Bacalhau, opts *WasmRunOptions) error {
 	ctx := cmd.Context()
 
 	job, err := build(ctx, args, opts)
@@ -149,6 +148,12 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *WasmRunOptio
 		}
 		cmd.Print(out)
 		return nil
+	}
+
+	// Only create API client when actually needed (not for dry-run)
+	api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
+	if err != nil {
+		return fmt.Errorf("failed to create api client: %w", err)
 	}
 
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
