@@ -30,21 +30,6 @@ func TestGlobalProfileFlag(t *testing.T) {
 	err = store.SetCurrent("prod")
 	require.NoError(t, err)
 
-	t.Run("explicit profile arg overrides current", func(t *testing.T) {
-		cmd := cli.NewRootCmd()
-		buf := new(bytes.Buffer)
-		cmd.SetOut(buf)
-		// Use profile show with explicit profile name
-		cmd.SetArgs([]string{"profile", "show", "dev"})
-
-		err := cmd.Execute()
-		require.NoError(t, err)
-
-		output := buf.String()
-		require.Contains(t, output, "dev")
-		require.Contains(t, output, "http://localhost:1234")
-	})
-
 	t.Run("explicit arg takes precedence over current profile", func(t *testing.T) {
 		cmd := cli.NewRootCmd()
 		buf := new(bytes.Buffer)

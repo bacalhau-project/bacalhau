@@ -208,7 +208,7 @@ func (cm *APIClientManager) generateAPIRequestsOptions() ([]clientv2.OptionFn, e
 
 	if caFile != "" {
 		if _, err := os.Stat(caFile); os.IsNotExist(err) {
-			return nil, fmt.Errorf("CA certificate file %q does not exists", caFile)
+			return nil, fmt.Errorf("CA certificate file %q does not exist", caFile)
 		} else if err != nil {
 			return nil, fmt.Errorf("CA certificate file %q cannot be read: %w", caFile, err)
 		}

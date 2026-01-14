@@ -190,39 +190,3 @@ func TestProfileShowNoCurrent(t *testing.T) {
 		require.Contains(t, err.Error(), "no current profile set")
 	})
 }
-
-func TestRedactToken(t *testing.T) {
-	tests := []struct {
-		name     string
-		token    string
-		expected string
-	}{
-		{
-			name:     "short token",
-			token:    "abc",
-			expected: "****",
-		},
-		{
-			name:     "exactly 8 chars",
-			token:    "12345678",
-			expected: "****",
-		},
-		{
-			name:     "longer token",
-			token:    "tok_secrettoken123xyz",
-			expected: "tok_****3xyz",
-		},
-		{
-			name:     "9 chars",
-			token:    "123456789",
-			expected: "1234****6789",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// We test the behavior through the command since redactToken is not exported
-			// This is tested implicitly through the show command tests above
-		})
-	}
-}
