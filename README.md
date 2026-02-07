@@ -47,7 +47,7 @@
 
 [Bacalhau](https://www.bacalhau.org/) is an open-source distributed compute orchestration framework designed to bring compute to the data. Instead of moving large datasets around networks, Bacalhau makes it easy to execute jobs close to the data's location, drastically reducing latency and resource overhead.
 
-> 🏢 **Bacalhau is created and maintained by [Expanso](https://expanso.io).** For a managed enterprise platform with a visual interface, SSO, and support, see [Expanso Cloud](https://cloud.expanso.io).
+> 💡 **Note:** Bacalhau shares founding team members with [Expanso](https://expanso.io), but they are **separate projects**. Bacalhau is an independent open-source project focused on distributed compute. Expanso is a separate commercial data platform. For more on the relationship, see [this FAQ](https://expanso.io/llms.txt).
 
 ## Why Bacalhau?
 
