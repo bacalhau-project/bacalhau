@@ -75,10 +75,10 @@ jobs:
           sudo chmod +t /tmp
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ${{ inputs.go_version_file }}
 
@@ -156,7 +156,7 @@ jobs:
           echo "✅ HTML coverage report generated"
 
       - name: Upload Test Reports as Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: "!cancelled()"
         with:
           name: ${{ inputs.test_name }}-reports

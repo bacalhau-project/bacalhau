@@ -67,12 +67,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: ${{ inputs.go_version_file }}
 
@@ -125,7 +125,7 @@ jobs:
           fail-on-error: false
 
       - name: Upload Test Reports as Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: "!cancelled()"
         with:
           name: ${{ inputs.test_name }}-reports
