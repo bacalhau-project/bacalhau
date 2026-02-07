@@ -18,7 +18,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/docker/docker v28.0.0+incompatible
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.6.0
 	github.com/dylibso/observe-sdk/go v0.0.0-20240828172851-9145d8ad07e1
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
