@@ -2,12 +2,14 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/compute/capacity"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
@@ -185,7 +187,7 @@ func (b Bidder) handleBidResult(
 	ctx context.Context,
 	execution *models.Execution,
 	result *bidStrategyResponse,
-) {
+) error {
 	var newExecutionValues models.Execution
 	var newExecutionState models.ExecutionStateType
 	var events []*models.Event
@@ -217,12 +219,23 @@ func (b Bidder) handleBidResult(
 			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 		},
 	})
-	// TODO: handle error by either gracefully skipping if the execution is no longer in the created state
-	//  or by failing the execution
+
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to update execution state")
-		return
+		var invalidStateErr store.ErrInvalidExecutionState
+		if errors.As(err, &invalidStateErr) {
+			log.Ctx(ctx).Debug().
+				Err(err).
+				Str("executionID", execution.ID).
+				Str("expectedState", models.ExecutionStateNew.String()).
+				Str("actualState", invalidStateErr.Actual.String()).
+				Msg("skipping execution state update - execution no longer in expected state")
+			return nil
+		}
+
+		// Propagate the error to be handled by the execution watcher
+		return bacerrors.Wrap(err, "failed to update execution state for execution %s", execution.ID)
 	}
+	return nil
 }
 
 // handleError is a helper function to handle errors in the bidder.
