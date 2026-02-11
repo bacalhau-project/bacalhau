@@ -24,10 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.work
 
@@ -95,7 +95,7 @@ jobs:
           echo "total_coverage=$TOTAL_COV" >> $GITHUB_OUTPUT
 
       - name: Upload combined coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.output_name }}-coverage-report
           path: |

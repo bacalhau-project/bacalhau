@@ -26,11 +26,11 @@ jobs:
             goarch: amd64
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: "0" # Need to fetch all due to how bacalhau constructs semver
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.work
 
