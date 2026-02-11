@@ -368,7 +368,7 @@ pre-commit==2.21.0
     # via bacalhau-sdk
 prison==0.2.1
     # via flask-appbuilder
-protobuf==4.25.8
+protobuf==5.29.6
     # via
     #   googleapis-common-protos
     #   opentelemetry-proto
