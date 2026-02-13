@@ -482,7 +482,7 @@ sqlalchemy-jsonfield==1.0.2
     # via apache-airflow
 sqlalchemy-utils==0.41.1
     # via flask-appbuilder
-sqlparse==0.5.0
+sqlparse==0.5.4
     # via apache-airflow-providers-common-sql
 tabulate==0.9.0
     # via apache-airflow
