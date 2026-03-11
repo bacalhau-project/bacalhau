@@ -24,12 +24,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: "0"  # Fetch all history for proper versioning
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           pattern: bacalhau-linux-{amd64,arm64}
           path: artifacts
@@ -42,13 +42,13 @@ jobs:
           echo "Total files: $(find artifacts -type f | wc -l)"
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -141,7 +141,7 @@ jobs:
           echo "$DIND_TAGS" | tr ',' '\n'
 
       - name: Build and push base image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/bacalhau-base/Dockerfile
@@ -157,7 +157,7 @@ jobs:
             org.opencontainers.image.revision=${{ steps.version.outputs.git_commit }}
 
       - name: Build and push DIND image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/bacalhau-dind/Dockerfile
