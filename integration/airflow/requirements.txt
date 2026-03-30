@@ -386,7 +386,7 @@ pydantic-core==2.16.2
     # via pydantic
 pyflakes==3.1.0
     # via flake8
-pygments==2.15.0
+pygments==2.20.0
     # via
     #   apache-airflow
     #   bacalhau-sdk
