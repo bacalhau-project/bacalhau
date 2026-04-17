@@ -32,6 +32,8 @@ jobs:
           go-version-file: go.work
 
       - name: Install gocovmerge
+        env:
+          GOTOOLCHAIN: auto
         run: go install github.com/wadey/gocovmerge@latest
 
       - name: Create coverage directory
