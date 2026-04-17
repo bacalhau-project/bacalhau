@@ -187,7 +187,7 @@ func (cm *ConnectionManager) Stop(ctx context.Context) {
 		cm.managementClient = nil
 	}
 	if cm.heartbeatClient != nil {
-		cm.heartbeatClient.Close(ctx)
+		_ = cm.heartbeatClient.Close(ctx)
 		cm.heartbeatClient = nil
 	}
 	if cm.heartbeatPublisher != nil {

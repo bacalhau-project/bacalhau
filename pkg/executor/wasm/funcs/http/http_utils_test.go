@@ -19,7 +19,7 @@ func endpointHandler(method string, statusCode int, response string) http.Handle
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
-		fmt.Fprint(w, response)
+		_, _ = fmt.Fprint(w, response)
 	}
 }
 

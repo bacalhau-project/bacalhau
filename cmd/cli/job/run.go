@@ -28,7 +28,6 @@ var (
 		JSON and YAML formats are accepted.
 	`)
 
-	//nolint:lll // Documentation
 	runExample = templates.Examples(`
 		# Run a job using the data in job.yaml
 		bacalhau job run ./job.yaml
@@ -95,7 +94,6 @@ func NewRunCmd() *cobra.Command {
 	return runCmd
 }
 
-//nolint:gocyclo
 func (o *RunOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 

@@ -112,7 +112,6 @@ func (sp *StorageProvider) GetVolumeSize(ctx context.Context, _ *models.Executio
 		return 0, ErrNoContentLengthFound
 	}
 
-	//nolint:gosec // G115: negative memory values already checked above
 	return uint64(res.ContentLength), nil
 }
 
@@ -182,7 +181,7 @@ func (sp *StorageProvider) PrepareStorage(
 	}
 
 	filePath := filepath.Join(outputPath, fileName)
-	w, err := os.Create(filePath)
+	w, err := os.Create(filePath) //nolint:gosec // G304: filePath validated by caller
 	if err != nil {
 		return storage.StorageVolume{}, fmt.Errorf("failed to create file %s: %s", filePath, err)
 	}

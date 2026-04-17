@@ -52,7 +52,7 @@ func (de *mountDirEntry) Info() (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	return file.Stat()
 }

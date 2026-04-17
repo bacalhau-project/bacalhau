@@ -61,7 +61,7 @@ func (s *NetworkingSuite) SetupSuite() {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -221,7 +221,7 @@ func (s *NetworkingSuite) TestPortMappingInBridgeMode() {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
 }
@@ -260,7 +260,7 @@ func (s *NetworkingSuite) TestPortMappingInHostMode() {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 100*time.Millisecond)
 }

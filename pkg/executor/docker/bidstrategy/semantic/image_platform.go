@@ -78,7 +78,7 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 			// Set even when don't have to, to reset the expiry time.
 			err = ManifestCache.Set(
 				dockerEngine.Image, manifest, 1, oneHourInSeconds,
-			) //nolint:mnd
+			)
 			if err != nil {
 				// Log but continue - failing to cache shouldn't fail the bid
 				log.Ctx(ctx).Warn().

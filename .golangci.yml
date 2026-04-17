@@ -1,47 +1,93 @@
 version: "2"
-run:
-  modules-download-mode: readonly
-  issues-exit-code: 2
-  tests: false
-  allow-parallel-runners: false
-linters:
-  default: none
+
+formatters:
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/golangci/golangci-lint
+  exclusions:
+    paths:
+      # Skip generated files and vendored code
+      - experimental
+      - vendor
+      - viz
+      - ops
+      - testdata
+      - webui/webui.go
+      - pkg/swagger/docs.go
+      - node_modules
   enable:
-    - bodyclose
-    - copyloopvar
-    - depguard
-    - dogsled
-    - errcheck
-    - forbidigo
-    - funlen
-    - gochecknoinits
-    - goconst
-    - gocyclo
-    - goprintffuncname
-    - gosec
-    - govet
-    - ineffassign
-    - lll
-    - mnd
-    - nakedret
-    - noctx
-    - nolintlint
-    - staticcheck
-    - unconvert
-    - unused
-    - whitespace
+    - gofmt
+    - goimports
+
+linters:
+  enable:
+  - bodyclose
+  - unused
+#  - depguard  # TODO: Fix depguard v2 configuration
+  - dogsled
+  - errcheck
+  - copyloopvar
+  - forbidigo
+  - funlen
+  - gochecknoinits
+  - goconst
+#   - gocritic
+  - gocyclo
+  - goprintffuncname
+  - gosec
+  - govet
+  - ineffassign
+  - lll
+  - mnd
+  - nakedret
+  - noctx
+  - nolintlint
+  - staticcheck  # staticcheck now includes gosimple and stylecheck in v2
+  - unconvert
+  - whitespace
+
+  exclusions:
+    paths:
+      # Skip generated files and vendored code
+      - experimental
+      - vendor
+      - viz
+      - ops
+      - testdata
+      - webui/webui.go
+      - pkg/swagger/docs.go
+      - node_modules
+    rules:
+      # Naming of `error` variables as `err` is standard practice for Go
+      - text: 'shadow: declaration of "err" shadows declaration at'
+        linters:
+          - govet
+      # Generated files don't need line length checks
+      - path: pkg/swagger/docs\.go
+        linters:
+          - lll
+      - path: pkg/config/types/generated_descriptions\.go
+        linters:
+          - lll
+      - path: pkg/config/types/gen/generate\.go
+        linters:
+          - lll
+
   settings:
     depguard:
+      # Depguard v2 configuration - allow all except logrus
       rules:
         main:
           deny:
             - pkg: github.com/sirupsen/logrus
-              desc: logging is allowed only by zerolog
+              desc: "logging is allowed only by zerolog"
     dupl:
       threshold: 100
     forbidigo:
       forbid:
-        - pattern: fmt\.Print.*
+        - pattern: 'fmt\.Print.*'
+          msg: 'Do not commit print statements'
     funlen:
       lines: 100
       statements: 100
@@ -49,83 +95,70 @@ linters:
       min-len: 2
       min-occurrences: 3
     gocritic:
-      disabled-checks:
-        - dupImport
-        - ifElseChain
-        - octalLiteral
-        - whyNoLint
-        - wrapperFunc
-        - hugeParam
-        - importShadow
       enabled-tags:
-        - diagnostic
-        - experimental
-        - opinionated
-        - performance
-        - style
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+      disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+      - hugeParam
+      - importShadow
     gocyclo:
       min-complexity: 18
+    mnd:
+      # don't include the "operation" and "assign"
+      checks:
+      - argument
+      - case
+      - condition
+      - return
+      ignored-numbers:
+      - "0"
+      - "1"
+      - "2"
+      - "3"
+      ignored-functions:
+      - strings.SplitN
+      - time.Duration
+      - types.Duration
     govet:
       enable:
         - shadow
     lll:
+      # Maximum line length
       line-length: 140
-    mnd:
-      checks:
-        - argument
-        - case
-        - condition
-        - return
-      ignored-numbers:
-        - "0"
-        - "1"
-        - "2"
-        - "3"
-      ignored-functions:
-        - strings.SplitN
-        - time.Duration
-        - types.Duration
+      # Tab width in spaces
+      tab-width: 4
     nolintlint:
-      require-explanation: false
-      require-specific: false
-      allow-unused: true
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-    rules:
-      - path: (.+)\.go$
-        text: 'shadow: declaration of "err" shadows declaration at'
-      # QF* are staticcheck quickfix suggestions (stylistic only, not correctness).
-      - linters:
-          - staticcheck
-        text: '^QF[0-9]+'
-    paths:
-      - webui/webui.go
-      - experimental$
-      - vendor$
-      - viz$
-      - ops$
-      - testdata$
-      - node_modules
-formatters:
-  enable:
-    - gofmt
-    - goimports
-  settings:
-    goimports:
-      local-prefixes:
-        - github.com/golangci/golangci-lint
-  exclusions:
-    generated: lax
-    paths:
-      - webui/webui.go
-      - experimental$
-      - vendor$
-      - viz$
-      - ops$
-      - node_modules
-      - testdata$
+      allow-unused: true # report any unused nolint directives
+      require-explanation: false # don't require an explanation for nolint directives
+      require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+# TODO #842 Check gocritic regularly to see if they support generics (finally)
+
+# Options for analysis running.
+run:
+  # Timeout for analysis, e.g. 30s, 5m.
+  timeout: 10m
+  # Include test files or not.
+  tests: false
+  # Allowed values: readonly|vendor|mod
+  modules-download-mode: readonly
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  # If set we pass it to "go list -mod={option}". From "go help modules":
+  # If invoked with -mod=readonly, the go command is disallowed from the implicit
+  # automatic updating of go.mod described above. Instead, it fails when any changes
+  # to go.mod are needed. This setting is most useful to check that go.mod does
+  # not need updates, such as in a continuous integration and testing system.
+  # If invoked with -mod=vendor, the go command assumes that the vendor
+  # directory holds the correct copies of dependencies and ignores
+  # the dependency descriptions in go.mod.

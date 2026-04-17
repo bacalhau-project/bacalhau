@@ -114,7 +114,7 @@ func NewConsumerClient(params ConsumerClientParams) (*ConsumerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	nc.respScanf = strings.Replace(nc.respSub, "*", "%s", -1)
+	nc.respScanf = strings.ReplaceAll(nc.respSub, "*", "%s")
 	nc.respMux = sub
 
 	_, err = nc.Conn.Subscribe(nc.heartBeatRequestSub, nc.heartBeatRespHandler)

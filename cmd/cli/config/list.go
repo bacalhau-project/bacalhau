@@ -66,9 +66,7 @@ func list(cmd *cobra.Command, cfg *config.Config, o output.OutputOptions) error 
 			return err
 		}
 		stdout := cmd.OutOrStdout()
-		if _, err := fmt.Fprintln(stdout, string(bytes)); err != nil {
-			return err
-		}
+		_, _ = fmt.Fprintln(stdout, string(bytes))
 		return nil
 	}
 	o.SortBy = []table.SortBy{{

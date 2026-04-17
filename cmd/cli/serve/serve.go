@@ -99,7 +99,7 @@ func NewCmd() *cobra.Command {
 	return serveCmd
 }
 
-//nolint:funlen,gocyclo
+//nolint:funlen,gocyclo // Main serve function handles initialization, inherently complex
 func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	ctx := cmd.Context()
 	cm := util.GetCleanupManager(ctx)
@@ -130,14 +130,15 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 		}
 	} else {
 		// Warn if the flag was provided but node name already exists
-		if flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String(); flagNodeName != "" && flagNodeName != sysmeta.NodeName {
+		flagNodeName := cmd.PersistentFlags().Lookup(NameFlagName).Value.String()
+		if flagNodeName != "" && flagNodeName != sysmeta.NodeName {
 			log.Warn().Msgf("--name flag with value %s ignored. Name %s already exists", flagNodeName, sysmeta.NodeName)
 		}
 	}
 
 	ctx = logger.ContextWithNodeIDLogger(ctx, sysmeta.NodeName)
 
-	if !(cfg.Compute.Enabled || cfg.Orchestrator.Enabled) {
+	if !cfg.Compute.Enabled && !cfg.Orchestrator.Enabled {
 		log.Warn().Msg("neither --compute nor --orchestrator were provided, defaulting to orchestrator node.")
 		cfg.Orchestrator.Enabled = true
 	}
@@ -247,7 +248,7 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	if err != nil {
 		return err
 	}
-	defer os.Remove(riPath)
+	defer func() { _ = os.Remove(riPath) }()
 
 	<-ctx.Done() // block until killed
 	log.Info().Msg("bacalhau node shutting down...")

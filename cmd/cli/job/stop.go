@@ -21,7 +21,6 @@ var (
 		Stop a previously submitted job. Either Job ID or Job Name can be specified.
 `)
 
-	//nolint:lll // Documentation
 	stopExample = templates.Examples(`
 		# Stop a previously submitted job using Job Name (default namespace)
 		bacalhau job stop my-job-name-a

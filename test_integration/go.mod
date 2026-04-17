@@ -1,6 +1,6 @@
 module bacalhau/integration_tests
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1

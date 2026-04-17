@@ -63,7 +63,7 @@ func (s *HTTPIntegrationSuite) SetupSuite() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("X-Test-Header", "test-value")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"method": "%s", "received": true}`, r.Method)
+		_, _ = fmt.Fprintf(w, `{"method": "%s", "received": true}`, r.Method)
 	})
 
 	s.testServer = httptest.NewServer(mux)

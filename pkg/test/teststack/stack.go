@@ -46,7 +46,7 @@ func Setup(
 	}
 
 	// Wait for nodes to have announced their presence.
-	//nolint:mnd
+
 	require.Eventually(t,
 		func() bool {
 			return AllNodesDiscovered(t, stack)

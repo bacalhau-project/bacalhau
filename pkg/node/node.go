@@ -148,7 +148,7 @@ func (n *Node) Stop(ctx context.Context) error {
 	return err
 }
 
-//nolint:funlen,gocyclo // Should be simplified when moving to FX
+//nolint:funlen // Should be simplified when moving to FX
 func NewNode(
 	ctx context.Context,
 	cfg NodeConfig,

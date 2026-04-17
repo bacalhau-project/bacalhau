@@ -151,10 +151,11 @@ func (d *NCLMessageCreator) transformNetworkConfig(execution *models.Execution) 
 	}
 
 	// Process the network configuration
-	if task.Network.Type == models.NetworkHost {
+	switch task.Network.Type {
+	case models.NetworkHost:
 		log.Trace().Msgf("Transforming network type from host to full for backward compatibility in execution %s", execution.ID)
 		task.Network.Type = models.NetworkFull
-	} else if task.Network.Type == models.NetworkDefault {
+	case models.NetworkDefault:
 		log.Trace().Msgf("Setting undefined network type to nil for backward compatibility in execution %s", execution.ID)
 		task.Network = nil
 	}

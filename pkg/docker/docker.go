@@ -157,8 +157,8 @@ func (c *Client) FollowLogs(ctx context.Context, id string) (stdout, stderr io.R
 		stderrBuffer := bufio.NewWriter(stderrWriter)
 		defer closer.CloseWithLogOnError("stderrWriter", stderrWriter)
 		defer closer.CloseWithLogOnError("stdoutWriter", stdoutWriter)
-		defer stderrBuffer.Flush()
-		defer stdoutBuffer.Flush()
+		defer func() { _ = stderrBuffer.Flush() }()
+		defer func() { _ = stdoutBuffer.Flush() }()
 		defer closer.CloseWithLogOnError("logsReader", logsReader)
 
 		_, err = stdcopy.StdCopy(stdoutBuffer, stderrBuffer, logsReader)

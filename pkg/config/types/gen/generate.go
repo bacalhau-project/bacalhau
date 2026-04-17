@@ -22,21 +22,21 @@ func main() {
 
 	fieldInfos := ConfigFieldMap(pkgPath)
 	// Generate constants file
-	constantsFile, err := os.Create(filepath.Join(pkgPath, "generated_constants.go"))
+	constantsFile, err := os.Create(filepath.Join(pkgPath, "generated_constants.go")) //nolint:gosec // G304: pkgPath from build system args, trusted input
 	if err != nil {
 		panic(err)
 	}
-	defer constantsFile.Close()
+	defer func() { _ = constantsFile.Close() }()
 
 	if err := WriteConstants(fieldInfos, constantsFile); err != nil {
 		panic(err)
 	}
 
-	commentsFile, err := os.Create(filepath.Join(pkgPath, "generated_descriptions.go"))
+	commentsFile, err := os.Create(filepath.Join(pkgPath, "generated_descriptions.go")) //nolint:gosec // G304: pkgPath from build system args, trusted input
 	if err != nil {
 		panic(err)
 	}
-	defer commentsFile.Close()
+	defer func() { _ = commentsFile.Close() }()
 
 	if err := WriteComments(fieldInfos, commentsFile); err != nil {
 		panic(err)

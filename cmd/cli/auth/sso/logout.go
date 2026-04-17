@@ -49,7 +49,7 @@ func (o *LogoutOptions) runSSOLogout(cmd *cobra.Command, cfg types.Bacalhau) err
 	apiURL, _ := util.ConstructAPIEndpoint(cfg.API)
 
 	if !o.Force {
-		fmt.Fprintf(cmd.OutOrStdout(), "Are you sure you want to logout from %s? (y/N): ", apiURL)
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Are you sure you want to logout from %s? (y/N): ", apiURL)
 		var response string
 
 		_, err := fmt.Fscanln(cmd.InOrStdin(), &response)
@@ -58,7 +58,7 @@ func (o *LogoutOptions) runSSOLogout(cmd *cobra.Command, cfg types.Bacalhau) err
 			return err
 		}
 		if response != "y" && response != "Y" {
-			fmt.Fprintln(cmd.OutOrStdout(), "Logout cancelled")
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Logout cancelled")
 			return nil
 		}
 	}
@@ -72,6 +72,6 @@ func (o *LogoutOptions) runSSOLogout(cmd *cobra.Command, cfg types.Bacalhau) err
 		return bacerrors.New("unable to delete SSO session credentials")
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nSuccessfully logged out from %s\n", apiURL)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nSuccessfully logged out from %s\n", apiURL)
 	return nil
 }

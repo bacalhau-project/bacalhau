@@ -50,7 +50,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 		}
 
 		// Check for overflow before adding
-		//nolint:gosec // G115: negative values already checked
+
 		newSize := size + datasize.ByteSize(header.Size)
 		if newSize < size { // If newSize wrapped around
 			return 0, fmt.Errorf("total uncompressed size exceeds maximum value")
@@ -65,7 +65,7 @@ func UncompressedSize(src io.Reader) (datasize.ByteSize, error) {
 
 // from https://github.com/mimoo/eureka/blob/master/folders.go under Apache 2
 //
-//nolint:gocyclo,funlen,gosec
+//nolint:funlen,gosec,gocyclo // Tar compression with size limits requires complex file walking
 func compress(ctx context.Context, src string, buf io.Writer, max datasize.ByteSize, stripPath bool) error {
 	_, span := telemetry.NewSpan(ctx, telemetry.GetTracer(), "pkg/util/targzip.compress")
 	defer span.End()
@@ -230,7 +230,7 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 				return err
 			}
 			// copy over contents (max 10MB per file!)
-			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil { //nolint:mnd
+			if _, err := io.CopyN(fileToWrite, tr, int64(max)); err != nil {
 				// io.EOF is expected
 				if err != io.EOF {
 					return err
@@ -238,7 +238,7 @@ func decompress(src io.Reader, dst string, max datasize.ByteSize) error {
 			}
 			// manually close here after each file operation; deferring would cause each file close
 			// to wait until all operations have completed.
-			fileToWrite.Close()
+			_ = fileToWrite.Close()
 		}
 	}
 

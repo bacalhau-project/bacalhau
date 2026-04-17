@@ -127,9 +127,11 @@ func (e *Callback) OnRunComplete(ctx context.Context, result legacy.RunResult) {
 			ExpectedStates: []models.ExecutionStateType{
 				// usual expected state
 				models.ExecutionStateBidAccepted,
-				// in case of approval is required, and the compute node responded before the compute_forwarder updated the execution state
+				// in case of approval is required, and the compute node responded before
+				// the compute_forwarder updated the execution state
 				models.ExecutionStateAskForBidAccepted,
-				// in case of approval is not required, and the compute node responded before the compute_forwarder updated the execution state
+				// in case of approval is not required, and the compute node responded before
+				// the compute_forwarder updated the execution state
 				models.ExecutionStateNew,
 			},
 		},

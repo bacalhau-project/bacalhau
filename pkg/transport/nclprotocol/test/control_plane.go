@@ -109,7 +109,7 @@ func NewMockResponder(ctx context.Context, conn *nats.Conn, behavior *MockRespon
 	}
 
 	if err := mr.setupHandlers(ctx); err != nil {
-		responder.Close(ctx)
+		_ = responder.Close(ctx)
 		return nil, err
 	}
 

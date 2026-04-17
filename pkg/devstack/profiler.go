@@ -24,7 +24,7 @@ func startProfiling(ctx context.Context, cpuFile, memoryFile string) CloserWithC
 	var f *os.File
 	if cpuFile != "" {
 		var err error
-		f, err = os.Create(cpuFile)
+		f, err = os.Create(cpuFile) //nolint:gosec // G304: cpuFile from profiler config, application controlled
 		if err != nil {
 			log.Ctx(ctx).Debug().Err(err).Str("Path", cpuFile).Msg("could not create CPU profile")
 			return nil

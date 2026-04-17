@@ -72,7 +72,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	// Graceful shutdown
 	go func() {
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second) //nolint:mnd // standard graceful shutdown timeout
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			log.Error().Err(err).Msg("Server shutdown error")
@@ -116,7 +116,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		logger := logEvent.Logger()
 
 		switch {
-		case statusCode >= 500:
+		case statusCode >= 500: //nolint:mnd // HTTP 5xx server error range
 			logger.Error().Msg(message)
 		case statusCode == http.StatusNotFound:
 			logger.Warn().Msg(message)
@@ -153,7 +153,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Get the file info to check if it's a directory and for modification time
 	stat, err := file.Stat()
@@ -171,7 +171,7 @@ func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 		indexFile, err := buildFiles.Open(indexPath)
 		if err == nil {
 			// If we found an index.html in this directory, serve it
-			defer indexFile.Close()
+			defer func() { _ = indexFile.Close() }()
 			message = "Served index.html from directory"
 			s.serveFileContent(w, r, indexFile, "index.html")
 			return
@@ -218,7 +218,7 @@ func (s *Server) serve404(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	defer notFoundFile.Close()
+	defer func() { _ = notFoundFile.Close() }()
 
 	// Read the content of the 404 page
 	content, err := io.ReadAll(notFoundFile)
@@ -274,7 +274,7 @@ func newReverseProxy(target *url.URL) *httputil.ReverseProxy {
 		log.Error().Err(err).Any("response", response).Msg("Proxy error")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadGateway)
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}
 	return proxy
 }

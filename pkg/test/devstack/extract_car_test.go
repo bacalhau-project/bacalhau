@@ -238,7 +238,7 @@ func extractFile(ctx context.Context, ls *ipld.LinkSystem, n ipld.Node, outputNa
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = io.Copy(f, nlr)
 
 	return err

@@ -63,7 +63,7 @@ func (o *HashPasswordOptions) runHashPassword(cmd *cobra.Command) error {
 
 	if stdInIsTTY {
 		// If we have a TTY, prompt for password with no echo
-		fmt.Fprint(cmd.OutOrStdout(), "Enter password: ")
+		_, _ = fmt.Fprint(cmd.OutOrStdout(), "Enter password: ")
 		// int conversion is needed for windows architecture
 		passwordBytes, err := readPasswordFunc(int(syscall.Stdin)) //nolint:unconvert
 		if err != nil {
@@ -71,7 +71,7 @@ func (o *HashPasswordOptions) runHashPassword(cmd *cobra.Command) error {
 			return fmt.Errorf("failed to read password: %w", err)
 		}
 		password = string(passwordBytes)
-		fmt.Fprintln(cmd.OutOrStdout(), "") // Print a newline after the password input
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "") // Print a newline after the password input
 	} else {
 		// If we're not on a TTY, read from stdin
 		reader := bufio.NewReader(os.Stdin)
@@ -102,6 +102,6 @@ func (o *HashPasswordOptions) runHashPassword(cmd *cobra.Command) error {
 	}
 
 	// Output the hash
-	fmt.Fprintln(cmd.OutOrStdout(), hashedPassword)
+	_, _ = fmt.Fprintln(cmd.OutOrStdout(), hashedPassword)
 	return nil
 }

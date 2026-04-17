@@ -121,9 +121,10 @@ func (s *Spinner) Done(reason SpinnerStopReason) {
 	s.complete = true
 
 	stop := s.spin.Stop
-	if reason == StopSuccess {
+	switch reason {
+	case StopSuccess:
 		s.spin.StopMessage(s.msg.PrintOnDone())
-	} else if reason == StopFailed {
+	case StopFailed:
 		stop = s.spin.StopFail
 	}
 

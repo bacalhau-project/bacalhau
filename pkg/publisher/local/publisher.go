@@ -67,7 +67,8 @@ func (p *Publisher) IsInstalled(ctx context.Context) (bool, error) {
 	fileInfo, err := os.Stat(p.baseDirectory)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Ctx(ctx).Error().Err(err).Msgf("local publisher not installed because the base directory %s does not exist", p.baseDirectory)
+			log.Ctx(ctx).Error().Err(err).Msgf(
+				"local publisher not installed because the base directory %s does not exist", p.baseDirectory)
 		} else {
 			log.Ctx(ctx).Error().Err(err).Msgf("local publisher failed to check if the base directory %s exists", p.baseDirectory)
 		}
@@ -87,11 +88,11 @@ func (p *Publisher) PublishResult(
 	filename := execution.ID + ".tar.gz"
 	targetFile := path.Join(p.baseDirectory, filename)
 
-	file, err := os.Create(targetFile)
+	file, err := os.Create(targetFile) //nolint:gosec // G304: targetFile from baseDirectory config, application controlled
 	if err != nil {
 		return models.SpecConfig{}, pkgerrors.Wrap(err, "local publisher failed to create output file")
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	err = gzip.Compress(resultPath, file)
 	if err != nil {

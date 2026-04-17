@@ -56,7 +56,6 @@ func NewRerunCmd() *cobra.Command {
 	return rerunCmd
 }
 
-//nolint:gocyclo
 func (o *RerunOptions) run(cmd *cobra.Command, args []string, api client.API) error {
 	ctx := cmd.Context()
 	jobIDOrName := args[0]

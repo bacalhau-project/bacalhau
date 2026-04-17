@@ -20,7 +20,6 @@ var (
 		Get the results of the job, including stdout and stderr.
 `)
 
-	//nolint:lll // Documentation
 	getExample = templates.Examples(`
 		# Get the results of a job using its Name.
 		bacalhau job get my-job

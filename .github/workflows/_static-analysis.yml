@@ -11,7 +11,7 @@ on:
       golangci_lint_version:
         description: 'Version of golangci-lint to use'
         required: false
-        default: 'v2.5.0'
+        default: 'v2.8.0'
         type: string
 
 jobs:
@@ -20,11 +20,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       # Setup Go with caching
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
           go-version-file: ${{ inputs.go_version_file }}
 

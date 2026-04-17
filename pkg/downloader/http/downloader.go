@@ -66,6 +66,7 @@ func (httpDownloader *Downloader) FetchResult(ctx context.Context, item download
 
 // fetch makes an HTTP GET request to the given URL and writes the response to the given filepath.
 func (httpDownloader *Downloader) fetch(ctx context.Context, url string, filepath string) error {
+	//nolint:gosec // G304: filepath validated by caller
 	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, downloader.DownloadFilePerm)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func checkHTTPResponse(resp *http.Response, url string) error {
 	}
 
 	// Close the body before returning the error
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Return an error with the status code and the body content for context
 	return fmt.Errorf("request to %s failed with status code %d: %s", url, resp.StatusCode, string(bodyBytes))

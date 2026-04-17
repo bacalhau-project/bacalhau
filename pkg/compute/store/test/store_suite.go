@@ -1,6 +1,3 @@
-//go:build unit || !integration
-
-//nolint:all // Test suite file
 package test
 
 import (
@@ -182,7 +179,7 @@ func (s *StoreSuite) TestGetCheckpointReturnsZeroForNonExistent() {
 
 func (s *StoreSuite) TestCheckpointStoresAndRetrieves() {
 	checkpointName := "test-checkpoint"
-	expectedSeq := uint64(42)
+	expectedSeq := uint64(42) //nolint:mnd // test value
 
 	// Store checkpoint
 	err := s.executionStore.Checkpoint(s.ctx, checkpointName, expectedSeq)
@@ -217,8 +214,8 @@ func (s *StoreSuite) TestMultipleCheckpointsCoexist() {
 
 func (s *StoreSuite) TestCheckpointCanBeUpdated() {
 	checkpointName := "update-test"
-	initialSeq := uint64(42)
-	updatedSeq := uint64(100)
+	initialSeq := uint64(42)  //nolint:mnd // test value
+	updatedSeq := uint64(100) //nolint:mnd // test value
 
 	// Store initial checkpoint
 	err := s.executionStore.Checkpoint(s.ctx, checkpointName, initialSeq)
@@ -243,7 +240,7 @@ func (s *StoreSuite) TestCheckpointWithClosedStore() {
 	s.Require().NoError(s.executionStore.Close(s.ctx))
 
 	// Try to set checkpoint after closing
-	err := s.executionStore.Checkpoint(s.ctx, "test-checkpoint", 42)
+	err := s.executionStore.Checkpoint(s.ctx, "test-checkpoint", 42) //nolint:mnd // test value
 	s.Error(err)
 
 	// Try to get checkpoint after closing
@@ -257,7 +254,7 @@ func (s *StoreSuite) TestGetCheckpointBlankName() {
 }
 
 func (s *StoreSuite) TestCheckpointBlankName() {
-	err := s.executionStore.Checkpoint(s.ctx, "", 42)
+	err := s.executionStore.Checkpoint(s.ctx, "", 42) //nolint:mnd // test value
 	s.ErrorAs(err, &store.ErrCheckpointNameBlank{})
 }
 

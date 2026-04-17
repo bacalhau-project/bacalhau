@@ -45,11 +45,11 @@ func ReadFromStdinIfAvailable(cmd *cobra.Command) ([]byte, error) {
 
 func ReadFromFile(path string) ([]byte, error) {
 	var fileContent *os.File
-	fileContent, err := os.Open(path)
+	fileContent, err := os.Open(path) //nolint:gosec // G304: path parameter validated by caller
 	if err != nil {
 		return nil, fmt.Errorf("opening job file (%q): %w", path, err)
 	}
-	defer fileContent.Close()
+	defer func() { _ = fileContent.Close() }()
 
 	result, err := io.ReadAll(fileContent)
 	if err != nil {

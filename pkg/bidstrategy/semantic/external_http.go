@@ -48,7 +48,8 @@ func (s *ExternalHTTPStrategy) ShouldBid(
 	jsonData, err := marshaller.JSONMarshalWithMax(request)
 
 	if err != nil {
-		return bidstrategy.BidStrategyResponse{}, fmt.Errorf("ExternalHTTPStrategy: error marshaling job selection policy probe data: %w", err)
+		return bidstrategy.BidStrategyResponse{},
+			fmt.Errorf("ExternalHTTPStrategy: error marshaling job selection policy probe data: %w", err)
 	}
 
 	body := bytes.NewBuffer(jsonData)

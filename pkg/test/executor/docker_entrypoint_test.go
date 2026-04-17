@@ -99,7 +99,7 @@ func (suite *DockerEntrypointTestSuite) SetupSuite() {
 		output, err := io.ReadAll(response.Body)
 		require.NoError(suite.T(), err, "building image")
 		suite.T().Logf("Image %q built successfully: %s", tag, string(output))
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 	}
 }
 

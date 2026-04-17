@@ -109,14 +109,14 @@ func (e *Endpoint) diffJob(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string	true	"ID to get the job for"
-//	@Param			include	query		string	false	"Takes history and executions as options. If empty will not include anything else."
-//	@Param			limit	query		int		false	"Number of history or executions to fetch. Should be used in conjugation with include"
+//	@Param			include	query		string	false	"history and executions options. Empty includes nothing"
+//	@Param			limit	query		int		false	"Number of items to fetch. Use with include parameter"
 //	@Param      job_version		query		int		0		"Job version to get. Defaults to 0."
 //	@Success		200		{object}	apimodels.GetJobResponse
 //	@Failure		400		{object}	string
 //	@Failure		500		{object}	string
 //	@Router			/api/v1/orchestrator/jobs/{id} [get]
-func (e *Endpoint) getJob(c echo.Context) error { //nolint: gocyclo
+func (e *Endpoint) getJob(c echo.Context) error {
 	ctx := c.Request().Context()
 	jobIDOrName := c.Param("id")
 	var args apimodels.GetJobRequest
@@ -607,7 +607,7 @@ func (e *Endpoint) logs(c echo.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to upgrade websocket connection: %w", err)
 	}
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	err = e.logsWS(c, ws)
 	if err != nil {

@@ -95,7 +95,7 @@ func (authorizer *policyAuthorizer) Authorize(req *http.Request) (Authorization,
 		if err != nil {
 			return Authorization{}, err
 		}
-		defer req.Body.Close()
+		defer func() { _ = req.Body.Close() }()
 		if written != req.ContentLength {
 			return Authorization{}, fmt.Errorf("read %d but was expecting %d", written, req.ContentLength)
 		}
