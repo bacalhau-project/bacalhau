@@ -14,7 +14,7 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	storage_inline "github.com/bacalhau-project/bacalhau/pkg/storage/inline"
-	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local_directory"
+	storage_local "github.com/bacalhau-project/bacalhau/pkg/storage/local"
 	storage_url "github.com/bacalhau-project/bacalhau/pkg/storage/url/urldownload"
 	"github.com/bacalhau-project/bacalhau/pkg/storage/util"
 )
@@ -127,10 +127,18 @@ func StoredFile(
 // makes it possible to store things deeper into the Spec object without the
 // test system needing to know how to prepare them.
 func InlineData(data []byte) *models.InputSource {
+	return InlineDataWithTarget(data, "/input")
+}
+
+// InlineDataWithTarget will store the file directly inline in the storage spec
+// with the provided target path. Unlike the other storage set-ups, this function
+// loads the file immediately. This makes it possible to store things deeper into
+// the Spec object without the test system needing to know how to prepare them.
+func InlineDataWithTarget(data []byte, target string) *models.InputSource {
 	spec := storage_inline.NewSpecConfig(dataurl.EncodeBytes(data))
 	return &models.InputSource{
 		Source: spec,
-		Target: "/inputs",
+		Target: target,
 	}
 }
 

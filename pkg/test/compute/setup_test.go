@@ -107,7 +107,10 @@ func (s *ComputeSuite) setupConfig() {
 	s.executor = noop_executor.NewNoopExecutor()
 	s.publisher = noop_publisher.NewNoopPublisher()
 
-	dockerExecutor, err := dockerexecutor.NewExecutor(nodeID, bacalhauConfig.Engines.Types.Docker)
+	dockerExecutor, err := dockerexecutor.NewExecutor(dockerexecutor.ExecutorParams{
+		ID:     nodeID,
+		Config: bacalhauConfig.Engines.Types.Docker,
+	})
 
 	s.config = node.NodeConfig{
 		NodeID:         nodeID,

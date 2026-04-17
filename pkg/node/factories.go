@@ -12,6 +12,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	executor_util "github.com/bacalhau-project/bacalhau/pkg/executor/util"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/provider"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
@@ -75,15 +76,15 @@ func NewStandardExecutorsFactory(cfg types.EngineConfig) ExecutorsFactory {
 		})
 }
 
-func NewStandardPublishersFactory(cfg types.Bacalhau) PublishersFactory {
+func NewStandardPublishersFactory(
+	cfg types.Bacalhau,
+	nclPublisherProvider ncl.PublisherProvider,
+) PublishersFactory {
 	return PublishersFactoryFunc(
 		func(
 			ctx context.Context,
 			nodeConfig NodeConfig) (publisher.PublisherProvider, error) {
-			pr, err := publisher_util.NewPublisherProvider(
-				ctx,
-				cfg,
-			)
+			pr, err := publisher_util.NewPublisherProvider(ctx, cfg, nclPublisherProvider)
 			if err != nil {
 				return nil, err
 			}
@@ -95,6 +96,12 @@ func NewStandardAuthenticatorsFactory(userKey *baccrypto.UserKey) Authenticators
 	return AuthenticatorsFactoryFunc(
 		func(ctx context.Context, nodeConfig NodeConfig) (authn.Provider, error) {
 			var allErr error
+
+			// If any new users or oauth2 config is specified , disable legacy auth methods endpoint
+			if len(nodeConfig.BacalhauConfig.API.Auth.Users) > 0 || nodeConfig.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
+				auths := make(map[string]authn.Authenticator, 1)
+				return provider.NewMappedProvider(auths), allErr
+			}
 
 			auths := make(map[string]authn.Authenticator, len(nodeConfig.BacalhauConfig.API.Auth.Methods))
 			for name, authnConfig := range nodeConfig.BacalhauConfig.API.Auth.Methods {

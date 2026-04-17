@@ -53,6 +53,7 @@ BUILDDATE ?= $(eval BUILDDATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ'))$(BUILDD
 PACKAGE := $(shell echo "bacalhau_$(TAG)_${GOOS}_$(GOARCH)${GOARM}")
 TEST_BUILD_TAGS ?= unit,integration
 TEST_PARALLEL_PACKAGES ?= 1
+ANALYTICS_ENDPOINT ?= ""
 
 PRIVATE_KEY_FILE := /tmp/private.pem
 PUBLIC_KEY_FILE := /tmp/public.pem
@@ -60,7 +61,8 @@ PUBLIC_KEY_FILE := /tmp/public.pem
 export MAKE := $(shell command -v make 2> /dev/null)
 
 define BUILD_FLAGS
--X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG)
+-X github.com/bacalhau-project/bacalhau/pkg/version.GITVERSION=$(TAG) \
+-X github.com/bacalhau-project/bacalhau/pkg/analytics.Endpoint=$(ANALYTICS_ENDPOINT)
 endef
 
 # pypi version scheme (https://peps.python.org/pep-0440/) does not accept
@@ -100,9 +102,7 @@ endif
 ################################################################################
 .PHONY: precommit
 precommit: check-precommit
-	@mkdir -p webui/build && touch webui/build/stub
 	${PRECOMMIT} run --all
-	@rm webui/build/stub
 	cd python && ${MAKE} pre-commit
 
 # Check if pre-commit is installed only for precommit target
@@ -129,28 +129,12 @@ build-python-sdk:
 	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
-################################################################################
-# Target: build-bacalhau-airflow
-################################################################################
-.PHONY: build-bacalhau-airflow
-build-bacalhau-airflow: resolve-earthly
-	cd integration/airflow && ${MAKE} clean all
-	@echo "Python bacalhau-airflow built."
-
-################################################################################
-# Target: build-bacalhau-flyte
-################################################################################
-.PHONY: build-bacalhau-flyte
-build-bacalhau-flyte:
-	cd integration/flyte && ${MAKE} all
-	@echo "Python bacalhau-flyte built."
-
 # Builds all python packages
 ################################################################################
 # Target: build-python
 ################################################################################
 .PHONY: build-python
-build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
+build-python: build-python-apiclient build-python-sdk
 
 ################################################################################
 # Target: release-python-apiclient
@@ -167,22 +151,6 @@ release-python-apiclient: resolve-earthly
 release-python-sdk: build-python-sdk
 	cd python && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
-
-################################################################################
-# Target: release-bacalhau-airflow
-################################################################################
-.PHONY: release-bacalhau-airflow
-release-bacalhau-airflow: resolve-earthly
-	cd integration/airflow && ${MAKE} release
-	@echo "Python bacalhau-airflow pushed to PyPi."
-
-################################################################################
-# Target: release-bacalhau-flyte
-################################################################################
-.PHONY: release-bacalhau-flyte
-release-bacalhau-flyte: resolve-earthly
-	cd integration/flyte && ${MAKE} release
-	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
 ################################################################################
 # Target: build
@@ -247,6 +215,7 @@ push-http-gateway-image:
 
 BACALHAU_IMAGE ?= ghcr.io/bacalhau-project/bacalhau
 BACALHAU_TAG ?= ${TAG}
+BUILD_TYPE ?= default  # Options: main, nightly, release, pre-release
 
 # Only add latest tags if the release tag is a semver tag (e.g. v0.3.12)
 # and not a commit hash or a release candidate (e.g. v0.3.12-rc1)
@@ -352,7 +321,6 @@ images: docker/.pulled
 clean:
 	${GO} clean
 	${RM} -r bin/*
-	${RM} -r webui/build/*
 	${RM} -r webui/node_modules
 	${RM} dist/bacalhau_*
 	${RM} docker/.images

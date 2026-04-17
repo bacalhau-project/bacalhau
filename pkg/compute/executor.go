@@ -5,23 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/executor"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 
 	"github.com/bacalhau-project/bacalhau/pkg/compute/store"
-	"github.com/bacalhau-project/bacalhau/pkg/executor"
-	wasmmodels "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publisher"
 	"github.com/bacalhau-project/bacalhau/pkg/storage"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
-const StorageDirectoryPerms = 0o755
+const (
+	StorageDirectoryPerms     = 0o755
+	executionRootCleanupDelay = 1 * time.Hour
+)
 
 type BaseExecutorParams struct {
 	ID                     string
@@ -34,35 +36,42 @@ type BaseExecutorParams struct {
 	FailureInjectionConfig models.FailureInjectionConfig
 	EnvResolver            EnvVarResolver
 	PortAllocator          PortAllocator
+
+	// TODO: this is a temporary solution and should be replaced with a more generic
+	//  solution to populate jobs with default resources and network config.
+	//  Most likely at a higher level in the stack and before queueing the execution.
+	DefaultNetworkType models.Network
 }
 
 // BaseExecutor is the base implementation for backend service.
 // All operations are executed asynchronously, and a callback is used to notify the caller of the result.
 type BaseExecutor struct {
-	ID               string
-	store            store.ExecutionStore
-	Storages         storage.StorageProvider
-	storageDirectory string
-	executors        executor.ExecProvider
-	publishers       publisher.PublisherProvider
-	resultsPath      ResultsPath
-	failureInjection models.FailureInjectionConfig
-	envResolver      EnvVarResolver
-	portAllocator    PortAllocator
+	ID                 string
+	store              store.ExecutionStore
+	Storages           storage.StorageProvider
+	storageDirectory   string
+	executors          executor.ExecProvider
+	publishers         publisher.PublisherProvider
+	resultsPath        ResultsPath
+	failureInjection   models.FailureInjectionConfig
+	envResolver        EnvVarResolver
+	portAllocator      PortAllocator
+	defaultNetworkType models.Network
 }
 
 func NewBaseExecutor(params BaseExecutorParams) *BaseExecutor {
 	return &BaseExecutor{
-		ID:               params.ID,
-		store:            params.Store,
-		Storages:         params.Storages,
-		storageDirectory: params.StorageDirectory,
-		executors:        params.Executors,
-		publishers:       params.Publishers,
-		failureInjection: params.FailureInjectionConfig,
-		resultsPath:      params.ResultsPath,
-		envResolver:      params.EnvResolver,
-		portAllocator:    params.PortAllocator,
+		ID:                 params.ID,
+		store:              params.Store,
+		Storages:           params.Storages,
+		storageDirectory:   params.StorageDirectory,
+		executors:          params.Executors,
+		publishers:         params.Publishers,
+		failureInjection:   params.FailureInjectionConfig,
+		resultsPath:        params.ResultsPath,
+		envResolver:        params.EnvResolver,
+		portAllocator:      params.PortAllocator,
+		defaultNetworkType: params.DefaultNetworkType,
 	}
 }
 
@@ -80,40 +89,6 @@ func (e *BaseExecutor) prepareInputVolumes(
 	}, nil
 }
 
-func (e *BaseExecutor) prepareWasmVolumes(
-	ctx context.Context,
-	execution *models.Execution,
-	wasmEngine wasmmodels.EngineSpec,
-) (map[string][]storage.PreparedStorage, func(context.Context) error, error) {
-	importModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, e.Storages, e.storageDirectory, execution, wasmEngine.ImportModules...)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	entryModuleVolumes, err := storage.ParallelPrepareStorage(
-		ctx, e.Storages, e.storageDirectory, execution, wasmEngine.EntryModule)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	volumes := map[string][]storage.PreparedStorage{
-		"importModules": importModuleVolumes,
-		"entryModules":  entryModuleVolumes,
-	}
-
-	cleanup := func(ctx context.Context) error {
-		err1 := storage.ParallelCleanStorage(ctx, e.Storages, importModuleVolumes)
-		err2 := storage.ParallelCleanStorage(ctx, e.Storages, entryModuleVolumes)
-		if err1 != nil || err2 != nil {
-			return fmt.Errorf("Error cleaning up WASM volumes: %v, %v", err1, err2)
-		}
-		return nil
-	}
-
-	return volumes, cleanup, nil
-}
-
 // InputCleanupFn is a function type that defines the contract for cleaning up
 // resources associated with input volume data after the job execution has either completed
 // or failed to start. The function is expected to take a context.Context as an argument,
@@ -123,14 +98,13 @@ func (e *BaseExecutor) prepareWasmVolumes(
 // For example, an InputCleanupFn might be responsible for deallocating storage used
 // for input volumes, or deleting temporary input files that were created as part of the
 // job's execution. The nature of it operation depends on the storage provided by `storageProvider` and
-// input sources of the jobs associated tasks. For the case of a wasm job its input and entry module storage volumes
-// should be removed via the method after the jobs execution reaches a terminal state.
+// input sources of the jobs associated tasks.
 type InputCleanupFn = func(context.Context) error
 
 func (e *BaseExecutor) PrepareRunArguments(
 	ctx context.Context,
 	execution *models.Execution,
-	resultsDir string,
+	executionDir string,
 ) (*executor.RunCommandRequest, InputCleanupFn, error) {
 	var cleanupFuncs []func(context.Context) error
 
@@ -139,44 +113,6 @@ func (e *BaseExecutor) PrepareRunArguments(
 		return nil, nil, err
 	}
 	cleanupFuncs = append(cleanupFuncs, inputCleanup)
-
-	// TODO wasm requires special handling because its engine arguments are storage specs, and we need to
-	// download them before passing it to the wasm executor
-	/*
-		The more general solution is make the WASM executor aware of which fields in the spec.Inputs StorageSpec
-		are WASM modules. We would need to alter the WASM EngineSpec such that it can reference values from
-		spec.Inputs with its EntryModule and ImportModules fields.
-		(I suspect future implementations of an EngineSpec will need this ability - referencing specific
-		inputs via their arguments - docker image comes to mind as a potential candidate).
-
-		In #2675 we modified the Compute Node to initialize and download all spec.Inputs to local storage
-		before passing it to the executor. Previously executors were responsible for downloading their inputs to
-		local storage, and running the job. With our shift towards pluggable executors in #2637 configuring executor
-		plugins to handle the download of different storage specs seems impractical
-		(@wdbaruni's comment: https://github.com/bacalhau-project/bacalhau/pull/2637#issuecomment-1625739030
-		provides more context on the need for the change).
-	*/
-	var engineArgs *models.SpecConfig
-	if execution.Job.Task().Engine.IsType(models.EngineWasm) {
-		wasmEngine, err := wasmmodels.DecodeSpec(execution.Job.Task().Engine)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		volumes, wasmCleanup, err := e.prepareWasmVolumes(ctx, execution, wasmEngine)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		cleanupFuncs = append(cleanupFuncs, wasmCleanup)
-
-		engineArgs = &models.SpecConfig{
-			Type:   models.EngineWasm,
-			Params: wasmEngine.ToArguments(volumes["entryModules"][0], volumes["importModules"]...).ToMap(),
-		}
-	} else {
-		engineArgs = execution.Job.Task().Engine
-	}
 
 	// Allocate ports
 	portMappings, err := e.portAllocator.AllocatePorts(execution)
@@ -196,15 +132,20 @@ func (e *BaseExecutor) PrepareRunArguments(
 		return nil, nil, fmt.Errorf("failed to resolve environment variables: %w", err)
 	}
 
+	networkConfig := execution.Job.Task().Network
+	if networkConfig.Type == models.NetworkDefault {
+		networkConfig.Type = e.defaultNetworkType
+	}
+
 	return &executor.RunCommandRequest{
 			JobID:        execution.Job.ID,
 			ExecutionID:  execution.ID,
 			Resources:    execution.TotalAllocatedResources(),
-			Network:      execution.Job.Task().Network,
+			Network:      networkConfig,
 			Outputs:      execution.Job.Task().ResultPaths,
 			Inputs:       inputVolumes,
-			ResultsDir:   resultsDir,
-			EngineParams: engineArgs,
+			ExecutionDir: executionDir,
+			EngineParams: execution.Job.Task().Engine,
 			Env:          env,
 			OutputLimits: executor.OutputLimits{
 				MaxStdoutFileLength:   system.MaxStdoutFileLength,
@@ -243,19 +184,13 @@ func (e *BaseExecutor) Start(ctx context.Context, execution *models.Execution) *
 		return result
 	}
 
-	resultFolder, err := e.resultsPath.PrepareResultsDir(execution.ID)
+	executionDir, err := e.resultsPath.PrepareExecutionOutputDir(execution.ID)
 	if err != nil {
 		result.Err = fmt.Errorf("preparing results path: %w", err)
 		return result
 	}
 
-	executionStorage := filepath.Join(e.storageDirectory, execution.JobID, execution.ID)
-	if err := os.MkdirAll(executionStorage, StorageDirectoryPerms); err != nil {
-		result.Err = fmt.Errorf("preparing storage path: %w", err)
-		return result
-	}
-
-	args, cleanup, err := e.PrepareRunArguments(ctx, execution, resultFolder)
+	args, cleanup, err := e.PrepareRunArguments(ctx, execution, executionDir)
 	result.cleanup = cleanup
 	if err != nil {
 		result.Err = fmt.Errorf("preparing arguments: %w", err)
@@ -338,11 +273,29 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 	}()
 
 	res := e.Start(ctx, execution)
-	defer func() {
+
+	defer func(executionOutputDir string) {
+		// For now execution results are removed after a fixed delay.
+		go func() {
+			log.Debug().Str("path", executionOutputDir).Msg("scheduled execution results dir removal")
+			ticker := time.NewTicker(executionRootCleanupDelay)
+			defer ticker.Stop()
+			for range ticker.C {
+				err = os.RemoveAll(executionOutputDir)
+				if err != nil {
+					log.Error().Err(err).Str("path", executionOutputDir).Msg("failed to remove execution results dir")
+					return
+				}
+				log.Debug().Str("path", executionOutputDir).Msg("removed execution results dir")
+			}
+		}()
+
+		// The rest can be cleaned up immediately after completion
 		if err := res.Cleanup(ctx); err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("failed to clean up start arguments")
 		}
-	}()
+	}(e.resultsPath.ExecutionOutputDir(execution.ID))
+
 	if err := res.Err; err != nil {
 		if bacerrors.IsErrorWithCode(err, executor.ExecutionAlreadyStarted) {
 			// by not returning this error to the caller when the execution has already been started/is already running
@@ -403,24 +356,23 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 		expectedState = models.ExecutionStatePublishing
 
-		resultsDir, err := e.resultsPath.EnsureResultsDir(execution.ID)
+		resultsDir := ExecutionResultsDir(e.resultsPath.ExecutionOutputDir(execution.ID))
+		publishedResult, err = e.publish(ctx, execution, resultsDir)
 		if err != nil {
 			return err
 		}
 
 		defer func() {
-			// cleanup resources
-			log.Ctx(ctx).Debug().Msgf("Cleaning up result folder for %s: %s", execution.ID, resultsDir)
+			// cleanup execution results
+			log.Ctx(ctx).Debug().
+				Str("execution", execution.ID).
+				Str("path", resultsDir).
+				Msg("cleaning up execution results")
 			err = os.RemoveAll(resultsDir)
 			if err != nil {
-				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results folder at %s", resultsDir)
+				log.Ctx(ctx).Error().Err(err).Msgf("failed to remove results directory at %s", resultsDir)
 			}
 		}()
-
-		publishedResult, err = e.publish(ctx, execution, resultsDir)
-		if err != nil {
-			return err
-		}
 	}
 
 	// mark the execution as completed
@@ -444,15 +396,15 @@ func (e *BaseExecutor) Run(ctx context.Context, execution *models.Execution) (er
 
 // Publish the result of an execution after it has been verified.
 func (e *BaseExecutor) publish(ctx context.Context, execution *models.Execution,
-	resultFolder string,
+	resultsDir string,
 ) (*models.SpecConfig, error) {
-	log.Ctx(ctx).Debug().Msgf("Publishing execution %s", execution.ID)
+	log.Ctx(ctx).Debug().Str("executionID", execution.ID).Str("resultsDir", resultsDir).Msg("Publishing execution results")
 
 	jobPublisher, err := e.publishers.Get(ctx, execution.Job.Task().Publisher.Type)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get publisher %s: %w", execution.Job.Task().Publisher.Type, err)
 	}
-	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultFolder)
+	publishedResult, err := jobPublisher.PublishResult(ctx, execution, resultsDir)
 	if err != nil {
 		return nil, bacerrors.Wrap(err, "failed to publish result")
 	}
@@ -485,7 +437,10 @@ func (e *BaseExecutor) handleFailure(ctx context.Context, execution *models.Exec
 	})
 
 	if updateError != nil {
-		log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+		var alreadyTerminalError store.ErrExecutionAlreadyTerminal
+		if !errors.As(updateError, &alreadyTerminalError) {
+			log.Ctx(ctx).Error().Err(updateError).Msgf("Failed to update execution (%s) state to failed: %s", execution.ID, updateError)
+		}
 	}
 }
 

@@ -7,12 +7,9 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/webui"
 
@@ -57,6 +54,7 @@ type options struct {
 	CPUProfilingFile    string
 	MemoryProfilingFile string
 	BasePath            string
+	RandomPorts         bool // Use random ports for the nodes. Useful to avoid conflicts with active orchestrators
 }
 
 func (o *options) devstackOptions() []devstack.ConfigOption {
@@ -68,6 +66,7 @@ func (o *options) devstackOptions() []devstack.ConfigOption {
 		devstack.WithCPUProfilingFile(o.CPUProfilingFile),
 		devstack.WithMemoryProfilingFile(o.MemoryProfilingFile),
 		devstack.WithBasePath(o.BasePath),
+		devstack.WithUseStandardPorts(!o.RandomPorts),
 	}
 	return opts
 }
@@ -85,22 +84,12 @@ func newOptions() *options {
 //nolint:funlen,gocyclo
 func NewCmd() *cobra.Command {
 	ODs := newOptions()
-	devstackFlags := map[string][]configflags.Definition{
-		"job-selection":         configflags.JobSelectionFlags,
-		"disable-features":      configflags.DisabledFeatureFlags,
-		"capacity":              configflags.CapacityFlags,
-		"translations":          configflags.JobTranslationFlags,
-		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
-	}
 
 	devstackCmd := &cobra.Command{
 		Use:     "devstack",
 		Short:   "Start a cluster of bacalhau nodes for testing and development",
 		Long:    devStackLong,
 		Example: devstackExample,
-		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			return configflags.BindFlags(viper.GetViper(), devstackFlags)
-		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			defaultConfig, err := config.NewTestConfig()
 			if err != nil {
@@ -120,10 +109,6 @@ func NewCmd() *cobra.Command {
 
 			return runDevstack(cmd, ODs, cfg)
 		},
-	}
-
-	if err := configflags.RegisterFlags(devstackCmd, devstackFlags); err != nil {
-		util.Fatal(devstackCmd, err, 1)
 	}
 
 	devstackCmd.PersistentFlags().IntVar(
@@ -182,6 +167,11 @@ func NewCmd() *cobra.Command {
 		"Folder to act as the devstack configuration repo",
 	)
 
+	devstackCmd.PersistentFlags().BoolVar(&ODs.RandomPorts, "random-ports", ODs.RandomPorts,
+		"Use random ports for the nodes. Otherwise will start with standard ports (e.g. 1234). "+
+			"Useful to avoid conflicts with active orchestrators",
+	)
+
 	return devstackCmd
 }
 
@@ -195,8 +185,6 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 	// Create devstack options and merge with base config
 	opts := ODs.devstackOptions()
 	opts = append(opts, devstack.WithBacalhauConfigOverride(cfg))
-
-	config_legacy.DevstackSetShouldPrintInfo()
 
 	portFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.port")
 	pidFileName := filepath.Join(os.TempDir(), "bacalhau-devstack.pid")
@@ -252,11 +240,7 @@ func runDevstack(cmd *cobra.Command, ODs *options, cfg types.Bacalhau) error {
 		}
 	}
 
-	nodeInfoOutput, err := stack.PrintNodeInfo(ctx, cm)
-	if err != nil {
-		return fmt.Errorf("failed to print node info: %w", err)
-	}
-	cmd.Println(nodeInfoOutput)
+	cmd.Println(stack.GetStackInfo(ctx))
 
 	f, err := os.Create(portFileName)
 	if err != nil {

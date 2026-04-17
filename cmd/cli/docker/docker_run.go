@@ -5,21 +5,19 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/cli/helpers"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/cmd/util/printer"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
+	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	engine_docker "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
-	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 )
 
 var (
@@ -51,9 +49,8 @@ var (
 
 // DockerRunOptions declares the arguments accepted by the `docker run` command
 type DockerRunOptions struct {
-	Entrypoint           []string
-	WorkingDirectory     string
-	EnvironmentVariables []string
+	Entrypoint       []string
+	WorkingDirectory string
 
 	JobSettings     *cliflags.JobSettings
 	TaskSettings    *cliflags.TaskSettings
@@ -77,6 +74,9 @@ func NewCmd() *cobra.Command {
 		Short: "Run a docker job on the network (see run subcommand)",
 	}
 
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(dockerCmd)
+
 	dockerCmd.AddCommand(newDockerRunCmd())
 	return dockerCmd
 }
@@ -84,18 +84,12 @@ func NewCmd() *cobra.Command {
 func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	opts := NewDockerRunOptions()
 
-	dockerRunFlags := map[string][]configflags.Definition{
-		"ipfs": configflags.IPFSFlags,
-	}
-
 	dockerRunCmd := &cobra.Command{
-		Use:     "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
-		Short:   "Run a docker job on the network",
-		Long:    runLong,
-		Example: runExample,
-		Args:    cobra.MinimumNArgs(1),
-		// bind flags for this command to the config.
-		PreRunE:  hook.Chain(hook.RemoteCmdPreRunHooks, configflags.PreRun(viper.GetViper(), dockerRunFlags)),
+		Use:      "run [flags] IMAGE[:TAG|@DIGEST] [COMMAND] [ARG...]",
+		Short:    "Run a docker job on the network",
+		Long:     runLong,
+		Example:  runExample,
+		Args:     cobra.MinimumNArgs(1),
 		PostRunE: hook.RemoteCmdPostRunHooks,
 		RunE: func(cmd *cobra.Command, cmdArgs []string) error {
 			// initialize a new or open an existing repo merging any config file(s) it contains into cfg.
@@ -103,11 +97,7 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 			if err != nil {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
-			api, err := util.GetAPIClientV2(cmd, cfg)
-			if err != nil {
-				return fmt.Errorf("failed to create v2 api client: %w", err)
-			}
-			return run(cmd, cmdArgs, api, opts)
+			return run(cmd, cmdArgs, cfg, opts)
 		},
 	}
 
@@ -115,24 +105,19 @@ func newDockerRunCmd() *cobra.Command { //nolint:funlen
 	cliflags.RegisterTaskFlags(dockerRunCmd, opts.TaskSettings)
 	dockerRunCmd.Flags().AddFlagSet(cliflags.NewRunTimeSettingsFlags(opts.RunTimeSettings))
 
-	if err := configflags.RegisterFlags(dockerRunCmd, dockerRunFlags); err != nil {
-		util.Fatal(dockerRunCmd, err, 1)
-	}
 	// register flags unique to docker.
 	dockerFlags := pflag.NewFlagSet("docker", pflag.ContinueOnError)
 	dockerFlags.StringVarP(&opts.WorkingDirectory, "workdir", "w", opts.WorkingDirectory,
 		`Working directory inside the container. Overrides the working directory shipped with the image (e.g. via WORKDIR in Dockerfile).`)
 	dockerFlags.StringSliceVar(&opts.Entrypoint, "entrypoint", opts.Entrypoint,
 		`Override the default ENTRYPOINT of the image`)
-	dockerFlags.StringSliceVarP(&opts.EnvironmentVariables, "env", "e", opts.EnvironmentVariables,
-		"The environment variables to supply to the job (e.g. --env FOO=bar --env BAR=baz)")
 
 	dockerRunCmd.Flags().AddFlagSet(dockerFlags)
 
 	return dockerRunCmd
 }
 
-func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOptions) error {
+func run(cmd *cobra.Command, args []string, cfg types.Bacalhau, opts *DockerRunOptions) error {
 	ctx := cmd.Context()
 
 	job, err := build(args, opts)
@@ -149,13 +134,20 @@ func run(cmd *cobra.Command, args []string, api clientv2.API, opts *DockerRunOpt
 		return nil
 	}
 
+	// Only create API client when actually needed (not for dry-run)
+	api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
+	if err != nil {
+		return fmt.Errorf("failed to create api client: %w", err)
+	}
+
 	resp, err := api.Jobs().Put(ctx, &apimodels.PutJobRequest{Job: job})
 	if err != nil {
 		return bacerrors.Wrap(err, "failed to submit job")
 	}
 
-	if len(resp.Warnings) > 0 {
-		helpers.PrintWarnings(cmd, resp.Warnings)
+	if !opts.RunTimeSettings.PrintJobIDOnly && len(resp.Warnings) > 0 {
+		printer.PrintWarnings(cmd, resp.Warnings)
+		cmd.Println()
 	}
 
 	job.ID = resp.JobID
@@ -174,7 +166,6 @@ func build(args []string, opts *DockerRunOptions) (*models.Job, error) {
 		WithParameters(parameters...).
 		WithWorkingDirectory(opts.WorkingDirectory).
 		WithEntrypoint(opts.Entrypoint...).
-		WithEnvironmentVariables(opts.EnvironmentVariables...).
 		Build()
 	if err != nil {
 		return nil, err

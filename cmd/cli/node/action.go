@@ -35,7 +35,7 @@ func NewActionCmd(action apimodels.NodeAction) *cobra.Command {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
@@ -57,7 +57,7 @@ func (n *NodeActionCmd) run(cmd *cobra.Command, args []string, api client.API) e
 		Message: n.message,
 	})
 	if err != nil {
-		return bacerrors.Wrap(err, "failed to %s node %s", n.action, nodeID)
+		return bacerrors.Wrapf(err, "failed to %s node %s", n.action, nodeID)
 	}
 
 	if response.Success {

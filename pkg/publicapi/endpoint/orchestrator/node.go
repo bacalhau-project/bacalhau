@@ -189,8 +189,9 @@ func (e *Endpoint) getSortFunction(orderBy string, capacity resourceFunc) sortFu
 //	@Param			putNodeRequest	body		apimodels.PutNodeRequest	true	"Put Node Request"
 //	@Success		200				{object}	apimodels.PutNodeResponse
 //	@Failure		400				{object}	string
+//	@Failure		404				{object}	string
 //	@Failure		500				{object}	string
-//	@Router			/api/v1/orchestrator/nodes [post]
+//	@Router			/api/v1/orchestrator/nodes/{id} [put]
 func (e *Endpoint) updateNode(c echo.Context) error {
 	ctx := c.Request().Context()
 

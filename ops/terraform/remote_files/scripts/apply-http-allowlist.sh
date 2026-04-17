@@ -9,8 +9,8 @@ set -euo pipefail
 ALLOWLIST=./http-domain-allowlist.txt
 
 TYPE=$(echo "$BACALHAU_JOB_SELECTION_PROBE_DATA" | jq -r '.Job.Tasks[] | .Network.Type')
-if ! (test "$TYPE" = 'HTTP' || test "$TYPE" = 'None'); then
-    echo "only accept jobs using Network.Type of HTTP or None" 1>&2
+if ! (test "$TYPE" = 'HTTP' || test "$TYPE" = 'None' || test "$TYPE" = 'Default'); then
+    echo "only accept jobs using Network.Type of HTTP, Default or None" 1>&2
     exit 1
 fi
 

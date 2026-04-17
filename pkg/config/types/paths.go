@@ -25,11 +25,21 @@ func (b Bacalhau) UserKeyPath() (string, error) {
 
 const AuthTokensFileName = "tokens.json"
 
+// #nosec G101 - This is just a filename, not credentials
+const JWTTokensFileName = "jwt-tokens.json"
+
 func (b Bacalhau) AuthTokensPath() (string, error) {
 	if b.DataDir == "" {
 		return "", fmt.Errorf("data dir not set")
 	}
 	return filepath.Join(b.DataDir, AuthTokensFileName), nil
+}
+
+func (b Bacalhau) JWTTokensPath() (string, error) {
+	if b.DataDir == "" {
+		return "", fmt.Errorf("data dir not set")
+	}
+	return filepath.Join(b.DataDir, JWTTokensFileName), nil
 }
 
 const OrchestratorDirName = "orchestrator"

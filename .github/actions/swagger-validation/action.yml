@@ -1,0 +1,32 @@
+name: 'Swagger Validation'
+description: 'Validates Swagger/OpenAPI specifications'
+
+runs:
+  using: "composite"
+  steps:
+    # Install swag (Swagger generator)
+    - name: Install Swag
+      shell: bash
+      run: |
+        go install github.com/swaggo/swag/cmd/swag@latest
+
+    # Verify swag installation
+    - name: Verify Swag Installation
+      shell: bash
+      run: |
+        if ! command -v swag &> /dev/null; then
+          echo "Swag is not installed. Please ensure Go is properly configured and Swag is installed."
+          exit 1
+        fi
+
+    # Generate the swagger.json
+    - name: Generate Swagger file
+      shell: bash
+      run: |
+        make generate-swagger
+
+    # Compare the newly generated swagger.json with the committed swagger.json
+    - name: Check for Swagger differences
+      shell: bash
+      run: |
+        git diff --exit-code pkg/swagger/swagger.json || (echo "Swagger is outdated. Please regenerate it with 'make generate-swagger' and commit the changes." && exit 1)

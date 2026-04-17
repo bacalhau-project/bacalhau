@@ -79,7 +79,7 @@ func NewListCmd() *cobra.Command {
 				return fmt.Errorf("failed to setup repo: %w", err)
 			}
 			// create an api client
-			api, err := util.GetAPIClientV2(cmd, cfg)
+			api, err := util.NewAPIClientManager(cmd, cfg).GetAuthenticatedAPIClient()
 			if err != nil {
 				return fmt.Errorf("failed to create api client: %w", err)
 			}
@@ -111,6 +111,14 @@ var listColumns = []output.TableColumn[*models.Job]{
 			WidthMax:         idgen.ShortIDLengthWithPrefix,
 			WidthMaxEnforcer: func(col string, maxLen int) string { return idgen.ShortUUID(col) }},
 		Value: func(jwi *models.Job) string { return jwi.ID },
+	},
+	{
+		ColumnConfig: table.ColumnConfig{
+			Name:             "name",
+			WidthMax:         40,
+			WidthMaxEnforcer: text.WrapText,
+		},
+		Value: func(j *models.Job) string { return j.Name },
 	},
 	{
 		ColumnConfig: table.ColumnConfig{Name: "job", WidthMax: listMaxDescWidth, WidthMaxEnforcer: text.WrapText},

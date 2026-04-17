@@ -83,7 +83,7 @@ func NewNCLMessageCreator(params NCLMessageCreatorParams) (*NCLMessageCreator, e
 func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Message, error) {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return nil, bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return nil, bacerrors.Newf("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(nclDispatcherErrComponent)
 	}
 
@@ -104,7 +104,7 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 	execution := upsert.Current
 	preferredProtocol, err := d.protocolRouter.PreferredProtocol(context.Background(), execution)
 	if err != nil {
-		return nil, bacerrors.Wrap(err, "failed to determine preferred protocol for execution %s", execution.ID).
+		return nil, bacerrors.Wrapf(err, "failed to determine preferred protocol for execution %s", execution.ID).
 			WithComponent(bprotocolErrComponent)
 	}
 	if preferredProtocol != models.ProtocolNCLV1 {
@@ -133,15 +133,47 @@ func (d *NCLMessageCreator) CreateMessage(event watcher.Event) (*envelope.Messag
 	return message, nil
 }
 
+// transformNetworkConfig transforms the execution's network configurations for backward compatibility
+// - If network type is host, change it to full
+// - If network type is undefined, set the networkconfig to nil
+// This method modifies the execution in place for efficiency since it's already a copy when used in createAskForBidMessage
+func (d *NCLMessageCreator) transformNetworkConfig(execution *models.Execution) *models.Execution {
+	// Only modify if we have a job
+	if execution.Job == nil {
+		return execution
+	}
+
+	// Get the first task (currently we only support one task)
+	task := execution.Job.Task()
+	if task == nil || task.Network == nil {
+		// If task or network is already nil, nothing to do
+		return execution
+	}
+
+	// Process the network configuration
+	if task.Network.Type == models.NetworkHost {
+		log.Trace().Msgf("Transforming network type from host to full for backward compatibility in execution %s", execution.ID)
+		task.Network.Type = models.NetworkFull
+	} else if task.Network.Type == models.NetworkDefault {
+		log.Trace().Msgf("Setting undefined network type to nil for backward compatibility in execution %s", execution.ID)
+		task.Network = nil
+	}
+
+	return execution
+}
+
 func (d *NCLMessageCreator) createAskForBidMessage(upsert models.ExecutionUpsert) *envelope.Message {
 	log.Debug().
 		Str("nodeID", upsert.Current.NodeID).
 		Str("executionID", upsert.Current.ID).
 		Msg("Asking for bid")
 
+	// Apply network configuration transformation for backward compatibility
+	transformedExecution := d.transformNetworkConfig(upsert.Current)
+
 	return envelope.NewMessage(messages.AskForBidRequest{
 		BaseRequest: messages.BaseRequest{Events: upsert.Events},
-		Execution:   upsert.Current,
+		Execution:   transformedExecution,
 	}).WithMetadataValue(envelope.KeyMessageType, messages.AskForBidMessageType)
 }
 

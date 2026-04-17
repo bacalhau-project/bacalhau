@@ -28,7 +28,7 @@ func NewBProtocolDispatcher(callback compute.Callback) *BProtocolDispatcher {
 func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Event) error {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return bacerrors.Newf("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(bprotocolErrComponent)
 	}
 

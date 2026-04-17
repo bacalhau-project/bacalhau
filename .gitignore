@@ -2,6 +2,7 @@ outputs
 vendor
 data
 .cache
+.worktrees
 node_modules
 yarn-error.log
 lib
@@ -71,3 +72,5 @@ test_integration/common_assets/bacalhau_bin
 
 .flox
 webui/compiled/*
+
+.claude/settings.local.json

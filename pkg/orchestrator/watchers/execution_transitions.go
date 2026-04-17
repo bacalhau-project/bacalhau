@@ -36,14 +36,20 @@ func (t *executionTransitions) shouldAcceptBid() bool {
 		t.upsert.Current.DesiredState.StateType == models.ExecutionDesiredStateRunning
 }
 
-// shouldCancel returns true if we need to send a cancellation request:
-// - Moving from running to stopped
-// - Execution is not in a terminal state
+// shouldCancel returns true if we need to send a cancellation request when:
+// 1. An execution exists (Previous is not nil)
+// 2. The execution is transitioning to Stopped state from any non-Stopped state
+// 3. The previous compute state is not terminal
+//
+// Note: We only check the previous compute state because the current state
+// is always marked as terminal by the scheduler during cancellation. Checking
+// the current state not terminal would cause us to incorrectly skip sending
+// necessary cancellation requests.
 func (t *executionTransitions) shouldCancel() bool {
 	return t.upsert.Previous != nil &&
 		t.upsert.Previous.DesiredState.StateType != models.ExecutionDesiredStateStopped &&
 		t.upsert.Current.DesiredState.StateType == models.ExecutionDesiredStateStopped &&
-		!t.upsert.Current.IsTerminalComputeState()
+		!t.upsert.Previous.IsTerminalComputeState()
 }
 
 // shouldRejectBid returns true if we need to send a bid rejection:

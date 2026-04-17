@@ -178,7 +178,7 @@ func (r *responder) handleRequest(requestMsg *nats.Msg) {
 			Str("messageType", messageType).
 			Str("subject", requestMsg.Subject).
 			Msg("No handler registered for message type")
-		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.New("no handler found for message type: %s", messageType).
+		r.sendErrorResponse(ctx, metrics, requestMsg, bacerrors.Newf("no handler found for message type: %s", messageType).
 			WithCode(bacerrors.NotFoundError))
 		return
 	}

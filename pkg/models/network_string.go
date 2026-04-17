@@ -8,15 +8,17 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[NetworkNone-0]
-	_ = x[NetworkHost-1]
-	_ = x[NetworkHTTP-2]
-	_ = x[NetworkBridge-3]
+	_ = x[NetworkDefault-0]
+	_ = x[NetworkNone-1]
+	_ = x[NetworkHost-2]
+	_ = x[NetworkFull-3]
+	_ = x[NetworkHTTP-4]
+	_ = x[NetworkBridge-5]
 }
 
-const _Network_name = "NoneHostHTTPBridge"
+const _Network_name = "DefaultNoneHostFullHTTPBridge"
 
-var _Network_index = [...]uint8{0, 4, 8, 12, 18}
+var _Network_index = [...]uint8{0, 7, 11, 15, 19, 23, 29}
 
 func (i Network) String() string {
 	if i < 0 || i >= Network(len(_Network_index)-1) {

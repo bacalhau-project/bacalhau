@@ -49,24 +49,21 @@ func (s *NodeSelectionSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "compute-1",
-					"env":  "prod",
+					"env": "prod",
 				},
 			},
 		},
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "compute-2",
-					"env":  "prod",
+					"env": "prod",
 				},
 			},
 		},
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "compute-3",
-					"env":  "test",
+					"env": "test",
 				},
 			},
 		},
@@ -111,7 +108,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 	}{
 		{
 			name:          "select by name",
-			selector:      "name=compute-1",
+			selector:      "name=node-1",
 			expectedNodes: []*node.Node{s.compute1},
 		},
 		{
@@ -121,7 +118,7 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 		},
 		{
 			name:          "select by name and env",
-			selector:      "name=compute-1,env=prod",
+			selector:      "name=node-1,env=prod",
 			expectedNodes: []*node.Node{s.compute1},
 		},
 		{
@@ -141,17 +138,17 @@ func (s *NodeSelectionSuite) TestNodeSelectionByLabels() {
 		},
 		{
 			name:          "favour by name",
-			selector:      "favour_name=compute-1,name in (compute-1,compute-2)",
+			selector:      "favour_name=node-1,name in (node-1,node-2)",
 			expectedNodes: []*node.Node{s.compute1}, // concurrency=1
 		},
 		{
 			name:          "favour by name multiple nodes",
-			selector:      "favour_name=compute-1,env=prod",
+			selector:      "favour_name=node-1,env=prod",
 			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
 		},
 		{
 			name:          "favour by name multiple nodes",
-			selector:      "favour_name=compute-1,env=prod",
+			selector:      "favour_name=node-1,env=prod",
 			expectedNodes: []*node.Node{s.compute1, s.compute2}, // concurrency=2
 		},
 	}

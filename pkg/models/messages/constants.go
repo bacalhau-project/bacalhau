@@ -19,4 +19,7 @@ const (
 	HeartbeatResponseType      = "transport.HeartbeatResponse"
 	NodeInfoUpdateResponseType = "transport.UpdateNodeInfoResponse"
 	ShutdownNoticeResponseType = "transport.ShutdownNoticeResponse"
+
+	ManagedPublisherPreSignURLRequestType  = "managedPublisher.PreSignURLRequest"
+	ManagedPublisherPreSignURLResponseType = "managedPublisher.PreSignURLResponse"
 )

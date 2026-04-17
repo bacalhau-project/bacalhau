@@ -41,19 +41,31 @@ type SystemConfig struct {
 	// TODO: remove compute level resource defaults. This should be handled at the orchestrator,
 	//  but we still need to validate the behaviour is a job without resource limits land on a compute node
 	DefaultComputeJobResourceLimits models.Resources
+
+	NodeReEvaluatorBatchDelay time.Duration
+
+	NodeReEvaluatorMaxBatchSize int
 }
 
 func DefaultSystemConfig() SystemConfig {
 	return SystemConfig{
-		OverSubscriptionFactor:  1.5,
-		NodeRankRandomnessRange: 5,
-		MaxExecutionsPerEval:    20,
-		ExecutionLimitBackoff:   100 * time.Millisecond,
+		OverSubscriptionFactor:      1.5,
+		NodeRankRandomnessRange:     5,
+		MaxExecutionsPerEval:        20,
+		ExecutionLimitBackoff:       100 * time.Millisecond,
+		NodeReEvaluatorBatchDelay:   15 * time.Second,
+		NodeReEvaluatorMaxBatchSize: 50,
 		DefaultComputeJobResourceLimits: models.Resources{
 			CPU:    0.1,               // 100m
 			Memory: 100 * 1024 * 1024, // 100Mi
 		},
 	}
+}
+
+func TestSystemConfig() SystemConfig {
+	config := DefaultSystemConfig()
+	config.NodeReEvaluatorMaxBatchSize = 1
+	return config
 }
 
 // applyDefaults applies the default values to the system config
@@ -74,5 +86,11 @@ func (c *SystemConfig) applyDefaults() {
 
 	if c.DefaultComputeJobResourceLimits.IsZero() {
 		c.DefaultComputeJobResourceLimits = defaults.DefaultComputeJobResourceLimits
+	}
+	if c.NodeReEvaluatorBatchDelay == 0 {
+		c.NodeReEvaluatorBatchDelay = defaults.NodeReEvaluatorBatchDelay
+	}
+	if c.NodeReEvaluatorMaxBatchSize == 0 {
+		c.NodeReEvaluatorMaxBatchSize = defaults.NodeReEvaluatorMaxBatchSize
 	}
 }

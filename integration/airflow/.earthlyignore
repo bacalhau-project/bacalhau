@@ -1,6 +1,0 @@
-.tool-version
-dev-requirements
-.venv
-.eggs
-.tox
-bacalhau_airflow.egg-info

@@ -19,25 +19,6 @@
     "host": "localhost:1234",
     "basePath": "/",
     "paths": {
-        "/": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "home",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/agent/alive": {
             "get": {
                 "produces": [
@@ -52,6 +33,32 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.IsAliveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/authconfig": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ops"
+                ],
+                "summary": "Returns the OAuth2 configuration of the node.",
+                "operationId": "agent/authconfig",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.GetAgentNodeAuthConfigResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -109,32 +116,6 @@
                 }
             }
         },
-        "/api/v1/agent/license": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Ops"
-                ],
-                "summary": "Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured",
-                "operationId": "agent/license",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.GetAgentLicenseResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/agent/node": {
             "get": {
                 "produces": [
@@ -177,103 +158,6 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.GetVersionResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/compute/debug": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Compute Node"
-                ],
-                "summary": "Returns debug information on what the current node is doing.",
-                "operationId": "apiServer/debug",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/id": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the id of the host node.",
-                "operationId": "id",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/livez": {
-            "get": {
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "operationId": "livez",
-                "responses": {
-                    "200": {
-                        "description": "TODO",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/node_info": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Utils"
-                ],
-                "summary": "Returns the info of the node.",
-                "operationId": "nodeInfo",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.NodeInfo"
                         }
                     },
                     "500": {
@@ -398,6 +282,53 @@
                 }
             }
         },
+        "/api/v1/orchestrator/jobs/diff": {
+            "put": {
+                "description": "Compares a submitted job spec with the existing job that has the same name, and returns the differences between them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Compares a job spec with an existing job of the same name.",
+                "operationId": "orchestrator/diffJob",
+                "parameters": [
+                    {
+                        "description": "Job spec to compare with existing job",
+                        "name": "diffJobRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.DiffJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orchestrator/jobs/{id}": {
             "get": {
                 "description": "Returns a job.",
@@ -430,6 +361,12 @@
                         "type": "integer",
                         "description": "Number of history or executions to fetch. Should be used in conjugation with include",
                         "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Job version to get. Defaults to 0.",
+                        "name": "job_version",
                         "in": "query"
                     }
                 ],
@@ -712,6 +649,60 @@
                 }
             }
         },
+        "/api/v1/orchestrator/jobs/{id}/rerun": {
+            "put": {
+                "description": "Reruns a job with the specified job ID or name.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Reruns a job.",
+                "operationId": "orchestrator/rerunJob",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID or name of the job to rerun",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Request to rerun job",
+                        "name": "rerunJobRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.RerunJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.RerunJobResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/orchestrator/jobs/{id}/results": {
             "get": {
                 "description": "Returns the results of a job.",
@@ -740,6 +731,81 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/apimodels.ListJobResultsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/orchestrator/jobs/{id}/versions": {
+            "get": {
+                "description": "Returns the versions of a job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orchestrator"
+                ],
+                "summary": "Returns the versions of a job.",
+                "operationId": "orchestrator/jobVersions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID or Name to get the job versions for",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Namespace of the job",
+                        "name": "namespace",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of job versions returned",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token to get the next page of job versions",
+                        "name": "next_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Reverse the order of the job versions",
+                        "name": "reverse",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order the job versions by the given field",
+                        "name": "order_by",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apimodels.ListJobVersionsResponse"
                         }
                     },
                     "400": {
@@ -826,58 +892,6 @@
                         }
                     }
                 }
-            },
-            "post": {
-                "description": "Update an orchestrator node.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Orchestrator"
-                ],
-                "summary": "Update an orchestrator node.",
-                "operationId": "orchestrator/updateNode",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "ID of the orchestrator node.",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Put Node Request",
-                        "name": "putNodeRequest",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.PutNodeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/apimodels.PutNodeResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
             }
         },
         "/api/v1/orchestrator/nodes/{id}": {
@@ -926,11 +940,9 @@
                         }
                     }
                 }
-            }
-        },
-        "/api/v1/version": {
-            "post": {
-                "description": "See https://github.com/bacalhau-project/bacalhau/releases for a complete list of `gitversion` tags.",
+            },
+            "put": {
+                "description": "Update an orchestrator node.",
                 "consumes": [
                     "application/json"
                 ],
@@ -938,18 +950,25 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Misc"
+                    "Orchestrator"
                 ],
-                "summary": "Returns the build version running on the server.",
-                "operationId": "apiServer/version",
+                "summary": "Update an orchestrator node.",
+                "operationId": "orchestrator/updateNode",
                 "parameters": [
                     {
-                        "description": "Request must specify a `client_id`. To retrieve your `client_id`, you can do the following: (1) submit a dummy job to Bacalhau (or use one you created before), (2) run `bacalhau describe \u003cjob-id\u003e` and fetch the `ClientID` field.",
-                        "name": "VersionRequest",
+                        "type": "string",
+                        "description": "ID of the orchestrator node.",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Put Node Request",
+                        "name": "putNodeRequest",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/shared.VersionRequest"
+                            "$ref": "#/definitions/apimodels.PutNodeRequest"
                         }
                     }
                 ],
@@ -957,11 +976,17 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/shared.VersionResponse"
+                            "$ref": "#/definitions/apimodels.PutNodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "string"
                         }
@@ -977,78 +1002,44 @@
         }
     },
     "definitions": {
-        "apimodels.GetAgentLicenseResponse": {
+        "apimodels.DiffJobRequest": {
             "type": "object",
             "properties": {
-                "aud": {
-                    "description": "the `aud` (Audience) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3",
+                "Job": {
+                    "$ref": "#/definitions/models.Job"
+                },
+                "credential": {
+                    "$ref": "#/definitions/apimodels.HTTPCredential"
+                },
+                "idempotencyToken": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                }
+            }
+        },
+        "apimodels.DiffJobResponse": {
+            "type": "object",
+            "properties": {
+                "Diff": {
+                    "type": "string"
+                },
+                "Warnings": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "apimodels.GetAgentNodeAuthConfigResponse": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "$ref": "#/definitions/types.Oauth2Config"
                 },
-                "capabilities": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "customer_id": {
-                    "type": "string"
-                },
-                "exp": {
-                    "description": "the `exp` (Expiration Time) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.4",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "iat": {
-                    "description": "the `iat` (Issued At) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.6",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "iss": {
-                    "description": "the `iss` (Issuer) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.1",
-                    "type": "string"
-                },
-                "jti": {
-                    "description": "the `jti` (JWT ID) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.7",
-                    "type": "string"
-                },
-                "license_id": {
-                    "type": "string"
-                },
-                "license_type": {
-                    "type": "string"
-                },
-                "license_version": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "nbf": {
-                    "description": "the `nbf` (Not Before) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.5",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/jwt.NumericDate"
-                        }
-                    ]
-                },
-                "product": {
-                    "description": "Add your custom license claims here",
-                    "type": "string"
-                },
-                "sub": {
-                    "description": "the `sub` (Subject) claim. See https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.2",
+                "version": {
                     "type": "string"
                 }
             }
@@ -1178,6 +1169,20 @@
                 }
             }
         },
+        "apimodels.ListJobVersionsResponse": {
+            "type": "object",
+            "properties": {
+                "Items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Job"
+                    }
+                },
+                "NextToken": {
+                    "type": "string"
+                }
+            }
+        },
         "apimodels.ListJobsResponse": {
             "type": "object",
             "properties": {
@@ -1209,6 +1214,9 @@
         "apimodels.PutJobRequest": {
             "type": "object",
             "properties": {
+                "Force": {
+                    "type": "boolean"
+                },
                 "Job": {
                     "$ref": "#/definitions/models.Job"
                 },
@@ -1274,18 +1282,50 @@
                 }
             }
         },
-        "apimodels.StopJobResponse": {
+        "apimodels.RerunJobRequest": {
             "type": "object",
             "properties": {
-                "EvaluationID": {
+                "JobVersion": {
+                    "type": "integer"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "credential": {
+                    "$ref": "#/definitions/apimodels.HTTPCredential"
+                },
+                "idempotencyToken": {
+                    "type": "string"
+                },
+                "namespace": {
                     "type": "string"
                 }
             }
         },
-        "jwt.NumericDate": {
+        "apimodels.RerunJobResponse": {
             "type": "object",
             "properties": {
-                "time.Time": {
+                "EvaluationID": {
+                    "type": "string"
+                },
+                "JobID": {
+                    "type": "string"
+                },
+                "JobVersion": {
+                    "type": "integer"
+                },
+                "Warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "apimodels.StopJobResponse": {
+            "type": "object",
+            "properties": {
+                "EvaluationID": {
                     "type": "string"
                 }
             }
@@ -1502,6 +1542,10 @@
                     "description": "Job is the parent job of the task being allocated.\nThis is copied at execution time to avoid issues if the job\ndefinition is updated.",
                     "type": "string"
                 },
+                "JobVersion": {
+                    "description": "JobVersion version of the job that this execution was created in",
+                    "type": "integer"
+                },
                 "ModifyTime": {
                     "description": "ModifyTime is the time the execution was last updated.",
                     "type": "integer"
@@ -1608,6 +1652,20 @@
             "x-enum-comments": {
                 "ExecutionStateBidAccepted": "aka running"
             },
+            "x-enum-descriptions": [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "aka running",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ],
             "x-enum-varnames": [
                 "ExecutionStateUndefined",
                 "ExecutionStateNew",
@@ -1628,11 +1686,13 @@
             "properties": {
                 "index": {
                     "description": "Self-reported index of the device in the system",
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "memory": {
                     "description": "Total GPU memory in mebibytes (MiB)",
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "name": {
                     "description": "Model name of the GPU e.g. Tesla T4",
@@ -1697,7 +1757,7 @@
                     }
                 },
                 "Count": {
-                    "description": "Count is the number of replicas that should be scheduled.",
+                    "description": "Count is the number of replicas that should be scheduled.\nFor batch and service jobs:\n- If not present in JSON, defaults to 1\n- If explicitly set to 0, means stop all executions\n- If \u003e 0, specifies exact number of replicas\nFor daemon and ops jobs:\n- Values of 0 or 1 are ignored (job runs on all matching nodes)\n- Values \u003e 1 are invalid and will cause validation to fail",
                     "type": "integer"
                 },
                 "CreateTime": {
@@ -1792,6 +1852,9 @@
                         }
                     ]
                 },
+                "JobVersion": {
+                    "type": "integer"
+                },
                 "SeqNum": {
                     "type": "integer"
                 },
@@ -1818,6 +1881,7 @@
         },
         "models.JobSelectionDataLocality": {
             "type": "integer",
+            "format": "int64",
             "enum": [
                 0,
                 1
@@ -1826,6 +1890,10 @@
                 "Anywhere": "anywhere",
                 "Local": "local"
             },
+            "x-enum-descriptions": [
+                "local",
+                "anywhere"
+            ],
             "x-enum-varnames": [
                 "Local",
                 "Anywhere"
@@ -1882,11 +1950,15 @@
                 0,
                 1,
                 2,
-                3
+                3,
+                4,
+                5
             ],
             "x-enum-varnames": [
+                "NetworkDefault",
                 "NetworkNone",
                 "NetworkHost",
+                "NetworkFull",
                 "NetworkHTTP",
                 "NetworkBridge"
             ]
@@ -2351,23 +2423,6 @@
                 "LessThan"
             ]
         },
-        "shared.VersionRequest": {
-            "type": "object",
-            "properties": {
-                "client_id": {
-                    "type": "string",
-                    "example": "ac13188e93c97a9c2e7cf8e86c7313156a73436036f30da1ececc2ce79f9ea51"
-                }
-            }
-        },
-        "shared.VersionResponse": {
-            "type": "object",
-            "properties": {
-                "build_version_info": {
-                    "$ref": "#/definitions/models.BuildVersionInfo"
-                }
-            }
-        },
         "types.API": {
             "type": "object",
             "properties": {
@@ -2400,6 +2455,38 @@
                     "additionalProperties": {
                         "$ref": "#/definitions/types.AuthenticatorConfig"
                     }
+                },
+                "Oauth2": {
+                    "$ref": "#/definitions/types.Oauth2Config"
+                },
+                "Users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.AuthUser"
+                    }
+                }
+            }
+        },
+        "types.AuthUser": {
+            "type": "object",
+            "properties": {
+                "APIKey": {
+                    "type": "string"
+                },
+                "Alias": {
+                    "type": "string"
+                },
+                "Capabilities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Capability"
+                    }
+                },
+                "Password": {
+                    "type": "string"
+                },
+                "Username": {
+                    "type": "string"
                 }
             }
         },
@@ -2504,6 +2591,17 @@
                 },
                 "Timeouts": {
                     "$ref": "#/definitions/types.TaskTimeoutConfig"
+                }
+            }
+        },
+        "types.Capability": {
+            "type": "object",
+            "properties": {
+                "Actions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -2796,10 +2894,6 @@
         "types.JobAdmissionControl": {
             "type": "object",
             "properties": {
-                "AcceptNetworkedJobs": {
-                    "description": "AcceptNetworkedJobs indicates whether to accept jobs that require network access.",
-                    "type": "boolean"
-                },
                 "Locality": {
                     "description": "Locality specifies the locality of the job input data.",
                     "allOf": [
@@ -2815,6 +2909,10 @@
                 "ProbeHTTP": {
                     "description": "ProbeHTTP specifies the HTTP endpoint for probing job submission.",
                     "type": "string"
+                },
+                "RejectNetworkedJobs": {
+                    "description": "RejectNetworkedJobs indicates whether to reject jobs that require network access.",
+                    "type": "boolean"
                 },
                 "RejectStatelessJobs": {
                     "description": "RejectStatelessJobs indicates whether to reject stateless jobs, i.e. jobs without inputs.",
@@ -2836,15 +2934,6 @@
                 },
                 "Service": {
                     "$ref": "#/definitions/types.LongRunningJobDefaultsConfig"
-                }
-            }
-        },
-        "types.License": {
-            "type": "object",
-            "properties": {
-                "LocalPath": {
-                    "description": "LocalPath specifies the local license file path",
-                    "type": "string"
                 }
             }
         },
@@ -2928,6 +3017,44 @@
                 }
             }
         },
+        "types.Oauth2Config": {
+            "type": "object",
+            "properties": {
+                "Audience": {
+                    "type": "string"
+                },
+                "DeviceAuthorizationEndpoint": {
+                    "type": "string"
+                },
+                "DeviceClientID": {
+                    "type": "string"
+                },
+                "Issuer": {
+                    "type": "string"
+                },
+                "JWKSUri": {
+                    "type": "string"
+                },
+                "PollingInterval": {
+                    "type": "integer"
+                },
+                "ProviderID": {
+                    "type": "string"
+                },
+                "ProviderName": {
+                    "type": "string"
+                },
+                "Scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "TokenEndpoint": {
+                    "type": "string"
+                }
+            }
+        },
         "types.Orchestrator": {
             "type": "object",
             "properties": {
@@ -2956,14 +3083,6 @@
                 "Host": {
                     "description": "Host specifies the hostname or IP address on which the Orchestrator server listens for compute node connections.",
                     "type": "string"
-                },
-                "License": {
-                    "description": "License specifies license configuration for orchestrator node",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/types.License"
-                        }
-                    ]
                 },
                 "NodeManager": {
                     "$ref": "#/definitions/types.NodeManager"
@@ -3030,6 +3149,9 @@
                 },
                 "S3": {
                     "$ref": "#/definitions/types.S3Publisher"
+                },
+                "S3Managed": {
+                    "$ref": "#/definitions/types.S3ManagedPublisher"
                 }
             }
         },
@@ -3114,6 +3236,31 @@
             "properties": {
                 "IPFS": {
                     "$ref": "#/definitions/types.IpfsDownloader"
+                }
+            }
+        },
+        "types.S3ManagedPublisher": {
+            "type": "object",
+            "properties": {
+                "Bucket": {
+                    "description": "Bucket specifies the S3 bucket name for managed publisher",
+                    "type": "string"
+                },
+                "Endpoint": {
+                    "description": "Endpoint specifies an optional custom S3 endpoint",
+                    "type": "string"
+                },
+                "Key": {
+                    "description": "Key specifies an optional prefix for objects stored in the bucket",
+                    "type": "string"
+                },
+                "PreSignedURLExpiration": {
+                    "description": "PreSignedURLExpiration specifies the duration before a pre-signed URL expires.",
+                    "type": "integer"
+                },
+                "Region": {
+                    "description": "Region specifies the region the S3 bucket is in",
+                    "type": "string"
                 }
             }
         },

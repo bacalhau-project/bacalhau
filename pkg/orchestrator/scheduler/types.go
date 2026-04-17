@@ -90,6 +90,19 @@ func (set execSet) filterByDesiredState(state models.ExecutionDesiredStateType) 
 	})
 }
 
+func (set execSet) filterByJobVersion(jobVersion uint64) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.JobVersion == jobVersion
+	})
+}
+
+// filterByOutdatedJobVersion returns executions that have a different job version than the specified one
+func (set execSet) filterByOutdatedJobVersion(latestJobVersion uint64) execSet {
+	return set.filterBy(func(execution *models.Execution) bool {
+		return execution.JobVersion != latestJobVersion
+	})
+}
+
 // filterBy compute state filters out execs that don't match the given predicate
 func (set execSet) filterBy(predicate func(execution *models.Execution) bool) execSet {
 	filtered := execSet{}
@@ -310,4 +323,39 @@ func (set execSet) union(other execSet) execSet {
 		union[exec.ID] = exec
 	}
 	return union
+}
+
+// difference returns a new set containing all executions from the original set that are not in the passed set
+func (set execSet) difference(other execSet) execSet {
+	difference := execSet{}
+	for _, exec := range set {
+		if _, exists := other[exec.ID]; !exists {
+			difference[exec.ID] = exec
+		}
+	}
+	return difference
+}
+
+// splitByCount splits the execution set into two parts:
+// - first: contains up to count executions
+// - remaining: contains all other executions
+//
+//nolint:gosec // G115: version within reasonable bounds
+func (set execSet) splitByCount(count uint) (first execSet, remaining execSet) {
+	first = make(execSet)
+	remaining = make(execSet)
+
+	// Get ordered executions to ensure consistent splitting
+	orderedExecs := set.ordered()
+
+	// Add up to count executions to first set
+	for i, exec := range orderedExecs {
+		if uint(i) < count {
+			first[exec.ID] = exec
+		} else {
+			remaining[exec.ID] = exec
+		}
+	}
+
+	return first, remaining
 }

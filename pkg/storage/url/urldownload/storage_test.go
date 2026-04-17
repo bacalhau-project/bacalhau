@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/suite"
 
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/test/mock"
@@ -39,10 +39,10 @@ func (s *StorageSuite) SetupTest() {
 }
 
 func (s *StorageSuite) TestHasStorageLocally() {
-	sp := NewStorage(
-		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
-		legacy_types.Testing.Node.DownloadURLRequestRetries,
-	)
+	testConfig, err := config.NewTestConfig()
+	s.Require().NoError(err)
+
+	sp := NewStorage(time.Duration(testConfig.InputSources.ReadTimeout), testConfig.InputSources.MaxRetryCount)
 
 	spec := models.InputSource{
 		Source: &models.SpecConfig{
@@ -305,10 +305,10 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 			}))
 			s.T().Cleanup(ts.Close)
 
-			subject := NewStorage(
-				time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
-				legacy_types.Testing.Node.DownloadURLRequestRetries,
-			)
+			testConfig, err := config.NewTestConfig()
+			s.Require().NoError(err)
+
+			sp := NewStorage(time.Duration(testConfig.InputSources.ReadTimeout), testConfig.InputSources.MaxRetryCount)
 
 			url := fmt.Sprintf("%s%s", ts.URL, test.requests[0].path)
 			spec := models.InputSource{
@@ -321,7 +321,7 @@ func (s *StorageSuite) TestPrepareStorageURL() {
 				Target: "/inputs",
 			}
 
-			vol, err := subject.PrepareStorage(context.Background(), s.T().TempDir(), mock.Execution(), spec)
+			vol, err := sp.PrepareStorage(context.Background(), s.T().TempDir(), mock.Execution(), spec)
 			s.Require().NoError(err)
 
 			actualFilename := filepath.Base(vol.Source)
@@ -371,10 +371,10 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 	}))
 	s.T().Cleanup(ts.Close)
 
-	subject := NewStorage(
-		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
-		legacy_types.Testing.Node.DownloadURLRequestRetries,
-	)
+	testConfig, err := config.NewTestConfig()
+	s.Require().NoError(err)
+
+	sp := NewStorage(time.Duration(testConfig.InputSources.ReadTimeout), testConfig.InputSources.MaxRetryCount)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)
 	spec := models.InputSource{
@@ -387,7 +387,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningValidSize() {
 		Target: "/inputs",
 	}
 
-	vs, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
+	vs, err := sp.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().NoError(err)
 
 	s.Equal(uint64(500), vs, "content-length does not match")
@@ -412,10 +412,10 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 	}))
 	s.T().Cleanup(ts.Close)
 
-	subject := NewStorage(
-		time.Duration(legacy_types.Testing.Node.DownloadURLRequestTimeout),
-		legacy_types.Testing.Node.DownloadURLRequestRetries,
-	)
+	testConfig, err := config.NewTestConfig()
+	s.Require().NoError(err)
+
+	sp := NewStorage(time.Duration(testConfig.InputSources.ReadTimeout), testConfig.InputSources.MaxRetryCount)
 
 	url := fmt.Sprintf("%s%s", ts.URL, path)
 	spec := models.InputSource{
@@ -428,7 +428,7 @@ func (s *StorageSuite) TestGetVolumeSize_WithServerReturningInvalidSize() {
 		Target: "/inputs",
 	}
 
-	_, err := subject.GetVolumeSize(context.Background(), mock.Execution(), spec)
+	_, err = sp.GetVolumeSize(context.Background(), mock.Execution(), spec)
 	s.Require().ErrorIs(err, ErrNoContentLengthFound)
 
 }

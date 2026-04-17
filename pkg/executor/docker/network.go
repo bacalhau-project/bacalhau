@@ -8,13 +8,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
 	"github.com/docker/go-connections/nat"
@@ -72,12 +70,16 @@ func (e *Executor) setupNetworkForJob(
 	containerConfig *container.Config,
 	hostConfig *container.HostConfig,
 ) (err error) {
+	// In docker, if network is not specified, we default to bridge
+	if params.Network.Type == models.NetworkDefault {
+		params.Network.Type = models.NetworkBridge
+	}
 	containerConfig.NetworkDisabled = params.Network.Disabled()
 	switch params.Network.Type {
 	case models.NetworkNone:
 		hostConfig.NetworkMode = dockerNetworkNone
 
-	case models.NetworkHost:
+	case models.NetworkHost, models.NetworkFull:
 		hostConfig.NetworkMode = dockerNetworkHost
 		hostConfig.ExtraHosts = append(hostConfig.ExtraHosts, dockerHostAddCommand)
 		// In host mode, ports are directly accessible on the host network
@@ -142,7 +144,7 @@ func (e *Executor) createHTTPGateway(
 	networkConfig *models.NetworkConfig,
 ) (*network.Inspect, *net.TCPAddr, error) {
 	// Get the gateway image if we don't have it already
-	err := e.client.PullImage(ctx, httpGatewayImage, config_legacy.GetDockerCredentials())
+	err := e.client.PullImage(ctx, httpGatewayImage)
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "error pulling gateway image")
 	}
@@ -219,18 +221,18 @@ func (e *Executor) createHTTPGateway(
 	go logger.LogStream(log.Ctx(ctx).With().Str("Source", "stderr").Logger().WithContext(ctx), stderr)
 
 	// Look up the IP address of the gateway container and attach it to the spec
-	var containerDetails types.ContainerJSON
+	var containerDetails container.InspectResponse
 	for {
 		containerDetails, err = e.client.ContainerInspect(ctx, gatewayContainer.ID)
 		if err != nil {
 			return nil, nil, pkgerrors.Wrap(err, "error getting gateway container details")
 		}
 		switch containerDetails.State.Health.Status {
-		case types.NoHealthcheck:
+		case container.NoHealthcheck:
 			return nil, nil, errors.New("expecting gateway image to have healthcheck defined")
-		case types.Unhealthy:
+		case container.Unhealthy:
 			return nil, nil, errors.New("gateway container failed to start")
-		case types.Starting:
+		case container.Starting:
 			time.Sleep(httpGatewayHealthcheckInterval)
 			continue
 		}

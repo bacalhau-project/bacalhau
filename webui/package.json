@@ -23,11 +23,11 @@
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "@radix-ui/react-tooltip": "^1.1.2",
-    "axios": "^1.7.7",
+    "axios": "^1.12.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.438.0",
-    "next": "14.2.21",
+    "next": "15.4.10",
     "next-themes": "^0.3.0",
     "react": "^18",
     "react-dom": "^18",
@@ -36,7 +36,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.53.0",
+    "@hey-api/openapi-ts": "0.53.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -50,6 +50,10 @@
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "resolutions": {
+    "@types/react": "^18",
+    "@types/react-dom": "^18"
   },
   "packageManager": "yarn@4.4.1"
 }

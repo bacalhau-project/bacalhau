@@ -3,23 +3,42 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     labels:
       - "lang/go"
-      - "dependabot/version-updates"
-    open-pull-requests-limit: 1
-  - package-ecosystem: "pip"
-    directory: "/integration/"
-    schedule:
-      interval: "daily"
-    labels:
-      - "lang/python"
-      - "dependabot/version-updates"
-    open-pull-requests-limit: 1
+      - "dependencies"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "dev-deps"
+      include: "scope"
+    groups:
+      go-dependencies-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+      go-dependencies-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
     labels:
       - "lang/github-actions"
-      - "dependabot/version-updates"
+      - "dependencies"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]

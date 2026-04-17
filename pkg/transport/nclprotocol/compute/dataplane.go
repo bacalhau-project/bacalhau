@@ -32,6 +32,7 @@ type DataPlane struct {
 	// Core messaging components
 	Client     *nats.Conn             // NATS connection for messaging
 	Publisher  ncl.OrderedPublisher   // Handles ordered message publishing
+	Requester  ncl.Publisher          // Used to send messages to orchestrator
 	Dispatcher *dispatcher.Dispatcher // Manages event watching and dispatch
 
 	// Sequence tracking
@@ -115,6 +116,17 @@ func (dp *DataPlane) Start(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create publisher: %w", err)
+	}
+
+	// Initialize requester for sending messages to orchestrator
+	dp.Requester, err = ncl.NewPublisher(dp.Client, ncl.PublisherConfig{
+		Name:              dp.config.NodeID,
+		MessageRegistry:   dp.config.MessageRegistry,
+		MessageSerializer: dp.config.MessageSerializer,
+		Destination:       nclprotocol.NatsSubjectComputeOutRequests(dp.config.NodeID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create requester: %w", err)
 	}
 
 	// Create event watcher starting from last known sequence

@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
+	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/downloader"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	s3publisher "github.com/bacalhau-project/bacalhau/pkg/publisher/s3"
@@ -81,7 +81,10 @@ func NewTestHelper(t *testing.T, params HelperSuiteParams) *HelperSuite {
 		ClientProvider: clientProvider,
 	})
 
-	storage := s3storage.NewStorage(time.Duration(legacy_types.Testing.Node.VolumeSizeRequestTimeout), clientProvider)
+	testConfig, err := config.NewTestConfig()
+	require.NoError(t, err)
+
+	storage := s3storage.NewStorage(time.Duration(testConfig.InputSources.ReadTimeout), clientProvider)
 
 	return &HelperSuite{
 		Bucket:         params.Bucket,

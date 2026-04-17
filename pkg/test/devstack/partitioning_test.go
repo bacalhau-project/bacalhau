@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	"github.com/bacalhau-project/bacalhau/pkg/compute"
 	"github.com/bacalhau-project/bacalhau/pkg/devstack"
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 	"github.com/bacalhau-project/bacalhau/pkg/executor"
@@ -163,7 +164,7 @@ func (s *PartitionSuite) TestPartitionRetry() {
 						}
 
 						output += fmt.Sprintf("Success on partition %s\n", partition)
-						return executor.WriteJobResults(execContext.ResultsDir,
+						return executor.WriteJobResults(compute.ExecutionResultsDir(execContext.ExecutionDir),
 							strings.NewReader(output),
 							nil,
 							0,

@@ -14,6 +14,7 @@ import (
 	boltjobstore "github.com/bacalhau-project/bacalhau/pkg/jobstore/boltdb"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/watcher"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
+	"github.com/bacalhau-project/bacalhau/pkg/models/messages"
 	natsutil "github.com/bacalhau-project/bacalhau/pkg/nats"
 	"github.com/bacalhau-project/bacalhau/pkg/nats/proxy"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
@@ -33,7 +34,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	auth_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/auth"
 	orchestrator_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/orchestrator"
-	requester_endpoint "github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/requester"
+	"github.com/bacalhau-project/bacalhau/pkg/publisher/s3managed"
 	s3helper "github.com/bacalhau-project/bacalhau/pkg/s3"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	bprotocolorchestrator "github.com/bacalhau-project/bacalhau/pkg/transport/bprotocol/orchestrator"
@@ -64,8 +65,7 @@ func NewRequesterNode(
 	apiServer *publicapi.Server,
 	transportLayer *nats_transport.NATSTransport,
 	metadataStore MetadataStore,
-	nodeInfoProvider models.DecoratorNodeInfoProvider,
-) (*Requester, error) {
+	nodeInfoProvider models.DecoratorNodeInfoProvider) (*Requester, error) {
 	jobStore, err := createJobStore(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -183,15 +183,29 @@ func NewRequesterNode(
 		worker.Start(ctx)
 	}
 
+	s3Config, err := s3helper.DefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// S3 managed publisher URL generator
+	// This will return an error if the configuration is provided but incorrect,
+	// If the configuration is not provided, we still create the generator
+	// so we can return meaningful errors to compute nodes that try to use the managed publisher.
+	s3ManagedPublisherURLGenerator, err := s3managed.NewPreSignedURLGenerator(s3managed.PreSignedURLGeneratorParams{
+		ClientProvider:  s3helper.NewClientProvider(s3helper.ClientProviderParams{AWSConfig: s3Config}),
+		PublisherConfig: cfg.BacalhauConfig.Publishers.Types.S3Managed,
+	})
+	if err != nil {
+		return nil, bacerrors.Wrap(err, "failed to create S3 managed publisher URL generator").
+			WithHint("Check if the S3 managed publisher configuration is correct and if the S3 client is available")
+	}
+
 	// result transformers that are applied to the result before it is returned to the user
 	resultTransformers := transformer.ChainedTransformer[*models.SpecConfig]{}
 
 	if !cfg.BacalhauConfig.Publishers.Types.S3.PreSignedURLDisabled {
 		// S3 result signer
-		s3Config, err := s3helper.DefaultAWSConfig()
-		if err != nil {
-			return nil, err
-		}
 		resultSigner := s3helper.NewResultSigner(s3helper.ResultSignerParams{
 			ClientProvider: s3helper.NewClientProvider(s3helper.ClientProviderParams{
 				AWSConfig: s3Config,
@@ -201,6 +215,9 @@ func NewRequesterNode(
 		resultTransformers = append(resultTransformers, resultSigner)
 	}
 
+	// S3 managed publisher result transformer
+	resultTransformers = append(resultTransformers, s3managed.NewResultTransformer(s3ManagedPublisherURLGenerator))
+
 	jobTransformers := transformer.ChainedTransformer[*models.Job]{
 		transformer.JobFn(transformer.IDGenerator),
 		transformer.NameOptional(),
@@ -208,6 +225,7 @@ func NewRequesterNode(
 		transformer.OrchestratorInstallationID(system.InstallationID()),
 		transformer.OrchestratorInstanceID(metadataStore.InstanceID()),
 		transformer.DefaultsApplier(cfg.BacalhauConfig.JobDefaults),
+		transformer.NewLegacyWasmModuleTransformer(),
 	}
 
 	logStreamProxy, err := proxy.NewLogStreamProxy(proxy.LogStreamProxyParams{
@@ -239,9 +257,6 @@ func NewRequesterNode(
 	debugInfoProviders := []models.DebugInfoProvider{
 		discovery.NewDebugInfoProvider(nodesManager),
 	}
-
-	// TODO: delete this when we are ready to stop serving a deprecation notice.
-	requester_endpoint.NewEndpoint(apiServer.Router)
 
 	orchestrator_endpoint.NewEndpoint(orchestrator_endpoint.EndpointParams{
 		Router:       apiServer.Router,
@@ -296,14 +311,57 @@ func NewRequesterNode(
 		return nil, fmt.Errorf("failed to start connection manager: %w", err)
 	}
 
+	// Register S3 managed publisher handlers.
+	// We want to always register these, even if the managed S3 publisher is not enabled,
+	// so the orchestrator can return meaningful errors to compute nodes that try to use the managed publisher.
+
+	// Message handler for generating pre-signed URLs for S3 managed publisher
+	err = connectionManager.RegisterDataPlaneHandler(
+		ctx,
+		messages.ManagedPublisherPreSignURLRequestType,
+		s3managed.NewPreSignedURLRequestHandler(s3ManagedPublisherURLGenerator),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register a handler for S3 managed publisher pre-sign url messages: %w", err)
+	}
+
 	watcherRegistry, err := setupOrchestratorWatchers(ctx, jobStore, evalBroker)
 	if err != nil {
+		return nil, err
+	}
+
+	// Create ReEvaluator for automatic job re-evaluation on node state changes
+	reEvaluator, err := nodes.NewReEvaluator(nodes.ReEvaluatorParams{
+		JobStore:     jobStore,
+		BatchDelay:   cfg.SystemConfig.NodeReEvaluatorBatchDelay,
+		MaxBatchSize: cfg.SystemConfig.NodeReEvaluatorMaxBatchSize,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create re-evaluator: %w", err)
+	}
+
+	// Register ReEvaluator with node manager for connection state events
+	nodesManager.OnConnectionStateChange(reEvaluator.HandleNodeConnectionEvent)
+
+	// Start the ReEvaluator
+	if err = reEvaluator.Start(ctx); err != nil {
+		return nil, err
+	}
+
+	if err = nodesManager.Start(ctx); err != nil {
 		return nil, err
 	}
 
 	// A single Cleanup function to make sure the order of closing dependencies is correct
 	cleanupFunc := func(ctx context.Context) {
 		var cleanupErr error
+
+		// stop the node reEvaluator
+		if cleanupErr = reEvaluator.Stop(ctx); cleanupErr != nil {
+			logDebugIfContextCancelled(ctx, cleanupErr, "failed to cleanly shutdown re-evaluator")
+		}
+
 		// stop the legacy connection manager
 		legacyConnectionManager.Stop(ctx)
 
@@ -406,10 +464,6 @@ func createNodeManager(ctx context.Context,
 
 	if err != nil {
 		return nil, nil, pkgerrors.Wrap(err, "failed to create node manager")
-	}
-
-	if err = nodeManager.Start(ctx); err != nil {
-		return nil, nil, pkgerrors.Wrap(err, "failed to start node manager")
 	}
 
 	return nodeManager, nodeInfoStore, nil

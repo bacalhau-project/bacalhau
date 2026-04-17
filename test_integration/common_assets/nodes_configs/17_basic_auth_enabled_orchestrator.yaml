@@ -1,0 +1,26 @@
+NameProvider: "uuid"
+API:
+  Port: 1234
+  Auth:
+    Users:
+      - Alias: snoopy
+        Username: snoopyusername
+        Password: snoopypassword
+        Capabilities:
+          - Actions: [ "read:node", "read:agent", "read:job", "write:job" ]
+      - Alias: readonlyuser
+        Username: readonlyusername
+        Password: readonlyuserpassword
+        Capabilities:
+          - Actions: [ "read:node", "read:agent", "read:job" ]
+      - Alias: snoopy-api-key
+        APIKey: P7D4CBB284634DD081FAC33868436ECCL
+        Capabilities:
+          - Actions: [ "read:node", "read:agent", "read:job", "write:job" ]
+      - APIKey: QWERTYHFGCBNSKFIREHFURHUFE7KEEFBN
+        Capabilities:
+          - Actions: [ "read:node", "read:agent", "read:job"]
+Orchestrator:
+  Enabled: true
+  Auth:
+    Token: "i_am_very_secret_token"

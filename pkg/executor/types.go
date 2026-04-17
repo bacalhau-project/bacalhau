@@ -64,7 +64,7 @@ type RunCommandRequest struct {
 	Network      *models.NetworkConfig     // Network configuration for the execution.
 	Outputs      []*models.ResultPath      // Paths where the execution should store its outputs.
 	Inputs       []storage.PreparedStorage // Prepared storage elements that are used as inputs.
-	ResultsDir   string                    // Directory where results should be stored.
+	ExecutionDir string                    // Directory where logs and results should be stored.
 	EngineParams *models.SpecConfig        // Engine-specific configuration parameters.
 	Env          map[string]string         // System defined and task level environment variables.
 	OutputLimits OutputLimits              // Output size limits for the execution.
@@ -80,5 +80,5 @@ const (
 )
 
 func NewExecutorError(code bacerrors.ErrorCode, message string) bacerrors.Error {
-	return bacerrors.New("%s", message).WithCode(code).WithComponent(ExecComponentName)
+	return bacerrors.New(message).WithCode(code).WithComponent(ExecComponentName)
 }

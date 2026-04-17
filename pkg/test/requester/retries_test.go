@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -52,7 +53,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "requester-node",
+					"node": "requester-node",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{},
@@ -60,7 +61,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bid-rejector",
+					"node": "bid-rejector",
 				},
 			},
 			SystemConfig: node.SystemConfig{
@@ -71,7 +72,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bad-executor",
+					"node": "bad-executor",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -85,7 +86,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "bad-publisher",
+					"node": "bad-publisher",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -99,7 +100,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "slow-executor",
+					"node": "slow-executor",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -113,7 +114,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "good-guy1",
+					"node": "good-guy1",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -127,7 +128,7 @@ func (s *RetriesSuite) SetupSuite() {
 		{
 			BacalhauConfig: types.Bacalhau{
 				Labels: map[string]string{
-					"name": "good-guy2",
+					"node": "good-guy2",
 				},
 			},
 			DependencyInjector: node.NodeDependencyInjector{
@@ -356,8 +357,10 @@ func (s *RetriesSuite) TestRetry() {
 }
 
 func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *models.Job {
+	sanitizedName := strings.Replace(t.Name(), "/", "-", -1)
+	jobName := fmt.Sprintf("%s-%d", sanitizedName, rand.Intn(10001))
 	j := &models.Job{
-		Name:  t.Name(),
+		Name:  jobName,
 		Type:  models.JobTypeBatch,
 		Count: 1,
 		Tasks: []*models.Task{
@@ -376,13 +379,13 @@ func makeBadTargetingJob(t testing.TB, restrictedNodes []string) *models.Job {
 	}
 	req := []*models.LabelSelectorRequirement{
 		{
-			Key:      "favour_name",
+			Key:      "favour_node",
 			Operator: selection.NotIn,
 			Values:   []string{"good-guy1", "good-guy2"},
 		}}
 	if len(restrictedNodes) > 0 {
 		req = append(req, &models.LabelSelectorRequirement{
-			Key:      "name",
+			Key:      "node",
 			Operator: selection.In,
 			Values:   restrictedNodes,
 		})

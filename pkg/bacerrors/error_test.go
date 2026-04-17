@@ -33,7 +33,7 @@ func (suite *ErrorTestSuite) TestErrorWithMessage() {
 func (suite *ErrorTestSuite) TestErrorWithFormattedMessage() {
 	// test that New can accept a message with format specifiers
 	message := "TestMessage %s"
-	err := New(message, "withFormat")
+	err := Newf(message, "withFormat")
 	suite.Equal("TestMessage withFormat", err.Error())
 }
 
@@ -207,7 +207,7 @@ func (suite *ErrorTestSuite) TestMultipleWraps() {
 
 func (suite *ErrorTestSuite) TestWrapWithFormat() {
 	originalErr := errors.New("original error")
-	wrappedErr := Wrap(originalErr, "wrapped error: %s", "with format")
+	wrappedErr := Wrapf(originalErr, "wrapped error: %s", "with format")
 
 	suite.Equal("wrapped error: with format: original error", wrappedErr.Error())
 	suite.Equal("wrapped error: with format: original error", wrappedErr.ErrorWrapped())

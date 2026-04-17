@@ -66,7 +66,7 @@ func (s *BaseDockerComposeTestSuite) SetupSuite(dockerComposeFilePath string, re
 
 	// Run a basic command to init the ~/.bacalhau directory, or else the output will unfortunately
 	// mess with tests results, even if just a json format is requested
-	_, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "node", "list"})
+	_, err = s.executeCommandInDefaultJumpbox([]string{"bacalhau", "agent", "alive"})
 	s.Require().NoErrorf(err, "Error running a basic command to init the '.bacalhau' directory: %q", err)
 }
 
@@ -156,29 +156,43 @@ func (s *BaseDockerComposeTestSuite) executeCommandInDefaultJumpbox(cmd []string
 	return s.executeCommandInContainer("bacalhau-jumpbox-node", cmd, execOptions...)
 }
 
-func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration) (time.Duration, error) {
+func (s *BaseDockerComposeTestSuite) waitForJobToComplete(jobID string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
+	return s.waitForJobState(jobID, "Completed", timeout, execOptions...)
+}
+
+func (s *BaseDockerComposeTestSuite) waitForJobToBeRunning(jobID string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
+	return s.waitForJobState(jobID, "Running", timeout, execOptions...)
+}
+
+func (s *BaseDockerComposeTestSuite) waitForJobState(jobID, desiredJobState string, timeout time.Duration, execOptions ...exec.ProcessOption) (time.Duration, error) {
 	startTime := time.Now()
 	endTime := startTime.Add(timeout)
 
 	for time.Now().Before(endTime) {
-		jobDescriptionResultJson, err := s.executeCommandInDefaultJumpbox([]string{"bacalhau", "job", "describe", "--output=json", jobID})
-		if err != nil {
-			return time.Since(startTime), err
+		jobDescriptionResultJson, err := s.executeCommandInDefaultJumpbox(
+			[]string{"bacalhau", "job", "describe", "--output=json", jobID},
+			execOptions...,
+		)
+		if err == nil {
+			jobState, err := utils.ExtractJobStateType(jobDescriptionResultJson)
+			if err == nil && jobState == desiredJobState {
+				return time.Since(startTime), nil
+			}
 		}
 
-		jobState, err := utils.ExtractJobStateType(jobDescriptionResultJson)
-		if err != nil {
-			return time.Since(startTime), err
-		}
-
-		if jobState == "Completed" {
-			return time.Since(startTime), nil
-		}
-
+		// If any error occurred or job is not yet complete, wait and try again
 		time.Sleep(time.Second)
 	}
 
-	return timeout, fmt.Errorf("job did not finish within allowed time limit %s", timeout.String())
+	return timeout, fmt.Errorf(
+		"job did not convert into desired state %s within allowed time limit %s",
+		desiredJobState, timeout.String(),
+	)
+}
+
+func (s *BaseDockerComposeTestSuite) fetchJobResults(jobID string, outputDir string, execOptions ...exec.ProcessOption) (string, error) {
+	cmd := []string{"bacalhau", "job", "get", jobID, "--output-dir=" + outputDir}
+	return s.executeCommandInDefaultJumpbox(cmd, execOptions...)
 }
 
 func (s *BaseDockerComposeTestSuite) unmarshalJSONString(jsonString string, expectedType JSONResponseType) (interface{}, error) {

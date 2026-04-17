@@ -14,9 +14,10 @@ type PublishersConfig struct {
 }
 
 type PublisherTypes struct {
-	IPFS  IPFSPublisher  `yaml:"IPFS,omitempty" json:"IPFS,omitempty"`
-	S3    S3Publisher    `yaml:"S3,omitempty" json:"S3,omitempty"`
-	Local LocalPublisher `yaml:"Local,omitempty" json:"Local,omitempty"`
+	IPFS      IPFSPublisher      `yaml:"IPFS,omitempty" json:"IPFS,omitempty"`
+	S3        S3Publisher        `yaml:"S3,omitempty" json:"S3,omitempty"`
+	S3Managed S3ManagedPublisher `yaml:"S3Managed,omitempty" json:"S3Managed,omitempty"`
+	Local     LocalPublisher     `yaml:"Local,omitempty" json:"Local,omitempty"`
 }
 
 func (p PublishersConfig) IsNotDisabled(kind string) bool {
@@ -35,6 +36,26 @@ type S3Publisher struct {
 	PreSignedURLDisabled bool `yaml:"PreSignedURLDisabled,omitempty" json:"PreSignedURLDisabled,omitempty"`
 	// PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
 	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty" json:"PreSignedURLExpiration,omitempty"`
+}
+
+type S3ManagedPublisher struct {
+	// Bucket specifies the S3 bucket name for managed publisher
+	Bucket string `yaml:"Bucket,omitempty" json:"Bucket,omitempty"`
+	// Key specifies an optional prefix for objects stored in the bucket
+	Key string `yaml:"Key,omitempty" json:"Key,omitempty"`
+	// Region specifies the region the S3 bucket is in
+	Region string `yaml:"Region,omitempty" json:"Region,omitempty"`
+	// Endpoint specifies an optional custom S3 endpoint
+	Endpoint string `yaml:"Endpoint,omitempty" json:"Endpoint,omitempty"`
+	// PreSignedURLExpiration specifies the duration before a pre-signed URL expires.
+	PreSignedURLExpiration Duration `yaml:"PreSignedURLExpiration,omitempty" json:"PreSignedURLExpiration,omitempty"`
+}
+
+// IsConfigured returns true if ANY specific configuration has been provided,
+// even if incomplete. This helps distinguish between "not configured at all" and
+// "incorrectly configured".
+func (p *S3ManagedPublisher) IsConfigured() bool {
+	return p != nil && (p.Bucket != "" || p.Region != "" || p.Key != "" || p.Endpoint != "")
 }
 
 type LocalPublisher struct {

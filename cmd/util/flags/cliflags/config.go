@@ -111,7 +111,7 @@ func (cf *ConfigFlag) parseReadMode() error {
 		if typ.Kind() == reflect.Bool {
 			return setIfValid(viper.GetViper(), cf.Value, true)
 		} else {
-			return bacerrors.New("config flag key requires a value.\n"+
+			return bacerrors.Newf("config flag key requires a value.\n"+
 				"To correct this provide a value to the config, e.g. --config %s=<value>", cf.Value).
 				WithComponent(errComponent).
 				WithCode(bacerrors.ValidationError)
@@ -122,7 +122,7 @@ func (cf *ConfigFlag) parseReadMode() error {
 func (cf *ConfigFlag) parseKeyValue() error {
 	tokens := strings.SplitN(cf.Value, "=", 2)
 	if len(tokens) != 2 {
-		return bacerrors.New("invalid config flag value: %s", cf.Value).
+		return bacerrors.Newf("invalid config flag value: %s", cf.Value).
 			WithComponent(errComponent).
 			WithCode(bacerrors.ValidationError)
 	}
@@ -144,16 +144,16 @@ func validateFile(filePath string) error {
 	stat, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return bacerrors.New("specified configuration file doesn't exist: %s", filePath).
+			return bacerrors.Newf("specified configuration file doesn't exist: %s", filePath).
 				WithComponent(errComponent).
 				WithCode(bacerrors.NotFoundError)
 		}
-		return bacerrors.Wrap(err, "specified configuration file cannot be read: %s", filePath).
+		return bacerrors.Wrapf(err, "specified configuration file cannot be read: %s", filePath).
 			WithComponent(errComponent).
 			WithCode(bacerrors.IOError)
 	}
 	if stat.IsDir() {
-		return bacerrors.New("specified configuration file is a directory, must be a file: %s", filePath).
+		return bacerrors.Newf("specified configuration file is a directory, must be a file: %s", filePath).
 			WithComponent(errComponent).
 			WithCode(bacerrors.ValidationError)
 	}
@@ -172,7 +172,7 @@ func validateKey(key string) error {
 				WithCode(bacerrors.ValidationError).
 				WithComponent(errComponent)
 		}
-		return bacerrors.New("no matching config key. Run '%s config list' for a list of valid keys", os.Args[0]).
+		return bacerrors.Newf("no matching config key. Run '%s config list' for a list of valid keys", os.Args[0]).
 			WithCode(bacerrors.ValidationError).
 			WithComponent(errComponent)
 	}
@@ -185,7 +185,7 @@ func setIfValid(v *viper.Viper, key string, value any) error {
 	}
 	parsed, err := types.CastConfigValueForKey(key, value)
 	if err != nil {
-		return bacerrors.Wrap(err, "failed to cast config value for key: %s, value: %v", key, value).
+		return bacerrors.Wrapf(err, "failed to cast config value for key: %s, value: %v", key, value).
 			WithComponent(errComponent).
 			WithCode(bacerrors.ValidationError)
 	}

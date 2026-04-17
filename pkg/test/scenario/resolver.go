@@ -30,8 +30,8 @@ type apiWrapper struct {
 
 func (a *apiWrapper) GetJob(ctx context.Context, id string) (*JobState, error) {
 	getResp, err := a.api.Jobs().Get(ctx, &apimodels.GetJobRequest{
-		JobID:   id,
-		Include: "executions",
+		JobIDOrName: id,
+		Include:     "executions",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("getting job from api: %w", err)

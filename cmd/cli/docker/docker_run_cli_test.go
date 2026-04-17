@@ -44,10 +44,7 @@ var (
 		Disk:   "",
 		GPU:    "",
 	}
-	expectedDefaultNetworkConfig = &models.NetworkConfig{
-		Type:    models.NetworkNone,
-		Domains: []string(nil),
-	}
+	expectedDefaultNetworkConfig = (*models.NetworkConfig)(nil)
 	expectedDefaultTimeoutConfig = &models.TimeoutConfig{
 		TotalTimeout: 0,
 		QueueTimeout: 0,
@@ -115,17 +112,18 @@ func TestJobFlagParsing(t *testing.T) {
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				defaultTaskAssertions(t, task)
+				require.Len(t, task.Env, 2)
+				assert.Equal(t, task.Env["FOO"], models.EnvVarValue("bar"))
+				assert.Equal(t, task.Env["BAZ"], models.EnvVarValue("buz"))
+
 				ds, err := dm.DecodeSpec(j.Task().Engine)
 				require.NoError(t, err)
 
 				assert.Equal(t, "image:tag", ds.Image)
-				require.Len(t, ds.EnvironmentVariables, 2)
-				assert.Contains(t, ds.EnvironmentVariables, "FOO=bar", "BAZ=buz")
-
 				assert.Empty(t, ds.WorkingDirectory)
 				assert.Empty(t, ds.Entrypoint)
 				assert.Empty(t, ds.Parameters)
+				assert.Empty(t, ds.EnvironmentVariables)
 			},
 			expectedError: false,
 		},
@@ -367,12 +365,12 @@ func TestJobFlagParsing(t *testing.T) {
 			expectedError: false,
 		},
 		{
-			name:  "with network none default",
+			name:  "with network undefined default",
 			flags: []string{"image:tag"},
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.Equal(t, models.NetworkNone, task.Network.Type)
+				assert.Nil(t, task.Network)
 			},
 			expectedError: false,
 		},
@@ -402,9 +400,18 @@ func TestJobFlagParsing(t *testing.T) {
 			assertJob: func(t *testing.T, j *models.Job) {
 				defaultJobAssertions(t, j)
 				task := j.Task()
-				assert.Equal(t, models.NetworkHost, task.Network.Type)
+				assert.Equal(t, models.NetworkFull, task.Network.Type)
 			},
 			expectedError: false,
+		},
+		{
+			name:  "with network host",
+			flags: []string{"--network=host", "image:tag"},
+			assertJob: func(t *testing.T, j *models.Job) {
+				defaultJobAssertions(t, j)
+				task := j.Task()
+				assert.Equal(t, models.NetworkHost, task.Network.Type)
+			},
 		},
 		{
 			name:          "with network invalid",
@@ -725,8 +732,7 @@ func TestJobFlagParsing(t *testing.T) {
 
 func defaultTaskAssertions(t *testing.T, task *models.Task) {
 	assert.Equal(t, task.Name, "main")
-	assert.Empty(t, task.Publisher.Type)
-	assert.Empty(t, task.Publisher.Params)
+	assert.Nil(t, task.Publisher)
 	assert.Empty(t, task.Env)
 	assert.Empty(t, task.Meta)
 	assert.Empty(t, task.InputSources)

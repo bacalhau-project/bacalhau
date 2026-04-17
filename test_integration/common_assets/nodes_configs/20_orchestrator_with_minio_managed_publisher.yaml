@@ -1,0 +1,16 @@
+NameProvider: "uuid"
+Logging:
+  Level: "debug"
+API:
+  Port: 1234
+Orchestrator:
+  Enabled: true
+  Auth:
+    Token: "i_am_very_secret_token"
+Publishers:
+  Types:
+    S3Managed:
+      Bucket: "bacalhau-managed-publisher"
+      Key: "job-results"
+      Region: "us-east-1"
+      Endpoint: "http://bacalhau-minio-node:9000"

@@ -42,13 +42,17 @@ func (c SourceSpec) ToMap() map[string]interface{} {
 type PreSignedResultSpec struct {
 	SourceSpec
 	PreSignedURL string
+	Managed      bool
 }
 
 func (c PreSignedResultSpec) Validate() error {
 	if c.PreSignedURL == "" {
 		return NewS3DownloaderError(BadRequestErrorCode, "invalid s3 signed storage params: signed url cannot be empty")
 	}
-	return c.SourceSpec.Validate()
+	if !c.Managed {
+		return c.SourceSpec.Validate()
+	}
+	return nil
 }
 
 func (c PreSignedResultSpec) ToMap() map[string]interface{} {
@@ -59,7 +63,7 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 	if !spec.IsType(models.StorageSourceS3) {
 		return SourceSpec{}, NewS3InputSourceError(
 			BadRequestErrorCode,
-			"invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type)
+			fmt.Sprintf("invalid storage source type. expected %s but received: %s", models.StorageSourceS3, spec.Type))
 	}
 	inputParams := spec.Params
 	if inputParams == nil {
@@ -77,8 +81,8 @@ func DecodeSourceSpec(spec *models.SpecConfig) (SourceSpec, error) {
 func DecodePreSignedResultSpec(spec *models.SpecConfig) (PreSignedResultSpec, error) {
 	if !spec.IsType(models.StorageSourceS3PreSigned) {
 		return PreSignedResultSpec{}, NewS3InputSourceError(BadRequestErrorCode,
-			"invalid storage source type. expected %s but received: %s",
-			models.StorageSourceS3PreSigned, spec.Type)
+			fmt.Sprintf("invalid storage source type. expected %s but received: %s",
+				models.StorageSourceS3PreSigned, spec.Type))
 	}
 
 	inputParams := spec.Params

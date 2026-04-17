@@ -81,8 +81,8 @@ func (s *GetSuite) TestGetSingleFileFromOutput() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
-	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)), hostID, []string{"/stdout"})
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID, "default")))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID, "default")), hostID, []string{"/stdout"})
 }
 
 func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
@@ -107,9 +107,10 @@ func (s *GetSuite) TestGetSingleNestedFileFromOutput() {
 	)
 	require.NoError(s.T(), err, "Error getting results")
 
-	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)))
+	testDownloadOutput(s.T(), getOutput, jobID, filepath.Join(tempDir, util.GetDefaultJobFolder(jobID, "")))
+	testResultsFolderStructure(s.T(), filepath.Join(tempDir, util.GetDefaultJobFolder(jobID, "")), hostID, []string{"/data/apples/file.txt"})
 	testResultsFolderStructure(s.T(),
-		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID)),
+		filepath.Join(tempDir, util.GetDefaultJobFolder(jobID, "")),
 		hostID,
 		[]string{
 			"/data",

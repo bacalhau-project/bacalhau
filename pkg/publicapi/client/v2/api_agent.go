@@ -37,9 +37,9 @@ func (c *Agent) Config(ctx context.Context) (*apimodels.GetAgentConfigResponse, 
 	return &res, err
 }
 
-// License is used to get the agent (orchestrator) license info.
-func (c *Agent) License(ctx context.Context) (*apimodels.GetAgentLicenseResponse, error) {
-	var res apimodels.GetAgentLicenseResponse
-	err := c.client.Get(ctx, "/api/v1/agent/license", &apimodels.BaseGetRequest{}, &res)
+// NodeAuthConfig is used to get the node Oauth2 Config
+func (c *Agent) NodeAuthConfig(ctx context.Context) (*apimodels.GetAgentNodeAuthConfigResponse, error) {
+	var res apimodels.GetAgentNodeAuthConfigResponse
+	err := c.client.Get(ctx, "/api/v1/agent/authconfig", &apimodels.BaseGetRequest{}, &res)
 	return &res, err
 }

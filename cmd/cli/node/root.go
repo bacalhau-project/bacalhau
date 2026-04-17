@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/hook"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 )
@@ -14,6 +15,9 @@ func NewCmd() *cobra.Command {
 		PersistentPreRunE:  hook.AfterParentPreRunHook(hook.RemoteCmdPreRunHooks),
 		PersistentPostRunE: hook.AfterParentPostRunHook(hook.RemoteCmdPostRunHooks),
 	}
+
+	// Register profile flag for client commands
+	cliflags.RegisterProfileFlag(cmd)
 
 	cmd.AddCommand(NewDescribeCmd())
 	cmd.AddCommand(NewListCmd())

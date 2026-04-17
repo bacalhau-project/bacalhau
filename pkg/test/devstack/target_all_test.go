@@ -130,7 +130,7 @@ func (suite *TargetAllSuite) TestPartialFailure() {
 						if !hasFailed.Swap(true) {
 							return executor.FailResult(fmt.Errorf("oh no"))
 						} else {
-							return executor.WriteJobResults(execContext.ResultsDir, nil, nil, 0, nil, executor.OutputLimits{
+							return executor.WriteJobResults(execContext.ExecutionDir, nil, nil, 0, nil, executor.OutputLimits{
 								MaxStdoutFileLength:   system.MaxStdoutFileLength,
 								MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 								MaxStderrFileLength:   system.MaxStderrFileLength,

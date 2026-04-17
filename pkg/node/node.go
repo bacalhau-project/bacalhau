@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -14,16 +15,15 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
+	"github.com/bacalhau-project/bacalhau/pkg/lib/ncl"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/policy"
 	"github.com/bacalhau-project/bacalhau/pkg/lib/validate"
-	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	nats_transport "github.com/bacalhau-project/bacalhau/pkg/nats/transport"
 	"github.com/bacalhau-project/bacalhau/pkg/node/metrics"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/agent"
-	"github.com/bacalhau-project/bacalhau/pkg/publicapi/endpoint/shared"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/bacalhau-project/bacalhau/pkg/version"
 )
@@ -54,10 +54,37 @@ type NodeConfig struct {
 	FailureInjectionConfig models.FailureInjectionConfig
 }
 
+// Validate Config
 func (c *NodeConfig) Validate() error {
 	// TODO: add more validations
 	var mErr error
 	mErr = errors.Join(mErr, validate.NotBlank(c.NodeID, "node id is required"))
+
+	// Validate Auth Config
+	authConfig := c.BacalhauConfig.API.Auth
+
+	// Check if Users is not empty
+	hasUsers := len(authConfig.Users) > 0
+
+	// Check if Oauth2Config has at least one defined property
+	hasOauth2 := false
+	v := reflect.ValueOf(authConfig.Oauth2)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		if !field.IsZero() {
+			hasOauth2 = true
+			break
+		}
+	}
+
+	// If either Users or Oauth2 config is defined,
+	// Methods and AccessPolicyPath should be empty.
+	// We do not allow mixing old and new auth together
+	if (hasUsers || hasOauth2) && (authConfig.AccessPolicyPath != "") {
+		mErr = errors.Join(mErr, errors.New("mixing old and new auth mechanisms not supported. "+
+			"when Users or Oauth2 is defined in API.Auth, Methods and AccessPolicyPath must be empty"))
+	}
+
 	return mErr
 }
 
@@ -68,14 +95,18 @@ type NodeDependencyInjector struct {
 	ExecutorsFactory        ExecutorsFactory
 	PublishersFactory       PublishersFactory
 	AuthenticatorsFactory   AuthenticatorsFactory
+	LazyPublisherProvider   *ncl.LazyPublisherProvider
 }
 
-func NewStandardNodeDependencyInjector(cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+func NewStandardNodeDependencyInjector(
+	cfg types.Bacalhau, userKey *baccrypto.UserKey) NodeDependencyInjector {
+	lazyNclPublisherProvider := ncl.NewLazyPublisherProvider()
 	return NodeDependencyInjector{
 		StorageProvidersFactory: NewStandardStorageProvidersFactory(cfg),
 		ExecutorsFactory:        NewStandardExecutorsFactory(cfg.Engines),
-		PublishersFactory:       NewStandardPublishersFactory(cfg),
+		PublishersFactory:       NewStandardPublishersFactory(cfg, lazyNclPublisherProvider),
 		AuthenticatorsFactory:   NewStandardAuthenticatorsFactory(userKey),
+		LazyPublisherProvider:   lazyNclPublisherProvider,
 	}
 }
 
@@ -86,10 +117,35 @@ type Node struct {
 	ComputeNode    *Compute
 	RequesterNode  *Requester
 	CleanupManager *system.CleanupManager
+
+	transportLayer *nats_transport.NATSTransport
+	cancelFunc     context.CancelFunc
 }
 
 func (n *Node) Start(ctx context.Context) error {
 	return n.APIServer.ListenAndServe(ctx)
+}
+
+func (n *Node) Stop(ctx context.Context) error {
+	if n.ComputeNode != nil {
+		n.ComputeNode.Cleanup(ctx)
+	}
+	if n.RequesterNode != nil {
+		n.RequesterNode.cleanup(ctx)
+	}
+
+	var err error
+	// Assuming transportLayer and apiServer are accessible via Node struct
+	if n.transportLayer != nil {
+		err = errors.Join(err, n.transportLayer.Close(ctx))
+	}
+	if n.APIServer != nil {
+		err = errors.Join(err, n.APIServer.Shutdown(ctx))
+	}
+	if n.cancelFunc != nil {
+		n.cancelFunc()
+	}
+	return err
 }
 
 //nolint:funlen,gocyclo // Should be simplified when moving to FX
@@ -114,12 +170,6 @@ func NewNode(
 	cfg.SystemConfig.applyDefaults()
 	log.Ctx(ctx).Debug().Msgf("Starting node %s with config: %+v", cfg.NodeID, cfg.BacalhauConfig)
 
-	// Initialize license manager
-	licenseManager, err := licensing.NewLicenseManager(&cfg.BacalhauConfig.Orchestrator.License)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create license manager: %w", err)
-	}
-
 	userKeyPath, err := cfg.BacalhauConfig.UserKeyPath()
 	if err != nil {
 		return nil, err
@@ -132,7 +182,7 @@ func NewNode(
 	cfg.DependencyInjector =
 		mergeDependencyInjectors(cfg.DependencyInjector, NewStandardNodeDependencyInjector(cfg.BacalhauConfig, userKey))
 
-	apiServer, err := createAPIServer(cfg, userKey)
+	apiServer, err := createAPIServer(ctx, cfg, userKey)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +204,9 @@ func NewNode(
 		BacalhauVersion:    *version.Get(),
 		SupportedProtocols: []models.Protocol{models.ProtocolBProtocolV2, models.ProtocolNCLV1},
 	})
-	nodeInfoProvider.RegisterLabelProvider(&ConfigLabelsProvider{staticLabels: cfg.BacalhauConfig.Labels})
-	nodeInfoProvider.RegisterLabelProvider(&RuntimeLabelsProvider{})
+	nodeInfoProvider.RegisterLabelProvider(NewConfigLabelsProvider(cfg.BacalhauConfig.Labels))
+	nodeInfoProvider.RegisterLabelProvider(NewRuntimeLabelsProvider())
+	nodeInfoProvider.RegisterLabelProvider(NewNameLabelsProvider(cfg.NodeID))
 
 	// setup requester node
 	if cfg.BacalhauConfig.Orchestrator.Enabled {
@@ -190,18 +241,11 @@ func NewNode(
 		debugInfoProviders = append(debugInfoProviders, computeNode.debugInfoProviders...)
 	}
 
-	shared.NewEndpoint(shared.EndpointParams{
-		Router:           apiServer.Router,
-		NodeID:           cfg.NodeID,
-		NodeInfoProvider: nodeInfoProvider,
-	})
-
 	_, err = agent.NewEndpoint(agent.EndpointParams{
 		Router:             apiServer.Router,
 		NodeInfoProvider:   nodeInfoProvider,
 		DebugInfoProviders: debugInfoProviders,
 		BacalhauConfig:     cfg.BacalhauConfig,
-		LicenseManager:     licenseManager,
 	})
 	if err != nil {
 		return nil, err
@@ -217,43 +261,28 @@ func NewNode(
 	)
 
 	// Cleanup libp2p resources in the desired order
-	cfg.CleanupManager.RegisterCallbackWithContext(func(ctx context.Context) error {
-		if computeNode != nil {
-			computeNode.Cleanup(ctx)
-		}
-		if requesterNode != nil {
-			requesterNode.cleanup(ctx)
-		}
-
-		var err error
-		if transportLayer != nil {
-			err = errors.Join(err, transportLayer.Close(ctx))
-		}
-
-		if apiServer != nil {
-			err = errors.Join(err, apiServer.Shutdown(ctx))
-		}
-		cancel()
-		return err
-	})
-
-	metrics.NodeInfo.Add(ctx, 1,
-		attribute.String("node_id", cfg.NodeID),
-		attribute.Bool("node_is_compute", cfg.BacalhauConfig.Compute.Enabled),
-		attribute.Bool("node_is_orchestrator", cfg.BacalhauConfig.Orchestrator.Enabled),
-	)
 	node := &Node{
 		ID:             cfg.NodeID,
 		CleanupManager: cfg.CleanupManager,
 		APIServer:      apiServer,
 		ComputeNode:    computeNode,
 		RequesterNode:  requesterNode,
+		transportLayer: transportLayer,
+		cancelFunc:     cancel,
 	}
+
+	cfg.CleanupManager.RegisterCallbackWithContext(node.Stop)
+
+	metrics.NodeInfo.Add(ctx, 1,
+		attribute.String("node_id", cfg.NodeID),
+		attribute.Bool("node_is_compute", cfg.BacalhauConfig.Compute.Enabled),
+		attribute.Bool("node_is_orchestrator", cfg.BacalhauConfig.Orchestrator.Enabled),
+	)
 
 	return node, nil
 }
 
-func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Server, error) {
+func createAPIServer(ctx context.Context, cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Server, error) {
 	authzPolicy, err := policy.FromPathOrDefault(cfg.BacalhauConfig.API.Auth.AccessPolicyPath, authz.AlwaysAllowPolicy)
 	if err != nil {
 		return nil, err
@@ -269,6 +298,18 @@ func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Ser
 
 	safePortNumber := uint16(givenPortNumber)
 
+	var chosenAuthorizer authz.Authorizer
+
+	if len(cfg.BacalhauConfig.API.Auth.Users) > 0 || cfg.BacalhauConfig.API.Auth.Oauth2.ProviderID != "" {
+		// If new auth configuration detected, use new authorizer
+		chosenAuthorizer, err = authz.NewEntryPointAuthorizer(ctx, cfg.NodeID, cfg.BacalhauConfig.API.Auth)
+		if err != nil {
+			return nil, fmt.Errorf("error initializing users: %s", err.Error())
+		}
+	} else {
+		chosenAuthorizer = authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), cfg.NodeID)
+	}
+
 	serverVersion := version.Get()
 	// public http api server
 	serverParams := publicapi.ServerParams{
@@ -277,7 +318,7 @@ func createAPIServer(cfg NodeConfig, userKey *baccrypto.UserKey) (*publicapi.Ser
 		Port:       safePortNumber,
 		HostID:     cfg.NodeID,
 		Config:     publicapi.DefaultConfig(), // using default as we don't expose this config to the user
-		Authorizer: authz.NewPolicyAuthorizer(authzPolicy, userKey.PublicKey(), cfg.NodeID),
+		Authorizer: chosenAuthorizer,
 		Headers: map[string]string{
 			apimodels.HTTPHeaderBacalhauGitVersion: serverVersion.GitVersion,
 			apimodels.HTTPHeaderBacalhauGitCommit:  serverVersion.GitCommit,
@@ -372,6 +413,9 @@ func mergeDependencyInjectors(injector NodeDependencyInjector, defaultInjector N
 	}
 	if injector.AuthenticatorsFactory == nil {
 		injector.AuthenticatorsFactory = defaultInjector.AuthenticatorsFactory
+	}
+	if injector.LazyPublisherProvider == nil {
+		injector.LazyPublisherProvider = defaultInjector.LazyPublisherProvider
 	}
 	return injector
 }

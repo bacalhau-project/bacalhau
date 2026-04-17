@@ -22,7 +22,7 @@ func noopScenario(t testing.TB) Scenario {
 			ExecutorConfig: noop.ExecutorConfig{
 				ExternalHooks: noop.ExecutorConfigExternalHooks{
 					JobHandler: func(ctx context.Context, execContext noop.ExecutionContext) (*models.RunCommandResult, error) {
-						return executor.WriteJobResults(execContext.ResultsDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
+						return executor.WriteJobResults(execContext.ExecutionDir, strings.NewReader("hello, world!\n"), nil, 0, nil, executor.OutputLimits{
 							MaxStdoutFileLength:   system.MaxStdoutFileLength,
 							MaxStdoutReturnLength: system.MaxStdoutReturnLength,
 							MaxStderrFileLength:   system.MaxStderrFileLength,

@@ -15,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/authn"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/ask"
 	"github.com/bacalhau-project/bacalhau/pkg/authn/challenge"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
+	baccrypto "github.com/bacalhau-project/bacalhau/pkg/lib/crypto"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -31,7 +31,7 @@ func RunAuthenticationFlow(
 	auth *client.Auth,
 	clientKeyPath string,
 ) (*apimodels.HTTPCredential, error) {
-	sk, err := config_legacy.GetClientPrivateKey(clientKeyPath)
+	sk, err := baccrypto.LoadPKCS1KeyFile(clientKeyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +43,11 @@ func RunAuthenticationFlow(
 	methods, err := auth.Methods(ctx, &apimodels.ListAuthnMethodsRequest{})
 	if err != nil {
 		return nil, err
+	}
+
+	if methods != nil && len(methods.Methods) == 0 {
+		return nil, fmt.Errorf("the orchestrator supports the" +
+			" new authentication method. Please login using username/password, API key, or thorugh SSO")
 	}
 
 	filteredMethods := make(map[string]authn.Requirement, len(methods.Methods))
@@ -76,8 +81,9 @@ func RunAuthenticationFlow(
 		}
 
 		authnResponse, err := auth.Authenticate(ctx, &apimodels.AuthnRequest{
-			Name:       chosenMethodName,
-			MethodData: response,
+			Name:        chosenMethodName,
+			MethodData:  response,
+			BaseRequest: apimodels.BaseRequest{},
 		})
 		if err != nil {
 			return nil, err

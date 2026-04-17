@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
 	dockermodels "github.com/bacalhau-project/bacalhau/pkg/executor/docker/models"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 
@@ -16,7 +15,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/docker"
 )
 
-const oneDayInSeconds = int64(86400)
+const oneHourInSeconds = 60 * 60
 
 var _ bidstrategy.SemanticBidStrategy = (*ImagePlatformBidStrategy)(nil)
 
@@ -59,42 +58,38 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		return bidstrategy.BidStrategyResponse{}, err
 	}
 
+	// Try to get manifest from cache first
 	manifest, found := ManifestCache.Get(dockerEngine.Image)
 	if !found {
 		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image not found in manifest cache")
 
-		creds := config_legacy.GetDockerCredentials()
-
-		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image, creds)
+		// Get manifest from Docker
+		m, err := s.client.ImageDistribution(ctx, dockerEngine.Image)
 		if err != nil {
 			return bidstrategy.BidStrategyResponse{}, err
 		}
 
 		if m != nil {
 			manifest = *m
-		}
-		// Cache the platform info for this image tag for a day. We could cache
-		// for longer but we only have in-memory caches with time-based eviction.
-		// TODO: Once we have an LRU cache we can use that instead and not worry
-		// about managing eviction. In the meantime we get this through calling
-		// Set even when don't have to, to reset the expiry time.
-		defer func() {
+			// Cache the platform info for this image tag for an hour. We could cache
+			// for longer but we only have in-memory caches with time-based eviction.
+			// TODO: Once we have an LRU cache we can use that instead and not worry
+			// about managing eviction. In the meantime we get this through calling
+			// Set even when don't have to, to reset the expiry time.
 			err = ManifestCache.Set(
-				dockerEngine.Image, manifest, 1, oneDayInSeconds,
+				dockerEngine.Image, manifest, 1, oneHourInSeconds,
 			) //nolint:mnd
 			if err != nil {
-				// Log the error but continue as it is not serious enough to stop
-				// processing
+				// Log but continue - failing to cache shouldn't fail the bid
 				log.Ctx(ctx).Warn().
 					Str("Image", dockerEngine.Image).
 					Err(err).
 					Msg("Failed to save to manifest cache")
 			}
-		}()
-	} else {
-		log.Ctx(ctx).Debug().Str("Image", dockerEngine.Image).Msg("Image found in manifest cache")
+		}
 	}
 
+	// Build list of platforms, filtering out unknown ones
 	imageHasPlatforms := make([]string, 0, len(manifest.Platforms))
 	for _, imageHas := range manifest.Platforms {
 		imageHasPlatforms = append(imageHasPlatforms, imageHas.OS+"/"+imageHas.Architecture)
@@ -105,12 +100,17 @@ func (s *ImagePlatformBidStrategy) ShouldBid(
 		canRunPlatforms = append(canRunPlatforms, canRun.OS+"/"+canRun.Architecture)
 	}
 
+	// Check if any of our supported platforms match the image platforms
 	shouldBid := false
 	for _, canRun := range supported {
 		for _, imageHas := range manifest.Platforms {
 			if canRun.OS == imageHas.OS && canRun.Architecture == imageHas.Architecture {
 				shouldBid = true
+				break
 			}
+		}
+		if shouldBid {
+			break
 		}
 	}
 

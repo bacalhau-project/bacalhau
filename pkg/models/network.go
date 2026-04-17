@@ -27,12 +27,25 @@ const (
 type Network int
 
 const (
+	// NetworkDefault specifies that the job's networking configuration should be
+	// determined by the compute node's executor based on its capabilities and configuration.
+	// Each executor will apply its own appropriate default:
+	// - Docker executor defaults to bridge networking
+	// - WASM executor defaults to host networking
+	// If the compute node has RejectNetworkedJobs enabled in admission control,
+	// networking will be disabled regardless of executor.
+	NetworkDefault Network = iota
+
 	// NetworkNone specifies@ that the job does not require networking.
-	NetworkNone Network = iota
+	NetworkNone
 
 	// NetworkHost (previously NetworkFull) specifies that the job requires unfiltered raw IP networking.
 	// This gives the container direct access to the host's network interfaces.
 	NetworkHost
+
+	// NetworkFull same as NetworkHost but maintained for backward compatibility
+	// Deprecated: Use NetworkHost instead.
+	NetworkFull
 
 	// NetworkHTTP specifies that the job requires HTTP networking to certain domains.
 	//
@@ -71,23 +84,27 @@ const (
 	NetworkBridge
 )
 
+// SupportPortAllocation returns whether the network type supports port allocation.
+func (n Network) SupportPortAllocation() bool {
+	return n == NetworkHost || n == NetworkBridge || n == NetworkFull
+}
+
+// Disabled returns whether network connections should be completely disabled according
+// to this config.
+func (n Network) Disabled() bool {
+	return n == NetworkNone
+}
+
 var domainRegex = regexp.MustCompile(`\b([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}\b`)
 
 func ParseNetwork(s string) (Network, error) {
-	s = strings.TrimSpace(strings.ToLower(s))
-
-	// Handle legacy "full" value
-	if s == "full" {
-		return NetworkHost, nil
-	}
-
-	for typ := NetworkNone; typ <= NetworkBridge; typ++ {
-		if strings.EqualFold(typ.String(), s) {
+	for typ := NetworkDefault; typ <= NetworkBridge; typ++ {
+		if strings.EqualFold(typ.String(), strings.TrimSpace(s)) {
 			return typ, nil
 		}
 	}
 
-	return NetworkNone, fmt.Errorf("%T: unknown type '%s'", NetworkNone, s)
+	return NetworkDefault, fmt.Errorf("%T: unknown type '%s'", NetworkDefault, s)
 }
 
 func (n Network) MarshalText() ([]byte, error) {
@@ -109,7 +126,7 @@ type NetworkConfig struct {
 // Disabled returns whether network connections should be completely disabled according
 // to this config.
 func (n *NetworkConfig) Disabled() bool {
-	return n.Type == NetworkNone
+	return n.Type.Disabled()
 }
 
 // Normalize ensures that the network config is in a consistent state.
@@ -144,10 +161,13 @@ func (n *NetworkConfig) Copy() *NetworkConfig {
 // Validate returns an error if any of the fields do not pass validation, or nil
 // otherwise.
 func (n *NetworkConfig) Validate() error {
+	if n == nil {
+		return nil
+	}
 	var err error
 
 	// Validate network type
-	if n.Type < NetworkNone || n.Type > NetworkBridge {
+	if n.Type < NetworkDefault || n.Type > NetworkBridge {
 		err = errors.Join(err, fmt.Errorf("invalid networking type %q", n.Type))
 	}
 
@@ -169,7 +189,7 @@ func (n *NetworkConfig) Validate() error {
 
 	// Validate ports
 	if len(n.Ports) > 0 {
-		if n.Type != NetworkHost && n.Type != NetworkBridge {
+		if !n.Type.SupportPortAllocation() {
 			err = errors.Join(err, fmt.Errorf("ports can only be set for Host or Bridge network modes"))
 			return err
 		}
@@ -319,7 +339,7 @@ func (pm PortMap) Validate(networkType Network) error {
 		}
 
 		// Host mode validation
-		if networkType == NetworkHost && port.Target != 0 {
+		if (networkType == NetworkHost || networkType == NetworkFull) && port.Target != 0 {
 			err = errors.Join(err, fmt.Errorf("target ports cannot be set for Host network mode"))
 		}
 

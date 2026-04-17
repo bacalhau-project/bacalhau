@@ -8,6 +8,7 @@ const (
 	NotFoundError      ErrorCode = "NotFound"
 	TimeOutError       ErrorCode = "TimeOut"
 	UnauthorizedError  ErrorCode = "Unauthorized"
+	Forbidden          ErrorCode = "Forbidden"
 	ServiceUnavailable ErrorCode = "ServiceUnavailable"
 	NotImplemented     ErrorCode = "NotImplemented"
 	ResourceExhausted  ErrorCode = "ResourceExhausted"

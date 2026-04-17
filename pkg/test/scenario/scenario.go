@@ -59,6 +59,10 @@ type Scenario struct {
 	// nil, no check will be performed on job outputs.
 	ResultsChecker CheckResults
 
+	// A function that will decide whether or not the command was successful. If
+	// nil, no check will be performed on command outputs.
+	CommandResultsChecker CheckCommandResults
+
 	// A set of checkers that will decide when the job has completed, and maybe
 	// whether it was successful or not. If empty, the job will not be waited
 	// for once it has been submitted.

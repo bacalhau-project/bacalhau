@@ -3,6 +3,7 @@
 package models_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -112,7 +113,7 @@ func (suite *EventTestSuite) TestEventFromErrorNoDetails() {
 
 func (suite *EventTestSuite) TestEventFromSimpleError() {
 	errMessage := "TestError"
-	err := fmt.Errorf(errMessage)
+	err := errors.New(errMessage)
 	event := models.EventFromError(suite.topic, err)
 
 	suite.Equal(errMessage, event.Message)

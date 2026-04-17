@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/templates"
 
 	"github.com/bacalhau-project/bacalhau/cmd/util"
-	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
 	"github.com/bacalhau-project/bacalhau/pkg/analytics"
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
@@ -57,27 +57,7 @@ If set, and a name isn't present in .bacalhau/system_metadata.yaml the value is 
 
 func NewCmd() *cobra.Command {
 	serveFlags := map[string][]configflags.Definition{
-		"local_publisher":       configflags.LocalPublisherFlags,
-		"publishing":            configflags.PublishingFlags,
-		"requester-tls":         configflags.RequesterTLSFlags,
-		"server-api":            configflags.ServerAPIFlags,
-		"network":               configflags.NetworkFlags,
-		"ipfs":                  configflags.IPFSFlags,
-		"capacity":              configflags.CapacityFlags,
-		"job-timeouts":          configflags.ComputeTimeoutFlags,
-		"job-selection":         configflags.JobSelectionFlags,
-		"disable-features":      configflags.DisabledFeatureFlags,
-		"labels":                configflags.LabelFlags,
-		"node-type":             configflags.NodeTypeFlags,
-		"list-local":            configflags.AllowListLocalPathsFlags,
-		"compute-store":         configflags.ComputeStorageFlags,
-		"requester-store":       configflags.RequesterJobStorageFlags,
-		"web-ui":                configflags.WebUIFlags,
-		"node-info-store":       configflags.NodeInfoStoreFlags,
-		"node-name":             configflags.NodeNameFlags,
-		"translations":          configflags.JobTranslationFlags,
-		"docker-cache-manifest": configflags.DockerManifestCacheFlags,
-		"compute":               configflags.ComputeFlags,
+		"serve": configflags.ServeFlags,
 	}
 	serveCmd := &cobra.Command{
 		Use:           "serve",
@@ -211,21 +191,20 @@ func serve(cmd *cobra.Command, cfg types.Bacalhau, fsRepo *repo.FsRepo) error {
 	}
 
 	if !cfg.DisableAnalytics {
-		err = analytics.SetupAnalyticsProvider(ctx,
+		err = analytics.Setup(
 			analytics.WithNodeID(sysmeta.NodeName),
 			analytics.WithInstallationID(system.InstallationID()),
 			analytics.WithInstanceID(sysmeta.InstanceID),
 			analytics.WithNodeType(cfg.Orchestrator.Enabled, cfg.Compute.Enabled),
-			analytics.WithVersion(version.Get()))
+			analytics.WithVersion(version.Get()),
+			analytics.WithSystemInfo(),
+		)
 
 		if err != nil {
 			log.Trace().Err(err).Msg("failed to setup analytics provider")
+		} else {
+			defer analytics.Shutdown()
 		}
-		defer func() {
-			if err := analytics.ShutdownAnalyticsProvider(ctx); err != nil {
-				log.Trace().Err(err).Msg("failed to shutdown analytics provider")
-			}
-		}()
 	}
 
 	isDebug := system.IsDebugMode()

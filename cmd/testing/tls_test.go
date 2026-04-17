@@ -21,17 +21,17 @@ func (s *TLSSuite) TestTLSflagWithSelfSignedCertificate() {
 	// and not providing the client command with the cacert making the connection 'insecure'
 	// in this command we don't provide the --insecure flag or the certificate file (as done in below commands)
 	// meaning we expect an error.
-	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls")
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "-c", "API.TLS.UseTLS")
 	s.Require().Error(err)
 }
 
 func (s *TLSSuite) TestTLSWithInsecureFlag() {
-	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls", "--insecure")
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "-c", "API.TLS.UseTLS", "-c", "API.TLS.Insecure")
 
 	s.Require().NoError(err)
 }
 
 func (s *TLSSuite) TestTLSWithCACert() {
-	_, _, err := s.ExecuteTestCobraCommand("job", "list", "--tls", "--cacert", s.TempCACertFilePath)
+	_, _, err := s.ExecuteTestCobraCommand("job", "list", "-c", "API.TLS.UseTLS", "-c", "API.TLS.CAFile="+s.TempCACertFilePath)
 	s.Require().NoError(err, "failed to execute Cobra Command")
 }

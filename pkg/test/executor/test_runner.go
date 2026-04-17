@@ -66,8 +66,8 @@ func RunTestCase(
 		return storageList
 	}
 
-	job.Task().InputSources = prepareStorage(testCase.Inputs)
-	job.Task().ResultPaths = testCase.Outputs
+	job.Task().InputSources = append(job.Task().InputSources, prepareStorage(testCase.Inputs)...)
+	job.Task().ResultPaths = append(job.Task().ResultPaths, testCase.Outputs...)
 	job.Task().Publisher = publisher_local.NewSpecConfig()
 	job.Count = testNodeCount
 
@@ -87,7 +87,10 @@ func RunTestCase(
 	execution := mock.ExecutionForJob(job)
 	execution.AllocateResources(job.Task().Name, models.Resources{})
 
-	resultsDirectory := t.TempDir()
+	resultsPath, err := compute.NewResultsPath(t.TempDir())
+	require.NoError(t, err)
+	executionDir, err := resultsPath.PrepareExecutionOutputDir(execution.ID)
+	require.NoError(t, err)
 	storageProvider := stack.Nodes[0].ComputeNode.Storages
 
 	// Create a permissive env resolver for testing
@@ -109,7 +112,7 @@ func RunTestCase(
 	runCommandArguments, cleanup, err := baseExecutor.PrepareRunArguments(
 		ctx,
 		execution,
-		resultsDirectory,
+		executionDir,
 	)
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -118,7 +121,7 @@ func RunTestCase(
 		}
 	})
 
-	_, err = executor.Run(ctx, runCommandArguments)
+	result, err := executor.Run(ctx, runCommandArguments)
 	if testCase.SubmitChecker != nil {
 		// TODO not sure how this behavior should be replicated.
 		err = testCase.SubmitChecker(&apimodels.PutJobResponse{
@@ -129,8 +132,13 @@ func RunTestCase(
 		require.NoError(t, err)
 	}
 
+	if testCase.CommandResultsChecker != nil {
+		err = testCase.CommandResultsChecker(result)
+		require.NoError(t, err)
+	}
+
 	if testCase.ResultsChecker != nil {
-		err = testCase.ResultsChecker(resultsDirectory)
+		err = testCase.ResultsChecker(compute.ExecutionResultsDir(executionDir))
 		require.NoError(t, err)
 	}
 }

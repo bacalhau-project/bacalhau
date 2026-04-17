@@ -63,6 +63,7 @@ func (signer *ResultSigner) Transform(ctx context.Context, spec *models.SpecConf
 	spec.Params = PreSignedResultSpec{
 		SourceSpec:   sourceSpec,
 		PreSignedURL: resp.URL,
+		Managed:      false,
 	}.ToMap()
 	return nil
 }

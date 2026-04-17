@@ -1,27 +1,17 @@
 package utils
 
 import (
-	wasm "github.com/bacalhau-project/bacalhau/pkg/executor/wasm/models"
-	"github.com/bacalhau-project/bacalhau/pkg/models"
-	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+
+	"github.com/bacalhau-project/bacalhau/pkg/models"
 )
 
 // AllInputSources returns all storage types used by the job spec.
-// TODO: this is a temporary hack to get the storage type from the job spec, including remote sources
-// defined inside the wasm spec. Long term solution to move remote sources from wasm spec to outer task spec.
 func AllInputSources(job *models.Job) []*models.InputSource {
-	inputSources := make([]*models.InputSource, 0, len(job.Tasks))
+	var inputSources []*models.InputSource
 	for _, task := range job.Tasks {
-		inputSources = append(inputSources, task.InputSources...)
-		if task.Engine.Type == models.EngineWasm {
-			wasmEngineSpec, err := wasm.DecodeSpec(task.Engine)
-			if err != nil {
-				log.Error().Err(err).Msgf("failed to decode wasm engine spec %+v", task.Engine)
-				continue
-			}
-			inputSources = append(inputSources, wasmEngineSpec.EntryModule)
-			inputSources = append(inputSources, wasmEngineSpec.ImportModules...)
+		if task != nil && task.InputSources != nil {
+			inputSources = append(inputSources, task.InputSources...)
 		}
 	}
 	return inputSources

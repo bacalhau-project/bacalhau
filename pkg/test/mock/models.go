@@ -30,7 +30,7 @@ func EvalForJob(job *models.Job) *models.Evaluation {
 func Job() *models.Job {
 	job := &models.Job{
 		ID:        uuid.NewString(),
-		Name:      "test-job",
+		Name:      "test-job" + uuid.NewString(),
 		Type:      models.JobTypeBatch,
 		Namespace: models.DefaultNamespace,
 		Count:     1,
@@ -82,11 +82,12 @@ func Execution() *models.Execution {
 func ExecutionForJob(job *models.Job) *models.Execution {
 	now := time.Now().UTC().UnixNano()
 	execution := &models.Execution{
-		JobID:     job.ID,
-		Job:       job,
-		NodeID:    uuid.NewString(),
-		ID:        uuid.NewString(),
-		Namespace: job.Namespace,
+		JobID:      job.ID,
+		Job:        job,
+		JobVersion: job.Version,
+		NodeID:     uuid.NewString(),
+		ID:         uuid.NewString(),
+		Namespace:  job.Namespace,
 		ComputeState: models.State[models.ExecutionStateType]{
 			StateType: models.ExecutionStateNew,
 		},

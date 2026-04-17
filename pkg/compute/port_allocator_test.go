@@ -38,14 +38,15 @@ func (s *PortAllocatorTestSuite) TestNetworkTypeReturnsEmptyMappings() {
 		name        string
 		networkType models.Network
 	}{
-		{name: "no network config", networkType: models.NetworkNone},
+		{name: "undefined network", networkType: models.NetworkDefault},
+		{name: "none network", networkType: models.NetworkNone},
 		{name: "http network", networkType: models.NetworkHTTP},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			execution := mock.Execution()
-			if tt.networkType != models.NetworkNone {
+			if tt.networkType != models.NetworkDefault {
 				execution.Job.Task().Network = &models.NetworkConfig{
 					Type: tt.networkType,
 				}

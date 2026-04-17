@@ -39,7 +39,7 @@ func NewBProtocolDispatcher(params BProtocolDispatcherParams) *BProtocolDispatch
 func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Event) error {
 	upsert, ok := event.Object.(models.ExecutionUpsert)
 	if !ok {
-		return bacerrors.New("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
+		return bacerrors.Newf("failed to process event: expected models.ExecutionUpsert, got %T", event.Object).
 			WithComponent(bprotocolErrComponent)
 	}
 
@@ -53,7 +53,7 @@ func (d *BProtocolDispatcher) HandleEvent(ctx context.Context, event watcher.Eve
 	// Check protocol support first before processing any transitions
 	preferredProtocol, err := d.protocolRouter.PreferredProtocol(ctx, execution)
 	if err != nil {
-		return bacerrors.Wrap(err, "failed to determine preferred protocol for execution %s", execution.ID).
+		return bacerrors.Wrapf(err, "failed to determine preferred protocol for execution %s", execution.ID).
 			WithComponent(bprotocolErrComponent)
 	}
 	if preferredProtocol != models.ProtocolBProtocolV2 {
@@ -96,7 +96,7 @@ func (d *BProtocolDispatcher) handleAskForBid(ctx context.Context, execution *mo
 	}
 
 	if _, err := d.computeService.AskForBid(ctx, request); err != nil {
-		return bacerrors.Wrap(err, "failed to notify node %s to bid for execution %s",
+		return bacerrors.Wrapf(err, "failed to notify node %s to bid for execution %s",
 			execution.NodeID, execution.ID).WithComponent(bprotocolErrComponent)
 	}
 
@@ -118,7 +118,7 @@ func (d *BProtocolDispatcher) handleBidAccepted(ctx context.Context, execution *
 	}
 
 	if _, err := d.computeService.BidAccepted(ctx, request); err != nil {
-		return bacerrors.Wrap(err, "failed to notify node %s that bid %s was accepted",
+		return bacerrors.Wrapf(err, "failed to notify node %s that bid %s was accepted",
 			execution.NodeID, execution.ID).WithComponent(bprotocolErrComponent)
 	}
 
@@ -140,7 +140,7 @@ func (d *BProtocolDispatcher) handleBidRejected(ctx context.Context, execution *
 	}
 
 	if _, err := d.computeService.BidRejected(ctx, request); err != nil {
-		return bacerrors.Wrap(err, "failed to notify node %s that bid %s was rejected",
+		return bacerrors.Wrapf(err, "failed to notify node %s that bid %s was rejected",
 			execution.NodeID, execution.ID).WithComponent(bprotocolErrComponent)
 	}
 

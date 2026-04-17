@@ -10,20 +10,22 @@ import (
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/bacalhau-project/bacalhau/cmd/cli/auth"
+
 	"github.com/bacalhau-project/bacalhau/cmd/cli/agent"
 	configcli "github.com/bacalhau-project/bacalhau/cmd/cli/config"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/deprecated"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/devstack"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
-	"github.com/bacalhau-project/bacalhau/cmd/cli/license"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/profile"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
 	"github.com/bacalhau-project/bacalhau/cmd/util"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/cliflags"
 	"github.com/bacalhau-project/bacalhau/cmd/util/flags/configflags"
+	"github.com/bacalhau-project/bacalhau/pkg/common"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -63,6 +65,17 @@ func NewRootCmd() *cobra.Command {
 		ctx := cmd.Context()
 		ctx = util.InjectCleanupManager(ctx)
 		ctx = injectRootSpan(cmd, ctx)
+
+		// Profile selection - store flag and env var in context
+		// The --profile flag is only registered on client commands via cliflags.RegisterProfileFlag
+		var profileFlagValue string
+		if flag := cmd.Flags().Lookup("profile"); flag != nil {
+			profileFlagValue = flag.Value.String()
+		}
+		profileEnvValue := os.Getenv("BACALHAU_PROFILE")
+		ctx = context.WithValue(ctx, util.ProfileFlagKey, profileFlagValue)
+		ctx = context.WithValue(ctx, util.ProfileEnvKey, profileEnvValue)
+
 		cmd.SetContext(ctx)
 
 		// Binds flags with a corresponding config file value to the root command.
@@ -102,23 +115,22 @@ func NewRootCmd() *cobra.Command {
 		devstack.NewCmd(),
 		docker.NewCmd(),
 		job.NewCmd(),
+		auth.NewCmd(),
 		node.NewCmd(),
+		profile.NewCmd(),
 		serve.NewCmd(),
 		version.NewCmd(),
-		license.NewCmd(),
 		wasm.NewCmd(),
-
-		// deprecated command
-		deprecated.NewExecCommand(),
-		deprecated.NewCancelCmd(),
-		deprecated.NewCreateCmd(),
-		deprecated.NewDescribeCmd(),
-		deprecated.NewGetCmd(),
-		deprecated.NewIDCmd(),
-		deprecated.NewListCmd(),
-		deprecated.NewLogsCmd(),
-		deprecated.NewValidateCmd(),
 	)
+
+	// Customize help template to include environment variables section
+	helpTemplate := RootCmd.HelpTemplate() + fmt.Sprintf(`
+Auth Environment Variables:
+  %s         API key for builtin authentication
+  %s    Username for Basic Auth builtin authentication
+  %s    Password for Basic Auth builtin authentication
+`, common.BacalhauAPIKey, common.BacalhauAPIUsername, common.BacalhauAPIPassword)
+	RootCmd.SetHelpTemplate(helpTemplate)
 
 	return RootCmd
 }

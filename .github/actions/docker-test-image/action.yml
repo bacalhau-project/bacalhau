@@ -1,0 +1,50 @@
+name: 'Test Docker Image'
+description: 'Run simple smoke tests on built Docker images'
+inputs:
+  image:
+    description: 'Docker image to test'
+    required: true
+  tag:
+    description: 'Docker image tag to test'
+    required: true
+  privileged:
+    description: 'Whether to run the test in privileged mode'
+    required: false
+    default: false
+outputs:
+  status:
+    description: 'Status of the test (success/failure)'
+    value: ${{ steps.test.outputs.status }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Test Docker image
+      id: test
+      shell: bash
+      run: |
+        echo "Running smoke test for ${{ inputs.image }}:${{ inputs.tag }}"
+        
+        # Pull the image
+        docker pull ${{ inputs.image }}:${{ inputs.tag }}
+        
+        PRIVILEGED=""
+        # Privileged mode if specified
+        if [ "${{ inputs.privileged }}" == "true" ]; then
+          PRIVILEGED="--privileged"
+        fi
+        
+        
+        # Test the base image - does it run and contain bacalhau binary?
+        echo "Testing bacalhau binary in image..."
+        if docker run --rm $PRIVILEGED ${{ inputs.image }}:${{ inputs.tag }} version; then
+          echo "✅ Binary test passed"
+        else
+          echo "❌ Binary test failed" >&2
+          echo "status=failure" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+        
+        # More advanced tests could be added here
+        
+        echo "status=success" >> $GITHUB_OUTPUT

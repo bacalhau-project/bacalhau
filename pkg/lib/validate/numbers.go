@@ -23,7 +23,7 @@ func IsGreaterOrEqualToZero[T math.Number](value T, msg string, args ...any) err
 // T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
 func IsGreaterThan[T math.Number](value, other T, msg string, args ...any) error {
 	if value <= other {
-		return createError(msg, args...)
+		return createErrorf(msg, args...)
 	}
 	return nil
 }
@@ -33,7 +33,7 @@ func IsGreaterThan[T math.Number](value, other T, msg string, args ...any) error
 // T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
 func IsGreaterOrEqual[T math.Number](value, other T, msg string, args ...any) error {
 	if value < other {
-		return createError(msg, args...)
+		return createErrorf(msg, args...)
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func IsGreaterOrEqual[T math.Number](value, other T, msg string, args ...any) er
 // T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
 func IsLessThan[T math.Number](value, other T, msg string, args ...any) error {
 	if value >= other {
-		return createError(msg, args...)
+		return createErrorf(msg, args...)
 	}
 	return nil
 }
@@ -53,7 +53,7 @@ func IsLessThan[T math.Number](value, other T, msg string, args ...any) error {
 // T is a generic type constrained to math.Number, allowing the function to work with various numeric types.
 func IsLessOrEqual[T math.Number](value, other T, msg string, args ...any) error {
 	if value > other {
-		return createError(msg, args...)
+		return createErrorf(msg, args...)
 	}
 	return nil
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
-	"github.com/bacalhau-project/bacalhau/pkg/licensing"
 	"github.com/bacalhau-project/bacalhau/pkg/models"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/middleware"
@@ -20,7 +19,6 @@ type EndpointParams struct {
 	NodeInfoProvider   models.NodeInfoProvider
 	DebugInfoProviders []models.DebugInfoProvider
 	BacalhauConfig     types.Bacalhau
-	LicenseManager     *licensing.LicenseManager
 }
 
 type Endpoint struct {
@@ -28,20 +26,14 @@ type Endpoint struct {
 	nodeInfoProvider   models.NodeInfoProvider
 	debugInfoProviders []models.DebugInfoProvider
 	bacalhauConfig     types.Bacalhau
-	licenseManager     *licensing.LicenseManager
 }
 
 func NewEndpoint(params EndpointParams) (*Endpoint, error) {
-	if params.LicenseManager == nil {
-		return nil, fmt.Errorf("license manager is required for agent endpoint")
-	}
-
 	e := &Endpoint{
 		router:             params.Router,
 		nodeInfoProvider:   params.NodeInfoProvider,
 		debugInfoProviders: params.DebugInfoProviders,
 		bacalhauConfig:     params.BacalhauConfig,
-		licenseManager:     params.LicenseManager,
 	}
 
 	// JSON group
@@ -52,7 +44,7 @@ func NewEndpoint(params EndpointParams) (*Endpoint, error) {
 	g.GET("/node", e.node)
 	g.GET("/debug", e.debug)
 	g.GET("/config", e.config)
-	g.GET("/license", e.license)
+	g.GET("/authconfig", e.nodeAuthConfig)
 
 	return e, nil
 }
@@ -134,40 +126,28 @@ func (e *Endpoint) debug(c echo.Context) error {
 //	@Failure	500	{object}	string
 //	@Router		/api/v1/agent/config [get]
 func (e *Endpoint) config(c echo.Context) error {
-	cfg, err := e.bacalhauConfig.Copy()
+	clonedRedactedConfig, err := redactConfigSensitiveInfo(e.bacalhauConfig)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("could not copy bacalhau config: %s", err))
 	}
-	if cfg.Compute.Auth.Token != "" {
-		cfg.Compute.Auth.Token = "<redacted>"
-	}
-	if cfg.Orchestrator.Auth.Token != "" {
-		cfg.Orchestrator.Auth.Token = "<redacted>"
-	}
 	return c.JSON(http.StatusOK, apimodels.GetAgentConfigResponse{
-		Config: cfg,
+		Config: clonedRedactedConfig,
 	})
 }
 
-// license godoc
+// nodeAuthConfig godoc
 //
-//	@ID			agent/license
-//	@Summary	Returns the details of the current configured orchestrator license. Returns a 404 when no license is configured
+//	@ID			agent/authconfig
+//	@Summary	Returns the OAuth2 configuration of the node.
 //	@Tags		Ops
 //	@Produce	json
-//	@Success	200	{object}	apimodels.GetAgentLicenseResponse
-//	@Failure	404	{object}	string
-//	@Router		/api/v1/agent/license [get]
-func (e *Endpoint) license(c echo.Context) error {
-	licenseClaims := e.licenseManager.License()
-	if licenseClaims == nil {
-		return echo.NewHTTPError(
-			http.StatusNotFound,
-			"Error inspecting orchestrator license: No license configured for orchestrator.",
-		)
-	}
-
-	return c.JSON(http.StatusOK, apimodels.GetAgentLicenseResponse{
-		LicenseClaims: licenseClaims,
+//	@Success	200	{object}	apimodels.GetAgentNodeAuthConfigResponse
+//	@Failure	500	{object}	string
+//	@Router		/api/v1/agent/authconfig [get]
+func (e *Endpoint) nodeAuthConfig(c echo.Context) error {
+	// No need to redact Oauth2 config since these are made to be public
+	return c.JSON(http.StatusOK, apimodels.GetAgentNodeAuthConfigResponse{
+		Version: "1.0.0",
+		Config:  e.bacalhauConfig.API.Auth.Oauth2,
 	})
 }

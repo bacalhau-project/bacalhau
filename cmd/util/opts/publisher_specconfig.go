@@ -117,6 +117,11 @@ func publisherStringToSpecConfig(destinationURI string, options map[string]strin
 			Type:   models.PublisherS3,
 			Params: params,
 		}, nil
+	case "s3managed":
+		return &models.SpecConfig{
+			Type:   models.PublisherS3Managed,
+			Params: make(map[string]interface{}),
+		}, nil
 	case "local":
 		res = publisher_local.NewSpecConfig()
 	default:

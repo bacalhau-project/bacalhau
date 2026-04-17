@@ -94,6 +94,20 @@ func (mr *MockManagerMockRecorder) GetByPrefix(ctx, prefix interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByPrefix", reflect.TypeOf((*MockManager)(nil).GetByPrefix), ctx, prefix)
 }
 
+// GetConnectedNodesCount mocks base method.
+func (m *MockManager) GetConnectedNodesCount() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnectedNodesCount")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetConnectedNodesCount indicates an expected call of GetConnectedNodesCount.
+func (mr *MockManagerMockRecorder) GetConnectedNodesCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectedNodesCount", reflect.TypeOf((*MockManager)(nil).GetConnectedNodesCount))
+}
+
 // Handshake mocks base method.
 func (m *MockManager) Handshake(ctx context.Context, request messages.HandshakeRequest) (messages.HandshakeResponse, error) {
 	m.ctrl.T.Helper()
@@ -182,6 +196,21 @@ func (m *MockManager) Running() bool {
 func (mr *MockManagerMockRecorder) Running() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Running", reflect.TypeOf((*MockManager)(nil).Running))
+}
+
+// ShutdownNotice mocks base method.
+func (m *MockManager) ShutdownNotice(ctx context.Context, request ExtendedShutdownNoticeRequest) (messages.ShutdownNoticeResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShutdownNotice", ctx, request)
+	ret0, _ := ret[0].(messages.ShutdownNoticeResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ShutdownNotice indicates an expected call of ShutdownNotice.
+func (mr *MockManagerMockRecorder) ShutdownNotice(ctx, request interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShutdownNotice", reflect.TypeOf((*MockManager)(nil).ShutdownNotice), ctx, request)
 }
 
 // Start mocks base method.
@@ -300,6 +329,43 @@ func (mr *MockLookupMockRecorder) List(ctx interface{}, filters ...interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockLookup)(nil).List), varargs...)
 }
 
+// MockTracker is a mock of Tracker interface.
+type MockTracker struct {
+	ctrl     *gomock.Controller
+	recorder *MockTrackerMockRecorder
+}
+
+// MockTrackerMockRecorder is the mock recorder for MockTracker.
+type MockTrackerMockRecorder struct {
+	mock *MockTracker
+}
+
+// NewMockTracker creates a new mock instance.
+func NewMockTracker(ctrl *gomock.Controller) *MockTracker {
+	mock := &MockTracker{ctrl: ctrl}
+	mock.recorder = &MockTrackerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTracker) EXPECT() *MockTrackerMockRecorder {
+	return m.recorder
+}
+
+// GetConnectedNodesCount mocks base method.
+func (m *MockTracker) GetConnectedNodesCount() int {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetConnectedNodesCount")
+	ret0, _ := ret[0].(int)
+	return ret0
+}
+
+// GetConnectedNodesCount indicates an expected call of GetConnectedNodesCount.
+func (mr *MockTrackerMockRecorder) GetConnectedNodesCount() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConnectedNodesCount", reflect.TypeOf((*MockTracker)(nil).GetConnectedNodesCount))
+}
+
 // MockStore is a mock of Store interface.
 type MockStore struct {
 	ctrl     *gomock.Controller
@@ -388,15 +454,15 @@ func (mr *MockStoreMockRecorder) List(ctx interface{}, filters ...interface{}) *
 }
 
 // Put mocks base method.
-func (m *MockStore) Put(ctx context.Context, nodeInfo models.NodeState) error {
+func (m *MockStore) Put(ctx context.Context, state models.NodeState) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", ctx, nodeInfo)
+	ret := m.ctrl.Call(m, "Put", ctx, state)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockStoreMockRecorder) Put(ctx, nodeInfo interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) Put(ctx, state interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockStore)(nil).Put), ctx, nodeInfo)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockStore)(nil).Put), ctx, state)
 }

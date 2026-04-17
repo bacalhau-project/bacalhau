@@ -61,6 +61,36 @@ func PrintWarning(cmd *cobra.Command, msg string) {
 	printIndentedString(cmd, warningPrefix, msg, yellow, 0)
 }
 
+func PrintWarnings(cmd *cobra.Command, warnings []string) {
+	if len(warnings) == 0 {
+		return
+	}
+	if len(warnings) == 1 {
+		PrintWarning(cmd, warnings[0])
+	} else {
+		PrintWarning(cmd, "")
+		for _, warning := range warnings {
+			cmd.Printf("  * %s\n", warning)
+		}
+	}
+}
+
+func PrintDiff(cmd *cobra.Command, diff string) {
+	if diff == "" {
+		return
+	}
+
+	for _, line := range strings.Split(diff, "\n") {
+		if strings.HasPrefix(line, "+") {
+			cmd.Println(output.GreenStr(line))
+		} else if strings.HasPrefix(line, "-") {
+			cmd.Println(output.RedStr(line))
+		} else {
+			cmd.Println(line)
+		}
+	}
+}
+
 // Groups the executions in the job state, returning a map of printable messages
 // to node(s) that generated that message.
 func SummariseExecutions(executions []*models.Execution) map[string][]string {
@@ -109,7 +139,6 @@ func printIndentedString(cmd *cobra.Command, prefix, msg string, prefixColor *co
 	blockIndent := int(startIndent) + len(prefix)
 	blockTextWidth := maxWidth - startIndent - uint(len(prefix))
 
-	cmd.PrintErrln()
 	cmd.PrintErr(strings.Repeat(" ", int(startIndent)))
 	prefixColor.Fprint(cmd.ErrOrStderr(), output.BoldStr(prefix))
 	for i, line := range strings.Split(wordwrap.WrapString(msg, blockTextWidth), "\n") {

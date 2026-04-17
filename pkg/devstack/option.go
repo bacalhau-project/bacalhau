@@ -3,6 +3,7 @@ package devstack
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/rs/zerolog"
 
@@ -19,11 +20,14 @@ func defaultDevStackConfig() (*DevStackConfig, error) {
 		return nil, err
 	}
 
+	useStandardPorts := os.Getenv("PREDICTABLE_API_PORT") != ""
+
 	return &DevStackConfig{
 		BacalhauConfig:         bacalhauConfig,
-		SystemConfig:           node.SystemConfig{},
+		SystemConfig:           node.TestSystemConfig(),
 		NodeDependencyInjector: node.NodeDependencyInjector{},
 		NodeOverrides:          nil,
+		UseStandardPorts:       useStandardPorts,
 
 		NumberOfRequesterOnlyNodes: 1,
 		NumberOfComputeOnlyNodes:   3,
@@ -44,6 +48,7 @@ type DevStackConfig struct {
 	SystemConfig           node.SystemConfig
 	NodeDependencyInjector node.NodeDependencyInjector
 	NodeOverrides          []node.NodeConfig
+	UseStandardPorts       bool // if true, use the standard ports (e.g. 1234) for the services, otherwise random ports
 
 	// DevStackOptions
 	NumberOfHybridNodes        int // Number of nodes to start in the cluster
@@ -192,5 +197,12 @@ func WithSelfSignedCertificate(cert string, key string) ConfigOption {
 	return func(cfg *DevStackConfig) {
 		cfg.BacalhauConfig.API.TLS.CertFile = cert
 		cfg.BacalhauConfig.API.TLS.KeyFile = key
+	}
+}
+
+// WithUseStandardPorts sets the standard ports for the services
+func WithUseStandardPorts(standardPorts bool) ConfigOption {
+	return func(cfg *DevStackConfig) {
+		cfg.UseStandardPorts = standardPorts
 	}
 }

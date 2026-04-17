@@ -74,7 +74,7 @@ func (t *TimeoutConfig) Validate() error {
 // ValidateSubmission is used to check a timeout config for reasonable configuration when it is submitted.
 func (t *TimeoutConfig) ValidateSubmission() error {
 	if t == nil {
-		return errors.New("missing timeout config")
+		return nil
 	}
 	var mErr error
 	if t.ExecutionTimeout < 0 {

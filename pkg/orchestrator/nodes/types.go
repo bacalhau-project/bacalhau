@@ -88,6 +88,8 @@ type Manager interface {
 	OnConnectionStateChange(handler ConnectionStateChangeHandler)
 
 	Lookup
+
+	Tracker
 }
 
 type Lookup interface {
@@ -99,6 +101,11 @@ type Lookup interface {
 
 	// List returns all nodes matching the given filters.
 	List(ctx context.Context, filters ...NodeStateFilter) ([]models.NodeState, error)
+}
+
+type Tracker interface {
+	// GetConnectedNodesCount returns the number of currently connected nodes.
+	GetConnectedNodesCount() int
 }
 
 // Store defines the interface for persistent node state storage.
@@ -114,6 +121,11 @@ type Store interface {
 
 // NodeStateFilter defines a function type for filtering node states.
 type NodeStateFilter func(models.NodeState) bool
+
+// HealthyNodeFilter is a filter that returns only nodes that are healthy and connected.
+func HealthyNodeFilter(state models.NodeState) bool {
+	return state.ConnectionState.Status == models.NodeStates.CONNECTED
+}
 
 // NodeConnectionEvent represents a change in a node's connection state.
 type NodeConnectionEvent struct {

@@ -12,8 +12,6 @@ import (
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 	"github.com/bacalhau-project/bacalhau/pkg/config"
-	"github.com/bacalhau-project/bacalhau/pkg/config_legacy"
-	legacy_types "github.com/bacalhau-project/bacalhau/pkg/config_legacy/types"
 	"github.com/bacalhau-project/bacalhau/pkg/telemetry"
 )
 
@@ -95,7 +93,7 @@ func (fsr *FsRepo) Init() error {
 
 	// 0755: Owner can read, write, execute. Others can read and execute.
 	if err := os.MkdirAll(fsr.path, repoPermission); err != nil && !os.IsExist(err) {
-		return bacerrors.New("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
+		return bacerrors.Newf("failed to initialize the bacalhau repo at %q: %s", fsr.path, errors.Unwrap(err)).
 			WithHint("The data dir you've configured bacalhau to use is invalid\n"+
 				"\tIf provided, ensure the --data-dir/--repo flag contains a valid path\n"+
 				"\tIf present, ensure the config file provided by the --config flag contains a valid DataDir field path\n"+
@@ -111,9 +109,6 @@ func (fsr *FsRepo) Init() error {
 		InstanceID:  GenerateInstanceID(),
 	}); err != nil {
 		return fmt.Errorf("failed to persist system metadata: %w", err)
-	}
-	if err := fsr.WriteLegacyVersion(Version4); err != nil {
-		return fmt.Errorf("failed to persist legacy repo version: %w", err)
 	}
 
 	return nil
@@ -182,41 +177,6 @@ func (fsr *FsRepo) WriteRunInfo(ctx context.Context, summaryShellVariablesString
 	}
 
 	return runInfoPath, nil
-	// TODO previous behavior put it in these places, we may consider creating a symlink later
-	/*
-		if writeable, _ := filefs.IsWritable("/run"); writeable {
-			writePath = "/run" // Linux
-		} else if writeable, _ := filefs.IsWritable("/var/run"); writeable {
-			writePath = "/var/run" // Older Linux
-		} else if writeable, _ := filefs.IsWritable("/private/var/run"); writeable {
-			writePath = "/private/var/run" // MacOS
-		} else {
-			// otherwise write to the user's dir, which should be available on all systems
-			userDir, err := os.UserHomeDir()
-			if err != nil {
-				log.Ctx(ctx).Err(err).Msg("Could not write to /run, /var/run, or /private/var/run, and could not get user's home dir")
-				return nil
-			}
-			log.Warn().Msgf("Could not write to /run, /var/run, or /private/var/run, writing to %s dir instead. "+
-				"This file contains sensitive information, so please ensure it is limited in visibility.", userDir)
-			writePath = userDir
-		}
-	*/
-}
-
-// EnsureRepoPathsConfigured modifies the config to include keys for accessing repo paths
-func (fsr *FsRepo) EnsureRepoPathsConfigured(c config_legacy.ReadWriter) {
-	c.SetIfAbsent(legacy_types.AuthTokensPath, fsr.join(config_legacy.TokensPath))
-	c.SetIfAbsent(legacy_types.UserKeyPath, fsr.join(config_legacy.UserPrivateKeyFileName))
-
-	// NB(forrest): pay attention to the subtle name difference here
-	c.SetIfAbsent(legacy_types.NodeComputeStoragePath, fsr.join(config_legacy.ComputeStoragesPath))
-
-	c.SetIfAbsent(legacy_types.NodeClientAPITLSAutoCertCachePath, fsr.join(config_legacy.AutoCertCachePath))
-	c.SetIfAbsent(legacy_types.NodeNetworkStoreDir, fsr.join(config_legacy.OrchestratorStorePath, config_legacy.NetworkTransportStore))
-
-	c.SetIfAbsent(legacy_types.NodeRequesterJobStorePath, fsr.join(config_legacy.OrchestratorStorePath, "jobs.db"))
-	c.SetIfAbsent(legacy_types.NodeComputeExecutionStorePath, fsr.join(config_legacy.ComputeStorePath, "executions.db"))
 }
 
 // join joins path elements with fsr.path
