@@ -4,7 +4,7 @@ toolchain go1.25.5
 
 use (
 	.
-	./test_integration
 	pkg/executor/wasm/funcs/http/client
 	pkg/executor/wasm/funcs/http/testdata/src
+	test_integration
 )

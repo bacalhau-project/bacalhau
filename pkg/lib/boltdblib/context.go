@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	bolt "go.etcd.io/bbolt"
+	bbolterrors "go.etcd.io/bbolt/errors"
 )
 
 // TxContext is a transactional context that can be used to commit or rollback
@@ -47,7 +48,7 @@ func (t *txContext) Commit() error {
 
 // Rollback rolls back the transaction
 func (t *txContext) Rollback() error {
-	if err := t.tx.Rollback(); err != nil && !errors.Is(err, bolt.ErrTxClosed) {
+	if err := t.tx.Rollback(); err != nil && !errors.Is(err, bbolterrors.ErrTxClosed) {
 		return err
 	}
 	return nil

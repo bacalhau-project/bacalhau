@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/docker/docker/errdefs"
+	"github.com/containerd/errdefs"
 
 	"github.com/bacalhau-project/bacalhau/pkg/bacerrors"
 )
@@ -56,7 +56,7 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 			WithHTTPStatusCode(http.StatusUnauthorized).
 			WithHint("Ensure you have the necessary permissions and that your credentials are correct. " +
 				"You may need to log in to Docker again.")
-	case errdefs.IsForbidden(err):
+	case errdefs.IsPermissionDenied(err):
 		return bacerrors.Newf("%s", err).
 			WithCode(Forbidden).
 			WithHTTPStatusCode(http.StatusForbidden).
@@ -68,14 +68,14 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 			WithCode(DataLoss).
 			WithHTTPStatusCode(http.StatusInternalServerError).
 			WithFailsExecution()
-	case errdefs.IsDeadline(err):
+	case errdefs.IsDeadlineExceeded(err):
 		return bacerrors.Newf("%s", err).
 			WithCode(Deadline).
 			WithHTTPStatusCode(http.StatusGatewayTimeout).
 			WithHint("The operation timed out. This could be due to network issues or high system load. " +
 				"Try again later or check your network connection.").
 			WithRetryable()
-	case errdefs.IsCancelled(err):
+	case errdefs.IsCanceled(err):
 		return bacerrors.Newf("%s", err).
 			WithCode(Cancelled).
 			WithHTTPStatusCode(http.StatusRequestTimeout).
@@ -88,7 +88,7 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 			WithHint("The Docker daemon or a required service is unavailable. " +
 				"Check if the Docker daemon is running and healthy.").
 			WithRetryable()
-	case errdefs.IsSystem(err):
+	case errdefs.IsInternal(err):
 		return bacerrors.Newf("%s", err).
 			WithCode(SystemError).
 			WithHTTPStatusCode(http.StatusInternalServerError).
@@ -118,14 +118,14 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 	}()
 
 	switch {
-	case errdefs.IsNotFound(err) || errdefs.IsForbidden(err):
+	case errdefs.IsNotFound(err) || errdefs.IsPermissionDenied(err):
 		return bacerrors.Newf("image not available: %q", image).
 			WithHint(fmt.Sprintf(`To resolve this, either:
 1. Check if the image exists in the registry and the name is correct
 2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
 				UsernameEnvVar, PasswordEnvVar)).
 			WithCode(ImageNotFound)
-	case errdefs.IsInvalidParameter(err):
+	case errdefs.IsInvalidArgument(err):
 		return bacerrors.Newf("invalid image format: %q", image).
 			WithHint("Ensure the image name is valid and the image is available in the registry").
 			WithCode(ImageInvalid)

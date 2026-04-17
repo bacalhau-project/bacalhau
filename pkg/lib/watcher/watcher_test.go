@@ -710,7 +710,21 @@ func (s *WatcherTestSuite) TestEmptyEventStoreWithDifferentIterators() {
 				watcher.WithInitialEventIterator(tc.iterator))
 			s.Require().NoError(err)
 			s.Require().NoError(w.SetHandler(s.mockHandler))
-			s.startWaitAndStop(s.ctx, w, tc.expectedIterator.SequenceNumber)
+			s.Require().NoError(w.Start(s.ctx))
+
+			// Wait for the watcher to process and convert the iterator to the expected type.
+			// This is necessary because the watcher may start with a different iterator type
+			// (e.g., TrimHorizon) and convert it after the first GetEvents call.
+			s.Require().Eventually(func() bool {
+				stats := w.Stats()
+				return stats.State == watcher.StateRunning &&
+					stats.NextEventIterator == tc.expectedIterator
+			}, 1*time.Second, 10*time.Millisecond)
+
+			w.Stop(s.ctx)
+			s.Require().Eventually(func() bool {
+				return w.Stats().State == watcher.StateStopped
+			}, 1*time.Second, 10*time.Millisecond)
 
 			// Check if the next event iterator matches the expected iterator
 			s.Equal(tc.expectedIterator, w.Stats().NextEventIterator)

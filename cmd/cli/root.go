@@ -18,6 +18,7 @@ import (
 	"github.com/bacalhau-project/bacalhau/cmd/cli/docker"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/job"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/node"
+	"github.com/bacalhau-project/bacalhau/cmd/cli/profile"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/serve"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/version"
 	"github.com/bacalhau-project/bacalhau/cmd/cli/wasm"
@@ -64,6 +65,17 @@ func NewRootCmd() *cobra.Command {
 		ctx := cmd.Context()
 		ctx = util.InjectCleanupManager(ctx)
 		ctx = injectRootSpan(cmd, ctx)
+
+		// Profile selection - store flag and env var in context
+		// The --profile flag is only registered on client commands via cliflags.RegisterProfileFlag
+		var profileFlagValue string
+		if flag := cmd.Flags().Lookup("profile"); flag != nil {
+			profileFlagValue = flag.Value.String()
+		}
+		profileEnvValue := os.Getenv("BACALHAU_PROFILE")
+		ctx = context.WithValue(ctx, util.ProfileFlagKey, profileFlagValue)
+		ctx = context.WithValue(ctx, util.ProfileEnvKey, profileEnvValue)
+
 		cmd.SetContext(ctx)
 
 		// Binds flags with a corresponding config file value to the root command.
@@ -105,6 +117,7 @@ func NewRootCmd() *cobra.Command {
 		job.NewCmd(),
 		auth.NewCmd(),
 		node.NewCmd(),
+		profile.NewCmd(),
 		serve.NewCmd(),
 		version.NewCmd(),
 		wasm.NewCmd(),

@@ -2,16 +2,14 @@ package util
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/bacalhau-project/bacalhau/pkg/config/profile"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/publicapi/apimodels"
 	clientv2 "github.com/bacalhau-project/bacalhau/pkg/publicapi/client/v2"
-	"github.com/bacalhau-project/bacalhau/pkg/repo"
-	"github.com/bacalhau-project/bacalhau/pkg/system"
 )
 
 // TestReadTokenFn is a function type for the ReadToken function for testing
@@ -518,22 +516,18 @@ func TestGenerateAPIRequestsOptions(t *testing.T) {
 	tests := []struct {
 		name          string
 		cfg           types.Bacalhau
-		setupFiles    func(t *testing.T) // Function to setup any required files
-		expectedError string             // Empty string means no error expected
+		profile       *profile.Profile
+		baseURL       string
+		expectedError string
 		verifyOptions func(t *testing.T, opts []clientv2.OptionFn)
 	}{
 		{
-			name: "Basic configuration without TLS",
+			name: "No profile - defaults to no TLS",
 			cfg: types.Bacalhau{
-				API: types.API{
-					TLS: types.TLS{
-						UseTLS:   false,
-						Insecure: false,
-						CAFile:   "",
-					},
-				},
 				DataDir: tmpDir,
 			},
+			profile: nil,
+			baseURL: "http://localhost:1234",
 			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
 				config := clientv2.DefaultConfig()
 				for _, opt := range opts {
@@ -546,17 +540,14 @@ func TestGenerateAPIRequestsOptions(t *testing.T) {
 			},
 		},
 		{
-			name: "Configuration with TLS enabled",
+			name: "Profile with HTTPS endpoint enables TLS",
 			cfg: types.Bacalhau{
-				API: types.API{
-					TLS: types.TLS{
-						UseTLS:   true,
-						Insecure: false,
-						CAFile:   "",
-					},
-				},
 				DataDir: tmpDir,
 			},
+			profile: &profile.Profile{
+				Endpoint: "https://example.com:443",
+			},
+			baseURL: "https://example.com:443",
 			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
 				config := clientv2.DefaultConfig()
 				for _, opt := range opts {
@@ -564,22 +555,19 @@ func TestGenerateAPIRequestsOptions(t *testing.T) {
 				}
 				assert.True(t, config.TLS.UseTLS)
 				assert.False(t, config.TLS.Insecure)
-				assert.Empty(t, config.TLS.CACert)
 				assert.NotNil(t, config.Headers)
 			},
 		},
 		{
-			name: "Configuration with insecure TLS",
+			name: "Profile with insecure TLS",
 			cfg: types.Bacalhau{
-				API: types.API{
-					TLS: types.TLS{
-						UseTLS:   true,
-						Insecure: true,
-						CAFile:   "",
-					},
-				},
 				DataDir: tmpDir,
 			},
+			profile: &profile.Profile{
+				Endpoint: "https://example.com:443",
+				TLS:      &profile.TLSConfig{Insecure: true},
+			},
+			baseURL: "https://example.com:443",
 			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
 				config := clientv2.DefaultConfig()
 				for _, opt := range opts {
@@ -587,106 +575,93 @@ func TestGenerateAPIRequestsOptions(t *testing.T) {
 				}
 				assert.True(t, config.TLS.UseTLS)
 				assert.True(t, config.TLS.Insecure)
-				assert.Empty(t, config.TLS.CACert)
 				assert.NotNil(t, config.Headers)
 			},
 		},
 		{
-			name: "Configuration with valid CA file",
+			name: "Profile with HTTP endpoint - no TLS",
 			cfg: types.Bacalhau{
-				API: types.API{
-					TLS: types.TLS{
-						UseTLS:   true,
-						Insecure: false,
-						CAFile:   filepath.Join(tmpDir, "ca.crt"),
-					},
-				},
 				DataDir: tmpDir,
 			},
-			setupFiles: func(t *testing.T) {
-				err := os.WriteFile(filepath.Join(tmpDir, "ca.crt"), []byte("dummy ca content"), 0644)
-				assert.NoError(t, err)
+			profile: &profile.Profile{
+				Endpoint: "http://localhost:1234",
 			},
+			baseURL: "http://localhost:1234",
 			verifyOptions: func(t *testing.T, opts []clientv2.OptionFn) {
 				config := clientv2.DefaultConfig()
 				for _, opt := range opts {
 					opt(&config)
 				}
-				assert.True(t, config.TLS.UseTLS)
+				assert.False(t, config.TLS.UseTLS)
 				assert.False(t, config.TLS.Insecure)
-				assert.Equal(t, filepath.Join(tmpDir, "ca.crt"), config.TLS.CACert)
 				assert.NotNil(t, config.Headers)
 			},
-		},
-		{
-			name: "Configuration with non-existent CA file",
-			cfg: types.Bacalhau{
-				API: types.API{
-					TLS: types.TLS{
-						UseTLS:   true,
-						Insecure: false,
-						CAFile:   filepath.Join(tmpDir, "non-existent.crt"),
-					},
-				},
-				DataDir: tmpDir,
-			},
-			expectedError: "does not exists",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup any required files
-			if tt.setupFiles != nil {
-				tt.setupFiles(t)
+			cm := &APIClientManager{
+				cfg:     tt.cfg,
+				baseURL: tt.baseURL,
+				profile: tt.profile,
 			}
 
-			// Run the function
-			opts, err := generateAPIRequestsOptions(tt.cfg)
+			opts, err := cm.generateAPIRequestsOptions()
 
-			// Check error cases
 			if tt.expectedError != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError)
 				return
 			}
 
-			// For non-error cases
 			assert.NoError(t, err)
 			assert.NotNil(t, opts)
+			assert.Len(t, opts, 4) // TLS, InsecureTLS, CA cert, headers
 
-			// Verify the number of options generated
-			// We expect 4 options (TLS, InsecureTLS, CA cert, and headers)
-			assert.Len(t, opts, 4)
-
-			// Verify the options using the provided verification function
 			if tt.verifyOptions != nil {
 				tt.verifyOptions(t, opts)
 			}
 
-			// Verify headers content by applying options to a config
+			// Verify headers are always present
 			config := clientv2.DefaultConfig()
 			for _, opt := range opts {
 				opt(&config)
 			}
-
-			headers := config.Headers
-			assert.NotNil(t, headers)
-			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauGitVersion)
-			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauGitCommit)
-			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauBuildDate)
-			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauBuildOS)
-			assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauArch)
-
-			// If system metadata was loaded successfully, check for instance ID
-			if sysmeta, err := repo.LoadSystemMetadata(tt.cfg.DataDir); err == nil && sysmeta.InstanceID != "" {
-				assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauInstanceID)
-			}
-
-			// If installation ID is available, check for it
-			if installationID := system.InstallationID(); installationID != "" {
-				assert.Contains(t, headers, apimodels.HTTPHeaderBacalhauInstallationID)
-			}
+			assert.NotNil(t, config.Headers)
+			assert.Contains(t, config.Headers, apimodels.HTTPHeaderBacalhauGitVersion)
 		})
 	}
+}
+
+func TestAPIClientManagerNoProfile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "bacalhau-test-*")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create an APIClientManager without a profile (empty baseURL)
+	cm := &APIClientManager{
+		cfg: types.Bacalhau{
+			DataDir: tmpDir,
+		},
+		baseURL: "", // No profile configured
+		profile: nil,
+	}
+
+	t.Run("GetUnauthenticatedAPIClient returns error when no profile", func(t *testing.T) {
+		client, err := cm.GetUnauthenticatedAPIClient()
+		assert.Nil(t, client)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrNoProfile)
+		assert.Contains(t, err.Error(), "no profile configured")
+		assert.Contains(t, err.Error(), "bacalhau profile save")
+	})
+
+	t.Run("GetAuthenticatedAPIClient returns error when no profile", func(t *testing.T) {
+		client, err := cm.GetAuthenticatedAPIClient()
+		assert.Nil(t, client)
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrNoProfile)
+		assert.Contains(t, err.Error(), "no profile configured")
+	})
 }

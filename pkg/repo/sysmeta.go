@@ -17,11 +17,13 @@ const UnknownVersion = -1
 const (
 	// Version4 is the latest version starting from v1.5.0
 	Version4 = 4
+	// Version5 adds CLI profiles for managing multiple Bacalhau clusters
+	Version5 = 5
 )
 
 // IsValidVersion returns true if the version is valid.
 func IsValidVersion(version int) bool {
-	return version >= Version4 && version <= Version4
+	return version >= Version4 && version <= Version5
 }
 
 // SystemMetadataFile is the name of the file containing the SystemMetadata.

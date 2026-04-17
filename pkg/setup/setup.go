@@ -10,10 +10,13 @@ import (
 	"github.com/bacalhau-project/bacalhau/pkg/config"
 	"github.com/bacalhau-project/bacalhau/pkg/config/types"
 	"github.com/bacalhau-project/bacalhau/pkg/repo"
+	"github.com/bacalhau-project/bacalhau/pkg/repo/migrations"
 )
 
 func SetupMigrationManager() (*repo.MigrationManager, error) {
-	return repo.NewMigrationManager()
+	return repo.NewMigrationManager(
+		repo.NewMigration(repo.Version4, repo.Version5, migrations.V4ToV5),
+	)
 }
 
 // SetupBacalhauRepo ensures that a bacalhau repo and config exist and are initialized.

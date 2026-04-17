@@ -52,7 +52,7 @@ func buildDockerImage(dockerfilePath, imageName, imageTag string) error {
 	}
 
 	// Verify that the image was really built
-	_, _, err = cli.ImageInspectWithRaw(context.Background(), fmt.Sprintf("%s:%s", imageName, imageTag))
+	_, err = cli.ImageInspect(context.Background(), fmt.Sprintf("%s:%s", imageName, imageTag))
 	if err != nil {
 		return fmt.Errorf("unable to find image  %s:%s. Error: %v", imageName, imageTag, err)
 	}

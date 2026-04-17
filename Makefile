@@ -129,28 +129,12 @@ build-python-sdk:
 	cd python && ${EARTHLY} --push +build --PYPI_VERSION=${PYPI_VERSION}
 	@echo "Python SDK built."
 
-################################################################################
-# Target: build-bacalhau-airflow
-################################################################################
-.PHONY: build-bacalhau-airflow
-build-bacalhau-airflow: resolve-earthly
-	cd integration/airflow && ${MAKE} clean all
-	@echo "Python bacalhau-airflow built."
-
-################################################################################
-# Target: build-bacalhau-flyte
-################################################################################
-.PHONY: build-bacalhau-flyte
-build-bacalhau-flyte:
-	cd integration/flyte && ${MAKE} all
-	@echo "Python bacalhau-flyte built."
-
 # Builds all python packages
 ################################################################################
 # Target: build-python
 ################################################################################
 .PHONY: build-python
-build-python: build-python-apiclient build-python-sdk build-bacalhau-airflow
+build-python: build-python-apiclient build-python-sdk
 
 ################################################################################
 # Target: release-python-apiclient
@@ -167,22 +151,6 @@ release-python-apiclient: resolve-earthly
 release-python-sdk: build-python-sdk
 	cd python && ${MAKE} publish
 	@echo "Python SDK pushed to PyPi."
-
-################################################################################
-# Target: release-bacalhau-airflow
-################################################################################
-.PHONY: release-bacalhau-airflow
-release-bacalhau-airflow: resolve-earthly
-	cd integration/airflow && ${MAKE} release
-	@echo "Python bacalhau-airflow pushed to PyPi."
-
-################################################################################
-# Target: release-bacalhau-flyte
-################################################################################
-.PHONY: release-bacalhau-flyte
-release-bacalhau-flyte: resolve-earthly
-	cd integration/flyte && ${MAKE} release
-	@echo "Python flyteplugins-bacalhau pushed to PyPi."
 
 ################################################################################
 # Target: build
