@@ -29,6 +29,10 @@ func (m *MockFloat64Histogram) Record(ctx context.Context, value float64, opts .
 	m.Called(ctx, value, opts)
 }
 
+func (m *MockFloat64Histogram) Enabled(ctx context.Context) bool {
+	return true
+}
+
 // MockInt64Counter implements metric.Int64Counter for testing
 type MockInt64Counter struct {
 	embedded.Int64Counter
@@ -39,6 +43,10 @@ func (m *MockInt64Counter) Add(ctx context.Context, value int64, opts ...metric.
 	m.Called(ctx, value, opts)
 }
 
+func (m *MockInt64Counter) Enabled(ctx context.Context) bool {
+	return true
+}
+
 // MockFloat64UpDownCounter implements metric.Float64UpDownCounter for testing
 type MockFloat64UpDownCounter struct {
 	embedded.Float64UpDownCounter
@@ -47,6 +55,10 @@ type MockFloat64UpDownCounter struct {
 
 func (m *MockFloat64UpDownCounter) Add(ctx context.Context, value float64, opts ...metric.AddOption) {
 	m.Called(ctx, value, opts)
+}
+
+func (m *MockFloat64UpDownCounter) Enabled(ctx context.Context) bool {
+	return true
 }
 
 type MetricRecorderTestSuite struct {
