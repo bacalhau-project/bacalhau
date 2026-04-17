@@ -107,7 +107,7 @@ func getFreePortFromSystem() (int, error) {
 // this check returns.
 func IsPortOpen(port int) bool {
 	addr := net.JoinHostPort("", strconv.Itoa(port))
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", addr) //nolint:noctx
 	if err != nil {
 		return false
 	}
