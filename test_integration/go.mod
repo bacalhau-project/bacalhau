@@ -2,8 +2,6 @@ module bacalhau/integration_tests
 
 go 1.25.5
 
-toolchain go1.25.5
-
 require (
 	github.com/PaesslerAG/jsonpath v0.1.1
 	github.com/docker/compose/v2 v2.40.3

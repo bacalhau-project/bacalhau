@@ -91,7 +91,7 @@ func (s *Store) Load(name string) (*Profile, error) {
 		return nil, err
 	}
 	path := s.profilePath(name)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // path is built from validated name within s.dir
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("profile %q not found", name)
@@ -116,7 +116,7 @@ func (s *Store) Delete(name string) error {
 	current, _ := s.GetCurrent()
 	if current == name {
 		// Remove the current symlink
-		os.Remove(s.currentPath())
+		_ = os.Remove(s.currentPath())
 	}
 
 	path := s.profilePath(name)
@@ -169,7 +169,7 @@ func (s *Store) SetCurrent(name string) error {
 
 	currentPath := s.currentPath()
 	// Remove existing symlink if present
-	os.Remove(currentPath)
+	_ = os.Remove(currentPath)
 
 	// Create relative symlink
 	target := sanitizeName(name) + profileExtension

@@ -15,6 +15,7 @@ formatters:
       - testdata
       - webui/webui.go
       - pkg/swagger/docs.go
+      - node_modules
   enable:
     - gofmt
     - goimports
@@ -56,6 +57,7 @@ linters:
       - testdata
       - webui/webui.go
       - pkg/swagger/docs.go
+      - node_modules
     rules:
       # Naming of `error` variables as `err` is standard practice for Go
       - text: 'shadow: declaration of "err" shadows declaration at'

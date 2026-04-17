@@ -80,14 +80,14 @@ func V4ToV5(r repo.FsRepo) error {
 // migrateTokensFile reads tokens.json and creates profiles for each entry.
 // Returns the list of created profile names.
 func migrateTokensFile(store *profile.Store, tokensPath string) ([]string, error) {
-	file, err := os.Open(tokensPath)
+	file, err := os.Open(tokensPath) //nolint:gosec // path is a migration artifact at a known repo location
 	if os.IsNotExist(err) {
 		log.Debug().Msg("tokens.json not found, skipping")
 		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("opening tokens.json: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Check if file is empty
 	info, err := file.Stat()
