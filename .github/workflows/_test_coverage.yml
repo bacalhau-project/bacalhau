@@ -29,7 +29,10 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.work
+          # gocovmerge@latest transitively requires golang.org/x/tools which
+          # bumped its floor to Go 1.25. This job only runs gocovmerge against
+          # coverage files, so it is safe to use a newer Go here than go.work.
+          go-version: '1.25'
 
       - name: Install gocovmerge
         run: go install github.com/wadey/gocovmerge@latest
