@@ -29,7 +29,7 @@
     "lucide-react": "^0.438.0",
     "next": "^15.5.15",
     "next-themes": "^0.3.0",
-    "react": "^18",
+    "react": "^19",
     "react-dom": "^18",
     "react-syntax-highlighter": "^15.5.0",
     "tailwind-merge": "^2.5.2",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@hey-api/openapi-ts": "0.53.0",
     "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/react": "^19",
     "@types/react-dom": "^18",
     "@types/react-syntax-highlighter": "^15",
     "eslint": "^8",
@@ -52,7 +52,7 @@
     "typescript": "^5"
   },
   "resolutions": {
-    "@types/react": "^18",
+    "@types/react": "^19",
     "@types/react-dom": "^18",
     "handlebars": "^4.7.9",
     "tar": "^7.5.11",
