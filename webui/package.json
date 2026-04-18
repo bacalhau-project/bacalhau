@@ -42,7 +42,7 @@
     "@types/react-dom": "^18",
     "@types/react-syntax-highlighter": "^15",
     "eslint": "^8",
-    "eslint-config-next": "14.2.7",
+    "eslint-config-next": "16.2.4",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "openapi-typescript-codegen": "^0.29.0",
