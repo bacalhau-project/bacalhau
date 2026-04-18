@@ -53,7 +53,11 @@
   },
   "resolutions": {
     "@types/react": "^18",
-    "@types/react-dom": "^18"
+    "@types/react-dom": "^18",
+    "handlebars": "^4.7.9",
+    "tar": "^7.5.11",
+    "minimatch": "^9.0.7",
+    "glob": "^10.5.0"
   },
   "packageManager": "yarn@4.4.1"
 }
