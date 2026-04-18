@@ -4,7 +4,7 @@ charset-normalizer==2.1.0; python_version >= "3.7" and python_version < "4" and 
 google-api-core==2.30.3; python_version >= "3.7"
 google-auth==2.49.2; python_version >= "3.7" and python_full_version < "3.0.0" or python_full_version >= "3.6.0" and python_version >= "3.7"
 google-cloud-core==2.5.1; python_version >= "3.7"
-google-cloud-storage==2.5.0; python_version >= "3.7"
+google-cloud-storage==3.10.1; python_version >= "3.7"
 google-crc32c==1.8.0; python_version >= "3.7"
 google-resumable-media==2.8.2; python_version >= "3.7"
 googleapis-common-protos==1.74.0; python_version >= "3.7"
