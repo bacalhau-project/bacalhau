@@ -55,7 +55,15 @@ func (s *MinVersionNodeRanker) RankNodes(ctx context.Context, job models.Job, no
 }
 
 func (s *MinVersionNodeRanker) isCompatibleVersion(nodeVersion models.BuildVersionInfo) bool {
-	// we assume development version is always latest and compatible
+	// Treat any Major=0 Minor=0 (e.g. v0.0.0, v0.0.0-xxxxxxx, v0.0.0-smoke,
+	// v0.0.0-<sha>) as a development build and always compatible. Production
+	// builds are versioned v1+ so this cannot mistakenly admit a real release
+	// with an incompatible minimum.
+	if nodeVersion.Major == "0" && nodeVersion.Minor == "0" {
+		return true
+	}
+	// Backward compatibility: match the exact Development sentinel if someone
+	// set only GitVersion without populating Major/Minor.
 	if s.match(nodeVersion, developmentVersion) {
 		return true
 	}
