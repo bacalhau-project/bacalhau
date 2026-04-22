@@ -8,7 +8,7 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "^3.10.5"
 pre-commit = ">=2.20,<5.0"
-sgqlc = "^16.0"
+sgqlc = ">=16,<19"
 semver = "^2.13.0"
 ruff = ">=0.2.1,<0.16.0"
 python-dotenv = "^1.0.1"
