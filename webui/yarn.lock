@@ -4087,12 +4087,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^0.438.0":
-  version: 0.438.0
-  resolution: "lucide-react@npm:0.438.0"
+"lucide-react@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "lucide-react@npm:1.8.0"
   peerDependencies:
-    react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
-  checksum: 10c0/d5e9e9130e301b3231fffd3e5fab85975a7523fb5ab160a8125ad6937de713af46d0ac7a96c1ba532b9ff39a14d940aefa9ea41cb30123ff7f8ce88f44cfe2f1
+    react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/f7398f89a0f5b2cbfd1b7a7f6b2f00b0abd05d4b21d948bbd281ab141c42cdff9f1d2aed4e32b78b4bbdfa78308b6577705698af8bf9945bad23ed7d56e255b4
   languageName: node
   linkType: hard
 
@@ -5975,11 +5975,11 @@ __metadata:
 
 "typescript@patch:typescript@npm%3A^5#optional!builtin<compat/typescript>":
   version: 5.9.3
-  resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
+  resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=8c6c40"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10c0/ad09fdf7a756814dce65bc60c1657b40d44451346858eea230e10f2e95a289d9183b6e32e5c11e95acc0ccc214b4f36289dcad4bf1886b0adb84d711d336a430
+  checksum: 10c0/6f7e53bf0d9702350deeb6f35e08b69cbc8b958c33e0ec77bdc0ad6a6c8e280f3959dcbfde6f5b0848bece57810696489deaaa53d75de3578ff255d168c1efbd
   languageName: node
   linkType: hard
 
@@ -6166,7 +6166,7 @@ __metadata:
     eslint-config-next: "npm:14.2.7"
     eslint-config-prettier: "npm:^9.1.0"
     eslint-plugin-prettier: "npm:^5.2.1"
-    lucide-react: "npm:^0.438.0"
+    lucide-react: "npm:^1.8.0"
     next: "npm:^15.5.15"
     next-themes: "npm:^0.3.0"
     openapi-typescript-codegen: "npm:^0.29.0"
