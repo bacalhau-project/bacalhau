@@ -51,15 +51,24 @@ func Get() *models.BuildVersionInfo {
 		log.Fatal().Err(err).Msg("Could not build client information")
 	}
 
-	s, err := semver.NewVersion(GITVERSION)
+	gitVersion := GITVERSION
+	s, err := semver.NewVersion(gitVersion)
 	if err != nil {
-		log.Fatal().Msgf("Could not parse GITVERSION during build - %s", GITVERSION)
+		// A malformed ldflags-injected version (e.g. "smoke-test" instead of a
+		// semver) used to log.Fatal here, which took down the whole process at
+		// startup. Downgrade to a warning and fall back to the Development
+		// sentinel end-to-end — including GitVersion itself, since other
+		// callers (pkg/publicapi/server.go, analytics) re-parse GitVersion
+		// directly and would otherwise fail the same way.
+		log.Warn().Msgf("Could not parse GITVERSION %q as semver; falling back to %s", gitVersion, DevelopmentGitVersion)
+		s = Development
+		gitVersion = DevelopmentGitVersion
 	}
 
 	versionInfo := &models.BuildVersionInfo{
 		Major:      strconv.FormatInt(s.Major(), 10),
 		Minor:      strconv.FormatInt(s.Minor(), 10),
-		GitVersion: GITVERSION,
+		GitVersion: gitVersion,
 		GitCommit:  revision,
 		BuildDate:  revisionTime,
 		GOOS:       runtime.GOOS,

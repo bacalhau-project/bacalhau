@@ -52,8 +52,8 @@ func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManag
 		log.Debug().Err(err).Msg("Failed to load profile")
 	}
 
-	// Priority: explicit --api-host/--api-port flags > profile > default
-	// This ensures CLI flags always take precedence over profiles
+	// Priority: explicit --api-host/--api-port flags > profile > default localhost
+	// This ensures CLI flags always take precedence over profiles.
 	if apiEndpointExplicitlySet(cfg.API) {
 		// Use explicit --api-host/--api-port flags if provided
 		cm.baseURL, _ = ConstructAPIEndpoint(cfg.API)
@@ -64,9 +64,15 @@ func NewAPIClientManager(cmd *cobra.Command, cfg types.Bacalhau) *APIClientManag
 		cm.profileName = name
 		cm.baseURL = p.Endpoint
 		log.Debug().Str("profile", name).Str("endpoint", p.Endpoint).Msg("Using profile for API connection")
+	} else {
+		// Neither explicit flags nor a profile — fall back to the config
+		// defaults (127.0.0.1:1234). This makes local health checks like
+		// `bacalhau agent alive` work out of the box against a co-located
+		// node without requiring `bacalhau profile save` first. HTTP calls
+		// still fail naturally if no server is listening.
+		cm.baseURL, _ = ConstructAPIEndpoint(cfg.API)
+		log.Debug().Str("endpoint", cm.baseURL).Msg("No profile configured; falling back to default localhost endpoint")
 	}
-	// If neither explicit flags nor profile are set, baseURL will be empty
-	// and client calls will fail with a clear error message.
 
 	return cm
 }
