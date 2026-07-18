@@ -6,7 +6,7 @@ authors = ["David Aronchick <aronchick@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-google-cloud-storage = "^3.10.1"
+google-cloud-storage = "^3.13.0"
 python-dotenv = "^1.2.2"
 
 [tool.poetry.dev-dependencies]

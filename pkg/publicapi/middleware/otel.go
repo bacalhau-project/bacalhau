@@ -29,7 +29,7 @@ func Otel() echo.MiddlewareFunc {
 					}
 				}),
 				"",
-				otelhttp.WithPublicEndpoint(),
+				otelhttp.WithPublicEndpointFn(func(*http.Request) bool { return true }),
 			)
 
 			handler.ServeHTTP(w, r)

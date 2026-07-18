@@ -24,15 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          # gocovmerge@latest transitively requires golang.org/x/tools which
-          # bumped its floor to Go 1.25. This job only runs gocovmerge against
-          # coverage files, so it is safe to use a newer Go here than go.work.
-          go-version: '1.25'
+          go-version-file: go.work
 
       - name: Install gocovmerge
         run: go install github.com/wadey/gocovmerge@latest
@@ -45,18 +42,19 @@ jobs:
         run: |
           # Convert the JSON array to a space-separated list for use in bash
           REPORT_NAMES=$(echo '${{ inputs.coverage_reports }}' | jq -r '.[]' | tr '\n' ' ' | xargs)
-          echo "report_names=$REPORT_NAMES" >> $GITHUB_OUTPUT
+          echo "report_names=$REPORT_NAMES" >> "$GITHUB_OUTPUT"
           echo "Reports to combine: $REPORT_NAMES"
 
       - name: Download coverage artifacts
         run: |
           # Download each report artifact to its own directory
-          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
+          read -r -a report_names <<< "${{ steps.parse-reports.outputs.report_names }}"
+          for report_name in "${report_names[@]}"; do
             echo "Downloading $report_name artifacts..."
-            mkdir -p artifacts/$report_name
+            mkdir -p "artifacts/$report_name"
             
             # Use GitHub CLI to download the artifacts
-            gh run download --name "${report_name}-reports" --dir artifacts/$report_name
+            gh run download --name "${report_name}-reports" --dir "artifacts/$report_name"
           done
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -65,37 +63,39 @@ jobs:
         id: combine
         run: |
           # Check for all coverage files and add to a list
-          COVERAGE_FILES=""
-          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
+          COVERAGE_FILES=()
+          read -r -a report_names <<< "${{ steps.parse-reports.outputs.report_names }}"
+          for report_name in "${report_names[@]}"; do
             COVERAGE_FILE="artifacts/${report_name}/coverage/${report_name}.coverage"
             if [ -f "$COVERAGE_FILE" ]; then
               echo "Found coverage file: $COVERAGE_FILE"
-              COVERAGE_FILES="$COVERAGE_FILES $COVERAGE_FILE"
+              COVERAGE_FILES+=("$COVERAGE_FILE")
             else
               echo "Warning: Coverage file not found: $COVERAGE_FILE"
               # List files in the directory to aid debugging
-              find artifacts/${report_name} -type f | sort
+              find "artifacts/${report_name}" -type f | sort
             fi
           done
           
-          if [ -z "$COVERAGE_FILES" ]; then
+          if [ "${#COVERAGE_FILES[@]}" -eq 0 ]; then
             echo "No coverage files found. Exiting."
             exit 1
           fi
           
           # Merge the coverage files
-          echo "Merging coverage files: $COVERAGE_FILES"
-          gocovmerge $COVERAGE_FILES > coverage/${{ inputs.output_name }}.coverage
+          OUTPUT_PATH="coverage/${{ inputs.output_name }}"
+          echo "Merging coverage files: ${COVERAGE_FILES[*]}"
+          gocovmerge "${COVERAGE_FILES[@]}" > "${OUTPUT_PATH}.coverage"
           
           # Generate HTML report
-          go tool cover -html=coverage/${{ inputs.output_name }}.coverage -o coverage/${{ inputs.output_name }}.html
+          go tool cover -html="${OUTPUT_PATH}.coverage" -o "${OUTPUT_PATH}.html"
           
           # Generate functional coverage summary
-          go tool cover -func=coverage/${{ inputs.output_name }}.coverage | tee coverage/${{ inputs.output_name }}-summary.txt
+          go tool cover -func="${OUTPUT_PATH}.coverage" | tee "${OUTPUT_PATH}-summary.txt"
           
           # Extract total coverage percentage for the job summary
-          TOTAL_COV=$(go tool cover -func=coverage/${{ inputs.output_name }}.coverage | grep total | awk '{print $3}')
-          echo "total_coverage=$TOTAL_COV" >> $GITHUB_OUTPUT
+          TOTAL_COV=$(go tool cover -func="${OUTPUT_PATH}.coverage" | grep total | awk '{print $3}')
+          echo "total_coverage=$TOTAL_COV" >> "$GITHUB_OUTPUT"
 
       - name: Upload combined coverage report
         uses: actions/upload-artifact@v7
@@ -109,13 +109,16 @@ jobs:
 
       - name: Write job summary
         run: |
-          echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📊 Total coverage: **${{ steps.combine.outputs.total_coverage }}**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Reports Combined" >> $GITHUB_STEP_SUMMARY
-          for report_name in ${{ steps.parse-reports.outputs.report_names }}; do
-            echo "- $report_name" >> $GITHUB_STEP_SUMMARY
-          done
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Full coverage report is available as an artifact." >> $GITHUB_STEP_SUMMARY
+          read -r -a report_names <<< "${{ steps.parse-reports.outputs.report_names }}"
+          {
+            echo "## Coverage Summary"
+            echo ""
+            echo "📊 Total coverage: **${{ steps.combine.outputs.total_coverage }}**"
+            echo ""
+            echo "### Reports Combined"
+            for report_name in "${report_names[@]}"; do
+              echo "- $report_name"
+            done
+            echo ""
+            echo "Full coverage report is available as an artifact."
+          } >> "$GITHUB_STEP_SUMMARY"

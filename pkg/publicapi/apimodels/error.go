@@ -129,6 +129,6 @@ func (e *APIError) ToBacError() bacerrors.Error {
 		WithHTTPStatusCode(e.HTTPStatusCode).
 		WithCode(bacerrors.Code(e.Code)).
 		WithComponent(e.Component).
-		WithHint(e.Hint).
+		WithHint("%s", e.Hint).
 		WithDetails(details)
 }

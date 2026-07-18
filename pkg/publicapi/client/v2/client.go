@@ -346,7 +346,7 @@ func (c *httpClient) interceptError(
 					hint += `
 3. If you are trying to reach the demo network, use '--api-host=bootstrap.demo.bacalhau.org' to call the network`
 				}
-				bacErr = bacErr.WithHint(hint)
+				bacErr = bacErr.WithHint("%s", hint)
 			}
 		}
 	}()

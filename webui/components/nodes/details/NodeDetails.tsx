@@ -16,12 +16,13 @@ const NodeDetails = ({ nodeId }: { nodeId: string }) => {
   } = useApiOperation<models_NodeState>()
 
   const fetchNodeData = useCallback(() => {
-    execute(() =>
-      Orchestrator.getNode({
+    execute(async () => {
+      const response = await Orchestrator.getNode({
         path: { id: nodeId },
         throwOnError: true,
-      }).then((response) => response.data.Node!)
-    )
+      })
+      return response.data.Node!
+    })
   }, [execute, nodeId])
 
   useEffect(() => {

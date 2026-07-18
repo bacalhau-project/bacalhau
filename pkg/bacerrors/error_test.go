@@ -40,7 +40,7 @@ func (suite *ErrorTestSuite) TestErrorWithFormattedMessage() {
 func (suite *ErrorTestSuite) TestErrorWithHint() {
 	message := "TestMessage"
 	hint := "TestHint"
-	err := New(message).WithHint(hint)
+	err := New(message).WithHint("%s", hint)
 
 	suite.Equal(message, err.Error())
 	suite.Equal(hint, err.Hint())

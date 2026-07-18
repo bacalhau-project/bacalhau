@@ -11,7 +11,7 @@ on:
       golangci_lint_version:
         description: 'Version of golangci-lint to use'
         required: false
-        default: 'v2.8.0'
+        default: 'v2.12.2'
         type: string
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Setup Go with caching
       - name: Setup Go
@@ -51,20 +51,21 @@ jobs:
 
       # Run golangci-lint
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v9.2.0
+        uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: ${{ inputs.golangci_lint_version }}
           args: --timeout=5m --verbose
+          only-new-issues: true
 
       # Summarize results
       - name: Summary
         if: always()
         run: |
-          echo "## Static Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Static Analysis Results" >> "$GITHUB_STEP_SUMMARY"
           
           # Check if there were any failures and report them
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ All static analysis checks passed!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All static analysis checks passed!" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "❌ Some static analysis checks failed. Please see the job logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some static analysis checks failed. Please see the job logs for details." >> "$GITHUB_STEP_SUMMARY"
           fi
