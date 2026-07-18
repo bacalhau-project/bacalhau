@@ -1,3 +1,3 @@
 module github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/client
 
-go 1.26.4
+go 1.26.5

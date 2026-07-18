@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -60,9 +59,9 @@ func NewDockerError(err error) (bacErr bacerrors.Error) {
 		return bacerrors.Newf("%s", err).
 			WithCode(Forbidden).
 			WithHTTPStatusCode(http.StatusForbidden).
-			WithHint(fmt.Sprintf("You don't have permission to perform this action. "+
+			WithHint("You don't have permission to perform this action. "+
 				"Supply the node with valid Docker login credentials using the %s and %s environment variables",
-				UsernameEnvVar, PasswordEnvVar))
+				UsernameEnvVar, PasswordEnvVar)
 	case errdefs.IsDataLoss(err):
 		return bacerrors.Newf("%s", err).
 			WithCode(DataLoss).
@@ -120,10 +119,10 @@ func NewDockerImageError(err error, image string) (bacErr bacerrors.Error) {
 	switch {
 	case errdefs.IsNotFound(err) || errdefs.IsPermissionDenied(err):
 		return bacerrors.Newf("image not available: %q", image).
-			WithHint(fmt.Sprintf(`To resolve this, either:
+			WithHint(`To resolve this, either:
 1. Check if the image exists in the registry and the name is correct
 2. If the image is private, supply the node with valid Docker login credentials using the %s and %s environment variables`,
-				UsernameEnvVar, PasswordEnvVar)).
+				UsernameEnvVar, PasswordEnvVar).
 			WithCode(ImageNotFound)
 	case errdefs.IsInvalidArgument(err):
 		return bacerrors.Newf("invalid image format: %q", image).

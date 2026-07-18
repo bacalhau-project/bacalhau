@@ -69,7 +69,7 @@ func (o *SSOLoginOptions) runSSOLogin(cmd *cobra.Command, api client.API, cfg ty
 	authTokenPath, err := cfg.JWTTokensPath()
 	if err != nil {
 		log.Debug().Err(err).Msg("failed to get JWTTokensPath path")
-		return bacerrors.New("unable to save temporary SSO credentials").WithHint(errorHint)
+		return bacerrors.New("unable to save temporary SSO credentials").WithHint("%s", errorHint)
 	}
 
 	// Get the node auth config which contains OAuth2 settings

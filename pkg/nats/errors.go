@@ -50,7 +50,7 @@ func interceptConnectionError(err error, servers string) error {
 		return bacerrors.Newf("no orchestrator available for connection at %s", servers).
 			WithComponent(transportClientComponent).
 			WithCode(bacerrors.ConfigurationError).
-			WithHint(hint)
+			WithHint("%s", hint)
 	default:
 		return bacerrors.Wrapf(err, "failed to connect to %s", servers).
 			WithComponent(transportClientComponent).

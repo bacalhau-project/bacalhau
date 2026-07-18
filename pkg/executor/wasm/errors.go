@@ -1,7 +1,6 @@
 package wasm
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -75,11 +74,11 @@ func NewUnknownModuleError(moduleName string) bacerrors.Error {
 		WithCode(UnknownModuleError).
 		WithHTTPStatusCode(http.StatusBadRequest).
 		WithComponent(Component).
-		WithHint(fmt.Sprintf(`To resolve this:
+		WithHint(`To resolve this:
 1. Check if the module name is correct
 2. Ensure the module is available in the job's input sources
 3. Verify the module's target name matches the import name
-4. If using WASI, make sure the module name matches %q`, wasi_snapshot_preview1.ModuleName))
+4. If using WASI, make sure the module name matches %q`, wasi_snapshot_preview1.ModuleName)
 }
 
 // NewSpecError creates an error when there's an issue with the WASM spec

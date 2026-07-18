@@ -1,6 +1,6 @@
 module http-test
 
-go 1.26.4
+go 1.26.5
 
 require github.com/bacalhau-project/bacalhau/pkg/executor/wasm/funcs/http/client v0.0.0
 

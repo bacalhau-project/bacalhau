@@ -185,7 +185,7 @@ func (cl Client) Put(ctx context.Context, inputPath string) (string, error) {
 
 	// Pin uploaded file/directory to local storage to prevent deletion by GC.
 	addOptions := []icoreoptions.UnixfsAddOption{
-		icoreoptions.Unixfs.Pin(true),
+		icoreoptions.Unixfs.Pin(true, ""),
 	}
 
 	ipfsPath, err := cl.API.Unixfs().Add(ctx, node, addOptions...)

@@ -175,7 +175,7 @@ func (driver *StorageProvider) createVolumeIfNotExists(source Source) error {
 	case NoCreate:
 		// the volume does not exist and we can't create it, return error
 		return bacerrors.Newf("volume does not exist at %s and creation is not allowed", source.SourcePath).
-			WithHint(fmt.Sprintf("If you want the job to create the volume, set the CreateAs property to either '%s' or '%s'", Dir, File))
+			WithHint("If you want the job to create the volume, set the CreateAs property to either '%s' or '%s'", Dir, File)
 	case Dir:
 		err := os.MkdirAll(source.SourcePath, util.OS_USER_RWX)
 		if err != nil {
