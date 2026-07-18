@@ -63,27 +63,6 @@ updates:
           - "minor"
           - "patch"
 
-  # Python/pip - integration/airflow
-  - package-ecosystem: "pip"
-    directory: "/integration/airflow"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "lang/python"
-      - "dependencies"
-      - "integration"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "deps"
-      include: "scope"
-    groups:
-      pip-airflow-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
   # Python/pip - ops
   - package-ecosystem: "pip"
     directory: "/ops"
