@@ -28,7 +28,7 @@ COPY ./ /bacalhau_integration_tests
 COPY ./common_assets/bacalhau_bin /usr/local/bin/bacalhau
 RUN chmod +x /usr/local/bin/bacalhau
 
-# Download the minio cli binary, make it executable, and move it to /usr/local/bin
-RUN curl -o /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x /tmp/mc \
-    && mv /tmp/mc /usr/local/bin/
+# Download the MinIO CLI, following the release redirect, and validate it at build time.
+RUN curl -fsSL -o /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
+    && chmod +x /usr/local/bin/mc \
+    && /usr/local/bin/mc --version
