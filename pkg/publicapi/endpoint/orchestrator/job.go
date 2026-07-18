@@ -376,6 +376,7 @@ func (e *Endpoint) rerunJob(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id				path		string	true	"ID to get the job history for"
+//	@Param			limit			query		int		false	"Limit the number of history events returned"
 //	@Param			since			query		string	false	"Only return history since this time"
 //	@Param			event_type		query		string	false	"Only return history of this event type"
 //	@Param			execution_id	query		string	false	"Only return history of this execution ID"

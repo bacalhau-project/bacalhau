@@ -17,15 +17,16 @@ const JobDetails = ({ jobId }: { jobId: string }) => {
   } = useApiOperation<apimodels_GetJobResponse>()
 
   const fetchJobData = useCallback(() => {
-    execute(() =>
-      Orchestrator.getJob({
+    execute(async () => {
+      const response = await Orchestrator.getJob({
         path: { id: jobId },
         query: {
           include: 'executions',
         },
         throwOnError: true,
-      }).then((response) => response.data)
-    )
+      })
+      return response.data
+    })
   }, [execute, jobId])
 
   useEffect(() => {

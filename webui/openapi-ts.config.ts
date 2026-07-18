@@ -1,32 +1,45 @@
 import { defineConfig } from '@hey-api/openapi-ts'
 
 export default defineConfig({
-  client: '@hey-api/client-fetch',
   input: 'lib/api/schema/swagger.json',
   output: {
     path: 'lib/api/generated',
-    format: 'prettier',
-    lint: 'eslint',
+    postProcess: ['prettier'],
   },
-  types: {
-    enums: 'typescript',
-  },
-  services: {
-    asClass: true,
-    name: '{{name}}', // This removes the 'Service' suffix
-    methodNameBuilder: (operation) => {
-      let methodName = operation.name
-      if (
-        operation.service &&
-        methodName.toLowerCase().startsWith(operation.service.toLowerCase())
-      ) {
-        methodName = methodName.slice(operation.service.length)
-      }
-      // Ensure the first letter is lowercase
-      return methodName.charAt(0).toLowerCase() + methodName.slice(1)
+  plugins: [
+    '@hey-api/client-fetch',
+    {
+      name: '@hey-api/typescript',
+      enums: {
+        mode: 'typescript',
+        case: 'PascalCase',
+      },
+      definitions: {
+        name: (name) => name.replaceAll('.', '_').replaceAll('-', '_'),
+        case: 'preserve',
+      },
     },
-  },
-  schemas: {
-    export: false,
-  },
+    {
+      name: '@hey-api/sdk',
+      operations: {
+        strategy: 'byTags',
+        methods: 'static',
+        nesting: (operation) => {
+          const segments = (operation.operationId ?? operation.id).split(/[./]/)
+          if (operation.tags?.includes('Ops')) {
+            return [
+              segments
+                .map((segment, index) =>
+                  index === 0
+                    ? segment
+                    : segment.charAt(0).toUpperCase() + segment.slice(1)
+                )
+                .join(''),
+            ]
+          }
+          return [segments.at(-1) ?? operation.id]
+        },
+      },
+    },
+  ],
 })

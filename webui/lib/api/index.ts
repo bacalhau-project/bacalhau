@@ -1,4 +1,4 @@
-import { client } from './generated'
+import { client } from './generated/client.gen'
 import { useState, useEffect } from 'react'
 
 export function initializeApi(): void {
@@ -15,4 +15,3 @@ export function useApiInitialization() {
 
   return isInitialized
 }
-
