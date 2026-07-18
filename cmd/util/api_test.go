@@ -152,6 +152,14 @@ func TestParseURL(t *testing.T) {
 			expectedURL:      "",
 			expectedScheme:   "",
 		},
+		{
+			name:             "Malformed host with multiple ports",
+			input:            "http://example.com:80:90",
+			defaultPort:      80,
+			expectedValidity: false,
+			expectedURL:      "",
+			expectedScheme:   "",
+		},
 
 		// Invalid URLs - IPv4
 		{

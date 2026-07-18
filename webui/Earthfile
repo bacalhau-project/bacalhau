@@ -6,7 +6,7 @@ WORKDIR /code
 setup-yarn:
     RUN corepack enable && \
         yarn init -2 && \
-        yarn set version 4.4.1
+        yarn set version 4.9.2
     COPY .yarnrc.yml ./
 
 copy-deps-files:
@@ -21,7 +21,7 @@ copy-code:
     FROM +install-deps
     COPY --dir app components hooks lib ./
     COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json ./
-    COPY .eslintrc.json .prettierrc ./
+    COPY .eslintrc.json .prettierrc global.d.ts ./
 
 run-linter:
     FROM +copy-code

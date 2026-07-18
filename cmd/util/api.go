@@ -282,6 +282,7 @@ func ConstructAPIEndpoint(apiCfg types.API) (string, string) {
 func parseURL(rawURL string, defaultPort int) (bool, string, string) {
 	// Remove any whitespace
 	rawURL = strings.TrimSpace(rawURL)
+	rawURL = normalizeUnbracketedIPv6URL(rawURL)
 
 	// Parse the URL
 	parsedURL, err := url.Parse(rawURL)
@@ -325,6 +326,26 @@ func parseURL(rawURL string, defaultPort int) (bool, string, string) {
 	finalURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, hostPort)
 
 	return true, finalURL, parsedURL.Scheme
+}
+
+func normalizeUnbracketedIPv6URL(rawURL string) string {
+	schemeEnd := strings.Index(rawURL, "://")
+	if schemeEnd == -1 {
+		return rawURL
+	}
+
+	authorityStart := schemeEnd + len("://")
+	authorityEnd := len(rawURL)
+	if suffixStart := strings.IndexAny(rawURL[authorityStart:], "/?#"); suffixStart != -1 {
+		authorityEnd = authorityStart + suffixStart
+	}
+
+	authority := rawURL[authorityStart:authorityEnd]
+	if !strings.Contains(authority, ":") || strings.HasPrefix(authority, "[") || net.ParseIP(authority) == nil {
+		return rawURL
+	}
+
+	return rawURL[:authorityStart] + "[" + authority + "]" + rawURL[authorityEnd:]
 }
 
 // resolveAuthCredentials processes authentication credentials and returns whether they should be used,
