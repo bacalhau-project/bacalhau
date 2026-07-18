@@ -1,0 +1,204 @@
+name: Weekly Dependency Release
+
+on:
+  schedule:
+    # Sunday at 23:00 UTC, after the Sunday dependency batch has had time to merge.
+    - cron: "0 23 * * 0"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: weekly-dependency-release
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Release Preflight
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    outputs:
+      next_tag: ${{ steps.release.outputs.next_tag }}
+      should_release: ${{ steps.release.outputs.should_release }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check dependency batch and calculate patch version
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          open_updates=$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --state open \
+            --label weekly-release \
+            --json number,title,url)
+
+          if [[ "$(jq 'length' <<< "${open_updates}")" -ne 0 ]]; then
+            echo "The weekly dependency batch still has open pull requests:"
+            jq -r '.[] | "#\(.number) \(.title) \(.url)"' <<< "${open_updates}"
+            exit 1
+          fi
+
+          latest_tag=$(gh release list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --exclude-drafts \
+            --exclude-pre-releases \
+            --limit 1 \
+            --json tagName \
+            --jq '.[0].tagName')
+
+          if [[ ! "${latest_tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Latest stable release is not a semantic version: ${latest_tag}"
+            exit 1
+          fi
+
+          latest_sha=$(git rev-list -n 1 "${latest_tag}")
+          if [[ "${latest_sha}" == "${GITHUB_SHA}" ]]; then
+            echo "No changes since ${latest_tag}; skipping release."
+            echo "should_release=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          next_tag="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
+          if git ls-remote --exit-code --tags origin "refs/tags/${next_tag}" >/dev/null 2>&1; then
+            echo "Tag already exists: ${next_tag}"
+            exit 1
+          fi
+
+          echo "next_tag=${next_tag}" >> "${GITHUB_OUTPUT}"
+          echo "should_release=true" >> "${GITHUB_OUTPUT}"
+          echo "Weekly release candidate: ${next_tag} at ${GITHUB_SHA}"
+
+  static-analysis:
+    name: Analyze
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
+    uses: ./.github/workflows/_static-analysis.yml
+    with:
+      go_version_file: go.work
+      golangci_lint_version: v2.12.2
+
+  unit-tests:
+    name: Unit Tests
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
+    uses: ./.github/workflows/_test.yml
+    with:
+      test_name: weekly-unit-tests
+      test_args: "-tags=unit"
+
+  integration-tests:
+    name: Integration Tests
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
+    uses: ./.github/workflows/_test.yml
+    with:
+      test_name: weekly-integration-tests
+      test_args: "-tags=integration"
+      install_ipfs: true
+
+  container-tests:
+    name: Container Tests
+    needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
+    uses: ./.github/workflows/_test_container.yml
+    with:
+      test_name: weekly-container-tests
+      test_working_dir: test_integration
+      build_mode: make
+      binary_output_path: common_assets/bacalhau_bin
+
+  combined-coverage:
+    name: Coverage
+    needs: [preflight, unit-tests, integration-tests]
+    if: needs.preflight.outputs.should_release == 'true'
+    uses: ./.github/workflows/_test_coverage.yml
+    with:
+      coverage_reports: '["weekly-unit-tests", "weekly-integration-tests"]'
+      output_name: weekly-combined
+      retention_days: 30
+
+  release:
+    name: Publish Patch Release
+    needs:
+      - preflight
+      - static-analysis
+      - unit-tests
+      - integration-tests
+      - container-tests
+      - combined-coverage
+    if: needs.preflight.outputs.should_release == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      actions: write
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NEXT_TAG: ${{ needs.preflight.outputs.next_tag }}
+    steps:
+      - name: Verify tested main commit
+        run: |
+          set -euo pipefail
+          main_sha=$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+          if [[ "${main_sha}" != "${GITHUB_SHA}" ]]; then
+            echo "main moved during validation: tested=${GITHUB_SHA} current=${main_sha}"
+            exit 1
+          fi
+
+      - name: Create draft release
+        id: create-release
+        run: |
+          gh release create "${NEXT_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "${NEXT_TAG}" \
+            --generate-notes \
+            --draft
+
+      - name: Publish binaries and images
+        id: publish
+        run: |
+          set -euo pipefail
+          dispatched_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          gh workflow run release.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref "${NEXT_TAG}" \
+            -f release_type=release
+
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --workflow release.yml \
+              --event workflow_dispatch \
+              --commit "${GITHUB_SHA}" \
+              --limit 10 \
+              --json databaseId,createdAt \
+              --jq "[.[] | select(.createdAt >= \"${dispatched_at}\")][0].databaseId // empty")
+            [[ -n "${run_id}" ]] && break
+            sleep 2
+          done
+
+          if [[ -z "${run_id}" ]]; then
+            echo "Unable to find the dispatched release workflow."
+            exit 1
+          fi
+
+          echo "Release workflow: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${run_id}"
+          gh run watch "${run_id}" --repo "${GITHUB_REPOSITORY}" --exit-status
+
+      - name: Publish release
+        if: steps.publish.outcome == 'success'
+        run: gh release edit "${NEXT_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false
+
+      - name: Remove failed draft release
+        if: failure() && steps.create-release.outcome == 'success'
+        run: gh release delete "${NEXT_TAG}" --repo "${GITHUB_REPOSITORY}" --cleanup-tag --yes || true
