@@ -156,12 +156,21 @@ jobs:
             exit 1
           fi
 
+      - name: Create release tag
+        id: create-tag
+        run: |
+          gh api \
+            --method POST \
+            "/repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${NEXT_TAG}" \
+            -f sha="${GITHUB_SHA}"
+
       - name: Create draft release
         id: create-release
         run: |
           gh release create "${NEXT_TAG}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --target "${GITHUB_SHA}" \
+            --verify-tag \
             --title "${NEXT_TAG}" \
             --generate-notes \
             --draft
@@ -202,6 +211,13 @@ jobs:
         if: steps.publish.outcome == 'success'
         run: gh release edit "${NEXT_TAG}" --repo "${GITHUB_REPOSITORY}" --draft=false
 
-      - name: Remove failed draft release
-        if: failure() && steps.create-release.outcome == 'success'
-        run: gh release delete "${NEXT_TAG}" --repo "${GITHUB_REPOSITORY}" --cleanup-tag --yes || true
+      - name: Remove failed draft release and tag
+        if: failure() && steps.create-tag.outcome == 'success'
+        run: |
+          gh release delete "${NEXT_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --cleanup-tag \
+            --yes || \
+          gh api \
+            --method DELETE \
+            "/repos/${GITHUB_REPOSITORY}/git/refs/tags/${NEXT_TAG}" || true
