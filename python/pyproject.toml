@@ -152,6 +152,10 @@ docstring-code-format = false
 # enabled.
 docstring-code-line-length = "dynamic"
 
+[[tool.mypy.overrides]]
+module = ["bacalhau_apiclient", "bacalhau_apiclient.*"]
+ignore_missing_imports = true
+
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/bacalhau-project/bacalhau/issues"
 

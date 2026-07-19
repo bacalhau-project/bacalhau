@@ -1,17 +1,11 @@
 import { client } from './generated/client.gen'
-import { useState, useEffect } from 'react'
 
 export function initializeApi(): void {
-  client.setConfig({ baseUrl: "" })
+  client.setConfig({ baseUrl: '' })
 }
 
+initializeApi()
+
 export function useApiInitialization() {
-  const [isInitialized, setIsInitialized] = useState(false)
-
-  useEffect(() => {
-    initializeApi()
-    setIsInitialized(true)
-  }, [])
-
-  return isInitialized
+  return true
 }

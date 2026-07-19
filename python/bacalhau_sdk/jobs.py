@@ -43,7 +43,7 @@ class Jobs:
         """
         return self.orchestrator_service.put_job(request)
 
-    def stop(self, job_id: str, reason: str = None) -> StopJobResponse:
+    def stop(self, job_id: str, reason: str | None = None) -> StopJobResponse:
         return self.orchestrator_service.stop_job(id=job_id, reason=reason)
 
     def executions(

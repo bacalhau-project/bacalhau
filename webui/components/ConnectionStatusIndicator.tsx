@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Wifi, WifiOff } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useConnectionMonitor } from '@/hooks/useConnectionMonitor'
@@ -14,14 +14,12 @@ import {
 export function ConnectionStatusIndicator() {
   const { isOnline } = useConnectionMonitor()
   const { toast } = useToast()
-  const [prevOnlineState, setPrevOnlineState] = useState<boolean | undefined>(
-    undefined
-  )
+  const prevOnlineState = useRef<boolean | undefined>(undefined)
 
   useEffect(() => {
     if (isOnline === undefined) return
 
-    if (!isOnline && prevOnlineState !== false) {
+    if (!isOnline && prevOnlineState.current !== false) {
       // Connection lost
       toast({
         variant: 'destructive',
@@ -29,7 +27,7 @@ export function ConnectionStatusIndicator() {
         description: `You are currently offline. Please check your connection and that Bacalhau is still running.`,
         duration: Infinity,
       })
-    } else if (isOnline && prevOnlineState === false) {
+    } else if (isOnline && prevOnlineState.current === false) {
       // Reconnected
       toast({
         className: 'group border-green-500 bg-green-500 text-white',
@@ -40,8 +38,8 @@ export function ConnectionStatusIndicator() {
       })
     }
 
-    setPrevOnlineState(isOnline)
-  }, [isOnline, prevOnlineState, toast])
+    prevOnlineState.current = isOnline
+  }, [isOnline, toast])
 
   const getIconColor = () => {
     if (isOnline === undefined) return 'text-gray-500'

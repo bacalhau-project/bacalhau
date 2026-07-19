@@ -49,7 +49,8 @@ export function NodesOverview() {
   }, [isInitialized, pageIndex, nextToken])
 
   useEffect(() => {
-    fetchNodes()
+    const timeoutId = window.setTimeout(fetchNodes, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [fetchNodes])
 
   const handleRefresh = useCallback(() => {

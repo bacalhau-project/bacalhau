@@ -38,7 +38,8 @@ const JobHistoryContainer = ({ jobId }: { jobId: string }) => {
   }, [jobId, pageSize, pageIndex, tokens])
 
   useEffect(() => {
-    fetchHistory()
+    const timeoutId = window.setTimeout(fetchHistory, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [fetchHistory])
 
   const handlePreviousPage = () => {
