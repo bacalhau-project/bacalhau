@@ -13,6 +13,11 @@ on:
         required: false
         default: 'v2.12.2'
         type: string
+      new_from_rev:
+        description: 'Only report lint issues introduced after this git revision'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   analyze:
@@ -21,6 +26,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ inputs.new_from_rev != '' && 0 || 1 }}
 
       # Setup Go with caching
       - name: Setup Go
@@ -54,8 +61,10 @@ jobs:
         uses: golangci/golangci-lint-action@v9.3.0
         with:
           version: ${{ inputs.golangci_lint_version }}
-          args: --timeout=5m --verbose
-          only-new-issues: true
+          args: >-
+            --timeout=5m --verbose
+            ${{ inputs.new_from_rev != '' && format('--new-from-rev={0}', inputs.new_from_rev) || '' }}
+          only-new-issues: ${{ inputs.new_from_rev == '' }}
 
       # Summarize results
       - name: Summary

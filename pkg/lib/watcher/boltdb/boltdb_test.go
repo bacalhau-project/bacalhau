@@ -195,6 +195,17 @@ func (s *BoltDBEventStoreTestSuite) TestLongPolling() {
 	s.assertEventsResponse(resp, 0, watcher.AfterSequenceNumberIterator(0))
 }
 
+func (s *BoltDBEventStoreTestSuite) TestCloseWithActiveSubscriberIsIdempotent() {
+	s.store.options.longPollingTimeout = time.Hour
+	respCh, errCh := s.getEventsAsync(watcher.AfterSequenceNumberIterator(0), 10, watcher.EventFilter{})
+
+	s.Require().NoError(s.store.Close(s.ctx))
+	resp := s.assertResponseReceived(respCh, errCh)
+	s.assertEventsResponse(resp, 0, watcher.AfterSequenceNumberIterator(0))
+
+	s.Require().NoError(s.store.Close(s.ctx))
+}
+
 func (s *BoltDBEventStoreTestSuite) TestCheckpoints() {
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher1", 5))
 	s.Require().NoError(s.store.StoreCheckpoint(s.ctx, "watcher2", 10))
