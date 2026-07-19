@@ -30,6 +30,15 @@ type BidderSuite struct {
 	bidder               compute.Bidder
 }
 
+type failingExecutionStore struct {
+	store.ExecutionStore
+	err error
+}
+
+func (s failingExecutionStore) UpdateExecutionState(context.Context, store.UpdateExecutionRequest) error {
+	return s.err
+}
+
 func TestBidderSuite(t *testing.T) {
 	suite.Run(t, new(BidderSuite))
 }
@@ -149,4 +158,47 @@ func (s *BidderSuite) TestRunBidding_PendingApproval() {
 	updatedExecution, err := s.mockExecutionStore.GetExecution(ctx, execution.ID)
 	s.Require().NoError(err)
 	s.Equal(models.ExecutionStateAskForBidAccepted, updatedExecution.ComputeState.StateType)
+}
+
+func (s *BidderSuite) TestRunBidding_IgnoresStaleExecutionState() {
+	ctx := context.Background()
+	execution := mock.ExecutionForJob(mock.Job())
+
+	s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
+		Return(bidstrategy.BidStrategyResponse{ShouldBid: false}, nil)
+
+	s.Require().NoError(s.mockExecutionStore.CreateExecution(ctx, *execution))
+	s.Require().NoError(s.mockExecutionStore.UpdateExecutionState(ctx, store.UpdateExecutionRequest{
+		ExecutionID: execution.ID,
+		NewValues: models.Execution{
+			ComputeState: models.NewExecutionState(models.ExecutionStateRunning),
+		},
+		Condition: store.UpdateExecutionCondition{
+			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
+		},
+	}))
+
+	s.NoError(s.bidder.RunBidding(ctx, execution))
+
+	updatedExecution, err := s.mockExecutionStore.GetExecution(ctx, execution.ID)
+	s.Require().NoError(err)
+	s.Equal(models.ExecutionStateRunning, updatedExecution.ComputeState.StateType)
+}
+
+func (s *BidderSuite) TestRunBidding_PropagatesStoreFailure() {
+	ctx := context.Background()
+	execution := mock.ExecutionForJob(mock.Job())
+	storeErr := errors.New("store unavailable")
+
+	s.mockSemanticStrategy.EXPECT().ShouldBid(ctx, gomock.Any()).
+		Return(bidstrategy.BidStrategyResponse{ShouldBid: false}, nil)
+
+	bidder := compute.NewBidder(compute.BidderParams{
+		SemanticStrategy: []bidstrategy.SemanticBidStrategy{s.mockSemanticStrategy},
+		Store:            failingExecutionStore{err: storeErr},
+	})
+
+	err := bidder.RunBidding(ctx, execution)
+	s.ErrorIs(err, storeErr)
+	s.ErrorContains(err, execution.ID)
 }
