@@ -1,4 +1,4 @@
-certifi >= 14.05.14
+certifi >= 2026.6.17
 six >= 1.10
 python_dateutil >= 2.5.3
 setuptools >= 21.0.0
