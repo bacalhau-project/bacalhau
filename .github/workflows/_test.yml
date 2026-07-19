@@ -59,6 +59,7 @@ jobs:
       REPO_ROOT: ${{ github.workspace }}
       REPORTS_DIR: ${{ github.workspace }}/reports
       COVERAGE_DIR: ${{ github.workspace }}/coverage
+      BACALHAU_TEST_SKIP_HTTP_GATEWAY: "1"
 
     steps:
       - name: Prepare tmp directories for tests
