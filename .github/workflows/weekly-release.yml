@@ -20,6 +20,7 @@ jobs:
     name: Release Preflight
     runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
+      latest_tag: ${{ steps.release.outputs.latest_tag }}
       next_tag: ${{ steps.release.outputs.next_tag }}
       should_release: ${{ steps.release.outputs.should_release }}
     steps:
@@ -59,6 +60,7 @@ jobs:
             echo "Latest stable release is not a semantic version: ${latest_tag}"
             exit 1
           fi
+          echo "latest_tag=${latest_tag}" >> "${GITHUB_OUTPUT}"
 
           latest_sha=$(git rev-list -n 1 "${latest_tag}")
           if [[ "${latest_sha}" == "${GITHUB_SHA}" ]]; then
@@ -85,6 +87,7 @@ jobs:
     with:
       go_version_file: go.work
       golangci_lint_version: v2.12.2
+      new_from_rev: ${{ needs.preflight.outputs.latest_tag }}
 
   unit-tests:
     name: Unit Tests

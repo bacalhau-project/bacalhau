@@ -19,8 +19,9 @@ import (
 )
 
 type subscriber struct {
-	notify chan struct{}
-	done   chan struct{}
+	notify   chan struct{}
+	done     chan struct{}
+	doneOnce sync.Once
 }
 
 // EventStore implements the EventStore interface using BoltDB as the underlying storage.
@@ -35,6 +36,7 @@ type EventStore struct {
 
 	subscribers sync.Map // map[*subscriber]struct{}
 	stopGC      chan struct{}
+	closeOnce   sync.Once
 }
 
 func (s *EventStore) createSubscriber() *subscriber {
@@ -51,7 +53,9 @@ func (s *EventStore) removeSubscriber(sub *subscriber) {
 		return
 	}
 	s.subscribers.Delete(sub)
-	close(sub.done) // Signal any pending operations to stop
+	sub.doneOnce.Do(func() {
+		close(sub.done) // Signal any pending operations to stop
+	})
 }
 func (s *EventStore) notifySubscribers() {
 	s.subscribers.Range(func(key, _ interface{}) bool {
@@ -486,12 +490,14 @@ func (s *EventStore) runGC() error {
 
 // Close stops the garbage collection process and purges the cache.
 func (s *EventStore) Close(ctx context.Context) error {
-	close(s.stopGC)
-	s.subscribers.Range(func(key, _ interface{}) bool {
-		s.removeSubscriber(key.(*subscriber))
-		return true
+	s.closeOnce.Do(func() {
+		close(s.stopGC)
+		s.subscribers.Range(func(key, _ interface{}) bool {
+			s.removeSubscriber(key.(*subscriber))
+			return true
+		})
+		s.cache.Purge()
 	})
-	s.cache.Purge()
 	return nil
 }
 
