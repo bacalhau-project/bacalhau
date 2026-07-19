@@ -30,9 +30,12 @@ export const useConnectionMonitor = (checkInterval = 5000) => {
   }, [isInitialized])
 
   useEffect(() => {
-    checkConnection() // Immediate check on mount
+    const initialCheckId = window.setTimeout(checkConnection, 0)
     const intervalId = setInterval(checkConnection, checkInterval)
-    return () => clearInterval(intervalId)
+    return () => {
+      window.clearTimeout(initialCheckId)
+      clearInterval(intervalId)
+    }
   }, [checkConnection, checkInterval])
 
   return { isOnline, checkConnection, error }

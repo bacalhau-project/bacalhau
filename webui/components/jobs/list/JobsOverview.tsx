@@ -41,7 +41,8 @@ export function JobsOverview() {
   }, [isInitialized, pageSize, pageIndex, tokens])
 
   useEffect(() => {
-    fetchJobs()
+    const timeoutId = window.setTimeout(fetchJobs, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [fetchJobs])
 
   const handleRefresh = useCallback(() => {

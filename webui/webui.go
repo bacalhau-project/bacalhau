@@ -20,7 +20,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-//go:embed build/**
+//go:embed all:build/**
 var buildFiles embed.FS
 
 type Config struct {

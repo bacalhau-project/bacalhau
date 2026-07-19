@@ -29,7 +29,7 @@
 # The container needs to be started with --cap-add=NET_ADMIN so that it can
 # configure iptables and traffic control.
 
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 RUN apt update && apt install -y squid iptables iproute2 jq curl \
     && rm -rf /var/lib/apt/lists/*
 
