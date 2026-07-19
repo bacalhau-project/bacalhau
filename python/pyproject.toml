@@ -36,8 +36,8 @@ packages = [
 python = ">=3.10,<3.13"
 mypy = ">=1.9"
 tox = { version = "^4.2.6", optional = true }
-virtualenv = { version = "^20.2.2", optional = true }
-twine = { version = "^4.0.2", optional = true }
+virtualenv = { version = ">=20.2.2,<22.0.0", optional = true }
+twine = { version = ">=4.0.2,<7.0.0", optional = true }
 pre-commit = ">=2.12.0"
 toml = { version = "^0.10.2", optional = true }
 pem = "^23.1.0"
@@ -48,25 +48,25 @@ types-six = "^1.16.21.4"
 bacalhau-apiclient = ">=1.0.0"
 pygments = ">=2.20.0"
 certifi = ">=2024.7.4"
-ruff = "^0.5.0"
+ruff = ">=0.5,<0.16"
 
 [tool.poetry.extras]
 
 
 [tool.poetry.group.dev.dependencies]
 tox = "^4.2.6"
-pre-commit = "^2.21.0"
-virtualenv = "^20.17.1"
+pre-commit = ">=2.21,<5.0"
+virtualenv = ">=20.17.1,<22.0.0"
 pip = ">=24.0.0"
-twine = "^4.0.2"
+twine = ">=4.0.2,<7.0.0"
 toml = "^0.10.2"
 bump2version = "^1.0.1"
 
 
 [tool.poetry.group.test.dependencies]
-ruff = "^0.5.0"
-mypy = "^1.9"
-pytest-cov = "^4.0.0"
+ruff = ">=0.5,<0.16"
+mypy = ">=1.9,<3.0"
+pytest-cov = ">=4,<8"
 pytest = "^9.0.3"
 
 
