@@ -27,7 +27,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          fetch-depth: ${{ inputs.new_from_rev != '' && 0 || 1 }}
+          fetch-depth: ${{ inputs.new_from_rev != '' && '0' || '1' }}
+
+      - name: Verify lint baseline
+        if: inputs.new_from_rev != ''
+        env:
+          BASELINE_REF: ${{ inputs.new_from_rev }}
+        run: git rev-parse --verify "${BASELINE_REF}^{commit}"
 
       # Setup Go with caching
       - name: Setup Go
