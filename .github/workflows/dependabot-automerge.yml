@@ -69,9 +69,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ steps.pull-request.outputs.url }}
         run: gh pr merge "${PR_URL}" --squash --delete-branch
-
-      - name: Publish updated main
-        if: steps.pull-request.outputs.eligible == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run main.yml --repo "${GITHUB_REPOSITORY}" --ref main
