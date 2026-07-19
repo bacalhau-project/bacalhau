@@ -2,6 +2,7 @@ package compute
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -50,8 +51,7 @@ func (b Bidder) RunBidding(ctx context.Context, execution *models.Execution) err
 	if err != nil {
 		return b.handleError(ctx, execution, err)
 	}
-	b.handleBidResult(ctx, execution, bidResult)
-	return nil
+	return b.handleBidResult(ctx, execution, bidResult)
 }
 
 // doBidding returns a response based on the below semantics. We will only bid if both semantic
@@ -185,7 +185,7 @@ func (b Bidder) handleBidResult(
 	ctx context.Context,
 	execution *models.Execution,
 	result *bidStrategyResponse,
-) {
+) error {
 	var newExecutionValues models.Execution
 	var newExecutionState models.ExecutionStateType
 	var events []*models.Event
@@ -217,12 +217,20 @@ func (b Bidder) handleBidResult(
 			ExpectedStates: []models.ExecutionStateType{models.ExecutionStateNew},
 		},
 	})
-	// TODO: handle error by either gracefully skipping if the execution is no longer in the created state
-	//  or by failing the execution
 	if err != nil {
-		log.Ctx(ctx).Error().Err(err).Msg("failed to update execution state")
-		return
+		var invalidStateErr store.ErrInvalidExecutionState
+		if errors.As(err, &invalidStateErr) {
+			log.Ctx(ctx).Debug().
+				Err(err).
+				Str("executionID", execution.ID).
+				Str("expectedState", models.ExecutionStateNew.String()).
+				Str("actualState", invalidStateErr.Actual.String()).
+				Msg("skipping execution state update because execution state changed")
+			return nil
+		}
+		return fmt.Errorf("updating bid result for execution %s: %w", execution.ID, err)
 	}
+	return nil
 }
 
 // handleError is a helper function to handle errors in the bidder.
