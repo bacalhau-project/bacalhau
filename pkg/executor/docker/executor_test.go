@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -126,6 +127,10 @@ func (s *ExecutorTestSuite) curlTask() *models.SpecConfig {
 }
 
 func (s *ExecutorTestSuite) startJob(spec *models.Task, name string) {
+	if spec.Network.Type == models.NetworkHTTP && os.Getenv("BACALHAU_TEST_SKIP_HTTP_GATEWAY") == "1" {
+		s.T().Skip("HTTP gateway tests require the sch_tbf kernel module")
+	}
+
 	resultsPath, _ := compute.NewResultsPath(s.T().TempDir())
 	executionDir, _ := resultsPath.PrepareExecutionOutputDir(name)
 	j := mock.Job()
