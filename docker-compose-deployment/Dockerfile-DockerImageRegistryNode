@@ -1,4 +1,4 @@
-FROM registry:2
+FROM registry:3
 
 # Install curl and bash
 RUN apk update && apk add --no-cache curl bash
