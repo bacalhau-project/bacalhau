@@ -1,5 +1,5 @@
 # Use the docker:dind image as the base image
-FROM traefik:3.2
+FROM traefik:v3.7
 
 # Install curl and bash
 RUN apk update && apk add --no-cache curl bash
