@@ -1,5 +1,5 @@
 VERSION 0.8
-FROM node:20.8.1
+FROM node:24
 
 WORKDIR /code
 
@@ -21,7 +21,7 @@ copy-code:
     FROM +install-deps
     COPY --dir app components hooks lib ./
     COPY next.config.mjs postcss.config.mjs tailwind.config.ts tsconfig.json ./
-    COPY .eslintrc.json .prettierrc global.d.ts ./
+    COPY eslint.config.mjs .prettierrc global.d.ts ./
 
 run-linter:
     FROM +copy-code
