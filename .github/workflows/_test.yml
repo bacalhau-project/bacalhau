@@ -51,7 +51,7 @@ on:
 jobs:
   run-tests:
     name: Run
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: ${{ inputs.timeout_minutes }}
     environment: ${{ inputs.environment_name }}
     # Define key paths relative to repository root

@@ -16,7 +16,7 @@ on:
 jobs:
   publish-docker-images:
     name: Publish to GHCR
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: ${{ inputs.environment }}
     permissions:
       contents: read

@@ -1,125 +1,240 @@
 version: 2
+
 updates:
-  # Go modules - main project
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/go"
-      - "dependencies"
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/go", "dependencies", "weekly-release"]
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps"
-      prefix-development: "dev-deps"
-      include: "scope"
+      prefix: deps
+      prefix-development: dev-deps
+      include: scope
     groups:
       go-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
 
-  # Go modules - test_integration
-  - package-ecosystem: "gomod"
+  - package-ecosystem: gomod
     directory: "/test_integration"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/go"
-      - "dependencies"
-      - "test"
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/go", "dependencies", "test", "weekly-release"]
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps"
-      include: "scope"
+      prefix: deps
+      include: scope
     groups:
       go-test-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
 
-  # npm/yarn - webui
-  - package-ecosystem: "npm"
+  - package-ecosystem: gomod
+    directory: "/pkg/executor/wasm/funcs/http/client"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/go", "dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      wasm-client-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: npm
     directory: "/webui"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/javascript"
-      - "dependencies"
-      - "webui"
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/javascript", "dependencies", "webui", "weekly-release"]
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps"
-      include: "scope"
+      prefix: deps
+      include: scope
     groups:
-      npm-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+      webui-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
 
-  # Python/pip - ops
-  - package-ecosystem: "pip"
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/python", "dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      root-python-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: pip
     directory: "/ops"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/python"
-      - "dependencies"
-      - "ops"
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/python", "dependencies", "weekly-release"]
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps"
-      include: "scope"
+      prefix: deps
+      include: scope
     groups:
-      pip-ops-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+      ops-python-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
 
-  # Python/pip - root (if requirements.txt exists)
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: pip
+    directory: "/python"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/python"
-      - "dependencies"
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/python", "dependencies", "weekly-release"]
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "deps"
-      include: "scope"
+      prefix: deps
+      include: scope
     groups:
-      pip-dependencies:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+      sdk-python-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
 
-  # GitHub Actions
-  - package-ecosystem: "github-actions"
+  - package-ecosystem: pip
+    directory: "/clients/python"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/python", "dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      api-client-python-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: "weekly"
-    labels:
-      - "lang/github-actions"
-      - "dependencies"
-    open-pull-requests-limit: 3
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["lang/github-actions", "dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
     commit-message:
-      prefix: "ci"
-      include: "scope"
+      prefix: ci
+      include: scope
     groups:
       github-actions-dependencies:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/docker/bacalhau-base"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      base-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/docker/bacalhau-dind"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      dind-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/docker/ignite-image"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      ignite-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/pkg/executor/docker/gateway"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      gateway-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/docker-compose-deployment"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      compose-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
+
+  - package-ecosystem: docker
+    directory: "/test_integration/common_assets/dockerfiles"
+    schedule:
+      interval: weekly
+      day: sunday
+      time: "00:00"
+      timezone: America/Los_Angeles
+    labels: ["dependencies", "test", "weekly-release"]
+    open-pull-requests-limit: 5
+    groups:
+      integration-image-dependencies:
+        patterns: ["*"]
+        update-types: ["major", "minor", "patch"]
