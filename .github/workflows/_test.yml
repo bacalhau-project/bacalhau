@@ -74,6 +74,11 @@ jobs:
           # Set sticky bit to prevent others from deleting files
           sudo chmod +t /tmp
 
+      - name: Enable traffic-control kernel support
+        run: |
+          sudo modprobe sch_tbf
+          grep -q '^sch_tbf ' /proc/modules
+
       - name: Checkout code
         uses: actions/checkout@v7
 
