@@ -24,7 +24,7 @@ jobs:
 
       # Setup Go with caching
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: ${{ inputs.go_version_file }}
 
