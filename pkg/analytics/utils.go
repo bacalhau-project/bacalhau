@@ -9,7 +9,7 @@ import (
 )
 
 // getDockerImageAnalytics returns the Docker image name for analytics purposes.
-// For trusted images (from Bacalhau or Expanso), it returns the original image name.
+// For trusted Bacalhau images, it returns the original image name.
 // For non-trusted images, it returns a hashed version of the image name for privacy.
 // Returns an empty string if the engine is not Docker or no image information is found.
 func getDockerImageAnalytics(engineParams *models.SpecConfig) string {
@@ -33,11 +33,10 @@ func getDockerImageAnalytics(engineParams *models.SpecConfig) string {
 		return ""
 	}
 
-	// Check if image is from a trusted source (Bacalhau or Expanso)
+	// Check if image is from a trusted Bacalhau source
 	trusted := false
 	trustedPrefixes := []string{
 		"ghcr.io/bacalhau-project/",
-		"expanso/",
 		"bacalhauproject/",
 	}
 

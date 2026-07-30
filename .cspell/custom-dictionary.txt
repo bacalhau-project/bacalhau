@@ -161,7 +161,6 @@ durin
 dylibso
 esbenp
 ethereumetl
-expanso
 extendee
 fanout
 fastavro
