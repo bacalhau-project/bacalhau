@@ -24,7 +24,7 @@ import (
 // TODO: #3165 Host the terms of service on bacalhau.org/terms
 
 //	@contact.name	API Support
-//	@contact.url	https://www.expanso.io/contact/
+//	@contact.url	https://github.com/bacalhau-project/bacalhau/issues
 //	@contact.email	support@bacalhau.org
 
 // TODO: #3166 Host an email address and a contact form on bacalhau.org/support
@@ -36,7 +36,7 @@ import (
 //	@BasePath	/api/v1
 
 //	@externalDocs.description	Bacalhau Documentation
-//	@externalDocs.url			https://docs.bacalhau.org
+//	@externalDocs.url			https://bacalhau.org/docs/
 
 ////	@securityDefinitions.basic	BasicAuth
 

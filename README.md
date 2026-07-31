@@ -84,7 +84,7 @@ curl -sL https://get.bacalhau.org/install.sh | bash
 bacalhau version
 ```
 
-For the complete quick start guide, including running your first job, see our [Quick Start Documentation](https://docs.bacalhau.org/getting-started/quick-start).
+For the complete quick start guide, including running your first job, see the [Quick Start Documentation](https://bacalhau.org/docs/getting-started/quick-start/).
 
 ## Use Cases
 
@@ -98,13 +98,13 @@ Bacalhau's distributed compute framework enables a wide range of applications:
 
 ## Documentation
 
-📚 [Read the Bacalhau docs guide here](https://docs.bacalhau.org/)! 📚
+📚 [Read the Bacalhau documentation](https://bacalhau.org/docs/) 📚
 
 The Bacalhau documentation contains all the information you need to get started:
 
-- [Installation Tutorial](https://docs.bacalhau.org/getting-started/installation)
-- [Basic Usage](https://docs.bacalhau.org/getting-started/cli)
-- [Common Workflows](https://docs.bacalhau.org/common-workflows)
+- [Installation Tutorial](https://bacalhau.org/docs/getting-started/installation/)
+- [Submit Your First Job](https://bacalhau.org/docs/basics/submitting-jobs/)
+- [Publish Results](https://bacalhau.org/docs/guides/publishing-results/)
 
 ## Community & Contributing
 
@@ -115,18 +115,16 @@ Bacalhau has a very friendly community, and we are always happy to help:
 If you are interested in contributing to the Bacalhau project:
 
 - Set up your [local environment](docs/dev/local-env.md)
-- Check out our [Contributing Guide](https://docs.bacalhau.org/community/community/ways-to-contribute)
+- Check out our [Contributing Guide](https://bacalhau.org/community/ways-to-contribute/)
 - For issues and feature requests, please [open a GitHub issue](https://github.com/bacalhau-project/bacalhau/issues)
 
 We are excited to hear your feedback!
 
 ## Open Source
 
-This repository contains the Bacalhau software, covered under the [Apache-2.0](./LICENSE) license, except where noted (any Bacalhau logos or trademarks are not covered under the Apache License, and should be explicitly noted by a LICENSE file.)
+This repository contains the open-source Bacalhau software, covered under the [Apache-2.0](./LICENSE) license except where noted. Commercial terms are not required to use, modify, or distribute this code under that license.
 
-Bacalhau is a product produced from this open source software, exclusively by Expanso, Inc. It is distributed under our commercial terms.
-
-Others are allowed to make their own distribution of the software, but they cannot use any of the Bacalhau trademarks, cloud services, etc.
+The Apache 2.0 license does not grant rights to the Bacalhau name or logos. Distributions may use those trademarks only as permitted by the applicable trademark policy or other written permission.
 
 We explicitly grant permission for you to make a build that includes our trademarks while developing Bacalhau software itself. You may not publish or share the build, and you may not use that build to run Bacalhau software for any other purpose.
 

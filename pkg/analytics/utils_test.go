@@ -100,26 +100,6 @@ func (s *UtilsTestSuite) TestGetDockerImageAnalytics() {
 			expected: "ghcr.io/bacalhau-project/test:latest",
 		},
 		{
-			name: "trusted expanso image with Image key",
-			engine: &models.SpecConfig{
-				Type: models.EngineDocker,
-				Params: map[string]interface{}{
-					"Image": "expanso/test:latest",
-				},
-			},
-			expected: "expanso/test:latest",
-		},
-		{
-			name: "trusted expanso image with image key",
-			engine: &models.SpecConfig{
-				Type: models.EngineDocker,
-				Params: map[string]interface{}{
-					"image": "expanso/test:latest",
-				},
-			},
-			expected: "expanso/test:latest",
-		},
-		{
 			name: "non-trusted image with Image key",
 			engine: &models.SpecConfig{
 				Type: models.EngineDocker,

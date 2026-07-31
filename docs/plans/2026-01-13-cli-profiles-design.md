@@ -35,14 +35,14 @@ YAML files with only user-provided fields (no defaults written):
 
 ```yaml
 # Minimal profile
-endpoint: https://api.expanso.io:443
+endpoint: https://api.example.com:443
 auth:
   token: "eyJ..."
 ```
 
 ```yaml
 # Full profile
-endpoint: https://api.expanso.io:443
+endpoint: https://api.example.com:443
 timeout: 60s
 description: Production cluster
 auth:
@@ -74,8 +74,8 @@ List all available profiles.
 ```bash
 $ bacalhau profile list
 CURRENT  NAME      ENDPOINT                    AUTH
-*        prod      https://api.expanso.io:443  token
-         staging   https://staging.expanso.io  token
+*        prod      https://api.example.com:443  token
+         staging   https://staging.example.com  token
          default   http://localhost:1234       none
 ```
 
@@ -88,7 +88,7 @@ Show profile details. Shows current profile if no name provided.
 ```bash
 $ bacalhau profile show prod
 Name:        prod
-Endpoint:    https://api.expanso.io:443
+Endpoint:    https://api.example.com:443
 Auth:        token (tok_****...xyz)
 TLS:         secure
 Timeout:     30s
@@ -105,13 +105,13 @@ Create or update a profile.
 
 ```bash
 # Create new profile
-$ bacalhau profile save prod --endpoint https://api.expanso.io
+$ bacalhau profile save prod --endpoint https://api.example.com
 
 # Update existing profile
 $ bacalhau profile save prod --timeout 60s --description "Production"
 
 # Create and select
-$ bacalhau profile save prod --endpoint https://api.expanso.io --select
+$ bacalhau profile save prod --endpoint https://api.example.com --select
 ```
 
 Flags:
@@ -236,7 +236,7 @@ If the specified profile doesn't exist, SSO creates it:
 
 ```bash
 # Creates 'prod' profile using endpoint from env var, authenticates, saves token
-$ BACALHAU_API_HOST=api.expanso.io bacalhau auth sso --profile prod
+$ BACALHAU_API_HOST=api.example.com bacalhau auth sso --profile prod
 ```
 
 The endpoint is resolved from:
