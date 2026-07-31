@@ -66,7 +66,7 @@ func (p *PhysicalCapacityProvider) GetTotalCapacity(ctx context.Context) (models
 			// but in a misconfigured state e.g. their drivers are missing, the
 			// smi can't communicate with the drivers, etc. instead we provide a
 			// warning, show the args to the command we tried and its response.
-			// motivation: https://expanso.atlassian.net/browse/GDAY-90
+			// Some hosts have vendor tools installed even when their drivers are unusable.
 			log.Ctx(ctx).Debug().Msgf(
 				"Cannot inspect %s so they will not be used: %s",
 				strings.Join(gpuProvider.ResourceTypes(), " or "),
