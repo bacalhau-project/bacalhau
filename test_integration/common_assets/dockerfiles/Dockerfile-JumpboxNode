@@ -5,11 +5,23 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install curl and bash
-RUN apk update && apk add --no-cache curl bash
+RUN apk update && apk add --no-cache curl bash unzip
 
 # Install Nats CLI
-RUN curl -sf https://binaries.nats.dev/nats-io/natscli/nats@v0.1.5 | sh
-RUN mv /app/nats /usr/local/bin/
+RUN set -eux; \
+    machine_arch="$(uname -m)"; \
+    case "$machine_arch" in \
+        x86_64) nats_arch="amd64"; nats_sha256="728c562e8f59bacd5eb016a6db2664e343b79f3c6642ba03fb9fb1dce7a2bc40" ;; \
+        aarch64) nats_arch="arm64"; nats_sha256="49d3157511e4f8d61bdee273b4ea5d19821c454b261fe18568e18254febb344f" ;; \
+        *) echo "Unsupported architecture: $machine_arch" >&2; exit 1 ;; \
+    esac; \
+    nats_archive="nats-0.1.5-linux-${nats_arch}.zip"; \
+    curl -fsSLO "https://github.com/nats-io/natscli/releases/download/v0.1.5/${nats_archive}"; \
+    echo "${nats_sha256}  ${nats_archive}" | sha256sum -c -; \
+    unzip -q "$nats_archive"; \
+    mv "nats-0.1.5-linux-${nats_arch}/nats" /usr/local/bin/nats; \
+    rm -rf "$nats_archive" "nats-0.1.5-linux-${nats_arch}"; \
+    nats --version
 
 # Install the ca-certificates package
 RUN apk add --no-cache ca-certificates
