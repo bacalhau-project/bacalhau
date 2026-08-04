@@ -22,7 +22,7 @@
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-toast": "^1.2.23",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "axios": "^1.18.1",
+    "axios": "^1.19.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.27.0",
@@ -47,7 +47,7 @@
     "eslint-config-next": "^16.2.12",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
-    "postcss": "^8.5.23",
+    "postcss": "^8.5.25",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3"
