@@ -5113,7 +5113,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:8.4.31, postcss@npm:^8.5.16":
+"postcss@npm:8.4.31":
   version: 8.5.19
   resolution: "postcss@npm:8.5.19"
   dependencies:
@@ -5124,7 +5124,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.5.25":
+"postcss@npm:^8.5.16":
   version: 8.5.25
   resolution: "postcss@npm:8.5.25"
   dependencies:
@@ -6208,7 +6208,6 @@ __metadata:
     lucide-react: "npm:^1.27.0"
     next: "npm:^16.2.12"
     next-themes: "npm:^0.4.6"
-    postcss: "npm:^8.5.25"
     prettier: "npm:^3.9.6"
     react: "npm:^19"
     react-dom: "npm:^19"
