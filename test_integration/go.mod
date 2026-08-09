@@ -7,7 +7,7 @@ require (
 	github.com/docker/compose/v2 v2.40.3
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/google/uuid v1.6.0
-	github.com/moby/go-archive v0.2.1
+	github.com/moby/go-archive v0.3.3
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
 	github.com/testcontainers/testcontainers-go/modules/compose v0.43.0
