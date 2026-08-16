@@ -1,5 +1,5 @@
 certifi >= 2026.7.22
 six >= 1.17.0
 python_dateutil >= 2.9.0.post0
-setuptools >= 83.0.0
+setuptools >= 84.0.0
 urllib3 >= 2.7.0
