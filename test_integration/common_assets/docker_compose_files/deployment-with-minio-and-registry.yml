@@ -14,7 +14,8 @@ networks:
 
 services:
   bacalhau-minio-node:
-    image: quay.io/minio/minio
+    # MinIO withdrew its community images; pgsty/minio is a maintained drop-in fork.
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     command: server /data --console-address ":9001"
     restart: always
     networks:

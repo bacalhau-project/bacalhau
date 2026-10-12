@@ -40,7 +40,17 @@ COPY ./ /bacalhau_integration_tests
 COPY ./common_assets/bacalhau_bin /usr/local/bin/bacalhau
 RUN chmod +x /usr/local/bin/bacalhau
 
-# Download the MinIO CLI, following the release redirect, and validate it at build time.
-RUN curl -fsSL -o /usr/local/bin/mc https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x /usr/local/bin/mc \
-    && /usr/local/bin/mc --version
+# Install the MinIO CLI. dl.min.io stopped serving community builds (HTTP 410),
+# so take the final release from the archived minio/mc GitHub repo.
+RUN set -eux; \
+    machine_arch="$(uname -m)"; \
+    case "$machine_arch" in \
+        x86_64) mc_arch="amd64"; mc_sha256="01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891" ;; \
+        aarch64) mc_arch="arm64"; mc_sha256="14c8c9616cfce4636add161304353244e8de383b2e2752c0e9dad01d4c27c12c" ;; \
+        *) echo "Unsupported architecture: $machine_arch" >&2; exit 1 ;; \
+    esac; \
+    mc_release="RELEASE.2025-08-13T08-35-41Z"; \
+    curl -fsSL -o /usr/local/bin/mc "https://github.com/minio/mc/releases/download/${mc_release}/mc.linux-${mc_arch}.${mc_release}"; \
+    echo "${mc_sha256}  /usr/local/bin/mc" | sha256sum -c -; \
+    chmod +x /usr/local/bin/mc; \
+    mc --version
