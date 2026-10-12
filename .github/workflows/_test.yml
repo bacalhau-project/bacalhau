@@ -98,7 +98,9 @@ jobs:
         timeout-minutes: 5
         run: |
           # Install IPFS for integration tests that require a local IPFS node
-          wget https://dist.ipfs.tech/kubo/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
+          # dist.ipfs.tech is unreachable from the runners; GitHub hosts the same release.
+          wget https://github.com/ipfs/kubo/releases/download/v0.18.1/kubo_v0.18.1_linux-amd64.tar.gz
+          echo "30ebdda376aa8c3406f07033e1b9fd68d97f885535157fcf00cfa041b4805bef0a48382e1432fe5626cf1be130e9116ad5243834f018bb5dc45f53220fb05046  kubo_v0.18.1_linux-amd64.tar.gz" | sha512sum -c -
           tar -xvzf kubo_v0.18.1_linux-amd64.tar.gz
           sudo mv kubo/ipfs /usr/local/bin/ipfs
           ipfs init
