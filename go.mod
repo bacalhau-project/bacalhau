@@ -5,12 +5,12 @@ go 1.26.9
 require (
 	github.com/BTBurke/k8sresource v1.2.0
 	github.com/Masterminds/semver v1.5.0
-	github.com/MicahParks/keyfunc/v3 v3.9.1
+	github.com/MicahParks/keyfunc/v3 v3.9.2
 	github.com/aws/aws-sdk-go-v2 v1.48.0
-	github.com/aws/aws-sdk-go-v2/config v1.33.18
+	github.com/aws/aws-sdk-go-v2/config v1.33.20
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.9
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.24
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.23.27
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.116.0
 	github.com/aws/smithy-go v1.28.9
 	github.com/bmatcuk/doublestar/v4 v4.10.4
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
@@ -38,22 +38,22 @@ require (
 	github.com/ipld/go-car/v2 v2.17.0
 	github.com/ipld/go-codec-dagpb v1.7.0
 	github.com/ipld/go-ipld-prime v0.24.0
-	github.com/jedib0t/go-pretty/v6 v6.8.3
+	github.com/jedib0t/go-pretty/v6 v6.9.2
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo/v4 v4.16.3
+	github.com/labstack/echo/v4 v4.16.5
 	github.com/lestrrat-go/jwx v1.2.31
 	github.com/libp2p/go-libp2p v0.49.0
 	github.com/mattn/go-isatty v0.0.24
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/multiformats/go-multiaddr v0.16.1
 	github.com/nats-io/nats-server/v2 v2.15.3
-	github.com/nats-io/nats.go v1.55.0
+	github.com/nats-io/nats.go v1.56.0
 	github.com/nats-io/nuid v1.0.1
-	github.com/open-policy-agent/opa v1.22.3
+	github.com/open-policy-agent/opa v1.22.4
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
-	github.com/posthog/posthog-go v1.42.4
+	github.com/posthog/posthog-go v1.44.1
 	github.com/ricochet2200/go-disk-usage/du v0.0.0-20210707232629-ac9918953285
 	github.com/rs/zerolog v1.35.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
@@ -94,7 +94,7 @@ require (
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/antithesishq/antithesis-sdk-go v0.9.0-default-no-op // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.27 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.21.0 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.21.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.11.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.13.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.14.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.39.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0 // indirect
@@ -158,6 +158,7 @@ require (
 	github.com/nats-io/jwt/v2 v2.8.3 // indirect
 	github.com/nats-io/nkeys v0.4.17 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.1 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sirupsen/logrus v1.10.2 // indirect
