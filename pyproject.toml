@@ -6,7 +6,7 @@ authors = []
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.10.5"
+python = "^3.11"
 pre-commit = ">=2.20,<5.0"
 sgqlc = ">=16,<20"
 semver = ">=2.13,<4.0"
